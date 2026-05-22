@@ -14,14 +14,46 @@ working on anything domain-related, and keep it in sync as the model evolves.
 
 ## Status
 
-No source code, build system, or tests exist yet. The architecture below is
-decided (grilled out in design discussion); scaffolding is the next step. Update
-this file with build/test/lint commands once they exist.
+The **backend is built, tested, and committed** (branch `backend`) — rich domain
+model, jOOQ/SQLite persistence, the adaptive weekly-review engine, the full REST
+API, a Dockerfile + compose stack, and a unit / integration / e2e test suite.
+
+Backend commands (run in `backend/`):
+- `./gradlew build` — compiles and runs the fast test suite
+- `./gradlew e2eTest` — Testcontainers e2e against the Docker image; build it
+  first with `docker compose build backend` from the repo root
+
+The **Nuxt frontend** (`frontend/`) is scaffolded — **F1 is done**: a SPA
+(`ssr: false`) Nuxt 4 + Nuxt UI + `@vite-pwa/nuxt` project, UI testing wired up,
+and a TDD'd responsive app shell with adaptive navigation (bottom tab bar on
+phone, side nav on desktop) over four routes: Today, Foods, Review, Profile.
+
+Frontend commands (run in `frontend/`, package manager is pnpm):
+- `pnpm dev` — start the dev server
+- `pnpm build` — production build
+- `pnpm test` — Vitest component / unit tests (`@nuxt/test-utils`, `@vue/test-utils`)
+- `pnpm test:e2e` — Playwright browser e2e; builds the app first
+  (one-time setup: `pnpm exec playwright install chromium`)
+
+Continuous integration — every pull request runs `.github/workflows/ci.yml`,
+which gates the backend `./gradlew build` and the frontend Vitest + Playwright
+suites.
+
+The frontend is built **test-first (red-green TDD)**. Remaining increments:
+
+- **F2** — daily summary dashboard + entry logging; the typed API client.
+- **F3** — foods: list, plus manual and barcode-scan creation.
+- **F4** — profile, goal, and weight-logging setup screens.
+- **F5** — weekly review view + history.
+- **F6** — PWA polish: offline shell, install prompt, web-push reminder.
 
 ## Architecture
 
-- **Frontend** — Nuxt + Nuxt UI, TypeScript, SPA mode (`ssr: false`). A PWA via
-  `@vite-pwa/nuxt`. Barcode scanning uses a JS library (iOS Safari has no
+- **Frontend** — Nuxt + Nuxt UI, TypeScript, SPA mode (`ssr: false`). A
+  responsive PWA, installable on both mobile (iOS home screen) and desktop
+  (Chrome/Edge), via `@vite-pwa/nuxt`. The layout adapts by breakpoint — a
+  single-column, touch-first phone layout and a wider desktop layout from one
+  codebase. Barcode scanning uses a JS library (iOS Safari has no
   `BarcodeDetector`). The weekly-review reminder uses web push.
 - **Backend** — Spring Boot + Kotlin, REST API. Exposes an OpenAPI spec
   (`springdoc-openapi`); the frontend's API types are generated from it.
