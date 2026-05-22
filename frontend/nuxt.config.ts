@@ -7,7 +7,7 @@ export default defineNuxtConfig({
 
   devtools: { enabled: true },
 
-  modules: ['@nuxt/ui', '@vite-pwa/nuxt'],
+  modules: ['@nuxt/eslint', '@nuxt/ui', '@vite-pwa/nuxt'],
 
   css: ['~/assets/css/main.css'],
 

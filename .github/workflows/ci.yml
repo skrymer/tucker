@@ -31,6 +31,9 @@ jobs:
           java-version: '21'
           cache: gradle
 
+      - name: Detekt (static analysis)
+        run: ./gradlew detekt --no-daemon
+
       # ./gradlew build runs the unit + integration suite. The Docker-image
       # e2e suite (./gradlew e2eTest) is intentionally not part of the PR gate.
       - name: Build and test
@@ -60,6 +63,9 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Lint (ESLint)
+        run: pnpm lint
 
       - name: Component tests
         run: pnpm test

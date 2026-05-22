@@ -31,7 +31,7 @@ data class Recipe(
     fun nutrition(): Nutrition {
         val totalCalories = ingredients.sumOf { it.ingredient.caloriesFor(it.grams) }
         val totalProtein = ingredients.sumOf { it.ingredient.proteinFor(it.grams) }
-        val per100g = 100.0 / cookedWeightG
+        val per100g = Nutrition.GRAMS_PER_100G / cookedWeightG
         return Nutrition(
             caloriesPer100g = totalCalories * per100g,
             proteinPer100g = totalProtein * per100g,

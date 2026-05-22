@@ -21,8 +21,13 @@ data class Nutrition(
     }
 
     /** Calories in [grams] of this food. */
-    fun caloriesFor(grams: Double): Double = caloriesPer100g * grams / 100.0
+    fun caloriesFor(grams: Double): Double = caloriesPer100g * grams / GRAMS_PER_100G
 
     /** Protein (grams) in [grams] of this food. */
-    fun proteinFor(grams: Double): Double = proteinPer100g * grams / 100.0
+    fun proteinFor(grams: Double): Double = proteinPer100g * grams / GRAMS_PER_100G
+
+    companion object {
+        /** The weight, in grams, that nutrition figures are expressed per. */
+        const val GRAMS_PER_100G = 100.0
+    }
 }

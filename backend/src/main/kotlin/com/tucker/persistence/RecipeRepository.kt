@@ -38,8 +38,7 @@ class RecipeRepository(
 
     /** Load a Recipe with its ingredient Foods, or null if [id] is not a recipe. */
     fun findById(id: Long): Recipe? {
-        val food = foods.findById(id) ?: return null
-        if (food.kind != FoodKind.RECIPE) return null
+        val food = foods.findById(id)?.takeIf { it.kind == FoodKind.RECIPE } ?: return null
 
         val ingredientRows = dsl.selectFrom(RECIPE_INGREDIENT)
             .where(RECIPE_INGREDIENT.RECIPE_ID.eq(id.toInt()))

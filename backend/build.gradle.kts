@@ -14,6 +14,7 @@ plugins {
     kotlin("plugin.spring") version "2.2.21"
     id("org.springframework.boot") version "3.4.1"
     id("io.spring.dependency-management") version "1.1.7"
+    id("io.gitlab.arturbosch.detekt") version "1.23.8"
 }
 
 group = "com.tucker"
@@ -109,6 +110,30 @@ kotlin {
         jvmTarget = JvmTarget.JVM_21
         freeCompilerArgs.add("-Xjsr305=strict")
     }
+}
+
+// --- Static analysis ------------------------------------------------------
+// Detekt lints the Kotlin sources and fails the build on any finding.
+// `detekt.yml` holds project overrides, layered on detekt's default ruleset.
+detekt {
+    buildUponDefaultConfig = true
+    config.setFrom(files("detekt.yml"))
+}
+
+// detekt 1.23.8 bundles the Kotlin 2.0.21 compiler; the project's
+// `kotlin.version` (2.2.21) must not leak onto detekt's own classpath.
+configurations.matching { it.name == "detekt" }.all {
+    resolutionStrategy.eachDependency {
+        if (requested.group == "org.jetbrains.kotlin") {
+            useVersion("2.0.21")
+        }
+    }
+}
+
+// That bundled compiler caps --jvm-target at 22, below the JDK the build may
+// run on; pin detekt's analysis target to 21.
+tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach {
+    jvmTarget = "21"
 }
 
 // The default test task runs the fast in-JVM suite (no Docker required).

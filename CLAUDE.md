@@ -19,7 +19,8 @@ model, jOOQ/SQLite persistence, the adaptive weekly-review engine, the full REST
 API, a Dockerfile + compose stack, and a unit / integration / e2e test suite.
 
 Backend commands (run in `backend/`):
-- `./gradlew build` — compiles and runs the fast test suite
+- `./gradlew build` — compiles, runs Detekt, and runs the fast test suite
+- `./gradlew detekt` — Detekt static analysis on its own (also part of `build`)
 - `./gradlew e2eTest` — Testcontainers e2e against the Docker image; build it
   first with `docker compose build backend` from the repo root
 
@@ -34,10 +35,17 @@ Frontend commands (run in `frontend/`, package manager is pnpm):
 - `pnpm test` — Vitest component / unit tests (`@nuxt/test-utils`, `@vue/test-utils`)
 - `pnpm test:e2e` — Playwright browser e2e; builds the app first
   (one-time setup: `pnpm exec playwright install chromium`)
+- `pnpm lint` / `pnpm lint:fix` — ESLint (`@nuxt/eslint`)
+- `pnpm format` / `pnpm format:check` — Prettier
 
-Continuous integration — every pull request runs `.github/workflows/ci.yml`,
-which gates the backend `./gradlew build` and the frontend Vitest + Playwright
-suites.
+Continuous integration — every pull request runs `.github/workflows/ci.yml`:
+the backend `./gradlew detekt` + `./gradlew build`, and the frontend ESLint +
+Vitest + Playwright suites. Detekt and ESLint failures fail the build.
+
+Linting and formatting are also enforced locally. ESLint + Prettier run on
+staged frontend files via a pre-commit hook — enable it once per clone with
+`git config core.hooksPath .githooks`. A Claude Code hook
+(`.claude/settings.json`) auto-formats frontend files Claude writes or edits.
 
 The frontend is built **test-first (red-green TDD)**. Remaining increments:
 
