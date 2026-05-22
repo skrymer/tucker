@@ -66,6 +66,9 @@ reproduces real user behaviour (focus, key sequences, pointer events). Call
 - Co-locate: `Foo.vue` → `Foo.test.ts` in the same directory.
 - One behaviour per test; the test name reads as a capability.
 - Assert on what the user perceives — visible text, roles, accessible state.
+- For mutually-exclusive states, also assert the alternatives are absent
+  (`queryBy*` + `.not.toBeInTheDocument()`) — a positive-only check still passes
+  if a regression renders two states at once.
 - Never assert on CSS classes, DOM structure, `wrapper.vm`, or emitted internals.
 - After writing tests, run `pnpm test` and only proceed when green.
 

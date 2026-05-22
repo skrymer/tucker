@@ -130,6 +130,9 @@
             "format": "int64",
             "type": "integer"
           },
+          "foodName": {
+            "type": "string"
+          },
           "grams": {
             "format": "double",
             "type": "number"

@@ -37,5 +37,66 @@ describe('DaySummary', () => {
     })
 
     expect(screen.getByText('On target')).toBeVisible()
+    expect(screen.queryByText('Off target')).not.toBeInTheDocument()
+  })
+
+  it('shows the day as off target when the summary reports it', async () => {
+    await renderSuspended(DaySummary, {
+      props: { summary: { ...summary, onTarget: false } },
+    })
+
+    expect(screen.getByText('Off target')).toBeVisible()
+    expect(screen.queryByText('On target')).not.toBeInTheDocument()
+  })
+
+  it('explains there is no budget before the first weekly review', async () => {
+    await renderSuspended(DaySummary, {
+      props: {
+        summary: {
+          ...summary,
+          calorieBudget: undefined,
+          proteinFloor: undefined,
+          caloriesRemaining: undefined,
+          onTarget: undefined,
+        },
+      },
+    })
+
+    expect(screen.getByText(/no budget yet/i)).toBeVisible()
+    expect(screen.queryByText('On target')).not.toBeInTheDocument()
+    expect(screen.queryByText('Off target')).not.toBeInTheDocument()
+  })
+
+  it('lists each entry with its name and calories', async () => {
+    const withEntries: DailySummary = {
+      ...summary,
+      entries: [
+        {
+          id: 1,
+          loggedOn: '2026-05-22',
+          kind: 'WEIGHED',
+          calories: 107,
+          isEstimate: false,
+          foodId: 5,
+          foodName: 'Banana',
+          grams: 120,
+        },
+        {
+          id: 2,
+          loggedOn: '2026-05-22',
+          kind: 'ESTIMATED',
+          calories: 600,
+          isEstimate: true,
+          label: 'Cafe lunch',
+        },
+      ],
+    }
+    await renderSuspended(DaySummary, { props: { summary: withEntries } })
+
+    expect(screen.getAllByRole('listitem')).toHaveLength(2)
+    expect(screen.getByText('Banana')).toBeVisible()
+    expect(screen.getByText('107 kcal')).toBeVisible()
+    expect(screen.getByText('Cafe lunch')).toBeVisible()
+    expect(screen.getByText('600 kcal')).toBeVisible()
   })
 })

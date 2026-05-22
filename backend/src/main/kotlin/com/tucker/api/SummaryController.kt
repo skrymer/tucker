@@ -2,6 +2,7 @@ package com.tucker.api
 
 import com.tucker.domain.DailyLog
 import com.tucker.persistence.EntryRepository
+import com.tucker.persistence.FoodRepository
 import com.tucker.persistence.WeeklyReviewRepository
 import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.web.bind.annotation.GetMapping
@@ -31,6 +32,7 @@ data class DailySummaryResponse(
 class SummaryController(
     private val entries: EntryRepository,
     private val reviews: WeeklyReviewRepository,
+    private val foods: FoodRepository,
 ) {
 
     @GetMapping
@@ -48,7 +50,7 @@ class SummaryController(
             proteinFloor = review?.proteinFloorG,
             caloriesRemaining = review?.let { it.calorieBudgetKcal - log.caloriesConsumed() },
             onTarget = review?.let { log.isOnTarget(it.calorieBudgetKcal, it.proteinFloorG) },
-            entries = log.entries.map { it.toResponse() },
+            entries = log.entries.toResponses(foods),
         )
     }
 }
