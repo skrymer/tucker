@@ -35,6 +35,10 @@ Frontend commands (run in `frontend/`, package manager is pnpm):
 - `pnpm test:e2e` — Playwright browser e2e; builds the app first
   (one-time setup: `pnpm exec playwright install chromium`)
 
+Continuous integration — every pull request runs `.github/workflows/ci.yml`,
+which gates the backend `./gradlew build` and the frontend Vitest + Playwright
+suites.
+
 The frontend is built **test-first (red-green TDD)**. Remaining increments:
 
 - **F2** — daily summary dashboard + entry logging; the typed API client.
