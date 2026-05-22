@@ -94,9 +94,7 @@ describe('DaySummary', () => {
     await renderSuspended(DaySummary, { props: { summary: withEntries } })
 
     expect(screen.getAllByRole('listitem')).toHaveLength(2)
-    expect(screen.getByText('Banana')).toBeVisible()
-    expect(screen.getByText('107 kcal')).toBeVisible()
-    expect(screen.getByText('Cafe lunch')).toBeVisible()
-    expect(screen.getByText('600 kcal')).toBeVisible()
+    expect(screen.getByText('Banana — 107 kcal')).toBeVisible()
+    expect(screen.getByText('Cafe lunch — 600 kcal')).toBeVisible()
   })
 })

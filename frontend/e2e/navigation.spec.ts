@@ -1,9 +1,15 @@
 import { expect, test } from '@nuxt/test-utils/playwright'
+import { mockSummary } from './support/mock-api'
 
 const PHONE = { width: 375, height: 812 }
 const DESKTOP = { width: 1280, height: 800 }
 
 test.describe('app shell navigation', () => {
+  // The Today page (/) fetches the summary; stub it so the shell renders.
+  test.beforeEach(async ({ page }) => {
+    await mockSummary(page)
+  })
+
   test('shows the bottom tab bar on a phone-width viewport', async ({
     page,
     goto,

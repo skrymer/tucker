@@ -33,8 +33,8 @@ const hasBudget = computed(() => props.summary.calorieBudget != null)
 
     <ul>
       <li v-for="entry in summary.entries" :key="entry.id">
-        <span>{{ entry.foodName ?? entry.label }}</span>
-        <span>{{ Math.round(entry.calories) }} kcal</span>
+        {{ entry.foodName ?? entry.label }} — {{ Math.round(entry.calories) }}
+        kcal
       </li>
     </ul>
   </div>
