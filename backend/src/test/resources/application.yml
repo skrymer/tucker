@@ -1,0 +1,3 @@
+spring:
+  datasource:
+    url: jdbc:sqlite:build/test-tucker.db   # throwaway DB; wiped by `./gradlew clean`

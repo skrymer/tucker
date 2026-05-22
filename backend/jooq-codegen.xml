@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration xmlns="http://www.jooq.org/xsd/jooq-codegen-3.19.0.xsd">
+    <jdbc>
+        <driver>org.sqlite.JDBC</driver>
+        <url>jdbc:sqlite:build/jooq/schema.db</url>
+    </jdbc>
+    <generator>
+        <database>
+            <name>org.jooq.meta.sqlite.SQLiteDatabase</name>
+            <includes>.*</includes>
+        </database>
+        <target>
+            <packageName>com.tucker.jooq</packageName>
+            <directory>build/generated/jooq</directory>
+        </target>
+    </generator>
+</configuration>

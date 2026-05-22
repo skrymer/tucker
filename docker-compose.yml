@@ -1,0 +1,57 @@
+name: tucker
+
+services:
+  backend:
+    build:
+      context: ./backend
+    image: tucker-backend:latest
+    container_name: tucker-backend
+    restart: unless-stopped
+    environment:
+      TUCKER_DB_PATH: /data/tucker.db
+      TUCKER_PORT: "8080"
+    volumes:
+      - tucker-data:/data
+    ports:
+      - "127.0.0.1:8080:8080"   # localhost only; the tunnel reaches it over the compose network
+    deploy:
+      resources:
+        limits:
+          memory: 1G            # shared box (NAS, Jellyfin) — keep Tucker bounded
+
+  # Off-host backup: continuous replication of the SQLite database to S3-compatible
+  # storage (e.g. Backblaze B2). Requires the database in WAL mode (see deploy/README).
+  # Activate with:  docker compose --profile backup up -d
+  litestream:
+    image: litestream/litestream:latest
+    container_name: tucker-litestream
+    restart: unless-stopped
+    profiles: [backup]
+    depends_on:
+      - backend
+    command: replicate
+    environment:
+      LITESTREAM_ACCESS_KEY_ID: ${LITESTREAM_ACCESS_KEY_ID}
+      LITESTREAM_SECRET_ACCESS_KEY: ${LITESTREAM_SECRET_ACCESS_KEY}
+      LITESTREAM_BUCKET: ${LITESTREAM_BUCKET}
+      LITESTREAM_ENDPOINT: ${LITESTREAM_ENDPOINT}
+      LITESTREAM_REGION: ${LITESTREAM_REGION}
+    volumes:
+      - tucker-data:/data
+      - ./deploy/litestream.yml:/etc/litestream.yml:ro
+
+  # Cloudflare Tunnel: serves Tucker at your HTTPS hostname with no inbound ports.
+  # Activate with:  docker compose --profile tunnel up -d
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: tucker-cloudflared
+    restart: unless-stopped
+    profiles: [tunnel]
+    depends_on:
+      - backend
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN}
+
+volumes:
+  tucker-data:

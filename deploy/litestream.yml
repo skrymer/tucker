@@ -1,0 +1,17 @@
+# Litestream — continuous replication of the Tucker SQLite database.
+#
+# Prerequisite: the database must be in WAL journal mode. Litestream replicates
+# the WAL; without it, replication will not work. Enabling WAL is a follow-up
+# task (it cannot run inside a Flyway-wrapped transaction).
+#
+# Credentials come from LITESTREAM_ACCESS_KEY_ID / LITESTREAM_SECRET_ACCESS_KEY
+# in the environment; the values below are expanded from the compose env.
+
+dbs:
+  - path: /data/tucker.db
+    replicas:
+      - type: s3
+        bucket: ${LITESTREAM_BUCKET}
+        path: tucker
+        endpoint: ${LITESTREAM_ENDPOINT}
+        region: ${LITESTREAM_REGION}

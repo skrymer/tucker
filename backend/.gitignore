@@ -1,0 +1,16 @@
+.gradle/
+.kotlin/
+build/
+bin/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Local SQLite database files
+*.db
+*.db-shm
+*.db-wal
+/data/
+
+# IDE
+.idea/
+*.iml
+.vscode/
