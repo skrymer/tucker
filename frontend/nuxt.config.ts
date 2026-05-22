@@ -7,9 +7,23 @@ export default defineNuxtConfig({
 
   devtools: { enabled: true },
 
-  modules: ['@nuxt/eslint', '@nuxt/ui', '@vite-pwa/nuxt'],
+  modules: ['@nuxt/eslint', '@nuxt/ui', '@vite-pwa/nuxt', 'nuxt-open-fetch'],
 
   css: ['~/assets/css/main.css'],
+
+  // Typed API client generated from the backend's OpenAPI spec.
+  openFetch: {
+    clients: {
+      api: {
+        schema: './openapi/tucker.json',
+      },
+    },
+  },
+
+  // Dev: proxy /api to the Spring Boot backend so the SPA stays same-origin.
+  routeRules: {
+    '/api/**': { proxy: 'http://localhost:8080/api/**' },
+  },
 
   app: {
     head: {

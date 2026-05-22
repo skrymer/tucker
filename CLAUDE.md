@@ -47,9 +47,12 @@ staged frontend files via a pre-commit hook — enable it once per clone with
 `git config core.hooksPath .githooks`. A Claude Code hook
 (`.claude/settings.json`) auto-formats frontend files Claude writes or edits.
 
-The frontend is built **test-first (red-green TDD)**. Remaining increments:
+The frontend is built **test-first (red-green TDD)**. Increments:
 
-- **F2** — daily summary dashboard + entry logging; the typed API client.
+- **F1** — ✅ done. Scaffold, UI testing, and the responsive app shell with
+  adaptive navigation.
+- **F2** — 🔨 in progress on branch `f2-dashboard`. Daily summary dashboard +
+  entry logging; the typed API client.
 - **F3** — foods: list, plus manual and barcode-scan creation.
 - **F4** — profile, goal, and weight-logging setup screens.
 - **F5** — weekly review view + history.
@@ -78,6 +81,10 @@ The frontend is built **test-first (red-green TDD)**. Remaining increments:
   the domain objects (entities, value objects, aggregates), not in anemic data
   classes driven by fat services. `CONTEXT.md` is the ubiquitous language. See
   `docs/adr/0001-domain-driven-design.md`.
+- **Business logic lives in the backend, not the UI.** Domain rules and derived
+  state (e.g. whether a day is on-target) are computed by the backend and
+  exposed as plain API fields; the frontend only presents them, keeping the UI
+  swappable. See `docs/adr/0002-business-logic-belongs-in-the-backend.md`.
 - **The core is deterministic.** Calorie and budget math must be exact, instant,
   and free — no LLM in that path. An LLM may later be added *only* as an optional
   input adapter for free-text meal parsing.

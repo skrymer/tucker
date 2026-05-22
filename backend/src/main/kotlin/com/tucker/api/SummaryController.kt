@@ -22,6 +22,7 @@ data class DailySummaryResponse(
     val calorieBudget: Double?,
     val proteinFloor: Double?,
     val caloriesRemaining: Double?,
+    val onTarget: Boolean?,
     val entries: List<EntryResponse>,
 )
 
@@ -46,6 +47,7 @@ class SummaryController(
             calorieBudget = review?.calorieBudgetKcal,
             proteinFloor = review?.proteinFloorG,
             caloriesRemaining = review?.let { it.calorieBudgetKcal - log.caloriesConsumed() },
+            onTarget = review?.let { log.isOnTarget(it.calorieBudgetKcal, it.proteinFloorG) },
             entries = log.entries.map { it.toResponse() },
         )
     }

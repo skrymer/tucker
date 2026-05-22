@@ -22,4 +22,11 @@ data class DailyLog(
         if (total <= 0.0) return 0.0
         return entries.filter { it.isEstimate }.sumOf { it.calories } / total
     }
+
+    /**
+     * Whether the day is on-target: calories consumed at or under
+     * [calorieBudgetKcal] and protein consumed at or over [proteinFloorG].
+     */
+    fun isOnTarget(calorieBudgetKcal: Double, proteinFloorG: Double): Boolean =
+        caloriesConsumed() <= calorieBudgetKcal && proteinConsumed() >= proteinFloorG
 }
