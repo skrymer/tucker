@@ -1,0 +1,10 @@
+# Secrets — never commit
+.env
+
+# OS / editor
+.DS_Store
+*.swp
+.vscode/
+
+# Claude Code — personal, machine-local overrides (shared config is committed)
+.claude/settings.local.json

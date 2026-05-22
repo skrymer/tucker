@@ -1,0 +1,13 @@
+# Build output
+.nuxt
+.output
+.data
+dist
+
+# Test artifacts
+coverage
+test-results
+playwright-report
+
+# Generated / machine-managed
+pnpm-lock.yaml

@@ -1,0 +1,11 @@
+#!/bin/sh
+# Pre-commit hook: run ESLint + Prettier (via lint-staged) on staged frontend
+# files. Skipped entirely when a commit touches no frontend/ files.
+#
+# Enabled with:  git config core.hooksPath .githooks
+# (run once per clone; see CLAUDE.md).
+
+if git diff --cached --name-only --diff-filter=ACMR | grep -q '^frontend/'; then
+    echo "pre-commit: linting staged frontend files…"
+    cd frontend && exec pnpm exec lint-staged
+fi

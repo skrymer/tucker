@@ -1,0 +1,5 @@
+# Detekt configuration for the Tucker backend.
+#
+# This file is layered on top of detekt's default ruleset
+# (buildUponDefaultConfig = true in build.gradle.kts), so only project-specific
+# overrides belong here.

@@ -1,0 +1,18 @@
+spring:
+  application:
+    name: tucker
+  datasource:
+    url: jdbc:sqlite:${TUCKER_DB_PATH:tucker.db}
+    driver-class-name: org.sqlite.JDBC
+    hikari:
+      maximum-pool-size: 1            # SQLite is single-writer; one connection avoids lock contention
+      connection-init-sql: PRAGMA foreign_keys = ON
+  jooq:
+    sql-dialect: sqlite
+
+server:
+  port: ${TUCKER_PORT:8080}
+
+springdoc:
+  swagger-ui:
+    path: /docs
