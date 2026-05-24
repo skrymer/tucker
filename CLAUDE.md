@@ -33,8 +33,14 @@ Frontend commands (run in `frontend/`, package manager is pnpm):
 - `pnpm dev` — start the dev server
 - `pnpm build` — production build
 - `pnpm test` — Vitest component / unit tests (`@nuxt/test-utils`, `@vue/test-utils`)
-- `pnpm test:e2e` — Playwright browser e2e; builds the app first
-  (one-time setup: `pnpm exec playwright install chromium`)
+- `pnpm test:e2e` — Playwright browser e2e against a Nuxt build with
+  `/api/*` mocked via `page.route` (see `e2e/support/mock-api.ts`); fast and
+  deterministic. One-time setup: `pnpm exec playwright install chromium`.
+- `pnpm test:smoke` — real-stack Playwright tests (no API mocks). Starts
+  the backend via `docker compose up backend` and runs the Nuxt SPA
+  against it; tests in `e2e/smoke/` must clean up data they create
+  (the docker volume persists between runs). One-time setup:
+  `docker compose build backend` from the repo root.
 - `pnpm lint` / `pnpm lint:fix` — ESLint (`@nuxt/eslint`)
 - `pnpm format` / `pnpm format:check` — Prettier
 

@@ -16,6 +16,7 @@ logs
 # Playwright
 test-results
 playwright-report
+playwright-smoke-report
 playwright/.cache
 
 # Misc
