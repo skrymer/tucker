@@ -33,9 +33,12 @@ test('the Today page shows the daily summary from the API', async ({
   await expect(page.getByRole('main')).toMatchAriaSnapshot(`
     - main:
       - heading "Today" [level=1]
+      - heading "Calories" [level=2]
       - paragraph: 1500 / 2000 kcal
+      - heading "Protein" [level=2]
       - paragraph: 120 / 140 g protein
       - paragraph: Off target
+      - heading "Today's entries" [level=2]
       - list:
         - listitem: "Oats — 240 kcal"
   `)

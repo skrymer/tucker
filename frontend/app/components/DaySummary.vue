@@ -10,32 +10,82 @@ const hasBudget = computed(() => props.summary.calorieBudget != null)
 </script>
 
 <template>
-  <div>
-    <template v-if="hasBudget">
-      <p>
+  <div class="flex flex-col gap-4">
+    <UCard v-if="hasBudget">
+      <h2 class="text-sm font-medium text-muted">Calories</h2>
+      <p class="mt-1 text-2xl font-bold text-default">
         {{ Math.round(summary.caloriesConsumed) }} / {{ summary.calorieBudget }}
         kcal
       </p>
-      <p>
+      <UProgress
+        class="mt-3"
+        :value="summary.caloriesConsumed"
+        :max="summary.calorieBudget ?? 1"
+        aria-label="Calories consumed against the Calorie Budget"
+      />
+
+      <h2 class="mt-6 text-sm font-medium text-muted">Protein</h2>
+      <p class="mt-1 text-2xl font-bold text-default">
         {{ Math.round(summary.proteinConsumed) }} / {{ summary.proteinFloor }} g
         protein
       </p>
-      <p v-if="summary.onTarget">On target</p>
-      <p v-else-if="summary.onTarget === false">Off target</p>
-    </template>
-    <template v-else>
-      <p>
+      <UProgress
+        class="mt-3"
+        :value="summary.proteinConsumed"
+        :max="summary.proteinFloor ?? 1"
+        aria-label="Protein consumed against the Protein Floor"
+      />
+
+      <div class="mt-6 border-t border-default pt-3">
+        <p
+          v-if="summary.onTarget"
+          class="flex items-center gap-2 text-sm font-medium text-success"
+        >
+          <UIcon name="i-lucide-circle-check" class="size-4" aria-hidden />
+          On target
+        </p>
+        <p
+          v-else-if="summary.onTarget === false"
+          class="flex items-center gap-2 text-sm font-medium text-error"
+        >
+          <UIcon name="i-lucide-circle-x" class="size-4" aria-hidden />
+          Off target
+        </p>
+      </div>
+    </UCard>
+
+    <UCard v-else>
+      <p class="text-2xl font-bold text-default">
         {{ Math.round(summary.caloriesConsumed) }} kcal,
         {{ Math.round(summary.proteinConsumed) }} g protein
       </p>
-      <p>No budget yet — log your weight and run a weekly review.</p>
-    </template>
+      <p class="mt-2 text-sm text-muted">
+        No budget yet — log your weight and run a weekly review.
+      </p>
+    </UCard>
 
-    <ul>
-      <li v-for="entry in summary.entries" :key="entry.id">
-        {{ entry.foodName ?? entry.label }} — {{ Math.round(entry.calories) }}
-        kcal
-      </li>
-    </ul>
+    <UCard v-if="summary.entries.length">
+      <h2 class="text-sm font-medium text-muted">Today's entries</h2>
+      <ul class="mt-2 divide-y divide-default">
+        <li
+          v-for="entry in summary.entries"
+          :key="entry.id"
+          class="flex items-center justify-between gap-2 py-2"
+        >
+          <span class="text-default">
+            {{ entry.foodName ?? entry.label }} —
+            {{ Math.round(entry.calories) }} kcal
+          </span>
+          <UBadge
+            v-if="entry.isEstimate"
+            color="warning"
+            variant="subtle"
+            size="xs"
+          >
+            est.
+          </UBadge>
+        </li>
+      </ul>
+    </UCard>
   </div>
 </template>
