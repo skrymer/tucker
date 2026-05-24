@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { z } from 'zod'
+
 const props = defineProps<{ date: string }>()
 
 const emit = defineEmits<{
@@ -11,6 +13,12 @@ const emit = defineEmits<{
     },
   ]
 }>()
+
+const schema = z.object({
+  label: z.string().min(1, 'Enter a label for this entry'),
+  calories: z.number({ error: 'Enter an estimated calorie figure' }),
+  protein: z.number().optional(),
+})
 
 const state = reactive({
   label: '',
@@ -29,7 +37,12 @@ function onSubmit() {
 </script>
 
 <template>
-  <UForm :state="state" class="flex flex-col gap-4" @submit="onSubmit">
+  <UForm
+    :state="state"
+    :schema="schema"
+    class="flex flex-col gap-4"
+    @submit="onSubmit"
+  >
     <UFormField label="Label" name="label" required>
       <UInput
         v-model="state.label"

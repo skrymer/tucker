@@ -91,6 +91,10 @@ The frontend is built **test-first (red-green TDD)**. Increments:
   state (e.g. whether a day is on-target) are computed by the backend and
   exposed as plain API fields; the frontend only presents them, keeping the UI
   swappable. See `docs/adr/0002-business-logic-belongs-in-the-backend.md`.
+- **Forms validate with Zod.** Every frontend form passes a Zod schema to
+  Nuxt UI's `<UForm>`; the schema is the single source of truth for required
+  fields, ranges, and error messages, and its inferred type drives the form's
+  state. See `docs/adr/0003-validate-forms-with-zod.md`.
 - **The core is deterministic.** Calorie and budget math must be exact, instant,
   and free — no LLM in that path. An LLM may later be added *only* as an optional
   input adapter for free-text meal parsing.

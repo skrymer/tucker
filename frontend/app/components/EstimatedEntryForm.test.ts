@@ -38,4 +38,42 @@ describe('EstimatedEntryForm', () => {
       protein: undefined,
     })
   })
+
+  it('requires a label for the entry', async () => {
+    const onSubmit = vi.fn()
+    await renderSuspended(EstimatedEntryForm, {
+      props: { date: '2026-05-24', onSubmit },
+    })
+    const user = userEvent.setup()
+
+    await user.type(screen.getByLabelText('Calories'), '600')
+    await user.click(
+      screen.getByRole('button', { name: 'Log estimated entry' }),
+    )
+
+    expect(screen.getByText('Enter a label for this entry')).toBeVisible()
+    expect(
+      screen.queryByText('Enter an estimated calorie figure'),
+    ).not.toBeInTheDocument()
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
+
+  it('requires an estimated calorie figure', async () => {
+    const onSubmit = vi.fn()
+    await renderSuspended(EstimatedEntryForm, {
+      props: { date: '2026-05-24', onSubmit },
+    })
+    const user = userEvent.setup()
+
+    await user.type(screen.getByLabelText('Label'), 'Cafe lunch')
+    await user.click(
+      screen.getByRole('button', { name: 'Log estimated entry' }),
+    )
+
+    expect(screen.getByText('Enter an estimated calorie figure')).toBeVisible()
+    expect(
+      screen.queryByText('Enter a label for this entry'),
+    ).not.toBeInTheDocument()
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
 })
