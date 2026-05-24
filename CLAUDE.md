@@ -54,10 +54,11 @@ The frontend is built **test-first (red-green TDD)**. Increments:
 - **F2** — 🔨 in progress on branch `f2-dashboard`:
   - ✅ Typed API client — `nuxt-open-fetch`, generated from the committed
     OpenAPI spec (`frontend/openapi/tucker.json`).
-  - ✅ Daily-summary dashboard — the `DaySummary` component and the `Today`
-    page, TDD'd (Vitest component tests + Playwright e2e).
-  - ⬜ Remaining: a Nuxt UI styling pass for the dashboard, then entry logging
-    (Weighed and Estimated entries, with the summary refreshing after).
+  - ✅ Daily-summary dashboard — `DaySummary` component and the `Today` page,
+    TDD'd (Vitest component tests + Playwright e2e) and styled with Nuxt UI
+    cards, progress bars, and status badges.
+  - ⬜ Remaining: entry logging — Weighed and Estimated flows with the summary
+    refreshing after.
 - **F3** — foods: list, plus manual and barcode-scan creation.
 - **F4** — profile, goal, and weight-logging setup screens.
 - **F5** — weekly review view + history.
