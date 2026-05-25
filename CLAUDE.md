@@ -57,7 +57,7 @@ The frontend is built **test-first (red-green TDD)**. Increments:
 
 - **F1** — ✅ done. Scaffold, UI testing, and the responsive app shell with
   adaptive navigation.
-- **F2** — 🔨 in progress on branch `f2-dashboard`:
+- **F2** — ✅ done on branch `f2-dashboard`:
   - ✅ Typed API client — `nuxt-open-fetch`, generated from the committed
     OpenAPI spec (`frontend/openapi/tucker.json`).
   - ✅ Daily-summary dashboard — `DaySummary` component and the `Today` page,
