@@ -74,9 +74,16 @@ The frontend is built **test-first (red-green TDD)**. Increments:
     summary. Verified by a real-stack smoke that opens the sheet, fills
     the form, asserts the entry on the dashboard, and cleans up via the
     API.
-  - ⬜ Remaining: Slice 2 — Log Weighed entry end-to-end (food picker via
-    `GET /api/foods`, grams input, Zod validation, `POST /api/entries/weighed`,
-    swap into the existing Weighed tab; smoke against the real backend).
+  - ✅ Slice 2 — Log Weighed entry end-to-end: `WeighedEntryForm` (food
+    picker via `USelectMenu`, grams input, Zod validation, empty-catalog
+    CTA) swapped into the Weighed tab; `LogEntrySheet` fetches
+    `GET /api/foods` and POSTs to `/api/entries/weighed` on submit.
+    Backend computes calories + protein deterministically from the
+    food's per-100g values; dashboard reflects the result. Verified by a
+    real-stack smoke that seeds a food, logs an entry through the UI,
+    asserts the dashboard, and cleans up entry + food via the API. The
+    smoke webServer now runs `docker compose up --build backend` so a
+    stale image can't mask backend changes.
 - **F3** — foods: list, plus manual and barcode-scan creation.
 - **F4** — profile, goal, and weight-logging setup screens.
 - **F5** — weekly review view + history.
