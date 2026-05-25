@@ -63,8 +63,20 @@ The frontend is built **test-first (red-green TDD)**. Increments:
   - ✅ Daily-summary dashboard — `DaySummary` component and the `Today` page,
     TDD'd (Vitest component tests + Playwright e2e) and styled with Nuxt UI
     cards, progress bars, and status badges.
-  - ⬜ Remaining: entry logging — Weighed and Estimated flows with the summary
-    refreshing after.
+  - ✅ Real-stack smoke-test infrastructure — separate Playwright
+    `pnpm test:smoke` project that runs against the live backend container
+    (`docker compose up backend`); tests live in `frontend/e2e/smoke/`.
+  - ✅ Slice 1 — Log Estimated entry end-to-end: `LogEntrySheet` opens a
+    responsive overlay (bottom drawer on phone, centred modal on desktop
+    via a `useIsDesktop` composable) hosting `EstimatedEntryForm` inside
+    a `UTabs` switcher (Weighed tab is a placeholder); on submit it POSTs
+    to `/api/entries/estimated`, closes the sheet, and refreshes the
+    summary. Verified by a real-stack smoke that opens the sheet, fills
+    the form, asserts the entry on the dashboard, and cleans up via the
+    API.
+  - ⬜ Remaining: Slice 2 — Log Weighed entry end-to-end (food picker via
+    `GET /api/foods`, grams input, Zod validation, `POST /api/entries/weighed`,
+    swap into the existing Weighed tab; smoke against the real backend).
 - **F3** — foods: list, plus manual and barcode-scan creation.
 - **F4** — profile, goal, and weight-logging setup screens.
 - **F5** — weekly review view + history.
