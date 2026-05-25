@@ -28,6 +28,7 @@ data class EntryResponse(
     val protein: Double?,
     val isEstimate: Boolean,
     val foodId: Long?,
+    val foodName: String?,
     val grams: Double?,
     val label: String?,
 )
@@ -47,17 +48,30 @@ data class LogEstimatedEntryRequest(
     val protein: Double?,
 )
 
-internal fun Entry.toResponse(): EntryResponse = when (this) {
+internal fun Entry.toResponse(foodName: String? = null): EntryResponse = when (this) {
     is WeighedEntry -> EntryResponse(
         id = persistedId(id),
         loggedOn = loggedOn, kind = EntryKind.WEIGHED.name, calories = calories, protein = protein,
-        isEstimate = false, foodId = foodId, grams = grams, label = null,
+        isEstimate = false, foodId = foodId, foodName = foodName, grams = grams, label = null,
     )
     is EstimatedEntry -> EntryResponse(
         id = persistedId(id),
         loggedOn = loggedOn, kind = EntryKind.ESTIMATED.name, calories = calories, protein = protein,
-        isEstimate = true, foodId = null, grams = null, label = label,
+        isEstimate = true, foodId = null, foodName = null, grams = null, label = label,
     )
+}
+
+/** Map Entries to responses, resolving every weighed Entry's Food name in one query. */
+internal fun List<Entry>.toResponses(foods: FoodRepository): List<EntryResponse> {
+    val namesById = foods
+        .findByIds(filterIsInstance<WeighedEntry>().map { it.foodId }.distinct())
+        .associate { it.id to it.name }
+    return map { entry ->
+        when (entry) {
+            is WeighedEntry -> entry.toResponse(namesById[entry.foodId])
+            is EstimatedEntry -> entry.toResponse()
+        }
+    }
 }
 
 @RestController
@@ -70,14 +84,15 @@ class EntryController(
     @GetMapping
     fun byDate(
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) date: LocalDate,
-    ): List<EntryResponse> = entries.findByDate(date).map { it.toResponse() }
+    ): List<EntryResponse> = entries.findByDate(date).toResponses(foods)
 
     @PostMapping("/weighed")
     @ResponseStatus(HttpStatus.CREATED)
     fun logWeighed(@RequestBody request: LogWeighedEntryRequest): EntryResponse {
         val food = foods.findById(request.foodId)
             ?: throw NotFoundException("no Food with id ${request.foodId}")
-        return entries.insert(WeighedEntry.log(request.date, food, request.grams)).toResponse()
+        return entries.insert(WeighedEntry.log(request.date, food, request.grams))
+            .toResponse(food.name)
     }
 
     @PostMapping("/estimated")

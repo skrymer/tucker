@@ -33,8 +33,14 @@ Frontend commands (run in `frontend/`, package manager is pnpm):
 - `pnpm dev` — start the dev server
 - `pnpm build` — production build
 - `pnpm test` — Vitest component / unit tests (`@nuxt/test-utils`, `@vue/test-utils`)
-- `pnpm test:e2e` — Playwright browser e2e; builds the app first
-  (one-time setup: `pnpm exec playwright install chromium`)
+- `pnpm test:e2e` — Playwright browser e2e against a Nuxt build with
+  `/api/*` mocked via `page.route` (see `e2e/support/mock-api.ts`); fast and
+  deterministic. One-time setup: `pnpm exec playwright install chromium`.
+- `pnpm test:smoke` — real-stack Playwright tests (no API mocks). Starts
+  the backend via `docker compose up backend` and runs the Nuxt SPA
+  against it; tests in `e2e/smoke/` must clean up data they create
+  (the docker volume persists between runs). One-time setup:
+  `docker compose build backend` from the repo root.
 - `pnpm lint` / `pnpm lint:fix` — ESLint (`@nuxt/eslint`)
 - `pnpm format` / `pnpm format:check` — Prettier
 
@@ -47,9 +53,37 @@ staged frontend files via a pre-commit hook — enable it once per clone with
 `git config core.hooksPath .githooks`. A Claude Code hook
 (`.claude/settings.json`) auto-formats frontend files Claude writes or edits.
 
-The frontend is built **test-first (red-green TDD)**. Remaining increments:
+The frontend is built **test-first (red-green TDD)**. Increments:
 
-- **F2** — daily summary dashboard + entry logging; the typed API client.
+- **F1** — ✅ done. Scaffold, UI testing, and the responsive app shell with
+  adaptive navigation.
+- **F2** — ✅ done on branch `f2-dashboard`:
+  - ✅ Typed API client — `nuxt-open-fetch`, generated from the committed
+    OpenAPI spec (`frontend/openapi/tucker.json`).
+  - ✅ Daily-summary dashboard — `DaySummary` component and the `Today` page,
+    TDD'd (Vitest component tests + Playwright e2e) and styled with Nuxt UI
+    cards, progress bars, and status badges.
+  - ✅ Real-stack smoke-test infrastructure — separate Playwright
+    `pnpm test:smoke` project that runs against the live backend container
+    (`docker compose up backend`); tests live in `frontend/e2e/smoke/`.
+  - ✅ Slice 1 — Log Estimated entry end-to-end: `LogEntrySheet` opens a
+    responsive overlay (bottom drawer on phone, centred modal on desktop
+    via a `useIsDesktop` composable) hosting `EstimatedEntryForm` inside
+    a `UTabs` switcher (Weighed tab is a placeholder); on submit it POSTs
+    to `/api/entries/estimated`, closes the sheet, and refreshes the
+    summary. Verified by a real-stack smoke that opens the sheet, fills
+    the form, asserts the entry on the dashboard, and cleans up via the
+    API.
+  - ✅ Slice 2 — Log Weighed entry end-to-end: `WeighedEntryForm` (food
+    picker via `USelectMenu`, grams input, Zod validation, empty-catalog
+    CTA) swapped into the Weighed tab; `LogEntrySheet` fetches
+    `GET /api/foods` and POSTs to `/api/entries/weighed` on submit.
+    Backend computes calories + protein deterministically from the
+    food's per-100g values; dashboard reflects the result. Verified by a
+    real-stack smoke that seeds a food, logs an entry through the UI,
+    asserts the dashboard, and cleans up entry + food via the API. The
+    smoke webServer now runs `docker compose up --build backend` so a
+    stale image can't mask backend changes.
 - **F3** — foods: list, plus manual and barcode-scan creation.
 - **F4** — profile, goal, and weight-logging setup screens.
 - **F5** — weekly review view + history.
@@ -78,6 +112,14 @@ The frontend is built **test-first (red-green TDD)**. Remaining increments:
   the domain objects (entities, value objects, aggregates), not in anemic data
   classes driven by fat services. `CONTEXT.md` is the ubiquitous language. See
   `docs/adr/0001-domain-driven-design.md`.
+- **Business logic lives in the backend, not the UI.** Domain rules and derived
+  state (e.g. whether a day is on-target) are computed by the backend and
+  exposed as plain API fields; the frontend only presents them, keeping the UI
+  swappable. See `docs/adr/0002-business-logic-belongs-in-the-backend.md`.
+- **Forms validate with Zod.** Every frontend form passes a Zod schema to
+  Nuxt UI's `<UForm>`; the schema is the single source of truth for required
+  fields, ranges, and error messages, and its inferred type drives the form's
+  state. See `docs/adr/0003-validate-forms-with-zod.md`.
 - **The core is deterministic.** Calorie and budget math must be exact, instant,
   and free — no LLM in that path. An LLM may later be added *only* as an optional
   input adapter for free-text meal parsing.

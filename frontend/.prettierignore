@@ -11,3 +11,4 @@ playwright-report
 
 # Generated / machine-managed
 pnpm-lock.yaml
+openapi

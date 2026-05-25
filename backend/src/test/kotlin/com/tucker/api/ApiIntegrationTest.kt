@@ -36,6 +36,7 @@ class ApiIntegrationTest {
         mockMvc.get("/api/summary") { param("date", "2026-05-22") }.andExpect {
             status { isOk() }
             jsonPath("$.entries.length()") { value(1) }
+            jsonPath("$.entries[0].foodName") { value("Banana") }
             jsonPath("$.caloriesConsumed") { exists() }
         }
     }

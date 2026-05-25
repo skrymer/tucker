@@ -2,10 +2,16 @@ import { fileURLToPath } from 'node:url'
 import { defineConfig, devices } from '@playwright/test'
 import type { ConfigOptions } from '@nuxt/test-utils/playwright'
 
-// Browser end-to-end tests. @nuxt/test-utils builds and serves the Nuxt app;
-// each test gets a `goto` fixture that waits for hydration.
+// Browser end-to-end tests with the backend API mocked via `page.route`
+// (see e2e/support/mock-api.ts). Fast, deterministic, no external services.
+// For real-stack smoke tests against the Docker backend see
+// playwright.smoke.config.ts.
+//
+// @nuxt/test-utils builds and serves the Nuxt app; each test gets a `goto`
+// fixture that waits for hydration.
 export default defineConfig<ConfigOptions>({
   testDir: './e2e',
+  testIgnore: 'smoke/**',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,

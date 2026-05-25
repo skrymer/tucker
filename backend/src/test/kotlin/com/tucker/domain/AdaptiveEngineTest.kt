@@ -3,6 +3,7 @@ package com.tucker.domain
 import org.junit.jupiter.api.Test
 import java.time.LocalDate
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /** Pure-domain tests for the adaptive engine's arithmetic. */
@@ -60,5 +61,23 @@ class AdaptiveEngineTest {
         assertEquals(1000.0, log.caloriesConsumed(), 0.01)
         assertEquals(20.0, log.proteinConsumed(), 0.01)
         assertEquals(0.6, log.estimatedCalorieShare(), 0.01)
+    }
+
+    @Test
+    fun `DailyLog is on target under the budget and over the protein floor`() {
+        val log = DailyLog(day(1), listOf(EstimatedEntry(null, day(1), "Lunch", 1500.0, 150.0)))
+        assertTrue(log.isOnTarget(calorieBudgetKcal = 2000.0, proteinFloorG = 140.0))
+    }
+
+    @Test
+    fun `DailyLog is off target over the calorie budget`() {
+        val log = DailyLog(day(1), listOf(EstimatedEntry(null, day(1), "Lunch", 2200.0, 150.0)))
+        assertFalse(log.isOnTarget(calorieBudgetKcal = 2000.0, proteinFloorG = 140.0))
+    }
+
+    @Test
+    fun `DailyLog is off target under the protein floor`() {
+        val log = DailyLog(day(1), listOf(EstimatedEntry(null, day(1), "Lunch", 1500.0, 90.0)))
+        assertFalse(log.isOnTarget(calorieBudgetKcal = 2000.0, proteinFloorG = 140.0))
     }
 }

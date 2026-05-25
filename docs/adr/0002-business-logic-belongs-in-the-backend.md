@@ -1,0 +1,32 @@
+# Compute business logic in the backend, not the frontend
+
+Tucker's rules — calorie and budget maths, the adaptive maintenance engine, and
+derived states such as whether a day is *on-target* (intake under the Calorie
+Budget and over the Protein Floor) — are business logic. The backend domain
+model computes them and exposes the results through the REST API as plain
+values. The frontend presents what the API returns and never re-derives a rule.
+
+A rule duplicated in the UI couples that rule to one specific frontend. The UI
+should be swappable — a redesign, a native app, or a future WhatsApp adapter —
+without any client reimplementing (and risking disagreement over) the same
+calculations. Logic embedded in components also resists testing the core
+deterministically and contradicts the rich domain model of
+[ADR 0001](0001-domain-driven-design.md).
+
+## Consequences
+
+- Derived domain state is a field on the API response, not a frontend
+  computation. `DailySummaryResponse` carries an `onTarget` boolean; the
+  dashboard renders it rather than comparing intake to the budget and floor.
+- The frontend holds presentation logic only — formatting, layout, breakpoints,
+  interaction and loading state. A component's computed value may depend on
+  display concerns, never on domain rules.
+- A new derived value starts in the backend domain model and the OpenAPI
+  contract, then flows to the regenerated client types — never the reverse.
+- The deterministic core stays in one place and is tested there (see "The core
+  is deterministic" in CLAUDE.md and the backend test suite).
+
+## References
+
+- [ADR 0001 — Domain-Driven Design with a rich domain model](0001-domain-driven-design.md)
+- https://martinfowler.com/bliki/PresentationDomainDataLayering.html
