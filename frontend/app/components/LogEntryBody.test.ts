@@ -4,10 +4,20 @@ import { screen } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import LogEntryBody from './LogEntryBody.vue'
 
+const sampleFoods = [
+  {
+    id: 1,
+    name: 'Oats',
+    kind: 'raw',
+    caloriesPer100g: 380,
+    proteinPer100g: 13,
+  },
+]
+
 describe('LogEntryBody', () => {
   it('offers an Estimated tab and a Weighed tab', async () => {
     await renderSuspended(LogEntryBody, {
-      props: { date: '2026-05-24' },
+      props: { date: '2026-05-24', foods: [] },
     })
 
     expect(screen.getByRole('tab', { name: 'Estimated' })).toBeVisible()
@@ -16,7 +26,7 @@ describe('LogEntryBody', () => {
 
   it('shows the Estimated entry form when the Estimated tab is active', async () => {
     await renderSuspended(LogEntryBody, {
-      props: { date: '2026-05-24' },
+      props: { date: '2026-05-24', foods: [] },
     })
 
     // Estimated is the default tab → its form is on screen without
@@ -31,7 +41,11 @@ describe('LogEntryBody', () => {
   it('emits submitEstimated with the payload when the user logs an estimated entry', async () => {
     const submitEstimated = vi.fn()
     await renderSuspended(LogEntryBody, {
-      props: { date: '2026-05-24', onSubmitEstimated: submitEstimated },
+      props: {
+        date: '2026-05-24',
+        foods: [],
+        onSubmitEstimated: submitEstimated,
+      },
     })
     const user = userEvent.setup()
 
@@ -49,14 +63,18 @@ describe('LogEntryBody', () => {
     })
   })
 
-  it('shows a Weighed-tab placeholder until the Weighed flow ships', async () => {
+  it('shows the Weighed entry form on the Weighed tab', async () => {
     await renderSuspended(LogEntryBody, {
-      props: { date: '2026-05-24' },
+      props: { date: '2026-05-24', foods: sampleFoods },
     })
     const user = userEvent.setup()
 
     await user.click(screen.getByRole('tab', { name: 'Weighed' }))
 
-    expect(screen.getByText(/coming soon/i)).toBeVisible()
+    expect(screen.getByLabelText('Food')).toBeVisible()
+    expect(screen.getByLabelText('Grams')).toBeVisible()
+    expect(
+      screen.getByRole('button', { name: 'Log weighed entry' }),
+    ).toBeVisible()
   })
 })

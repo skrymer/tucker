@@ -9,8 +9,10 @@ import type { ConfigOptions } from '@nuxt/test-utils/playwright'
 // Tests must clean up data they create (the docker volume persists between
 // runs); writes that aren't cleaned will leak into the next run.
 //
-// Run with `pnpm test:smoke` (one-time setup: `docker compose build backend`
-// from the repo root, and `pnpm exec playwright install chromium`).
+// Run with `pnpm test:smoke`. The webServer rebuilds the backend image
+// on every run (`up --build`) so a stale image from earlier work can't
+// silently mask backend changes. One-time setup:
+// `pnpm exec playwright install chromium`.
 export default defineConfig<ConfigOptions>({
   testDir: './e2e/smoke',
   fullyParallel: false, // shared DB → serial
@@ -30,7 +32,7 @@ export default defineConfig<ConfigOptions>({
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
-    command: 'docker compose up backend',
+    command: 'docker compose up --build backend',
     cwd: fileURLToPath(new URL('..', import.meta.url)),
     // Springdoc serves the OpenAPI doc once Spring Boot is fully up — good
     // readiness signal.

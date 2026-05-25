@@ -1,7 +1,13 @@
 <script setup lang="ts">
 import type { TabsItem } from '@nuxt/ui'
+import type { components } from '#open-fetch-schemas/api'
 
-defineProps<{ date: string }>()
+type FoodResponse = components['schemas']['FoodResponse']
+
+defineProps<{
+  date: string
+  foods: FoodResponse[]
+}>()
 
 const emit = defineEmits<{
   submitEstimated: [
@@ -12,6 +18,7 @@ const emit = defineEmits<{
       protein?: number
     },
   ]
+  submitWeighed: [{ date: string; foodId: number; grams: number }]
 }>()
 
 const items: TabsItem[] = [
@@ -36,15 +43,12 @@ const items: TabsItem[] = [
     </template>
 
     <template #weighed>
-      <div
-        class="mt-4 flex flex-col items-center gap-2 py-8 text-center text-muted"
-      >
-        <UIcon name="i-lucide-scale" class="size-8" aria-hidden />
-        <p class="text-sm">
-          Weighed entries — coming soon. Weigh your food and pick it from the
-          Foods list.
-        </p>
-      </div>
+      <WeighedEntryForm
+        :date="date"
+        :foods="foods"
+        class="mt-4"
+        @submit="(payload) => emit('submitWeighed', payload)"
+      />
     </template>
   </UTabs>
 </template>
