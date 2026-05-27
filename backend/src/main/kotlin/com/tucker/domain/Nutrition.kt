@@ -29,5 +29,28 @@ data class Nutrition(
     companion object {
         /** The weight, in grams, that nutrition figures are expressed per. */
         const val GRAMS_PER_100G = 100.0
+
+        /** kcal per gram of each macronutrient, per the standard Atwater factors. */
+        private const val KCAL_PER_GRAM_PROTEIN = 4.0
+        private const val KCAL_PER_GRAM_CARBS = 4.0
+        private const val KCAL_PER_GRAM_FAT = 9.0
+
+        /**
+         * Build a [Nutrition] from its macros, computing calories per 100g via
+         * `4 × protein + 4 × carbs + 9 × fat`. See CONTEXT.md — Food calories
+         * are derived from macros, never user-entered.
+         */
+        fun fromMacros(
+            proteinPer100g: Double,
+            carbsPer100g: Double,
+            fatPer100g: Double,
+        ): Nutrition = Nutrition(
+            caloriesPer100g = KCAL_PER_GRAM_PROTEIN * proteinPer100g +
+                KCAL_PER_GRAM_CARBS * carbsPer100g +
+                KCAL_PER_GRAM_FAT * fatPer100g,
+            proteinPer100g = proteinPer100g,
+            carbsPer100g = carbsPer100g,
+            fatPer100g = fatPer100g,
+        )
     }
 }

@@ -24,3 +24,11 @@ export async function mockSummary(page: Page, summary: Json = emptySummary) {
     route.fulfill({ json: summary }),
   )
 }
+
+/**
+ * Stub `GET /api/foods` so the Foods page renders without a real backend.
+ * Pass an array of foods, or omit for the empty-catalog state.
+ */
+export async function mockFoods(page: Page, foods: Json[] = []) {
+  await page.route('**/api/foods', (route) => route.fulfill({ json: foods }))
+}

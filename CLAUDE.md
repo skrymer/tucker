@@ -84,7 +84,28 @@ The frontend is built **test-first (red-green TDD)**. Increments:
     asserts the dashboard, and cleans up entry + food via the API. The
     smoke webServer now runs `docker compose up --build backend` so a
     stale image can't mask backend changes.
-- **F3** — foods: list, plus manual and barcode-scan creation.
+- **F3** — 🔨 in progress on branch `f3-foods`:
+  - ✅ Slice 1 — View the foods catalog: `/foods` lists foods from
+    `GET /api/foods` with a `FoodList` of name + per-100g rows, plus a
+    `FoodEmptyState` with an "Add your first food" CTA. Real-stack smoke
+    seeds a food, asserts the row, cleans up.
+  - ✅ Calories are derived from macros: Food `caloriesPer100g` is no
+    longer user-entered; the domain computes it as `4P + 4C + 9F` via
+    the standard Atwater factors (`Nutrition.fromMacros`). The backend
+    request shape drops `caloriesPer100g` and requires all three
+    macros; CONTEXT.md's Food definition is updated to record the rule.
+  - ✅ Slice 2 — Manually add a food: `/foods` grows an "Add food"
+    trigger (header button on desktop, FAB on phone) plus an
+    empty-state CTA, all opening `AddFoodSheet` (responsive
+    `UDrawer`/`UModal`) which hosts a Zod-validated `AddFoodForm`
+    (name + three macros, no calories field). Submit POSTs to
+    `/api/foods`, refreshes, closes, toasts. Real-stack smoke.
+  - ✅ Slice 3 — Delete a food: clicking a row opens a
+    `DeleteFoodConfirm` modal; confirm DELETEs via `/api/foods/{id}`
+    and the row vanishes. Real-stack smoke.
+  - ⏭️ Follow-up PR — Barcode-scan creation: deferred (JS library
+    choice, camera permission UX, offline + manual-fallback flows
+    need their own design pass).
 - **F4** — profile, goal, and weight-logging setup screens.
 - **F5** — weekly review view + history.
 - **F6** — PWA polish: offline shell, install prompt, web-push reminder.

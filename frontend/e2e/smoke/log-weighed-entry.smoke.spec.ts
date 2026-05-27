@@ -11,14 +11,17 @@ test('user logs a Weighed entry from Today and the dashboard updates', async ({
   request,
 }) => {
   const foodName = `Smoke food ${Date.now()}`
-  const caloriesPer100g = 380
+  // Macros chosen so backend computes 4 * 13 + 4 * 67 + 9 * 7 = 383 kcal /100g
+  // (close to oats — protein 13, carbs 67, fat 7) — then 100g logged is 383 kcal.
   const proteinPer100g = 13
+  const carbsPer100g = 67
+  const fatPer100g = 7
   const grams = 100
-  const expectedKcal = (caloriesPer100g * grams) / 100 // = 380
+  const expectedKcal = 383
 
   // Setup: seed a food in the catalog.
   const created = await request.post('http://localhost:8080/api/foods', {
-    data: { name: foodName, caloriesPer100g, proteinPer100g },
+    data: { name: foodName, proteinPer100g, carbsPer100g, fatPer100g },
   })
   expect(created.status()).toBe(201)
   const food = (await created.json()) as { id: number; name: string }

@@ -1,1094 +1,69 @@
 {
-  "components": {
-    "schemas": {
-      "ApiError": {
-        "properties": {
-          "message": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "message"
-        ],
-        "type": "object"
-      },
-      "CreateFoodRequest": {
-        "properties": {
-          "barcode": {
-            "type": "string"
-          },
-          "caloriesPer100g": {
-            "format": "double",
-            "type": "number"
-          },
-          "carbsPer100g": {
-            "format": "double",
-            "type": "number"
-          },
-          "fatPer100g": {
-            "format": "double",
-            "type": "number"
-          },
-          "name": {
-            "type": "string"
-          },
-          "proteinPer100g": {
-            "format": "double",
-            "type": "number"
-          }
-        },
-        "required": [
-          "caloriesPer100g",
-          "name",
-          "proteinPer100g"
-        ],
-        "type": "object"
-      },
-      "CreateGoalRequest": {
-        "properties": {
-          "rateKgPerWeek": {
-            "format": "double",
-            "type": "number"
-          },
-          "startWeightKg": {
-            "format": "double",
-            "type": "number"
-          },
-          "startedOn": {
-            "format": "date",
-            "type": "string"
-          },
-          "targetWeightKg": {
-            "format": "double",
-            "type": "number"
-          }
-        },
-        "required": [
-          "rateKgPerWeek",
-          "startWeightKg",
-          "startedOn",
-          "targetWeightKg"
-        ],
-        "type": "object"
-      },
-      "DailySummaryResponse": {
-        "properties": {
-          "calorieBudget": {
-            "format": "double",
-            "type": "number"
-          },
-          "caloriesConsumed": {
-            "format": "double",
-            "type": "number"
-          },
-          "caloriesRemaining": {
-            "format": "double",
-            "type": "number"
-          },
-          "date": {
-            "format": "date",
-            "type": "string"
-          },
-          "entries": {
-            "items": {
-              "$ref": "#/components/schemas/EntryResponse"
-            },
-            "type": "array"
-          },
-          "estimatedCalorieShare": {
-            "format": "double",
-            "type": "number"
-          },
-          "onTarget": {
-            "type": "boolean"
-          },
-          "proteinConsumed": {
-            "format": "double",
-            "type": "number"
-          },
-          "proteinFloor": {
-            "format": "double",
-            "type": "number"
-          }
-        },
-        "required": [
-          "caloriesConsumed",
-          "date",
-          "entries",
-          "estimatedCalorieShare",
-          "proteinConsumed"
-        ],
-        "type": "object"
-      },
-      "EntryResponse": {
-        "properties": {
-          "calories": {
-            "format": "double",
-            "type": "number"
-          },
-          "foodId": {
-            "format": "int64",
-            "type": "integer"
-          },
-          "foodName": {
-            "type": "string"
-          },
-          "grams": {
-            "format": "double",
-            "type": "number"
-          },
-          "id": {
-            "format": "int64",
-            "type": "integer"
-          },
-          "isEstimate": {
-            "type": "boolean"
-          },
-          "kind": {
-            "type": "string"
-          },
-          "label": {
-            "type": "string"
-          },
-          "loggedOn": {
-            "format": "date",
-            "type": "string"
-          },
-          "protein": {
-            "format": "double",
-            "type": "number"
-          }
-        },
-        "required": [
-          "calories",
-          "id",
-          "isEstimate",
-          "kind",
-          "loggedOn"
-        ],
-        "type": "object"
-      },
-      "FoodResponse": {
-        "properties": {
-          "barcode": {
-            "type": "string"
-          },
-          "caloriesPer100g": {
-            "format": "double",
-            "type": "number"
-          },
-          "carbsPer100g": {
-            "format": "double",
-            "type": "number"
-          },
-          "cookedWeightG": {
-            "format": "double",
-            "type": "number"
-          },
-          "fatPer100g": {
-            "format": "double",
-            "type": "number"
-          },
-          "id": {
-            "format": "int64",
-            "type": "integer"
-          },
-          "kind": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "proteinPer100g": {
-            "format": "double",
-            "type": "number"
-          }
-        },
-        "required": [
-          "caloriesPer100g",
-          "id",
-          "kind",
-          "name",
-          "proteinPer100g"
-        ],
-        "type": "object"
-      },
-      "GoalResponse": {
-        "properties": {
-          "active": {
-            "type": "boolean"
-          },
-          "dailyDeficitKcal": {
-            "format": "double",
-            "type": "number"
-          },
-          "id": {
-            "format": "int64",
-            "type": "integer"
-          },
-          "rateKgPerWeek": {
-            "format": "double",
-            "type": "number"
-          },
-          "startWeightKg": {
-            "format": "double",
-            "type": "number"
-          },
-          "startedOn": {
-            "format": "date",
-            "type": "string"
-          },
-          "targetWeightKg": {
-            "format": "double",
-            "type": "number"
-          }
-        },
-        "required": [
-          "active",
-          "dailyDeficitKcal",
-          "id",
-          "rateKgPerWeek",
-          "startWeightKg",
-          "startedOn",
-          "targetWeightKg"
-        ],
-        "type": "object"
-      },
-      "LogEstimatedEntryRequest": {
-        "properties": {
-          "calories": {
-            "format": "double",
-            "type": "number"
-          },
-          "date": {
-            "format": "date",
-            "type": "string"
-          },
-          "label": {
-            "type": "string"
-          },
-          "protein": {
-            "format": "double",
-            "type": "number"
-          }
-        },
-        "required": [
-          "calories",
-          "date",
-          "label"
-        ],
-        "type": "object"
-      },
-      "LogWeighedEntryRequest": {
-        "properties": {
-          "date": {
-            "format": "date",
-            "type": "string"
-          },
-          "foodId": {
-            "format": "int64",
-            "type": "integer"
-          },
-          "grams": {
-            "format": "double",
-            "type": "number"
-          }
-        },
-        "required": [
-          "date",
-          "foodId",
-          "grams"
-        ],
-        "type": "object"
-      },
-      "ProfileDto": {
-        "properties": {
-          "birthDate": {
-            "format": "date",
-            "type": "string"
-          },
-          "heightCm": {
-            "format": "double",
-            "type": "number"
-          },
-          "sex": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "birthDate",
-          "heightCm",
-          "sex"
-        ],
-        "type": "object"
-      },
-      "SaveWeightRequest": {
-        "properties": {
-          "date": {
-            "format": "date",
-            "type": "string"
-          },
-          "weightKg": {
-            "format": "double",
-            "type": "number"
-          }
-        },
-        "required": [
-          "date",
-          "weightKg"
-        ],
-        "type": "object"
-      },
-      "WeeklyReviewResponse": {
-        "properties": {
-          "calorieBudgetKcal": {
-            "format": "double",
-            "type": "number"
-          },
-          "id": {
-            "format": "int64",
-            "type": "integer"
-          },
-          "maintenanceKcal": {
-            "format": "double",
-            "type": "number"
-          },
-          "note": {
-            "type": "string"
-          },
-          "proteinFloorG": {
-            "format": "double",
-            "type": "number"
-          },
-          "reviewedOn": {
-            "format": "date",
-            "type": "string"
-          },
-          "trendWeightKg": {
-            "format": "double",
-            "type": "number"
-          }
-        },
-        "required": [
-          "calorieBudgetKcal",
-          "id",
-          "maintenanceKcal",
-          "proteinFloorG",
-          "reviewedOn",
-          "trendWeightKg"
-        ],
-        "type": "object"
-      },
-      "WeightMeasurementResponse": {
-        "properties": {
-          "id": {
-            "format": "int64",
-            "type": "integer"
-          },
-          "measuredOn": {
-            "format": "date",
-            "type": "string"
-          },
-          "weightKg": {
-            "format": "double",
-            "type": "number"
-          }
-        },
-        "required": [
-          "id",
-          "measuredOn",
-          "weightKg"
-        ],
-        "type": "object"
-      }
-    }
-  },
+  "openapi": "3.0.1",
   "info": {
     "title": "OpenAPI definition",
     "version": "v0"
   },
-  "openapi": "3.0.1",
+  "servers": [
+    {
+      "url": "http://localhost:8080",
+      "description": "Generated server url"
+    }
+  ],
   "paths": {
-    "/api/entries": {
-      "get": {
-        "operationId": "byDate",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "date",
-            "required": true,
-            "schema": {
-              "format": "date",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/EntryResponse"
-                  },
-                  "type": "array"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "400": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
-          "404": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            },
-            "description": "Not Found"
-          },
-          "409": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            },
-            "description": "Conflict"
-          }
-        },
-        "tags": [
-          "entry-controller"
-        ]
-      }
-    },
-    "/api/entries/estimated": {
-      "post": {
-        "operationId": "logEstimated",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/LogEstimatedEntryRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/EntryResponse"
-                }
-              }
-            },
-            "description": "Created"
-          },
-          "400": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
-          "404": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            },
-            "description": "Not Found"
-          },
-          "409": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            },
-            "description": "Conflict"
-          }
-        },
-        "tags": [
-          "entry-controller"
-        ]
-      }
-    },
-    "/api/entries/weighed": {
-      "post": {
-        "operationId": "logWeighed",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/LogWeighedEntryRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/EntryResponse"
-                }
-              }
-            },
-            "description": "Created"
-          },
-          "400": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
-          "404": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            },
-            "description": "Not Found"
-          },
-          "409": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            },
-            "description": "Conflict"
-          }
-        },
-        "tags": [
-          "entry-controller"
-        ]
-      }
-    },
-    "/api/entries/{id}": {
-      "delete": {
-        "operationId": "delete_1",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "format": "int64",
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "No Content"
-          },
-          "400": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
-          "404": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            },
-            "description": "Not Found"
-          },
-          "409": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            },
-            "description": "Conflict"
-          }
-        },
-        "tags": [
-          "entry-controller"
-        ]
-      }
-    },
-    "/api/foods": {
-      "get": {
-        "operationId": "list_1",
-        "responses": {
-          "200": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/FoodResponse"
-                  },
-                  "type": "array"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "400": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
-          "404": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            },
-            "description": "Not Found"
-          },
-          "409": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            },
-            "description": "Conflict"
-          }
-        },
-        "tags": [
-          "food-controller"
-        ]
-      },
-      "post": {
-        "operationId": "create_1",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateFoodRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/FoodResponse"
-                }
-              }
-            },
-            "description": "Created"
-          },
-          "400": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
-          "404": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            },
-            "description": "Not Found"
-          },
-          "409": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            },
-            "description": "Conflict"
-          }
-        },
-        "tags": [
-          "food-controller"
-        ]
-      }
-    },
-    "/api/foods/barcode/{barcode}": {
-      "get": {
-        "operationId": "byBarcode",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "barcode",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/FoodResponse"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "400": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
-          "404": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            },
-            "description": "Not Found"
-          },
-          "409": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            },
-            "description": "Conflict"
-          }
-        },
-        "tags": [
-          "food-controller"
-        ]
-      }
-    },
-    "/api/foods/{id}": {
-      "delete": {
-        "operationId": "delete",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "format": "int64",
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "No Content"
-          },
-          "400": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
-          "404": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            },
-            "description": "Not Found"
-          },
-          "409": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            },
-            "description": "Conflict"
-          }
-        },
-        "tags": [
-          "food-controller"
-        ]
-      },
-      "get": {
-        "operationId": "byId",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "format": "int64",
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/FoodResponse"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "400": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
-          "404": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            },
-            "description": "Not Found"
-          },
-          "409": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            },
-            "description": "Conflict"
-          }
-        },
-        "tags": [
-          "food-controller"
-        ]
-      }
-    },
-    "/api/goal": {
-      "get": {
-        "operationId": "active",
-        "responses": {
-          "200": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/GoalResponse"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "400": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
-          "404": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            },
-            "description": "Not Found"
-          },
-          "409": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            },
-            "description": "Conflict"
-          }
-        },
-        "tags": [
-          "goal-controller"
-        ]
-      },
-      "post": {
-        "operationId": "create",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateGoalRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/GoalResponse"
-                }
-              }
-            },
-            "description": "Created"
-          },
-          "400": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
-          "404": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            },
-            "description": "Not Found"
-          },
-          "409": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            },
-            "description": "Conflict"
-          }
-        },
-        "tags": [
-          "goal-controller"
-        ]
-      }
-    },
     "/api/profile": {
       "get": {
+        "tags": [
+          "profile-controller"
+        ],
         "operationId": "get",
         "responses": {
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "200": {
+            "description": "OK",
             "content": {
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ProfileDto"
                 }
               }
-            },
-            "description": "OK"
-          },
-          "400": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
-          "404": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            },
-            "description": "Not Found"
-          },
-          "409": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            },
-            "description": "Conflict"
+            }
           }
-        },
-        "tags": [
-          "profile-controller"
-        ]
+        }
       },
       "put": {
+        "tags": [
+          "profile-controller"
+        ],
         "operationId": "save",
         "requestBody": {
           "content": {
@@ -1101,317 +76,105 @@
           "required": true
         },
         "responses": {
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "200": {
+            "description": "OK",
             "content": {
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ProfileDto"
                 }
               }
-            },
-            "description": "OK"
-          },
-          "400": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
-          "404": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            },
-            "description": "Not Found"
-          },
-          "409": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            },
-            "description": "Conflict"
-          }
-        },
-        "tags": [
-          "profile-controller"
-        ]
-      }
-    },
-    "/api/summary": {
-      "get": {
-        "operationId": "summary",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "date",
-            "required": true,
-            "schema": {
-              "format": "date",
-              "type": "string"
             }
           }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/DailySummaryResponse"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "400": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
-          "404": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            },
-            "description": "Not Found"
-          },
-          "409": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            },
-            "description": "Conflict"
-          }
-        },
-        "tags": [
-          "summary-controller"
-        ]
-      }
-    },
-    "/api/weekly-review": {
-      "get": {
-        "operationId": "latest",
-        "responses": {
-          "200": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/WeeklyReviewResponse"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "400": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
-          "404": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            },
-            "description": "Not Found"
-          },
-          "409": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            },
-            "description": "Conflict"
-          }
-        },
-        "tags": [
-          "weekly-review-controller"
-        ]
-      },
-      "post": {
-        "operationId": "run",
-        "responses": {
-          "201": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/WeeklyReviewResponse"
-                }
-              }
-            },
-            "description": "Created"
-          },
-          "400": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
-          "404": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            },
-            "description": "Not Found"
-          },
-          "409": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            },
-            "description": "Conflict"
-          }
-        },
-        "tags": [
-          "weekly-review-controller"
-        ]
-      }
-    },
-    "/api/weekly-review/history": {
-      "get": {
-        "operationId": "history",
-        "responses": {
-          "200": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/WeeklyReviewResponse"
-                  },
-                  "type": "array"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "400": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
-          "404": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            },
-            "description": "Not Found"
-          },
-          "409": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            },
-            "description": "Conflict"
-          }
-        },
-        "tags": [
-          "weekly-review-controller"
-        ]
+        }
       }
     },
     "/api/weight": {
       "get": {
-        "operationId": "list",
-        "responses": {
-          "200": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/WeightMeasurementResponse"
-                  },
-                  "type": "array"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "400": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
-          "404": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            },
-            "description": "Not Found"
-          },
-          "409": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            },
-            "description": "Conflict"
-          }
-        },
         "tags": [
           "weight-controller"
-        ]
+        ],
+        "operationId": "list",
+        "responses": {
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WeightMeasurementResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
       },
       "post": {
+        "tags": [
+          "weight-controller"
+        ],
         "operationId": "save_1",
         "requestBody": {
           "content": {
@@ -1424,56 +187,1291 @@
           "required": true
         },
         "responses": {
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "200": {
+            "description": "OK",
             "content": {
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/WeightMeasurementResponse"
                 }
               }
-            },
-            "description": "OK"
+            }
+          }
+        }
+      }
+    },
+    "/api/weekly-review": {
+      "get": {
+        "tags": [
+          "weekly-review-controller"
+        ],
+        "operationId": "latest",
+        "responses": {
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           },
           "400": {
+            "description": "Bad Request",
             "content": {
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiError"
                 }
               }
-            },
-            "description": "Bad Request"
-          },
-          "404": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            },
-            "description": "Not Found"
+            }
           },
           "409": {
+            "description": "Conflict",
             "content": {
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiError"
                 }
               }
-            },
-            "description": "Conflict"
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeeklyReviewResponse"
+                }
+              }
+            }
           }
-        },
+        }
+      },
+      "post": {
         "tags": [
-          "weight-controller"
-        ]
+          "weekly-review-controller"
+        ],
+        "operationId": "run",
+        "responses": {
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Created",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeeklyReviewResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/goal": {
+      "get": {
+        "tags": [
+          "goal-controller"
+        ],
+        "operationId": "active",
+        "responses": {
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoalResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "goal-controller"
+        ],
+        "operationId": "create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateGoalRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Created",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoalResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/foods": {
+      "get": {
+        "tags": [
+          "food-controller"
+        ],
+        "operationId": "list_1",
+        "responses": {
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FoodResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "food-controller"
+        ],
+        "operationId": "create_1",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateFoodRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Created",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/FoodResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/entries/weighed": {
+      "post": {
+        "tags": [
+          "entry-controller"
+        ],
+        "operationId": "logWeighed",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LogWeighedEntryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Created",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/entries/estimated": {
+      "post": {
+        "tags": [
+          "entry-controller"
+        ],
+        "operationId": "logEstimated",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LogEstimatedEntryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Created",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/weekly-review/history": {
+      "get": {
+        "tags": [
+          "weekly-review-controller"
+        ],
+        "operationId": "history",
+        "responses": {
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WeeklyReviewResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/summary": {
+      "get": {
+        "tags": [
+          "summary-controller"
+        ],
+        "operationId": "summary",
+        "parameters": [
+          {
+            "name": "date",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/DailySummaryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/foods/{id}": {
+      "get": {
+        "tags": [
+          "food-controller"
+        ],
+        "operationId": "byId",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/FoodResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "food-controller"
+        ],
+        "operationId": "delete",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
+    "/api/foods/barcode/{barcode}": {
+      "get": {
+        "tags": [
+          "food-controller"
+        ],
+        "operationId": "byBarcode",
+        "parameters": [
+          {
+            "name": "barcode",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/FoodResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/entries": {
+      "get": {
+        "tags": [
+          "entry-controller"
+        ],
+        "operationId": "byDate",
+        "parameters": [
+          {
+            "name": "date",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EntryResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/entries/{id}": {
+      "delete": {
+        "tags": [
+          "entry-controller"
+        ],
+        "operationId": "delete_1",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "No Content"
+          }
+        }
       }
     }
   },
-  "servers": [
-    {
-      "url": "/"
+  "components": {
+    "schemas": {
+      "ApiError": {
+        "required": [
+          "message"
+        ],
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "ProfileDto": {
+        "required": [
+          "birthDate",
+          "heightCm",
+          "sex"
+        ],
+        "type": "object",
+        "properties": {
+          "sex": {
+            "type": "string"
+          },
+          "birthDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "heightCm": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
+      "SaveWeightRequest": {
+        "required": [
+          "date",
+          "weightKg"
+        ],
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "weightKg": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
+      "WeightMeasurementResponse": {
+        "required": [
+          "id",
+          "measuredOn",
+          "weightKg"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "measuredOn": {
+            "type": "string",
+            "format": "date"
+          },
+          "weightKg": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
+      "WeeklyReviewResponse": {
+        "required": [
+          "calorieBudgetKcal",
+          "id",
+          "maintenanceKcal",
+          "proteinFloorG",
+          "reviewedOn",
+          "trendWeightKg"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "reviewedOn": {
+            "type": "string",
+            "format": "date"
+          },
+          "trendWeightKg": {
+            "type": "number",
+            "format": "double"
+          },
+          "maintenanceKcal": {
+            "type": "number",
+            "format": "double"
+          },
+          "calorieBudgetKcal": {
+            "type": "number",
+            "format": "double"
+          },
+          "proteinFloorG": {
+            "type": "number",
+            "format": "double"
+          },
+          "note": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateGoalRequest": {
+        "required": [
+          "rateKgPerWeek",
+          "startWeightKg",
+          "startedOn",
+          "targetWeightKg"
+        ],
+        "type": "object",
+        "properties": {
+          "startedOn": {
+            "type": "string",
+            "format": "date"
+          },
+          "startWeightKg": {
+            "type": "number",
+            "format": "double"
+          },
+          "targetWeightKg": {
+            "type": "number",
+            "format": "double"
+          },
+          "rateKgPerWeek": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
+      "GoalResponse": {
+        "required": [
+          "active",
+          "dailyDeficitKcal",
+          "id",
+          "rateKgPerWeek",
+          "startWeightKg",
+          "startedOn",
+          "targetWeightKg"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "startedOn": {
+            "type": "string",
+            "format": "date"
+          },
+          "startWeightKg": {
+            "type": "number",
+            "format": "double"
+          },
+          "targetWeightKg": {
+            "type": "number",
+            "format": "double"
+          },
+          "rateKgPerWeek": {
+            "type": "number",
+            "format": "double"
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "dailyDeficitKcal": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
+      "CreateFoodRequest": {
+        "required": [
+          "carbsPer100g",
+          "fatPer100g",
+          "name",
+          "proteinPer100g"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "barcode": {
+            "type": "string"
+          },
+          "proteinPer100g": {
+            "type": "number",
+            "format": "double"
+          },
+          "carbsPer100g": {
+            "type": "number",
+            "format": "double"
+          },
+          "fatPer100g": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
+      "FoodResponse": {
+        "required": [
+          "caloriesPer100g",
+          "id",
+          "kind",
+          "name",
+          "proteinPer100g"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "barcode": {
+            "type": "string"
+          },
+          "caloriesPer100g": {
+            "type": "number",
+            "format": "double"
+          },
+          "proteinPer100g": {
+            "type": "number",
+            "format": "double"
+          },
+          "carbsPer100g": {
+            "type": "number",
+            "format": "double"
+          },
+          "fatPer100g": {
+            "type": "number",
+            "format": "double"
+          },
+          "cookedWeightG": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
+      "LogWeighedEntryRequest": {
+        "required": [
+          "date",
+          "foodId",
+          "grams"
+        ],
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "foodId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "grams": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
+      "EntryResponse": {
+        "required": [
+          "calories",
+          "id",
+          "isEstimate",
+          "kind",
+          "loggedOn"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "loggedOn": {
+            "type": "string",
+            "format": "date"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "calories": {
+            "type": "number",
+            "format": "double"
+          },
+          "protein": {
+            "type": "number",
+            "format": "double"
+          },
+          "isEstimate": {
+            "type": "boolean"
+          },
+          "foodId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "foodName": {
+            "type": "string"
+          },
+          "grams": {
+            "type": "number",
+            "format": "double"
+          },
+          "label": {
+            "type": "string"
+          }
+        }
+      },
+      "LogEstimatedEntryRequest": {
+        "required": [
+          "calories",
+          "date",
+          "label"
+        ],
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "label": {
+            "type": "string"
+          },
+          "calories": {
+            "type": "number",
+            "format": "double"
+          },
+          "protein": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
+      "DailySummaryResponse": {
+        "required": [
+          "caloriesConsumed",
+          "date",
+          "entries",
+          "estimatedCalorieShare",
+          "proteinConsumed"
+        ],
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "caloriesConsumed": {
+            "type": "number",
+            "format": "double"
+          },
+          "proteinConsumed": {
+            "type": "number",
+            "format": "double"
+          },
+          "estimatedCalorieShare": {
+            "type": "number",
+            "format": "double"
+          },
+          "calorieBudget": {
+            "type": "number",
+            "format": "double"
+          },
+          "proteinFloor": {
+            "type": "number",
+            "format": "double"
+          },
+          "caloriesRemaining": {
+            "type": "number",
+            "format": "double"
+          },
+          "onTarget": {
+            "type": "boolean"
+          },
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EntryResponse"
+            }
+          }
+        }
+      }
     }
-  ]
+  }
 }
