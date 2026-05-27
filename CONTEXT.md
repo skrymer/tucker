@@ -8,9 +8,12 @@ can calculate calories consumed and track progress toward a weight-loss goal.
 ### Logging
 
 **Food**:
-A reusable definition of something edible — a name plus nutrition per 100g:
-calories and protein always, carbs and fat when available. Created once (e.g.
-by scanning a barcode), then referenced by many Entries.
+A reusable definition of something edible — a name plus nutrition per 100g
+(protein, carbs, fat). Calories per 100g are **derived**, not entered: a
+Food's calorie figure is always `4 × protein + 4 × carbs + 9 × fat` (the
+standard Atwater factors, per gram, scaled to 100g). The user supplies the
+three macros; the app computes calories. Created once (e.g. by scanning a
+barcode or entering manually), then referenced by many Entries.
 _Avoid_: food item, product
 
 **Recipe**:

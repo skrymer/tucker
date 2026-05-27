@@ -9,11 +9,14 @@ test('the Foods page lists foods from the real backend', async ({
   request,
 }) => {
   const foodName = `Smoke listed food ${Date.now()}`
-  const caloriesPer100g = 250
+  // 4 * 20 + 4 * 10 + 9 * 12 = 80 + 40 + 108 = 228 kcal /100g
   const proteinPer100g = 20
+  const carbsPer100g = 10
+  const fatPer100g = 12
+  const expectedKcal = 228
 
   const created = await request.post('http://localhost:8080/api/foods', {
-    data: { name: foodName, caloriesPer100g, proteinPer100g },
+    data: { name: foodName, proteinPer100g, carbsPer100g, fatPer100g },
   })
   expect(created.status()).toBe(201)
   const food = (await created.json()) as { id: number; name: string }
@@ -27,7 +30,7 @@ test('the Foods page lists foods from the real backend', async ({
     await expect(page.getByText(foodName)).toBeVisible()
     await expect(
       page.getByText(
-        `${caloriesPer100g} kcal · ${proteinPer100g} g protein /100g`,
+        `${expectedKcal} kcal · ${proteinPer100g} g protein /100g`,
       ),
     ).toBeVisible()
   } finally {

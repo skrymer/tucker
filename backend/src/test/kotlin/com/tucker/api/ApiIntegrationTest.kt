@@ -1,6 +1,7 @@
 package com.tucker.api
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import org.hamcrest.Matchers.closeTo
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
@@ -21,11 +22,14 @@ class ApiIntegrationTest {
 
     @Test
     fun `create a food, log it, and see it in the daily summary`() {
+        // Banana: 1.1P + 22.8C + 0.3F → 4 * 1.1 + 4 * 22.8 + 9 * 0.3 = 98.3 kcal /100g
         val foodJson = mockMvc.post("/api/foods") {
             contentType = MediaType.APPLICATION_JSON
-            content = """{"name":"Banana","caloriesPer100g":89.0,"proteinPer100g":1.1,
-                          "carbsPer100g":22.8,"fatPer100g":0.3}"""
-        }.andExpect { status { isCreated() } }.andReturn().response.contentAsString
+            content = """{"name":"Banana","proteinPer100g":1.1,"carbsPer100g":22.8,"fatPer100g":0.3}"""
+        }.andExpect {
+            status { isCreated() }
+            jsonPath("$.caloriesPer100g", closeTo(98.3, 1e-6))
+        }.andReturn().response.contentAsString
         val foodId = objectMapper.readTree(foodJson).get("id").asLong()
 
         mockMvc.post("/api/entries/weighed") {
@@ -45,7 +49,7 @@ class ApiIntegrationTest {
     fun `an invalid food is rejected with 400`() {
         mockMvc.post("/api/foods") {
             contentType = MediaType.APPLICATION_JSON
-            content = """{"name":"Bad","caloriesPer100g":-5.0,"proteinPer100g":1.0}"""
+            content = """{"name":"Bad","proteinPer100g":-1.0,"carbsPer100g":0.0,"fatPer100g":0.0}"""
         }.andExpect { status { isBadRequest() } }
     }
 

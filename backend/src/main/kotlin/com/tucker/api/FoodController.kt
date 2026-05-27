@@ -26,14 +26,19 @@ data class FoodResponse(
     val cookedWeightG: Double?,
 )
 
-/** Request to create a plain, manually-entered Food. */
+/**
+ * Request to create a plain, manually-entered Food.
+ *
+ * The user supplies the three macros; the backend derives `caloriesPer100g`
+ * via the Atwater factors (`4 × protein + 4 × carbs + 9 × fat`). See
+ * `Nutrition.fromMacros` and CONTEXT.md.
+ */
 data class CreateFoodRequest(
     val name: String,
     val barcode: String?,
-    val caloriesPer100g: Double,
     val proteinPer100g: Double,
-    val carbsPer100g: Double?,
-    val fatPer100g: Double?,
+    val carbsPer100g: Double,
+    val fatPer100g: Double,
 )
 
 internal fun Food.toResponse() = FoodResponse(
@@ -71,8 +76,7 @@ class FoodController(private val foods: FoodRepository) {
             id = null,
             name = request.name,
             barcode = request.barcode,
-            nutrition = Nutrition(
-                caloriesPer100g = request.caloriesPer100g,
+            nutrition = Nutrition.fromMacros(
                 proteinPer100g = request.proteinPer100g,
                 carbsPer100g = request.carbsPer100g,
                 fatPer100g = request.fatPer100g,
