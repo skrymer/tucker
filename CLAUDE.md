@@ -84,28 +84,29 @@ The frontend is built **test-first (red-green TDD)**. Increments:
     asserts the dashboard, and cleans up entry + food via the API. The
     smoke webServer now runs `docker compose up --build backend` so a
     stale image can't mask backend changes.
-- **F3** — 🔨 in progress on branch `f3-foods`:
-  - ✅ Slice 1 — View the foods catalog: `/foods` lists foods from
-    `GET /api/foods` with a `FoodList` of name + per-100g rows, plus a
-    `FoodEmptyState` with an "Add your first food" CTA. Real-stack smoke
-    seeds a food, asserts the row, cleans up.
-  - ✅ Calories are derived from macros: Food `caloriesPer100g` is no
-    longer user-entered; the domain computes it as `4P + 4C + 9F` via
-    the standard Atwater factors (`Nutrition.fromMacros`). The backend
-    request shape drops `caloriesPer100g` and requires all three
-    macros; CONTEXT.md's Food definition is updated to record the rule.
-  - ✅ Slice 2 — Manually add a food: `/foods` grows an "Add food"
-    trigger (header button on desktop, FAB on phone) plus an
-    empty-state CTA, all opening `AddFoodSheet` (responsive
-    `UDrawer`/`UModal`) which hosts a Zod-validated `AddFoodForm`
-    (name + three macros, no calories field). Submit POSTs to
-    `/api/foods`, refreshes, closes, toasts. Real-stack smoke.
-  - ✅ Slice 3 — Delete a food: clicking a row opens a
-    `DeleteFoodConfirm` modal; confirm DELETEs via `/api/foods/{id}`
-    and the row vanishes. Real-stack smoke.
-  - ⏭️ Follow-up PR — Barcode-scan creation: deferred (JS library
-    choice, camera permission UX, offline + manual-fallback flows
-    need their own design pass).
+- **F3** — ✅ done. Foods catalog on `/foods` with view + manual add +
+  delete. Slices and sub-tasks:
+  - View the catalog (`FoodList` + `FoodListItem`) with a
+    `FoodEmptyState` that's also the landing for F2's Weighed-entry
+    empty-catalog CTA.
+  - Calories derived from macros — Food `caloriesPer100g` is no longer
+    user-entered; the domain computes it as `4P + 4C + 9F` via the
+    Atwater factors (`Nutrition.fromMacros`). `CreateFoodRequest` drops
+    `caloriesPer100g` and requires all three macros; CONTEXT.md
+    records the rule.
+  - Manually add a food via `AddFoodSheet` (responsive `UDrawer` /
+    `UModal`) hosting a Zod-validated `AddFoodForm` (name + three
+    macros). Triggers: header button on desktop, FAB on phone, plus
+    the empty-state CTA.
+  - Delete a food via a row click → `DeleteFoodConfirm` modal.
+  - Real-stack smoke for each slice (`foods-list`, `add-food`,
+    `delete-food`).
+- **Foods follow-up — barcode-scan food creation** — deferred from F3.
+  Needs its own design pass: JS library choice (no `BarcodeDetector` on
+  iOS Safari), camera permission UX, scan → `GET /api/foods/barcode/{barcode}`
+  lookup → on hit surface the existing food, on miss prefill
+  `AddFoodSheet` with the barcode. Offline behaviour (scan works,
+  lookup doesn't) and manual-barcode-entry fallback also unscoped.
 - **F4** — profile, goal, and weight-logging setup screens.
 - **F5** — weekly review view + history.
 - **F6** — PWA polish: offline shell, install prompt, web-push reminder.
