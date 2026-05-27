@@ -1,11 +1,18 @@
 #!/bin/sh
-# Pre-commit hook: run ESLint + Prettier (via lint-staged) on staged frontend
-# files. Skipped entirely when a commit touches no frontend/ files.
+# Pre-commit hook: run static analysis on staged backend / frontend files.
+# Skipped when a commit touches neither side. Bypass with --no-verify.
 #
 # Enabled with:  git config core.hooksPath .githooks
 # (run once per clone; see CLAUDE.md).
 
-if git diff --cached --name-only --diff-filter=ACMR | grep -q '^frontend/'; then
+staged=$(git diff --cached --name-only --diff-filter=ACMR)
+
+if echo "$staged" | grep -q '^frontend/'; then
     echo "pre-commit: linting staged frontend files…"
-    cd frontend && exec pnpm exec lint-staged
+    (cd frontend && pnpm exec lint-staged) || exit 1
+fi
+
+if echo "$staged" | grep -q '^backend/'; then
+    echo "pre-commit: running Detekt on the backend…"
+    (cd backend && ./gradlew detekt -q) || exit 1
 fi
