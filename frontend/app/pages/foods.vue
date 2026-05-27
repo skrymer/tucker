@@ -1,8 +1,14 @@
 <script setup lang="ts">
+import type { components } from '#open-fetch-schemas/api'
+
+type FoodResponse = components['schemas']['FoodResponse']
+
 const { data: foods, refresh } = await useApi('/api/foods')
 
 const open = ref(false)
 const submitting = ref(false)
+const deleting = ref(false)
+const selectedFood = ref<FoodResponse | null>(null)
 const isDesktop = useIsDesktop()
 const toast = useToast()
 const { $api } = useNuxtApp()
@@ -30,6 +36,29 @@ async function handleSubmit(payload: {
     submitting.value = false
   }
 }
+
+async function handleDeleteConfirm() {
+  const food = selectedFood.value
+  if (!food || deleting.value) return
+  deleting.value = true
+  try {
+    await $api('/api/foods/{id}', {
+      method: 'DELETE',
+      path: { id: food.id },
+    })
+    selectedFood.value = null
+    await refresh()
+    toast.add({ title: 'Food deleted', color: 'success' })
+  } catch {
+    toast.add({
+      title: 'Could not delete food',
+      description: 'Check your connection and try again.',
+      color: 'error',
+    })
+  } finally {
+    deleting.value = false
+  }
+}
 </script>
 
 <template>
@@ -46,7 +75,11 @@ async function handleSubmit(payload: {
       </UButton>
     </header>
 
-    <FoodList v-if="foods && foods.length > 0" :foods="foods" />
+    <FoodList
+      v-if="foods && foods.length > 0"
+      :foods="foods"
+      @select="selectedFood = $event"
+    />
     <FoodEmptyState v-else @add="open = true" />
 
     <UButton
@@ -61,5 +94,11 @@ async function handleSubmit(payload: {
     />
 
     <AddFoodSheet v-model:open="open" @submit="handleSubmit" />
+
+    <DeleteFoodConfirm
+      :food="selectedFood"
+      @cancel="selectedFood = null"
+      @confirm="handleDeleteConfirm"
+    />
   </section>
 </template>

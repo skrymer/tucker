@@ -27,13 +27,16 @@ test('the Foods page shows the catalog from the API', async ({
   await expect(page.getByRole('main')).toMatchAriaSnapshot(`
     - main:
       - heading "Foods" [level=1]
+      - button "Add food"
       - list:
         - listitem:
-          - paragraph: Oats
-          - paragraph: /380 kcal.*13 g protein/
+          - button /Oats.*380 kcal.*13 g protein/:
+            - paragraph: Oats
+            - paragraph: /380 kcal.*13 g protein/
         - listitem:
-          - paragraph: Skyr
-          - paragraph: /64 kcal.*11 g protein/
+          - button /Skyr.*64 kcal.*11 g protein/:
+            - paragraph: Skyr
+            - paragraph: /64 kcal.*11 g protein/
   `)
 })
 
