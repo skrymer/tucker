@@ -1,0 +1,120 @@
+import { describe, expect, it, vi } from 'vitest'
+import { renderSuspended } from '@nuxt/test-utils/runtime'
+import { screen } from '@testing-library/vue'
+import userEvent from '@testing-library/user-event'
+import AddFoodForm from './AddFoodForm.vue'
+
+describe('AddFoodForm', () => {
+  it('shows fields for name and the three macros, with a save button', async () => {
+    await renderSuspended(AddFoodForm)
+
+    expect(screen.getByLabelText(/^name$/i)).toBeVisible()
+    expect(screen.getByLabelText(/protein \/100\s*g/i)).toBeVisible()
+    expect(screen.getByLabelText(/carbs \/100\s*g/i)).toBeVisible()
+    expect(screen.getByLabelText(/fat \/100\s*g/i)).toBeVisible()
+    expect(screen.getByRole('button', { name: /save food/i })).toBeVisible()
+    // Calories are computed from the macros, not entered.
+    expect(
+      screen.queryByLabelText(/calories \/100\s*g/i),
+    ).not.toBeInTheDocument()
+  })
+
+  it('emits the new-food payload when the user saves', async () => {
+    const onSubmit = vi.fn()
+    await renderSuspended(AddFoodForm, { props: { onSubmit } })
+    const user = userEvent.setup()
+
+    await user.type(screen.getByLabelText(/^name$/i), 'Skyr')
+    await user.type(screen.getByLabelText(/protein \/100\s*g/i), '10')
+    await user.type(screen.getByLabelText(/carbs \/100\s*g/i), '4')
+    await user.type(screen.getByLabelText(/fat \/100\s*g/i), '0.2')
+    await user.click(screen.getByRole('button', { name: /save food/i }))
+
+    expect(onSubmit).toHaveBeenCalledWith({
+      name: 'Skyr',
+      proteinPer100g: 10,
+      carbsPer100g: 4,
+      fatPer100g: 0.2,
+    })
+  })
+
+  it('requires a name', async () => {
+    const onSubmit = vi.fn()
+    await renderSuspended(AddFoodForm, { props: { onSubmit } })
+    const user = userEvent.setup()
+
+    await user.type(screen.getByLabelText(/protein \/100\s*g/i), '10')
+    await user.type(screen.getByLabelText(/carbs \/100\s*g/i), '4')
+    await user.type(screen.getByLabelText(/fat \/100\s*g/i), '0.2')
+    await user.click(screen.getByRole('button', { name: /save food/i }))
+
+    expect(screen.getByText('Enter a name for this food')).toBeVisible()
+    expect(
+      screen.queryByText('Enter protein per 100 g'),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByText('Enter carbs per 100 g')).not.toBeInTheDocument()
+    expect(screen.queryByText('Enter fat per 100 g')).not.toBeInTheDocument()
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
+
+  it('requires fat per 100 g', async () => {
+    const onSubmit = vi.fn()
+    await renderSuspended(AddFoodForm, { props: { onSubmit } })
+    const user = userEvent.setup()
+
+    await user.type(screen.getByLabelText(/^name$/i), 'Skyr')
+    await user.type(screen.getByLabelText(/protein \/100\s*g/i), '10')
+    await user.type(screen.getByLabelText(/carbs \/100\s*g/i), '4')
+    await user.click(screen.getByRole('button', { name: /save food/i }))
+
+    expect(screen.getByText('Enter fat per 100 g')).toBeVisible()
+    expect(
+      screen.queryByText('Enter a name for this food'),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('Enter protein per 100 g'),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByText('Enter carbs per 100 g')).not.toBeInTheDocument()
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
+
+  it('requires carbs per 100 g', async () => {
+    const onSubmit = vi.fn()
+    await renderSuspended(AddFoodForm, { props: { onSubmit } })
+    const user = userEvent.setup()
+
+    await user.type(screen.getByLabelText(/^name$/i), 'Skyr')
+    await user.type(screen.getByLabelText(/protein \/100\s*g/i), '10')
+    await user.type(screen.getByLabelText(/fat \/100\s*g/i), '0.2')
+    await user.click(screen.getByRole('button', { name: /save food/i }))
+
+    expect(screen.getByText('Enter carbs per 100 g')).toBeVisible()
+    expect(
+      screen.queryByText('Enter a name for this food'),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('Enter protein per 100 g'),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByText('Enter fat per 100 g')).not.toBeInTheDocument()
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
+
+  it('requires protein per 100 g', async () => {
+    const onSubmit = vi.fn()
+    await renderSuspended(AddFoodForm, { props: { onSubmit } })
+    const user = userEvent.setup()
+
+    await user.type(screen.getByLabelText(/^name$/i), 'Skyr')
+    await user.type(screen.getByLabelText(/carbs \/100\s*g/i), '4')
+    await user.type(screen.getByLabelText(/fat \/100\s*g/i), '0.2')
+    await user.click(screen.getByRole('button', { name: /save food/i }))
+
+    expect(screen.getByText('Enter protein per 100 g')).toBeVisible()
+    expect(
+      screen.queryByText('Enter a name for this food'),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByText('Enter carbs per 100 g')).not.toBeInTheDocument()
+    expect(screen.queryByText('Enter fat per 100 g')).not.toBeInTheDocument()
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
+})
