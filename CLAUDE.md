@@ -110,6 +110,14 @@ The frontend is built **test-first (red-green TDD)**. Increments:
 - **F4** — profile, goal, and weight-logging setup screens.
 - **F5** — weekly review view + history.
 - **F6** — PWA polish: offline shell, install prompt, web-push reminder.
+- **F7** — maintenance mode after a Goal is reached. When the latest Trend
+  Weight hits the active Goal's target, auto-deactivate the Goal and switch
+  into a maintenance state: the Calorie Budget becomes the current
+  Maintenance (no deficit), the Protein Floor still applies. Needs its own
+  design pass: whether maintenance is a first-class aggregate or a Goal
+  with rate = 0; auto vs. confirmation transition; surfacing (banner on
+  `/today`, status on `/profile`, or both); and the weekly-review cadence
+  once there's no deficit to chase.
 
 ## Architecture
 

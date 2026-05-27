@@ -41,6 +41,9 @@ flagged as an estimate so the app can report how much of a day was guessed.
 **Goal**:
 A weight-loss target the user sets: a goal weight plus a rate of loss (e.g.
 0.5 kg/week). The app derives the Calorie Budget and a projected finish date.
+Each Goal carries its own start date and starting weight, captured at the
+moment it's set. Changing target or rate mid-cut means *replacing* the active
+Goal: the prior one is preserved as inactive history, not edited in place.
 _Avoid_: target
 
 **Calorie Budget**:
@@ -57,9 +60,14 @@ _Avoid_: protein target, protein goal
 
 **Maintenance**:
 The estimated daily calories that hold the user's weight steady (their TDEE).
-Seeded from a formula (Mifflin-St Jeor), then recomputed each week from the
+Seeded from a standard BMR formula, then recomputed each week from the
 Trend Weight and logged intake once enough history exists.
 _Avoid_: TDEE, baseline
+
+**Profile**:
+The user's body inputs to the BMR seed: sex, birth date, and height. Set
+once and rarely changed. Combined with the latest Weight Measurement, it
+seeds the initial Maintenance estimate.
 
 **Weight Measurement**:
 A single dated reading of the user's body weight. The raw, noisy signal behind
