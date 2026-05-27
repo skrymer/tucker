@@ -1,8 +1,11 @@
+<script setup lang="ts">
+const { data: foods } = await useApi('/api/foods')
+</script>
+
 <template>
-  <section>
+  <section class="flex flex-col gap-4">
     <h1 class="text-2xl font-bold text-default">Foods</h1>
-    <p class="mt-2 text-muted">
-      Your foods, plus manual and barcode-scan creation, will live here (F3).
-    </p>
+    <FoodList v-if="foods && foods.length > 0" :foods="foods" />
+    <FoodEmptyState v-else />
   </section>
 </template>
