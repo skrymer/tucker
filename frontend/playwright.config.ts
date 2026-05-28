@@ -17,6 +17,11 @@ export default defineConfig<ConfigOptions>({
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
   reporter: [['list'], ['html', { open: 'never' }]],
+  // Per-project snapshot files so Desktop Chrome and Mobile Chrome get
+  // their own baselines (the responsive layouts differ — e.g. Add-food
+  // header button vs floating action button on /foods).
+  snapshotPathTemplate:
+    '{testDir}/{testFileDir}/{testFileName}-snapshots/{arg}{-projectName}{ext}',
   use: {
     nuxt: {
       rootDir: fileURLToPath(new URL('.', import.meta.url)),
@@ -24,5 +29,11 @@ export default defineConfig<ConfigOptions>({
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  // Two viewport projects so every spec runs on both — catches responsive
+  // bugs (e.g. drawer-vs-modal branches, phone-only FAB layouts) that a
+  // desktop-only run would miss.
+  projects: [
+    { name: 'Desktop Chrome', use: { ...devices['Desktop Chrome'] } },
+    { name: 'Mobile Chrome', use: { ...devices['Pixel 7'] } },
+  ],
 })

@@ -1,0 +1,12 @@
+- main:
+    - heading "Foods" [level=1]
+    - button "Add food"
+    - list:
+        - listitem:
+            - button /Oats \d+ kcal · \d+ g protein \/100g/:
+                - paragraph: Oats
+                - paragraph: /\d+ kcal · \d+ g protein \/100g/
+        - listitem:
+            - button /Skyr \d+ kcal · \d+ g protein \/100g/:
+                - paragraph: Skyr
+                - paragraph: /\d+ kcal · \d+ g protein \/100g/
