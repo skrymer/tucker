@@ -48,6 +48,15 @@ Continuous integration — every pull request runs `.github/workflows/ci.yml`:
 the backend `./gradlew detekt` + `./gradlew build`, and the frontend ESLint +
 Vitest + Playwright suites. Detekt and ESLint failures fail the build.
 
+**PR walk-through gate.** Before a PR can be merged, drive a feature
+walk-through in a real browser using the `claude-in-chrome` MCP tools —
+start the dev server, navigate to the changed surface, exercise the
+golden path, probe a couple of edge cases, and capture findings.
+Automated tests can't catch UX regressions like an overlapping toast or
+a broken responsive layout; the walk-through can. Invoke it via the
+`/verify` skill, which wraps the protocol and emits a verdict the
+reviewer can replay.
+
 Linting and formatting are also enforced locally. ESLint + Prettier run on
 staged frontend files via a pre-commit hook — enable it once per clone with
 `git config core.hooksPath .githooks`. A Claude Code hook
