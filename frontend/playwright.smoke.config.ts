@@ -30,7 +30,12 @@ export default defineConfig<ConfigOptions>({
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  // Run every smoke at both viewports — phone-only branches (UDrawer,
+  // FAB-as-trigger) only get real-stack coverage this way.
+  projects: [
+    { name: 'Desktop Chrome', use: { ...devices['Desktop Chrome'] } },
+    { name: 'Mobile Chrome', use: { ...devices['Pixel 7'] } },
+  ],
   webServer: {
     command: 'docker compose up --build backend',
     cwd: fileURLToPath(new URL('..', import.meta.url)),

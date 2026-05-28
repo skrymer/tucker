@@ -35,12 +35,15 @@ Frontend commands (run in `frontend/`, package manager is pnpm):
 - `pnpm test` — Vitest component / unit tests (`@nuxt/test-utils`, `@vue/test-utils`)
 - `pnpm test:e2e` — Playwright browser e2e against a Nuxt build with
   `/api/*` mocked via `page.route` (see `e2e/support/mock-api.ts`); fast and
-  deterministic. One-time setup: `pnpm exec playwright install chromium`.
+  deterministic. Every spec runs on two projects, **Desktop Chrome** and
+  **Mobile Chrome** (Pixel 7), to flush responsive bugs. One-time setup:
+  `pnpm exec playwright install chromium`.
 - `pnpm test:smoke` — real-stack Playwright tests (no API mocks). Starts
   the backend via `docker compose up backend` and runs the Nuxt SPA
-  against it; tests in `e2e/smoke/` must clean up data they create
-  (the docker volume persists between runs). One-time setup:
-  `docker compose build backend` from the repo root.
+  against it; same two-project setup as `test:e2e`. Tests in `e2e/smoke/`
+  must clean up data they create (the docker volume persists between
+  runs). One-time setup: `docker compose build backend` from the repo
+  root.
 - `pnpm lint` / `pnpm lint:fix` — ESLint (`@nuxt/eslint`)
 - `pnpm format` / `pnpm format:check` — Prettier
 
@@ -51,11 +54,14 @@ Vitest + Playwright suites. Detekt and ESLint failures fail the build.
 **PR walk-through gate.** Before a PR can be merged, drive a feature
 walk-through in a real browser using the `claude-in-chrome` MCP tools —
 start the dev server, navigate to the changed surface, exercise the
-golden path, probe a couple of edge cases, and capture findings.
-Automated tests can't catch UX regressions like an overlapping toast or
-a broken responsive layout; the walk-through can. Invoke it via the
-`/verify` skill, which wraps the protocol and emits a verdict the
-reviewer can replay.
+golden path, and probe a couple of edge cases. Walk through **at both
+phone and desktop viewports** (resize the chrome window or use DevTools
+device mode) — Tucker has a responsive split (bottom-nav vs side-nav,
+drawer vs modal, FAB vs header button) and a single-viewport
+walk-through misses half the layout. Automated tests can't catch UX
+regressions like an overlapping toast or a broken responsive layout;
+the walk-through can. Invoke it via the `/verify` skill, which wraps
+the protocol and emits a verdict the reviewer can replay.
 
 Linting and formatting are also enforced locally. ESLint + Prettier run on
 staged frontend files via a pre-commit hook — enable it once per clone with
