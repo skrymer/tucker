@@ -32,3 +32,22 @@ export async function mockSummary(page: Page, summary: Json = emptySummary) {
 export async function mockFoods(page: Page, foods: Json[] = []) {
   await page.route('**/api/foods', (route) => route.fulfill({ json: foods }))
 }
+
+/** Stub `GET /api/profile` returning a saved profile. */
+export async function mockProfile(page: Page, profile: Json) {
+  await page.route('**/api/profile', (route) => {
+    if (route.request().method() === 'GET')
+      return route.fulfill({ json: profile })
+    return route.fallback()
+  })
+}
+
+/** Stub `GET /api/profile` returning 404 — no profile yet. */
+export async function mockNoProfile(page: Page) {
+  await page.route('**/api/profile', (route) => {
+    if (route.request().method() === 'GET') {
+      return route.fulfill({ status: 404, json: { message: 'Not found' } })
+    }
+    return route.fallback()
+  })
+}
