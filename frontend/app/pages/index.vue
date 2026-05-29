@@ -50,6 +50,7 @@ async function onWeightLogged(payload: { date: string; weightKg: number }) {
 <template>
   <section class="flex flex-col gap-4">
     <h1 class="text-2xl font-bold text-default">Today</h1>
+    <SetupBanner :calorie-budget="summary?.calorieBudget" />
     <WeightTile
       :today="today"
       :latest="latestWeight"
