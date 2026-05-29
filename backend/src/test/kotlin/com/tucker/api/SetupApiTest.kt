@@ -20,7 +20,7 @@ class SetupApiTest {
     @Autowired lateinit var mockMvc: MockMvc
 
     @Test
-    fun `set up the profile, goal and weight, then run a weekly review`() {
+    fun `completing profile, weight and goal auto-fires the first review and yields a budget`() {
         val today = LocalDate.now()
 
         mockMvc.put("/api/profile") {
@@ -28,27 +28,37 @@ class SetupApiTest {
             content = """{"sex":"MALE","birthDate":"1986-05-22","heightCm":180.0}"""
         }.andExpect { status { isOk() } }
 
+        mockMvc.post("/api/weight") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"date":"$today","weightKg":86.0}"""
+        }.andExpect { status { isOk() } }
+
+        // Setting the first Goal on a fresh install auto-fires the first weekly
+        // review in the same transaction — no manual review trigger needed.
         mockMvc.post("/api/goal") {
             contentType = MediaType.APPLICATION_JSON
-            content = """{"startedOn":"2026-05-01","startWeightKg":90.0,
+            content = """{"startedOn":"$today","startWeightKg":86.0,
                           "targetWeightKg":80.0,"rateKgPerWeek":0.5}"""
         }.andExpect {
             status { isCreated() }
             jsonPath("$.dailyDeficitKcal") { exists() }
         }
 
-        mockMvc.post("/api/weight") {
-            contentType = MediaType.APPLICATION_JSON
-            content = """{"date":"$today","weightKg":86.0}"""
-        }.andExpect { status { isOk() } }
-
-        mockMvc.post("/api/weekly-review").andExpect {
-            status { isCreated() }
+        // The review ran, so the weekly-review and the dashboard summary both
+        // now expose a real Calorie Budget and Protein Floor.
+        mockMvc.get("/api/weekly-review").andExpect {
+            status { isOk() }
             jsonPath("$.calorieBudgetKcal") { exists() }
             jsonPath("$.proteinFloorG") { exists() }
         }
 
-        mockMvc.get("/api/weekly-review").andExpect { status { isOk() } }
+        mockMvc.get("/api/summary") {
+            param("date", "$today")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.calorieBudget") { isNumber() }
+            jsonPath("$.proteinFloor") { isNumber() }
+        }
     }
 
     @Test

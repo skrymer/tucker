@@ -17,7 +17,9 @@ data class Goal(
     init {
         require(startWeightKg > 0) { "startWeightKg must be > 0" }
         require(targetWeightKg > 0) { "targetWeightKg must be > 0" }
-        require(rateKgPerWeek > 0) { "rateKgPerWeek must be > 0" }
+        require(rateKgPerWeek in MIN_RATE_KG_PER_WEEK..MAX_RATE_KG_PER_WEEK) {
+            "rateKgPerWeek must be between $MIN_RATE_KG_PER_WEEK and $MAX_RATE_KG_PER_WEEK kg/week"
+        }
         require(targetWeightKg < startWeightKg) {
             "a weight-loss Goal needs a target below the start weight"
         }
@@ -41,5 +43,11 @@ data class Goal(
 
         /** Days the weekly rate of loss is spread across. */
         const val DAYS_PER_WEEK = 7.0
+
+        /** Slowest safe rate of loss — below this the Goal is effectively maintenance. */
+        const val MIN_RATE_KG_PER_WEEK = 0.05
+
+        /** Fastest safe rate of loss — beyond this risks muscle loss. */
+        const val MAX_RATE_KG_PER_WEEK = 1.5
     }
 }

@@ -42,17 +42,21 @@ private fun Goal.toResponse() = GoalResponse(
 )
 
 @RestController
-@RequestMapping("/api/goal")
+@RequestMapping("/api")
 class GoalController(
     private val goals: GoalRepository,
     private val goalService: GoalService,
 ) {
 
-    @GetMapping
+    @GetMapping("/goal")
     fun active(): GoalResponse =
         goals.findActive()?.toResponse() ?: throw NotFoundException("no active Goal")
 
-    @PostMapping
+    /** Every Goal, newest first — the active one plus inactive history. */
+    @GetMapping("/goals")
+    fun history(): List<GoalResponse> = goals.findAll().map { it.toResponse() }
+
+    @PostMapping("/goal")
     @ResponseStatus(HttpStatus.CREATED)
     fun create(@RequestBody request: CreateGoalRequest): GoalResponse {
         val goal = Goal(

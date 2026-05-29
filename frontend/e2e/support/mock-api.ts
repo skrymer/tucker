@@ -83,6 +83,48 @@ export async function mockWeightApi(
   })
 }
 
+type GoalSeed = {
+  id: number
+  startedOn: string
+  startWeightKg: number
+  targetWeightKg: number
+  rateKgPerWeek: number
+  active: boolean
+}
+
+/**
+ * Stub `GET /api/goals` (history, newest first) + `POST /api/goal` so the Goal
+ * section on `/profile` works without a real backend. Each POST deactivates the
+ * prior active goal and prepends the new active one, mirroring the backend's
+ * replacement semantics; `dailyDeficitKcal` is derived as the real domain does.
+ */
+export async function mockGoals(page: Page, initial: GoalSeed[] = []) {
+  const goals = [...initial]
+  let nextId = Math.max(0, ...goals.map((g) => g.id)) + 1
+
+  const withDeficit = (g: GoalSeed) => ({
+    ...g,
+    dailyDeficitKcal: (g.rateKgPerWeek * 7700) / 7,
+  })
+
+  await page.route('**/api/goals', (route) => {
+    if (route.request().method() !== 'GET') return route.fallback()
+    return route.fulfill({ json: goals.map(withDeficit) })
+  })
+
+  await page.route('**/api/goal', (route) => {
+    if (route.request().method() !== 'POST') return route.fallback()
+    const body = route.request().postDataJSON() as Omit<
+      GoalSeed,
+      'id' | 'active'
+    >
+    goals.forEach((g) => (g.active = false))
+    const created: GoalSeed = { id: nextId++, active: true, ...body }
+    goals.unshift(created)
+    return route.fulfill({ status: 201, json: withDeficit(created) })
+  })
+}
+
 /**
  * Stub the `GET /api/weight` list + `POST /api/weight` upsert so the Weight
  * section on `/profile` works without a real backend. Starts from `initial`;
