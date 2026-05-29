@@ -14,6 +14,7 @@ type GoalPayload = {
 const props = defineProps<{
   goals: GoalResponse[]
   latestWeight: LatestWeight | null
+  disabled?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -32,11 +33,16 @@ function handleSubmit(payload: GoalPayload) {
 </script>
 
 <template>
-  <section class="flex flex-col gap-3" aria-labelledby="goal-heading">
+  <section
+    class="flex flex-col gap-3"
+    aria-labelledby="goal-heading"
+    :aria-disabled="props.disabled || undefined"
+    :class="{ 'pointer-events-none opacity-50 select-none': props.disabled }"
+  >
     <header class="flex items-center justify-between">
       <h2 id="goal-heading" class="text-lg font-semibold text-default">Goal</h2>
       <UButton
-        v-if="activeGoal && !formOpen"
+        v-if="!props.disabled && activeGoal && !formOpen"
         icon="i-lucide-target"
         color="primary"
         @click="formOpen = true"
@@ -45,7 +51,12 @@ function handleSubmit(payload: GoalPayload) {
       </UButton>
     </header>
 
-    <template v-if="!activeGoal">
+    <!-- Gated: a weight reading must exist before a goal can be set. -->
+    <p v-if="props.disabled" class="text-sm text-muted">
+      Log your weight first to set a goal.
+    </p>
+
+    <template v-else-if="!activeGoal">
       <GoalForm
         v-if="props.latestWeight"
         :latest-weight="props.latestWeight"

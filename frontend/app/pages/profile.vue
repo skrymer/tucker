@@ -33,6 +33,15 @@ const latestWeight = computed(() => {
       )
 })
 
+const activeGoal = computed(() => goals.value?.find((g) => g.active) ?? null)
+
+// Progressive disclosure: each section unlocks once its prerequisite exists.
+// Saving a section re-fetches the upstream state, so the next section reacts
+// without a full reload.
+const gating = computed(() =>
+  useProfileGating(profile.value, latestWeight.value, activeGoal.value),
+)
+
 await loadProfile()
 
 async function handleSubmit(payload: {
@@ -111,12 +120,14 @@ async function handleGoalSubmit(payload: {
     <WeightSection
       :today="today"
       :measurements="weights ?? []"
+      :disabled="!gating.weightEnabled"
       @logged="handleWeightLogged"
     />
 
     <GoalSection
       :goals="goals ?? []"
       :latest-weight="latestWeight"
+      :disabled="!gating.goalEnabled"
       @submit="handleGoalSubmit"
     />
   </section>

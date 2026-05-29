@@ -101,6 +101,19 @@ describe('GoalSection', () => {
     expect(screen.getByText(/1 Feb 2026/)).toBeVisible()
   })
 
+  it('is non-interactive and explains the prerequisite when disabled', async () => {
+    await renderSuspended(GoalSection, {
+      props: { goals: [], latestWeight: null, disabled: true },
+    })
+
+    expect(screen.getByRole('heading', { name: /^goal$/i })).toBeVisible()
+    expect(screen.getByText(/log your weight first/i)).toBeVisible()
+    expect(screen.queryByLabelText(/target weight/i)).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /set a new goal/i }),
+    ).not.toBeInTheDocument()
+  })
+
   it('shows no history affordance when there are no past goals', async () => {
     await renderSuspended(GoalSection, {
       props: { goals: [activeGoal], latestWeight },
