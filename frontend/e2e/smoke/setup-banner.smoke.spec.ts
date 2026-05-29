@@ -33,12 +33,18 @@ test('the setup banner shows until a budget exists, then disappears', async ({
       page.getByRole('link', { name: /finish setup/i }),
     ).toHaveAttribute('href', '/profile')
 
-    // Complete setup the way a real install does: profile, an active goal, a
-    // weight reading, then run the adaptive review that yields the budget.
+    // Complete setup the way a real install does: profile, a weight reading,
+    // then an active goal. Setting the first goal auto-fires the weekly review
+    // that yields the budget, so no manual review trigger is needed.
     const profile = await request.put(`${API}/profile`, {
       data: { sex: 'MALE', birthDate: '1990-06-15', heightCm: 180 },
     })
     expect(profile.ok()).toBe(true)
+
+    const weight = await request.post(`${API}/weight`, {
+      data: { date: today, weightKg: 85 },
+    })
+    expect(weight.ok()).toBe(true)
 
     const goal = await request.post(`${API}/goal`, {
       data: {
@@ -49,14 +55,6 @@ test('the setup banner shows until a budget exists, then disappears', async ({
       },
     })
     expect(goal.status()).toBe(201)
-
-    const weight = await request.post(`${API}/weight`, {
-      data: { date: today, weightKg: 85 },
-    })
-    expect(weight.ok()).toBe(true)
-
-    const ran = await request.post(`${API}/weekly-review`)
-    expect(ran.status()).toBe(201)
   }
 
   // A review now exists, so the budget is non-null and the banner is gone.
