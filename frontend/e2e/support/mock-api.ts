@@ -82,3 +82,41 @@ export async function mockWeightApi(
     return route.fulfill({ status: 200, json: latest })
   })
 }
+
+/**
+ * Stub the `GET /api/weight` list + `POST /api/weight` upsert so the Weight
+ * section on `/profile` works without a real backend. Starts from `initial`;
+ * each POST upserts by date (replacing a same-date reading) so re-logging a
+ * date behaves like the real backend.
+ */
+export async function mockWeightList(
+  page: Page,
+  initial: Array<{ id: number; measuredOn: string; weightKg: number }> = [],
+) {
+  const records = [...initial]
+  let nextId = Math.max(0, ...records.map((r) => r.id)) + 1
+
+  await page.route('**/api/weight', (route) => {
+    const method = route.request().method()
+    if (method === 'GET') return route.fulfill({ json: records })
+    if (method === 'POST') {
+      const body = route.request().postDataJSON() as {
+        date: string
+        weightKg: number
+      }
+      const existing = records.find((r) => r.measuredOn === body.date)
+      if (existing) {
+        existing.weightKg = body.weightKg
+        return route.fulfill({ status: 200, json: existing })
+      }
+      const created = {
+        id: nextId++,
+        measuredOn: body.date,
+        weightKg: body.weightKg,
+      }
+      records.push(created)
+      return route.fulfill({ status: 200, json: created })
+    }
+    return route.fallback()
+  })
+}

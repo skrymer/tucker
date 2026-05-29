@@ -60,6 +60,40 @@ describe('LogWeightSheet', () => {
     expect(screen.queryByLabelText(/date/i)).toBeNull()
   })
 
+  it('renders a date input defaulting to today when no date prop locks it', async () => {
+    await renderSuspended(LogWeightSheet, {
+      props: { open: true, today: '2026-05-29' },
+    })
+
+    expect(screen.getByLabelText(/date/i)).toHaveValue('2026-05-29')
+  })
+
+  it('constrains the date input to today as the latest selectable date', async () => {
+    await renderSuspended(LogWeightSheet, {
+      props: { open: true, today: '2026-05-29' },
+    })
+
+    expect(screen.getByLabelText(/date/i)).toHaveAttribute('max', '2026-05-29')
+  })
+
+  it('emits a submit payload with the selected backfill date and weight', async () => {
+    const onSubmit = vi.fn()
+    await renderSuspended(LogWeightSheet, {
+      props: { open: true, today: '2026-05-29', onSubmit },
+    })
+    const user = userEvent.setup()
+
+    await user.clear(screen.getByLabelText(/date/i))
+    await user.type(screen.getByLabelText(/date/i), '2026-05-24')
+    await user.type(screen.getByLabelText(/weight \(kg\)/i), '84.6')
+    await user.click(screen.getByRole('button', { name: /save weight/i }))
+
+    expect(onSubmit).toHaveBeenCalledWith({
+      date: '2026-05-24',
+      weightKg: 84.6,
+    })
+  })
+
   it('rejects a non-positive weight', async () => {
     const onSubmit = vi.fn()
     await renderSuspended(LogWeightSheet, {

@@ -1,0 +1,7 @@
+- region "Weight log":
+    - heading "Weight log" [level=2]
+    - button "Add weight"
+    - list:
+        - listitem:
+            - paragraph: 15 Mar 2024
+            - paragraph: 84.2 kg
