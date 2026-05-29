@@ -42,6 +42,15 @@ describe('WeightSection', () => {
     expect(screen.getByLabelText(/date/i)).toBeVisible()
   })
 
+  it('is non-interactive and explains the prerequisite when disabled', async () => {
+    await renderSuspended(WeightSection, {
+      props: { today: '2026-05-29', measurements: [], disabled: true },
+    })
+
+    expect(screen.getByText(/set your profile first/i)).toBeVisible()
+    expect(screen.queryByRole('button', { name: /add weight/i })).toBeNull()
+  })
+
   it('emits logged with the submitted payload', async () => {
     const onLogged = vi.fn()
     await renderSuspended(WeightSection, {
