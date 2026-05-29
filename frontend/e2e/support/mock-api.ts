@@ -51,3 +51,34 @@ export async function mockNoProfile(page: Page) {
     return route.fallback()
   })
 }
+
+/**
+ * Stub `GET /api/weight/latest` + `POST /api/weight` so the weight tile on
+ * `/today` works without a real backend. Starts with no measurements; the
+ * first POST seeds an in-memory record that subsequent GETs return.
+ */
+export async function mockWeightApi(
+  page: Page,
+  initial: { id: number; measuredOn: string; weightKg: number } | null = null,
+) {
+  let latest = initial
+  let nextId = (initial?.id ?? 0) + 1
+
+  await page.route('**/api/weight/latest', (route) => {
+    if (route.request().method() !== 'GET') return route.fallback()
+    if (latest === null) {
+      return route.fulfill({ status: 404, json: { message: 'Not found' } })
+    }
+    return route.fulfill({ json: latest })
+  })
+
+  await page.route('**/api/weight', (route) => {
+    if (route.request().method() !== 'POST') return route.fallback()
+    const body = route.request().postDataJSON() as {
+      date: string
+      weightKg: number
+    }
+    latest = { id: nextId++, measuredOn: body.date, weightKg: body.weightKg }
+    return route.fulfill({ status: 200, json: latest })
+  })
+}

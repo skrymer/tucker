@@ -14,4 +14,13 @@ data class WeightMeasurement(
     init {
         require(weightKg > 0) { "weightKg must be > 0, was $weightKg" }
     }
+
+    companion object {
+        fun recorded(measuredOn: LocalDate, weightKg: Double, today: LocalDate): WeightMeasurement {
+            require(!measuredOn.isAfter(today)) {
+                "measuredOn must not be in the future (was $measuredOn, today is $today)"
+            }
+            return WeightMeasurement(id = null, measuredOn = measuredOn, weightKg = weightKg)
+        }
+    }
 }
