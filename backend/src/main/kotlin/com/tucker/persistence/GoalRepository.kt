@@ -14,6 +14,12 @@ class GoalRepository(private val dsl: DSLContext) {
     fun findActive(): Goal? =
         dsl.selectFrom(GOAL).where(GOAL.ACTIVE.eq(1)).fetchOne()?.toGoal()
 
+    /** Every Goal, newest first — the active one plus the inactive history. */
+    fun findAll(): List<Goal> =
+        dsl.selectFrom(GOAL)
+            .orderBy(GOAL.STARTED_ON.desc(), GOAL.ID.desc())
+            .fetch().map { it.toGoal() }
+
     fun insert(goal: Goal): Goal {
         val rec = dsl.newRecord(GOAL)
         rec.startedOn = goal.startedOn.toString()
