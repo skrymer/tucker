@@ -21,6 +21,17 @@ class WeightMeasurementRepository(private val dsl: DSLContext) {
             .where(WEIGHT_MEASUREMENT.MEASURED_ON.eq(date.toString()))
             .fetchOne()?.toDomain()
 
+    fun latest(): WeightMeasurement? =
+        dsl.selectFrom(WEIGHT_MEASUREMENT)
+            .orderBy(WEIGHT_MEASUREMENT.MEASURED_ON.desc())
+            .limit(1)
+            .fetchOne()?.toDomain()
+
+    fun deleteById(id: Long): Int =
+        dsl.deleteFrom(WEIGHT_MEASUREMENT)
+            .where(WEIGHT_MEASUREMENT.ID.eq(id.toInt()))
+            .execute()
+
     /** Insert the reading, or replace an existing reading for the same day. */
     fun save(measurement: WeightMeasurement): WeightMeasurement {
         val existing = dsl.selectFrom(WEIGHT_MEASUREMENT)

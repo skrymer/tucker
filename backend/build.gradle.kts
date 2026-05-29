@@ -15,6 +15,9 @@ plugins {
     id("org.springframework.boot") version "3.4.1"
     id("io.spring.dependency-management") version "1.1.7"
     id("io.gitlab.arturbosch.detekt") version "1.23.8"
+    // Dumps the runtime OpenAPI spec to a file (`generateOpenApiDocs` task).
+    // Used to sync `frontend/openapi/tucker.json` after API changes.
+    id("org.springdoc.openapi-gradle-plugin") version "1.9.0"
 }
 
 group = "com.tucker"
@@ -134,6 +137,21 @@ configurations.matching { it.name == "detekt" }.all {
 // run on; pin detekt's analysis target to 21.
 tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach {
     jvmTarget = "21"
+}
+
+// --- OpenAPI spec generation ----------------------------------------------
+// The springdoc Gradle plugin runs `bootRun`, hits the api-docs endpoint, and
+// writes the spec straight into the frontend's committed copy. Run it after
+// any controller change so the typed nuxt-open-fetch client stays in sync:
+//   ./gradlew generateOpenApiDocs
+// Uses port 8181 to avoid colliding with any locally running tucker-backend.
+openApi {
+    apiDocsUrl.set("http://localhost:8181/v3/api-docs")
+    outputDir.set(file("../frontend/openapi"))
+    outputFileName.set("tucker.json")
+    customBootRun {
+        args.set(listOf("--server.port=8181"))
+    }
 }
 
 // The default test task runs the fast in-JVM suite (no Docker required).

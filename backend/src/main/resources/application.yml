@@ -16,3 +16,4 @@ server:
 springdoc:
   swagger-ui:
     path: /docs
+  writer-with-default-pretty-printer: true

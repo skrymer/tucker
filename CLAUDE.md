@@ -23,6 +23,11 @@ Backend commands (run in `backend/`):
 - `./gradlew detekt` — Detekt static analysis on its own (also part of `build`)
 - `./gradlew e2eTest` — Testcontainers e2e against the Docker image; build it
   first with `docker compose build backend` from the repo root
+- `./gradlew generateOpenApiDocs` — boots the app on port 8181 via the
+  springdoc Gradle plugin and writes the live OpenAPI spec to
+  `frontend/openapi/tucker.json`. Run after any controller change, then run
+  `pnpm exec nuxt prepare` in `frontend/` to regenerate the typed
+  `nuxt-open-fetch` client.
 
 The **Nuxt frontend** (`frontend/`) is scaffolded — **F1 is done**: a SPA
 (`ssr: false`) Nuxt 4 + Nuxt UI + `@vite-pwa/nuxt` project, UI testing wired up,
