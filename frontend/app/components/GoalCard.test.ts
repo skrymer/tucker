@@ -22,4 +22,15 @@ describe('GoalCard', () => {
     expect(screen.getByText(/90\.0 kg/)).toBeVisible()
     expect(screen.getByText(/1 May 2026/)).toBeVisible()
   })
+
+  it('renders the rate cleanly when the stored value carries float imprecision', async () => {
+    // The backend stores the rate as a 32-bit float, so 0.6 round-trips as
+    // 0.6000000238418579. The card must not leak that to the user.
+    await renderSuspended(GoalCard, {
+      props: { goal: { ...goal, rateKgPerWeek: 0.6000000238418579 } },
+    })
+
+    expect(screen.getByText('0.6 kg/week')).toBeVisible()
+    expect(screen.queryByText(/0\.6000/)).not.toBeInTheDocument()
+  })
 })
