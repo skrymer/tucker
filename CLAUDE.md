@@ -170,6 +170,12 @@ The frontend is built **test-first (red-green TDD)**. Increments:
   Nuxt UI's `<UForm>`; the schema is the single source of truth for required
   fields, ranges, and error messages, and its inferred type drives the form's
   state. See `docs/adr/0003-validate-forms-with-zod.md`.
+- **Components compose inline composables.** A component's reactive concerns are
+  grouped into small, named `useXxx()` composables — defined inline in the same
+  file, or extracted to `composables/` when shared — rather than a flat list of
+  `ref`/`computed`/`watch` in `<script setup>`. `<script setup>` then reads as a
+  thin assembly of named concerns. See
+  <https://alexop.dev/posts/inline-vue-composables-refactoring/>.
 - **The core is deterministic.** Calorie and budget math must be exact, instant,
   and free — no LLM in that path. An LLM may later be added *only* as an optional
   input adapter for free-text meal parsing.
