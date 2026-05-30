@@ -71,7 +71,12 @@ async function handleWeightLogged(payload: { date: string; weightKg: number }) {
   if (savingWeight.value) return
   savingWeight.value = true
   try {
-    await $api('/api/weight', { method: 'POST', body: payload })
+    // Send the user's local date so the backend validates against it, not its
+    // own (UTC) date, which can lag a day behind across midnight (#24).
+    await $api('/api/weight', {
+      method: 'POST',
+      body: { ...payload, clientToday: today },
+    })
     await refreshWeights()
     toast.add({ title: 'Weight saved', color: 'success' })
   } catch {

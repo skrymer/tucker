@@ -71,7 +71,10 @@ seeds the initial Maintenance estimate.
 
 **Weight Measurement**:
 A single dated reading of the user's body weight. The raw, noisy signal behind
-goal progress and the adaptive Maintenance correction.
+goal progress and the adaptive Maintenance correction. It can't be dated in the
+future, where "today" is the user's _local_ day — the client supplies it, so a
+reading entered just after local midnight isn't rejected while the server (UTC)
+clock still lags a day behind.
 _Avoid_: weigh-in
 
 **Trend Weight**:

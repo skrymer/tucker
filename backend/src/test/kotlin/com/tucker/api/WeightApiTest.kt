@@ -60,10 +60,37 @@ class WeightApiTest {
 
     @Test
     fun `POST weight rejects a future date with 400`() {
-        val tomorrow = LocalDate.now().plusDays(1)
+        val today = LocalDate.now()
+        val tomorrow = today.plusDays(1)
         mockMvc.post("/api/weight") {
             contentType = MediaType.APPLICATION_JSON
-            content = """{"date":"$tomorrow","weightKg":84.2}"""
+            content = """{"date":"$tomorrow","weightKg":84.2,"clientToday":"$today"}"""
+        }.andExpect { status { isBadRequest() } }
+    }
+
+    @Test
+    fun `POST weight accepts today's weight when the client is a day ahead of the server`() {
+        // Client's local date has rolled past midnight while the server (UTC) is
+        // still on the previous day — the #24 boundary. The default-dated weight
+        // (measuredOn == the client's today) must still be accepted.
+        val clientToday = LocalDate.now().plusDays(1)
+        mockMvc.post("/api/weight") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"date":"$clientToday","weightKg":84.2,"clientToday":"$clientToday"}"""
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.measuredOn") { value("$clientToday") }
+        }
+    }
+
+    @Test
+    fun `POST weight rejects an implausible client date more than a day from the server`() {
+        // No real timezone shifts the local date by more than a day, so a
+        // clientToday this far out is a bad clock, not a boundary — reject it.
+        val clientToday = LocalDate.now().plusDays(2)
+        mockMvc.post("/api/weight") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"date":"$clientToday","weightKg":84.2,"clientToday":"$clientToday"}"""
         }.andExpect { status { isBadRequest() } }
     }
 }
