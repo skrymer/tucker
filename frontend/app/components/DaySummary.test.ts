@@ -31,6 +31,21 @@ describe('DaySummary', () => {
     expect(screen.getByText('90 / 140 g protein')).toBeVisible()
   })
 
+  it('rounds the budget and floor from the engine to whole numbers', async () => {
+    await renderSuspended(DaySummary, {
+      props: {
+        summary: {
+          ...summary,
+          calorieBudget: 1965.7999267578125,
+          proteinFloor: 168.39999389648438,
+        },
+      },
+    })
+
+    expect(screen.getByText('1500 / 1966 kcal')).toBeVisible()
+    expect(screen.getByText('90 / 168 g protein')).toBeVisible()
+  })
+
   it('shows the day as on target when the summary reports it', async () => {
     await renderSuspended(DaySummary, {
       props: { summary: { ...summary, onTarget: true } },

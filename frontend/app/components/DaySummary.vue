@@ -14,8 +14,8 @@ const hasBudget = computed(() => props.summary.calorieBudget != null)
     <UCard v-if="hasBudget">
       <h2 class="text-sm font-medium text-muted">Calories</h2>
       <p class="mt-1 text-2xl font-bold text-default">
-        {{ Math.round(summary.caloriesConsumed) }} / {{ summary.calorieBudget }}
-        kcal
+        {{ Math.round(summary.caloriesConsumed) }} /
+        {{ Math.round(summary.calorieBudget ?? 0) }} kcal
       </p>
       <UProgress
         class="mt-3"
@@ -26,8 +26,8 @@ const hasBudget = computed(() => props.summary.calorieBudget != null)
 
       <h2 class="mt-6 text-sm font-medium text-muted">Protein</h2>
       <p class="mt-1 text-2xl font-bold text-default">
-        {{ Math.round(summary.proteinConsumed) }} / {{ summary.proteinFloor }} g
-        protein
+        {{ Math.round(summary.proteinConsumed) }} /
+        {{ Math.round(summary.proteinFloor ?? 0) }} g protein
       </p>
       <UProgress
         class="mt-3"
