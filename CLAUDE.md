@@ -172,10 +172,13 @@ The frontend is built **test-first (red-green TDD)**. Increments:
   state. See `docs/adr/0003-validate-forms-with-zod.md`.
 - **Components compose inline composables.** A component's reactive concerns are
   grouped into small, named `useXxx()` composables — defined inline in the same
-  file, or extracted to `composables/` when shared — rather than a flat list of
-  `ref`/`computed`/`watch` in `<script setup>`. `<script setup>` then reads as a
-  thin assembly of named concerns. See
-  <https://alexop.dev/posts/inline-vue-composables-refactoring/>.
+  file, or extracted to `composables/` when a second component needs them —
+  rather than a flat list of `ref`/`computed`/`watch` in `<script setup>`, which
+  then reads as a thin assembly of named concerns. Cross-cutting mutation
+  boilerplate lives in the shared `useApiMutation` factory; extracted (shared)
+  composables and utils get their own tests, inline ones are covered by their
+  component's tests. See
+  [`docs/adr/0004-compose-inline-composables.md`](docs/adr/0004-compose-inline-composables.md).
 - **The core is deterministic.** Calorie and budget math must be exact, instant,
   and free — no LLM in that path. An LLM may later be added *only* as an optional
   input adapter for free-text meal parsing.
