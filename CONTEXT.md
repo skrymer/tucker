@@ -64,6 +64,18 @@ Seeded from a standard BMR formula, then recomputed each week from the
 Trend Weight and logged intake once enough history exists.
 _Avoid_: TDEE, baseline
 
+**Weekly Review**:
+The adaptive engine's recompute event — and the dated historical record it
+leaves behind. Each review re-derives Maintenance from the Trend Weight and
+logged intake, then the Calorie Budget and Protein Floor for the coming week,
+and is never changed once written. It is the _only_ place Maintenance, the
+Budget, and the Floor are (re)computed; `/today` shows the latest review's
+figures. Reviews fire by **lazy catch-up**: on app use, if the latest review
+is a week or more old, the engine runs one review snapping to today (it does
+not replay each missed week — the adaptive window already looks back two
+weeks). A manual "run now" trigger also exists. There is no scheduler.
+_Avoid_: recalculation, recompute (as a noun)
+
 **Profile**:
 The user's body inputs to the BMR seed: sex, birth date, and height. Set
 once and rarely changed. Combined with the latest Weight Measurement, it
