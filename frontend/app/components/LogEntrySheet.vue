@@ -4,7 +4,6 @@ defineProps<{ date: string }>()
 const emit = defineEmits<{ logged: [] }>()
 
 const open = ref(false)
-const isDesktop = useIsDesktop()
 const { $api } = useNuxtApp()
 
 // Foods catalog for the Weighed form. Non-awaited so the component
@@ -47,36 +46,16 @@ const submitting = computed(
     Log entry
   </UButton>
 
-  <UDrawer
-    v-if="!isDesktop"
-    v-model:open="open"
-    direction="bottom"
-    title="Log entry"
-    :dismissible="!submitting"
-  >
-    <template #body>
-      <LogEntryBody
-        :date="date"
-        :foods="foods ?? []"
-        @submit-estimated="handleSubmitEstimated"
-        @submit-weighed="handleSubmitWeighed"
-      />
-    </template>
-  </UDrawer>
-
-  <UModal
-    v-else
+  <ResponsiveOverlay
     v-model:open="open"
     title="Log entry"
     :dismissible="!submitting"
   >
-    <template #body>
-      <LogEntryBody
-        :date="date"
-        :foods="foods ?? []"
-        @submit-estimated="handleSubmitEstimated"
-        @submit-weighed="handleSubmitWeighed"
-      />
-    </template>
-  </UModal>
+    <LogEntryBody
+      :date="date"
+      :foods="foods ?? []"
+      @submit-estimated="handleSubmitEstimated"
+      @submit-weighed="handleSubmitWeighed"
+    />
+  </ResponsiveOverlay>
 </template>

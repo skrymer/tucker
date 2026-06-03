@@ -13,8 +13,6 @@ const emit = defineEmits<{
   submit: [{ date: string; weightKg: number }]
 }>()
 
-const isDesktop = useIsDesktop()
-
 // In date-editable mode the picker defaults to, and can't exceed, today.
 const today = computed(() => props.today ?? localToday())
 
@@ -48,70 +46,33 @@ function onSubmit() {
 </script>
 
 <template>
-  <UDrawer
-    v-if="!isDesktop"
-    :open="open"
-    direction="bottom"
-    title="Log weight"
-    @update:open="(value) => emit('update:open', value)"
-  >
-    <template #body>
-      <UForm
-        :state="state"
-        :schema="schema"
-        class="flex flex-col gap-4"
-        @submit="onSubmit"
-      >
-        <UFormField v-if="!date" label="Date" name="measuredOn" required>
-          <UInput
-            v-model="state.measuredOn"
-            type="date"
-            :max="today"
-            class="w-full"
-          />
-        </UFormField>
-
-        <UFormField label="Weight (kg)" name="weightKg" required>
-          <UInputNumber v-model="state.weightKg" :step="0.1" class="w-full" />
-        </UFormField>
-
-        <UButton type="submit" color="primary" class="w-full">
-          Save weight
-        </UButton>
-      </UForm>
-    </template>
-  </UDrawer>
-
-  <UModal
-    v-else
+  <ResponsiveOverlay
     :open="open"
     title="Log weight"
     @update:open="(value) => emit('update:open', value)"
   >
-    <template #body>
-      <UForm
-        :state="state"
-        :schema="schema"
-        class="flex flex-col gap-4"
-        @submit="onSubmit"
-      >
-        <UFormField v-if="!date" label="Date" name="measuredOn" required>
-          <UInput
-            v-model="state.measuredOn"
-            type="date"
-            :max="today"
-            class="w-full"
-          />
-        </UFormField>
+    <UForm
+      :state="state"
+      :schema="schema"
+      class="flex flex-col gap-4"
+      @submit="onSubmit"
+    >
+      <UFormField v-if="!date" label="Date" name="measuredOn" required>
+        <UInput
+          v-model="state.measuredOn"
+          type="date"
+          :max="today"
+          class="w-full"
+        />
+      </UFormField>
 
-        <UFormField label="Weight (kg)" name="weightKg" required>
-          <UInputNumber v-model="state.weightKg" :step="0.1" class="w-full" />
-        </UFormField>
+      <UFormField label="Weight (kg)" name="weightKg" required>
+        <UInputNumber v-model="state.weightKg" :step="0.1" class="w-full" />
+      </UFormField>
 
-        <UButton type="submit" color="primary" class="w-full">
-          Save weight
-        </UButton>
-      </UForm>
-    </template>
-  </UModal>
+      <UButton type="submit" color="primary" class="w-full">
+        Save weight
+      </UButton>
+    </UForm>
+  </ResponsiveOverlay>
 </template>
