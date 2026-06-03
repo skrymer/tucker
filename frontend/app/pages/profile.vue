@@ -21,7 +21,7 @@ function useProfileForm() {
     (payload: { sex: string; birthDate: string; heightCm: number }) =>
       $api('/api/profile', { method: 'PUT', body: payload as ProfileDto }),
     {
-      successTitle: 'Profile saved',
+      // No success toast: the profile card below the form updates in place.
       errorTitle: 'Could not save profile',
       onSuccess: load,
     },
@@ -42,7 +42,7 @@ function useGoalSubmission(onSubmitted: () => void | Promise<void>) {
       rateKgPerWeek: number
     }) => $api('/api/goal', { method: 'POST', body: payload }),
     {
-      successTitle: 'Goal set',
+      // No success toast: the goal card updates in place.
       errorTitle: 'Could not set goal',
       onSuccess: onSubmitted,
     },
@@ -80,8 +80,8 @@ const gating = computed(() =>
 
 const { logWeight } = useWeightLogging({
   today,
+  // No success toast: the new reading appears in the weight trend below.
   onSaved: refreshWeights,
-  successTitle: 'Weight saved',
 })
 const { submit: submitGoal } = useGoalSubmission(refreshGoals)
 

@@ -25,14 +25,25 @@ const { pending: submittingEstimated, execute: handleSubmitEstimated } =
       calories: number
       protein?: number
     }) => $api('/api/entries/estimated', { method: 'POST', body: payload }),
-    { errorTitle: 'Could not save entry', onSuccess: closeAndEmit },
+    {
+      // Kept: the sheet closes back to Today, where the calorie/protein delta
+      // may be scrolled off-screen — the toast bridges "sheet closed → it worked".
+      successTitle: 'Entry logged',
+      errorTitle: 'Could not save entry',
+      onSuccess: closeAndEmit,
+    },
   )
 
 const { pending: submittingWeighed, execute: handleSubmitWeighed } =
   useApiMutation(
     (payload: { date: string; foodId: number; grams: number }) =>
       $api('/api/entries/weighed', { method: 'POST', body: payload }),
-    { errorTitle: 'Could not save entry', onSuccess: closeAndEmit },
+    {
+      // Kept for the same reason as the estimated entry above.
+      successTitle: 'Entry logged',
+      errorTitle: 'Could not save entry',
+      onSuccess: closeAndEmit,
+    },
   )
 
 // Either submit in flight locks the sheet against dismissal mid-request.
