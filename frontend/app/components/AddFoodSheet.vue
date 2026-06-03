@@ -12,31 +12,14 @@ const emit = defineEmits<{
     },
   ]
 }>()
-
-const isDesktop = useIsDesktop()
 </script>
 
 <template>
-  <UDrawer
-    v-if="!isDesktop"
-    :open="open"
-    direction="bottom"
-    title="Add food"
-    @update:open="(value) => emit('update:open', value)"
-  >
-    <template #body>
-      <AddFoodForm @submit="(payload) => emit('submit', payload)" />
-    </template>
-  </UDrawer>
-
-  <UModal
-    v-else
+  <ResponsiveOverlay
     :open="open"
     title="Add food"
     @update:open="(value) => emit('update:open', value)"
   >
-    <template #body>
-      <AddFoodForm @submit="(payload) => emit('submit', payload)" />
-    </template>
-  </UModal>
+    <AddFoodForm @submit="(payload) => emit('submit', payload)" />
+  </ResponsiveOverlay>
 </template>

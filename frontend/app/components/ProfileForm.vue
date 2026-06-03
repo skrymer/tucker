@@ -6,7 +6,7 @@ const sexItems = [
   { label: 'Female', value: 'FEMALE' },
 ]
 
-const today = () => new Date().toLocaleDateString('en-CA')
+const today = () => localToday()
 
 const schema = z.object({
   sex: z.enum(['MALE', 'FEMALE'], { error: 'Choose your sex' }),

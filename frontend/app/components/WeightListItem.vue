@@ -5,16 +5,9 @@ const props = defineProps<{
   measurement: components['schemas']['WeightMeasurementResponse']
 }>()
 
-// Build the Date from parts so a non-UTC test/runtime timezone can't shift the
-// day off the stored ISO date.
-const formattedDate = computed(() => {
-  const [y, m, d] = props.measurement.measuredOn.split('-').map(Number)
-  return new Date(y!, m! - 1, d!).toLocaleDateString('en-GB', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  })
-})
+const formattedDate = computed(() =>
+  formatDateFromISO(props.measurement.measuredOn),
+)
 </script>
 
 <template>
