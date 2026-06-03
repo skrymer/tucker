@@ -60,9 +60,9 @@ private fun GoalProgress.toResponse() = GoalProgressResponse(
     percentComplete = percentComplete,
     plannedFinishDate = plannedFinishDate,
     plannedRateKgPerWeek = plannedRateKgPerWeek,
-    paceStatus = null,
-    observedRateKgPerWeek = null,
-    observedFinishDate = null,
+    paceStatus = paceStatus?.value,
+    observedRateKgPerWeek = observedRateKgPerWeek,
+    observedFinishDate = observedFinishDate,
 )
 
 private fun Goal.toResponse() = GoalResponse(
@@ -90,11 +90,11 @@ class GoalController(
     @GetMapping("/goal/progress")
     fun progress(): GoalProgressResponse {
         val goal = goals.findActive() ?: throw NotFoundException("no active Goal")
-        // Progress runs on the smoothed Trend Weight; before any reading exists,
-        // the user is by definition still at the Goal's captured start weight.
-        val currentTrendKg = WeightTrend.from(weights.findAll()).latest()?.trendKg
-            ?: goal.startWeightKg
-        return GoalProgress.planned(goal, currentTrendKg, LocalDate.now()).toResponse()
+        // Progress runs on the smoothed Trend Weight; the observed pace reads its
+        // slope over the trailing window. Before any reading exists, the user is
+        // by definition still at the Goal's captured start weight.
+        val trend = WeightTrend.from(weights.findAll())
+        return GoalProgress.forGoal(goal, trend, LocalDate.now()).toResponse()
     }
 
     /** Every Goal, newest first — the active one plus inactive history. */

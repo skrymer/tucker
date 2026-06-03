@@ -84,13 +84,24 @@ never on a single raw measurement.
 _Avoid_: average weight
 
 **Goal Progress**:
-How far the active **Goal** has come: the **Trend Weight**'s journey from the
-Goal's start weight toward its target — kilograms still to go, percent complete,
-and, at the Goal's chosen rate, a projected (planned) finish date. A pure
-projection from the plan, computed on the smoothed **Trend Weight**, never a
-single raw measurement. The *observed* pace — whether the trend is actually
-moving fast enough — is a distinct, later notion.
+How far the active **Goal** has come, and whether it's on track. Two
+complementary readings, both computed on the smoothed **Trend Weight**, never a
+single raw measurement:
+- The **plan**: the Trend Weight's journey from the Goal's start weight toward
+  its target — kilograms still to go, percent complete, and, at the Goal's chosen
+  rate, a projected (*planned*) finish date.
+- The **observed pace**: how fast the trend is *actually* moving — the slope of
+  the Trend Weight over the trailing 28 days, expressed as an observed rate of
+  loss (kg/week) and an *observed* finish date projected from it. The observed
+  pace is withheld until at least 14 days of **Weight Measurements** exist.
 _Avoid_: ETA, projection
+
+**Pace Status**:
+Whether the **observed pace** is keeping up with the **Goal**'s planned rate:
+*behind*, *on-pace*, or *ahead*, classified against the planned rate within a
+±20% band. When the trend isn't falling (observed rate ≤ 0) the status is
+*stalled* and no observed finish date is projected. Like the rest of the observed
+pace, it's withheld until at least 14 days of **Weight Measurements** exist.
 
 ## Relationships
 

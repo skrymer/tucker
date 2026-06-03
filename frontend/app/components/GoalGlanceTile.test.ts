@@ -32,6 +32,21 @@ describe('GoalGlanceTile', () => {
     expect(screen.getByText('6.0 kg to go')).toBeVisible()
   })
 
+  it('shows the pace badge once the observed pace is available', async () => {
+    await renderSuspended(GoalGlanceTile, {
+      props: { progress: { ...progress, paceStatus: 'on-pace' } },
+    })
+
+    expect(screen.getByText('On pace')).toBeVisible()
+  })
+
+  it('omits the pace badge while the pace is still withheld', async () => {
+    // The default fixture has paceStatus null (under two weeks of weigh-ins).
+    await renderSuspended(GoalGlanceTile, { props: { progress } })
+
+    expect(screen.queryByText(/on pace|behind|ahead|stalled/i)).toBeNull()
+  })
+
   it('makes the whole tile a link through to the weekly review', async () => {
     await renderSuspended(GoalGlanceTile, { props: { progress } })
 
