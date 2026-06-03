@@ -10,6 +10,11 @@ services:
     environment:
       TUCKER_DB_PATH: /data/tucker.db
       TUCKER_PORT: "8080"
+      # The engine works in the user's local day (LocalDate.now()), so the
+      # container clock must match the browser's timezone — otherwise a review
+      # or weight reading can land on the wrong calendar day near midnight.
+      # Defaults to the host's zone; override by exporting TZ before compose.
+      TZ: ${TZ:-Australia/Brisbane}
     volumes:
       - tucker-data:/data
     ports:
