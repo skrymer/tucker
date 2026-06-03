@@ -11,14 +11,9 @@ const formattedRate = computed(() =>
   Number(props.goal.rateKgPerWeek.toFixed(2)),
 )
 
-const formattedStartedOn = computed(() => {
-  const [y, m, d] = props.goal.startedOn.split('-').map(Number)
-  return new Date(y!, m! - 1, d!).toLocaleDateString('en-GB', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  })
-})
+const formattedStartedOn = computed(() =>
+  formatDateFromISO(props.goal.startedOn),
+)
 </script>
 
 <template>

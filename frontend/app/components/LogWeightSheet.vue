@@ -16,9 +16,7 @@ const emit = defineEmits<{
 const isDesktop = useIsDesktop()
 
 // In date-editable mode the picker defaults to, and can't exceed, today.
-const today = computed(
-  () => props.today ?? new Date().toLocaleDateString('en-CA'),
-)
+const today = computed(() => props.today ?? localToday())
 
 const schema = z.object({
   weightKg: z

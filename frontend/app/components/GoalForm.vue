@@ -19,7 +19,7 @@ const emit = defineEmits<{
   submit: [GoalPayload]
 }>()
 
-const today = () => new Date().toLocaleDateString('en-CA')
+const today = () => localToday()
 
 const schema = z.object({
   targetWeightKg: z
@@ -46,14 +46,9 @@ function onSubmit() {
   })
 }
 
-const formattedDate = computed(() => {
-  const [y, m, d] = props.latestWeight.measuredOn.split('-').map(Number)
-  return new Date(y!, m! - 1, d!).toLocaleDateString('en-GB', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  })
-})
+const formattedDate = computed(() =>
+  formatDateFromISO(props.latestWeight.measuredOn),
+)
 </script>
 
 <template>

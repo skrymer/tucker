@@ -4,7 +4,7 @@ import type { components } from '#open-fetch-schemas/api'
 type WeightMeasurement = components['schemas']['WeightMeasurementResponse']
 
 // The day to show — the user's local date.
-const today = new Date().toLocaleDateString('en-CA')
+const today = localToday()
 
 const { $api } = useNuxtApp()
 const toast = useToast()

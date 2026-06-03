@@ -9,7 +9,7 @@ const { $api } = useNuxtApp()
 const toast = useToast()
 
 // The user's local date — the latest weight a backfill may target.
-const today = new Date().toLocaleDateString('en-CA')
+const today = localToday()
 
 async function loadProfile() {
   try {
