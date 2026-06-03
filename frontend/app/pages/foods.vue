@@ -6,58 +6,43 @@ type FoodResponse = components['schemas']['FoodResponse']
 const { data: foods, refresh } = await useApi('/api/foods')
 
 const open = ref(false)
-const submitting = ref(false)
-const deleting = ref(false)
 const selectedFood = ref<FoodResponse | null>(null)
 const isDesktop = useIsDesktop()
-const toast = useToast()
 const { $api } = useNuxtApp()
 
-async function handleSubmit(payload: {
-  name: string
-  proteinPer100g: number
-  carbsPer100g: number
-  fatPer100g: number
-}) {
-  if (submitting.value) return
-  submitting.value = true
-  try {
-    await $api('/api/foods', { method: 'POST', body: payload })
-    open.value = false
-    await refresh()
-    toast.add({ title: 'Food added', color: 'success' })
-  } catch {
-    toast.add({
-      title: 'Could not add food',
-      description: 'Check your connection and try again.',
-      color: 'error',
-    })
-  } finally {
-    submitting.value = false
-  }
-}
+const { execute: handleSubmit } = useApiMutation(
+  (payload: {
+    name: string
+    proteinPer100g: number
+    carbsPer100g: number
+    fatPer100g: number
+  }) => $api('/api/foods', { method: 'POST', body: payload }),
+  {
+    successTitle: 'Food added',
+    errorTitle: 'Could not add food',
+    onSuccess: () => {
+      open.value = false
+      return refresh()
+    },
+  },
+)
 
-async function handleDeleteConfirm() {
+const { execute: deleteFood } = useApiMutation(
+  (food: FoodResponse) =>
+    $api('/api/foods/{id}', { method: 'DELETE', path: { id: food.id } }),
+  {
+    successTitle: 'Food deleted',
+    errorTitle: 'Could not delete food',
+    onSuccess: () => {
+      selectedFood.value = null
+      return refresh()
+    },
+  },
+)
+
+function handleDeleteConfirm() {
   const food = selectedFood.value
-  if (!food || deleting.value) return
-  deleting.value = true
-  try {
-    await $api('/api/foods/{id}', {
-      method: 'DELETE',
-      path: { id: food.id },
-    })
-    selectedFood.value = null
-    await refresh()
-    toast.add({ title: 'Food deleted', color: 'success' })
-  } catch {
-    toast.add({
-      title: 'Could not delete food',
-      description: 'Check your connection and try again.',
-      color: 'error',
-    })
-  } finally {
-    deleting.value = false
-  }
+  if (food) deleteFood(food)
 }
 </script>
 
