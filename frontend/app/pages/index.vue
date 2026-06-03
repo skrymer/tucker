@@ -2,6 +2,7 @@
 import type { components } from '#open-fetch-schemas/api'
 
 type WeightMeasurement = components['schemas']['WeightMeasurementResponse']
+type GoalProgress = components['schemas']['GoalProgressResponse']
 
 // The day to show — the user's local date.
 const today = localToday()
@@ -21,15 +22,31 @@ async function refreshLatestWeight() {
     latestWeight.value = null
   }
 }
-await refreshLatestWeight()
+
+// Goal progress runs off the smoothed Trend Weight, so a fresh weigh-in moves
+// it; 404 (no active Goal) is an expected state, surfaced as the tile's CTA.
+const goalProgress = ref<GoalProgress | null>(null)
+async function refreshGoalProgress() {
+  try {
+    goalProgress.value = await $api('/api/goal/progress')
+  } catch {
+    goalProgress.value = null
+  }
+}
+
+await Promise.all([refreshLatestWeight(), refreshGoalProgress()])
 
 async function onEntryLogged() {
   await refresh()
 }
 
 // The dashboard weigh-in is silent (no success toast) — the tile updating to
-// the new reading is feedback enough.
-const { logWeight } = useWeightLogging({ today, onSaved: refreshLatestWeight })
+// the new reading is feedback enough. A new reading also nudges the trend, so
+// goal progress is refreshed alongside it.
+async function onWeightSaved() {
+  await Promise.all([refreshLatestWeight(), refreshGoalProgress()])
+}
+const { logWeight } = useWeightLogging({ today, onSaved: onWeightSaved })
 </script>
 
 <template>
@@ -39,6 +56,10 @@ const { logWeight } = useWeightLogging({ today, onSaved: refreshLatestWeight })
     <BudgetChangeBanner :budget-change="summary?.budgetChange" />
     <WeightTile :today="today" :latest="latestWeight" @logged="logWeight" />
     <DaySummary v-if="summary" :summary="summary" />
+    <GoalGlanceTile
+      v-if="goalProgress || summary?.calorieBudget != null"
+      :progress="goalProgress"
+    />
     <LogEntrySheet :date="today" @logged="onEntryLogged" />
   </section>
 </template>
