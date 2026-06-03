@@ -7,7 +7,6 @@ type WeightMeasurement = components['schemas']['WeightMeasurementResponse']
 const today = localToday()
 
 const { $api } = useNuxtApp()
-const toast = useToast()
 
 const { data: summary, refresh } = await useApi('/api/summary', {
   query: { date: today },
@@ -28,39 +27,16 @@ async function onEntryLogged() {
   await refresh()
 }
 
-const savingWeight = ref(false)
-async function onWeightLogged(payload: { date: string; weightKg: number }) {
-  if (savingWeight.value) return
-  savingWeight.value = true
-  try {
-    // Send the user's local date so the backend validates against it, not its
-    // own (UTC) date, which can lag a day behind across midnight (#24).
-    await $api('/api/weight', {
-      method: 'POST',
-      body: { ...payload, clientToday: today },
-    })
-    await refreshLatestWeight()
-  } catch {
-    toast.add({
-      title: 'Could not save weight',
-      description: 'Check your connection and try again.',
-      color: 'error',
-    })
-  } finally {
-    savingWeight.value = false
-  }
-}
+// The dashboard weigh-in is silent (no success toast) — the tile updating to
+// the new reading is feedback enough.
+const { logWeight } = useWeightLogging({ today, onSaved: refreshLatestWeight })
 </script>
 
 <template>
   <section class="flex flex-col gap-4">
     <h1 class="text-2xl font-bold text-default">Today</h1>
     <SetupBanner :calorie-budget="summary?.calorieBudget" />
-    <WeightTile
-      :today="today"
-      :latest="latestWeight"
-      @logged="onWeightLogged"
-    />
+    <WeightTile :today="today" :latest="latestWeight" @logged="logWeight" />
     <DaySummary v-if="summary" :summary="summary" />
     <LogEntrySheet :date="today" @logged="onEntryLogged" />
   </section>
