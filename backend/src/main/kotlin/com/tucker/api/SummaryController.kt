@@ -4,6 +4,7 @@ import com.tucker.domain.DailyLog
 import com.tucker.persistence.EntryRepository
 import com.tucker.persistence.FoodRepository
 import com.tucker.persistence.WeeklyReviewRepository
+import com.tucker.service.WeeklyReviewService
 import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestMapping
@@ -33,12 +34,18 @@ class SummaryController(
     private val entries: EntryRepository,
     private val reviews: WeeklyReviewRepository,
     private val foods: FoodRepository,
+    private val weeklyReview: WeeklyReviewService,
 ) {
 
     @GetMapping
     fun summary(
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) date: LocalDate,
     ): DailySummaryResponse {
+        // Lazy catch-up: the summary is read on every app open, so it's where the
+        // weekly cadence advances — no scheduler. Runs at most one review, snapped
+        // to the client's local today, and only when one is due.
+        weeklyReview.catchUpIfDue(date)
+
         val log = DailyLog(date, entries.findByDate(date))
         val review = reviews.latest()
         return DailySummaryResponse(

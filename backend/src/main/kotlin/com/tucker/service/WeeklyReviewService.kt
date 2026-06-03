@@ -12,6 +12,7 @@ import com.tucker.persistence.WeightMeasurementRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
+import java.time.temporal.ChronoUnit
 
 /**
  * The adaptive engine. Once a week it recomputes Maintenance from the smoothed
@@ -29,6 +30,27 @@ class WeeklyReviewService(
     private val goals: GoalRepository,
     private val reviews: WeeklyReviewRepository,
 ) {
+
+    /**
+     * Lazy catch-up: if the latest review has aged past the weekly cadence, run
+     * one fresh review snapped to [today]. A no-op when a recent review already
+     * exists, when no cadence has started yet, or when setup is incomplete — so
+     * it is safe to call on every daily-summary read without a scheduler.
+     */
+    @Transactional
+    fun catchUpIfDue(today: LocalDate) {
+        val latest = reviews.latest() ?: return
+        val due = ChronoUnit.DAYS.between(latest.reviewedOn, today) >= REVIEW_CADENCE_DAYS
+        if (due && setupComplete()) {
+            runReview(today)
+        }
+    }
+
+    /** The inputs a review needs; absent any of them, catch-up stays a no-op. */
+    private fun setupComplete(): Boolean =
+        goals.findActive() != null &&
+            profiles.get() != null &&
+            WeightTrend.from(weights.findAll()).latest() != null
 
     /** Run the weekly review for [on] and persist the resulting [WeeklyReview]. */
     @Transactional
@@ -70,18 +92,29 @@ class WeeklyReviewService(
     ): Maintenance {
         val windowStart = on.minusDays(ADAPTIVE_WINDOW_DAYS.toLong())
         val startTrendKg = trend.asOf(windowStart)
-            ?: return Maintenance.seed(profile, currentTrendKg, on)
-
         val totalIntake = entries.totalCaloriesBetween(windowStart, on.minusDays(1))
-        return Maintenance.adaptive(
-            averageDailyIntakeKcal = totalIntake / ADAPTIVE_WINDOW_DAYS,
-            trendWeightChangeKg = currentTrendKg - startTrendKg,
-            days = ADAPTIVE_WINDOW_DAYS,
-        )
+
+        // Adapt only once the window holds enough history: both a trend anchor to
+        // measure the change against and some logged intake to correct against.
+        // Absent either (a fresh start, or a gap in logging), fall back to the
+        // formula seed rather than derive maintenance from a phantom zero-calorie
+        // diet — which would be non-positive and meaningless.
+        return if (startTrendKg != null && totalIntake > 0.0) {
+            Maintenance.adaptive(
+                averageDailyIntakeKcal = totalIntake / ADAPTIVE_WINDOW_DAYS,
+                trendWeightChangeKg = currentTrendKg - startTrendKg,
+                days = ADAPTIVE_WINDOW_DAYS,
+            )
+        } else {
+            Maintenance.seed(profile, currentTrendKg, on)
+        }
     }
 
     private companion object {
         /** The review window for the adaptive Maintenance correction. */
         const val ADAPTIVE_WINDOW_DAYS = 14
+
+        /** A review is due once the latest one is this many days old. */
+        const val REVIEW_CADENCE_DAYS = 7L
     }
 }
