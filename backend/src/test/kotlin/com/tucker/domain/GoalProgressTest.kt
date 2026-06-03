@@ -3,6 +3,7 @@ package com.tucker.domain
 import org.junit.jupiter.api.Test
 import java.time.LocalDate
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 class GoalProgressTest {
 
@@ -43,6 +44,84 @@ class GoalProgressTest {
 
         assertEquals(today.plusWeeks(12), progress.plannedFinishDate)
         assertEquals(0.5, progress.plannedRateKgPerWeek, 1e-9)
+    }
+
+    /** A two-point trend whose slope over the trailing window is known exactly. */
+    private fun trendFalling(fromKg: Double, toKg: Double, overDays: Long) =
+        WeightTrend(
+            listOf(
+                WeightTrend.Point(today.minusDays(overDays), fromKg),
+                WeightTrend.Point(today, toKg),
+            ),
+        )
+
+    @Test
+    fun `observed rate is the trend slope over the trailing 28 days`() {
+        // Trend fell 2 kg across the 28 days ending today: 2 kg / 4 weeks = 0.5 kg/week.
+        val trend = trendFalling(fromKg = 88.0, toKg = 86.0, overDays = 28)
+
+        val progress = GoalProgress.forGoal(goal(), trend, today)
+
+        assertEquals(0.5, progress.observedRateKgPerWeek!!, 1e-9)
+    }
+
+    @Test
+    fun `the observed pace is withheld until 14 days of measurements exist`() {
+        // Only 10 days of trend history — too little to read a pace from.
+        val trend = trendFalling(fromKg = 86.5, toKg = 86.0, overDays = 10)
+
+        val progress = GoalProgress.forGoal(goal(), trend, today)
+
+        assertNull(progress.observedRateKgPerWeek)
+        assertNull(progress.paceStatus)
+        assertNull(progress.observedFinishDate)
+    }
+
+    /** A 28-day trend ending at 86 kg whose observed rate is exactly [ratePerWeek]. */
+    private fun trendAtRate(ratePerWeek: Double) =
+        trendFalling(fromKg = 86.0 + ratePerWeek * 4, toKg = 86.0, overDays = 28)
+
+    @Test
+    fun `pace is classified against the planned rate within a ±20% band`() {
+        // Goal rate 0.5 kg/week → band edges at 0.4 and 0.6 kg/week.
+        // Just outside the band is behind / ahead; just inside is on-pace.
+        assertEquals(
+            PaceStatus.BEHIND,
+            GoalProgress.forGoal(goal(), trendAtRate(0.39), today).paceStatus,
+        )
+        assertEquals(
+            PaceStatus.ON_PACE,
+            GoalProgress.forGoal(goal(), trendAtRate(0.41), today).paceStatus,
+        )
+        assertEquals(
+            PaceStatus.ON_PACE,
+            GoalProgress.forGoal(goal(), trendAtRate(0.59), today).paceStatus,
+        )
+        assertEquals(
+            PaceStatus.AHEAD,
+            GoalProgress.forGoal(goal(), trendAtRate(0.61), today).paceStatus,
+        )
+    }
+
+    @Test
+    fun `the observed finish date projects the remaining loss at the observed rate`() {
+        // 6 kg to go at an observed 0.5 kg/week is 12 weeks — 84 days past today.
+        val progress = GoalProgress.forGoal(goal(), trendAtRate(0.5), today)
+
+        assertEquals(today.plusWeeks(12), progress.observedFinishDate)
+    }
+
+    @Test
+    fun `a non-falling trend is stalled with no observed finish date`() {
+        // Trend drifted up over the window — no loss to project a finish from.
+        val trend = trendFalling(fromKg = 85.0, toKg = 86.0, overDays = 28)
+
+        val progress = GoalProgress.forGoal(goal(), trend, today)
+
+        assertEquals(PaceStatus.STALLED, progress.paceStatus)
+        assertNull(progress.observedFinishDate)
+        // The (non-positive) rate itself is still reported.
+        assertEquals(-0.25, progress.observedRateKgPerWeek!!, 1e-9)
     }
 
     @Test
