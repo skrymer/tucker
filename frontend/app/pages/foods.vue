@@ -18,7 +18,7 @@ const { execute: handleSubmit } = useApiMutation(
     fatPer100g: number
   }) => $api('/api/foods', { method: 'POST', body: payload }),
   {
-    successTitle: 'Food added',
+    // No success toast: the new food appears in the list.
     errorTitle: 'Could not add food',
     onSuccess: () => {
       open.value = false
@@ -31,7 +31,7 @@ const { execute: deleteFood } = useApiMutation(
   (food: FoodResponse) =>
     $api('/api/foods/{id}', { method: 'DELETE', path: { id: food.id } }),
   {
-    successTitle: 'Food deleted',
+    // No success toast: the row disappears from the list.
     errorTitle: 'Could not delete food',
     onSuccess: () => {
       selectedFood.value = null
