@@ -83,6 +83,15 @@ progress and the adaptive Maintenance correction both run on the Trend Weight,
 never on a single raw measurement.
 _Avoid_: average weight
 
+**Goal Progress**:
+How far the active **Goal** has come: the **Trend Weight**'s journey from the
+Goal's start weight toward its target — kilograms still to go, percent complete,
+and, at the Goal's chosen rate, a projected (planned) finish date. A pure
+projection from the plan, computed on the smoothed **Trend Weight**, never a
+single raw measurement. The *observed* pace — whether the trend is actually
+moving fast enough — is a distinct, later notion.
+_Avoid_: ETA, projection
+
 ## Relationships
 
 - Every **Entry** is either a **Weighed Entry** or an **Estimated Entry**
@@ -93,6 +102,8 @@ _Avoid_: average weight
 - A day's calories consumed is the sum of calories across that day's **Entries**
 - A **Goal** yields one **Calorie Budget**, computed from **Maintenance** and the rate
 - A **Goal** also yields a **Protein Floor**, scaled from the current **Trend Weight**
+- A **Goal** and the current **Trend Weight** yield **Goal Progress** — how far the
+  trend has moved toward the target and when, at the Goal's rate, it's projected to arrive
 - **Maintenance** is corrected over time from **Entries** and the **Trend Weight**
 - A day is on-target when intake is under the **Calorie Budget** and over the **Protein Floor**
 
