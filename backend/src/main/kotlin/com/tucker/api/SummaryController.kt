@@ -1,6 +1,7 @@
 package com.tucker.api
 
 import com.tucker.domain.DailyLog
+import com.tucker.domain.WeeklyReview
 import com.tucker.persistence.EntryRepository
 import com.tucker.persistence.FoodRepository
 import com.tucker.persistence.WeeklyReviewRepository
@@ -26,7 +27,38 @@ data class DailySummaryResponse(
     val caloriesRemaining: Double?,
     val onTarget: Boolean?,
     val entries: List<EntryResponse>,
+    val budgetChange: BudgetChange?,
 )
+
+/**
+ * A weekly review moved the Calorie Budget or Protein Floor — so the daily
+ * number never changes silently. Present only when the latest review is the
+ * second or later and its budget or floor differs from the one before it; the
+ * first-ever review has no prior figure to have changed from.
+ */
+data class BudgetChange(
+    val reviewId: Long,
+    val previousBudgetKcal: Double,
+    val newBudgetKcal: Double,
+    val previousFloorG: Double,
+    val newFloorG: Double,
+) {
+    companion object {
+        /** The change from [previous] to [latest], or null if neither figure moved. */
+        fun between(previous: WeeklyReview, latest: WeeklyReview): BudgetChange? {
+            val moved = latest.calorieBudgetKcal != previous.calorieBudgetKcal ||
+                latest.proteinFloorG != previous.proteinFloorG
+            if (!moved) return null
+            return BudgetChange(
+                reviewId = latest.id!!,
+                previousBudgetKcal = previous.calorieBudgetKcal,
+                newBudgetKcal = latest.calorieBudgetKcal,
+                previousFloorG = previous.proteinFloorG,
+                newFloorG = latest.proteinFloorG,
+            )
+        }
+    }
+}
 
 @RestController
 @RequestMapping("/api/summary")
@@ -47,7 +79,10 @@ class SummaryController(
         weeklyReview.catchUpIfDue(date)
 
         val log = DailyLog(date, entries.findByDate(date))
-        val review = reviews.latest()
+        val recent = reviews.latestTwo()
+        val review = recent.firstOrNull()
+        val budgetChange = recent.takeIf { it.size == 2 }
+            ?.let { BudgetChange.between(previous = it[1], latest = it[0]) }
         return DailySummaryResponse(
             date = date,
             caloriesConsumed = log.caloriesConsumed(),
@@ -58,6 +93,7 @@ class SummaryController(
             caloriesRemaining = review?.let { it.calorieBudgetKcal - log.caloriesConsumed() },
             onTarget = review?.let { log.isOnTarget(it.calorieBudgetKcal, it.proteinFloorG) },
             entries = log.entries.toResponses(foods),
+            budgetChange = budgetChange,
         )
     }
 }

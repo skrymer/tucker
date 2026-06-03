@@ -36,6 +36,7 @@ const { logWeight } = useWeightLogging({ today, onSaved: refreshLatestWeight })
   <section class="flex flex-col gap-4">
     <h1 class="text-2xl font-bold text-default">Today</h1>
     <SetupBanner :calorie-budget="summary?.calorieBudget" />
+    <BudgetChangeBanner :budget-change="summary?.budgetChange" />
     <WeightTile :today="today" :latest="latestWeight" @logged="logWeight" />
     <DaySummary v-if="summary" :summary="summary" />
     <LogEntrySheet :date="today" @logged="onEntryLogged" />
