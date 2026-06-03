@@ -1584,6 +1584,38 @@
           }
         }
       },
+      "BudgetChange": {
+        "required": [
+          "newBudgetKcal",
+          "newFloorG",
+          "previousBudgetKcal",
+          "previousFloorG",
+          "reviewId"
+        ],
+        "type": "object",
+        "properties": {
+          "reviewId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "previousBudgetKcal": {
+            "type": "number",
+            "format": "double"
+          },
+          "newBudgetKcal": {
+            "type": "number",
+            "format": "double"
+          },
+          "previousFloorG": {
+            "type": "number",
+            "format": "double"
+          },
+          "newFloorG": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
       "DailySummaryResponse": {
         "required": [
           "caloriesConsumed",
@@ -1630,6 +1662,9 @@
             "items": {
               "$ref": "#/components/schemas/EntryResponse"
             }
+          },
+          "budgetChange": {
+            "$ref": "#/components/schemas/BudgetChange"
           }
         }
       }

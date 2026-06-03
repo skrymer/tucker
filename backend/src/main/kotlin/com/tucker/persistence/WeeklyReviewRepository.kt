@@ -17,6 +17,13 @@ class WeeklyReviewRepository(private val dsl: DSLContext) {
             .limit(1)
             .fetchOne()?.toDomain()
 
+    /** The two most recent reviews, newest first — the inputs to a budget-change diff. */
+    fun latestTwo(): List<WeeklyReview> =
+        dsl.selectFrom(WEEKLY_REVIEW)
+            .orderBy(WEEKLY_REVIEW.REVIEWED_ON.desc())
+            .limit(2)
+            .fetch().map { it.toDomain() }
+
     fun findAll(): List<WeeklyReview> =
         dsl.selectFrom(WEEKLY_REVIEW)
             .orderBy(WEEKLY_REVIEW.REVIEWED_ON)
