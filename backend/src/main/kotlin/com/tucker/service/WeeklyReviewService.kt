@@ -55,7 +55,12 @@ class WeeklyReviewService(
     /** Run the weekly review for [on] and persist the resulting [WeeklyReview]. */
     @Transactional
     fun runReview(on: LocalDate): WeeklyReview {
-        check(reviews.latest()?.reviewedOn != on) { "a weekly review has already run for $on" }
+        // Idempotent: a review is recomputed weekly and held steady in between, so a
+        // repeat run on a day that already has one returns it rather than minting a
+        // duplicate (the lazy catch-up may already have created today's on app open).
+        // Look up by date — not only against latest() — so it is robust to out-of-order
+        // reviews and never collides with the reviewed_on UNIQUE constraint.
+        reviews.findByReviewedOn(on)?.let { return it }
 
         val goal = goals.findActive()
             ?: error("no active Goal — cannot run a weekly review")
