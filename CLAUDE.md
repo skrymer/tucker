@@ -121,12 +121,6 @@ The frontend is built **test-first (red-green TDD)**. Increments:
   - Delete a food via a row click → `DeleteFoodConfirm` modal.
   - Real-stack smoke for each slice (`foods-list`, `add-food`,
     `delete-food`).
-- **Foods follow-up — barcode-scan food creation** — deferred from F3.
-  Needs its own design pass: JS library choice (no `BarcodeDetector` on
-  iOS Safari), camera permission UX, scan → `GET /api/foods/barcode/{barcode}`
-  lookup → on hit surface the existing food, on miss prefill
-  `AddFoodSheet` with the barcode. Offline behaviour (scan works,
-  lookup doesn't) and manual-barcode-entry fallback also unscoped.
 - **F4** — profile, goal, and weight-logging setup screens.
 - **F5** — weekly review view + history.
 - **F6** — PWA polish: offline shell, install prompt, web-push reminder.
@@ -138,6 +132,20 @@ The frontend is built **test-first (red-green TDD)**. Increments:
   with rate = 0; auto vs. confirmation transition; surfacing (banner on
   `/today`, status on `/profile`, or both); and the weekly-review cadence
   once there's no deficit to chase.
+- **F8** — barcode-scan Food creation (deferred from F3; design pass **done**,
+  see [`docs/adr/0006-provider-agnostic-nutrition-lookup.md`](docs/adr/0006-provider-agnostic-nutrition-lookup.md)
+  and the `Nutrition Provider` / `Food Candidate` terms in `CONTEXT.md`).
+  Scan (always `zxing-wasm`, iOS-first) in the Add-Food flow → a single
+  discriminated lookup endpoint resolves **catalog hit → existing Food**,
+  **provider hit → Food Candidate** (confirmed via the pre-filled `AddFoodForm`),
+  or **miss → manual entry with the barcode pre-filled**; manual entry is an
+  always-on peer. Providers sit behind a capability-based backend
+  `NutritionProvider` port, **operator-chosen** (not user-selectable) ordered
+  fallback chain; calories stay Atwater-derived (provider energy is a cross-check,
+  not stored). v1 = Open Food Facts only, keyless, online lookup with graceful
+  offline→manual fallback, density 1.0. Caching (shared per-barcode) over a
+  throttle; offline catalog cache and the multi-user shared/private catalog split
+  are deferred (the latter to F6 and a future multi-user ADR respectively).
 
 ## Architecture
 
@@ -145,8 +153,9 @@ The frontend is built **test-first (red-green TDD)**. Increments:
   responsive PWA, installable on both mobile (iOS home screen) and desktop
   (Chrome/Edge), via `@vite-pwa/nuxt`. The layout adapts by breakpoint — a
   single-column, touch-first phone layout and a wider desktop layout from one
-  codebase. Barcode scanning uses a JS library (iOS Safari has no
-  `BarcodeDetector`). The weekly-review reminder uses web push.
+  codebase. Barcode scanning decodes client-side with `zxing-wasm` on a single
+  code path (iOS is all WebKit — no native `BarcodeDetector`); see F8 and
+  ADR 0006. The weekly-review reminder uses web push.
 - **Backend** — Spring Boot + Kotlin, REST API. Exposes an OpenAPI spec
   (`springdoc-openapi`); the frontend's API types are generated from it.
 - **Data** — SQLite, accessed via jOOQ (type-safe SQL generated from the schema —

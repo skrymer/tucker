@@ -5,8 +5,9 @@ work toward a weight-loss goal that adapts to your real results.
 
 ## How it works
 
-- **Log food.** Add a food by scanning its barcode (looked up in Open Food
-  Facts), entering it by hand, or building a Recipe from ingredients. Weigh your
+- **Log food.** Add a food by scanning its barcode (looked up in a nutrition
+  database such as Open Food Facts), entering it by hand, or building a Recipe
+  from ingredients. Weigh your
   portion in grams and the app records its calories and protein. Meals you can't
   weigh — restaurants, eating out — go in as a flagged estimate.
 - **Set a goal.** Choose a target weight and a rate of loss. Tucker derives your
