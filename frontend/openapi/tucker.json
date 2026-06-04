@@ -1099,7 +1099,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/FoodResponse"
+                  "$ref": "#/components/schemas/BarcodeLookupResponse"
                 }
               }
             }
@@ -1768,6 +1768,58 @@
           "observedFinishDate": {
             "type": "string",
             "format": "date"
+          }
+        }
+      },
+      "BarcodeLookupResponse": {
+        "required": [
+          "outcome"
+        ],
+        "type": "object",
+        "properties": {
+          "outcome": {
+            "type": "string"
+          },
+          "food": {
+            "$ref": "#/components/schemas/FoodResponse"
+          },
+          "candidate": {
+            "$ref": "#/components/schemas/FoodCandidateResponse"
+          }
+        }
+      },
+      "FoodCandidateResponse": {
+        "required": [
+          "barcode",
+          "name",
+          "source"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "barcode": {
+            "type": "string"
+          },
+          "proteinPer100g": {
+            "type": "number",
+            "format": "double"
+          },
+          "carbsPer100g": {
+            "type": "number",
+            "format": "double"
+          },
+          "fatPer100g": {
+            "type": "number",
+            "format": "double"
+          },
+          "statedEnergyKcalPer100g": {
+            "type": "number",
+            "format": "double"
+          },
+          "source": {
+            "type": "string"
           }
         }
       }
