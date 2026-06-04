@@ -13,7 +13,12 @@ A reusable definition of something edible — a name plus nutrition per 100g
 Food's calorie figure is always `4 × protein + 4 × carbs + 9 × fat` (the
 standard Atwater factors, per gram, scaled to 100g). The user supplies the
 three macros; the app computes calories. Created once (e.g. by scanning a
-barcode or entering manually), then referenced by many Entries.
+barcode or entering manually), then referenced by many Entries. A Food created by
+**barcode scan** is shared product data — global, one per barcode, identical for
+every user — whereas a **Recipe** or a hand-entered Food is private to whoever
+created it; correcting a shared Food forks a private copy rather than changing it
+for everyone. (Tucker is single-user today; this is the ownership model it grows
+into — the global `barcode` uniqueness already assumes it.)
 _Avoid_: food item, product
 
 **Recipe**:
@@ -21,6 +26,31 @@ A composite Food: defined once from ingredient Foods, their weights, and the
 finished dish's cooked weight, then rolled up into per-100g nutrition. Logged
 like any other Food — you weigh your portion. The third way to create a Food,
 alongside barcode scan and manual entry.
+
+**Nutrition Provider**:
+An external source of nutrition data Tucker integrates with to autofill a new
+Food — Open Food Facts, USDA FoodData Central, and the like. Tucker is
+Provider-agnostic, but the set of Providers and the order they're tried is
+**Tucker's** choice, not the user's: the API subscriptions and keys belong to
+Tucker, so which sources to trust is a platform decision. A barcode scan first
+checks the catalog, then tries each configured Provider that supports barcode
+lookup, in order, taking the first match. A Provider may support barcode lookup,
+free-text search, or both; only barcode-capable ones take part in a scan. Whatever a Provider returns is normalised to Tucker's per-100g macro
+model — and its calories re-derived by the Atwater rule, exactly like a
+hand-entered Food. The Provider's own stated energy is shown only as a cross-check
+at confirmation, never stored: scanned Foods follow the same calorie rule as every
+other Food.
+_Avoid_: nutrition API, food database, data source
+
+**Food Candidate**:
+Normalised, unsaved nutrition the user reviews before confirming it into a Food.
+Produced by a barcode lookup that misses the user's catalog but hits a Nutrition
+Provider: it carries the macros the Provider supplied (some possibly absent), the
+Provider it came from, that Provider's stated energy (shown as a cross-check, not
+stored), and the scanned barcode. The user completes any missing macro and
+confirms — only then does it become a Food. A catalog hit, by contrast, returns
+an existing Food directly, not a Candidate.
+_Avoid_: result, product, match, scan result
 
 **Entry**:
 One occurrence of the user eating a Food — a date, a quantity, and the resulting
@@ -150,5 +180,7 @@ pace, it's withheld until at least 14 days of **Weight Measurements** exist.
   meal" is just a flow that creates several **Weighed Entries** at once; "meal" is
   the user's word for a batch of Entries logged together.
 - Liquids vs solids — resolved: everything is weighed in grams, liquids included.
-  A scanned drink published per 100 ml is converted to per-100g once, at Food
-  creation, using a density.
+  A scanned drink published per 100 ml is treated as per-100g — Tucker assumes
+  water density (1 g/ml) rather than a per-product density. A small, accepted
+  inaccuracy for denser drinks, which the user can correct at Food Candidate
+  confirmation (where the Provider's stated energy is shown as a cross-check).
