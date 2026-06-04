@@ -331,6 +331,41 @@ describe('BarcodeScanSheet', () => {
     )
   })
 
+  it('degrades to manual entry carrying the barcode when the lookup fails offline', async () => {
+    // Decoding runs locally and still works offline, but the lookup needs the
+    // network. A network-failed lookup must degrade to the same barcode-pre-filled
+    // manual entry as a miss (ADR 0006) so the user can still add the Food.
+    const OFFLINE_BARCODE = '5703333333333'
+    registerEndpoint(`/api/foods/barcode/${OFFLINE_BARCODE}`, {
+      method: 'GET',
+      handler: () => {
+        throw new Error('network down')
+      },
+    })
+    const onSubmit = vi.fn()
+    await renderSuspended(BarcodeScanSheet, { props: { open: true, onSubmit } })
+    const user = userEvent.setup()
+
+    await user.type(screen.getByLabelText(/barcode/i), OFFLINE_BARCODE)
+    await user.click(screen.getByRole('button', { name: /look up/i }))
+
+    // Manual entry is available with a blank form — no candidate prefill.
+    await vi.waitFor(() =>
+      expect(screen.getByLabelText(/^name$/i)).toHaveValue(''),
+    )
+
+    await user.type(screen.getByLabelText(/^name$/i), 'Hand typed')
+    await user.type(screen.getByLabelText(/protein \/100\s*g/i), '5')
+    await user.type(screen.getByLabelText(/carbs \/100\s*g/i), '5')
+    await user.type(screen.getByLabelText(/fat \/100\s*g/i), '5')
+    await user.click(screen.getByRole('button', { name: /save food/i }))
+
+    // The typed barcode rides along, so no work is lost to the failed lookup.
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'Hand typed', barcode: OFFLINE_BARCODE }),
+    )
+  })
+
   it('shows the add-food form when open', async () => {
     await renderSuspended(BarcodeScanSheet, { props: { open: true } })
 
