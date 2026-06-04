@@ -148,108 +148,113 @@ const formKey = computed(() =>
         :initial="formInitial"
         :stated-energy-kcal-per100g="statedEnergy"
         @submit="(payload) => emit('submit', payload)"
-      />
+      >
+        <!-- Optional barcode pre-fill, between the fields and Save so a scanned
+             result lands right above the Save button. -->
+        <USeparator label="or pre-fill from a barcode" />
 
-      <!-- Optional barcode pre-fill, demoted below the form. -->
-      <USeparator label="or pre-fill from a barcode" />
-
-      <div class="flex flex-col gap-3">
-        <p class="text-center text-xs text-muted">
-          Scan or type a product's barcode to fill in the details above.
-        </p>
-
-        <UButton
-          v-if="scanState === 'idle' || scanState === 'decoded'"
-          block
-          icon="i-lucide-scan-barcode"
-          color="primary"
-          variant="subtle"
-          @click="startScan"
-        >
-          Scan barcode
-        </UButton>
-
-        <UButton
-          v-else-if="scanState === 'requesting'"
-          block
-          color="primary"
-          variant="subtle"
-          loading
-          disabled
-        >
-          Requesting camera…
-        </UButton>
-
-        <div
-          v-else-if="scanState === 'scanning'"
-          class="relative overflow-hidden rounded-lg bg-black"
-        >
-          <video
-            ref="videoEl"
-            class="max-h-[45vh] w-full object-cover"
-            playsinline
-            muted
-            autoplay
-            aria-hidden="true"
-          ></video>
-          <p
-            class="absolute inset-x-0 top-2 text-center text-sm font-medium text-white drop-shadow"
-          >
-            Point the camera at a barcode
+        <div class="flex flex-col gap-3">
+          <p class="text-center text-xs text-muted">
+            Scan or type a product's barcode to fill in the details above.
           </p>
+
           <UButton
-            class="absolute inset-x-0 bottom-3 mx-auto w-fit"
-            color="neutral"
-            variant="solid"
-            icon="i-lucide-square"
-            @click="stopScan"
+            v-if="scanState === 'idle' || scanState === 'decoded'"
+            block
+            icon="i-lucide-scan-barcode"
+            color="primary"
+            variant="subtle"
+            @click="startScan"
           >
-            Stop
+            Scan barcode
           </UButton>
-        </div>
 
-        <UAlert
-          v-if="scanState === 'denied'"
-          icon="i-lucide-camera-off"
-          color="warning"
-          variant="subtle"
-          title="Camera access is blocked"
-          description="Enable it in your device settings, or enter the barcode below."
-        />
-
-        <UAlert
-          v-else-if="scanState === 'unsupported'"
-          icon="i-lucide-camera-off"
-          color="neutral"
-          variant="subtle"
-          title="Camera scanning isn't available here"
-          description="Enter the barcode below instead."
-        />
-
-        <form class="flex items-end gap-2" @submit.prevent="lookup">
-          <UFormField
-            label="Barcode"
-            hint="optional"
-            name="barcode"
-            class="flex-1"
-          >
-            <UInput
-              v-model="barcode"
-              inputmode="numeric"
-              placeholder="Type a barcode number"
-              class="w-full"
-            />
-          </UFormField>
           <UButton
-            type="submit"
+            v-else-if="scanState === 'requesting'"
+            block
+            color="primary"
+            variant="subtle"
+            loading
+            disabled
+          >
+            Requesting camera…
+          </UButton>
+
+          <div
+            v-else-if="scanState === 'scanning'"
+            class="relative overflow-hidden rounded-lg bg-black"
+          >
+            <video
+              ref="videoEl"
+              class="max-h-[45vh] w-full object-cover"
+              playsinline
+              muted
+              autoplay
+              aria-hidden="true"
+            ></video>
+            <p
+              class="absolute inset-x-0 top-2 text-center text-sm font-medium text-white drop-shadow"
+            >
+              Point the camera at a barcode
+            </p>
+            <UButton
+              class="absolute inset-x-0 bottom-3 mx-auto w-fit"
+              color="neutral"
+              variant="solid"
+              icon="i-lucide-square"
+              @click="stopScan"
+            >
+              Stop
+            </UButton>
+          </div>
+
+          <UAlert
+            v-if="scanState === 'denied'"
+            icon="i-lucide-camera-off"
+            color="warning"
+            variant="subtle"
+            title="Camera access is blocked"
+            description="Enable it in your device settings, or enter the barcode below."
+          />
+
+          <UAlert
+            v-else-if="scanState === 'unsupported'"
+            icon="i-lucide-camera-off"
             color="neutral"
             variant="subtle"
-            :loading="looking"
-          >
-            Look up
-          </UButton>
-        </form>
-      </div>
+            title="Camera scanning isn't available here"
+            description="Enter the barcode below instead."
+          />
+
+          <!-- Not a <form>: this lives inside AddFoodForm's <form>, and nested
+               forms are invalid. Look up is a button; Enter triggers it too. -->
+          <div class="flex items-end gap-2">
+            <UFormField
+              label="Barcode"
+              hint="optional"
+              name="barcode"
+              class="flex-1"
+            >
+              <UInput
+                v-model="barcode"
+                inputmode="numeric"
+                placeholder="Type a barcode number"
+                class="w-full"
+                @keydown.enter.prevent="lookup"
+              />
+            </UFormField>
+            <UButton
+              type="button"
+              color="neutral"
+              variant="subtle"
+              :loading="looking"
+              @click="lookup"
+            >
+              Look up
+            </UButton>
+          </div>
+        </div>
+      </AddFoodForm>
     </div>
   </ResponsiveOverlay>
 </template>

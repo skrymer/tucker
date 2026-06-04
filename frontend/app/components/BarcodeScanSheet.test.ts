@@ -124,7 +124,7 @@ describe('BarcodeScanSheet', () => {
     expect(screen.getByText(/^optional$/i)).toBeVisible()
   })
 
-  it('frames the barcode as an optional pre-fill below the form', async () => {
+  it('frames the barcode as an optional pre-fill for the form', async () => {
     await renderSuspended(BarcodeScanSheet, { props: { open: true } })
 
     expect(screen.getByText(/pre-fill from a barcode/i)).toBeVisible()
