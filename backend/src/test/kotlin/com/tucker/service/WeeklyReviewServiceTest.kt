@@ -106,6 +106,32 @@ class WeeklyReviewServiceTest {
     }
 
     @Test
+    fun `a second run for the same day returns the existing review without inserting a duplicate`() {
+        seedSetupWithWeights()
+
+        val first = service.runReview(today)
+        val second = service.runReview(today)
+
+        assertEquals(first.id, second.id)
+        assertEquals(1, reviews.findAll().size)
+    }
+
+    @Test
+    fun `a run for a date that already has a review returns it even when a later review is the latest`() {
+        seedSetupWithWeights()
+        val existing = seedReviewOn(today)
+        // A later review makes today's no longer the latest by date — the guard must
+        // look up by date, not compare only against latest(), or the insert collides
+        // with the reviewed_on UNIQUE constraint.
+        seedReviewOn(today.plusDays(5))
+
+        val rerun = service.runReview(today)
+
+        assertEquals(existing.id, rerun.id)
+        assertEquals(2, reviews.findAll().size)
+    }
+
+    @Test
     fun `catch-up runs a review when the latest one is a week old`() {
         seedSetupWithWeights()
         seedReviewOn(today.minusDays(7))

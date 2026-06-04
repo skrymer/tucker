@@ -46,9 +46,13 @@ class WeeklyReviewController(
     @GetMapping("/history")
     fun history(): List<WeeklyReviewResponse> = reviews.findAll().map { it.toResponse() }
 
-    /** Run the adaptive weekly review now. */
+    /**
+     * Run the adaptive weekly review now. Idempotent: if today already has a review
+     * (e.g. the lazy catch-up minted one on app open), returns it rather than minting
+     * a duplicate — hence 200, not 201.
+     */
     @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
+    @ResponseStatus(HttpStatus.OK)
     fun run(): WeeklyReviewResponse =
         weeklyReviewService.runReview(LocalDate.now()).toResponse()
 }
