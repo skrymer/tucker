@@ -159,6 +159,85 @@ describe('BarcodeScanSheet', () => {
     expect(screen.queryByLabelText(/^name$/i)).not.toBeInTheDocument()
   })
 
+  it('leads a catalog hit with the option to log it now', async () => {
+    await renderSuspended(BarcodeScanSheet, { props: { open: true } })
+    const user = userEvent.setup()
+
+    await user.type(screen.getByLabelText(/barcode/i), EXISTING_BARCODE)
+    await user.click(screen.getByRole('button', { name: /look up/i }))
+
+    expect(
+      await screen.findByRole('button', { name: /log it now/i }),
+    ).toBeVisible()
+    expect(screen.getByLabelText(/grams/i)).toBeVisible()
+  })
+
+  it('offers to log a Food the parent just saved', async () => {
+    const createdFood = {
+      id: 99,
+      name: 'Saved Skyr',
+      kind: 'FOOD',
+      caloriesPer100g: 63,
+      proteinPer100g: 10,
+      carbsPer100g: 4,
+      fatPer100g: 0.2,
+      cookedWeightG: null,
+    }
+    await renderSuspended(BarcodeScanSheet, {
+      props: { open: true, createdFood },
+    })
+
+    expect(screen.getByRole('button', { name: /log it now/i })).toBeVisible()
+    expect(screen.getByLabelText(/grams/i)).toBeVisible()
+    // The add form gives way to the continuation once the Food exists.
+    expect(screen.queryByLabelText(/^name$/i)).not.toBeInTheDocument()
+  })
+
+  it('forwards the weighed-entry payload when the user logs it', async () => {
+    const createdFood = {
+      id: 99,
+      name: 'Saved Skyr',
+      kind: 'FOOD',
+      caloriesPer100g: 63,
+      proteinPer100g: 10,
+      carbsPer100g: 4,
+      fatPer100g: 0.2,
+      cookedWeightG: null,
+    }
+    const onLog = vi.fn()
+    await renderSuspended(BarcodeScanSheet, {
+      props: { open: true, createdFood, onLog },
+    })
+    const user = userEvent.setup()
+
+    await user.click(screen.getByLabelText(/grams/i))
+    await user.keyboard('120')
+    await user.click(screen.getByRole('button', { name: /log it now/i }))
+
+    expect(onLog).toHaveBeenCalledWith({ foodId: 99, grams: 120 })
+  })
+
+  it('resets to a fresh add form after closing and reopening', async () => {
+    const { rerender } = await renderSuspended(BarcodeScanSheet, {
+      props: { open: true },
+    })
+    const user = userEvent.setup()
+
+    await user.type(screen.getByLabelText(/barcode/i), EXISTING_BARCODE)
+    await user.click(screen.getByRole('button', { name: /look up/i }))
+    await screen.findByRole('button', { name: /log it now/i })
+
+    // The parent closes the sheet, then the user reopens it for a new food.
+    await rerender({ open: false })
+    await rerender({ open: true })
+
+    // The stale catalog hit is gone; the add form leads again.
+    expect(screen.getByLabelText(/^name$/i)).toBeVisible()
+    expect(
+      screen.queryByRole('button', { name: /log it now/i }),
+    ).not.toBeInTheDocument()
+  })
+
   it('drops to a blank form carrying the barcode on a miss', async () => {
     // MISS_BARCODE is intentionally unregistered, so the lookup 404s.
     const MISS_BARCODE = '0000000000000'

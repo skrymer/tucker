@@ -4,7 +4,14 @@ import type { components } from '#open-fetch-schemas/api'
 type Candidate = components['schemas']['FoodCandidateResponse']
 type Food = components['schemas']['FoodResponse']
 
-const props = defineProps<{ open: boolean }>()
+const props = defineProps<{
+  open: boolean
+  /**
+   * A Food the parent has just persisted through this flow (the POST response).
+   * Its presence flips the sheet from "add" to the "log it now" continuation.
+   */
+  createdFood?: Food | null
+}>()
 
 const emit = defineEmits<{
   'update:open': [boolean]
@@ -17,6 +24,7 @@ const emit = defineEmits<{
       fatPer100g: number
     },
   ]
+  log: [{ foodId: number; grams: number }]
 }>()
 
 /**
@@ -64,10 +72,15 @@ function useBarcodeLookup() {
     }
   }
 
-  return { barcode, looking, branch, lookup }
+  function reset() {
+    barcode.value = ''
+    branch.value = { kind: 'manual' }
+  }
+
+  return { barcode, looking, branch, lookup, reset }
 }
 
-const { barcode, looking, branch, lookup } = useBarcodeLookup()
+const { barcode, looking, branch, lookup, reset } = useBarcodeLookup()
 
 // The camera scanner is a peer input to the manual field, lazy-loading
 // zxing-wasm behind the Scan tap (ADR 0006).
@@ -92,7 +105,13 @@ watch(scannedBarcode, (code) => {
 watch(
   () => props.open,
   (open) => {
-    if (!open) stopScan()
+    if (!open) {
+      stopScan()
+      // Start clean on the next open: a stale catalog hit or candidate must not
+      // resurface after the sheet has been dismissed (e.g. once a Food is saved
+      // and the continuation closes).
+      reset()
+    }
   },
 )
 
@@ -123,6 +142,20 @@ const formKey = computed(() =>
     ? `candidate:${branch.value.candidate.barcode}`
     : 'manual',
 )
+
+// Once a Food exists, scanning is done — offer the explicit next step of logging
+// it (issue #52, "scanning creates a Food, not an Entry"). A catalog hit surfaces
+// an existing Food straight away; a saved Candidate/manual entry comes back from
+// the parent as `createdFood`. Either way the user still enters grams.
+const loggable = computed<{
+  food: Food
+  origin: 'created' | 'existing'
+} | null>(() => {
+  if (branch.value.kind === 'existing')
+    return { food: branch.value.food, origin: 'existing' }
+  if (props.createdFood) return { food: props.createdFood, origin: 'created' }
+  return null
+})
 </script>
 
 <template>
@@ -132,15 +165,16 @@ const formKey = computed(() =>
     @update:open="(value) => emit('update:open', value)"
   >
     <div class="flex flex-col gap-4 pb-4">
-      <!-- The food details lead: manual entry is the primary, always-available
-           path. A barcode is just an optional way to pre-fill these fields. -->
-      <UAlert
-        v-if="branch.kind === 'existing'"
-        icon="i-lucide-check"
-        color="success"
-        variant="subtle"
-        title="Already in your catalog"
-        :description="branch.food.name"
+      <!-- Once a Food exists (catalog hit or just saved), the flow pivots to the
+           offered "log it now" continuation. Otherwise the food details lead:
+           manual entry is the primary, always-available path, and a barcode is
+           just an optional way to pre-fill those fields. -->
+      <LogItNow
+        v-if="loggable"
+        :food="loggable.food"
+        :origin="loggable.origin"
+        @log="(payload) => emit('log', payload)"
+        @dismiss="emit('update:open', false)"
       />
       <AddFoodForm
         v-else

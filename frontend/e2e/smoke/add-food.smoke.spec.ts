@@ -37,6 +37,13 @@ test('user adds a food and sees it in the catalog', async ({
 
     await sheet.getByRole('button', { name: /save food/i }).click()
 
+    // Saved → the flow offers to log it now (issue #52). This smoke only covers
+    // adding to the catalog, so decline; the continuation has its own smoke.
+    await expect(
+      sheet.getByRole('button', { name: /log it now/i }),
+    ).toBeVisible()
+    await sheet.getByRole('button', { name: /not now/i }).click()
+
     await expect(sheet).toBeHidden()
     await expect(page.getByText(foodName)).toBeVisible()
     await expect(
