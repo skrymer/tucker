@@ -64,6 +64,13 @@ test('typed known barcode resolves to a candidate and saves a Food', async ({
     await fillIfEmpty(sheet.getByLabel(/fat \/100\s*g/i), '31')
 
     await sheet.getByRole('button', { name: /save food/i }).click()
+
+    // Saved → the flow offers to log it now (issue #52); decline here, the
+    // continuation has its own smoke.
+    await expect(
+      sheet.getByRole('button', { name: /log it now/i }),
+    ).toBeVisible()
+    await sheet.getByRole('button', { name: /not now/i }).click()
     await expect(sheet).toBeHidden()
 
     // The Food was created carrying the scanned barcode.
@@ -114,6 +121,12 @@ test('typed unknown barcode drops to manual entry carrying the barcode', async (
     await page.keyboard.type('5')
 
     await sheet.getByRole('button', { name: /save food/i }).click()
+
+    // Saved → decline the offered "log it now" continuation (its own smoke).
+    await expect(
+      sheet.getByRole('button', { name: /log it now/i }),
+    ).toBeVisible()
+    await sheet.getByRole('button', { name: /not now/i }).click()
     await expect(sheet).toBeHidden()
     await expect(page.getByText(foodName)).toBeVisible()
 
