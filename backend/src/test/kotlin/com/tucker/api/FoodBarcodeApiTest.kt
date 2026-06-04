@@ -7,6 +7,8 @@ import com.tucker.domain.ProviderCapability
 import com.tucker.persistence.FoodRepository
 import com.tucker.provider.OpenFoodFactsProvider
 import org.junit.jupiter.api.Test
+import org.mockito.kotlin.times
+import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
@@ -71,6 +73,32 @@ class FoodBarcodeApiTest {
             jsonPath("$.candidate.source") { value("Open Food Facts") }
             jsonPath("$.food") { doesNotExist() }
         }
+    }
+
+    @Test
+    fun `a second look-up of the same barcode is served from the cache without a second Provider call`() {
+        whenever(openFoodFacts.capabilities).thenReturn(setOf(ProviderCapability.BARCODE_LOOKUP))
+        whenever(openFoodFacts.lookupByBarcode("5702222222222")).thenReturn(
+            FoodCandidate(
+                name = "Cached bar",
+                barcode = "5702222222222",
+                proteinPer100g = 8.0,
+                carbsPer100g = 60.0,
+                fatPer100g = 5.0,
+                statedEnergyKcalPer100g = 400.0,
+                source = "Open Food Facts",
+            ),
+        )
+
+        repeat(2) {
+            mockMvc.get("/api/foods/barcode/5702222222222").andExpect {
+                status { isOk() }
+                jsonPath("$.outcome") { value("CANDIDATE") }
+                jsonPath("$.candidate.name") { value("Cached bar") }
+            }
+        }
+
+        verify(openFoodFacts, times(1)).lookupByBarcode("5702222222222")
     }
 
     @Test

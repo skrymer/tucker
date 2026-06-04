@@ -25,8 +25,10 @@ class BarcodeLookupServiceTest {
         private val fail: Boolean = false,
     ) : NutritionProvider {
         var consulted = false
+        var calls = 0
         override fun lookupByBarcode(barcode: String): FoodCandidate? {
             consulted = true
+            calls++
             if (fail) error("provider exploded (timeout / 429)")
             return result
         }
@@ -47,7 +49,7 @@ class BarcodeLookupServiceTest {
     fun `a catalog hit returns the saved Food without consulting any Provider`() {
         val provider = StubProvider(candidate("5701234567890"))
         whenever(foods.findByBarcode("5701234567890")).thenReturn(existingFood("5701234567890"))
-        val service = BarcodeLookupService(foods, listOf(provider))
+        val service = BarcodeLookupService(foods, listOf(provider), InMemoryBarcodeLookupCache())
 
         val result = service.lookup("5701234567890")
 
@@ -58,7 +60,11 @@ class BarcodeLookupServiceTest {
     @Test
     fun `a catalog miss with a Provider hit returns a Candidate`() {
         whenever(foods.findByBarcode("5701234567890")).thenReturn(null)
-        val service = BarcodeLookupService(foods, listOf(StubProvider(candidate("5701234567890"))))
+        val service = BarcodeLookupService(
+            foods,
+            listOf(StubProvider(candidate("5701234567890"))),
+            InMemoryBarcodeLookupCache(),
+        )
 
         val result = service.lookup("5701234567890")
 
@@ -72,10 +78,45 @@ class BarcodeLookupServiceTest {
             candidate("5701234567890"),
             capabilities = setOf(ProviderCapability.TEXT_SEARCH),
         )
-        val service = BarcodeLookupService(foods, listOf(searchOnly))
+        val service = BarcodeLookupService(foods, listOf(searchOnly), InMemoryBarcodeLookupCache())
 
         assertNull(service.lookup("5701234567890"))
         assertTrue(!searchOnly.consulted, "a non-barcode Provider must be skipped")
+    }
+
+    @Test
+    fun `a barcode resolved via a Provider is served from cache without consulting the Provider again`() {
+        whenever(foods.findByBarcode("5701234567890")).thenReturn(null)
+        val provider = StubProvider(candidate("5701234567890"))
+        val service = BarcodeLookupService(foods, listOf(provider), InMemoryBarcodeLookupCache())
+
+        val first = service.lookup("5701234567890")
+        val second = service.lookup("5701234567890")
+
+        assertEquals(BarcodeLookup.Candidate(candidate("5701234567890")), first)
+        assertEquals(BarcodeLookup.Candidate(candidate("5701234567890")), second)
+        assertEquals(1, provider.calls, "the second look-up must be served from the cache")
+    }
+
+    @Test
+    fun `a miss is not cached so a later look-up still consults the Provider`() {
+        whenever(foods.findByBarcode("5701234567890")).thenReturn(null)
+        // The product is unknown on the first look-up, then a Provider learns it.
+        val provider = object : NutritionProvider {
+            override val capabilities = setOf(ProviderCapability.BARCODE_LOOKUP)
+            var calls = 0
+            override fun lookupByBarcode(barcode: String): FoodCandidate? {
+                calls++
+                return if (calls == 1) null else candidate(barcode)
+            }
+        }
+        val service = BarcodeLookupService(foods, listOf(provider), InMemoryBarcodeLookupCache())
+
+        assertNull(service.lookup("5701234567890"))
+        val second = service.lookup("5701234567890")
+
+        assertEquals(BarcodeLookup.Candidate(candidate("5701234567890")), second)
+        assertEquals(2, provider.calls, "a miss must not be cached")
     }
 
     @Test
@@ -83,7 +124,7 @@ class BarcodeLookupServiceTest {
         whenever(foods.findByBarcode("5701234567890")).thenReturn(null)
         val flaky = StubProvider(result = null, fail = true)
         val healthy = StubProvider(candidate("5701234567890"))
-        val service = BarcodeLookupService(foods, listOf(flaky, healthy))
+        val service = BarcodeLookupService(foods, listOf(flaky, healthy), InMemoryBarcodeLookupCache())
 
         val result = service.lookup("5701234567890")
 
