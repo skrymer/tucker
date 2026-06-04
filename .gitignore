@@ -8,3 +8,5 @@
 
 # Claude Code — personal, machine-local overrides (shared config is committed)
 .claude/settings.local.json
+# Per-session memory / transcripts — local only, never commit
+.claude/projects/
