@@ -79,7 +79,7 @@ function handleDeleteConfirm() {
       @click="open = true"
     />
 
-    <AddFoodSheet v-model:open="open" @submit="handleSubmit" />
+    <BarcodeScanSheet v-model:open="open" @submit="handleSubmit" />
 
     <DeleteFoodConfirm
       :food="selectedFood"

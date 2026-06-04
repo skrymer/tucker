@@ -104,6 +104,10 @@ function onSubmit() {
       are recalculated from the macros above.
     </p>
 
+    <!-- Optional content (e.g. a barcode pre-fill) sits between the fields and
+         Save, so a scanned result lands right above the Save button. -->
+    <slot />
+
     <UButton type="submit" color="primary" class="w-full"> Save food </UButton>
   </UForm>
 </template>
