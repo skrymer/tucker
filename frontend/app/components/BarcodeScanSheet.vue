@@ -4,7 +4,7 @@ import type { components } from '#open-fetch-schemas/api'
 type Candidate = components['schemas']['FoodCandidateResponse']
 type Food = components['schemas']['FoodResponse']
 
-defineProps<{ open: boolean }>()
+const props = defineProps<{ open: boolean }>()
 
 const emit = defineEmits<{
   'update:open': [boolean]
@@ -20,10 +20,11 @@ const emit = defineEmits<{
 }>()
 
 /**
- * The barcode-lookup half of the Add-Food flow (ADR 0006). Resolves a typed
- * barcode through the backend and branches: a provider Candidate pre-fills the
- * form, an existing Food is surfaced, a miss (or offline) drops to manual entry
- * with the barcode pre-filled. Manual entry is an always-on peer, never gated.
+ * The barcode-lookup half of the Add-Food flow (ADR 0006). Resolves a barcode —
+ * typed or camera-decoded — through the backend and branches: a provider
+ * Candidate pre-fills the form, an existing Food is surfaced, a miss (or
+ * offline) drops to manual entry with the barcode pre-filled. Manual entry is an
+ * always-on peer, never gated.
  */
 type Branch =
   | { kind: 'manual' }
@@ -68,6 +69,33 @@ function useBarcodeLookup() {
 
 const { barcode, looking, branch, lookup } = useBarcodeLookup()
 
+// The camera scanner is a peer input to the manual field, lazy-loading
+// zxing-wasm behind the Scan tap (ADR 0006).
+const {
+  state: scanState,
+  videoEl,
+  barcode: scannedBarcode,
+  start: startScan,
+  stop: stopScan,
+} = useBarcodeScanner()
+
+// A camera-decoded barcode runs the exact same lookup/branch as a typed one.
+watch(scannedBarcode, (code) => {
+  if (!code) return
+  barcode.value = code
+  lookup()
+})
+
+// Release the camera whenever the sheet is dismissed — by the overlay or by the
+// parent flipping `open` after a save. The overlay keeps this component mounted
+// while closed, so onScopeDispose alone would leave the camera light on.
+watch(
+  () => props.open,
+  (open) => {
+    if (!open) stopScan()
+  },
+)
+
 const formInitial = computed(() => {
   if (branch.value.kind === 'candidate') {
     const c = branch.value.candidate
@@ -104,6 +132,75 @@ const formKey = computed(() =>
     @update:open="(value) => emit('update:open', value)"
   >
     <div class="flex flex-col gap-4">
+      <!-- Camera scanner: a peer to the manual input, requested only on tap. -->
+      <UButton
+        v-if="scanState === 'idle' || scanState === 'decoded'"
+        block
+        icon="i-lucide-scan-barcode"
+        color="primary"
+        @click="startScan"
+      >
+        Scan barcode
+      </UButton>
+
+      <UButton
+        v-else-if="scanState === 'requesting'"
+        block
+        color="primary"
+        loading
+        disabled
+      >
+        Requesting camera…
+      </UButton>
+
+      <div
+        v-else-if="scanState === 'scanning'"
+        class="relative overflow-hidden rounded-lg bg-black"
+      >
+        <video
+          ref="videoEl"
+          class="max-h-[45vh] w-full object-cover"
+          playsinline
+          muted
+          autoplay
+          aria-hidden="true"
+        ></video>
+        <p
+          class="absolute inset-x-0 top-2 text-center text-sm font-medium text-white drop-shadow"
+        >
+          Point the camera at a barcode
+        </p>
+        <UButton
+          class="absolute inset-x-0 bottom-3 mx-auto w-fit"
+          color="neutral"
+          variant="solid"
+          icon="i-lucide-square"
+          @click="stopScan"
+        >
+          Stop
+        </UButton>
+      </div>
+
+      <UAlert
+        v-if="scanState === 'denied'"
+        icon="i-lucide-camera-off"
+        color="warning"
+        variant="subtle"
+        title="Camera access is blocked"
+        description="Enable it in your device settings, or enter the barcode below."
+      />
+
+      <UAlert
+        v-else-if="scanState === 'unsupported'"
+        icon="i-lucide-camera-off"
+        color="neutral"
+        variant="subtle"
+        title="Camera scanning isn't available here"
+        description="Enter the barcode below instead."
+      />
+
+      <p class="text-center text-xs text-muted">or enter a barcode manually</p>
+
       <form class="flex items-end gap-2" @submit.prevent="lookup">
         <UFormField label="Barcode" name="barcode" class="flex-1">
           <UInput
