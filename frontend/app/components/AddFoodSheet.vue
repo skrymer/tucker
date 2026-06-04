@@ -43,6 +43,10 @@ function useBarcodeLookup() {
     try {
       const result = await $api('/api/foods/barcode/{barcode}', {
         path: { barcode: code },
+        // Never serve a stale result from the browser cache: the resolution is
+        // dynamic (a barcode flips from Candidate to existing Food once saved,
+        // and a transient miss must not stick), so each look-up must be fresh.
+        cache: 'no-store',
       })
       branch.value =
         result.outcome === 'EXISTING' && result.food

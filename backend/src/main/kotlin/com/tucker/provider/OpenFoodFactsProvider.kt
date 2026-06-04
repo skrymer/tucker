@@ -12,6 +12,7 @@ import org.springframework.http.HttpHeaders
 import org.springframework.http.client.SimpleClientHttpRequestFactory
 import org.springframework.stereotype.Component
 import org.springframework.web.client.RestClient
+import org.springframework.web.client.RestClientException
 import java.net.InetAddress
 import java.time.Duration
 
@@ -89,18 +90,35 @@ class OpenFoodFactsProvider(builder: RestClient.Builder) : NutritionProvider {
         }
     }
 
-    override fun lookupByBarcode(barcode: String): FoodCandidate? {
-        // A timeout / 429 / network error is logged and swallowed to null so the
-        // chain falls through to the next Provider (ADR 0006).
-        val response = runCatching {
-            client.get()
-                .uri("/api/v2/product/{barcode}.json", barcode)
-                .retrieve()
-                .body(OffResponse::class.java)
-        }.onFailure {
-            log.warn("Open Food Facts lookup for barcode {} failed; falling through", barcode, it)
-        }.getOrNull()
-        return response?.let { toCandidate(barcode, it) }
+    override fun lookupByBarcode(barcode: String): FoodCandidate? =
+        fetch(barcode)?.let { toCandidate(barcode, it) }
+
+    /**
+     * Fetch the OFF product, retrying on a transient I/O failure. The JDK's name
+     * resolution intermittently fails (`UnknownHostException`) once the positive
+     * DNS cache entry expires between scans; the immediate retry succeeds (and is
+     * only possible because negative DNS caching is disabled — see the companion).
+     * After the attempts are exhausted it returns `null`, so the chain falls
+     * through to the next Provider (ADR 0006).
+     */
+    private fun fetch(barcode: String): OffResponse? {
+        repeat(MAX_ATTEMPTS) { attempt ->
+            try {
+                return client.get()
+                    .uri("/api/v2/product/{barcode}.json", barcode)
+                    .retrieve()
+                    .body(OffResponse::class.java)
+            } catch (e: RestClientException) {
+                val lastAttempt = attempt == MAX_ATTEMPTS - 1
+                log.warn(
+                    "Open Food Facts lookup for barcode {} failed (attempt {}/{}){}",
+                    barcode, attempt + 1, MAX_ATTEMPTS,
+                    if (lastAttempt) "; falling through" else ", retrying", e,
+                )
+                if (!lastAttempt) runCatching { Thread.sleep(RETRY_BACKOFF.toMillis()) }
+            }
+        }
+        return null
     }
 
     companion object {
@@ -117,6 +135,9 @@ class OpenFoodFactsProvider(builder: RestClient.Builder) : NutritionProvider {
 
         private const val PREWARM_ATTEMPTS = 5
         private val PREWARM_BACKOFF: Duration = Duration.ofMillis(500)
+
+        private const val MAX_ATTEMPTS = 3
+        private val RETRY_BACKOFF: Duration = Duration.ofMillis(250)
 
         /** A timeout-bounded, blocking-IO request factory for the OFF client. */
         private fun requestFactory(): SimpleClientHttpRequestFactory =

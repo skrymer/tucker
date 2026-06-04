@@ -67,7 +67,6 @@ function onSubmit() {
     <UFormField label="Name" name="name" required>
       <UInput
         v-model="state.name"
-        autofocus
         placeholder="e.g. Skyr 1.5%"
         class="w-full"
       />
