@@ -89,6 +89,29 @@ registerEndpoint(`/api/foods/barcode/${CANDIDATE_BARCODE}`, {
   }),
 })
 
+// A candidate look-up that resolves only once the test opens the gate, so the
+// user can type while it's still in flight.
+let candidateGate: Promise<unknown> | null = null
+const SLOW_CANDIDATE_BARCODE = '5700000000001'
+registerEndpoint(`/api/foods/barcode/${SLOW_CANDIDATE_BARCODE}`, {
+  method: 'GET',
+  handler: async () => {
+    if (candidateGate) await candidateGate
+    return {
+      outcome: 'CANDIDATE',
+      candidate: {
+        name: 'Skyr Natural',
+        barcode: SLOW_CANDIDATE_BARCODE,
+        proteinPer100g: 10.3,
+        carbsPer100g: 4,
+        fatPer100g: null,
+        statedEnergyKcalPer100g: 63,
+        source: 'Open Food Facts',
+      },
+    }
+  },
+})
+
 const EXISTING_BARCODE = '5709999999999'
 registerEndpoint(`/api/foods/barcode/${EXISTING_BARCODE}`, {
   method: 'GET',
@@ -144,6 +167,48 @@ describe('BarcodeScanSheet', () => {
     // Absent macro stays blank and the stated energy shows as a cross-check.
     expect(screen.getByLabelText(/fat \/100\s*g/i)).toHaveDisplayValue('')
     expect(screen.getByText(/63 kcal/i)).toBeVisible()
+  })
+
+  it('keeps what the user typed when a slow look-up lands a candidate', async () => {
+    let releaseLookup!: () => void
+    candidateGate = new Promise((resolve) => (releaseLookup = resolve))
+    await renderSuspended(BarcodeScanSheet, { props: { open: true } })
+    const user = userEvent.setup()
+
+    await user.type(screen.getByLabelText(/barcode/i), SLOW_CANDIDATE_BARCODE)
+    await user.click(screen.getByRole('button', { name: /look up/i }))
+
+    // The look-up is still in flight; the user starts typing a name.
+    await user.type(screen.getByLabelText(/^name$/i), 'My Skyr')
+
+    // The candidate now resolves and fills the blank protein field.
+    releaseLookup()
+    await vi.waitFor(() =>
+      expect(screen.getByLabelText(/protein \/100\s*g/i)).toHaveDisplayValue(
+        '10.3',
+      ),
+    )
+
+    // The typed name survived; only the blank macro filled.
+    expect(screen.getByLabelText(/^name$/i)).toHaveValue('My Skyr')
+    candidateGate = null
+  })
+
+  it('notes that the form was pre-filled from the provider after a candidate lookup', async () => {
+    await renderSuspended(BarcodeScanSheet, { props: { open: true } })
+    const user = userEvent.setup()
+
+    // No note before a look-up — nothing has been pre-filled.
+    expect(
+      screen.queryByText(/filled from open food facts/i),
+    ).not.toBeInTheDocument()
+
+    await user.type(screen.getByLabelText(/barcode/i), CANDIDATE_BARCODE)
+    await user.click(screen.getByRole('button', { name: /look up/i }))
+
+    expect(
+      await screen.findByText(/filled from open food facts/i),
+    ).toBeVisible()
   })
 
   it('surfaces an existing catalog Food instead of the add form', async () => {

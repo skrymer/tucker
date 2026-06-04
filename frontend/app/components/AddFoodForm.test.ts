@@ -38,6 +38,59 @@ describe('AddFoodForm', () => {
     expect(screen.getByLabelText(/carbs \/100\s*g/i)).toHaveDisplayValue('4')
   })
 
+  it('fills the blank fields when a candidate arrives after the form has mounted', async () => {
+    // The form mounts on a manual/miss start (just a barcode), then a slow
+    // look-up resolves to a candidate and the parent feeds it in.
+    const { rerender } = await renderSuspended(AddFoodForm, {
+      props: { initial: { barcode: '5701234567890' } },
+    })
+
+    expect(screen.getByLabelText(/^name$/i)).toHaveValue('')
+    expect(screen.getByLabelText(/protein \/100\s*g/i)).toHaveDisplayValue('')
+
+    await rerender({
+      initial: {
+        name: 'Skyr Natural',
+        barcode: '5701234567890',
+        proteinPer100g: 10.3,
+        carbsPer100g: 4,
+      },
+    })
+
+    expect(screen.getByLabelText(/^name$/i)).toHaveValue('Skyr Natural')
+    expect(screen.getByLabelText(/protein \/100\s*g/i)).toHaveDisplayValue(
+      '10.3',
+    )
+    expect(screen.getByLabelText(/carbs \/100\s*g/i)).toHaveDisplayValue('4')
+  })
+
+  it('keeps a field the user has edited when a candidate arrives', async () => {
+    const user = userEvent.setup()
+    const { rerender } = await renderSuspended(AddFoodForm, {
+      props: { initial: { barcode: '5701234567890' } },
+    })
+
+    // The user starts typing a name while the look-up is still in flight.
+    await user.type(screen.getByLabelText(/^name$/i), 'My Skyr')
+
+    // The candidate lands with a different name and some macros.
+    await rerender({
+      initial: {
+        name: 'Skyr Natural',
+        barcode: '5701234567890',
+        proteinPer100g: 10.3,
+        carbsPer100g: 4,
+      },
+    })
+
+    // The user's typing wins; the candidate fills only the blank fields.
+    expect(screen.getByLabelText(/^name$/i)).toHaveValue('My Skyr')
+    expect(screen.getByLabelText(/protein \/100\s*g/i)).toHaveDisplayValue(
+      '10.3',
+    )
+    expect(screen.getByLabelText(/carbs \/100\s*g/i)).toHaveDisplayValue('4')
+  })
+
   it('shows the provider stated energy as a cross-check', async () => {
     await renderSuspended(AddFoodForm, {
       props: {
