@@ -102,6 +102,11 @@ export function useBarcodeScanner() {
     // Lazy-load the WASM decoder only now, behind the Scan tap — it never
     // touches first paint (ADR 0006).
     ;({ readBarcodes } = await import('zxing-wasm/reader'))
+    // Enter `scanning` first so the <video> mounts, then attach the stream — the
+    // element is rendered only in this state. Showing it before play() also
+    // matters on iOS, where play() on a hidden video silently no-ops.
+    state.value = 'scanning'
+    await nextTick()
     const video = videoEl.value
     if (video) {
       video.srcObject = stream
@@ -111,7 +116,6 @@ export function useBarcodeScanner() {
         // play() can reject if the stream was torn down mid-start; ignore.
       }
     }
-    state.value = 'scanning'
     lastDecodeAt = 0
     rafId = requestAnimationFrame(loop)
   }
