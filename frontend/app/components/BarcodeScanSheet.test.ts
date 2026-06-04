@@ -118,6 +118,18 @@ describe('BarcodeScanSheet', () => {
     expect(screen.getByLabelText(/^name$/i)).toBeVisible()
   })
 
+  it('marks the barcode as an optional shortcut', async () => {
+    await renderSuspended(BarcodeScanSheet, { props: { open: true } })
+
+    expect(screen.getByText(/^optional$/i)).toBeVisible()
+  })
+
+  it('frames the barcode as an optional pre-fill below the form', async () => {
+    await renderSuspended(BarcodeScanSheet, { props: { open: true } })
+
+    expect(screen.getByText(/pre-fill from a barcode/i)).toBeVisible()
+  })
+
   it('prefills the form from a provider candidate after lookup', async () => {
     await renderSuspended(BarcodeScanSheet, { props: { open: true } })
     const user = userEvent.setup()
