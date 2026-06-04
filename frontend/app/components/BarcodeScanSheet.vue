@@ -42,21 +42,36 @@ type Branch =
 function useBarcodeLookup() {
   const { $api } = useNuxtApp()
   const barcode = ref('')
-  const looking = ref(false)
   const branch = ref<Branch>({ kind: 'manual' })
 
-  async function lookup() {
-    const code = barcode.value.trim()
-    if (!code || looking.value) return
-    looking.value = true
-    try {
-      const result = await $api('/api/foods/barcode/{barcode}', {
+  // The look-up runs through the shared async primitive (ADR 0007): a newer
+  // barcode supersedes an in-flight one (`latest`), a hung connection times out
+  // to manual entry, and `busy` is the delayed flag the Look-up button shows.
+  const {
+    busy: looking,
+    run,
+    cancel,
+  } = useAsyncAction(
+    (signal: AbortSignal, code: string) =>
+      $api('/api/foods/barcode/{barcode}', {
         path: { barcode: code },
         // Never serve a stale result from the browser cache: the resolution is
         // dynamic (a barcode flips from Candidate to existing Food once saved,
         // and a transient miss must not stick), so each look-up must be fresh.
         cache: 'no-store',
-      })
+        signal,
+      }),
+    { mode: 'latest', timeoutMs: 8000 },
+  )
+
+  async function lookup() {
+    const code = barcode.value.trim()
+    if (!code) return
+    try {
+      const result = await run(code)
+      // Superseded, aborted, or timed out — leave the manual fallback in place
+      // rather than acting on a stale or absent result.
+      if (!result) return
       branch.value =
         result.outcome === 'EXISTING' && result.food
           ? { kind: 'existing', food: result.food }
@@ -67,12 +82,13 @@ function useBarcodeLookup() {
       // A 404 miss (or an offline lookup) lands on manual entry with the
       // barcode pre-filled — the same place a deliberate manual add starts.
       branch.value = { kind: 'manual' }
-    } finally {
-      looking.value = false
     }
   }
 
   function reset() {
+    // Abort any in-flight look-up so a late result can't resurface after the
+    // sheet is dismissed.
+    cancel()
     barcode.value = ''
     branch.value = { kind: 'manual' }
   }
@@ -111,6 +127,9 @@ watch(
       // resurface after the sheet has been dismissed (e.g. once a Food is saved
       // and the continuation closes).
       reset()
+      // Remount the add form on the next open so typed/merged values don't
+      // linger across opens (within one open it stays mounted; see formSession).
+      formSession.value++
     }
   },
 )
@@ -135,13 +154,18 @@ const statedEnergy = computed(() =>
     : undefined,
 )
 
-// Re-key the form so a fresh lookup result reseeds its fields (the form reads
-// its `initial` only at mount).
-const formKey = computed(() =>
+// When a candidate has pre-filled the form, name its Provider so the user knows
+// the values came from a look-up and can correct any (ADR 0007).
+const filledFromSource = computed(() =>
   branch.value.kind === 'candidate'
-    ? `candidate:${branch.value.candidate.barcode}`
-    : 'manual',
+    ? (branch.value.candidate.source ?? undefined)
+    : undefined,
 )
+
+// Re-key the form per open, not per lookup result: within one open the form is
+// never remounted, so a resolving look-up merges into it (ADR 0007) instead of
+// wiping what the user has typed; reopening the sheet starts a fresh form.
+const formSession = ref(0)
 
 // Once a Food exists, scanning is done — offer the explicit next step of logging
 // it (issue #52, "scanning creates a Food, not an Entry"). A catalog hit surfaces
@@ -178,9 +202,10 @@ const loggable = computed<{
       />
       <AddFoodForm
         v-else
-        :key="formKey"
+        :key="formSession"
         :initial="formInitial"
         :stated-energy-kcal-per100g="statedEnergy"
+        :filled-from-source="filledFromSource"
         @submit="(payload) => emit('submit', payload)"
       >
         <!-- Optional barcode pre-fill, between the fields and Save so a scanned

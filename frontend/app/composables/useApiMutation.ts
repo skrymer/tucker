@@ -19,8 +19,19 @@ export function useApiMutation<TArgs extends unknown[]>(
   mutate: (...args: TArgs) => Promise<unknown>,
   options: ApiMutationOptions,
 ) {
-  const pending = ref(false)
   const toast = useToast()
+
+  // The pending lifecycle + re-entry guard live in the shared primitive
+  // (ADR 0007); this factory layers the ADR-0005 toast policy on top. A
+  // mutation is `guard` mode — a double-tap must not fire two writes — and the
+  // success side effects run inside the action so a failing `onSuccess` lands on
+  // the error path, exactly as before.
+  const { pending, busy, run } = useAsyncAction<TArgs, void>(
+    async (_signal, ...args) => {
+      await mutate(...args)
+      await options.onSuccess?.()
+    },
+  )
 
   // Stable per-mutation id so a repeated identical failure pulses the existing
   // toast instead of stacking, and a later success can dismiss it by id.
@@ -28,22 +39,8 @@ export function useApiMutation<TArgs extends unknown[]>(
 
   async function execute(...args: TArgs) {
     if (pending.value) return
-    pending.value = true
     try {
-      await mutate(...args)
-      await options.onSuccess?.()
-      // A successful (re)try clears any persistent failure toast for this
-      // mutation — the snackbar is dismissed only by success or by the user.
-      toast.remove(errorToastId)
-      if (options.successTitle) {
-        // Polite live region (Reka defaults to assertive) — a confirmation
-        // should never interrupt.
-        toast.add({
-          title: options.successTitle,
-          color: 'success',
-          type: 'background',
-        })
-      }
+      await run(...args)
     } catch {
       toast.add({
         id: errorToastId,
@@ -62,10 +59,21 @@ export function useApiMutation<TArgs extends unknown[]>(
         // double-tap from firing two mutations.
         actions: [{ label: 'Retry', onClick: () => execute(...args) }],
       })
-    } finally {
-      pending.value = false
+      return
+    }
+    // A successful (re)try clears any persistent failure toast for this
+    // mutation — the snackbar is dismissed only by success or by the user.
+    toast.remove(errorToastId)
+    if (options.successTitle) {
+      // Polite live region (Reka defaults to assertive) — a confirmation
+      // should never interrupt.
+      toast.add({
+        title: options.successTitle,
+        color: 'success',
+        type: 'background',
+      })
     }
   }
 
-  return { pending, execute }
+  return { pending, busy, execute }
 }
