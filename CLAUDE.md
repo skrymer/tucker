@@ -124,14 +124,27 @@ The frontend is built **test-first (red-green TDD)**. Increments:
 - **F4** — profile, goal, and weight-logging setup screens.
 - **F5** — weekly review view + history.
 - **F6** — PWA polish: offline shell, install prompt, web-push reminder.
-- **F7** — maintenance mode after a Goal is reached. When the latest Trend
-  Weight hits the active Goal's target, auto-deactivate the Goal and switch
-  into a maintenance state: the Calorie Budget becomes the current
-  Maintenance (no deficit), the Protein Floor still applies. Needs its own
-  design pass: whether maintenance is a first-class aggregate or a Goal
-  with rate = 0; auto vs. confirmation transition; surfacing (banner on
-  `/today`, status on `/profile`, or both); and the weekly-review cadence
-  once there's no deficit to chase.
+- **F7** — Maintenance Mode after a Goal is reached (design pass **done**, see
+  [`docs/adr/0008-maintenance-mode-is-the-absence-of-a-goal.md`](docs/adr/0008-maintenance-mode-is-the-absence-of-a-goal.md)
+  and the `Maintenance Mode` / reached-Goal / `Drift Status` terms in
+  `CONTEXT.md`). Maintenance Mode is **not an aggregate** — it's the *derived
+  state of having no active Goal*: Calorie Budget = Maintenance (no deficit),
+  Protein Floor still applies (decoupled from the Goal). A Goal is **reached**
+  when the live Trend Weight first meets its target; reaching *latches*
+  (stamped on Weight-Measurement write, the only moment the trend can cross) and
+  is resolved by an **insistent two-way fork** on `/today` — *Switch to
+  maintenance* (deactivate) or *Set a lower goal* (replace) — never a silent
+  auto-switch. Switching force-recomputes today's Weekly Review (overwrite) so
+  the Budget lifts immediately. The adaptive engine is **unchanged** and keeps
+  its weekly cadence (it self-corrects drift even with no deficit). `Drift
+  Status` reuses the observed-pace slope classified against a zero rate;
+  surfaced (not alerted) on `/today` (a "Maintaining" card replacing
+  Goal-Progress) and `/profile` (durable status + "Start a goal" re-entry).
+  API: `GET /api/goal` + `/goal/progress` 404 in Maintenance Mode; drift folds
+  into the summary response. **Out of scope:** a defended target weight/guard
+  band; cause attribution (muscle vs fat) and any lift/training proxy;
+  recompute-on-create/replace ([#61](https://github.com/skrymer/tucker/issues/61));
+  surplus/gaining goals ([#62](https://github.com/skrymer/tucker/issues/62)).
 - **F8** — barcode-scan Food creation (deferred from F3; design pass **done**,
   see [`docs/adr/0006-provider-agnostic-nutrition-lookup.md`](docs/adr/0006-provider-agnostic-nutrition-lookup.md)
   and the `Nutrition Provider` / `Food Candidate` terms in `CONTEXT.md`).
