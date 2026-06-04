@@ -49,11 +49,30 @@ export function useBarcodeScanner() {
     return ctx.getImageData(0, 0, w, h)
   }
 
+  // Retail barcodes: EAN/UPC plus the QR/DataMatrix codes some products carry.
+  // Narrowing the format set keeps the per-frame decode cheap enough to afford
+  // tryHarder, which is what actually reads a code held at an angle or wrapped
+  // around a curved package (a flat, head-on label decodes either way).
+  const READER_OPTIONS = {
+    formats: [
+      'EAN-13',
+      'EAN-8',
+      'UPC-A',
+      'UPC-E',
+      'Code128',
+      'Code39',
+      'ITF',
+      'QRCode',
+      'DataMatrix',
+    ],
+    tryHarder: true,
+  } as const
+
   async function decodeFrame() {
     if (!readBarcodes) return
     const frame = grabFrame()
     if (!frame) return
-    const results = await readBarcodes(frame, { formats: [], tryHarder: false })
+    const results = await readBarcodes(frame, READER_OPTIONS)
     if (state.value !== 'scanning') return
     const hit = results.find((r) => r.isValid && r.text)
     if (hit) {
