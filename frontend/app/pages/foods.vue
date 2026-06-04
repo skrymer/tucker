@@ -13,6 +13,7 @@ const { $api } = useNuxtApp()
 const { execute: handleSubmit } = useApiMutation(
   (payload: {
     name: string
+    barcode?: string
     proteinPer100g: number
     carbsPer100g: number
     fatPer100g: number
