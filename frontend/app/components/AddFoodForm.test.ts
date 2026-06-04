@@ -19,6 +19,75 @@ describe('AddFoodForm', () => {
     ).not.toBeInTheDocument()
   })
 
+  it('prefills name and the present macros from a candidate', async () => {
+    await renderSuspended(AddFoodForm, {
+      props: {
+        initial: {
+          name: 'Skyr Natural',
+          barcode: '5701234567890',
+          proteinPer100g: 10.3,
+          carbsPer100g: 4,
+        },
+      },
+    })
+
+    expect(screen.getByLabelText(/^name$/i)).toHaveValue('Skyr Natural')
+    expect(screen.getByLabelText(/protein \/100\s*g/i)).toHaveDisplayValue(
+      '10.3',
+    )
+    expect(screen.getByLabelText(/carbs \/100\s*g/i)).toHaveDisplayValue('4')
+  })
+
+  it('shows the provider stated energy as a cross-check', async () => {
+    await renderSuspended(AddFoodForm, {
+      props: {
+        initial: {
+          name: 'Skyr Natural',
+          barcode: '5701234567890',
+          proteinPer100g: 10.3,
+          carbsPer100g: 4,
+          fatPer100g: 0.2,
+        },
+        statedEnergyKcalPer100g: 63,
+      },
+    })
+
+    const note = screen.getByText(/63 kcal/i)
+    expect(note).toBeVisible()
+    // Framed as the provider's figure, with calories recalculated from macros.
+    expect(note).toHaveTextContent(/stated/i)
+  })
+
+  it('omits the cross-check note when there is no stated energy', async () => {
+    await renderSuspended(AddFoodForm)
+
+    expect(screen.queryByText(/stated/i)).not.toBeInTheDocument()
+  })
+
+  it('leaves a macro the candidate lacks blank and required, blocking save', async () => {
+    const onSubmit = vi.fn()
+    await renderSuspended(AddFoodForm, {
+      props: {
+        initial: {
+          name: 'Mystery bar',
+          barcode: '5709999999999',
+          proteinPer100g: 8,
+          carbsPer100g: 60,
+          // fat absent — OFF didn't supply it.
+        },
+        onSubmit,
+      },
+    })
+    const user = userEvent.setup()
+
+    expect(screen.getByLabelText(/fat \/100\s*g/i)).toHaveDisplayValue('')
+
+    await user.click(screen.getByRole('button', { name: /save food/i }))
+
+    expect(screen.getByText('Enter fat per 100 g')).toBeVisible()
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
+
   it('emits the new-food payload when the user saves', async () => {
     const onSubmit = vi.fn()
     await renderSuspended(AddFoodForm, { props: { onSubmit } })
