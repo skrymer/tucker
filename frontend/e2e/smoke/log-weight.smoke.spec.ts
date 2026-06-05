@@ -1,4 +1,4 @@
-import { test, expect } from '@nuxt/test-utils/playwright'
+import { test, expect } from './support/smoke-test'
 
 // F4 slice 2 smoke: the full UI → API → DB path for logging today's weight
 // from the dashboard tile. No mocks.

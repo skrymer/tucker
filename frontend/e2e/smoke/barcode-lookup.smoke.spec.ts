@@ -1,4 +1,4 @@
-import { test, expect } from '@nuxt/test-utils/playwright'
+import { test, expect } from './support/smoke-test'
 import type { APIRequestContext, Locator } from '@playwright/test'
 
 // F8 slice 1 smoke: the typed-barcode pipeline end-to-end against the real

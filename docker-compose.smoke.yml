@@ -1,0 +1,33 @@
+# Smoke-test override (issue #70): give the real-stack smokes a disposable,
+# isolated database so each `pnpm test:smoke` run starts from a clean slate.
+#
+# Why this exists. The clock-mocking smokes (budget-change-banner,
+# weekly-review-catchup) stand the browser clock a week forward and read
+# /summary, which fires the lazy catch-up and persists a *future-dated*
+# WeeklyReview. Reviews have no delete path (irreversible by design), so against
+# the shared, persistent `tucker-data` volume those rows accumulate run after
+# run and make the dashboard's "latest review" non-deterministic.
+#
+# How it fixes it. The smoke backend writes its SQLite file to a path in the
+# container's writable layer (/home/tucker, owned by the non-root `tucker` user)
+# instead of the /data named volume. A named volume outlives its container, so
+# recreating the container would NOT clear it — but the writable layer is
+# discarded on recreate. The Playwright global setup `up --force-recreate`s the
+# backend each run (see frontend/e2e/smoke/global-backend.setup.ts), so Flyway
+# re-migrates an empty DB every run, and a developer's manual `tucker-data`
+# volume is never touched. (Intra-run isolation between tests is handled by the
+# POST /api/test/reset endpoint below.)
+services:
+  backend:
+    environment:
+      TUCKER_DB_PATH: /home/tucker/smoke.db
+      # Register the test-only support endpoint (POST /api/test/reset) that the
+      # smokes call before each test to get a truly empty DB. Gated to this
+      # profile, it is never in the production bean graph. See
+      # backend/.../api/TestSupportController.kt.
+      SPRING_PROFILES_ACTIVE: smoke
+    # The base stack restarts unless-stopped (it's a long-lived deployment). For
+    # an ephemeral smoke container that's wrong — we don't want Docker silently
+    # resurrecting it if the app crashes mid-run (which would mask the failure).
+    # The global teardown removes it explicitly with `docker compose down`.
+    restart: "no"

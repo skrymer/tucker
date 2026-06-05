@@ -1,4 +1,4 @@
-import { test, expect } from '@nuxt/test-utils/playwright'
+import { test, expect } from './support/smoke-test'
 
 // Infrastructure smoke test: proves the SPA → /api proxy → real backend →
 // SQLite path is wired. No mocks. If this fails, every other smoke test

@@ -1,4 +1,4 @@
-import { test, expect } from '@nuxt/test-utils/playwright'
+import { test, expect } from './support/smoke-test'
 
 // Slice 2 smoke: the full UI → API → DB path for logging a Weighed entry
 // against the real backend. Creates a food in the catalog, logs an

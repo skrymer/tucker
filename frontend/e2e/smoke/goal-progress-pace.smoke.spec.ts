@@ -1,4 +1,4 @@
-import { test, expect } from '@nuxt/test-utils/playwright'
+import { test, expect } from './support/smoke-test'
 
 // F5 slice E smoke: the full Goal Progress hero on /review, end-to-end against
 // the real backend. No /api mocks. We seed a month of steadily-falling weight

@@ -1,4 +1,4 @@
-import { test, expect } from '@nuxt/test-utils/playwright'
+import { test, expect } from './support/smoke-test'
 
 // F7 slice 1 smoke: Maintenance Mode on /today, end-to-end against the real
 // backend. No /api mocks. With no active Goal the backend budgets the weekly

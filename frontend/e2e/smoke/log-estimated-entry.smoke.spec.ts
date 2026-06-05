@@ -1,4 +1,4 @@
-import { test, expect } from '@nuxt/test-utils/playwright'
+import { test, expect } from './support/smoke-test'
 
 // Slice 1 smoke: the full UI → API → DB path for logging an Estimated
 // entry against the real backend. No mocks.

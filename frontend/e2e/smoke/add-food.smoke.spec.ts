@@ -1,4 +1,4 @@
-import { test, expect } from '@nuxt/test-utils/playwright'
+import { test, expect } from './support/smoke-test'
 
 // F3 Slice 2 smoke: adds a food through the UI against the real backend.
 // The user enters name + macros; the backend derives calories from

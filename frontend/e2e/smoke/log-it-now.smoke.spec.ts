@@ -1,4 +1,4 @@
-import { test, expect } from '@nuxt/test-utils/playwright'
+import { test, expect } from './support/smoke-test'
 import type { APIRequestContext } from '@playwright/test'
 
 // F8 slice 3 smoke: the offered "log it now" continuation end-to-end against the

@@ -1,4 +1,4 @@
-import { test, expect } from '@nuxt/test-utils/playwright'
+import { test, expect } from './support/smoke-test'
 
 // F3 Slice 3 smoke: deletes a food through the UI against the real
 // backend. Seeds a uniquely-named food, opens its row, confirms the

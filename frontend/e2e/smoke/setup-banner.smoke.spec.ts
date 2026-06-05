@@ -1,4 +1,4 @@
-import { test, expect } from '@nuxt/test-utils/playwright'
+import { test, expect } from './support/smoke-test'
 
 // F4 slice 5 smoke: the setup banner on /today reflects the real
 // `GET /api/summary` budget signal. No mocks.

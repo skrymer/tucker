@@ -1,4 +1,4 @@
-import { test, expect } from '@nuxt/test-utils/playwright'
+import { test, expect } from './support/smoke-test'
 
 // F3 Slice 1 smoke: the Foods page reads the live catalog and renders
 // it. Seeds a uniquely-named food via the API, asserts the row shows

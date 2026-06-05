@@ -1,4 +1,4 @@
-import { test, expect } from '@nuxt/test-utils/playwright'
+import { test, expect } from './support/smoke-test'
 
 // F4 slice 3 smoke: the full UI → API → DB path for backfilling a past weight
 // from the /profile Weight log. No mocks.
@@ -19,6 +19,11 @@ test('user backfills a past weight on /profile and it appears in the list', asyn
   goto,
   request,
 }) => {
+  // The Weight log unlocks only once a profile exists; each smoke runs against a
+  // reset DB, so seed one (idempotent upsert) before opening /profile.
+  await request.put('http://localhost:8080/api/profile', {
+    data: { sex: 'MALE', birthDate: '1990-06-15', heightCm: 180 },
+  })
   await deleteWeightOn(request, backfillDate)
 
   await goto('/profile', { waitUntil: 'hydration' })

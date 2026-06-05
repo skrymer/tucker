@@ -1,4 +1,4 @@
-import { test, expect } from '@nuxt/test-utils/playwright'
+import { test, expect } from './support/smoke-test'
 
 // Issue #61 smoke: replacing a Goal force-recomputes *today's* Weekly Review, so
 // a steeper rate (a larger daily deficit) moves the Calorie Budget immediately —
