@@ -25,6 +25,8 @@ data class GoalResponse(
     val rateKgPerWeek: Double,
     val active: Boolean,
     val dailyDeficitKcal: Double,
+    /** The date this Goal was reached (trend met target), or null if never reached (ADR 0008). */
+    val reachedOn: LocalDate?,
 )
 
 /**
@@ -77,6 +79,7 @@ private fun Goal.toResponse() = GoalResponse(
     rateKgPerWeek = rateKgPerWeek,
     active = active,
     dailyDeficitKcal = dailyDeficitKcal(),
+    reachedOn = reachedOn,
 )
 
 @RestController

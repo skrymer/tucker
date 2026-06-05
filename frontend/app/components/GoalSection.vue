@@ -27,6 +27,17 @@ const emit = defineEmits<{
 const activeGoal = computed(() => props.goals.find((g) => g.active) ?? null)
 const pastGoals = computed(() => props.goals.filter((g) => !g.active))
 
+// The maintenance "since {date}" is the most recently reached Goal's reachedOn
+// (ADR 0008); null for a user who has never reached one, so the status shows
+// without a date. ISO date strings compare lexicographically.
+const reachedSince = computed(() => {
+  const reached = props.goals.filter((g) => g.reachedOn != null)
+  if (reached.length === 0) return null
+  return reached.reduce((latest, g) =>
+    g.reachedOn! > latest.reachedOn! ? g : latest,
+  ).reachedOn
+})
+
 const formOpen = ref(false)
 
 // Close the replacement form on success, not optimistically on submit: success
@@ -70,13 +81,16 @@ function handleSubmit(payload: GoalPayload) {
     </p>
 
     <template v-else-if="!activeGoal">
+      <!-- Maintenance Mode (ADR 0008): the durable status + re-entry. The Goal
+           form is the same creation flow the reached banner's "Set a lower goal"
+           lands on; it stays behind the CTA until the user chooses to re-enter. -->
+      <MaintenanceStatus :since="reachedSince" @start-goal="formOpen = true" />
       <GoalForm
-        v-if="props.latestWeight"
+        v-if="formOpen && props.latestWeight"
         :latest-weight="props.latestWeight"
         :target-error="props.targetError"
         @submit="handleSubmit"
       />
-      <p v-else class="text-sm text-muted">Log a weight first to set a goal.</p>
     </template>
 
     <template v-else>

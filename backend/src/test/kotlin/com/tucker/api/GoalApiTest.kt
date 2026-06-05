@@ -73,6 +73,36 @@ class GoalApiTest {
     }
 
     @Test
+    fun `GET goals exposes reachedOn for a goal that has been reached`() {
+        // A reading the day before today establishes a Trend Weight of 90.0.
+        val today = java.time.LocalDate.now()
+        val yesterday = today.minusDays(1)
+        mockMvc.put("/api/profile") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"sex":"MALE","birthDate":"1986-05-22","heightCm":180.0}"""
+        }.andExpect { status { isOk() } }
+        mockMvc.post("/api/weight") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"date":"$yesterday","weightKg":90.0}"""
+        }.andExpect { status { isOk() } }
+
+        // A target of 89.0 sits just below the trend, so it's a valid loss Goal.
+        postGoal("$today", 90.0, 89.0)
+
+        // An 80.0 reading today pulls the EWMA to exactly 89.0 — meeting the
+        // target, which latches reachedOn on the active Goal.
+        mockMvc.post("/api/weight") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"date":"$today","weightKg":80.0}"""
+        }.andExpect { status { isOk() } }
+
+        mockMvc.get("/api/goals").andExpect {
+            status { isOk() }
+            jsonPath("$[0].reachedOn") { value("$today") }
+        }
+    }
+
+    @Test
     fun `GET goals returns an empty list when no goals exist`() {
         mockMvc.get("/api/goals").andExpect {
             status { isOk() }

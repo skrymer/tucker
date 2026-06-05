@@ -27,16 +27,64 @@ const pastGoal = {
 }
 
 describe('GoalSection', () => {
-  it('shows the goal form when no goal exists yet', async () => {
+  it('shows a maintenance status with a "Start a goal" CTA when no goal is active', async () => {
     await renderSuspended(GoalSection, {
       props: { goals: [], latestWeight },
     })
 
     expect(screen.getByRole('heading', { name: /^goal$/i })).toBeVisible()
-    expect(screen.getByLabelText(/target weight/i)).toBeVisible()
-    expect(screen.getByLabelText(/rate/i)).toBeVisible()
+    expect(screen.getByText(/maintaining/i)).toBeVisible()
+    expect(screen.getByRole('button', { name: /start a goal/i })).toBeVisible()
+    // The form stays behind the CTA — the durable status is the resting state.
+    expect(screen.queryByLabelText(/target weight/i)).not.toBeInTheDocument()
+  })
+
+  it('reveals the goal form when "Start a goal" is clicked and emits the new goal', async () => {
+    const onSubmit = vi.fn()
+    await renderSuspended(GoalSection, {
+      props: { goals: [], latestWeight, onSubmit },
+    })
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole('button', { name: /start a goal/i }))
+
+    const target = screen.getByLabelText(/target weight/i)
+    expect(target).toBeVisible()
+    await user.type(target, '78')
+    await user.type(screen.getByLabelText(/rate/i), '0.6')
+    await user.click(screen.getByRole('button', { name: /^set goal$/i }))
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        startWeightKg: 86.0,
+        targetWeightKg: 78,
+        rateKgPerWeek: 0.6,
+      }),
+    )
+  })
+
+  it('shows "since {date}" from the most recently reached goal when maintaining', async () => {
+    await renderSuspended(GoalSection, {
+      props: {
+        goals: [
+          { ...pastGoal, reachedOn: '2026-05-20' },
+          { ...activeGoal, active: false, reachedOn: '2026-06-03' },
+        ],
+        latestWeight,
+      },
+    })
+
+    expect(screen.getByText(/since 3 Jun 2026/i)).toBeVisible()
+  })
+
+  it('hides the maintenance status and CTA while a goal is active', async () => {
+    await renderSuspended(GoalSection, {
+      props: { goals: [activeGoal], latestWeight },
+    })
+
+    expect(screen.queryByText(/maintaining/i)).not.toBeInTheDocument()
     expect(
-      screen.queryByRole('button', { name: /set a new goal/i }),
+      screen.queryByRole('button', { name: /start a goal/i }),
     ).not.toBeInTheDocument()
   })
 
