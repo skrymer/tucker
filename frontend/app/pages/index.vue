@@ -80,15 +80,18 @@ const { logWeight } = useWeightLogging({ today, onSaved: onWeightSaved })
     <ReachedGoalBanner
       v-if="goalProgress?.reachedOn"
       :target-weight-kg="goalProgress.targetWeightKg"
-      :current-trend-kg="goalProgress.currentTrendKg"
-      :reached-on="goalProgress.reachedOn"
       @switch-to-maintenance="switchToMaintenance"
     />
     <MaintainingTile
       v-if="maintainingTrendWeightKg != null"
       :trend-weight-kg="maintainingTrendWeightKg"
     />
-    <GoalGlanceTile v-else-if="goalProgress" :progress="goalProgress" />
+    <!-- The reached banner already carries the milestone; a 100% Goal-Progress
+         tile beside it would be redundant, so it's suppressed while reached. -->
+    <GoalGlanceTile
+      v-else-if="goalProgress && !goalProgress.reachedOn"
+      :progress="goalProgress"
+    />
     <LogEntrySheet :date="today" @logged="onEntryLogged" />
   </section>
 </template>

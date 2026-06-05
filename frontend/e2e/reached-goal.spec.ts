@@ -82,6 +82,10 @@ test('reaching a goal shows the fork banner, and switching to maintenance lands 
     page.getByRole('link', { name: /set a lower goal/i }),
   ).toHaveAttribute('href', '/profile')
 
+  // The banner carries the milestone, so the 100% Goal-Progress tile is
+  // suppressed while reached — only the fork shows.
+  await expect(page.getByText('Goal progress')).toHaveCount(0)
+
   // The cut Budget is still in force before the user resolves the fork.
   await expect(page.getByText('1200 / 2000 kcal')).toBeVisible()
 

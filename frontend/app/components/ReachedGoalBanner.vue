@@ -1,15 +1,11 @@
 <script setup lang="ts">
 const props = defineProps<{
   targetWeightKg: number
-  currentTrendKg: number
-  reachedOn: string
 }>()
 
 const emit = defineEmits<{ 'switch-to-maintenance': [] }>()
 
-const kg = (value: number) => `${value.toFixed(1)} kg`
-const target = computed(() => kg(props.targetWeightKg))
-const trend = computed(() => kg(props.currentTrendKg))
+const target = computed(() => `${props.targetWeightKg.toFixed(1)} kg`)
 </script>
 
 <template>
@@ -24,8 +20,8 @@ const trend = computed(() => kg(props.currentTrendKg))
     </template>
     <template #description>
       <p>
-        Your trend weight reached {{ trend }}, at or below your target of
-        {{ target }}. Choose how to continue.
+        Your trend weight has reached your target of {{ target }}. Choose how to
+        continue.
       </p>
     </template>
     <template #actions>

@@ -6,8 +6,6 @@ import ReachedGoalBanner from './ReachedGoalBanner.vue'
 
 const props = {
   targetWeightKg: 80,
-  currentTrendKg: 79.9,
-  reachedOn: '2026-06-05',
 }
 
 describe('ReachedGoalBanner', () => {
