@@ -11,7 +11,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "test:smoke": "playwright test --config playwright.smoke.config.ts",
+    "test:smoke": "TZ=Etc/UTC playwright test --config playwright.smoke.config.ts",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
