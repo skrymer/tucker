@@ -2,7 +2,6 @@ package com.tucker.service
 
 import com.tucker.domain.Goal
 import com.tucker.persistence.GoalRepository
-import com.tucker.persistence.WeeklyReviewRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
@@ -11,28 +10,27 @@ import java.time.LocalDate
 @Service
 class GoalService(
     private val goals: GoalRepository,
-    private val reviews: WeeklyReviewRepository,
     private val weeklyReview: WeeklyReviewService,
 ) {
 
     /**
-     * Deactivate any current Goal and make [goal] the single active one.
+     * Deactivate any current Goal and make [goal] the single active one, then
+     * force-recompute today's [com.tucker.domain.WeeklyReview] so the new deficit
+     * (and therefore the Calorie Budget and Protein Floor) takes effect immediately
+     * rather than waiting up to a week for the next review cadence.
      *
-     * On a fresh install — when no [com.tucker.domain.WeeklyReview] has ever run —
-     * the new Goal immediately triggers the first weekly review so the dashboard
-     * shows a real Calorie Budget without waiting for the weekly cadence. This is
-     * a deliberate direct call rather than a domain event: single consumer, and
-     * we want the save and the first review committed in one transaction.
-     * Subsequent Goal replacements do not re-run the review — the Budget moves
-     * only on the next review cadence.
+     * A deliberate Goal change is one of the few moments the Budget is allowed to
+     * move mid-week — clock-driven ticks still hold it steady. The recompute
+     * *overwrites* any same-day review (see [WeeklyReviewService.recomputeFor]), and
+     * on a fresh install it mints today's first one. Direct call rather than a
+     * domain event: single consumer, and we want the save and review committed in
+     * one transaction.
      */
     @Transactional
     fun replaceActiveGoal(goal: Goal, today: LocalDate = LocalDate.now()): Goal {
         goals.deactivateAll()
         val saved = goals.insert(goal)
-        if (reviews.latest() == null) {
-            weeklyReview.runReview(today)
-        }
+        weeklyReview.recomputeFor(today)
         return saved
     }
 }

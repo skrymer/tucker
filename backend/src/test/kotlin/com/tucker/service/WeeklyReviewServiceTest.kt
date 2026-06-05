@@ -132,6 +132,21 @@ class WeeklyReviewServiceTest {
     }
 
     @Test
+    fun `recompute overwrites a stale same-day review with a freshly computed one`() {
+        seedSetupWithWeights()
+        val stale = seedReviewOn(today)
+
+        val recomputed = service.recomputeFor(today)
+
+        // The same-day record is replaced, not duplicated, and the fresh values persist.
+        assertEquals(1, reviews.findAll().size)
+        assertEquals(today, recomputed.reviewedOn)
+        val reloaded = reviews.findByReviewedOn(today)!!
+        assertTrue(reloaded.calorieBudgetKcal != stale.calorieBudgetKcal)
+        assertEquals(recomputed.calorieBudgetKcal, reloaded.calorieBudgetKcal, 0.01)
+    }
+
+    @Test
     fun `catch-up runs a review when the latest one is a week old`() {
         seedSetupWithWeights()
         seedReviewOn(today.minusDays(7))

@@ -114,13 +114,17 @@ _Avoid_: maintenance goal, rate-zero goal, rest mode
 **Weekly Review**:
 The adaptive engine's recompute event — and the dated historical record it
 leaves behind. Each review re-derives Maintenance from the Trend Weight and
-logged intake, then the Calorie Budget and Protein Floor for the coming week,
-and is never changed once written. It is the _only_ place Maintenance, the
-Budget, and the Floor are (re)computed; `/today` shows the latest review's
+logged intake, then the Calorie Budget and Protein Floor for the coming week.
+Clock-driven reviews are held steady — never changed once written — but a
+deliberate **Goal** change (creating or replacing one) force-recomputes today's
+review, overwriting any same-day record so the new Budget and Floor take effect
+immediately rather than at the next cadence. It is the _only_ place Maintenance,
+the Budget, and the Floor are (re)computed; `/today` shows the latest review's
 figures. Reviews fire by **lazy catch-up**: on app use, if the latest review
 is a week or more old, the engine runs one review snapping to today (it does
 not replay each missed week — the adaptive window already looks back two
-weeks). A manual "run now" trigger also exists. There is no scheduler.
+weeks). A manual "run now" trigger and a **Goal**-change recompute also exist.
+There is no scheduler.
 _Avoid_: recalculation, recompute (as a noun)
 
 **Profile**:
