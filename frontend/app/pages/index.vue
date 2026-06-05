@@ -44,6 +44,19 @@ const maintainingTrendWeightKg = computed(() =>
   goalProgress.value == null ? (summary.value?.trendWeightKg ?? null) : null,
 )
 
+// Reaching a Goal (ADR 0008) latches and surfaces an insistent two-way fork:
+// switch to maintenance (deactivate the Goal) or set a lower goal (on /profile).
+// Switching force-lifts the Budget — the backend recomputes today's review on
+// DELETE — so we refresh both the summary and the now-404 goal progress, which
+// flips the page into the Maintaining card.
+const { execute: switchToMaintenance } = useApiMutation(
+  () => $api('/api/goal', { method: 'DELETE' }),
+  {
+    errorTitle: 'Could not switch to maintenance',
+    onSuccess: () => Promise.all([refresh(), refreshGoalProgress()]),
+  },
+)
+
 async function onEntryLogged() {
   await refresh()
 }
@@ -64,11 +77,21 @@ const { logWeight } = useWeightLogging({ today, onSaved: onWeightSaved })
     <BudgetChangeBanner :budget-change="summary?.budgetChange" />
     <WeightTile :today="today" :latest="latestWeight" @logged="logWeight" />
     <DaySummary v-if="summary" :summary="summary" />
+    <ReachedGoalBanner
+      v-if="goalProgress?.reachedOn"
+      :target-weight-kg="goalProgress.targetWeightKg"
+      @switch-to-maintenance="switchToMaintenance"
+    />
     <MaintainingTile
       v-if="maintainingTrendWeightKg != null"
       :trend-weight-kg="maintainingTrendWeightKg"
     />
-    <GoalGlanceTile v-else-if="goalProgress" :progress="goalProgress" />
+    <!-- The reached banner already carries the milestone; a 100% Goal-Progress
+         tile beside it would be redundant, so it's suppressed while reached. -->
+    <GoalGlanceTile
+      v-else-if="goalProgress && !goalProgress.reachedOn"
+      :progress="goalProgress"
+    />
     <LogEntrySheet :date="today" @logged="onEntryLogged" />
   </section>
 </template>

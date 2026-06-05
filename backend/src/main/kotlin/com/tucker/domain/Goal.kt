@@ -15,6 +15,7 @@ data class Goal(
     val targetWeightKg: Double,
     val rateKgPerWeek: Double,
     val active: Boolean,
+    val reachedOn: LocalDate? = null,
 ) {
     init {
         require(startWeightKg > 0) { "startWeightKg must be > 0" }
@@ -32,6 +33,15 @@ data class Goal(
 
     /** Whether [trendWeightKg] has reached (or passed) the target. */
     fun isReachedAt(trendWeightKg: Double): Boolean = trendWeightKg <= targetWeightKg
+
+    /**
+     * Stamp [reachedOn] iff the Goal just crossed its target — i.e. it isn't
+     * already reached and [trendWeightKg] meets the target. Reaching *latches*
+     * (ADR 0008): an already-reached Goal is returned unchanged, never restamped
+     * nor unset, so the surfaced signal doesn't flicker as the trend wobbles.
+     */
+    fun markReachedIfCrossed(trendWeightKg: Double, on: LocalDate): Goal =
+        if (reachedOn == null && isReachedAt(trendWeightKg)) copy(reachedOn = on) else this
 
     companion object {
         /** Energy density of body fat — the basis for rate → deficit. */

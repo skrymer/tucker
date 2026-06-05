@@ -1813,6 +1813,10 @@
           "observedFinishDate": {
             "type": "string",
             "format": "date"
+          },
+          "reachedOn": {
+            "type": "string",
+            "format": "date"
           }
         }
       },

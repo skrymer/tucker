@@ -47,6 +47,37 @@ class GoalTest {
     }
 
     @Test
+    fun `stamps reachedOn when the trend first crosses the target`() {
+        val goal = goalWithRate(0.5)
+        val reachedOn = LocalDate.of(2026, 6, 5)
+
+        val reached = goal.markReachedIfCrossed(trendWeightKg = 80.0, on = reachedOn)
+
+        assertEquals(reachedOn, reached.reachedOn)
+    }
+
+    @Test
+    fun `keeps the original reachedOn for an already-reached Goal still below target`() {
+        val firstReached = LocalDate.of(2026, 6, 5)
+        val reached = goalWithRate(0.5).copy(reachedOn = firstReached)
+
+        // A later weigh-in still below target must not restamp to the new date.
+        val stillReached =
+            reached.markReachedIfCrossed(trendWeightKg = 79.0, on = LocalDate.of(2026, 6, 12))
+
+        assertEquals(firstReached, stillReached.reachedOn)
+    }
+
+    @Test
+    fun `leaves reachedOn null while the trend is still above target`() {
+        val goal = goalWithRate(0.5)
+
+        val notReached = goal.markReachedIfCrossed(trendWeightKg = 80.1, on = LocalDate.of(2026, 6, 5))
+
+        assertEquals(null, notReached.reachedOn)
+    }
+
+    @Test
     fun `rejects a target weight at or above the start weight`() {
         val ex = assertThrows<IllegalArgumentException> {
             Goal(

@@ -66,6 +66,24 @@ class GoalProgressApiTest {
             jsonPath("$.paceStatus") { value(nullValue()) }
             jsonPath("$.observedRateKgPerWeek") { value(nullValue()) }
             jsonPath("$.observedFinishDate") { value(nullValue()) }
+            // The trend (86) is still above target (80), so the Goal isn't reached.
+            jsonPath("$.reachedOn") { value(nullValue()) }
+        }
+    }
+
+    @Test
+    fun `surfaces reachedOn once a measurement pulls the trend across the target`() {
+        seedProfile()
+        // Trend sits at 80.4; the goal targets 80.0 (still below trend, so accepted).
+        seedWeight(today.minusDays(1), 80.4)
+        seedGoal(startWeightKg = 90.0, targetWeightKg = 80.0, rateKgPerWeek = 0.5)
+
+        // A 76.0 reading pulls the EWMA to ~79.96 — across the target.
+        seedWeight(today, 76.0)
+
+        mockMvc.get("/api/goal/progress").andExpect {
+            status { isOk() }
+            jsonPath("$.reachedOn") { value(today.toString()) }
         }
     }
 

@@ -46,12 +46,33 @@ class GoalService(
      * yet; the Goal's own start-weight invariant carries the check until one does.
      */
     private fun requireBelowCurrentTrend(goal: Goal) {
-        val currentTrendKg = WeightTrend.from(weights.findAll()).latest()?.trendKg ?: return
+        val currentTrendKg = currentTrendKg() ?: return
         require(!goal.isReachedAt(currentTrendKg)) {
             "a weight-loss Goal needs a target below your current trend weight " +
                 "(${"%.1f".format(currentTrendKg)} kg)"
         }
     }
+
+    /**
+     * Stamp the active Goal as *reached* if the live Trend Weight has crossed its
+     * target (ADR 0008). Called on a Weight-Measurement write — the only moment the
+     * trend can move. Reaching latches: an already-reached Goal is left untouched, so
+     * the surfaced banner doesn't flicker. A no-op when no Goal is active or no
+     * measurements exist yet.
+     */
+    @Transactional
+    fun stampReachedIfCrossed(today: LocalDate = LocalDate.now()) {
+        val goal = goals.findActive() ?: return
+        val trendKg = currentTrendKg() ?: return
+        val stamped = goal.markReachedIfCrossed(trendKg, today)
+        if (stamped.reachedOn != null && stamped.reachedOn != goal.reachedOn) {
+            goals.updateReachedOn(requireNotNull(goal.id), stamped.reachedOn)
+        }
+    }
+
+    /** The live Trend Weight — the latest EWMA point, or null before any reading. */
+    private fun currentTrendKg(): Double? =
+        WeightTrend.from(weights.findAll()).latest()?.trendKg
 
     /**
      * Switch to Maintenance Mode: deactivate the active Goal (if any) and

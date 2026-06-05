@@ -43,6 +43,8 @@ data class GoalProgressResponse(
     val paceStatus: String?,
     val observedRateKgPerWeek: Double?,
     val observedFinishDate: LocalDate?,
+    /** The date this Goal was reached (trend met target), or null while still pursuing it (ADR 0008). */
+    val reachedOn: LocalDate?,
 )
 
 /** Request to set a new weight-loss Goal. */
@@ -53,7 +55,7 @@ data class CreateGoalRequest(
     val rateKgPerWeek: Double,
 )
 
-private fun GoalProgress.toResponse() = GoalProgressResponse(
+private fun GoalProgress.toResponse(reachedOn: LocalDate?) = GoalProgressResponse(
     startWeightKg = startWeightKg,
     targetWeightKg = targetWeightKg,
     currentTrendKg = currentTrendKg,
@@ -64,6 +66,7 @@ private fun GoalProgress.toResponse() = GoalProgressResponse(
     paceStatus = paceStatus?.value,
     observedRateKgPerWeek = observedRateKgPerWeek,
     observedFinishDate = observedFinishDate,
+    reachedOn = reachedOn,
 )
 
 private fun Goal.toResponse() = GoalResponse(
@@ -95,7 +98,7 @@ class GoalController(
         // slope over the trailing window. Before any reading exists, the user is
         // by definition still at the Goal's captured start weight.
         val trend = WeightTrend.from(weights.findAll())
-        return GoalProgress.forGoal(goal, trend, LocalDate.now()).toResponse()
+        return GoalProgress.forGoal(goal, trend, LocalDate.now()).toResponse(goal.reachedOn)
     }
 
     /** Every Goal, newest first — the active one plus inactive history. */

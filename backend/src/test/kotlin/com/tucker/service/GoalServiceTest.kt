@@ -39,6 +39,41 @@ class GoalServiceTest {
         weights.save(WeightMeasurement.recorded(today, 86.0, today))
     }
 
+    /**
+     * Seed a trend just above [trendAbove] then return the active Goal (target
+     * [target]), so a later crossing measurement can be added. EWMA weights each
+     * reading 10%, so a single low reading after this nudges the trend across.
+     */
+    private fun seedActiveGoalWithTrendAbove(trendAbove: Double, target: Double): Goal {
+        weights.save(WeightMeasurement.recorded(today.minusDays(1), trendAbove, today))
+        return goals.insert(Goal(null, today, 90.0, target, 0.5, active = true))
+    }
+
+    @Test
+    fun `stamps the active goal as reached when a measurement crosses the target`() {
+        // Trend sits at 80.4; a 76.0 reading pulls the EWMA to ~79.96, below the 80 target.
+        seedActiveGoalWithTrendAbove(trendAbove = 80.4, target = 80.0)
+
+        weights.save(WeightMeasurement.recorded(today, 76.0, today))
+        service.stampReachedIfCrossed(today)
+
+        assertEquals(today, goals.findActive()!!.reachedOn)
+    }
+
+    @Test
+    fun `does not restamp reachedOn when a later measurement crosses again`() {
+        seedActiveGoalWithTrendAbove(trendAbove = 80.4, target = 80.0)
+        weights.save(WeightMeasurement.recorded(today, 76.0, today))
+        service.stampReachedIfCrossed(today)
+
+        // A week later, still under target — the latch must keep the first date.
+        val later = today.plusDays(7)
+        weights.save(WeightMeasurement.recorded(later, 75.0, later))
+        service.stampReachedIfCrossed(later)
+
+        assertEquals(today, goals.findActive()!!.reachedOn)
+    }
+
     @Test
     fun `the first goal on a fresh install fires the first weekly review`() {
         seedProfileAndWeight()
