@@ -97,9 +97,12 @@ so this must *overwrite*, not no-op. "Held steady in between" still holds for
 clock ticks; a deliberate Goal event is exactly what *should* move the Budget
 mid-week. The Budget jumps up immediately and surfaces as a `BudgetChange`.
 
-For F7 this trigger is **scoped to the maintenance switch only**. The same latent
-latency affects creating/replacing a Goal mid-cut; extending the trigger there is
-deferred to [#61](https://github.com/skrymer/tucker/issues/61).
+The same latent latency affects creating or replacing a Goal mid-cut, so the
+trigger covers **every Goal lifecycle change**, not just the maintenance switch:
+`GoalService.replaceActiveGoal` and `deactivateActiveGoal` both force-recompute
+today's review. (The maintenance switch was the motivating case in the F7 design
+interview; broadening the trigger to create/replace was tracked as
+[#61](https://github.com/skrymer/tucker/issues/61) and shipped with F7.)
 
 ## The adaptive engine is unchanged; reviews keep their weekly cadence
 
@@ -181,9 +184,10 @@ endpoint:
   status + "Start a goal" CTA on `/profile`; the client inferring Maintenance Mode
   from a 404 on `GET /api/goal`.
 - **Scope held narrow:** no defended target weight / guard band; the recompute
-  trigger covers only the maintenance switch (create/replace is
-  [#61](https://github.com/skrymer/tucker/issues/61)); no cause attribution and no
-  lift/training proxy. Intentional weight gain (a **surplus goal**) is the
+  trigger covers every Goal lifecycle change — switch, create, and replace
+  ([#61](https://github.com/skrymer/tucker/issues/61), shipped with F7); no cause
+  attribution and no lift/training proxy. Intentional weight gain (a **surplus
+  goal**) is the
   symmetric future feature, filed as
   [#62](https://github.com/skrymer/tucker/issues/62) — until it exists, a
   deliberate bulk reads as drifting up.

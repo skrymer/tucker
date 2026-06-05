@@ -145,8 +145,10 @@ The frontend is built **test-first (red-green TDD)**. Increments:
   (stamped on Weight-Measurement write, the only moment the trend can cross) and
   is resolved by an **insistent two-way fork** on `/today` — *Switch to
   maintenance* (deactivate) or *Set a lower goal* (replace) — never a silent
-  auto-switch. Switching force-recomputes today's Weekly Review (overwrite) so
-  the Budget lifts immediately. The adaptive engine is **unchanged** and keeps
+  auto-switch. Any Goal lifecycle change (switch, create, replace) force-recomputes
+  today's Weekly Review (overwrite) so the Budget lifts immediately
+  ([#61](https://github.com/skrymer/tucker/issues/61), shipped with F7). The
+  adaptive engine is **unchanged** and keeps
   its weekly cadence (it self-corrects drift even with no deficit). `Drift
   Status` reuses the observed-pace slope classified against a zero rate;
   surfaced (not alerted) on `/today` (a "Maintaining" card replacing
@@ -154,7 +156,6 @@ The frontend is built **test-first (red-green TDD)**. Increments:
   API: `GET /api/goal` + `/goal/progress` 404 in Maintenance Mode; drift folds
   into the summary response. **Out of scope:** a defended target weight/guard
   band; cause attribution (muscle vs fat) and any lift/training proxy;
-  recompute-on-create/replace ([#61](https://github.com/skrymer/tucker/issues/61));
   surplus/gaining goals ([#62](https://github.com/skrymer/tucker/issues/62)).
 - **F8** — barcode-scan Food creation (deferred from F3; design pass **done**,
   see [`docs/adr/0006-provider-agnostic-nutrition-lookup.md`](docs/adr/0006-provider-agnostic-nutrition-lookup.md)
