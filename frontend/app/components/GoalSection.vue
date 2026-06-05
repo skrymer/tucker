@@ -14,6 +14,9 @@ type GoalPayload = {
 const props = defineProps<{
   goals: GoalResponse[]
   latestWeight: LatestWeight | null
+  // A backend rejection of the target (the trend-weight rule, ADR 0008), shown
+  // on the form's target field.
+  targetError?: string
   disabled?: boolean
 }>()
 
@@ -60,6 +63,7 @@ function handleSubmit(payload: GoalPayload) {
       <GoalForm
         v-if="props.latestWeight"
         :latest-weight="props.latestWeight"
+        :target-error="props.targetError"
         @submit="handleSubmit"
       />
       <p v-else class="text-sm text-muted">Log a weight first to set a goal.</p>
@@ -71,6 +75,7 @@ function handleSubmit(payload: GoalPayload) {
       <GoalForm
         v-if="formOpen && props.latestWeight"
         :latest-weight="props.latestWeight"
+        :target-error="props.targetError"
         @submit="handleSubmit"
       />
 

@@ -56,6 +56,23 @@ class GoalApiTest {
     }
 
     @Test
+    fun `POST goal rejects a target not below the current trend weight with a 400 naming the rule`() {
+        // The seeded reading is 90.0, so the Trend Weight is 90.0. A start of 95 keeps
+        // the start-weight rule satisfied; a target of 90 equals the trend, so the Goal
+        // is already-reached and is rejected at creation (ADR 0008).
+        seedProfileAndWeight()
+
+        mockMvc.post("/api/goal") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"startedOn":"${java.time.LocalDate.now()}","startWeightKg":95.0,
+                          "targetWeightKg":90.0,"rateKgPerWeek":0.5}"""
+        }.andExpect {
+            status { isBadRequest() }
+            jsonPath("$.message") { value(org.hamcrest.Matchers.containsString("trend")) }
+        }
+    }
+
+    @Test
     fun `GET goals returns an empty list when no goals exist`() {
         mockMvc.get("/api/goals").andExpect {
             status { isOk() }

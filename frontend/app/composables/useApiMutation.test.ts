@@ -120,6 +120,27 @@ describe('useApiMutation', () => {
     expect(onSuccess).toHaveBeenCalledOnce()
   })
 
+  it('routes a 400 validation error to onValidationError instead of the transient toast', async () => {
+    // A 400 means the input is wrong, not the connection — surface it on the
+    // form, not as a "check your connection" retry toast.
+    const onValidationError = vi.fn()
+    const rejection = Object.assign(new Error('Bad Request'), {
+      status: 400,
+      data: { message: 'a weight-loss Goal needs a target below your trend' },
+    })
+    const { execute } = useApiMutation(() => Promise.reject(rejection), {
+      errorTitle: 'Could not set goal',
+      onValidationError,
+    })
+
+    await execute()
+
+    expect(onValidationError).toHaveBeenCalledWith(
+      'a weight-loss Goal needs a target below your trend',
+    )
+    expect(toastAdd).not.toHaveBeenCalled()
+  })
+
   it('reuses one stable toast id so repeated failures replace rather than stack', async () => {
     const { execute } = useApiMutation(() => Promise.reject(new Error('x')), {
       errorTitle: 'Could not save',

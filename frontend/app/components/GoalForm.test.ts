@@ -91,6 +91,24 @@ describe('GoalForm', () => {
     expect(onSubmit).not.toHaveBeenCalled()
   })
 
+  it('surfaces a server-rejected target as an error under the target field', async () => {
+    // The live Trend Weight isn't known on the client, so the trend-weight rule
+    // (ADR 0008) is enforced by the backend; its 400 is fed back in as targetError.
+    await renderSuspended(GoalForm, {
+      props: {
+        latestWeight,
+        targetError:
+          'a weight-loss Goal needs a target below your current trend weight (86.2 kg)',
+      },
+    })
+
+    expect(
+      screen.getByText(
+        'a weight-loss Goal needs a target below your current trend weight (86.2 kg)',
+      ),
+    ).toBeVisible()
+  })
+
   it('rejects a rate below the 0.05 kg/week floor', async () => {
     const onSubmit = vi.fn()
     await renderSuspended(GoalForm, { props: { latestWeight, onSubmit } })

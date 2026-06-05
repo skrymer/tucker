@@ -111,7 +111,11 @@ type GoalSeed = {
  * prior active goal and prepends the new active one, mirroring the backend's
  * replacement semantics; `dailyDeficitKcal` is derived as the real domain does.
  */
-export async function mockGoals(page: Page, initial: GoalSeed[] = []) {
+export async function mockGoals(
+  page: Page,
+  initial: GoalSeed[] = [],
+  options: { rejectTargetAtOrAbove?: number } = {},
+) {
   const goals = [...initial]
   let nextId = Math.max(0, ...goals.map((g) => g.id)) + 1
 
@@ -131,6 +135,17 @@ export async function mockGoals(page: Page, initial: GoalSeed[] = []) {
       GoalSeed,
       'id' | 'active'
     >
+    // Mirror the backend's trend-weight guard (ADR 0008): a target at or above
+    // the current Trend Weight is already-reached and rejected with a 400.
+    const floor = options.rejectTargetAtOrAbove
+    if (floor !== undefined && body.targetWeightKg >= floor) {
+      return route.fulfill({
+        status: 400,
+        json: {
+          message: `a weight-loss Goal needs a target below your current trend weight (${floor.toFixed(1)} kg)`,
+        },
+      })
+    }
     goals.forEach((g) => (g.active = false))
     const created: GoalSeed = { id: nextId++, active: true, ...body }
     goals.unshift(created)
