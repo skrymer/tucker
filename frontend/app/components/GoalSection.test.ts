@@ -85,6 +85,23 @@ describe('GoalSection', () => {
     )
   })
 
+  it('keeps the replacement form open after submitting so a rejected target can surface', async () => {
+    await renderSuspended(GoalSection, {
+      props: { goals: [activeGoal], latestWeight },
+    })
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole('button', { name: /set a new goal/i }))
+    await user.type(screen.getByLabelText(/target weight/i), '78')
+    await user.type(screen.getByLabelText(/rate/i), '0.6')
+    await user.click(screen.getByRole('button', { name: /^set goal$/i }))
+
+    // The form closes on success (the parent replaces the active goal), not
+    // optimistically on submit — otherwise a backend rejection routed into the
+    // target field would have nowhere to render and vanish silently.
+    expect(screen.getByLabelText(/target weight/i)).toBeVisible()
+  })
+
   it('keeps past goals in a history list that is collapsed by default', async () => {
     await renderSuspended(GoalSection, {
       props: { goals: [activeGoal, pastGoal], latestWeight },

@@ -29,8 +29,18 @@ const pastGoals = computed(() => props.goals.filter((g) => !g.active))
 
 const formOpen = ref(false)
 
+// Close the replacement form on success, not optimistically on submit: success
+// is signalled by the parent swapping in a new active Goal (a new id), whereas a
+// rejected submit leaves the Goal unchanged so the form must stay open for its
+// targetError to surface instead of vanishing silently.
+watch(
+  () => activeGoal.value?.id,
+  (id, previous) => {
+    if (id !== undefined && id !== previous) formOpen.value = false
+  },
+)
+
 function handleSubmit(payload: GoalPayload) {
-  formOpen.value = false
   emit('submit', payload)
 }
 </script>
