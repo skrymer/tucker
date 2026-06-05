@@ -43,18 +43,31 @@ Frontend commands (run in `frontend/`, package manager is pnpm):
   deterministic. Every spec runs on two projects, **Desktop Chrome** and
   **Mobile Chrome** (Pixel 7), to flush responsive bugs. One-time setup:
   `pnpm exec playwright install chromium`.
-- `pnpm test:smoke` — real-stack Playwright tests (no API mocks). Starts
-  the backend via `docker compose up backend` and runs the Nuxt SPA
-  against it; same two-project setup as `test:e2e`. Tests in `e2e/smoke/`
-  must clean up data they create (the docker volume persists between
-  runs). One-time setup: `docker compose build backend` from the repo
-  root.
+- `pnpm test:smoke` — real-stack Playwright tests (no API mocks). A
+  Playwright global setup starts the backend via `docker compose up`
+  (layering `docker-compose.yml` + `docker-compose.smoke.yml`,
+  `--force-recreate`) and a global teardown `docker compose down`s it;
+  the Nuxt SPA runs against it with the same two-project setup as
+  `test:e2e`. Isolation is two-layered (issue #70): every **run** gets a
+  fresh disposable DB (the override writes SQLite to the container's
+  writable layer, off the persistent `tucker-data` volume, so Flyway
+  re-migrates an empty DB on recreate), and every **test** is reset to a
+  blank slate by an auto fixture that calls a `smoke`-profile-gated
+  `POST /api/test/reset` (never in the production bean graph). This is
+  necessary because a Weekly Review is irreversible by design — without
+  it, reviews created by one test would skew later tests' adaptive
+  maintenance. Tests still seed what they need, but nothing leaks between
+  tests or runs, and a developer's `tucker-data` is never touched.
+  One-time setup: `docker compose build backend` from the repo root.
 - `pnpm lint` / `pnpm lint:fix` — ESLint (`@nuxt/eslint`)
 - `pnpm format` / `pnpm format:check` — Prettier
 
 Continuous integration — every pull request runs `.github/workflows/ci.yml`:
-the backend `./gradlew detekt` + `./gradlew build`, and the frontend ESLint +
-Vitest + Playwright suites. Detekt and ESLint failures fail the build.
+the backend `./gradlew detekt` + `./gradlew build`, the frontend ESLint +
+Vitest + mocked Playwright suite, and a real-stack `e2e` job that builds the
+backend Docker image once and runs both the backend Testcontainers e2e
+(`./gradlew e2eTest`) and the frontend smokes (`pnpm test:smoke`) against it.
+Detekt and ESLint failures fail the build.
 
 **PR walk-through gate.** Before a PR can be merged, drive a feature
 walk-through in a real browser using the `claude-in-chrome` MCP tools —

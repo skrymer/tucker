@@ -1,4 +1,4 @@
-import { test, expect } from '@nuxt/test-utils/playwright'
+import { test, expect } from './support/smoke-test'
 
 // F5 slice D smoke: the Weekly Review ledger on /review, end-to-end against the
 // real backend. No /api mocks — only the browser clock is mocked, to stand a

@@ -35,7 +35,7 @@ jobs:
         run: ./gradlew detekt --no-daemon
 
       # ./gradlew build runs the unit + integration suite. The Docker-image
-      # e2e suite (./gradlew e2eTest) is intentionally not part of the PR gate.
+      # e2e suite (./gradlew e2eTest) runs in the separate `e2e` job below.
       - name: Build and test
         run: ./gradlew build --no-daemon
 
@@ -85,4 +85,64 @@ jobs:
         with:
           name: playwright-report
           path: frontend/playwright-report
+          retention-days: 7
+
+  # Real-stack suites that boot the actual tucker-backend Docker image: the
+  # backend Testcontainers e2e (./gradlew e2eTest) and the frontend Playwright
+  # smokes (pnpm test:smoke). The image is built once here and reused by both.
+  # The smokes run against a fresh, disposable database every run (issue #70 —
+  # see docker-compose.smoke.yml), so nothing leaks between jobs.
+  e2e:
+    name: Real-stack (e2e + smoke)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v6
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.30.3
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      # Build the deployable image once. The smoke webServer's `up --build`
+      # then hits the layer cache and only needs to boot the container.
+      - name: Build the backend image
+        run: docker compose build backend
+
+      - name: Backend e2e (Docker image)
+        working-directory: backend
+        run: ./gradlew e2eTest --no-daemon
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browser
+        working-directory: frontend
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Smoke tests (real stack)
+        working-directory: frontend
+        run: pnpm test:smoke
+
+      - name: Upload smoke report
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-smoke-report
+          path: frontend/playwright-smoke-report
           retention-days: 7

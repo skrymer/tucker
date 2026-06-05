@@ -3,18 +3,28 @@ import { defineConfig, devices } from '@playwright/test'
 import type { ConfigOptions } from '@nuxt/test-utils/playwright'
 
 // Real-stack smoke tests. The backend runs in Docker (via the repo-root
-// docker-compose.yml); the SPA proxies /api/* to it through Nuxt routeRules.
-// No /api/* mocks here — these tests prove the wired UI → API → DB stack.
+// docker-compose.yml + docker-compose.smoke.yml); the SPA proxies /api/* to it
+// through Nuxt routeRules. No /api/* mocks here — these tests prove the wired
+// UI → API → DB stack.
 //
-// Tests must clean up data they create (the docker volume persists between
-// runs); writes that aren't cleaned will leak into the next run.
+// Each run starts from a fresh, disposable database (issue #70): the smoke
+// override writes SQLite to the container's writable layer and global setup
+// `--force-recreate`s the backend, so Flyway re-migrates an empty DB every run
+// and the clock-mocking smokes can't accumulate future-dated Weekly Reviews. A
+// developer's manual `tucker-data` volume is never touched. Tests should still
+// be self-contained (seed what they need), but inter-run data no longer leaks.
 //
-// Run with `pnpm test:smoke`. The webServer rebuilds the backend image
-// on every run (`up --build`) so a stale image from earlier work can't
-// silently mask backend changes. One-time setup:
+// Global setup also rebuilds the backend image on every run (`up --build`) so a
+// stale image can't silently mask backend changes; see global-backend.setup.ts.
+// Run with `pnpm test:smoke`. One-time setup:
 // `pnpm exec playwright install chromium`.
 export default defineConfig<ConfigOptions>({
   testDir: './e2e/smoke',
+  // Boot/teardown the disposable backend ourselves (not via `webServer`): a
+  // compose-managed container survives Playwright killing the attached CLI, so
+  // an explicit `docker compose down` is the only reliable teardown.
+  globalSetup: './e2e/smoke/global-backend.setup.ts',
+  globalTeardown: './e2e/smoke/global-backend.teardown.ts',
   fullyParallel: false, // shared DB → serial
   workers: 1,
   forbidOnly: !!process.env.CI,
@@ -36,13 +46,4 @@ export default defineConfig<ConfigOptions>({
     { name: 'Desktop Chrome', use: { ...devices['Desktop Chrome'] } },
     { name: 'Mobile Chrome', use: { ...devices['Pixel 7'] } },
   ],
-  webServer: {
-    command: 'docker compose up --build backend',
-    cwd: fileURLToPath(new URL('..', import.meta.url)),
-    // Springdoc serves the OpenAPI doc once Spring Boot is fully up — good
-    // readiness signal.
-    url: 'http://localhost:8080/v3/api-docs',
-    reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
-  },
 })

@@ -1,15 +1,14 @@
-import { test, expect } from '@nuxt/test-utils/playwright'
+import { test, expect } from './support/smoke-test'
 
 // F4 slice 4 smoke: the full UI → API → DB path for setting a Goal on
 // /profile, and the first Goal auto-firing the weekly review so the dashboard
 // gains a real Calorie Budget and Protein Floor. No mocks.
 //
 // Profile and a weight reading are prerequisites for the Goal form (start
-// weight) and the auto-fired review, so we seed them through the API first —
-// both are idempotent upserts, so they leave the docker volume clean. The Goal
-// itself is submitted through the UI (the slice's surface). A Goal can't be
-// deleted (replacement-only, no DELETE), but each run replaces the active Goal
-// rather than accumulating state that changes the asserted outcome.
+// weight) and the auto-fired review, so we seed them through the API first. The
+// Goal itself is submitted through the UI (the slice's surface). Each smoke runs
+// against a reset DB, so there's no active Goal — the section starts in the F7
+// maintenance state and we open the creation form via its "Start a goal" CTA.
 const API = 'http://localhost:8080/api'
 
 test('setting a goal on /profile yields a non-null budget on the dashboard', async ({
@@ -35,10 +34,10 @@ test('setting a goal on /profile yields a non-null budget on the dashboard', asy
   const goal = page.getByRole('region', { name: /^goal$/i })
   await expect(goal).toBeVisible()
 
-  // If an active goal already exists (a prior run), open the form to replace it;
-  // otherwise the form is already shown.
-  const setNewGoal = goal.getByRole('button', { name: /set a new goal/i })
-  if (await setNewGoal.isVisible()) await setNewGoal.click()
+  // Each smoke starts from a reset DB, so there's no active Goal: the section is
+  // in the F7 maintenance state. Open the creation form via its "Start a goal"
+  // CTA before filling it in.
+  await goal.getByRole('button', { name: /start a goal/i }).click()
 
   await goal.getByLabel(/target weight/i).fill('80')
   await goal.getByLabel(/rate/i).fill('0.5')

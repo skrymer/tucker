@@ -1,4 +1,4 @@
-import { test, expect } from '@nuxt/test-utils/playwright'
+import { test, expect } from './support/smoke-test'
 
 // F5 slice C smoke: the goal-glance tile on /today, end-to-end against the real
 // backend. No /api mocks. The tile shows percent complete and kg-to-go computed

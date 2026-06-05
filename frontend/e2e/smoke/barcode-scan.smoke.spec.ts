@@ -1,4 +1,4 @@
-import { test, expect } from '@nuxt/test-utils/playwright'
+import { test, expect } from './support/smoke-test'
 import type { APIRequestContext } from '@playwright/test'
 import { writeBarcode } from 'zxing-wasm/writer'
 
@@ -101,6 +101,13 @@ test('a scanned barcode resolves through the lookup and saves a Food', async ({
     await page.keyboard.type('5')
 
     await sheet.getByRole('button', { name: /save food/i }).click()
+
+    // Saving a Food from the barcode flow opens the "log it now" continuation
+    // (F8 slice 3) instead of closing the sheet. This smoke only proves the
+    // scan resolved and saved a Food — logging it now has its own smoke — so
+    // dismiss the offer with "Not now".
+    await expect(sheet.getByText(/saved to your catalog/i)).toBeVisible()
+    await sheet.getByRole('button', { name: /not now/i }).click()
     await expect(sheet).toBeHidden()
     await expect(page.getByText(foodName)).toBeVisible()
 

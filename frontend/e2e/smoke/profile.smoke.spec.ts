@@ -1,4 +1,4 @@
-import { test, expect } from '@nuxt/test-utils/playwright'
+import { test, expect } from './support/smoke-test'
 
 // F4 Slice 1 smoke: the Profile section round-trips through the real
 // backend. Snapshot any existing profile via the API, fill the form,

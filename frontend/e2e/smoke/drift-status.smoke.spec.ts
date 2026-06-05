@@ -1,4 +1,4 @@
-import { test, expect } from '@nuxt/test-utils/playwright'
+import { test, expect } from './support/smoke-test'
 
 // F7 slice 3 smoke: Drift Status on /today in Maintenance Mode, end-to-end
 // against the real backend. No /api mocks. With no active Goal the backend

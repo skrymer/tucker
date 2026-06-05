@@ -1,4 +1,4 @@
-import { test, expect } from '@nuxt/test-utils/playwright'
+import { test, expect } from './support/smoke-test'
 
 // F5 slice A smoke: the lazy catch-up cadence. When the latest WeeklyReview has
 // aged a week, loading /today fires exactly one fresh review snapped to the
@@ -73,9 +73,13 @@ test('loading Today a week on fires a catch-up review and the budget reflects it
     )
     .toBe(dueDay)
 
-  // And the budget on the dashboard is the figure from that fresh review.
+  // And the budget on the dashboard's Calories tile is the figure from that
+  // fresh review. Match the "consumed / budget" tile text specifically: when
+  // the catch-up moves the budget, /today also raises a budget-change banner
+  // ("… → <budget> kcal", covered by its own smoke), so a bare "<budget> kcal"
+  // match would be ambiguous. The tile's leading "/" disambiguates.
   const after = await (await request.get(`${API}/weekly-review`)).json()
   await expect(
-    page.getByText(`${Math.round(after.calorieBudgetKcal)} kcal`),
+    page.getByText(`/ ${Math.round(after.calorieBudgetKcal)} kcal`),
   ).toBeVisible()
 })

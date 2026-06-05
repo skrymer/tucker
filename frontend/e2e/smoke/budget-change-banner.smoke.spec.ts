@@ -1,4 +1,4 @@
-import { test, expect } from '@nuxt/test-utils/playwright'
+import { test, expect } from './support/smoke-test'
 
 // F5 slice B smoke: the budget-change banner on /today. When a weekly review
 // moves the Calorie Budget or Protein Floor, /today shows a persistent,
