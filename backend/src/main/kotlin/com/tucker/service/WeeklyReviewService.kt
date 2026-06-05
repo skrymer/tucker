@@ -52,6 +52,19 @@ class WeeklyReviewService(
             profiles.get() != null &&
             WeightTrend.from(weights.findAll()).latest() != null
 
+    /**
+     * Force-recompute the review for [on], overwriting any existing same-day record.
+     *
+     * [runReview] is deliberately idempotent — the Budget is "held steady in between"
+     * clock-driven ticks — so a deliberate Goal change recomputes through here, dropping
+     * the stale same-day record first so the fresh deficit takes effect immediately.
+     */
+    @Transactional
+    fun recomputeFor(on: LocalDate): WeeklyReview {
+        reviews.deleteByReviewedOn(on)
+        return runReview(on)
+    }
+
     /** Run the weekly review for [on] and persist the resulting [WeeklyReview]. */
     @Transactional
     fun runReview(on: LocalDate): WeeklyReview {

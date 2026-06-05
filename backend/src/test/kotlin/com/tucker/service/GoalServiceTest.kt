@@ -3,7 +3,6 @@ package com.tucker.service
 import com.tucker.domain.Goal
 import com.tucker.domain.Profile
 import com.tucker.domain.Sex
-import com.tucker.domain.WeeklyReview
 import com.tucker.domain.WeightMeasurement
 import com.tucker.persistence.GoalRepository
 import com.tucker.persistence.ProfileRepository
@@ -49,35 +48,28 @@ class GoalServiceTest {
     }
 
     @Test
-    fun `replacing a goal does not re-run the review when one already exists`() {
+    fun `replacing a goal recomputes today's review for the new goal's deficit`() {
         seedProfileAndWeight()
-        val priorReviewedOn = today.minusWeeks(1)
-        reviews.insert(
-            WeeklyReview(
-                id = null,
-                reviewedOn = priorReviewedOn,
-                trendWeightKg = 86.0,
-                maintenanceKcal = 2400.0,
-                calorieBudgetKcal = 1850.0,
-                proteinFloorG = 172.0,
-                note = "seed",
-            ),
-        )
+        // An existing plan, with today's review already reflecting its slower rate.
+        service.replaceActiveGoal(newGoal(rate = 0.5), today)
+        val before = reviews.findByReviewedOn(today)!!.calorieBudgetKcal
 
+        // Replace it with a steeper rate — a deliberate Goal change.
         service.replaceActiveGoal(newGoal(rate = 0.75), today)
 
-        // The latest review is still the pre-existing one — no new review fired.
-        assertEquals(priorReviewedOn, reviews.latest()!!.reviewedOn)
+        // Today's review is recomputed in place: same maintenance, larger deficit, so
+        // the Budget drops immediately rather than waiting for the weekly cadence.
+        val after = reviews.findByReviewedOn(today)!!.calorieBudgetKcal
+        val extraDeficit = (0.75 - 0.5) * Goal.KCAL_PER_KG_FAT / Goal.DAYS_PER_WEEK
+        assertEquals(before - extraDeficit, after, 0.5)
         assertEquals(1, reviews.findAll().size)
     }
 
     @Test
     fun `replacing a goal deactivates the prior goal and activates the new one`() {
-        // A prior review already exists, so this test isolates the deactivate +
-        // insert behaviour from the first-review side effect.
-        reviews.insert(
-            WeeklyReview(null, today.minusWeeks(1), 86.0, 2400.0, 1850.0, 172.0, "seed"),
-        )
+        // Profile + weight so the always-on recompute side effect can run; this test
+        // focuses on the deactivate + insert behaviour, not the review it produces.
+        seedProfileAndWeight()
         val prior = goals.insert(Goal(null, today.minusMonths(2), 95.0, 85.0, 0.5, active = true))
 
         val replacement = service.replaceActiveGoal(newGoal(rate = 0.75), today)

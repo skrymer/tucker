@@ -35,6 +35,13 @@ class WeeklyReviewRepository(private val dsl: DSLContext) {
             .orderBy(WEEKLY_REVIEW.REVIEWED_ON)
             .fetch().map { it.toDomain() }
 
+    /** Remove the review recorded on [reviewedOn], if any — used to force a recompute. */
+    fun deleteByReviewedOn(reviewedOn: LocalDate) {
+        dsl.deleteFrom(WEEKLY_REVIEW)
+            .where(WEEKLY_REVIEW.REVIEWED_ON.eq(reviewedOn.toString()))
+            .execute()
+    }
+
     fun insert(review: WeeklyReview): WeeklyReview {
         val rec = dsl.newRecord(WEEKLY_REVIEW)
         rec.reviewedOn = review.reviewedOn.toString()
