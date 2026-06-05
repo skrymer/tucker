@@ -1,7 +1,6 @@
 package com.tucker.domain
 
 import java.time.LocalDate
-import java.time.temporal.ChronoUnit
 
 /**
  * Where the user stands against an active [Goal], on two complementary readings,
@@ -27,12 +26,6 @@ data class GoalProgress(
     companion object {
         /** Percentages run 0–100. */
         private const val PERCENT = 100.0
-
-        /** The trailing window the observed pace is measured over. */
-        private const val OBSERVED_WINDOW_DAYS = 28L
-
-        /** The observed pace is withheld until the trend spans at least this long. */
-        private const val MIN_HISTORY_DAYS = 14L
 
         /** Tolerance band around the planned rate for on-pace classification (±20%). */
         private const val PACE_BAND = 0.20
@@ -64,32 +57,8 @@ data class GoalProgress(
         fun forGoal(goal: Goal, trend: WeightTrend, today: LocalDate): GoalProgress {
             val currentTrendKg = trend.latest()?.trendKg ?: goal.startWeightKg
             val base = planned(goal, currentTrendKg, today)
-            val observedRate = observedRate(trend, currentTrendKg, today) ?: return base
+            val observedRate = trend.observedRateKgPerWeek(today) ?: return base
             return base.withPace(observedRate, goal.rateKgPerWeek, today)
-        }
-
-        /**
-         * The Trend Weight's rate of loss (kg/week, negative if gaining) over the
-         * trailing window: the slope from the trend point ~[OBSERVED_WINDOW_DAYS]
-         * days ago (or the earliest available, once history is shorter) to now.
-         * Null until the trend spans at least [MIN_HISTORY_DAYS].
-         */
-        private fun observedRate(
-            trend: WeightTrend,
-            currentTrendKg: Double,
-            today: LocalDate,
-        ): Double? {
-            val earliest = trend.points.firstOrNull()
-            if (earliest == null ||
-                ChronoUnit.DAYS.between(earliest.date, today) < MIN_HISTORY_DAYS
-            ) {
-                return null
-            }
-            val anchor = trend.points.lastOrNull {
-                !it.date.isAfter(today.minusDays(OBSERVED_WINDOW_DAYS))
-            } ?: earliest
-            val windowDays = ChronoUnit.DAYS.between(anchor.date, today)
-            return (anchor.trendKg - currentTrendKg) / windowDays * Goal.DAYS_PER_WEEK
         }
 
         /** Classify [observedRate] against the [plannedRate] and project a finish. */

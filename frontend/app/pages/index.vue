@@ -44,6 +44,12 @@ const maintainingTrendWeightKg = computed(() =>
   goalProgress.value == null ? (summary.value?.trendWeightKg ?? null) : null,
 )
 
+// Drift Status rides along on the summary in Maintenance Mode; before the first
+// review supplies one it reads as gathering-data (ADR 0008).
+const maintainingDriftStatus = computed<DriftStatus>(
+  () => (summary.value?.driftStatus as DriftStatus) ?? 'gathering-data',
+)
+
 // Reaching a Goal (ADR 0008) latches and surfaces an insistent two-way fork:
 // switch to maintenance (deactivate the Goal) or set a lower goal (on /profile).
 // Switching force-lifts the Budget — the backend recomputes today's review on
@@ -85,6 +91,7 @@ const { logWeight } = useWeightLogging({ today, onSaved: onWeightSaved })
     <MaintainingTile
       v-if="maintainingTrendWeightKg != null"
       :trend-weight-kg="maintainingTrendWeightKg"
+      :drift-status="maintainingDriftStatus"
     />
     <!-- The reached banner already carries the milestone; a 100% Goal-Progress
          tile beside it would be redundant, so it's suppressed while reached. -->

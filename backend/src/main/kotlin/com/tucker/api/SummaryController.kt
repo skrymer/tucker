@@ -1,10 +1,14 @@
 package com.tucker.api
 
 import com.tucker.domain.DailyLog
+import com.tucker.domain.DriftStatus
 import com.tucker.domain.WeeklyReview
+import com.tucker.domain.WeightTrend
 import com.tucker.persistence.EntryRepository
 import com.tucker.persistence.FoodRepository
+import com.tucker.persistence.GoalRepository
 import com.tucker.persistence.WeeklyReviewRepository
+import com.tucker.persistence.WeightMeasurementRepository
 import com.tucker.service.WeeklyReviewService
 import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.web.bind.annotation.GetMapping
@@ -30,6 +34,14 @@ data class DailySummaryResponse(
     val trendWeightKg: Double?,
     val entries: List<EntryResponse>,
     val budgetChange: BudgetChange?,
+    /**
+     * Drift Status against a zero target rate (ADR 0008), populated only in
+     * Maintenance Mode (no active Goal); "gathering-data" until 14 days of
+     * measurements exist. Null while a Goal is active — pace lives on the Goal.
+     */
+    val driftStatus: String?,
+    /** The trailing 28-day Trend-Weight slope (kg/week); null outside Maintenance Mode or before 14 days. */
+    val observedRateKgPerWeek: Double?,
 )
 
 /**
@@ -69,6 +81,8 @@ class SummaryController(
     private val reviews: WeeklyReviewRepository,
     private val foods: FoodRepository,
     private val weeklyReview: WeeklyReviewService,
+    private val goals: GoalRepository,
+    private val weights: WeightMeasurementRepository,
 ) {
 
     @GetMapping
@@ -85,6 +99,15 @@ class SummaryController(
         val review = recent.firstOrNull()
         val budgetChange = recent.takeIf { it.size == 2 }
             ?.let { BudgetChange.between(previous = it[1], latest = it[0]) }
+
+        // Maintenance Mode (ADR 0008): with no active Goal, the trend is paced
+        // against a zero rate. While a Goal is active the pace lives on the Goal,
+        // so the summary leaves these null.
+        val trend = if (goals.findActive() == null) WeightTrend.from(weights.findAll()) else null
+        // One walk of the trend feeds both fields: the raw rate and its classification.
+        val observedRateKgPerWeek = trend?.observedRateKgPerWeek(date)
+        val driftStatus = trend?.let { DriftStatus.forRate(observedRateKgPerWeek).value }
+
         return DailySummaryResponse(
             date = date,
             caloriesConsumed = log.caloriesConsumed(),
@@ -97,6 +120,8 @@ class SummaryController(
             trendWeightKg = review?.trendWeightKg,
             entries = log.entries.toResponses(foods),
             budgetChange = budgetChange,
+            driftStatus = driftStatus,
+            observedRateKgPerWeek = observedRateKgPerWeek,
         )
     }
 }
