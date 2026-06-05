@@ -2,6 +2,13 @@ import { fileURLToPath } from 'node:url'
 import { defineConfig, devices } from '@playwright/test'
 import type { ConfigOptions } from '@nuxt/test-utils/playwright'
 
+// The smokes derive `today` from the runner's clock and the backend stamps
+// Weekly Reviews on its own clock; both must agree on the calendar day. The
+// `test:smoke` script sets TZ=Etc/UTC and docker-compose.smoke.yml pins the
+// container to UTC — this fallback keeps a bare `playwright test --config …`
+// invocation aligned too. (Authoritative source is the npm script.)
+process.env.TZ ||= 'Etc/UTC'
+
 // Real-stack smoke tests. The backend runs in Docker (via the repo-root
 // docker-compose.yml + docker-compose.smoke.yml); the SPA proxies /api/* to it
 // through Nuxt routeRules. No /api/* mocks here — these tests prove the wired
