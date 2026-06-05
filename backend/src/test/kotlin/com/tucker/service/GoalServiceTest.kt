@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 
 @SpringBootTest
 @Transactional
@@ -62,6 +63,24 @@ class GoalServiceTest {
         val after = reviews.findByReviewedOn(today)!!.calorieBudgetKcal
         val extraDeficit = (0.75 - 0.5) * Goal.KCAL_PER_KG_FAT / Goal.DAYS_PER_WEEK
         assertEquals(before - extraDeficit, after, 0.5)
+        assertEquals(1, reviews.findAll().size)
+    }
+
+    @Test
+    fun `deactivating the active goal switches to maintenance and recomputes today's review`() {
+        seedProfileAndWeight()
+        service.replaceActiveGoal(newGoal(rate = 0.5), today)
+        val cutBudget = reviews.findByReviewedOn(today)!!.calorieBudgetKcal
+
+        service.deactivateActiveGoal(today)
+
+        // No Goal is active any more — the user is maintaining.
+        assertNull(goals.findActive())
+        // Today's review is recomputed in place to the Maintenance budget (no deficit),
+        // so it lifts above the cut budget rather than waiting for the weekly cadence.
+        val review = reviews.findByReviewedOn(today)!!
+        assertEquals(review.maintenanceKcal, review.calorieBudgetKcal, 1e-9)
+        assertEquals(cutBudget + newGoal(rate = 0.5).dailyDeficitKcal(), review.calorieBudgetKcal, 0.5)
         assertEquals(1, reviews.findAll().size)
     }
 

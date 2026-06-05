@@ -33,4 +33,16 @@ class GoalService(
         weeklyReview.recomputeFor(today)
         return saved
     }
+
+    /**
+     * Switch to Maintenance Mode: deactivate the active Goal (if any) and
+     * force-recompute today's review so the Budget lifts to Maintenance immediately
+     * (ADR 0008) rather than waiting up to a week. A no-op when no Goal is active.
+     */
+    @Transactional
+    fun deactivateActiveGoal(today: LocalDate = LocalDate.now()) {
+        if (goals.findActive() == null) return
+        goals.deactivateAll()
+        weeklyReview.recomputeFor(today)
+    }
 }

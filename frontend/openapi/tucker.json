@@ -434,6 +434,47 @@
             }
           }
         }
+      },
+      "delete": {
+        "tags": [
+          "goal-controller"
+        ],
+        "operationId": "deactivate",
+        "responses": {
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "No Content"
+          }
+        }
       }
     },
     "/api/foods": {
@@ -1706,6 +1747,10 @@
           },
           "onTarget": {
             "type": "boolean"
+          },
+          "trendWeightKg": {
+            "type": "number",
+            "format": "double"
           },
           "entries": {
             "type": "array",

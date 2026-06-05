@@ -2,6 +2,7 @@ package com.tucker.service
 
 import com.tucker.domain.Maintenance
 import com.tucker.domain.Profile
+import com.tucker.domain.ProteinFloor
 import com.tucker.domain.WeeklyReview
 import com.tucker.domain.WeightTrend
 import com.tucker.persistence.EntryRepository
@@ -32,24 +33,28 @@ class WeeklyReviewService(
 ) {
 
     /**
-     * Lazy catch-up: if the latest review has aged past the weekly cadence, run
-     * one fresh review snapped to [today]. A no-op when a recent review already
-     * exists, when no cadence has started yet, or when setup is incomplete — so
-     * it is safe to call on every daily-summary read without a scheduler.
+     * Lazy catch-up: keep the weekly cadence advancing on every daily-summary read
+     * without a scheduler. Bootstraps the very first review once setup is complete
+     * (in Maintenance Mode no Goal creation has fired one), then runs a fresh review
+     * snapped to [today] whenever the latest has aged past the weekly cadence. A
+     * no-op while a recent review exists or setup is incomplete.
      */
     @Transactional
     fun catchUpIfDue(today: LocalDate) {
-        val latest = reviews.latest() ?: return
+        if (!setupComplete()) return
+        val latest = reviews.latest()
+            ?: run { runReview(today); return }
         val due = ChronoUnit.DAYS.between(latest.reviewedOn, today) >= REVIEW_CADENCE_DAYS
-        if (due && setupComplete()) {
-            runReview(today)
-        }
+        if (due) runReview(today)
     }
 
-    /** The inputs a review needs; absent any of them, catch-up stays a no-op. */
+    /**
+     * The inputs a review needs; absent any of them, catch-up stays a no-op. A Goal
+     * is *not* required — its absence is Maintenance Mode (ADR 0008), which still
+     * reviews — only a Profile (for the formula seed) and at least one weight.
+     */
     private fun setupComplete(): Boolean =
-        goals.findActive() != null &&
-            profiles.get() != null &&
+        profiles.get() != null &&
             WeightTrend.from(weights.findAll()).latest() != null
 
     /**
@@ -75,8 +80,9 @@ class WeeklyReviewService(
         // reviews and never collides with the reviewed_on UNIQUE constraint.
         reviews.findByReviewedOn(on)?.let { return it }
 
+        // No active Goal is Maintenance Mode (ADR 0008): the Budget is Maintenance
+        // with no deficit, and the Protein Floor is derived straight from the trend.
         val goal = goals.findActive()
-            ?: error("no active Goal — cannot run a weekly review")
         val profile = profiles.get()
             ?: error("no Profile — cannot run a weekly review")
 
@@ -85,8 +91,8 @@ class WeeklyReviewService(
             ?: error("no weight measurements — cannot run a weekly review")
 
         val maintenance = estimateMaintenance(on, profile, trend, trendWeightKg)
-        val calorieBudget = maintenance.kcal - goal.dailyDeficitKcal()
-        val proteinFloor = goal.proteinFloorGrams(trendWeightKg)
+        val calorieBudget = maintenance.kcal - (goal?.dailyDeficitKcal() ?: 0.0)
+        val proteinFloor = ProteinFloor.forTrendWeight(trendWeightKg)
 
         return reviews.insert(
             WeeklyReview(

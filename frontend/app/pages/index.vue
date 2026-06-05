@@ -36,6 +36,14 @@ async function refreshGoalProgress() {
 
 await Promise.all([refreshLatestWeight(), refreshGoalProgress()])
 
+// Maintenance Mode (ADR 0008): no active Goal (goal/progress 404 → null) yet a
+// review has produced a Trend Weight. Surfaces the calm Maintaining card with
+// the Trend Weight in place of the Goal-Progress card. In a cut the Goal carries
+// the trend, so this is non-null only when maintaining.
+const maintainingTrendWeightKg = computed(() =>
+  goalProgress.value == null ? (summary.value?.trendWeightKg ?? null) : null,
+)
+
 async function onEntryLogged() {
   await refresh()
 }
@@ -56,10 +64,11 @@ const { logWeight } = useWeightLogging({ today, onSaved: onWeightSaved })
     <BudgetChangeBanner :budget-change="summary?.budgetChange" />
     <WeightTile :today="today" :latest="latestWeight" @logged="logWeight" />
     <DaySummary v-if="summary" :summary="summary" />
-    <GoalGlanceTile
-      v-if="goalProgress || summary?.calorieBudget != null"
-      :progress="goalProgress"
+    <MaintainingTile
+      v-if="maintainingTrendWeightKg != null"
+      :trend-weight-kg="maintainingTrendWeightKg"
     />
+    <GoalGlanceTile v-else-if="goalProgress" :progress="goalProgress" />
     <LogEntrySheet :date="today" @logged="onEntryLogged" />
   </section>
 </template>
