@@ -11,12 +11,16 @@ import { test, expect } from './support/smoke-test'
 // Goal form. Goals are replacement-only (no DELETE) and each run replaces the
 // active Goal, so the persistent docker volume stays clean across runs.
 //
-// We assert on *today's* review via /weekly-review/history rather than on the
-// dashboard's budget number: the daily summary surfaces the single latest review
-// by date, and the clock-mocking smokes (budget-change-banner, catch-up) leave
-// future-dated reviews in the shared volume that would mask today's. Comparing
-// today's own review before/after is the deterministic proof of immediacy; the
-// dashboard is still exercised to confirm it renders the wired budget.
+// We assert on the *latest* review via /weekly-review/history, not the dashboard
+// budget number: the dashboard only proves rendering, this proves the recompute.
+// Reading the latest review (rather than matching an exact client-today date) is
+// deliberately robust to any runner-vs-backend calendar-day skew: after the
+// per-test reset (#70) the only review in play is the one the Goal change just
+// recomputed, so "latest" *is* today's review — without the test having to agree
+// with the backend on what "today" is. (Both clocks are pinned to UTC anyway —
+// see docker-compose.smoke.yml + the test:smoke script — this keeps the assertion
+// correct even if that ever regresses.) The dashboard is still exercised below to
+// confirm it renders the wired budget.
 const API = 'http://localhost:8080/api'
 
 interface ReviewRow {
@@ -24,18 +28,18 @@ interface ReviewRow {
   calorieBudgetKcal: number
 }
 
-async function budgetForReviewOn(
-  request: {
-    get: (
-      url: string,
-    ) => Promise<{ ok: () => boolean; json: () => Promise<unknown> }>
-  },
-  date: string,
-): Promise<number | null> {
+/** The Calorie Budget of the most recent Weekly Review, or null if none exists. */
+async function latestReviewBudget(request: {
+  get: (
+    url: string,
+  ) => Promise<{ ok: () => boolean; json: () => Promise<unknown> }>
+}): Promise<number | null> {
   const res = await request.get(`${API}/weekly-review/history`)
   if (!res.ok()) return null
   const all = (await res.json()) as ReviewRow[]
-  return all.find((r) => r.reviewedOn === date)?.calorieBudgetKcal ?? null
+  if (all.length === 0) return null
+  const latest = all.reduce((a, b) => (a.reviewedOn >= b.reviewedOn ? a : b))
+  return latest.calorieBudgetKcal ?? null
 }
 
 test("replacing a goal recomputes today's budget immediately for the new deficit", async ({
@@ -61,8 +65,11 @@ test("replacing a goal recomputes today's budget immediately for the new deficit
   })
   expect(baseline.status()).toBe(201)
 
-  const budgetBefore = await budgetForReviewOn(request, today)
-  expect(budgetBefore).toEqual(expect.any(Number))
+  const budgetBefore = await latestReviewBudget(request)
+  expect(
+    budgetBefore,
+    "creating a Goal should recompute today's review with a Calorie Budget",
+  ).toEqual(expect.any(Number))
 
   // Replace the Goal with a steeper rate through the /profile UI.
   await goto('/profile', { waitUntil: 'hydration' })
@@ -76,10 +83,10 @@ test("replacing a goal recomputes today's budget immediately for the new deficit
   // The steeper deficit (0.8 vs 0.5 kg/week ≈ 330 kcal/day) lands on today's
   // review right away — same maintenance, larger deficit, lower Budget.
   await expect
-    .poll(() => budgetForReviewOn(request, today))
+    .poll(() => latestReviewBudget(request))
     .toBeLessThan(budgetBefore!)
 
-  const budgetAfter = (await budgetForReviewOn(request, today))!
+  const budgetAfter = (await latestReviewBudget(request))!
   const extraDeficit = ((0.8 - 0.5) * 7700) / 7
   expect(Math.abs(budgetBefore! - budgetAfter - extraDeficit)).toBeLessThan(1)
 

@@ -26,6 +26,16 @@ services:
       # profile, it is never in the production bean graph. See
       # backend/.../api/TestSupportController.kt.
       SPRING_PROFILES_ACTIVE: smoke
+      # Pin the smoke backend's clock to UTC. A Weekly Review is stamped on the
+      # server's LocalDate.now(), and the smokes seed/read dates from the
+      # Playwright runner's clock (also pinned to UTC, see test:smoke). The base
+      # stack defaults TZ to Australia/Brisbane for local dev, where the browser
+      # and container share the host zone — but in CI the runner is UTC while the
+      # container would be Brisbane (UTC+10), so for ~10h a day they disagree on
+      # "today": a goal-recompute review lands on the container's tomorrow, which
+      # an exact-date smoke read then misses. Locking both ends to UTC keeps
+      # runner-date == container-date always.
+      TZ: Etc/UTC
     # The base stack restarts unless-stopped (it's a long-lived deployment). For
     # an ephemeral smoke container that's wrong — we don't want Docker silently
     # resurrecting it if the app crashes mid-run (which would mask the failure).
