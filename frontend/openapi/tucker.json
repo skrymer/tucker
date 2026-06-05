@@ -1760,6 +1760,13 @@
           },
           "budgetChange": {
             "$ref": "#/components/schemas/BudgetChange"
+          },
+          "driftStatus": {
+            "type": "string"
+          },
+          "observedRateKgPerWeek": {
+            "type": "number",
+            "format": "double"
           }
         }
       },

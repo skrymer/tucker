@@ -90,6 +90,66 @@ class SummaryApiTest {
     }
 
     @Test
+    fun `in Maintenance Mode with too little history the summary reports drift gathering data and no rate`() {
+        val day = LocalDate.now()
+        maintenanceSetup(day)
+
+        mockMvc.get("/api/summary") {
+            param("date", "$day")
+        }.andExpect {
+            status { isOk() }
+            // A single same-day reading is under 14 days of history.
+            jsonPath("$.driftStatus") { value("gathering-data") }
+            jsonPath("$.observedRateKgPerWeek") { value(null) }
+        }
+    }
+
+    /** Seed a daily reading on each of the [days] dates ending [on], at [weight]. */
+    private fun seedRisingWeights(on: LocalDate, days: Long, fromKg: Double, toKg: Double) {
+        for (d in 0..days) {
+            val date = on.minusDays(days - d)
+            val weight = fromKg + (toKg - fromKg) * d / days
+            mockMvc.post("/api/weight") {
+                contentType = MediaType.APPLICATION_JSON
+                content = """{"date":"$date","weightKg":$weight}"""
+            }.andExpect { status { isOk() } }
+        }
+    }
+
+    @Test
+    fun `in Maintenance Mode with a rising trend the summary reports drifting up and the observed rate`() {
+        val day = LocalDate.now()
+        mockMvc.put("/api/profile") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"sex":"MALE","birthDate":"1986-05-22","heightCm":180.0}"""
+        }.andExpect { status { isOk() } }
+        // A month of steadily rising weight, no Goal: the trend drifts up past the band.
+        seedRisingWeights(day, days = 28, fromKg = 84.0, toKg = 86.0)
+
+        mockMvc.get("/api/summary") {
+            param("date", "$day")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.driftStatus") { value("drifting-up") }
+            jsonPath("$.observedRateKgPerWeek") { isNumber() }
+        }
+    }
+
+    @Test
+    fun `with an active Goal the summary omits the drift fields — pace lives on the Goal`() {
+        val day = LocalDate.now()
+        completeSetup(day)
+
+        mockMvc.get("/api/summary") {
+            param("date", "$day")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.driftStatus") { value(null) }
+            jsonPath("$.observedRateKgPerWeek") { value(null) }
+        }
+    }
+
+    @Test
     fun `loading the summary a week after the last review fires a catch-up review dated today`() {
         val setupDay = LocalDate.now()
         completeSetup(setupDay)
