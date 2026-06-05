@@ -105,10 +105,11 @@ The app's resting state whenever no Goal is active. With no deficit to chase, th
 Calorie Budget equals Maintenance, while the Protein Floor still applies (2 g/kg
 of Trend Weight). It is not a stored object — it is the *derived* condition of
 having no active Goal, so the app is equally usable as a pure maintenance tracker
-that never sets a Goal at all. The user enters it three ways: by reaching an
-active Goal (which auto-deactivates it), by ending a Goal manually, or by never
-setting one. A Goal is the temporary weight-change campaign layered over this
-baseline; ending or reaching it drops back to Maintenance Mode.
+that never sets a Goal at all. The user enters it three ways: by switching out of
+a **reached** Goal (the user's choice at the two-way fork, never automatic), by
+ending an unreached Goal manually, or by never setting one. A Goal is the
+temporary weight-change campaign layered over this baseline; ending one — or
+switching out of a reached one — drops back to Maintenance Mode.
 _Avoid_: maintenance goal, rate-zero goal, rest mode
 
 **Weekly Review**:
