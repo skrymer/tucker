@@ -74,11 +74,17 @@ A weight-loss target the user sets: a goal weight plus a rate of loss (e.g.
 Each Goal carries its own start date and starting weight, captured at the
 moment it's set. Changing target or rate mid-cut means *replacing* the active
 Goal: the prior one is preserved as inactive history, not edited in place.
+A Goal is **reached** when the Trend Weight first meets its target. Reaching
+*latches* — it stays reached even if the trend later drifts back up — and is
+recorded as the date it happened. A reached Goal is not resolved automatically:
+the user either switches to **Maintenance Mode** (deactivating it) or replaces it
+with a lower Goal; until they choose, the Goal stays active and reached.
 _Avoid_: target
 
 **Calorie Budget**:
 The app-derived daily calorie target the user logs against. Equals Maintenance
-minus the deficit implied by the Goal's rate. Recomputed once a week and held
+minus the deficit implied by the active Goal's rate — or Maintenance itself when
+no Goal is active (see **Maintenance Mode**). Recomputed once a week and held
 steady in between, so it stays a stable habit.
 _Avoid_: limit, allowance
 
@@ -93,6 +99,17 @@ The estimated daily calories that hold the user's weight steady (their TDEE).
 Seeded from a standard BMR formula, then recomputed each week from the
 Trend Weight and logged intake once enough history exists.
 _Avoid_: TDEE, baseline
+
+**Maintenance Mode**:
+The app's resting state whenever no Goal is active. With no deficit to chase, the
+Calorie Budget equals Maintenance, while the Protein Floor still applies (2 g/kg
+of Trend Weight). It is not a stored object — it is the *derived* condition of
+having no active Goal, so the app is equally usable as a pure maintenance tracker
+that never sets a Goal at all. The user enters it three ways: by reaching an
+active Goal (which auto-deactivates it), by ending a Goal manually, or by never
+setting one. A Goal is the temporary weight-change campaign layered over this
+baseline; ending or reaching it drops back to Maintenance Mode.
+_Avoid_: maintenance goal, rate-zero goal, rest mode
 
 **Weekly Review**:
 The adaptive engine's recompute event — and the dated historical record it
@@ -145,6 +162,18 @@ Whether the **observed pace** is keeping up with the **Goal**'s planned rate:
 *stalled* and no observed finish date is projected. Like the rest of the observed
 pace, it's withheld until at least 14 days of **Weight Measurements** exist.
 
+**Drift Status**:
+The **Maintenance Mode** counterpart of **Pace Status**. With no **Goal** to pace
+against, the observed pace — the slope of the **Trend Weight** over the trailing
+28 days — is classified against a target rate of *zero* within a tolerance band:
+*holding* inside the band, *drifting up* or *drifting down* outside it. Like the
+observed pace it draws on, it is withheld until at least 14 days of **Weight
+Measurements** exist. It is a displayed status, not an alert: the self-correcting
+**Calorie Budget** already responds to drift at the next **Weekly Review**.
+Intentional weight gain (a bulk) is *not* drift — but Tucker has no surplus Goal
+yet, so today a deliberate gain reads as *drifting up*.
+_Avoid_: drift alert, weight alarm
+
 ## Relationships
 
 - Every **Entry** is either a **Weighed Entry** or an **Estimated Entry**
@@ -153,8 +182,10 @@ pace, it's withheld until at least 14 days of **Weight Measurements** exist.
 - A **Food** is referenced by zero or more **Weighed Entries**
 - A **Recipe** is a kind of **Food**; its nutrition is the rollup of its ingredient **Foods**
 - A day's calories consumed is the sum of calories across that day's **Entries**
-- A **Goal** yields one **Calorie Budget**, computed from **Maintenance** and the rate
-- A **Goal** also yields a **Protein Floor**, scaled from the current **Trend Weight**
+- The **Calorie Budget** equals **Maintenance** minus the active **Goal**'s deficit,
+  or **Maintenance** itself when no Goal is active (**Maintenance Mode**)
+- The **Protein Floor** scales from the current **Trend Weight** independent of any
+  **Goal**, so it still applies in **Maintenance Mode**
 - A **Goal** and the current **Trend Weight** yield **Goal Progress** — how far the
   trend has moved toward the target and when, at the Goal's rate, it's projected to arrive
 - **Maintenance** is corrected over time from **Entries** and the **Trend Weight**
