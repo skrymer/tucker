@@ -129,9 +129,15 @@ There is no scheduler.
 _Avoid_: recalculation, recompute (as a noun)
 
 **Profile**:
-The user's body inputs to the BMR seed: sex, birth date, and height. Set
-once and rarely changed. Combined with the latest Weight Measurement, it
-seeds the initial Maintenance estimate.
+The user's personal settings — both the body inputs to the BMR seed (sex, birth
+date, height) and the user's locale: their **timezone** (an IANA zone, e.g.
+`Europe/Copenhagen`) and weekly-**Reminder** preferences (the local hour to nudge
+at, and whether reminders are on). The body inputs are set once and rarely
+changed; combined with the latest Weight Measurement they seed the initial
+Maintenance estimate. The timezone is user-level state (one human, one local day),
+defaulted from the browser when first captured — it is the proper home for "the
+user's local today," which weight-dating approximates client-side today. As Tucker
+grows multi-user this is the per-user record the reminder engine iterates.
 
 **Weight Measurement**:
 A single dated reading of the user's body weight. The raw, noisy signal behind
@@ -179,6 +185,32 @@ Intentional weight gain (a bulk) is *not* drift — but Tucker has no surplus Go
 yet, so today a deliberate gain reads as *drifting up*.
 _Avoid_: drift alert, weight alarm
 
+### Reminders
+
+**Weekly-Review Reminder**:
+A web-push notification that nudges the user to open Tucker when a **Weekly
+Review** has come due and they've been away. It does *not* run the review — the
+review still computes lazily on next app open; the Reminder only pulls a
+drifted-away user back. It fires from Tucker's one notification job (see
+[ADR 0010](docs/adr/0010-minimal-scheduler-for-the-weekly-reminder.md)) when the
+latest review is a week or more old, the user has a **Push Subscription**, and
+they haven't opened the app today — delivered at the user's local reminder hour
+(their **Profile** timezone + chosen hour). At most one Reminder per overdue
+episode: once the user opens the app, lazy catch-up writes a fresh review and the
+next episode begins. A displayed nudge, never a guilt-trip.
+_Avoid_: alert, notification, push (as the noun for the user-facing nudge)
+
+**Push Subscription**:
+One device's Web Push registration — the browser-issued endpoint and its keys —
+that Tucker stores so it can deliver a **Weekly-Review Reminder** to that device
+while the app is closed. One per device: a user's phone and laptop are separate
+Subscriptions, and the same Reminder fans out to all of them. Pure transport — it
+carries no schedule and no timezone (those belong to the user, on the **Profile**).
+Pruned when the browser reports it gone. On iOS a Subscription can only be created
+once Tucker is installed to the home screen; on Android and desktop it can be
+created from the browser tab.
+_Avoid_: device token, push token, registration
+
 ## Relationships
 
 - Every **Entry** is either a **Weighed Entry** or an **Estimated Entry**
@@ -195,6 +227,10 @@ _Avoid_: drift alert, weight alarm
   trend has moved toward the target and when, at the Goal's rate, it's projected to arrive
 - **Maintenance** is corrected over time from **Entries** and the **Trend Weight**
 - A day is on-target when intake is under the **Calorie Budget** and over the **Protein Floor**
+- A **Weekly-Review Reminder** is sent when a **Weekly Review** is overdue and the
+  user has at least one **Push Subscription** — it nudges, it never computes the review
+- A user has zero or more **Push Subscriptions** (one per device); each **Weekly-Review
+  Reminder** fans out to all of them, at the hour set on the user's **Profile**
 
 ## Example dialogue
 
