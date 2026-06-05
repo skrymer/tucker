@@ -68,6 +68,17 @@ regressions like an overlapping toast or a broken responsive layout;
 the walk-through can. Invoke it via the `/verify` skill, which wraps
 the protocol and emits a verdict the reviewer can replay.
 
+**Decision-compliance gate.** Alongside the walk-through, run the
+`/check-adrs` skill on the change before opening a PR. It verifies the
+diff against the project's recorded decisions — the ADRs in `docs/adr/`
+and the ubiquitous language in `CONTEXT.md` — extracting each normative
+constraint (decision, rejected alternative, MUST/MUST NOT, out-of-scope
+ruling, boundary rule, domain term) and emitting a per-constraint
+pass/fail/uncertain verdict that cites both the doc line and the code.
+The three gates are complementary: `/verify` checks runtime behaviour,
+`/code-review` checks correctness, and `/check-adrs` checks that the
+implementation honours the decisions already made.
+
 Linting and formatting are also enforced locally. ESLint + Prettier run on
 staged frontend files via a pre-commit hook — enable it once per clone with
 `git config core.hooksPath .githooks`. A Claude Code hook
