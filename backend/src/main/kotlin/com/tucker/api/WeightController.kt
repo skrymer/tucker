@@ -2,6 +2,7 @@ package com.tucker.api
 
 import com.tucker.domain.WeightMeasurement
 import com.tucker.persistence.WeightMeasurementRepository
+import com.tucker.service.WeightMeasurementService
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
@@ -45,7 +46,10 @@ private fun WeightMeasurement.toResponse() = WeightMeasurementResponse(
 
 @RestController
 @RequestMapping("/api/weight")
-class WeightController(private val weights: WeightMeasurementRepository) {
+class WeightController(
+    private val weights: WeightMeasurementRepository,
+    private val weightService: WeightMeasurementService,
+) {
 
     @GetMapping
     fun list(): List<WeightMeasurementResponse> = weights.findAll().map { it.toResponse() }
@@ -57,12 +61,13 @@ class WeightController(private val weights: WeightMeasurementRepository) {
     @PostMapping
     fun save(@RequestBody request: SaveWeightRequest): WeightMeasurementResponse {
         val today = userToday(request.clientToday)
-        return weights.save(
+        return weightService.save(
             WeightMeasurement.recorded(
                 measuredOn = request.date,
                 weightKg = request.weightKg,
                 today = today,
             ),
+            today,
         ).toResponse()
     }
 

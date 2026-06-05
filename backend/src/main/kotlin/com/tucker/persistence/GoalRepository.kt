@@ -27,6 +27,7 @@ class GoalRepository(private val dsl: DSLContext) {
         rec.targetWeightKg = goal.targetWeightKg.toFloat()
         rec.rateKgPerWeek = goal.rateKgPerWeek.toFloat()
         rec.active = if (goal.active) 1 else 0
+        rec.reachedOn = goal.reachedOn?.toString()
         rec.store()
         return goal.copy(id = rec.id!!.toLong())
     }
@@ -36,6 +37,14 @@ class GoalRepository(private val dsl: DSLContext) {
         dsl.update(GOAL).set(GOAL.ACTIVE, 0).where(GOAL.ACTIVE.eq(1)).execute()
     }
 
+    /** Stamp the date a Goal was reached (ADR 0008). */
+    fun updateReachedOn(id: Long, reachedOn: LocalDate) {
+        dsl.update(GOAL)
+            .set(GOAL.REACHED_ON, reachedOn.toString())
+            .where(GOAL.ID.eq(id.toInt()))
+            .execute()
+    }
+
     private fun GoalRecord.toGoal(): Goal = Goal(
         id = id!!.toLong(),
         startedOn = LocalDate.parse(startedOn),
@@ -43,5 +52,6 @@ class GoalRepository(private val dsl: DSLContext) {
         targetWeightKg = targetWeightKg.toDouble(),
         rateKgPerWeek = rateKgPerWeek.toDouble(),
         active = active != 0,
+        reachedOn = reachedOn?.let(LocalDate::parse),
     )
 }
