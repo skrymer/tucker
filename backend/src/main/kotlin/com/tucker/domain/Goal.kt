@@ -4,7 +4,9 @@ import java.time.LocalDate
 
 /**
  * A weight-loss Goal: a target weight, pursued at a chosen rate of loss.
- * The Goal derives the daily energy deficit and the daily protein floor.
+ * The Goal derives the daily energy deficit. The Protein Floor is decoupled from
+ * the Goal (ADR 0008) and lives in [ProteinFloor], since it applies in
+ * Maintenance Mode too.
  */
 data class Goal(
     val id: Long?,
@@ -28,18 +30,12 @@ data class Goal(
     /** The daily calorie deficit implied by the rate (1 kg of body fat ≈ 7700 kcal). */
     fun dailyDeficitKcal(): Double = rateKgPerWeek * KCAL_PER_KG_FAT / DAYS_PER_WEEK
 
-    /** The daily protein floor for a given trend weight: 2 g per kg of body weight. */
-    fun proteinFloorGrams(trendWeightKg: Double): Double = PROTEIN_G_PER_KG * trendWeightKg
-
     /** Whether [trendWeightKg] has reached (or passed) the target. */
     fun isReachedAt(trendWeightKg: Double): Boolean = trendWeightKg <= targetWeightKg
 
     companion object {
         /** Energy density of body fat — the basis for rate → deficit. */
         const val KCAL_PER_KG_FAT = 7700.0
-
-        /** Protein floor: grams of protein per kg of body weight. */
-        const val PROTEIN_G_PER_KG = 2.0
 
         /** Days the weekly rate of loss is spread across. */
         const val DAYS_PER_WEEK = 7.0

@@ -44,6 +44,13 @@ class WeeklyReviewServiceTest {
         weights.save(WeightMeasurement(null, today, 85.8))
     }
 
+    /** Maintenance Mode setup: a profile and weights, but deliberately no Goal. */
+    private fun seedProfileAndWeightsNoGoal() {
+        profiles.save(Profile(Sex.MALE, LocalDate.of(1986, 5, 22), 180.0))
+        weights.save(WeightMeasurement(null, today.minusDays(1), 86.0))
+        weights.save(WeightMeasurement(null, today, 85.8))
+    }
+
     /** A prior review on [reviewedOn], inserted directly to stand in as the cadence anchor. */
     private fun seedReviewOn(reviewedOn: LocalDate): WeeklyReview =
         reviews.insert(
@@ -72,6 +79,18 @@ class WeeklyReviewServiceTest {
         assertEquals(review.maintenanceKcal - 0.5 * 7700.0 / 7.0, review.calorieBudgetKcal, 0.5)
         // Protein floor = 2 g per kg of trend weight.
         assertEquals(2.0 * review.trendWeightKg, review.proteinFloorG, 0.01)
+    }
+
+    @Test
+    fun `with no active Goal the review budgets at maintenance and floors protein from the trend`() {
+        seedProfileAndWeightsNoGoal()
+
+        val review = service.runReview(today)
+
+        // Maintenance Mode: no deficit is subtracted, so the Budget is Maintenance.
+        assertEquals(review.maintenanceKcal, review.calorieBudgetKcal, 1e-9)
+        // The Protein Floor still applies, derived from the trend (2 g/kg).
+        assertEquals(2.0 * review.trendWeightKg, review.proteinFloorG, 1e-9)
     }
 
     @Test
@@ -178,6 +197,21 @@ class WeeklyReviewServiceTest {
         // One catch-up snapping to today, never one-per-missed-week.
         assertEquals(2, reviews.findAll().size)
         assertEquals(today, reviews.latest()!!.reviewedOn)
+    }
+
+    @Test
+    fun `catch-up bootstraps the first review in Maintenance Mode when none exists yet`() {
+        // Profile + a weight, but no Goal and no prior review. Nothing has fired a
+        // first review (a Goal would have), so the summary read must bootstrap one.
+        seedProfileAndWeightsNoGoal()
+
+        service.catchUpIfDue(today)
+
+        assertEquals(1, reviews.findAll().size)
+        val review = reviews.latest()!!
+        assertEquals(today, review.reviewedOn)
+        // It is a Maintenance review: Budget = Maintenance, no deficit.
+        assertEquals(review.maintenanceKcal, review.calorieBudgetKcal, 1e-9)
     }
 
     @Test

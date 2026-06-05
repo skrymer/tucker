@@ -58,6 +58,37 @@ class SummaryApiTest {
         }.andExpect { status { isCreated() } }
     }
 
+    /** Maintenance Mode setup: profile + a weight reading, but no Goal. */
+    private fun maintenanceSetup(on: LocalDate) {
+        mockMvc.put("/api/profile") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"sex":"MALE","birthDate":"1986-05-22","heightCm":180.0}"""
+        }.andExpect { status { isOk() } }
+
+        mockMvc.post("/api/weight") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"date":"$on","weightKg":86.0}"""
+        }.andExpect { status { isOk() } }
+    }
+
+    @Test
+    fun `in Maintenance Mode the summary reports a Maintenance budget, protein floor, and trend weight with no Goal`() {
+        val day = LocalDate.now()
+        maintenanceSetup(day)
+
+        mockMvc.get("/api/summary") {
+            param("date", "$day")
+        }.andExpect {
+            status { isOk() }
+            // A review was bootstrapped: the Budget is present (Maintenance, no deficit).
+            jsonPath("$.calorieBudget") { isNumber() }
+            // Protein Floor = 2 g/kg of the trend (a single 86.0 reading → trend 86.0).
+            jsonPath("$.proteinFloor") { value(172.0) }
+            jsonPath("$.trendWeightKg") { value(86.0) }
+            jsonPath("$.onTarget") { isBoolean() }
+        }
+    }
+
     @Test
     fun `loading the summary a week after the last review fires a catch-up review dated today`() {
         val setupDay = LocalDate.now()

@@ -83,6 +83,19 @@ export async function mockWeightApi(
   })
 }
 
+/**
+ * Stub `GET /api/goal` + `GET /api/goal/progress` returning 404 — no active
+ * Goal. The Today page reads this as Maintenance Mode (ADR 0008).
+ */
+export async function mockNoActiveGoal(page: Page) {
+  for (const path of ['**/api/goal', '**/api/goal/progress']) {
+    await page.route(path, (route) => {
+      if (route.request().method() !== 'GET') return route.fallback()
+      return route.fulfill({ status: 404, json: { message: 'no active Goal' } })
+    })
+  }
+}
+
 type GoalSeed = {
   id: number
   startedOn: string

@@ -6,6 +6,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.delete
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
 import org.springframework.test.web.servlet.put
@@ -60,5 +61,27 @@ class GoalApiTest {
             status { isOk() }
             jsonPath("$.length()") { value(0) }
         }
+    }
+
+    @Test
+    fun `GET goal returns 404 when no active goal exists`() {
+        mockMvc.get("/api/goal").andExpect {
+            status { isNotFound() }
+        }
+    }
+
+    @Test
+    fun `DELETE goal switches to maintenance — the active goal endpoint then 404s`() {
+        seedProfileAndWeight()
+        postGoal("${java.time.LocalDate.now()}", 90.0, 80.0)
+
+        mockMvc.delete("/api/goal").andExpect { status { isNoContent() } }
+
+        mockMvc.get("/api/goal").andExpect { status { isNotFound() } }
+    }
+
+    @Test
+    fun `DELETE goal is an idempotent no-op returning 204 when no goal is active`() {
+        mockMvc.delete("/api/goal").andExpect { status { isNoContent() } }
     }
 }

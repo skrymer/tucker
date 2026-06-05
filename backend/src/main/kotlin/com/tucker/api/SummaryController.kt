@@ -26,6 +26,8 @@ data class DailySummaryResponse(
     val proteinFloor: Double?,
     val caloriesRemaining: Double?,
     val onTarget: Boolean?,
+    /** The smoothed Trend Weight from the latest review; null until the first runs. */
+    val trendWeightKg: Double?,
     val entries: List<EntryResponse>,
     val budgetChange: BudgetChange?,
 )
@@ -92,6 +94,7 @@ class SummaryController(
             proteinFloor = review?.proteinFloorG,
             caloriesRemaining = review?.let { it.calorieBudgetKcal - log.caloriesConsumed() },
             onTarget = review?.let { log.isOnTarget(it.calorieBudgetKcal, it.proteinFloorG) },
+            trendWeightKg = review?.trendWeightKg,
             entries = log.entries.toResponses(foods),
             budgetChange = budgetChange,
         )

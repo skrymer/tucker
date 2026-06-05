@@ -7,6 +7,7 @@ import com.tucker.persistence.GoalRepository
 import com.tucker.persistence.WeightMeasurementRepository
 import com.tucker.service.GoalService
 import org.springframework.http.HttpStatus
+import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -114,4 +115,13 @@ class GoalController(
         )
         return goalService.replaceActiveGoal(goal).toResponse()
     }
+
+    /**
+     * Switch to Maintenance Mode (ADR 0008): deactivate the active Goal and
+     * force-recompute today's review so the Budget lifts to Maintenance at once.
+     * Idempotent — a no-op when no Goal is active.
+     */
+    @DeleteMapping("/goal")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    fun deactivate() = goalService.deactivateActiveGoal()
 }
