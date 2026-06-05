@@ -13,6 +13,9 @@ type GoalPayload = {
 
 const props = defineProps<{
   latestWeight: LatestWeight
+  // The live Trend Weight isn't known on the client, so the trend-weight rule
+  // (ADR 0008) is enforced server-side; a 400 is fed back here as a field error.
+  targetError?: string
 }>()
 
 const emit = defineEmits<{
@@ -65,7 +68,12 @@ const formattedDate = computed(() =>
       </p>
     </UFormField>
 
-    <UFormField label="Target weight (kg)" name="targetWeightKg" required>
+    <UFormField
+      label="Target weight (kg)"
+      name="targetWeightKg"
+      :error="props.targetError"
+      required
+    >
       <UInputNumber
         v-model="state.targetWeightKg"
         :step="0.1"

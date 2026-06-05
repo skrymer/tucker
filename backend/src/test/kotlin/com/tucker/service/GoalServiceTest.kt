@@ -9,6 +9,7 @@ import com.tucker.persistence.ProfileRepository
 import com.tucker.persistence.WeeklyReviewRepository
 import com.tucker.persistence.WeightMeasurementRepository
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.transaction.annotation.Transactional
@@ -16,6 +17,7 @@ import java.time.LocalDate
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 @SpringBootTest
 @Transactional
@@ -82,6 +84,24 @@ class GoalServiceTest {
         assertEquals(review.maintenanceKcal, review.calorieBudgetKcal, 1e-9)
         assertEquals(cutBudget + newGoal(rate = 0.5).dailyDeficitKcal(), review.calorieBudgetKcal, 0.5)
         assertEquals(1, reviews.findAll().size)
+    }
+
+    @Test
+    fun `rejects a goal whose target is not below the current trend weight`() {
+        // The latest reading is 86.0, so the Trend Weight is 86.0. A start of 90
+        // keeps the domain start-weight rule satisfied, but a target of 86 equals
+        // the trend — the Goal would be already-reached and stamp reachedOn on the
+        // next measurement, so it must be rejected at creation (ADR 0008).
+        seedProfileAndWeight()
+        val alreadyReached = Goal(null, today, 90.0, 86.0, 0.5, active = true)
+
+        val ex = assertThrows<IllegalArgumentException> {
+            service.replaceActiveGoal(alreadyReached, today)
+        }
+        assertTrue(
+            ex.message!!.contains("trend", ignoreCase = true),
+            "message should name the trend-weight rule, was: ${ex.message}",
+        )
     }
 
     @Test

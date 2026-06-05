@@ -5,6 +5,22 @@ interface ApiMutationOptions {
   successTitle?: string
   /** Side effects to run after a successful mutation (close, refresh, emit). */
   onSuccess?: () => void | Promise<void>
+  /**
+   * Handle a 400 validation rejection (a bad input, not a transient failure).
+   * When provided, the backend's message is routed here — to a form field —
+   * instead of the "check your connection" retry toast.
+   */
+  onValidationError?: (message: string) => void
+}
+
+/**
+ * The backend's `{ message }` body for an [IllegalArgumentException] → 400, or
+ * null when the rejection isn't a validation error a form should surface.
+ */
+function validationMessage(error: unknown): string | null {
+  const e = error as { status?: number; data?: { message?: string } }
+  if (e?.status !== 400) return null
+  return e.data?.message ?? null
 }
 
 /**
@@ -41,7 +57,15 @@ export function useApiMutation<TArgs extends unknown[]>(
     if (pending.value) return
     try {
       await run(...args)
-    } catch {
+    } catch (error) {
+      const message = validationMessage(error)
+      if (message && options.onValidationError) {
+        // A wrong input, not a flaky connection: hand it to the form and clear
+        // any stale transient toast rather than offering a pointless retry.
+        toast.remove(errorToastId)
+        options.onValidationError(message)
+        return
+      }
       toast.add({
         id: errorToastId,
         title: options.errorTitle,

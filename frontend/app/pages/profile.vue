@@ -34,7 +34,11 @@ function useProfileForm() {
 function useGoalSubmission(onSubmitted: () => void | Promise<void>) {
   const { $api } = useNuxtApp()
 
-  const { execute: submit } = useApiMutation(
+  // The live Trend Weight isn't on the client, so the trend-weight rule (ADR
+  // 0008) is enforced by the backend; its 400 lands here and feeds the form.
+  const targetError = ref<string | undefined>(undefined)
+
+  const { execute } = useApiMutation(
     (payload: {
       startedOn: string
       startWeightKg: number
@@ -45,10 +49,25 @@ function useGoalSubmission(onSubmitted: () => void | Promise<void>) {
       // No success toast: the goal card updates in place.
       errorTitle: 'Could not set goal',
       onSuccess: onSubmitted,
+      onValidationError: (message) => {
+        targetError.value = message
+      },
     },
   )
 
-  return { submit }
+  async function submit(payload: {
+    startedOn: string
+    startWeightKg: number
+    targetWeightKg: number
+    rateKgPerWeek: number
+  }) {
+    // Drop any prior rejection before re-attempting, so a corrected target that
+    // now succeeds doesn't leave a stale error behind.
+    targetError.value = undefined
+    await execute(payload)
+  }
+
+  return { submit, targetError }
 }
 
 const { profile, load: loadProfile, save: saveProfile } = useProfileForm()
@@ -83,7 +102,8 @@ const { logWeight } = useWeightLogging({
   // No success toast: the new reading appears in the weight trend below.
   onSaved: refreshWeights,
 })
-const { submit: submitGoal } = useGoalSubmission(refreshGoals)
+const { submit: submitGoal, targetError: goalTargetError } =
+  useGoalSubmission(refreshGoals)
 
 await loadProfile()
 </script>
@@ -105,6 +125,7 @@ await loadProfile()
     <GoalSection
       :goals="goals ?? []"
       :latest-weight="latestWeight"
+      :target-error="goalTargetError"
       :disabled="!gating.goalEnabled"
       @submit="submitGoal"
     />

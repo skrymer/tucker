@@ -1,7 +1,9 @@
 package com.tucker.service
 
 import com.tucker.domain.Goal
+import com.tucker.domain.WeightTrend
 import com.tucker.persistence.GoalRepository
+import com.tucker.persistence.WeightMeasurementRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
@@ -10,6 +12,7 @@ import java.time.LocalDate
 @Service
 class GoalService(
     private val goals: GoalRepository,
+    private val weights: WeightMeasurementRepository,
     private val weeklyReview: WeeklyReviewService,
 ) {
 
@@ -28,10 +31,26 @@ class GoalService(
      */
     @Transactional
     fun replaceActiveGoal(goal: Goal, today: LocalDate = LocalDate.now()): Goal {
+        requireBelowCurrentTrend(goal)
         goals.deactivateAll()
         val saved = goals.insert(goal)
         weeklyReview.recomputeFor(today)
         return saved
+    }
+
+    /**
+     * Guard a loss Goal against an already-reached target: its target must be below
+     * the current Trend Weight (ADR 0008). Reaching is checked on the live trend, so
+     * a target at or above it would stamp `reachedOn` on the very next measurement —
+     * it isn't a loss campaign at all. When no measurements exist there is no trend
+     * yet; the Goal's own start-weight invariant carries the check until one does.
+     */
+    private fun requireBelowCurrentTrend(goal: Goal) {
+        val currentTrendKg = WeightTrend.from(weights.findAll()).latest()?.trendKg ?: return
+        require(!goal.isReachedAt(currentTrendKg)) {
+            "a weight-loss Goal needs a target below your current trend weight " +
+                "(${"%.1f".format(currentTrendKg)} kg)"
+        }
     }
 
     /**
