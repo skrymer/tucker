@@ -33,10 +33,16 @@ code path).
    before the bug hunt — the reviewer then reads the code you're actually
    shipping, not a draft. Re-run the relevant tests after it applies fixes.
 
-3. **`/code-review` — hunt correctness bugs.** Review the (now-simplified) diff
-   for real bugs. Triage every finding: fix the genuine ones, and for each you
-   *don't* fix, say why (by-design per an ADR, pre-existing, out of scope). Don't
-   let an unexplained finding through.
+3. **`/code-review medium` — hunt correctness bugs.** Review the (now-simplified)
+   diff for real bugs. **Run it at `medium` effort**, not the default high: at
+   medium, `/code-review` focuses on its correctness angles and drops the reuse /
+   simplification / efficiency / altitude angles — which `/simplify` just ran and
+   applied in gate 2. Running it high here would re-do that cleanup pass for no
+   gain. Medium gives cleanup-once (gate 2) + correctness-once (gate 3) with no
+   overlap. Triage every finding: fix the genuine ones, and for each you *don't*
+   fix, say why (by-design per an ADR, pre-existing, out of scope). Don't let an
+   unexplained finding through. (Bump to high only if the diff is large or
+   security-sensitive and you want the broader net despite the redundancy.)
 
 4. **`/check-adrs` — honour the recorded decisions.** Verify the diff against the
    ADRs in `docs/adr/` and the ubiquitous language in `CONTEXT.md`. A FAIL is
@@ -64,10 +70,10 @@ Emit a short sign-off summary the user (and PR reviewer) can replay:
 ```
 ## Feature sign-off — <feature/issue>
 
-1. /verify     ✅ PASS — desktop walk-through + Pixel-7 capture (phone WM-clamped)
-2. /simplify   ✅ applied 1 cleanup (consolidated kg formatter)
-3. /code-review ⚠️ 2 findings → both fixed (double-render, banner copy); 4 by-design
-4. /check-adrs ⚠️ 1 FAIL → fixed CONTEXT.md (stale auto-deactivate wording)
+1. /verify         ✅ PASS — desktop walk-through + Pixel-7 capture (phone WM-clamped)
+2. /simplify       ✅ applied 1 cleanup (consolidated kg formatter)
+3. /code-review md ⚠️ 2 findings → both fixed (double-render, banner copy); 4 by-design
+4. /check-adrs     ⚠️ 1 FAIL → fixed CONTEXT.md (stale auto-deactivate wording)
 
 Suites green (detekt/build, lint/test). Committed + pushed to <branch>.
 ```
@@ -77,6 +83,11 @@ Suites green (detekt/build, lint/test). Committed + pushed to <branch>.
 - **Order is load-bearing.** verify first (don't review code that doesn't run),
   simplify before review (review the shipping code), check-adrs last (judge the
   final diff). Don't reorder for convenience.
+- **`/simplify` + `/code-review medium` are complementary, not redundant.**
+  `/simplify` owns cleanup and *applies* it; `/code-review` at medium owns the
+  correctness hunt and *reports* it. The overlap only appears if you run
+  `/code-review` high (it re-adds the cleanup angles). Keep gate 3 at medium so
+  each kind of work happens exactly once.
 - **Don't rubber-stamp.** A gate that found nothing is a result worth stating;
   a gate skipped is a gap. If you skip one (e.g. `/verify` SKIP for a docs-only
   change), say which and why.
