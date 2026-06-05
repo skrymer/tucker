@@ -19,7 +19,9 @@ test('setting a goal on /profile replaces the form with the new goal card', asyn
 
   const goal = page.getByRole('region', { name: /^goal$/i })
 
-  // No goal yet → the form is shown, anchored to the latest weight (84.2 kg).
+  // No active goal → Maintenance Mode: the creation form is behind the
+  // "Start a goal" CTA. Opening it anchors the form to the latest weight (84.2 kg).
+  await goal.getByRole('button', { name: /start a goal/i }).click()
   await expect(goal.getByText(/84\.2 kg/)).toBeVisible()
   await goal.getByLabel(/target weight/i).fill('80')
   await goal.getByLabel(/rate/i).fill('0.5')
@@ -56,6 +58,8 @@ test('a target not below the current trend weight is rejected with a field error
 
   const goal = page.getByRole('region', { name: /^goal$/i })
 
+  // No active goal → open the creation form from the maintenance CTA.
+  await goal.getByRole('button', { name: /start a goal/i }).click()
   await goal.getByLabel(/target weight/i).fill('84.5')
   await goal.getByLabel(/rate/i).fill('0.5')
   await goal.getByRole('button', { name: /^set goal$/i }).click()

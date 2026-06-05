@@ -75,9 +75,12 @@ describe('/profile progressive disclosure', () => {
     ).toBeVisible()
     expect(within(weight).queryByText(/set your profile first/i)).toBeNull()
 
-    // Goal is unlocked: its form (target weight) is shown, no gating copy.
+    // Goal is unlocked: the maintenance status offers re-entry via "Start a
+    // goal", no gating copy. (The form itself stays behind that CTA.)
     const goal = screen.getByRole('region', { name: /^goal$/i })
-    expect(within(goal).getByLabelText(/target weight/i)).toBeVisible()
+    expect(
+      within(goal).getByRole('button', { name: /start a goal/i }),
+    ).toBeVisible()
     expect(within(goal).queryByText(/log your weight first/i)).toBeNull()
   })
 })
