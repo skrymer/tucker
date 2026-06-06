@@ -25,6 +25,14 @@ export default defineNuxtConfig({
     '/api/**': { proxy: 'http://localhost:8080/api/**' },
   },
 
+  // Emit a static index.html for the SPA shell at build time. Without it an
+  // ssr:false build renders the shell only at runtime, so there is no document
+  // for the service worker to precache and the offline navigateFallback (below)
+  // would have nothing to serve.
+  nitro: {
+    prerender: { routes: ['/'] },
+  },
+
   app: {
     head: {
       title: 'Tucker',
@@ -35,13 +43,28 @@ export default defineNuxtConfig({
           content: 'width=device-width, initial-scale=1, viewport-fit=cover',
         },
         { name: 'description', content: 'A personal diet tracker.' },
+        // iOS has no maskable/manifest icon support — it reads the
+        // apple-touch-icon link and these meta tags for the home-screen app.
+        { name: 'apple-mobile-web-app-capable', content: 'yes' },
+        { name: 'apple-mobile-web-app-title', content: 'Tucker' },
+        { name: 'apple-mobile-web-app-status-bar-style', content: 'default' },
+      ],
+      link: [
+        {
+          rel: 'apple-touch-icon',
+          href: '/icons/apple-touch-icon-180x180.png',
+        },
       ],
     },
   },
 
   pwa: {
     registerType: 'autoUpdate',
+    // Ship the icon set (and favicon) into the precache so the installed app and
+    // its splash have them offline.
+    includeAssets: ['favicon.ico', 'icons/*.png'],
     manifest: {
+      id: '/',
       name: 'Tucker',
       short_name: 'Tucker',
       description: 'A personal diet tracker.',
@@ -49,9 +72,47 @@ export default defineNuxtConfig({
       background_color: '#ffffff',
       display: 'standalone',
       start_url: '/',
+      scope: '/',
+      icons: [
+        {
+          src: '/icons/pwa-192x192.png',
+          sizes: '192x192',
+          type: 'image/png',
+          purpose: 'any',
+        },
+        {
+          src: '/icons/pwa-512x512.png',
+          sizes: '512x512',
+          type: 'image/png',
+          purpose: 'any',
+        },
+        {
+          src: '/icons/maskable-192x192.png',
+          sizes: '192x192',
+          type: 'image/png',
+          purpose: 'maskable',
+        },
+        {
+          src: '/icons/maskable-512x512.png',
+          sizes: '512x512',
+          type: 'image/png',
+          purpose: 'maskable',
+        },
+      ],
     },
-    // F1 only wires the module in. Offline shell, install prompt and the
-    // web-push reminder are polished in F6 — keep the SW out of dev until then.
+    // Precache the built app shell (offline level L1, ADR 0011). As an SPA every
+    // navigation falls back to the precached index so the app loads offline
+    // instead of white-screening; /api/* is never cached (it's the live backend).
+    workbox: {
+      globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
+      // The prerendered shell (index.html → '/') is precached by the glob above,
+      // so any offline navigation falls back to it instead of white-screening.
+      navigateFallback: '/',
+      navigateFallbackDenylist: [/^\/api\//],
+    },
+    // Keep the service worker out of the dev server (it fights HMR); it is
+    // generated for the production build, which the smokes and the installed
+    // app run against.
     devOptions: { enabled: false },
   },
 })

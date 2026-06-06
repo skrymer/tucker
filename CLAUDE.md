@@ -147,7 +147,26 @@ The frontend is built **test-first (red-green TDD)**. Increments:
     `delete-food`).
 - **F4** — profile, goal, and weight-logging setup screens.
 - **F5** — weekly review view + history.
-- **F6** — PWA polish: offline shell, install prompt, web-push reminder.
+- **F6** — PWA polish: offline shell, install prompt, web-push reminder (PRD
+  [#79](https://github.com/skrymer/tucker/issues/79), ADRs 0010–0013). Slice 1
+  ([#80](https://github.com/skrymer/tucker/issues/80)) — **installable PWA
+  foundation + install affordance** — ✅ done:
+  - Icon set derived from the avocado brand mark by a committed
+    `frontend/scripts/generate-pwa-icons.mjs` (sharp): 192/512 + an Android
+    **maskable** variant, an iOS `apple-touch-icon`, and a monochrome tray badge,
+    all on brand green `#00c16a`.
+  - Completed manifest + the Workbox **precached app shell** (offline level L1,
+    ADR 0011). The `ssr:false` shell is prerendered to `index.html` so `/` is
+    precached and an offline navigation falls back to it instead of
+    white-screening; `/api/*` is never cached.
+  - `usePwaInstall` deep composable (`platform`, `isInstalled`, `canInstall`,
+    `promptInstall()`, `iosInstructions`) + an `InstallPrompt` component
+    (programmatic button on Android/desktop Chromium, the iOS Share → Add to
+    Home Screen hint, nothing once installed), surfaced on `/profile`. Each a
+    red-green TDD unit/component test; a real-stack `pwa-install` smoke covers
+    manifest + SW + offline shell + the install affordance on both viewports.
+  - Remaining F6 slices: install affordance polish is folded in here; slices 3–4
+    (enable-reminders + the reminder cron/sender) are still to do.
 - **F7** — Maintenance Mode after a Goal is reached (design pass **done**, see
   [`docs/adr/0008-maintenance-mode-is-the-absence-of-a-goal.md`](docs/adr/0008-maintenance-mode-is-the-absence-of-a-goal.md)
   and the `Maintenance Mode` / reached-Goal / `Drift Status` terms in
