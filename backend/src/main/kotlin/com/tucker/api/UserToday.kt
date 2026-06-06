@@ -18,12 +18,23 @@ import kotlin.math.abs
  */
 @Component
 class UserToday(private val clock: Clock) {
+    /**
+     * Resolve the user's local "today" from a client-supplied date, falling back
+     * to the server's date and rejecting anything more than a day off it.
+     */
     fun resolve(clientToday: LocalDate?): LocalDate {
-        val serverToday = LocalDate.now(clock)
+        val serverToday = serverToday()
         if (clientToday == null) return serverToday
         require(abs(ChronoUnit.DAYS.between(serverToday, clientToday)) <= 1) {
             "clientToday $clientToday is implausible relative to the server date ($serverToday)"
         }
         return clientToday
     }
+
+    /**
+     * The server's own date — used only by read-only "as of today" projections
+     * that have no client date to honour (e.g. GET /api/goal/progress), never to
+     * stamp a persisted domain date (ADR 0014). The single server-clock read site.
+     */
+    fun serverToday(): LocalDate = LocalDate.now(clock)
 }

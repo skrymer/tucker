@@ -1,3 +1,4 @@
+import { expect } from '@nuxt/test-utils/playwright'
 import type { Page } from '@playwright/test'
 
 /**
@@ -89,4 +90,23 @@ export function watchPageErrors(
   })
 
   return () => problems
+}
+
+/**
+ * The shared body of each suite's auto error-guard fixture: watch the page for
+ * the run, then fail with the collected problems if any survived the allowlist.
+ * Both the mocked and smoke fixtures call this so the failure semantics live in
+ * one place; they differ only in the [allowed] noise they pass.
+ */
+export async function assertNoPageErrors(
+  page: Page,
+  use: () => Promise<void>,
+  allowed: RegExp[],
+): Promise<void> {
+  const problems = watchPageErrors(page, allowed)
+  await use()
+  expect(
+    problems(),
+    `Unexpected page errors:\n${problems().join('\n')}`,
+  ).toEqual([])
 }

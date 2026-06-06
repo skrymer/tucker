@@ -1,5 +1,5 @@
 import { test as base, expect } from '@nuxt/test-utils/playwright'
-import { watchPageErrors, MOCKED_E2E_NOISE } from './console-guard'
+import { assertNoPageErrors, MOCKED_E2E_NOISE } from './console-guard'
 
 /**
  * Shared `test` for the mocked (`/api/*` stubbed) Playwright e2e suite. Extends
@@ -10,14 +10,7 @@ import { watchPageErrors, MOCKED_E2E_NOISE } from './console-guard'
  */
 export const test = base.extend<{ noPageErrors: void }>({
   noPageErrors: [
-    async ({ page }, use) => {
-      const problems = watchPageErrors(page, MOCKED_E2E_NOISE)
-      await use()
-      expect(
-        problems(),
-        `Unexpected page errors:\n${problems().join('\n')}`,
-      ).toEqual([])
-    },
+    ({ page }, use) => assertNoPageErrors(page, use, MOCKED_E2E_NOISE),
     { auto: true },
   ],
 })

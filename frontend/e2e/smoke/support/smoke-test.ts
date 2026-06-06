@@ -1,5 +1,5 @@
 import { test as base, expect } from '@nuxt/test-utils/playwright'
-import { watchPageErrors, SMOKE_NOISE } from '../../support/console-guard'
+import { assertNoPageErrors, SMOKE_NOISE } from '../../support/console-guard'
 
 const API = 'http://localhost:8080/api'
 
@@ -40,14 +40,8 @@ export const test = base.extend<{
   // Fail a smoke on any unexpected console error, uncaught exception, or failed
   // request — the silent regression class smokes never caught before (#85).
   noPageErrors: [
-    async ({ page, allowedErrors }, use) => {
-      const problems = watchPageErrors(page, [...SMOKE_NOISE, ...allowedErrors])
-      await use()
-      expect(
-        problems(),
-        `Unexpected page errors:\n${problems().join('\n')}`,
-      ).toEqual([])
-    },
+    ({ page, allowedErrors }, use) =>
+      assertNoPageErrors(page, use, [...SMOKE_NOISE, ...allowedErrors]),
     { auto: true },
   ],
 })

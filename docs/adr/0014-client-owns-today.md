@@ -38,15 +38,20 @@ client supplies nothing, it falls back to the server's date.
 **The server clock is a narrow, injected seam, not a default.** The domain services
 no longer default their `today` parameter to `LocalDate.now()`; the date is always
 passed in, so a missing one is a *compile error*, not a silent server-clock stamp.
-The server's own "now" survives in exactly two places, both reading a single
-injectable `java.time.Clock` bean (`Clock.systemUTC()`):
+The server's own "now" is read only through `UserToday`, which wraps a single
+injectable `java.time.Clock` bean (`Clock.systemUTC()`), and is used for two
+read-only purposes — **never to stamp a persisted domain date**:
 
-1. the `UserToday` ±1-day plausibility guard, and
-2. the future Weekly-Review reminder cron (#82), a server-initiated tick with no
-   client, which applies the user's `Profile` timezone to the clock's instant itself.
+1. validating a client-supplied date is plausible (the ±1-day guard), and
+2. supplying "today" to a read-only projection that has no client date to honour —
+   `GET /api/goal/progress`, whose observed-pace figures are computed as of today
+   but persist nothing (via `UserToday.serverToday()`).
 
-That one `Clock` seam is shared by this work and #82 (no duplicate), and lets tests
-and the `smoke` profile freeze time.
+The future Weekly-Review reminder cron (#82) is the one *other* legitimate reader
+of a server clock — a server-initiated tick with no client, which applies the
+user's `Profile` timezone to the clock's instant itself. It reuses this same
+`Clock` bean (no duplicate seam), and freezing the bean lets tests and the `smoke`
+profile control time.
 
 ## Alternatives rejected
 

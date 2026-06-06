@@ -112,7 +112,7 @@ class GoalController(
         // slope over the trailing window. Before any reading exists, the user is
         // by definition still at the Goal's captured start weight.
         val trend = WeightTrend.from(weights.findAll())
-        return GoalProgress.forGoal(goal, trend, userToday.resolve(null)).toResponse(goal.reachedOn)
+        return GoalProgress.forGoal(goal, trend, userToday.serverToday()).toResponse(goal.reachedOn)
     }
 
     /** Every Goal, newest first — the active one plus inactive history. */
