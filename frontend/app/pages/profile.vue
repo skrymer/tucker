@@ -135,5 +135,8 @@ await loadProfile()
       :disabled="!gating.goalEnabled"
       @submit="submitGoal"
     />
+
+    <!-- Renders the install affordance, or nothing once Tucker is installed. -->
+    <InstallPrompt />
   </section>
 </template>
