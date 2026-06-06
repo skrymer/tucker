@@ -30,7 +30,7 @@ class GoalService(
      * one transaction.
      */
     @Transactional
-    fun replaceActiveGoal(goal: Goal, today: LocalDate = LocalDate.now()): Goal {
+    fun replaceActiveGoal(goal: Goal, today: LocalDate): Goal {
         requireBelowCurrentTrend(goal)
         goals.deactivateAll()
         val saved = goals.insert(goal)
@@ -61,7 +61,7 @@ class GoalService(
      * measurements exist yet.
      */
     @Transactional
-    fun stampReachedIfCrossed(today: LocalDate = LocalDate.now()) {
+    fun stampReachedIfCrossed(today: LocalDate) {
         val goal = goals.findActive() ?: return
         val trendKg = currentTrendKg() ?: return
         val stamped = goal.markReachedIfCrossed(trendKg, today)
@@ -80,7 +80,7 @@ class GoalService(
      * (ADR 0008) rather than waiting up to a week. A no-op when no Goal is active.
      */
     @Transactional
-    fun deactivateActiveGoal(today: LocalDate = LocalDate.now()) {
+    fun deactivateActiveGoal(today: LocalDate) {
         if (goals.findActive() == null) return
         goals.deactivateAll()
         weeklyReview.recomputeFor(today)

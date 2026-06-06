@@ -1,4 +1,5 @@
 import { test, expect } from './support/smoke-test'
+import { todayIso } from '../support/date'
 
 // Slice 2 smoke: the full UI → API → DB path for logging a Weighed entry
 // against the real backend. Creates a food in the catalog, logs an
@@ -59,7 +60,7 @@ test('user logs a Weighed entry from Today and the dashboard updates', async ({
     ).toBeVisible()
 
     // Capture the logged entry id for cleanup.
-    const today = new Date().toLocaleDateString('en-CA')
+    const today = todayIso()
     const list = await request.get('http://localhost:8080/api/entries', {
       params: { date: today },
     })

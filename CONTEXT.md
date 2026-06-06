@@ -125,7 +125,10 @@ figures. Reviews fire by **lazy catch-up**: on app use, if the latest review
 is a week or more old, the engine runs one review snapping to today (it does
 not replay each missed week — the adaptive window already looks back two
 weeks). A manual "run now" trigger and a **Goal**-change recompute also exist.
-There is no scheduler.
+There is no scheduler. Every recompute is stamped on the user's _local_ today —
+the client supplies it, the server never substitutes its own wall-clock day (the
+"client owns today" boundary rule; see [ADR 0014](docs/adr/0014-client-owns-today.md)
+and **Weight Measurement**).
 _Avoid_: recalculation, recompute (as a noun)
 
 **Profile**:

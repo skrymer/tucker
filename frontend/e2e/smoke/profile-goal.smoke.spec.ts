@@ -1,4 +1,5 @@
 import { test, expect } from './support/smoke-test'
+import { todayIso } from '../support/date'
 
 // F4 slice 4 smoke: the full UI → API → DB path for setting a Goal on
 // /profile, and the first Goal auto-firing the weekly review so the dashboard
@@ -16,7 +17,7 @@ test('setting a goal on /profile yields a non-null budget on the dashboard', asy
   goto,
   request,
 }) => {
-  const today = new Date().toLocaleDateString('en-CA')
+  const today = todayIso()
 
   // Prerequisites via the API: a profile and a current weight reading.
   const profile = await request.put(`${API}/profile`, {

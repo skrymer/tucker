@@ -1,4 +1,5 @@
 import { test, expect } from './support/smoke-test'
+import { todayIso } from '../support/date'
 
 // F4 slice 2 smoke: the full UI → API → DB path for logging today's weight
 // from the dashboard tile. No mocks.
@@ -12,7 +13,7 @@ test("user logs today's weight from the tile and the value renders", async ({
   goto,
   request,
 }) => {
-  const today = new Date().toLocaleDateString('en-CA')
+  const today = todayIso()
   const weightKg = 84.2
 
   // Clean slate: drop any leftover measurement for today.

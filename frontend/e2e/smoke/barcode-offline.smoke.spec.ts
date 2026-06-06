@@ -1,6 +1,11 @@
 import { test, expect } from './support/smoke-test'
 import type { APIRequestContext } from '@playwright/test'
 
+// This smoke deliberately aborts the barcode lookup to simulate offline, so the
+// resulting failed request / load error is expected, not a regression — let the
+// shared error guard (#85) tolerate exactly that failure.
+test.use({ allowedErrors: [/net::ERR_FAILED/] })
+
 // F8 slice 4 smoke: offline degrade. Decoding runs locally and still works
 // offline, but the lookup needs the network. When the lookup fails on the
 // network, the flow must degrade to the same barcode-pre-filled manual entry as

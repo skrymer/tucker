@@ -13,8 +13,6 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 import java.time.LocalDate
-import java.time.temporal.ChronoUnit
-import kotlin.math.abs
 
 /** API representation of a weight reading. */
 data class WeightMeasurementResponse(
@@ -49,6 +47,7 @@ private fun WeightMeasurement.toResponse() = WeightMeasurementResponse(
 class WeightController(
     private val weights: WeightMeasurementRepository,
     private val weightService: WeightMeasurementService,
+    private val userToday: UserToday,
 ) {
 
     @GetMapping
@@ -60,7 +59,7 @@ class WeightController(
 
     @PostMapping
     fun save(@RequestBody request: SaveWeightRequest): WeightMeasurementResponse {
-        val today = userToday(request.clientToday)
+        val today = userToday.resolve(request.clientToday)
         return weightService.save(
             WeightMeasurement.recorded(
                 measuredOn = request.date,
@@ -69,21 +68,6 @@ class WeightController(
             ),
             today,
         ).toResponse()
-    }
-
-    /**
-     * Resolve the day to validate against. Trust the client's local date, but
-     * only within a day of the server's own date — a real timezone offset can
-     * shift the local date by at most one day, so anything beyond that is a
-     * misconfigured (or untrustworthy) client clock.
-     */
-    private fun userToday(clientToday: LocalDate?): LocalDate {
-        val serverToday = LocalDate.now()
-        if (clientToday == null) return serverToday
-        require(abs(ChronoUnit.DAYS.between(serverToday, clientToday)) <= 1) {
-            "clientToday $clientToday is implausible relative to the server date ($serverToday)"
-        }
-        return clientToday
     }
 
     @DeleteMapping("/{id}")

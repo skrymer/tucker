@@ -1,4 +1,5 @@
 import { test, expect } from './support/smoke-test'
+import { todayIso } from '../support/date'
 
 // F5 slice C smoke: the goal-glance tile on /today, end-to-end against the real
 // backend. No /api mocks. The tile shows percent complete and kg-to-go computed
@@ -22,7 +23,7 @@ test('the goal-glance tile shows progress and taps through to the review', async
   goto,
   request,
 }) => {
-  const today = new Date().toLocaleDateString('en-CA')
+  const today = todayIso()
 
   // Remember any existing today reading so we can put it back afterwards.
   const origToday = await todayWeight(request, today)

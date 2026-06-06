@@ -1,4 +1,4 @@
-import { expect, test } from '@nuxt/test-utils/playwright'
+import { expect, test } from './support/test'
 import { mockProfile, mockWeightList } from './support/mock-api'
 
 test('a backfilled weight appears in the Weight log list', async ({

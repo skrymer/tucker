@@ -1,4 +1,5 @@
 import { test, expect } from './support/smoke-test'
+import { todayIso } from '../support/date'
 
 // Slice 1 smoke: the full UI → API → DB path for logging an Estimated
 // entry against the real backend. No mocks.
@@ -32,7 +33,7 @@ test('user logs an Estimated entry from Today and the dashboard updates', async 
   await expect(page.getByText(`${label} — ${calories} kcal`)).toBeVisible()
 
   // Cleanup: find today's entries through the API, delete the one we made.
-  const today = new Date().toLocaleDateString('en-CA')
+  const today = todayIso()
   const list = await request.get('http://localhost:8080/api/entries', {
     params: { date: today },
   })

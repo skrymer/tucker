@@ -1,5 +1,6 @@
 import { test, expect } from './support/smoke-test'
 import type { APIRequestContext } from '@playwright/test'
+import { todayIso, isoShiftDays } from '../support/date'
 
 // F7 slice 2 smoke (ADR 0008): reaching a Goal end-to-end against the real
 // backend. No /api mocks. We drive the live EWMA Trend Weight across a Goal's
@@ -22,8 +23,8 @@ test('reaching a goal surfaces the fork banner and switching to maintenance lift
   goto,
   request,
 }) => {
-  const today = new Date().toLocaleDateString('en-CA')
-  const earlier = isoDaysAgo(today, 7)
+  const today = todayIso()
+  const earlier = isoShiftDays(today, -7)
 
   // Reviews need a profile.
   await request.put(`${API}/profile`, {
@@ -113,12 +114,6 @@ test('reaching a goal surfaces the fork banner and switching to maintenance lift
     }
   }
 })
-
-function isoDaysAgo(isoDate: string, days: number): string {
-  const d = new Date(`${isoDate}T00:00:00`)
-  d.setDate(d.getDate() - days)
-  return d.toLocaleDateString('en-CA')
-}
 
 async function allWeights(request: APIRequestContext): Promise<WeightRecord[]> {
   const res = await request.get(`${API}/weight`)

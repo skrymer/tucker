@@ -1,4 +1,5 @@
 import { test, expect } from './support/smoke-test'
+import { todayIso, isoShiftDays } from '../support/date'
 
 // F5 slice B smoke: the budget-change banner on /today. When a weekly review
 // moves the Calorie Budget or Protein Floor, /today shows a persistent,
@@ -15,20 +16,12 @@ import { test, expect } from './support/smoke-test'
 // marches forward — but the weight nudge is restored afterwards.
 const API = 'http://localhost:8080/api'
 
-/** An ISO `yyyy-mm-dd` date shifted by whole days, in UTC to dodge DST. */
-function isoPlusDays(iso: string, days: number): string {
-  const [y, m, d] = iso.split('-').map(Number)
-  const dt = new Date(Date.UTC(y!, m! - 1, d!))
-  dt.setUTCDate(dt.getUTCDate() + days)
-  return dt.toISOString().slice(0, 10)
-}
-
 test('a changed weekly review raises a dismissible budget-change banner', async ({
   page,
   goto,
   request,
 }) => {
-  const today = new Date().toLocaleDateString('en-CA')
+  const today = todayIso()
 
   // Ensure a first review exists to change *from*. A fresh DB has none, so
   // complete setup the way a real install does — profile, a weight reading,
@@ -62,8 +55,8 @@ test('a changed weekly review raises a dismissible budget-change banner', async 
 
   // Stand a week past the last review so /today's summary read is due, and fire
   // a fresh catch-up review off the nudged weight.
-  const dueDay = isoPlusDays(before.reviewedOn, 7)
-  await page.clock.install({ time: new Date(`${dueDay}T12:00:00`) })
+  const dueDay = isoShiftDays(before.reviewedOn, 7)
+  await page.clock.install({ time: new Date(`${dueDay}T12:00:00Z`) })
   await goto('/', { waitUntil: 'hydration' })
 
   // The catch-up ran on the summary read: the latest review snapped to today.

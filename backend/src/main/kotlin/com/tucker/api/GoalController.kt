@@ -6,12 +6,14 @@ import com.tucker.domain.WeightTrend
 import com.tucker.persistence.GoalRepository
 import com.tucker.persistence.WeightMeasurementRepository
 import com.tucker.service.GoalService
+import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 import java.time.LocalDate
@@ -49,12 +51,20 @@ data class GoalProgressResponse(
     val reachedOn: LocalDate?,
 )
 
-/** Request to set a new weight-loss Goal. */
+/**
+ * Request to set a new weight-loss Goal.
+ *
+ * [clientToday] is the user's *local* date (ADR 0014): the day the forced review
+ * recompute is stamped on, so the lifted Budget lands on the user's today rather
+ * than the server's wall-clock day. Validated against the server clock; falls back
+ * to the server date when omitted.
+ */
 data class CreateGoalRequest(
     val startedOn: LocalDate,
     val startWeightKg: Double,
     val targetWeightKg: Double,
     val rateKgPerWeek: Double,
+    val clientToday: LocalDate? = null,
 )
 
 private fun GoalProgress.toResponse(reachedOn: LocalDate?) = GoalProgressResponse(
@@ -88,6 +98,7 @@ class GoalController(
     private val goals: GoalRepository,
     private val goalService: GoalService,
     private val weights: WeightMeasurementRepository,
+    private val userToday: UserToday,
 ) {
 
     @GetMapping("/goal")
@@ -101,7 +112,7 @@ class GoalController(
         // slope over the trailing window. Before any reading exists, the user is
         // by definition still at the Goal's captured start weight.
         val trend = WeightTrend.from(weights.findAll())
-        return GoalProgress.forGoal(goal, trend, LocalDate.now()).toResponse(goal.reachedOn)
+        return GoalProgress.forGoal(goal, trend, userToday.resolve(null)).toResponse(goal.reachedOn)
     }
 
     /** Every Goal, newest first — the active one plus inactive history. */
@@ -119,15 +130,20 @@ class GoalController(
             rateKgPerWeek = request.rateKgPerWeek,
             active = true,
         )
-        return goalService.replaceActiveGoal(goal).toResponse()
+        return goalService.replaceActiveGoal(goal, userToday.resolve(request.clientToday)).toResponse()
     }
 
     /**
      * Switch to Maintenance Mode (ADR 0008): deactivate the active Goal and
      * force-recompute today's review so the Budget lifts to Maintenance at once.
-     * Idempotent — a no-op when no Goal is active.
+     * Idempotent — a no-op when no Goal is active. [clientToday] is the user's
+     * local date (ADR 0014) the lift is stamped on; falls back to the server date.
      */
     @DeleteMapping("/goal")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    fun deactivate() = goalService.deactivateActiveGoal()
+    fun deactivate(
+        @RequestParam(required = false)
+        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+        clientToday: LocalDate?,
+    ) = goalService.deactivateActiveGoal(userToday.resolve(clientToday))
 }

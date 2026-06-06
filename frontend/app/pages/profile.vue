@@ -44,7 +44,13 @@ function useGoalSubmission(onSubmitted: () => void | Promise<void>) {
       startWeightKg: number
       targetWeightKg: number
       rateKgPerWeek: number
-    }) => $api('/api/goal', { method: 'POST', body: payload }),
+    }) =>
+      // The client owns "today" (ADR 0014): send the user's local day so the
+      // forced review recompute lands on it, not the server's wall-clock day.
+      $api('/api/goal', {
+        method: 'POST',
+        body: { ...payload, clientToday: localToday() },
+      }),
     {
       // No success toast: the goal card updates in place.
       errorTitle: 'Could not set goal',

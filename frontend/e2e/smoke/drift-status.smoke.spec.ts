@@ -1,4 +1,5 @@
 import { test, expect } from './support/smoke-test'
+import { todayIso } from '../support/date'
 
 // F7 slice 3 smoke: Drift Status on /today in Maintenance Mode, end-to-end
 // against the real backend. No /api mocks. With no active Goal the backend
@@ -27,7 +28,7 @@ test('the Maintaining card shows a Drifting up status when the trend is rising',
   goto,
   request,
 }) => {
-  const today = new Date().toLocaleDateString('en-CA')
+  const today = todayIso()
 
   // Maintenance Mode needs a profile. Snapshot any active Goal, then switch to
   // maintenance via DELETE /api/goal (which also force-recomputes today's review).

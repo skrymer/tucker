@@ -56,7 +56,13 @@ const maintainingDriftStatus = computed<DriftStatus>(
 // DELETE — so we refresh both the summary and the now-404 goal progress, which
 // flips the page into the Maintaining card.
 const { execute: switchToMaintenance } = useApiMutation(
-  () => $api('/api/goal', { method: 'DELETE' }),
+  // Client owns "today" (ADR 0014): the recompute lifts the Budget on the user's
+  // local day, not the server's wall-clock day.
+  () =>
+    $api('/api/goal', {
+      method: 'DELETE',
+      query: { clientToday: localToday() },
+    }),
   {
     errorTitle: 'Could not switch to maintenance',
     onSuccess: () => Promise.all([refresh(), refreshGoalProgress()]),

@@ -1,4 +1,5 @@
 import { test, expect } from './support/smoke-test'
+import { todayIso } from '../support/date'
 
 // F7 slice 5 smoke: the durable Maintenance Mode status on /profile, end-to-end
 // against the real backend. No /api mocks. With no active Goal the Goal section
@@ -19,7 +20,7 @@ test('with no active Goal the Profile page shows the maintenance status and a "S
   goto,
   request,
 }) => {
-  const today = new Date().toLocaleDateString('en-CA')
+  const today = todayIso()
 
   // The Goal section unlocks only once a profile and a weight reading exist.
   await request.put(`${API}/profile`, {
