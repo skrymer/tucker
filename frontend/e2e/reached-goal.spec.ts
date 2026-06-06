@@ -1,4 +1,4 @@
-import { expect, test } from '@nuxt/test-utils/playwright'
+import { expect, test } from './support/test'
 import type { Page } from '@playwright/test'
 import { mockWeightApi } from './support/mock-api'
 
@@ -34,7 +34,10 @@ async function mockReachedThenMaintenance(page: Page) {
     })
   })
 
-  await page.route('**/api/goal', (route) => {
+  // Matches /api/goal with or without a query string (the switch-to-maintenance
+  // DELETE now carries ?clientToday=… per ADR 0014), but not /api/goal/progress
+  // or /api/goals.
+  await page.route(/\/api\/goal(\?.*)?$/, (route) => {
     if (route.request().method() !== 'DELETE') return route.fallback()
     maintaining = true
     return route.fulfill({ status: 204, body: '' })

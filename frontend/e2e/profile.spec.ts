@@ -1,4 +1,4 @@
-import { expect, test } from '@nuxt/test-utils/playwright'
+import { expect, test } from './support/test'
 import { mockProfile, mockNoProfile } from './support/mock-api'
 
 test('the Profile page prefills the form from the saved profile', async ({

@@ -1,4 +1,4 @@
-import { expect, test } from '@nuxt/test-utils/playwright'
+import { expect, test } from './support/test'
 import { mockFoods } from './support/mock-api'
 
 test('the Foods page shows the catalog from the API', async ({

@@ -1,4 +1,4 @@
-import { expect, test } from '@nuxt/test-utils/playwright'
+import { expect, test } from './support/test'
 import { mockSummary } from './support/mock-api'
 
 const PHONE = { width: 375, height: 812 }

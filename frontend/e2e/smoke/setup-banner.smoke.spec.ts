@@ -1,4 +1,5 @@
 import { test, expect } from './support/smoke-test'
+import { todayIso } from '../support/date'
 
 // F4 slice 5 smoke: the setup banner on /today reflects the real
 // `GET /api/summary` budget signal. No mocks.
@@ -20,7 +21,7 @@ test('the setup banner shows until a budget exists, then disappears', async ({
   goto,
   request,
 }) => {
-  const today = new Date().toLocaleDateString('en-CA')
+  const today = todayIso()
 
   const review = await request.get(`${API}/weekly-review`)
   const alreadySetUp = review.ok()

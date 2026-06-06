@@ -1,4 +1,5 @@
 import { test, expect } from './support/smoke-test'
+import { todayIso } from '../support/date'
 import type { APIRequestContext } from '@playwright/test'
 
 // F8 slice 3 smoke: the offered "log it now" continuation end-to-end against the
@@ -80,7 +81,7 @@ test('user creates a Food from a barcode then logs it now from the same flow', a
     }>
     foodId = foods.find((f) => f.barcode === barcode)?.id
 
-    const today = new Date().toLocaleDateString('en-CA')
+    const today = todayIso()
     const entriesList = await request.get(`${API}/entries`, {
       params: { date: today },
     })

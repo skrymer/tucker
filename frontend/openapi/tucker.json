@@ -284,6 +284,17 @@
           "weekly-review-controller"
         ],
         "operationId": "run",
+        "parameters": [
+          {
+            "name": "clientToday",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
         "responses": {
           "404": {
             "description": "Not Found",
@@ -440,6 +451,17 @@
           "goal-controller"
         ],
         "operationId": "deactivate",
+        "parameters": [
+          {
+            "name": "clientToday",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
         "responses": {
           "404": {
             "description": "Not Found",
@@ -1462,6 +1484,10 @@
           "rateKgPerWeek": {
             "type": "number",
             "format": "double"
+          },
+          "clientToday": {
+            "type": "string",
+            "format": "date"
           }
         }
       },

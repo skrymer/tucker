@@ -1,4 +1,4 @@
-import { expect, test } from '@nuxt/test-utils/playwright'
+import { expect, test } from './support/test'
 import { mockProfile, mockWeightList, mockGoals } from './support/mock-api'
 
 test('setting a goal on /profile replaces the form with the new goal card', async ({

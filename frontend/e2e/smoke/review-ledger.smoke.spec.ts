@@ -1,4 +1,5 @@
 import { test, expect } from './support/smoke-test'
+import { todayIso, isoShiftDays } from '../support/date'
 
 // F5 slice D smoke: the Weekly Review ledger on /review, end-to-end against the
 // real backend. No /api mocks — only the browser clock is mocked, to stand a
@@ -16,20 +17,12 @@ import { test, expect } from './support/smoke-test'
 // and cards on phone. The button's presence is asserted; the nudge is restored.
 const API = 'http://localhost:8080/api'
 
-/** An ISO `yyyy-mm-dd` date shifted by whole days, in UTC to dodge DST. */
-function isoPlusDays(iso: string, days: number): string {
-  const [y, m, d] = iso.split('-').map(Number)
-  const dt = new Date(Date.UTC(y!, m! - 1, d!))
-  dt.setUTCDate(dt.getUTCDate() + days)
-  return dt.toISOString().slice(0, 10)
-}
-
 test('the ledger lists each review newest-first with its delta and basis badge', async ({
   page,
   goto,
   request,
 }) => {
-  const today = new Date().toLocaleDateString('en-CA')
+  const today = todayIso()
 
   // Ensure a first review exists to delta *from*. A fresh DB has none, so
   // complete setup the way a real install does — profile, a weight reading,
@@ -63,8 +56,8 @@ test('the ledger lists each review newest-first with its delta and basis badge',
 
   // Stand a week past the last review so /today's summary read is due, and fire
   // a fresh catch-up review off the nudged weight.
-  const dueDay = isoPlusDays(before.reviewedOn, 7)
-  await page.clock.install({ time: new Date(`${dueDay}T12:00:00`) })
+  const dueDay = isoShiftDays(before.reviewedOn, 7)
+  await page.clock.install({ time: new Date(`${dueDay}T12:00:00Z`) })
   await goto('/', { waitUntil: 'hydration' })
 
   // The catch-up ran on the summary read: the latest review snapped to today.

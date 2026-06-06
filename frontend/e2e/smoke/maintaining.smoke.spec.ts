@@ -1,4 +1,5 @@
 import { test, expect } from './support/smoke-test'
+import { todayIso } from '../support/date'
 
 // F7 slice 1 smoke: Maintenance Mode on /today, end-to-end against the real
 // backend. No /api mocks. With no active Goal the backend budgets the weekly
@@ -19,7 +20,7 @@ test('with no active Goal the Today page shows the Maintaining card and a Mainte
   goto,
   request,
 }) => {
-  const today = new Date().toLocaleDateString('en-CA')
+  const today = todayIso()
 
   // Maintenance Mode needs a profile and at least one weight reading.
   await request.put(`${API}/profile`, {

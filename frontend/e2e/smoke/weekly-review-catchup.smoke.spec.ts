@@ -1,4 +1,5 @@
 import { test, expect } from './support/smoke-test'
+import { todayIso, isoShiftDays } from '../support/date'
 
 // F5 slice A smoke: the lazy catch-up cadence. When the latest WeeklyReview has
 // aged a week, loading /today fires exactly one fresh review snapped to the
@@ -14,14 +15,6 @@ import { test, expect } from './support/smoke-test'
 // so there is no per-run data to clean up.
 const API = 'http://localhost:8080/api'
 
-/** An ISO `yyyy-mm-dd` date shifted by whole days, in UTC to dodge DST. */
-function isoPlusDays(iso: string, days: number): string {
-  const [y, m, d] = iso.split('-').map(Number)
-  const dt = new Date(Date.UTC(y!, m! - 1, d!))
-  dt.setUTCDate(dt.getUTCDate() + days)
-  return dt.toISOString().slice(0, 10)
-}
-
 test('loading Today a week on fires a catch-up review and the budget reflects it', async ({
   page,
   goto,
@@ -31,7 +24,7 @@ test('loading Today a week on fires a catch-up review and the budget reflects it
   // install does — profile, a weight reading, then an active goal, which
   // auto-fires the first review.
   if (!(await request.get(`${API}/weekly-review`)).ok()) {
-    const today = new Date().toLocaleDateString('en-CA')
+    const today = todayIso()
     await request.put(`${API}/profile`, {
       data: { sex: 'MALE', birthDate: '1990-06-15', heightCm: 180 },
     })
@@ -50,12 +43,12 @@ test('loading Today a week on fires a catch-up review and the budget reflects it
   }
 
   const before = await (await request.get(`${API}/weekly-review`)).json()
-  const dueDay = isoPlusDays(before.reviewedOn, 7)
+  const dueDay = isoShiftDays(before.reviewedOn, 7)
 
-  // Stand a week after the last review so /today's summary query is due. Local
-  // noon keeps `new Date().toLocaleDateString('en-CA')` on `dueDay` regardless
-  // of the runner's timezone.
-  await page.clock.install({ time: new Date(`${dueDay}T12:00:00`) })
+  // Stand a week after the last review so /today's summary query is due. Noon
+  // UTC (explicit `Z`) keeps the app's local date on `dueDay` regardless of the
+  // browser timezone — midday is more than any real offset from midnight.
+  await page.clock.install({ time: new Date(`${dueDay}T12:00:00Z`) })
 
   await goto('/', { waitUntil: 'hydration' })
 

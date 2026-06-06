@@ -1,4 +1,6 @@
 import { test, expect } from './support/smoke-test'
+import type { APIRequestContext } from '@playwright/test'
+import { todayIso } from '../support/date'
 
 // Issue #61 smoke: replacing a Goal force-recomputes *today's* Weekly Review, so
 // a steeper rate (a larger daily deficit) moves the Calorie Budget immediately —
@@ -29,11 +31,9 @@ interface ReviewRow {
 }
 
 /** The Calorie Budget of the most recent Weekly Review, or null if none exists. */
-async function latestReviewBudget(request: {
-  get: (
-    url: string,
-  ) => Promise<{ ok: () => boolean; json: () => Promise<unknown> }>
-}): Promise<number | null> {
+async function latestReviewBudget(
+  request: APIRequestContext,
+): Promise<number | null> {
   const res = await request.get(`${API}/weekly-review/history`)
   if (!res.ok()) return null
   const all = (await res.json()) as ReviewRow[]
@@ -47,7 +47,7 @@ test("replacing a goal recomputes today's budget immediately for the new deficit
   goto,
   request,
 }) => {
-  const today = new Date().toLocaleDateString('en-CA')
+  const today = todayIso()
 
   await request.put(`${API}/profile`, {
     data: { sex: 'MALE', birthDate: '1990-06-15', heightCm: 180 },

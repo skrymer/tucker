@@ -1,4 +1,5 @@
 import { test, expect } from './support/smoke-test'
+import { formatDmy } from '../support/date'
 
 // F4 slice 3 smoke: the full UI → API → DB path for backfilling a past weight
 // from the /profile Weight log. No mocks.
@@ -7,11 +8,7 @@ import { test, expect } from './support/smoke-test'
 // delete any leftover record for it before asserting and again on teardown so
 // the docker volume starts and ends clean.
 const backfillDate = '2015-01-01'
-const formattedDate = new Date(2015, 0, 1).toLocaleDateString('en-GB', {
-  day: 'numeric',
-  month: 'short',
-  year: 'numeric',
-})
+const formattedDate = formatDmy(backfillDate)
 const weightKg = 73.7
 
 test('user backfills a past weight on /profile and it appears in the list', async ({

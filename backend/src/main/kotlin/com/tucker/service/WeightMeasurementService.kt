@@ -19,7 +19,7 @@ class WeightMeasurementService(
 ) {
 
     @Transactional
-    fun save(measurement: WeightMeasurement, today: LocalDate = LocalDate.now()): WeightMeasurement {
+    fun save(measurement: WeightMeasurement, today: LocalDate): WeightMeasurement {
         val saved = weights.save(measurement)
         goals.stampReachedIfCrossed(today)
         return saved

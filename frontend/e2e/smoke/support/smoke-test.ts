@@ -1,4 +1,5 @@
 import { test as base, expect } from '@nuxt/test-utils/playwright'
+import { assertNoPageErrors, SMOKE_NOISE } from '../../support/console-guard'
 
 const API = 'http://localhost:8080/api'
 
@@ -14,7 +15,18 @@ const API = 'http://localhost:8080/api'
 // the disposable per-run database (docker-compose.smoke.yml + global setup),
 // nothing leaks between tests or between runs. Tests still seed whatever they
 // need in their own body.
-export const test = base.extend<{ freshDatabase: void }>({
+export const test = base.extend<{
+  freshDatabase: void
+  noPageErrors: void
+  /**
+   * Extra page-error patterns a single smoke tolerates on top of [SMOKE_NOISE] —
+   * for a test that *deliberately* induces a failure (e.g. the offline-lookup
+   * smoke aborts the barcode request). Set per-file with
+   * `test.use({ allowedErrors: [/…/] })`; keep each entry scoped and commented.
+   */
+  allowedErrors: RegExp[]
+}>({
+  allowedErrors: [[], { option: true }],
   freshDatabase: [
     async ({ request }, use) => {
       const res = await request.post(`${API}/test/reset`)
@@ -23,6 +35,13 @@ export const test = base.extend<{ freshDatabase: void }>({
       }
       await use()
     },
+    { auto: true },
+  ],
+  // Fail a smoke on any unexpected console error, uncaught exception, or failed
+  // request — the silent regression class smokes never caught before (#85).
+  noPageErrors: [
+    ({ page, allowedErrors }, use) =>
+      assertNoPageErrors(page, use, [...SMOKE_NOISE, ...allowedErrors]),
     { auto: true },
   ],
 })

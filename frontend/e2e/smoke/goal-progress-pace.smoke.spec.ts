@@ -1,4 +1,5 @@
 import { test, expect } from './support/smoke-test'
+import { todayIso, isoShiftDays, formatDmy } from '../support/date'
 
 // F5 slice E smoke: the full Goal Progress hero on /review, end-to-end against
 // the real backend. No /api mocks. We seed a month of steadily-falling weight
@@ -16,20 +17,12 @@ const API = 'http://localhost:8080/api'
 type WeightRecord = { id: number; measuredOn: string; weightKg: number }
 type Request = Parameters<Parameters<typeof test>[1]>[0]['request']
 
-/** An ISO `yyyy-mm-dd` date shifted by whole days, in UTC to dodge DST. */
-function isoPlusDays(iso: string, days: number): string {
-  const [y, m, d] = iso.split('-').map(Number)
-  const dt = new Date(Date.UTC(y!, m! - 1, d!))
-  dt.setUTCDate(dt.getUTCDate() + days)
-  return dt.toISOString().slice(0, 10)
-}
-
 test('the Goal Progress hero shows planned vs observed finish and the pace', async ({
   page,
   goto,
   request,
 }) => {
-  const today = new Date().toLocaleDateString('en-CA')
+  const today = todayIso()
 
   // Ensure an active Goal exists. A fresh volume has none, so complete setup the
   // way a real install does — profile, a weight reading, then the Goal.
@@ -60,7 +53,7 @@ test('the Goal Progress hero shows planned vs observed finish and the pace', asy
   const seeded: Array<{ date: string; weightKg: number }> = []
   for (let day = 0; day <= window; day++) {
     seeded.push({
-      date: isoPlusDays(today, day - window),
+      date: isoShiftDays(today, day - window),
       weightKg: Number((start - (drop * day) / window).toFixed(1)),
     })
   }
@@ -79,10 +72,11 @@ test('the Goal Progress hero shows planned vs observed finish and the pace', asy
   expect(progress.paceStatus).toBeTruthy()
   expect(progress.observedFinishDate).toBeTruthy()
 
-  // Format the dates the way the app does, in the browser, so the expected
-  // strings match the rendered ones regardless of the Node/Chromium locale data.
-  const plannedText = await formatInBrowser(page, progress.plannedFinishDate)
-  const observedText = await formatInBrowser(page, progress.observedFinishDate)
+  // Format the dates the way the app's `formatDateFromISO` does, so the expected
+  // strings match the rendered ones. Built from the date parts (shared helper),
+  // so the result is timezone-independent.
+  const plannedText = formatDmy(progress.plannedFinishDate)
+  const observedText = formatDmy(progress.observedFinishDate)
   const paceLabel = PACE_LABELS[progress.paceStatus as keyof typeof PACE_LABELS]
   const percent = `${Math.round(progress.percentComplete)}%`
 
@@ -139,19 +133,4 @@ async function postWeight(
     data: { date, weightKg, clientToday },
   })
   expect(res.ok()).toBe(true)
-}
-
-/** Format an ISO date the way the app's `formatDateFromISO` util does. */
-function formatInBrowser(
-  page: Parameters<Parameters<typeof test>[1]>[0]['page'],
-  iso: string,
-): Promise<string> {
-  return page.evaluate((d) => {
-    const [y, m, day] = d.split('-').map(Number)
-    return new Date(y!, m! - 1, day!).toLocaleDateString('en-GB', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    })
-  }, iso)
 }
