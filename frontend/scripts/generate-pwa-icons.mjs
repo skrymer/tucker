@@ -38,6 +38,9 @@ const isCream = (r, g, b) =>
 async function cutAvocado() {
   const { data, info } = await sharp(SOURCE)
     .extract(CROP)
+    // Force RGBA so the alpha channel exists at byte +3 even if a future brand
+    // source is opaque RGB; the flood fill below writes that alpha to cut out.
+    .ensureAlpha()
     .raw()
     .toBuffer({ resolveWithObject: true })
   const { width: w, height: h, channels: ch } = info
