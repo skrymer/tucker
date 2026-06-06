@@ -1,5 +1,5 @@
 import { test, expect } from './support/smoke-test'
-import { todayIso, formatDmy } from '../support/date'
+import { todayIso, isoShiftDays, formatDmy } from '../support/date'
 
 // F5 slice E smoke: the full Goal Progress hero on /review, end-to-end against
 // the real backend. No /api mocks. We seed a month of steadily-falling weight
@@ -16,14 +16,6 @@ const API = 'http://localhost:8080/api'
 
 type WeightRecord = { id: number; measuredOn: string; weightKg: number }
 type Request = Parameters<Parameters<typeof test>[1]>[0]['request']
-
-/** An ISO `yyyy-mm-dd` date shifted by whole days, in UTC to dodge DST. */
-function isoPlusDays(iso: string, days: number): string {
-  const [y, m, d] = iso.split('-').map(Number)
-  const dt = new Date(Date.UTC(y!, m! - 1, d!))
-  dt.setUTCDate(dt.getUTCDate() + days)
-  return dt.toISOString().slice(0, 10)
-}
 
 test('the Goal Progress hero shows planned vs observed finish and the pace', async ({
   page,
@@ -61,7 +53,7 @@ test('the Goal Progress hero shows planned vs observed finish and the pace', asy
   const seeded: Array<{ date: string; weightKg: number }> = []
   for (let day = 0; day <= window; day++) {
     seeded.push({
-      date: isoPlusDays(today, day - window),
+      date: isoShiftDays(today, day - window),
       weightKg: Number((start - (drop * day) / window).toFixed(1)),
     })
   }

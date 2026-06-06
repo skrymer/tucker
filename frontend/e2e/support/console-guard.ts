@@ -105,8 +105,6 @@ export async function assertNoPageErrors(
 ): Promise<void> {
   const problems = watchPageErrors(page, allowed)
   await use()
-  expect(
-    problems(),
-    `Unexpected page errors:\n${problems().join('\n')}`,
-  ).toEqual([])
+  const found = problems()
+  expect(found, `Unexpected page errors:\n${found.join('\n')}`).toEqual([])
 }

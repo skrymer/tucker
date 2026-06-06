@@ -1,5 +1,5 @@
 import { test, expect } from './support/smoke-test'
-import { todayIso } from '../support/date'
+import { todayIso, isoShiftDays } from '../support/date'
 
 // F7 slice 3 smoke: Drift Status on /today in Maintenance Mode, end-to-end
 // against the real backend. No /api mocks. With no active Goal the backend
@@ -14,14 +14,6 @@ const API = 'http://localhost:8080/api'
 
 type WeightRecord = { id: number; measuredOn: string; weightKg: number }
 type Request = Parameters<Parameters<typeof test>[1]>[0]['request']
-
-/** An ISO `yyyy-mm-dd` date shifted by whole days, in UTC to dodge DST. */
-function isoPlusDays(iso: string, days: number): string {
-  const [y, m, d] = iso.split('-').map(Number)
-  const dt = new Date(Date.UTC(y!, m! - 1, d!))
-  dt.setUTCDate(dt.getUTCDate() + days)
-  return dt.toISOString().slice(0, 10)
-}
 
 test('the Maintaining card shows a Drifting up status when the trend is rising', async ({
   page,
@@ -48,7 +40,7 @@ test('the Maintaining card shows a Drifting up status when the trend is rising',
   const seeded: Array<{ date: string; weightKg: number }> = []
   for (let day = 0; day <= window; day++) {
     seeded.push({
-      date: isoPlusDays(today, day - window),
+      date: isoShiftDays(today, day - window),
       weightKg: Number((fromKg + ((toKg - fromKg) * day) / window).toFixed(1)),
     })
   }

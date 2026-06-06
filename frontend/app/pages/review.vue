@@ -23,7 +23,13 @@ try {
 const hasReviews = computed(() => (reviews.value?.length ?? 0) > 0)
 
 const { pending, execute: runReview } = useApiMutation(
-  () => $api('/api/weekly-review', { method: 'POST' }),
+  // Client owns "today" (ADR 0014): stamp the manual review on the user's local
+  // day, not the server's wall-clock day.
+  () =>
+    $api('/api/weekly-review', {
+      method: 'POST',
+      query: { clientToday: localToday() },
+    }),
   {
     // No success toast: the fresh review appears at the top of the ledger.
     errorTitle: 'Could not run the review',
