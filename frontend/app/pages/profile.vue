@@ -19,7 +19,12 @@ function useProfileForm() {
 
   const { execute: save } = useApiMutation(
     (payload: { sex: string; birthDate: string; heightCm: number }) =>
-      $api('/api/profile', { method: 'PUT', body: payload as ProfileDto }),
+      // Merge the body stats onto the loaded profile so saving them never
+      // clobbers the user's reminder preferences (and vice-versa).
+      $api('/api/profile', {
+        method: 'PUT',
+        body: { ...profile.value, ...payload } as ProfileDto,
+      }),
     {
       // No success toast: the profile card below the form updates in place.
       errorTitle: 'Could not save profile',
@@ -135,6 +140,9 @@ await loadProfile()
       :disabled="!gating.goalEnabled"
       @submit="submitGoal"
     />
+
+    <!-- Reminder opt-in lives once the profile exists (it edits the profile). -->
+    <ReminderSettings v-if="profile" :profile="profile" @saved="loadProfile" />
 
     <!-- Renders the install affordance, or nothing once Tucker is installed. -->
     <InstallPrompt />

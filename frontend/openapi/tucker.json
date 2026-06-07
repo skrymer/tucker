@@ -339,6 +339,110 @@
         }
       }
     },
+    "/api/push/subscriptions": {
+      "post": {
+        "tags": [
+          "push-controller"
+        ],
+        "operationId": "subscribe",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubscriptionDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Created"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "push-controller"
+        ],
+        "operationId": "unsubscribe",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UnsubscribeDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
     "/api/goal": {
       "get": {
         "tags": [
@@ -894,6 +998,56 @@
         }
       }
     },
+    "/api/push/vapid-public-key": {
+      "get": {
+        "tags": [
+          "push-controller"
+        ],
+        "operationId": "vapidPublicKey",
+        "responses": {
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/VapidPublicKeyDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/goals": {
       "get": {
         "tags": [
@@ -1360,7 +1514,10 @@
         "required": [
           "birthDate",
           "heightCm",
-          "sex"
+          "reminderHour",
+          "remindersEnabled",
+          "sex",
+          "timezone"
         ],
         "type": "object",
         "properties": {
@@ -1374,6 +1531,16 @@
           "heightCm": {
             "type": "number",
             "format": "double"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "reminderHour": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "remindersEnabled": {
+            "type": "boolean"
           }
         }
       },
@@ -1456,6 +1623,39 @@
             "format": "double"
           },
           "note": {
+            "type": "string"
+          }
+        }
+      },
+      "SubscriptionDto": {
+        "required": [
+          "endpoint",
+          "keys"
+        ],
+        "type": "object",
+        "properties": {
+          "endpoint": {
+            "type": "string"
+          },
+          "keys": {
+            "$ref": "#/components/schemas/SubscriptionKeysDto"
+          },
+          "label": {
+            "type": "string"
+          }
+        }
+      },
+      "SubscriptionKeysDto": {
+        "required": [
+          "auth",
+          "p256dh"
+        ],
+        "type": "object",
+        "properties": {
+          "p256dh": {
+            "type": "string"
+          },
+          "auth": {
             "type": "string"
           }
         }
@@ -1800,6 +2000,17 @@
           }
         }
       },
+      "VapidPublicKeyDto": {
+        "required": [
+          "publicKey"
+        ],
+        "type": "object",
+        "properties": {
+          "publicKey": {
+            "type": "string"
+          }
+        }
+      },
       "GoalProgressResponse": {
         "required": [
           "currentTrendKg",
@@ -1905,6 +2116,17 @@
             "format": "double"
           },
           "source": {
+            "type": "string"
+          }
+        }
+      },
+      "UnsubscribeDto": {
+        "required": [
+          "endpoint"
+        ],
+        "type": "object",
+        "properties": {
+          "endpoint": {
             "type": "string"
           }
         }
