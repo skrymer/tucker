@@ -4,12 +4,14 @@ import com.tucker.jooq.Tables.ENTRY
 import com.tucker.jooq.Tables.FOOD
 import com.tucker.jooq.Tables.GOAL
 import com.tucker.jooq.Tables.PROFILE
+import com.tucker.jooq.Tables.PUSH_SUBSCRIPTION
 import com.tucker.jooq.Tables.RECIPE_INGREDIENT
 import com.tucker.jooq.Tables.WEEKLY_REVIEW
 import com.tucker.jooq.Tables.WEIGHT_MEASUREMENT
 import org.jooq.DSLContext
 import org.springframework.context.annotation.Profile
 import org.springframework.http.HttpStatus
+import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.ResponseStatus
@@ -36,13 +38,24 @@ class TestSupportController(private val dsl: DSLContext) {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     fun reset() {
         // Delete FK children (entry, recipe_ingredient reference food) before
-        // food; the rest are independent.
+        // food; the rest are independent. app_config is left intact so the
+        // self-bootstrapped VAPID key stays stable across resets (ADR 0012).
         dsl.deleteFrom(RECIPE_INGREDIENT).execute()
         dsl.deleteFrom(ENTRY).execute()
         dsl.deleteFrom(WEEKLY_REVIEW).execute()
         dsl.deleteFrom(GOAL).execute()
         dsl.deleteFrom(WEIGHT_MEASUREMENT).execute()
         dsl.deleteFrom(FOOD).execute()
+        dsl.deleteFrom(PUSH_SUBSCRIPTION).execute()
         dsl.deleteFrom(PROFILE).execute()
     }
+
+    /**
+     * The stored Push Subscription endpoints — exposed only here, under the
+     * `smoke` profile, so the enable-reminders smoke can prove that toggling on
+     * persisted a subscription (there is no such read on the production API).
+     */
+    @GetMapping("/push-subscriptions")
+    fun pushSubscriptions(): List<String> =
+        dsl.select(PUSH_SUBSCRIPTION.ENDPOINT).from(PUSH_SUBSCRIPTION).fetch(PUSH_SUBSCRIPTION.ENDPOINT)
 }

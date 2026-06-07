@@ -15,9 +15,22 @@ data class ProfileDto(
     val sex: String,
     val birthDate: LocalDate,
     val heightCm: Double,
+    // Locale + Weekly-Review Reminder preferences. Optional on the wire: a PUT
+    // that omits them (e.g. the body-stats form on first save) falls back to the
+    // safe defaults rather than failing.
+    val timezone: String = Profile.DEFAULT_TIMEZONE,
+    val reminderHour: Int = Profile.DEFAULT_REMINDER_HOUR,
+    val remindersEnabled: Boolean = false,
 )
 
-private fun Profile.toDto() = ProfileDto(sex = sex.name, birthDate = birthDate, heightCm = heightCm)
+private fun Profile.toDto() = ProfileDto(
+    sex = sex.name,
+    birthDate = birthDate,
+    heightCm = heightCm,
+    timezone = timezone,
+    reminderHour = reminderHour,
+    remindersEnabled = remindersEnabled,
+)
 
 @RestController
 @RequestMapping("/api/profile")
@@ -33,6 +46,9 @@ class ProfileController(private val profiles: ProfileRepository) {
             sex = Sex.valueOf(request.sex),
             birthDate = request.birthDate,
             heightCm = request.heightCm,
+            timezone = request.timezone,
+            reminderHour = request.reminderHour,
+            remindersEnabled = request.remindersEnabled,
         )
         profiles.save(profile)
         return profile.toDto()

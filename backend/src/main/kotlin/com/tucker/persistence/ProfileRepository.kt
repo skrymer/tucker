@@ -21,6 +21,9 @@ class ProfileRepository(private val dsl: DSLContext) {
                 .set(PROFILE.SEX, profile.sex.name)
                 .set(PROFILE.BIRTH_DATE, profile.birthDate.toString())
                 .set(PROFILE.HEIGHT_CM, profile.heightCm.toFloat())
+                .set(PROFILE.TIMEZONE, profile.timezone)
+                .set(PROFILE.REMINDER_HOUR, profile.reminderHour)
+                .set(PROFILE.REMINDERS_ENABLED, profile.remindersEnabled.toFlag())
                 .where(PROFILE.ID.eq(SINGLETON_ID))
                 .execute()
         } else {
@@ -29,6 +32,9 @@ class ProfileRepository(private val dsl: DSLContext) {
                 .set(PROFILE.SEX, profile.sex.name)
                 .set(PROFILE.BIRTH_DATE, profile.birthDate.toString())
                 .set(PROFILE.HEIGHT_CM, profile.heightCm.toFloat())
+                .set(PROFILE.TIMEZONE, profile.timezone)
+                .set(PROFILE.REMINDER_HOUR, profile.reminderHour)
+                .set(PROFILE.REMINDERS_ENABLED, profile.remindersEnabled.toFlag())
                 .execute()
         }
     }
@@ -37,7 +43,12 @@ class ProfileRepository(private val dsl: DSLContext) {
         sex = Sex.valueOf(sex),
         birthDate = LocalDate.parse(birthDate),
         heightCm = heightCm.toDouble(),
+        timezone = timezone,
+        reminderHour = reminderHour,
+        remindersEnabled = remindersEnabled != 0,
     )
+
+    private fun Boolean.toFlag(): Int = if (this) 1 else 0
 
     private companion object {
         const val SINGLETON_ID = 1
