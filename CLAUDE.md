@@ -217,10 +217,14 @@ The frontend is built **test-first (red-green TDD)**. Increments:
   (`springdoc-openapi`); the frontend's API types are generated from it.
 - **Data** — SQLite, accessed via jOOQ (type-safe SQL generated from the schema —
   not JPA/Hibernate). Litestream replicates the database file off-host for backup.
-- **Hosting** — deployed as a Docker container on an Intel N100 mini-PC (Beelink
-  S12 Pro) running Ubuntu Server, reached via Cloudflare Tunnel; Cloudflare Access
-  provides authentication. The mini-PC is shared with unrelated services (a NAS,
-  Jellyfin), so Tucker should stay a well-behaved, resource-limited container.
+- **Hosting** — deployed greenfield to a cheap Docker VPS, reached via Cloudflare
+  Tunnel with Cloudflare Access for auth (an Intel N100 mini-PC is the documented
+  fallback, never stood up). The frontend runs as its own nitro-node container that
+  serves the SPA and same-origins `/api` to the backend; production is a
+  `docker-compose.prod.yml` overlay. See
+  [`docs/adr/0012`](docs/adr/0012-single-node-self-hosting.md) (where it runs) and
+  [`docs/adr/0015`](docs/adr/0015-production-deployment-topology.md) (how the pieces
+  are wired). Keep Tucker a well-behaved, resource-limited container.
 
 ## Key design decisions
 
