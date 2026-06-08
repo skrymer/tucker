@@ -17,6 +17,22 @@ function handleSubmit(payload: { date: string; weightKg: number }) {
   open.value = false
   emit('logged', payload)
 }
+
+// The weight log is reference material, not a control — cap it so it never
+// buries the actionable sections. Show the most recent few, fold the rest.
+const RECENT_LIMIT = 5
+
+// Splitting the already-fetched list into the visible head and the collapsed
+// tail, newest-first, grouped as one named concern.
+function useRecentSplit() {
+  const ordered = computed(() => sortByMeasuredOnDesc(props.measurements))
+  const recent = computed(() => ordered.value.slice(0, RECENT_LIMIT))
+  const rest = computed(() => ordered.value.slice(RECENT_LIMIT))
+  return { recent, rest }
+}
+
+const { recent, rest } = useRecentSplit()
+const showAll = ref(false)
 </script>
 
 <template>
@@ -46,7 +62,33 @@ function handleSubmit(payload: { date: string; weightKg: number }) {
     </p>
 
     <template v-else>
-      <WeightList v-if="measurements.length > 0" :measurements="measurements" />
+      <template v-if="measurements.length > 0">
+        <WeightSummary
+          :latest="recent[0] ?? null"
+          :previous="recent[1] ?? null"
+        />
+
+        <WeightList :measurements="recent" />
+
+        <UCollapsible v-if="rest.length > 0" v-model:open="showAll">
+          <UButton
+            variant="ghost"
+            color="neutral"
+            block
+            :trailing-icon="
+              showAll ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'
+            "
+          >
+            {{
+              showAll ? 'Show less' : `Show all ${measurements.length} readings`
+            }}
+          </UButton>
+
+          <template #content>
+            <WeightList :measurements="rest" />
+          </template>
+        </UCollapsible>
+      </template>
       <p v-else class="text-sm text-muted">No weight logged yet.</p>
 
       <!-- No `date` prop → the sheet renders its date picker for backfill. -->

@@ -58,6 +58,30 @@ describe('/profile progressive disclosure', () => {
     expect(within(goal).queryByLabelText(/target weight/i)).toBeNull()
   })
 
+  it('places the Goal and Reminder controls above the weight log', async () => {
+    mockApi({
+      profile: { sex: 'MALE', birthDate: '1990-06-15', heightCm: 180 },
+      weights: [{ id: 1, measuredOn: '2026-05-29', weightKg: 84 }],
+      goals: [],
+    })
+    await renderSuspended(Profile)
+
+    const goal = screen.getByRole('heading', { name: /^goal$/i })
+    const reminder = screen.getByRole('heading', {
+      name: /weekly-review reminder/i,
+    })
+    const weightLog = screen.getByRole('heading', { name: /weight log/i })
+
+    const follows = (before: Element, after: Element) =>
+      Boolean(
+        before.compareDocumentPosition(after) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+      )
+
+    expect(follows(goal, weightLog)).toBe(true)
+    expect(follows(reminder, weightLog)).toBe(true)
+  })
+
   it('enables all three sections once a profile and a weight exist', async () => {
     mockApi({
       profile: { sex: 'MALE', birthDate: '1990-06-15', heightCm: 180 },
