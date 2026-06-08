@@ -90,14 +90,9 @@ const { data: goals, refresh: refreshGoals } = await useApi('/api/goals')
 const today = localToday()
 
 // The latest reading anchors the Goal form's read-only start weight.
-const latestWeight = computed(() => {
-  const list = weights.value ?? []
-  return list.length === 0
-    ? null
-    : list.reduce((newest, m) =>
-        m.measuredOn > newest.measuredOn ? m : newest,
-      )
-})
+const latestWeight = computed(
+  () => sortByMeasuredOnDesc(weights.value ?? [])[0] ?? null,
+)
 
 const activeGoal = computed(() => goals.value?.find((g) => g.active) ?? null)
 
@@ -126,13 +121,10 @@ await loadProfile()
       <ProfileForm :initial="profile ?? undefined" @submit="saveProfile" />
     </div>
 
-    <WeightSection
-      :today="today"
-      :measurements="weights ?? []"
-      :disabled="!gating.weightEnabled"
-      @logged="logWeight"
-    />
-
+    <!--
+      Actionable controls (Goal, Reminder) sit above the historical weight log
+      so they're reachable without scrolling past it (#93).
+    -->
     <GoalSection
       :goals="goals ?? []"
       :latest-weight="latestWeight"
@@ -143,6 +135,13 @@ await loadProfile()
 
     <!-- Reminder opt-in lives once the profile exists (it edits the profile). -->
     <ReminderSettings v-if="profile" :profile="profile" @saved="loadProfile" />
+
+    <WeightSection
+      :today="today"
+      :measurements="weights ?? []"
+      :disabled="!gating.weightEnabled"
+      @logged="logWeight"
+    />
 
     <!-- Renders the install affordance, or nothing once Tucker is installed. -->
     <InstallPrompt />

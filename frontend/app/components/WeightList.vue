@@ -6,11 +6,7 @@ const props = defineProps<{
 }>()
 
 // Newest reading first, independent of the order the API returns them in.
-const ordered = computed(() =>
-  [...props.measurements].sort((a, b) =>
-    b.measuredOn.localeCompare(a.measuredOn),
-  ),
-)
+const ordered = computed(() => sortByMeasuredOnDesc(props.measurements))
 </script>
 
 <template>
