@@ -15,9 +15,11 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.transaction.annotation.Transactional
+import java.time.Instant
 import java.time.LocalDate
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -34,6 +36,7 @@ class RepositoryRoundTripTest {
     @Autowired lateinit var goals: GoalRepository
     @Autowired lateinit var profiles: ProfileRepository
     @Autowired lateinit var recipes: RecipeRepository
+    @Autowired lateinit var reminderState: ReminderStateRepository
 
     @Test
     fun `a Food round-trips`() {
@@ -95,6 +98,42 @@ class RepositoryRoundTripTest {
         assertNotNull(loaded)
         assertEquals(Sex.MALE, loaded.sex)
         assertEquals(182.0, loaded.heightCm, 0.01)
+    }
+
+    @Test
+    fun `the last-seen day round-trips`() {
+        assertNull(reminderState.lastSeenOn())
+        reminderState.stampSeen(LocalDate.of(2026, 6, 10))
+        assertEquals(LocalDate.of(2026, 6, 10), reminderState.lastSeenOn())
+    }
+
+    @Test
+    fun `the last-reminder-sent instant round-trips`() {
+        assertNull(reminderState.lastReminderSentAt())
+        val at = Instant.parse("2026-06-10T09:00:00Z")
+        reminderState.stampReminderSent(at)
+        assertEquals(at, reminderState.lastReminderSentAt())
+    }
+
+    @Test
+    fun `stamping an earlier last-seen day does not move it backwards`() {
+        reminderState.stampSeen(LocalDate.of(2026, 6, 10))
+        // A later summary read for an earlier day (e.g. an app left open across
+        // midnight refreshing yesterday) must not regress the absent-today gate.
+        reminderState.stampSeen(LocalDate.of(2026, 6, 9))
+
+        assertEquals(LocalDate.of(2026, 6, 10), reminderState.lastSeenOn())
+    }
+
+    @Test
+    fun `stamping last-seen leaves a recorded last-reminder-sent untouched`() {
+        val sentAt = Instant.parse("2026-06-09T09:00:00Z")
+        reminderState.stampReminderSent(sentAt)
+        reminderState.stampSeen(LocalDate.of(2026, 6, 10))
+
+        // The two stamps share one row but must not clobber one another.
+        assertEquals(sentAt, reminderState.lastReminderSentAt())
+        assertEquals(LocalDate.of(2026, 6, 10), reminderState.lastSeenOn())
     }
 
     @Test

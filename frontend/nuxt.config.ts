@@ -109,6 +109,9 @@ export default defineNuxtConfig({
       // so any offline navigation falls back to it instead of white-screening.
       navigateFallback: '/',
       navigateFallbackDenylist: [/^\/api\//],
+      // Layer the Weekly-Review Reminder push/notificationclick handlers onto the
+      // generated worker (the file is served from public/ at /push-sw.js).
+      importScripts: ['/push-sw.js'],
     },
     // Keep the service worker out of the dev server (it fights HMR); it is
     // generated for the production build, which the smokes and the installed

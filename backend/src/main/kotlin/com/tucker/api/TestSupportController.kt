@@ -6,16 +6,21 @@ import com.tucker.jooq.Tables.GOAL
 import com.tucker.jooq.Tables.PROFILE
 import com.tucker.jooq.Tables.PUSH_SUBSCRIPTION
 import com.tucker.jooq.Tables.RECIPE_INGREDIENT
+import com.tucker.jooq.Tables.REMINDER_STATE
 import com.tucker.jooq.Tables.WEEKLY_REVIEW
 import com.tucker.jooq.Tables.WEIGHT_MEASUREMENT
+import com.tucker.service.ReminderScheduler
+import com.tucker.service.TickResult
 import org.jooq.DSLContext
 import org.springframework.context.annotation.Profile
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
+import java.time.Instant
 
 /**
  * Test-only support endpoint, registered **only** under the `smoke` Spring
@@ -31,7 +36,10 @@ import org.springframework.web.bind.annotation.RestController
 @RestController
 @RequestMapping("/api/test")
 @Profile("smoke")
-class TestSupportController(private val dsl: DSLContext) {
+class TestSupportController(
+    private val dsl: DSLContext,
+    private val reminderScheduler: ReminderScheduler,
+) {
 
     /** Empty every table, restoring the freshly-migrated blank-slate state. */
     @PostMapping("/reset")
@@ -47,6 +55,7 @@ class TestSupportController(private val dsl: DSLContext) {
         dsl.deleteFrom(WEIGHT_MEASUREMENT).execute()
         dsl.deleteFrom(FOOD).execute()
         dsl.deleteFrom(PUSH_SUBSCRIPTION).execute()
+        dsl.deleteFrom(REMINDER_STATE).execute()
         dsl.deleteFrom(PROFILE).execute()
     }
 
@@ -58,4 +67,14 @@ class TestSupportController(private val dsl: DSLContext) {
     @GetMapping("/push-subscriptions")
     fun pushSubscriptions(): List<String> =
         dsl.select(PUSH_SUBSCRIPTION.ENDPOINT).from(PUSH_SUBSCRIPTION).fetch(PUSH_SUBSCRIPTION.ENDPOINT)
+
+    /**
+     * Drive one reminder tick at a pinned instant [at] (ISO-8601), returning what it
+     * did. The production trigger is hourly off the wall clock; the smoke needs to
+     * place "now" at the user's reminder hour deterministically, so it ticks here
+     * instead. Smoke-profile only, like the rest of this controller.
+     */
+    @PostMapping("/reminder-tick")
+    fun reminderTick(@RequestParam at: String): TickResult =
+        reminderScheduler.runTick(Instant.parse(at))
 }

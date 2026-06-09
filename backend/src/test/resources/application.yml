@@ -1,3 +1,10 @@
 spring:
   datasource:
     url: jdbc:sqlite:build/test-tucker.db   # throwaway DB; wiped by `./gradlew clean`
+
+# No background reminder cron during tests — they drive ReminderScheduler.runTick
+# explicitly, and an hourly tick firing mid-test would contend for the single
+# SQLite connection and mutate shared reminder_state.
+tucker:
+  reminders:
+    scheduler-enabled: false

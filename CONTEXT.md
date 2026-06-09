@@ -198,9 +198,12 @@ drifted-away user back. It fires from Tucker's one notification job (see
 [ADR 0010](docs/adr/0010-minimal-scheduler-for-the-weekly-reminder.md)) when the
 latest review is a week or more old, the user has a **Push Subscription**, and
 they haven't opened the app today — delivered at the user's local reminder hour
-(their **Profile** timezone + chosen hour). At most one Reminder per overdue
-episode: once the user opens the app, lazy catch-up writes a fresh review and the
-next episode begins. A displayed nudge, never a guilt-trip.
+(their **Profile** timezone + chosen hour). "Opened the app today" is read from
+the user's **last-seen day**, stamped on each daily-summary read (on the client's
+local day, never the server clock). At most one Reminder per overdue episode: it
+is deduped against the instant the **last Reminder was sent** — suppressed while
+that is after the latest review's date, and re-armed when opening the app writes a
+fresh review whose date moves past it. A displayed nudge, never a guilt-trip.
 _Avoid_: alert, notification, push (as the noun for the user-facing nudge)
 
 **Push Subscription**:
