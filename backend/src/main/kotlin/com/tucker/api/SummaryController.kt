@@ -7,7 +7,7 @@ import com.tucker.domain.WeightTrend
 import com.tucker.persistence.EntryRepository
 import com.tucker.persistence.FoodRepository
 import com.tucker.persistence.GoalRepository
-import com.tucker.persistence.WeeklyReviewRepository
+import com.tucker.persistence.ReminderStateRepository
 import com.tucker.persistence.WeightMeasurementRepository
 import com.tucker.service.WeeklyReviewService
 import org.springframework.format.annotation.DateTimeFormat
@@ -78,24 +78,29 @@ data class BudgetChange(
 @RequestMapping("/api/summary")
 class SummaryController(
     private val entries: EntryRepository,
-    private val reviews: WeeklyReviewRepository,
     private val foods: FoodRepository,
     private val weeklyReview: WeeklyReviewService,
     private val goals: GoalRepository,
     private val weights: WeightMeasurementRepository,
+    private val reminderState: ReminderStateRepository,
 ) {
 
     @GetMapping
     fun summary(
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) date: LocalDate,
     ): DailySummaryResponse {
-        // Lazy catch-up: the summary is read on every app open, so it's where the
-        // weekly cadence advances — no scheduler. Runs at most one review, snapped
-        // to the client's local today, and only when one is due.
+        // The summary is read on every app open, so it is where two app-open
+        // bookkeeping concerns advance. First: stamp last-seen on the client's local
+        // day (ADR 0014 — never the server's wall clock) to feed the reminder's
+        // absent-today gate (ADR 0010), so a reminder never fires on a day the user
+        // already showed up.
+        reminderState.stampSeen(date)
+        // Second, lazy catch-up: the weekly cadence advances here — no scheduler.
+        // Runs at most one review, snapped to the client's local today, when due.
         weeklyReview.catchUpIfDue(date)
 
         val log = DailyLog(date, entries.findByDate(date))
-        val recent = reviews.latestTwo()
+        val recent = weeklyReview.recentReviews()
         val review = recent.firstOrNull()
         val budgetChange = recent.takeIf { it.size == 2 }
             ?.let { BudgetChange.between(previous = it[1], latest = it[0]) }

@@ -3,6 +3,7 @@ package com.tucker.service
 import com.tucker.domain.Maintenance
 import com.tucker.domain.Profile
 import com.tucker.domain.ProteinFloor
+import com.tucker.domain.ReviewCadence
 import com.tucker.domain.WeeklyReview
 import com.tucker.domain.WeightTrend
 import com.tucker.persistence.EntryRepository
@@ -13,7 +14,6 @@ import com.tucker.persistence.WeightMeasurementRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
-import java.time.temporal.ChronoUnit
 
 /**
  * The adaptive engine. Once a week it recomputes Maintenance from the smoothed
@@ -42,11 +42,17 @@ class WeeklyReviewService(
     @Transactional
     fun catchUpIfDue(today: LocalDate) {
         if (!setupComplete()) return
-        val latest = reviews.latest()
-            ?: run { runReview(today); return }
-        val due = ChronoUnit.DAYS.between(latest.reviewedOn, today) >= REVIEW_CADENCE_DAYS
-        if (due) runReview(today)
+        // The same overdue predicate the Weekly-Review Reminder asks (ADR 0010) —
+        // a missing review is itself overdue, so the very first one bootstraps here.
+        if (ReviewCadence.isOverdue(reviews.latest()?.reviewedOn, today)) runReview(today)
     }
+
+    /**
+     * The two most recent reviews, newest first — the inputs to the dashboard's
+     * budget-change diff. The summary reads reviews through the engine rather than
+     * the repository directly.
+     */
+    fun recentReviews(): List<WeeklyReview> = reviews.latestTwo()
 
     /**
      * The inputs a review needs; absent any of them, catch-up stays a no-op. A Goal
@@ -137,8 +143,5 @@ class WeeklyReviewService(
     private companion object {
         /** The review window for the adaptive Maintenance correction. */
         const val ADAPTIVE_WINDOW_DAYS = 14
-
-        /** A review is due once the latest one is this many days old. */
-        const val REVIEW_CADENCE_DAYS = 7L
     }
 }

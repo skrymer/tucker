@@ -45,6 +45,10 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("org.flywaydb:flyway-core")
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.7.0")
+    // Web Push transport for the Weekly-Review Reminder (ADR 0010). bcprov is the
+    // crypto provider web-push signs the VAPID/ECDH payloads with.
+    implementation("nl.martijndwars:web-push:5.1.1")
+    implementation("org.bouncycastle:bcprov-jdk18on:1.78.1")
     runtimeOnly("org.xerial:sqlite-jdbc:3.47.1.0")
 
     "jooqCodegen"("org.jooq:jooq-codegen:3.19.16")

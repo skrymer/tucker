@@ -1,6 +1,7 @@
 package com.tucker.api
 
 import com.tucker.domain.WeeklyReview
+import com.tucker.persistence.ReminderStateRepository
 import com.tucker.persistence.WeeklyReviewRepository
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -13,6 +14,7 @@ import org.springframework.test.web.servlet.post
 import org.springframework.test.web.servlet.put
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
+import kotlin.test.assertEquals
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -21,6 +23,7 @@ class SummaryApiTest {
 
     @Autowired lateinit var mockMvc: MockMvc
     @Autowired lateinit var reviews: WeeklyReviewRepository
+    @Autowired lateinit var reminderState: ReminderStateRepository
 
     /** A review inserted directly, standing in for one the adaptive engine ran. */
     private fun seedReview(
@@ -213,6 +216,17 @@ class SummaryApiTest {
             status { isOk() }
             jsonPath("$.budgetChange") { value(null) }
         }
+    }
+
+    @Test
+    fun `reading the summary stamps the user's last-seen day for the absent-today gate`() {
+        val day = LocalDate.of(2026, 6, 10)
+
+        mockMvc.get("/api/summary") {
+            param("date", "$day")
+        }.andExpect { status { isOk() } }
+
+        assertEquals(day, reminderState.lastSeenOn())
     }
 
     @Test
