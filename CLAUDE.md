@@ -165,8 +165,38 @@ The frontend is built **test-first (red-green TDD)**. Increments:
     Home Screen hint, nothing once installed), surfaced on `/profile`. Each a
     red-green TDD unit/component test; a real-stack `pwa-install` smoke covers
     manifest + SW + offline shell + the install affordance on both viewports.
-  - Remaining F6 slices: install affordance polish is folded in here; slices 3–4
-    (enable-reminders + the reminder cron/sender) are still to do.
+  Slice 2 ([#81](https://github.com/skrymer/tucker/issues/81), shipped
+  [#92](https://github.com/skrymer/tucker/pull/92)) — **Enable reminders** — ✅ done:
+  - `Profile` widened with `timezone` / `reminderHour` / `remindersEnabled` (Flyway
+    V3), the per-device `Push Subscription` store, and a self-bootstrapping
+    `VapidKeyStore` (V4 `app_config`) exposing the public key.
+  - A deep `useWebPush` composable (permission from the gesture, `PushManager`
+    subscribe, timezone capture, POST/DELETE) + a `/profile` reminder toggle + hour
+    picker, with the iOS install-first hint; each red-green TDD'd, plus an
+    `enable-reminders` real-stack smoke.
+
+  Slice 3 ([#82](https://github.com/skrymer/tucker/issues/82), shipped
+  [#95](https://github.com/skrymer/tucker/pull/95)) — **Reminder cron + sender**
+  (ADR 0010) — ✅ done:
+  - Tucker's one `@Scheduled` job, scoped solely to *sending* — it computes nothing;
+    the review engine stays lazy. Deep modules (ADR 0013): shared
+    `ReviewCadence.isOverdue` (the ≥7-day predicate reused by lazy catch-up and the
+    reminder), pure `ReminderPolicy.shouldSend` (enabled / setup / subscribed /
+    overdue / absent-today / local-hour gates + per-episode dedupe, resolving "now"
+    from the injectable `Clock`), and `SendResult.fromStatusCode`.
+  - `WebPushSender` port + `MartijndwarsWebPushSender` (`nl.martijndwars:web-push`);
+    `reminder_state` (V6) with `lastSeenOn` (stamped on the daily-summary read, the
+    absent-today gate) + `lastReminderSentAt` (dedupe); `ReminderScheduler.runTick`
+    (send → prune 410 → stamp) behind one prod-only hourly trigger.
+  - Service worker `push` / `notificationclick` handlers (icon + badge + collapse
+    `tag`; tap focuses or opens `/today`), layered onto the Workbox SW via
+    `importScripts`. Real-stack `reminder-send` smoke proves send + dedupe.
+  - Reliability hardening (send timeout, prune malformed keys, DST/timezone dedupe
+    edges) deferred to [#96](https://github.com/skrymer/tucker/issues/96).
+
+  With slices 1–3 shipped, F6's installable-PWA + web-push reminder is **complete**;
+  deploying the Nuxt frontend so the PWA is installable on a phone is tracked
+  separately ([#88](https://github.com/skrymer/tucker/issues/88)).
 - **F7** — Maintenance Mode after a Goal is reached (design pass **done**, see
   [`docs/adr/0008-maintenance-mode-is-the-absence-of-a-goal.md`](docs/adr/0008-maintenance-mode-is-the-absence-of-a-goal.md)
   and the `Maintenance Mode` / reached-Goal / `Drift Status` terms in
