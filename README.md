@@ -23,6 +23,13 @@ Tucker runs as a phone web app (PWA).
 WhatsApp-based logging and training-day-aware diet planning were part of the
 original concept. Both are deferred until the core tracker is solid.
 
+## Deploying
+
+Tucker self-hosts on a single node behind a Cloudflare Tunnel: a frontend
+container serves the SPA and same-origins `/api` to the backend, fronted by one
+tunnel ingress. See [`deploy/README.md`](./deploy/README.md) for the production
+stack and VPS bring-up steps.
+
 ## Documentation
 
 - [`CONTEXT.md`](./CONTEXT.md) — the domain language and how the concepts relate.

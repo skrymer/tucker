@@ -1,0 +1,26 @@
+# Build/dev outputs — the image rebuilds these for linux during `pnpm install`
+# + `pnpm build`. Excluding node_modules is critical: the host copy is the wrong
+# platform and would shadow the fresh install in `COPY . .`.
+node_modules
+.nuxt
+.nitro
+.output
+.cache
+.data
+dist
+
+# Tests / reports / coverage — not needed in the image.
+e2e
+test
+test-results
+playwright-report
+playwright-smoke-report
+playwright/.cache
+
+# Misc
+*.log
+.DS_Store
+.idea
+.fleet
+Dockerfile
+.dockerignore

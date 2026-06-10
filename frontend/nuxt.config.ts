@@ -20,10 +20,10 @@ export default defineNuxtConfig({
     },
   },
 
-  // Dev: proxy /api to the Spring Boot backend so the SPA stays same-origin.
-  routeRules: {
-    '/api/**': { proxy: 'http://localhost:8080/api/**' },
-  },
+  // /api is proxied to the backend by a runtime nitro server route
+  // (server/routes/api/[...].ts) reading TUCKER_API_UPSTREAM. Not a build-time
+  // routeRules proxy: the upstream must be read at runtime (not baked) so one
+  // promotable image serves dev and prod (ADR 0015).
 
   // Emit a static index.html for the SPA shell at build time. Without it an
   // ssr:false build renders the shell only at runtime, so there is no document

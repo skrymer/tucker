@@ -194,9 +194,16 @@ The frontend is built **test-first (red-green TDD)**. Increments:
   - Reliability hardening (send timeout, prune malformed keys, DST/timezone dedupe
     edges) deferred to [#96](https://github.com/skrymer/tucker/issues/96).
 
-  With slices 1–3 shipped, F6's installable-PWA + web-push reminder is **complete**;
-  deploying the Nuxt frontend so the PWA is installable on a phone is tracked
-  separately ([#88](https://github.com/skrymer/tucker/issues/88)).
+  With slices 1–3 shipped, F6's installable-PWA + web-push reminder is **complete**.
+  Deploying the Nuxt frontend so the PWA is installable on a phone
+  ([#88](https://github.com/skrymer/tucker/issues/88), ADR 0015) — the **repo-side
+  is done**: a runtime `/api` proxy (`frontend/server/routes/api/[...].ts` reading
+  `TUCKER_API_UPSTREAM`, replacing the build-time `routeRules`), a frontend
+  `Dockerfile`, and a `docker-compose.prod.yml` overlay (adds the `frontend`
+  service, points the tunnel at it, drops the backend's host port). The Cloudflare
+  dashboard ingress and the first VPS deploy + on-device verification are operator
+  steps; bring-up is documented in [`deploy/README.md`](deploy/README.md). #88
+  stays open until that deploy lands.
 - **F7** — Maintenance Mode after a Goal is reached (design pass **done**, see
   [`docs/adr/0008-maintenance-mode-is-the-absence-of-a-goal.md`](docs/adr/0008-maintenance-mode-is-the-absence-of-a-goal.md)
   and the `Maintenance Mode` / reached-Goal / `Drift Status` terms in
