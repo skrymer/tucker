@@ -11,8 +11,9 @@ process.env.TZ ||= 'Etc/UTC'
 
 // Real-stack smoke tests. The backend runs in Docker (via the repo-root
 // docker-compose.yml + docker-compose.smoke.yml); the SPA proxies /api/* to it
-// through Nuxt routeRules. No /api/* mocks here — these tests prove the wired
-// UI → API → DB stack.
+// through the runtime nitro server route (server/routes/api/[...].ts), the same
+// mechanism prod uses (ADR 0015). No /api/* mocks here — these tests prove the
+// wired UI → API → DB stack, and are the regression proof for that proxy.
 //
 // Each run starts from a fresh, disposable database (issue #70): the smoke
 // override writes SQLite to the container's writable layer and global setup

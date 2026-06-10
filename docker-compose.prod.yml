@@ -1,0 +1,46 @@
+# Production overlay (ADR 0015 — production deployment topology). Layer it on the
+# dev base; nothing here is for local dev:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# It adds the frontend container (serves the SPA and same-origins /api -> backend
+# at runtime), points the single Cloudflare tunnel ingress at the frontend, and
+# stops publishing the backend's port on the host. The Cloudflare dashboard
+# ingress (<host> -> http://frontend:3000) is a one-time operator step, not
+# expressible here (token tunnel) — see deploy/README.md.
+#
+# Off-host backup (litestream) stays profile-gated and therefore down on a bare
+# `up -d`: the first deploy ships without it (accepted; issue #89).
+#
+# Requires Docker Compose >= v2.24.4 for the `!reset` tag.
+services:
+  frontend:
+    build:
+      context: ./frontend
+    image: tucker-frontend:latest
+    container_name: tucker-frontend
+    restart: unless-stopped
+    environment:
+      # Same-origin /api proxy target: the backend over the internal compose
+      # network. Read at runtime by server/routes/api/[...].ts.
+      TUCKER_API_UPSTREAM: http://backend:8080
+    depends_on:
+      - backend
+    deploy:
+      resources:
+        limits:
+          memory: 256M         # light nitro node server — keep Tucker bounded
+
+  backend:
+    # In prod nothing binds 8080 on the host: only the frontend and the tunnel
+    # reach the backend over the internal network. `!reset` clears the dev base's
+    # 127.0.0.1:8080 publish (a plain list would merge/append, not replace).
+    ports: !reset []
+
+  cloudflared:
+    # The tunnel is always wanted in prod, so clear the base `tunnel` profile —
+    # a bare `up -d` brings it up. Its single ingress fronts the frontend, which
+    # serves the SPA and proxies /api, so Cloudflare Access gates exactly one app.
+    profiles: !reset []
+    depends_on:
+      - frontend
