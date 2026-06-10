@@ -17,6 +17,12 @@
       },
     }"
   >
+    <!--
+      @vite-pwa/nuxt does not inject the manifest link on its own — this
+      component emits it, with crossorigin from `pwa.useCredentials` (see
+      nuxt.config.ts).
+    -->
+    <NuxtPwaManifest />
     <NuxtRouteAnnouncer />
     <NuxtLayout>
       <NuxtPage />

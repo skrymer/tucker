@@ -16,12 +16,20 @@ async function waitForServiceWorker(page: import('@playwright/test').Page) {
   await page.waitForFunction(() => !!navigator.serviceWorker.controller)
 }
 
-test('serves a complete web app manifest and a service worker', async ({
+test('serves and links a complete web app manifest and a service worker', async ({
   page,
   goto,
 }) => {
   await goto('/', { waitUntil: 'hydration' })
   const origin = new URL(page.url()).origin
+
+  // The document must link the manifest credentialed (`pwa.useCredentials`) or
+  // Chromium never discovers it and Cloudflare Access challenges the fetch
+  // (ADR 0015).
+  const manifestLink = page.locator('link[rel="manifest"]')
+  await expect(manifestLink).toHaveCount(1)
+  await expect(manifestLink).toHaveAttribute('href', '/manifest.webmanifest')
+  await expect(manifestLink).toHaveAttribute('crossorigin', 'use-credentials')
 
   const manifest = await page.request.get(`${origin}/manifest.webmanifest`)
   expect(manifest.ok()).toBe(true)
