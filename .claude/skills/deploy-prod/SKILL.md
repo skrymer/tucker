@@ -30,9 +30,13 @@ the operator's `~/.ssh/config`). If `ssh tucker true` fails, stop and ask.
 ## 2. Deploy
 
 ```bash
-ssh tucker 'cd tucker && git pull -q && \
-  docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build'
+ssh tucker 'tucker/deploy/update.sh'
 ```
+
+The script ([`deploy/update.sh`](../../../deploy/update.sh)) is `git pull` +
+the prod-overlay rebuild with the compose file pair hardcoded — never run a
+bare `docker compose up -d` on the box; without the overlay it drops the
+frontend and the tunnel and re-publishes the backend port.
 
 Run it in the background — the build takes 10–20 min on the 1-vCPU box.
 **Slow is normal; OOM is not**: the Gradle and Vite stages dip into the 4 GB
@@ -42,27 +46,20 @@ swapfile by design. If the build is OOM-killed, check swap is on
 ## 3. Verify (curl, not a browser)
 
 A browser is untrustworthy here — a stale service worker can serve the
-precached shell and mask both outages and the Access gate. Probe with curl:
+precached shell and mask both outages and the Access gate. From the local
+checkout:
 
-- **Containers**: `ssh tucker 'cd tucker && docker compose -f docker-compose.yml -f docker-compose.prod.yml ps'`
-  — all three `Up`.
-- **Gate intact** (from the workstation, unauthenticated — expect **302** to
-  `*.cloudflareaccess.com` on every path; a 200 means the app is exposed,
-  treat as an incident):
-  ```bash
-  for p in / /api/foods /manifest.webmanifest /sw.js; do
-    curl -s -o /dev/null -w "$p -> %{http_code}\n" "https://tucker-diet.com$p"
-  done
-  ```
-- **Same-origin /api in-container** (the frontend image has node, no wget):
-  ```bash
-  ssh tucker 'docker exec tucker-frontend node -e \
-    "fetch(\"http://localhost:3000/api/foods\").then(r => console.log(r.status))"'
-  ```
-  Expect `200`.
-- **Backend log scan**:
-  `ssh tucker 'docker logs tucker-backend --since 10m 2>&1 | grep -iE "error|exception" | tail -5'`
-  — investigate anything that isn't known-benign noise.
+```bash
+deploy/verify-prod.sh
+```
+
+The script ([`deploy/verify-prod.sh`](../../../deploy/verify-prod.sh)) exits
+non-zero on any failure. It asserts: unauthenticated `/`, `/api/*`, manifest
+and SW all **302 to Cloudflare Access** (a 200 = publicly exposed = incident),
+the three containers running, and same-origin `/api` returning 200 inside the
+frontend container. Its final section prints backend error/exception log lines
+from the last 10 minutes — that part is **judged, not asserted**: investigate
+anything that isn't known-benign noise before calling the deploy good.
 
 ## 4. Report
 
