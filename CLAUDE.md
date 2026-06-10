@@ -195,15 +195,20 @@ The frontend is built **test-first (red-green TDD)**. Increments:
     edges) deferred to [#96](https://github.com/skrymer/tucker/issues/96).
 
   With slices 1–3 shipped, F6's installable-PWA + web-push reminder is **complete**.
-  Deploying the Nuxt frontend so the PWA is installable on a phone
-  ([#88](https://github.com/skrymer/tucker/issues/88), ADR 0015) — the **repo-side
-  is done**: a runtime `/api` proxy (`frontend/server/routes/api/[...].ts` reading
-  `TUCKER_API_UPSTREAM`, replacing the build-time `routeRules`), a frontend
-  `Dockerfile`, and a `docker-compose.prod.yml` overlay (adds the `frontend`
-  service, points the tunnel at it, drops the backend's host port). The Cloudflare
-  dashboard ingress and the first VPS deploy + on-device verification are operator
-  steps; bring-up is documented in [`deploy/README.md`](deploy/README.md). #88
-  stays open until that deploy lands.
+  The Nuxt frontend is **deployed** ([#88](https://github.com/skrymer/tucker/issues/88)
+  closed 2026-06-10, ADR 0015): a runtime `/api` proxy
+  (`frontend/server/routes/api/[...].ts` reading `TUCKER_API_UPSTREAM`), a frontend
+  `Dockerfile`, and a `docker-compose.prod.yml` overlay run on a Brisbane VPS behind
+  a Cloudflare Tunnel with an Access app as the only auth; bring-up and verification
+  are documented in [`deploy/README.md`](deploy/README.md). On-device install (iOS),
+  the offline shell, and the reminder Push Subscription are verified on the real
+  HTTPS origin. The missing manifest link that blocked Chromium install was found
+  and fixed in [#99](https://github.com/skrymer/tucker/pull/99) (`<NuxtPwaManifest />`
+  + credentialed manifest fetch behind Access). Remaining siblings: off-host backup
+  [#89](https://github.com/skrymer/tucker/issues/89) (**next priority** — the
+  production DB has no backup yet), GHCR build-and-push (ADR 0015 next step), and
+  [#100](https://github.com/skrymer/tucker/issues/100) (install-button SPA-nav
+  timing, ready-for-agent).
 - **F7** — Maintenance Mode after a Goal is reached (design pass **done**, see
   [`docs/adr/0008-maintenance-mode-is-the-absence-of-a-goal.md`](docs/adr/0008-maintenance-mode-is-the-absence-of-a-goal.md)
   and the `Maintenance Mode` / reached-Goal / `Drift Status` terms in
