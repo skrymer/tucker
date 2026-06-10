@@ -60,6 +60,10 @@ export default defineNuxtConfig({
 
   pwa: {
     registerType: 'autoUpdate',
+    // Browsers fetch the manifest without cookies unless the link tag opts in;
+    // behind Cloudflare Access a cookie-less fetch is challenged and the
+    // install criteria fail, so send the Access session cookie (ADR 0015).
+    useCredentials: true,
     // Ship the icon set (and favicon) into the precache so the installed app and
     // its splash have them offline.
     includeAssets: ['favicon.ico', 'icons/*.png'],
