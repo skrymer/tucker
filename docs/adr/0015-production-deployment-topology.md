@@ -26,7 +26,13 @@ compose overlay; images are built on the host for now.**
 - **One origin, one Cloudflare Access app.** The tunnel has a **single** ingress:
   `https://<host>` → `frontend:3000`. The frontend serves the SPA and proxies `/api`,
   so there is no CORS and Cloudflare Access gates exactly one app. Access remains the
-  only auth (single-user, per [ADR 0012](0012-single-node-self-hosting.md)).
+  only auth (single-user, per [ADR 0012](0012-single-node-self-hosting.md)). The PWA
+  install-criteria assets stay gated too: the manifest link is credentialed
+  (`pwa.useCredentials` → `crossorigin="use-credentials"`, so the browser's
+  otherwise cookie-less manifest fetch carries the Access session) — the common
+  "add an Access bypass/service-token rule for `/manifest.webmanifest` + `/sw.js`"
+  workaround was rejected as an unauthenticated hole in un-versioned dashboard
+  config.
 - **Production is a `docker-compose.prod.yml` overlay** (mirroring the existing
   `docker-compose.smoke.yml` pattern) layered on the dev base: it adds the `frontend`
   service, wires `cloudflared` to the frontend, and **drops the backend's host
@@ -69,6 +75,11 @@ compose overlay; images are built on the host for now.**
 - **The prod overlay is the single source of "what prod adds."** Backend host-port,
   tunnel wiring, and the frontend service live in one readable diff, the base file stays
   dev-friendly.
+- **Access session expiry is visible in-app.** When the Access session lapses inside
+  the installed PWA, `/api` fetches fail (the login redirect is cross-origin) until a
+  reload re-runs the redirect — the SPA has no auth-expiry handling of its own
+  because Access is the only auth. Accepted; mitigated operationally with the
+  maximum Access session duration (see `deploy/README.md`).
 - **Backup is not wired by this ADR.** Off-host Litestream replication (and its WAL
   prerequisite) is deferred to issue #89; the first deploy runs without it (accepted for
   a greenfield start, must land before real reliance).
