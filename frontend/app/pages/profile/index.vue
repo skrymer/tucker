@@ -116,14 +116,12 @@ await loadProfile()
 
 <template>
   <section class="flex flex-col gap-8">
-    <div class="flex flex-col gap-4">
-      <h1 class="text-2xl font-bold text-default">Profile</h1>
-      <ProfileForm :initial="profile ?? undefined" @submit="saveProfile" />
-    </div>
+    <h1 class="text-2xl font-bold text-default">Profile</h1>
 
     <!--
-      Actionable controls (Goal, Reminder) sit above the historical weight log
-      so they're reachable without scrolling past it (#93).
+      The at-a-glance state leads: the Goal, then the current Weight (its full
+      history lives on /profile/weight). The body-stats form and reminder
+      settings follow as the less-often-touched setup (#105).
     -->
     <GoalSection
       :goals="goals ?? []"
@@ -133,15 +131,30 @@ await loadProfile()
       @submit="submitGoal"
     />
 
-    <!-- Reminder opt-in lives once the profile exists (it edits the profile). -->
-    <ReminderSettings v-if="profile" :profile="profile" @saved="loadProfile" />
-
     <WeightSection
       :today="today"
       :measurements="weights ?? []"
       :disabled="!gating.weightEnabled"
       @logged="logWeight"
     />
+
+    <section
+      class="flex flex-col gap-4"
+      aria-labelledby="profile-details-heading"
+    >
+      <h2
+        id="profile-details-heading"
+        class="text-lg font-semibold text-default"
+      >
+        Your details
+      </h2>
+      <UCard>
+        <ProfileForm :initial="profile ?? undefined" @submit="saveProfile" />
+      </UCard>
+    </section>
+
+    <!-- Reminder opt-in lives once the profile exists (it edits the profile). -->
+    <ReminderSettings v-if="profile" :profile="profile" @saved="loadProfile" />
 
     <!-- Renders the install affordance, or nothing once Tucker is installed. -->
     <InstallPrompt />

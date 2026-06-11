@@ -1,8 +1,9 @@
 import { test, expect } from './support/smoke-test'
 import { formatDmy } from '../support/date'
 
-// F4 slice 3 smoke: the full UI → API → DB path for backfilling a past weight
-// from the /profile Weight log. No mocks.
+// Issue #105: backfilling a past weight on /profile writes through the real
+// backend and updates the at-a-glance current-weight summary (the inline log
+// moved to the /profile/weight history page). No mocks.
 //
 // We use a fixed, far-past date that real usage is unlikely to occupy, and
 // delete any leftover record for it before asserting and again on teardown so
@@ -11,13 +12,13 @@ const backfillDate = '2015-01-01'
 const formattedDate = formatDmy(backfillDate)
 const weightKg = 73.7
 
-test('user backfills a past weight on /profile and it appears in the list', async ({
+test('user backfills a past weight on /profile and it shows as the current weight', async ({
   page,
   goto,
   request,
 }) => {
-  // The Weight log unlocks only once a profile exists; each smoke runs against a
-  // reset DB, so seed one (idempotent upsert) before opening /profile.
+  // The Weight section unlocks only once a profile exists; each smoke runs against
+  // a reset DB, so seed one (idempotent upsert) before opening /profile.
   await request.put('http://localhost:8080/api/profile', {
     data: { sex: 'MALE', birthDate: '1990-06-15', heightCm: 180 },
   })
@@ -25,8 +26,8 @@ test('user backfills a past weight on /profile and it appears in the list', asyn
 
   await goto('/profile', { waitUntil: 'hydration' })
 
-  const weightLog = page.getByRole('region', { name: /weight log/i })
-  await weightLog.getByRole('button', { name: /add weight/i }).click()
+  const weight = page.getByRole('region', { name: /^weight$/i })
+  await weight.getByRole('button', { name: /add weight/i }).click()
 
   const sheet = page.getByRole('dialog', { name: /log weight/i })
   await expect(sheet).toBeVisible()
@@ -36,10 +37,12 @@ test('user backfills a past weight on /profile and it appears in the list', asyn
 
   await expect(sheet).toBeHidden()
 
-  // The backfilled reading shows up in the list with its date and value.
-  const row = weightLog.getByRole('listitem').filter({ hasText: formattedDate })
-  await expect(row).toBeVisible()
-  await expect(row).toContainText(`${weightKg.toFixed(1)} kg`)
+  // The reading round-trips and surfaces as the current weight: the section shows
+  // the value and date at a glance, with no inline list (history is its own page).
+  await expect(weight.getByText('Latest')).toBeVisible()
+  await expect(weight.getByText(`${weightKg.toFixed(1)} kg`)).toBeVisible()
+  await expect(weight.getByText(formattedDate)).toBeVisible()
+  await expect(weight.getByRole('listitem')).toHaveCount(0)
 
   await deleteWeightOn(request, backfillDate)
 })

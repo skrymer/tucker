@@ -17,7 +17,7 @@ test('progressive disclosure unlocks Weight after Profile and Goal after a weigh
 }) => {
   await goto('/profile', { waitUntil: 'hydration' })
 
-  const weight = page.getByRole('region', { name: /weight log/i })
+  const weight = page.getByRole('region', { name: /^weight$/i })
   const goal = page.getByRole('region', { name: /^goal$/i })
 
   // Fresh DB: only the Profile section is interactive.

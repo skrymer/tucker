@@ -14,15 +14,13 @@ import { navDestinations } from '~/utils/navigation'
       <span class="text-lg font-bold text-default">Tucker</span>
     </div>
     <div class="flex flex-col gap-1 p-3">
-      <NuxtLink
+      <NavLink
         v-for="destination in navDestinations"
         :key="destination.to"
-        :to="destination.to"
-        class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted transition-colors hover:bg-elevated hover:text-default aria-[current=page]:bg-primary/10 aria-[current=page]:text-primary"
-      >
-        <UIcon :name="destination.icon" class="size-5 shrink-0" />
-        <span>{{ destination.label }}</span>
-      </NuxtLink>
+        :destination="destination"
+        anchor-class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted transition-colors hover:bg-elevated hover:text-default aria-[current=page]:bg-primary/10 aria-[current=page]:text-primary"
+        icon-class="size-5 shrink-0"
+      />
     </div>
   </nav>
 
@@ -32,14 +30,12 @@ import { navDestinations } from '~/utils/navigation'
     aria-label="Primary"
     class="fixed inset-x-0 bottom-0 z-40 flex lg:hidden border-t border-default bg-default pb-[env(safe-area-inset-bottom)]"
   >
-    <NuxtLink
+    <NavLink
       v-for="destination in navDestinations"
       :key="destination.to"
-      :to="destination.to"
-      class="flex flex-1 flex-col items-center gap-1 py-2 text-xs font-medium text-muted transition-colors aria-[current=page]:text-primary"
-    >
-      <UIcon :name="destination.icon" class="size-5" />
-      <span>{{ destination.label }}</span>
-    </NuxtLink>
+      :destination="destination"
+      anchor-class="flex flex-1 flex-col items-center gap-1 py-2 text-xs font-medium text-muted transition-colors aria-[current=page]:text-primary"
+      icon-class="size-5"
+    />
   </nav>
 </template>

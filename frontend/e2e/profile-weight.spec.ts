@@ -1,7 +1,7 @@
 import { expect, test } from './support/test'
 import { mockProfile, mockWeightList } from './support/mock-api'
 
-test('a backfilled weight appears in the Weight log list', async ({
+test('a backfilled weight becomes the current weight and is reachable in history', async ({
   page,
   goto,
 }) => {
@@ -14,10 +14,10 @@ test('a backfilled weight appears in the Weight log list', async ({
 
   await goto('/profile', { waitUntil: 'hydration' })
 
-  const weightLog = page.getByRole('region', { name: /weight log/i })
-  await expect(weightLog.getByText(/no weight logged yet/i)).toBeVisible()
+  const weight = page.getByRole('region', { name: /^weight$/i })
+  await expect(weight.getByText(/no weight logged yet/i)).toBeVisible()
 
-  await weightLog.getByRole('button', { name: /add weight/i }).click()
+  await weight.getByRole('button', { name: /add weight/i }).click()
 
   const sheet = page.getByRole('dialog', { name: /log weight/i })
   await sheet.getByLabel(/date/i).fill('2024-03-15')
@@ -26,8 +26,19 @@ test('a backfilled weight appears in the Weight log list', async ({
 
   await expect(sheet).toBeHidden()
 
-  // Closed-world check of the section's final state: the backfilled reading is
-  // listed and the empty state is gone. One baseline per project (the sheet is
-  // a drawer on phone, a modal on desktop, but the resting section is identical).
-  await expect(weightLog).toMatchAriaSnapshot()
+  // The section now shows the latest value at a glance — no inline log — with a
+  // link out to the full history. Closed-world snapshot of its resting state.
+  // One baseline per project (the sheet is a drawer on phone, a modal on
+  // desktop, but the resting section is identical).
+  await expect(weight.getByText('84.2 kg')).toBeVisible()
+  await expect(weight.getByRole('listitem')).toHaveCount(0)
+  await expect(weight).toMatchAriaSnapshot()
+
+  // The backfilled reading lives on the dedicated history page.
+  await weight.getByRole('link', { name: /view history/i }).click()
+  await expect(
+    page.getByRole('heading', { level: 1, name: /weight history/i }),
+  ).toBeVisible()
+  const row = page.getByRole('listitem').filter({ hasText: '15 Mar 2024' })
+  await expect(row).toContainText('84.2 kg')
 })

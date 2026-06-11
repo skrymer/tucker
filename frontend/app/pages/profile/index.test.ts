@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { renderSuspended, registerEndpoint } from '@nuxt/test-utils/runtime'
 import { screen, within } from '@testing-library/vue'
 import { createError } from 'h3'
-import Profile from './profile.vue'
+import Profile from './index.vue'
 
 type ProfileBody = { sex: string; birthDate: string; heightCm: number }
 type Weight = { id: number; measuredOn: string; weightKg: number }
@@ -28,7 +28,7 @@ describe('/profile progressive disclosure', () => {
     mockApi({ profile: null, weights: [], goals: [] })
     await renderSuspended(Profile)
 
-    const weight = screen.getByRole('region', { name: /weight log/i })
+    const weight = screen.getByRole('region', { name: /^weight$/i })
     expect(within(weight).getByText(/set your profile first/i)).toBeVisible()
     expect(
       within(weight).queryByRole('button', { name: /add weight/i }),
@@ -47,7 +47,7 @@ describe('/profile progressive disclosure', () => {
     })
     await renderSuspended(Profile)
 
-    const weight = screen.getByRole('region', { name: /weight log/i })
+    const weight = screen.getByRole('region', { name: /^weight$/i })
     expect(
       within(weight).getByRole('button', { name: /add weight/i }),
     ).toBeVisible()
@@ -58,7 +58,7 @@ describe('/profile progressive disclosure', () => {
     expect(within(goal).queryByLabelText(/target weight/i)).toBeNull()
   })
 
-  it('places the Goal and Reminder controls above the weight log', async () => {
+  it('renders the sections in order: Goal, Weight, Your details, Reminder', async () => {
     mockApi({
       profile: { sex: 'MALE', birthDate: '1990-06-15', heightCm: 180 },
       weights: [{ id: 1, measuredOn: '2026-05-29', weightKg: 84 }],
@@ -67,10 +67,11 @@ describe('/profile progressive disclosure', () => {
     await renderSuspended(Profile)
 
     const goal = screen.getByRole('heading', { name: /^goal$/i })
+    const weight = screen.getByRole('heading', { name: /^weight$/i })
+    const details = screen.getByRole('heading', { name: /your details/i })
     const reminder = screen.getByRole('heading', {
       name: /weekly-review reminder/i,
     })
-    const weightLog = screen.getByRole('heading', { name: /weight log/i })
 
     const follows = (before: Element, after: Element) =>
       Boolean(
@@ -78,8 +79,9 @@ describe('/profile progressive disclosure', () => {
         Node.DOCUMENT_POSITION_FOLLOWING,
       )
 
-    expect(follows(goal, weightLog)).toBe(true)
-    expect(follows(reminder, weightLog)).toBe(true)
+    expect(follows(goal, weight)).toBe(true)
+    expect(follows(weight, details)).toBe(true)
+    expect(follows(details, reminder)).toBe(true)
   })
 
   it('enables all three sections once a profile and a weight exist', async () => {
@@ -93,7 +95,7 @@ describe('/profile progressive disclosure', () => {
     // Profile section is always interactive.
     expect(screen.getByRole('button', { name: /save profile/i })).toBeVisible()
 
-    const weight = screen.getByRole('region', { name: /weight log/i })
+    const weight = screen.getByRole('region', { name: /^weight$/i })
     expect(
       within(weight).getByRole('button', { name: /add weight/i }),
     ).toBeVisible()

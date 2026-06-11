@@ -5,7 +5,7 @@ type WeightMeasurement = components['schemas']['WeightMeasurementResponse']
 type Goal = components['schemas']['GoalResponse']
 
 export interface ProfileGating {
-  /** The Weight log is interactive once a Profile exists. */
+  /** The Weight section is interactive once a Profile exists. */
   weightEnabled: boolean
   /** The Goal section is interactive once a Profile and a weight reading exist. */
   goalEnabled: boolean
