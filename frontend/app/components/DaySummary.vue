@@ -28,6 +28,7 @@ const verdict = computed(() =>
         class="mt-3"
         :value="summary.caloriesConsumed"
         :max="summary.calorieBudget ?? 1"
+        :color="caloriesBarColor(summary.dayStatus as DayStatus | undefined)"
         aria-label="Calories consumed against the Calorie Budget"
       />
 

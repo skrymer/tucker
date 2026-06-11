@@ -28,3 +28,14 @@ export function dayStatusVerdict(
       return null
   }
 }
+
+/**
+ * The Calorie-Budget progress bar's colour: red (`error`) once the day is over
+ * budget, the default green (`primary`) otherwise. Keyed on the backend's
+ * [DayStatus] verdict, not a re-derived intake-vs-budget comparison (ADR 0002).
+ */
+export function caloriesBarColor(
+  status: DayStatus | null | undefined,
+): 'error' | 'primary' {
+  return status === 'over-budget' ? 'error' : 'primary'
+}
