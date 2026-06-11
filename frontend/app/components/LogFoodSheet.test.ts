@@ -1,8 +1,13 @@
-import { describe, expect, it, vi } from 'vitest'
-import { renderSuspended } from '@nuxt/test-utils/runtime'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { ref } from 'vue'
+import { renderSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime'
 import { screen, waitFor } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import LogFoodSheet from './LogFoodSheet.vue'
+
+// Autofocus is desktop-only (see below), so the tests drive the viewport.
+const viewport = vi.hoisted(() => ({ desktop: false }))
+mockNuxtImport('useIsDesktop', () => () => ref(viewport.desktop))
 
 const skyr = {
   id: 1,
@@ -13,6 +18,13 @@ const skyr = {
 }
 
 describe('LogFoodSheet', () => {
+  // jsdom's width resolves useIsDesktop to desktop (UModal); keep that as the
+  // default so the modal-only affordances (the corner close button) stay tested,
+  // and opt into phone (UDrawer) explicitly where the drawer behaviour matters.
+  beforeEach(() => {
+    viewport.desktop = true
+  })
+
   it('shows a sheet named for the food with a grams field when a food is set', async () => {
     await renderSuspended(LogFoodSheet, { props: { food: skyr } })
 
@@ -27,12 +39,20 @@ describe('LogFoodSheet', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
-  it('focuses the grams field when the sheet opens', async () => {
+  it('focuses the grams field when the sheet opens on desktop', async () => {
+    viewport.desktop = true
     await renderSuspended(LogFoodSheet, { props: { food: skyr } })
 
     await waitFor(() =>
       expect(screen.getByLabelText(/weight \(g\)/i)).toHaveFocus(),
     )
+  })
+
+  it('does not autofocus the grams field on a phone, so its keyboard cannot trap the drawer', async () => {
+    viewport.desktop = false
+    await renderSuspended(LogFoodSheet, { props: { food: skyr } })
+
+    expect(screen.getByLabelText(/weight \(g\)/i)).not.toHaveFocus()
   })
 
   it("emits log with the food's id and the entered grams on submit", async () => {
@@ -66,6 +86,20 @@ describe('LogFoodSheet', () => {
     await userEvent
       .setup()
       .click(screen.getByRole('button', { name: /close/i }))
+
+    expect(onClose).toHaveBeenCalled()
+  })
+
+  it('emits close from the Cancel button on a phone, where the drawer has no close X', async () => {
+    viewport.desktop = false
+    const onClose = vi.fn()
+    await renderSuspended(LogFoodSheet, { props: { food: skyr, onClose } })
+
+    // The phone drawer renders no corner close button, so Cancel is the out.
+    expect(screen.queryByRole('button', { name: /close/i })).toBeNull()
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: /cancel/i }))
 
     expect(onClose).toHaveBeenCalled()
   })
