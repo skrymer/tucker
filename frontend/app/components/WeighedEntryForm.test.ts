@@ -22,6 +22,21 @@ const sampleFoods = [
 ]
 
 describe('WeighedEntryForm', () => {
+  it('keeps the on-screen keyboard off the food search input', async () => {
+    // The picker keeps its search input (Reka UI needs it for select-and-close),
+    // but inputmode="none" stops the phone keyboard from popping up over the
+    // bottom drawer. The keyboard itself is device-only, so we assert the
+    // attribute that suppresses it.
+    await renderSuspended(WeighedEntryForm, {
+      props: { date: '2026-05-25', foods: sampleFoods },
+    })
+    const user = userEvent.setup()
+
+    await user.click(screen.getByLabelText('Food'))
+
+    expect(screen.getByRole('combobox')).toHaveAttribute('inputmode', 'none')
+  })
+
   it('shows the food picker, grams field, and submit button when the catalog has foods', async () => {
     await renderSuspended(WeighedEntryForm, {
       props: { date: '2026-05-25', foods: sampleFoods },
