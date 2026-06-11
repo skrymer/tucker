@@ -1,0 +1,16 @@
+- main:
+    - heading "Today" [level=1]
+    - heading "Today's weight" [level=2]
+    - paragraph: No weight logged today.
+    - button "Log weight"
+    - heading "Calories" [level=2]
+    - paragraph: /\d+ \/ \d+ kcal/
+    - progressbar
+    - heading "Protein" [level=2]
+    - paragraph: /\d+ \/ \d+ g protein/
+    - progressbar
+    - paragraph: On target
+    - heading "Today's entries" [level=2]
+    - list:
+        - listitem: /Oats — \d+ kcal/
+    - button "Log entry"

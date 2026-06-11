@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen } from '@testing-library/vue'
+import userEvent from '@testing-library/user-event'
 import type { components } from '#open-fetch-schemas/api'
 import DaySummary from './DaySummary.vue'
 
@@ -91,6 +92,92 @@ describe('DaySummary', () => {
     expect(screen.queryByText('Over budget')).not.toBeInTheDocument()
   })
 
+  const fiveEntries: DailySummary = {
+    ...summary,
+    entries: [
+      {
+        id: 1,
+        loggedOn: '2026-05-22',
+        kind: 'ESTIMATED',
+        calories: 100,
+        isEstimate: true,
+        label: 'Breakfast',
+      },
+      {
+        id: 2,
+        loggedOn: '2026-05-22',
+        kind: 'ESTIMATED',
+        calories: 200,
+        isEstimate: true,
+        label: 'Morning snack',
+      },
+      {
+        id: 3,
+        loggedOn: '2026-05-22',
+        kind: 'ESTIMATED',
+        calories: 300,
+        isEstimate: true,
+        label: 'Lunch',
+      },
+      {
+        id: 4,
+        loggedOn: '2026-05-22',
+        kind: 'ESTIMATED',
+        calories: 400,
+        isEstimate: true,
+        label: 'Afternoon snack',
+      },
+      {
+        id: 5,
+        loggedOn: '2026-05-22',
+        kind: 'ESTIMATED',
+        calories: 500,
+        isEstimate: true,
+        label: 'Dinner',
+      },
+    ],
+  }
+
+  it('shows only the three most recent entries with a Show all control', async () => {
+    await renderSuspended(DaySummary, { props: { summary: fiveEntries } })
+
+    // Entries arrive oldest-first; the most recent three stay visible.
+    expect(screen.getAllByRole('listitem')).toHaveLength(3)
+    expect(screen.getByText('Dinner — 500 kcal')).toBeVisible()
+    expect(screen.getByText('Lunch — 300 kcal')).toBeVisible()
+    expect(screen.queryByText('Breakfast — 100 kcal')).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('Morning snack — 200 kcal'),
+    ).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /show all 5/i })).toBeVisible()
+  })
+
+  it('reveals every entry when Show all is activated', async () => {
+    await renderSuspended(DaySummary, { props: { summary: fiveEntries } })
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole('button', { name: /show all 5/i }))
+
+    expect(screen.getAllByRole('listitem')).toHaveLength(5)
+    expect(screen.getByText('Breakfast — 100 kcal')).toBeVisible()
+    expect(screen.getByText('Morning snack — 200 kcal')).toBeVisible()
+    expect(
+      screen.queryByRole('button', { name: /show all/i }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('collapses back to the three most recent when Show less is activated', async () => {
+    await renderSuspended(DaySummary, { props: { summary: fiveEntries } })
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole('button', { name: /show all 5/i }))
+    await user.click(screen.getByRole('button', { name: /show less/i }))
+
+    expect(screen.getAllByRole('listitem')).toHaveLength(3)
+    expect(screen.queryByText('Breakfast — 100 kcal')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /show all 5/i })).toBeVisible()
+  })
+
   it('lists each entry with its name and calories', async () => {
     const withEntries: DailySummary = {
       ...summary,
@@ -120,5 +207,9 @@ describe('DaySummary', () => {
     expect(screen.getAllByRole('listitem')).toHaveLength(2)
     expect(screen.getByText('Banana — 107 kcal')).toBeVisible()
     expect(screen.getByText('Cafe lunch — 600 kcal')).toBeVisible()
+    // At or below the cap, the whole ledger shows — no expander.
+    expect(
+      screen.queryByRole('button', { name: /show all/i }),
+    ).not.toBeInTheDocument()
   })
 })

@@ -31,22 +31,31 @@ test('the Today page shows the daily summary from the API', async ({
 
   await goto('/', { waitUntil: 'hydration' })
 
-  await expect(page.getByRole('main')).toMatchAriaSnapshot(`
-    - main:
-      - heading "Today" [level=1]
-      - heading "Today's weight" [level=2]
-      - paragraph: No weight logged today.
-      - button "Log weight"
-      - heading "Calories" [level=2]
-      - paragraph: 1500 / 2000 kcal
-      - heading "Protein" [level=2]
-      - paragraph: 140 / 140 g protein
-      - paragraph: On target
-      - heading "Today's entries" [level=2]
-      - list:
-        - listitem: "Oats — 240 kcal"
-      - button "Log entry"
-  `)
+  // The Log-entry action is always reachable without scrolling — a header button
+  // on desktop, a floating button on phone — so the resting tree differs by
+  // viewport; one closed-world baseline per project (the Desktop/Mobile split).
+  await expect(page.getByRole('button', { name: 'Log entry' })).toBeVisible()
+  await expect(page.getByRole('main')).toMatchAriaSnapshot()
+})
+
+test('the always-visible action opens the log-entry sheet', async ({
+  page,
+  goto,
+}) => {
+  await mockWeightApi(page)
+  await mockSummary(page)
+
+  await goto('/', { waitUntil: 'hydration' })
+
+  // The page owns the trigger now — a header button on desktop, a FAB on phone,
+  // both named "Log entry" — so this one assertion guards both viewports' wiring
+  // through to the controlled sheet (the fast-suite guard the smokes also cover).
+  await page.getByRole('button', { name: 'Log entry' }).click()
+
+  const sheet = page.getByRole('dialog', { name: /log entry/i })
+  await expect(sheet).toBeVisible()
+  await expect(page.getByRole('tab', { name: 'Estimated' })).toBeVisible()
+  await expect(sheet.getByLabel('Label')).toBeVisible()
 })
 
 test("logging a weight from the tile shows it as today's weight", async ({

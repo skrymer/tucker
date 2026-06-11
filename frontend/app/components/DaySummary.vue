@@ -14,6 +14,26 @@ const hasBudget = computed(() => props.summary.calorieBudget != null)
 const verdict = computed(() =>
   dayStatusVerdict(props.summary.dayStatus as DayStatus | undefined),
 )
+
+// Cap the day's entries so the ledger never buries the at-a-glance numbers or
+// the Log-entry action. Entries arrive oldest-first (ORDER BY id), so the most
+// recent few — including a just-logged one — are the visible tail; the rest fold
+// behind a "Show all" expander.
+function useEntryLog() {
+  const VISIBLE = 3
+  const expanded = ref(false)
+  const entries = computed(() => props.summary.entries)
+  const canExpand = computed(() => entries.value.length > VISIBLE)
+  const visibleEntries = computed(() =>
+    expanded.value ? entries.value : entries.value.slice(-VISIBLE),
+  )
+  const toggle = () => {
+    expanded.value = !expanded.value
+  }
+  return { expanded, visibleEntries, canExpand, toggle }
+}
+
+const { expanded, visibleEntries, canExpand, toggle } = useEntryLog()
 </script>
 
 <template>
@@ -71,7 +91,7 @@ const verdict = computed(() =>
       <h2 class="text-sm font-medium text-muted">Today's entries</h2>
       <ul class="mt-2 divide-y divide-default">
         <li
-          v-for="entry in summary.entries"
+          v-for="entry in visibleEntries"
           :key="entry.id"
           class="flex items-center justify-between gap-2 py-2"
         >
@@ -89,6 +109,18 @@ const verdict = computed(() =>
           </UBadge>
         </li>
       </ul>
+
+      <UButton
+        v-if="canExpand"
+        variant="ghost"
+        color="neutral"
+        size="sm"
+        block
+        class="mt-2"
+        @click="toggle"
+      >
+        {{ expanded ? 'Show less' : `Show all ${summary.entries.length}` }}
+      </UButton>
     </UCard>
   </div>
 </template>
