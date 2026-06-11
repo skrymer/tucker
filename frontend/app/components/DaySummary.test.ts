@@ -14,7 +14,7 @@ const summary: DailySummary = {
   calorieBudget: 2000,
   proteinFloor: 140,
   caloriesRemaining: 500,
-  onTarget: false,
+  dayStatus: 'in-progress',
   entries: [],
 }
 
@@ -48,20 +48,29 @@ describe('DaySummary', () => {
 
   it('shows the day as on target when the summary reports it', async () => {
     await renderSuspended(DaySummary, {
-      props: { summary: { ...summary, onTarget: true } },
+      props: { summary: { ...summary, dayStatus: 'on-target' } },
     })
 
     expect(screen.getByText('On target')).toBeVisible()
-    expect(screen.queryByText('Off target')).not.toBeInTheDocument()
+    expect(screen.queryByText('Over budget')).not.toBeInTheDocument()
   })
 
-  it('shows the day as off target when the summary reports it', async () => {
+  it('shows the day as over budget when the summary reports it', async () => {
     await renderSuspended(DaySummary, {
-      props: { summary: { ...summary, onTarget: false } },
+      props: { summary: { ...summary, dayStatus: 'over-budget' } },
     })
 
-    expect(screen.getByText('Off target')).toBeVisible()
+    expect(screen.getByText('Over budget')).toBeVisible()
     expect(screen.queryByText('On target')).not.toBeInTheDocument()
+  })
+
+  it('shows no verdict while the day is in progress', async () => {
+    await renderSuspended(DaySummary, {
+      props: { summary: { ...summary, dayStatus: 'in-progress' } },
+    })
+
+    expect(screen.queryByText('On target')).not.toBeInTheDocument()
+    expect(screen.queryByText('Over budget')).not.toBeInTheDocument()
   })
 
   it('explains there is no budget before the first weekly review', async () => {
@@ -72,14 +81,14 @@ describe('DaySummary', () => {
           calorieBudget: undefined,
           proteinFloor: undefined,
           caloriesRemaining: undefined,
-          onTarget: undefined,
+          dayStatus: undefined,
         },
       },
     })
 
     expect(screen.getByText(/no budget yet/i)).toBeVisible()
     expect(screen.queryByText('On target')).not.toBeInTheDocument()
-    expect(screen.queryByText('Off target')).not.toBeInTheDocument()
+    expect(screen.queryByText('Over budget')).not.toBeInTheDocument()
   })
 
   it('lists each entry with its name and calories', async () => {

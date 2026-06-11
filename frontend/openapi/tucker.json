@@ -1975,8 +1975,8 @@
             "type": "number",
             "format": "double"
           },
-          "onTarget": {
-            "type": "boolean"
+          "dayStatus": {
+            "type": "string"
           },
           "trendWeightKg": {
             "type": "number",

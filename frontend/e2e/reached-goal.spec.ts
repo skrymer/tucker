@@ -54,7 +54,7 @@ async function mockReachedThenMaintenance(page: Page) {
         calorieBudget: maintaining ? 2400 : 2000,
         proteinFloor: 160,
         caloriesRemaining: maintaining ? 1200 : 800,
-        onTarget: true,
+        dayStatus: 'in-progress',
         trendWeightKg: 79.9,
         entries: [],
         budgetChange: null,

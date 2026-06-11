@@ -29,7 +29,12 @@ data class DailySummaryResponse(
     val calorieBudget: Double?,
     val proteinFloor: Double?,
     val caloriesRemaining: Double?,
-    val onTarget: Boolean?,
+    /**
+     * The day's earned verdict (DayStatus): "on-target", "over-budget", or
+     * "in-progress" — null until the first WeeklyReview has run. An in-progress
+     * day carries no verdict; the progress bars carry the numbers.
+     */
+    val dayStatus: String?,
     /** The smoothed Trend Weight from the latest review; null until the first runs. */
     val trendWeightKg: Double?,
     val entries: List<EntryResponse>,
@@ -121,7 +126,7 @@ class SummaryController(
             calorieBudget = review?.calorieBudgetKcal,
             proteinFloor = review?.proteinFloorG,
             caloriesRemaining = review?.let { it.calorieBudgetKcal - log.caloriesConsumed() },
-            onTarget = review?.let { log.isOnTarget(it.calorieBudgetKcal, it.proteinFloorG) },
+            dayStatus = review?.let { log.dayStatus(it.calorieBudgetKcal, it.proteinFloorG).value },
             trendWeightKg = review?.trendWeightKg,
             entries = log.entries.toResponses(foods),
             budgetChange = budgetChange,

@@ -23,7 +23,7 @@ test('the Today page shows the Maintaining card in place of Goal-Progress when t
     calorieBudget: 2400,
     proteinFloor: 172,
     caloriesRemaining: 1200,
-    onTarget: true,
+    dayStatus: 'in-progress',
     trendWeightKg: 85.8,
     entries: [],
     budgetChange: null,
