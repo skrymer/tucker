@@ -58,6 +58,7 @@ function onSubmit() {
         value-key="id"
         label-key="name"
         placeholder="Select a food"
+        :search-input="{ inputmode: 'none' }"
         class="w-full"
       />
     </UFormField>
