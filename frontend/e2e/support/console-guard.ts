@@ -40,8 +40,9 @@ export const MOCKED_E2E_NOISE: RegExp[] = [/Failed to load resource/]
  * Extra noise tolerated only in the real-stack **smoke** suite (`pnpm test:smoke`).
  *
  * Tucker's reads are probe-and-handle-404 by design: `GET /api/profile`,
- * `/api/goal`, `/api/goal/progress`, `/api/weight/latest`, and `/api/weekly-review`
- * each return **404** in their empty / Maintenance-Mode state, which the SPA
+ * `/api/goal`, `/api/goal/progress`, `/api/weight/latest`, `/api/weight/trend`, and
+ * `/api/weekly-review` each return **404** in their empty / Maintenance-Mode state,
+ * which the SPA
  * handles gracefully (the setup nudge, the Maintaining card, an empty list). The
  * browser still logs each as a failed resource load, so a fresh-slate smoke (every
  * test resets the DB, #70) is full of expected 404s. We tolerate the 404 probe

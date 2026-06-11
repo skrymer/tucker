@@ -54,6 +54,10 @@ data class GoalProgressResponse(
 /**
  * Request to set a new weight-loss Goal.
  *
+ * The start weight is *not* sent: it's the live Trend Weight at creation, derived
+ * by the backend (ADR 0016), so a fresh Goal reads 0% (start == now) and the
+ * client never has to compute the EWMA.
+ *
  * [clientToday] is the user's *local* date (ADR 0014): the day the forced review
  * recompute is stamped on, so the lifted Budget lands on the user's today rather
  * than the server's wall-clock day. Validated against the server clock; falls back
@@ -61,7 +65,6 @@ data class GoalProgressResponse(
  */
 data class CreateGoalRequest(
     val startedOn: LocalDate,
-    val startWeightKg: Double,
     val targetWeightKg: Double,
     val rateKgPerWeek: Double,
     val clientToday: LocalDate? = null,
@@ -121,17 +124,13 @@ class GoalController(
 
     @PostMapping("/goal")
     @ResponseStatus(HttpStatus.CREATED)
-    fun create(@RequestBody request: CreateGoalRequest): GoalResponse {
-        val goal = Goal(
-            id = null,
-            startedOn = request.startedOn,
-            startWeightKg = request.startWeightKg,
-            targetWeightKg = request.targetWeightKg,
-            rateKgPerWeek = request.rateKgPerWeek,
-            active = true,
-        )
-        return goalService.replaceActiveGoal(goal, userToday.resolve(request.clientToday)).toResponse()
-    }
+    fun create(@RequestBody request: CreateGoalRequest): GoalResponse =
+        goalService.createGoal(
+            request.startedOn,
+            request.targetWeightKg,
+            request.rateKgPerWeek,
+            userToday.resolve(request.clientToday),
+        ).toResponse()
 
     /**
      * Switch to Maintenance Mode (ADR 0008): deactivate the active Goal and

@@ -72,8 +72,13 @@ flagged as an estimate so the app can report how much of a day was guessed.
 A weight-loss target the user sets: a goal weight plus a rate of loss (e.g.
 0.5 kg/week). The app derives the Calorie Budget and a projected finish date.
 Each Goal carries its own start date and starting weight, captured at the
-moment it's set. Changing target or rate mid-cut means *replacing* the active
-Goal: the prior one is preserved as inactive history, not edited in place.
+moment it's set. The starting weight is the **Trend Weight** at that moment —
+the backend derives it, the user never enters it — so progress is measured
+trend-to-trend and a fresh Goal reads 0% (start == now). It is *not* the raw
+reading on the scale that day, which lags or leads the trend; that reading lives
+on in the Weight-Measurement history. Changing target or rate mid-cut means
+*replacing* the active Goal: the prior one is preserved as inactive history, not
+edited in place.
 A Goal is **reached** when the Trend Weight first meets its target. Reaching
 *latches* — it stays reached even if the trend later drifts back up — and is
 recorded as the date it happened. A reached Goal is not resolved automatically:
@@ -160,7 +165,8 @@ _Avoid_: average weight
 How far the active **Goal** has come, and whether it's on track. Two
 complementary readings, both computed on the smoothed **Trend Weight**, never a
 single raw measurement:
-- The **plan**: the Trend Weight's journey from the Goal's start weight toward
+- The **plan**: the Trend Weight's journey from the Goal's start weight (itself
+  the Trend Weight when the Goal was set, so the journey is trend-to-trend) toward
   its target — kilograms still to go, percent complete, and, at the Goal's chosen
   rate, a projected (*planned*) finish date.
 - The **observed pace**: how fast the trend is *actually* moving — the slope of

@@ -39,14 +39,14 @@ function useProfileForm() {
 function useGoalSubmission(onSubmitted: () => void | Promise<void>) {
   const { $api } = useNuxtApp()
 
-  // The live Trend Weight isn't on the client, so the trend-weight rule (ADR
-  // 0008) is enforced by the backend; its 400 lands here and feeds the form.
+  // The start weight isn't sent — the backend anchors it on the live Trend Weight
+  // at creation (ADR 0016) and re-checks the target against it; its 400 lands here
+  // and feeds the form.
   const targetError = ref<string | undefined>(undefined)
 
   const { execute } = useApiMutation(
     (payload: {
       startedOn: string
-      startWeightKg: number
       targetWeightKg: number
       rateKgPerWeek: number
     }) =>
@@ -68,7 +68,6 @@ function useGoalSubmission(onSubmitted: () => void | Promise<void>) {
 
   async function submit(payload: {
     startedOn: string
-    startWeightKg: number
     targetWeightKg: number
     rateKgPerWeek: number
   }) {
@@ -86,10 +85,25 @@ const { profile, load: loadProfile, save: saveProfile } = useProfileForm()
 const { data: weights, refresh: refreshWeights } = await useApi('/api/weight')
 const { data: goals, refresh: refreshGoals } = await useApi('/api/goals')
 
+// The live Trend Weight the new Goal anchors its start on (ADR 0016). Fetched,
+// never computed client-side (ADR 0002 — the EWMA is the backend's); 404 (no
+// readings yet) → null, which leaves the gated Goal section disabled.
+const { $api } = useNuxtApp()
+const currentTrend = ref<components['schemas']['WeightTrendResponse'] | null>(
+  null,
+)
+async function refreshCurrentTrend() {
+  try {
+    currentTrend.value = await $api('/api/weight/trend')
+  } catch {
+    currentTrend.value = null
+  }
+}
+
 // The user's local date — the latest weight a backfill may target.
 const today = localToday()
 
-// The latest reading anchors the Goal form's read-only start weight.
+// The latest reading gates the Goal section (a weight must exist before a goal).
 const latestWeight = computed(
   () => sortByMeasuredOnDesc(weights.value ?? [])[0] ?? null,
 )
@@ -105,13 +119,16 @@ const gating = computed(() =>
 
 const { logWeight } = useWeightLogging({
   today,
-  // No success toast: the new reading appears in the weight trend below.
-  onSaved: refreshWeights,
+  // No success toast: the new reading appears in the weight trend below. A new
+  // reading also moves the Trend Weight, so refresh it for the Goal form.
+  onSaved: () => Promise.all([refreshWeights(), refreshCurrentTrend()]),
 })
 const { submit: submitGoal, targetError: goalTargetError } =
   useGoalSubmission(refreshGoals)
 
-await loadProfile()
+// Profile and the trend are independent reads — load them concurrently so the
+// gated page paints after one round-trip, not two.
+await Promise.all([loadProfile(), refreshCurrentTrend()])
 </script>
 
 <template>
@@ -125,7 +142,7 @@ await loadProfile()
     -->
     <GoalSection
       :goals="goals ?? []"
-      :latest-weight="latestWeight"
+      :current-trend="currentTrend"
       :target-error="goalTargetError"
       :disabled="!gating.goalEnabled"
       @submit="submitGoal"

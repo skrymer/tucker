@@ -2,19 +2,20 @@
 import type { components } from '#open-fetch-schemas/api'
 
 type GoalResponse = components['schemas']['GoalResponse']
-type LatestWeight = components['schemas']['WeightMeasurementResponse']
+type CurrentTrend = components['schemas']['WeightTrendResponse']
 
 type GoalPayload = {
   startedOn: string
-  startWeightKg: number
   targetWeightKg: number
   rateKgPerWeek: number
 }
 
 const props = defineProps<{
   goals: GoalResponse[]
-  latestWeight: LatestWeight | null
-  // A backend rejection of the target (the trend-weight rule, ADR 0008), shown
+  // The live Trend Weight the new Goal anchors its start on (ADR 0016); null until
+  // a weight is logged, which also gates the form.
+  currentTrend: CurrentTrend | null
+  // A backend rejection of the target (the trend-weight rule, ADR 0016), shown
   // on the form's target field.
   targetError?: string
   disabled?: boolean
@@ -86,8 +87,8 @@ function handleSubmit(payload: GoalPayload) {
            lands on; it stays behind the CTA until the user chooses to re-enter. -->
       <MaintenanceStatus :since="reachedSince" @start-goal="formOpen = true" />
       <GoalForm
-        v-if="formOpen && props.latestWeight"
-        :latest-weight="props.latestWeight"
+        v-if="formOpen && props.currentTrend"
+        :current-trend="props.currentTrend"
         :target-error="props.targetError"
         @submit="handleSubmit"
       />
@@ -97,8 +98,8 @@ function handleSubmit(payload: GoalPayload) {
       <GoalCard :goal="activeGoal" />
 
       <GoalForm
-        v-if="formOpen && props.latestWeight"
-        :latest-weight="props.latestWeight"
+        v-if="formOpen && props.currentTrend"
+        :current-trend="props.currentTrend"
         :target-error="props.targetError"
         @submit="handleSubmit"
       />

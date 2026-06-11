@@ -4,7 +4,7 @@ import { screen } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import GoalSection from './GoalSection.vue'
 
-const latestWeight = { id: 1, measuredOn: '2026-05-28', weightKg: 86.0 }
+const currentTrend = { trendKg: 86.0, asOf: '2026-05-28' }
 
 const activeGoal = {
   id: 7,
@@ -29,7 +29,7 @@ const pastGoal = {
 describe('GoalSection', () => {
   it('shows a maintenance status with a "Start a goal" CTA when no goal is active', async () => {
     await renderSuspended(GoalSection, {
-      props: { goals: [], latestWeight },
+      props: { goals: [], currentTrend },
     })
 
     expect(screen.getByRole('heading', { name: /^goal$/i })).toBeVisible()
@@ -42,7 +42,7 @@ describe('GoalSection', () => {
   it('reveals the goal form when "Start a goal" is clicked and emits the new goal', async () => {
     const onSubmit = vi.fn()
     await renderSuspended(GoalSection, {
-      props: { goals: [], latestWeight, onSubmit },
+      props: { goals: [], currentTrend, onSubmit },
     })
     const user = userEvent.setup()
 
@@ -56,7 +56,6 @@ describe('GoalSection', () => {
 
     expect(onSubmit).toHaveBeenCalledWith(
       expect.objectContaining({
-        startWeightKg: 86.0,
         targetWeightKg: 78,
         rateKgPerWeek: 0.6,
       }),
@@ -70,7 +69,7 @@ describe('GoalSection', () => {
           { ...pastGoal, reachedOn: '2026-05-20' },
           { ...activeGoal, active: false, reachedOn: '2026-06-03' },
         ],
-        latestWeight,
+        currentTrend,
       },
     })
 
@@ -79,7 +78,7 @@ describe('GoalSection', () => {
 
   it('hides the maintenance status and CTA while a goal is active', async () => {
     await renderSuspended(GoalSection, {
-      props: { goals: [activeGoal], latestWeight },
+      props: { goals: [activeGoal], currentTrend },
     })
 
     expect(screen.queryByText(/maintaining/i)).not.toBeInTheDocument()
@@ -90,7 +89,7 @@ describe('GoalSection', () => {
 
   it('shows the active goal as a card with a "Set a new goal" button, form hidden', async () => {
     await renderSuspended(GoalSection, {
-      props: { goals: [activeGoal], latestWeight },
+      props: { goals: [activeGoal], currentTrend },
     })
 
     // Card values are visible.
@@ -112,7 +111,7 @@ describe('GoalSection', () => {
   it('reveals the form when "Set a new goal" is clicked and emits the new goal', async () => {
     const onSubmit = vi.fn()
     await renderSuspended(GoalSection, {
-      props: { goals: [activeGoal], latestWeight, onSubmit },
+      props: { goals: [activeGoal], currentTrend, onSubmit },
     })
     const user = userEvent.setup()
 
@@ -126,7 +125,6 @@ describe('GoalSection', () => {
 
     expect(onSubmit).toHaveBeenCalledWith(
       expect.objectContaining({
-        startWeightKg: 86.0,
         targetWeightKg: 78,
         rateKgPerWeek: 0.6,
       }),
@@ -135,7 +133,7 @@ describe('GoalSection', () => {
 
   it('keeps the replacement form open after submitting so a rejected target can surface', async () => {
     await renderSuspended(GoalSection, {
-      props: { goals: [activeGoal], latestWeight },
+      props: { goals: [activeGoal], currentTrend },
     })
     const user = userEvent.setup()
 
@@ -152,7 +150,7 @@ describe('GoalSection', () => {
 
   it('keeps past goals in a history list that is collapsed by default', async () => {
     await renderSuspended(GoalSection, {
-      props: { goals: [activeGoal, pastGoal], latestWeight },
+      props: { goals: [activeGoal, pastGoal], currentTrend },
     })
     const user = userEvent.setup()
 
@@ -168,7 +166,7 @@ describe('GoalSection', () => {
 
   it('is non-interactive and explains the prerequisite when disabled', async () => {
     await renderSuspended(GoalSection, {
-      props: { goals: [], latestWeight: null, disabled: true },
+      props: { goals: [], currentTrend: null, disabled: true },
     })
 
     expect(screen.getByRole('heading', { name: /^goal$/i })).toBeVisible()
@@ -181,7 +179,7 @@ describe('GoalSection', () => {
 
   it('shows no history affordance when there are no past goals', async () => {
     await renderSuspended(GoalSection, {
-      props: { goals: [activeGoal], latestWeight },
+      props: { goals: [activeGoal], currentTrend },
     })
 
     expect(

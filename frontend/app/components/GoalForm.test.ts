@@ -4,26 +4,28 @@ import { screen } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import GoalForm from './GoalForm.vue'
 
-const latestWeight = { id: 1, measuredOn: '2026-05-28', weightKg: 86.0 }
+const currentTrend = { trendKg: 86.0, asOf: '2026-05-28' }
 const today = new Date().toLocaleDateString('en-CA')
 
 describe('GoalForm', () => {
-  it('shows the read-only start weight with its reading date, plus target and rate inputs', async () => {
-    await renderSuspended(GoalForm, { props: { latestWeight } })
+  it('shows the read-only starting trend weight, plus target and rate inputs', async () => {
+    await renderSuspended(GoalForm, { props: { currentTrend } })
 
     expect(screen.getByText(/starting weight/i)).toBeVisible()
+    // The start is the smoothed trend (ADR 0016), not a single reading — the value
+    // says so, so a user weighing 86.5 today understands why it reads 86.0.
     const value = screen.getByText(/86\.0 kg/)
     expect(value).toBeVisible()
-    expect(value).toHaveTextContent('28 May 2026')
+    expect(value).toHaveTextContent(/trend/i)
 
     expect(screen.getByLabelText(/target weight/i)).toBeVisible()
     expect(screen.getByLabelText(/rate/i)).toBeVisible()
     expect(screen.getByRole('button', { name: /set.*goal/i })).toBeVisible()
   })
 
-  it('emits the goal payload anchored to today and the latest weight', async () => {
+  it('emits the goal payload anchored to today, without a start weight (the backend derives it)', async () => {
     const onSubmit = vi.fn()
-    await renderSuspended(GoalForm, { props: { latestWeight, onSubmit } })
+    await renderSuspended(GoalForm, { props: { currentTrend, onSubmit } })
     const user = userEvent.setup()
 
     await user.type(screen.getByLabelText(/target weight/i), '80')
@@ -32,7 +34,6 @@ describe('GoalForm', () => {
 
     expect(onSubmit).toHaveBeenCalledWith({
       startedOn: today,
-      startWeightKg: 86.0,
       targetWeightKg: 80,
       rateKgPerWeek: 0.5,
     })
@@ -56,7 +57,7 @@ describe('GoalForm', () => {
 
   it('requires a target weight', async () => {
     const onSubmit = vi.fn()
-    await renderSuspended(GoalForm, { props: { latestWeight, onSubmit } })
+    await renderSuspended(GoalForm, { props: { currentTrend, onSubmit } })
     const user = userEvent.setup()
 
     await user.type(screen.getByLabelText(/rate/i), '0.5')
@@ -66,9 +67,9 @@ describe('GoalForm', () => {
     expect(onSubmit).not.toHaveBeenCalled()
   })
 
-  it('rejects a target weight at or above the start weight', async () => {
+  it('rejects a target weight at or above the starting trend weight', async () => {
     const onSubmit = vi.fn()
-    await renderSuspended(GoalForm, { props: { latestWeight, onSubmit } })
+    await renderSuspended(GoalForm, { props: { currentTrend, onSubmit } })
     const user = userEvent.setup()
 
     await user.type(screen.getByLabelText(/target weight/i), '86')
@@ -81,7 +82,7 @@ describe('GoalForm', () => {
 
   it('requires a weekly rate', async () => {
     const onSubmit = vi.fn()
-    await renderSuspended(GoalForm, { props: { latestWeight, onSubmit } })
+    await renderSuspended(GoalForm, { props: { currentTrend, onSubmit } })
     const user = userEvent.setup()
 
     await user.type(screen.getByLabelText(/target weight/i), '80')
@@ -92,26 +93,26 @@ describe('GoalForm', () => {
   })
 
   it('surfaces a server-rejected target as an error under the target field', async () => {
-    // The live Trend Weight isn't known on the client, so the trend-weight rule
-    // (ADR 0008) is enforced by the backend; its 400 is fed back in as targetError.
+    // The client validates target < the trend it was given, but the backend
+    // re-derives the live trend and is authoritative (ADR 0016); its 400 is fed
+    // back in as targetError.
     await renderSuspended(GoalForm, {
       props: {
-        latestWeight,
-        targetError:
-          'a weight-loss Goal needs a target below your current trend weight (86.2 kg)',
+        currentTrend,
+        targetError: 'a weight-loss Goal needs a target below the start weight',
       },
     })
 
     expect(
       screen.getByText(
-        'a weight-loss Goal needs a target below your current trend weight (86.2 kg)',
+        'a weight-loss Goal needs a target below the start weight',
       ),
     ).toBeVisible()
   })
 
   it('rejects a rate below the 0.05 kg/week floor', async () => {
     const onSubmit = vi.fn()
-    await renderSuspended(GoalForm, { props: { latestWeight, onSubmit } })
+    await renderSuspended(GoalForm, { props: { currentTrend, onSubmit } })
     const user = userEvent.setup()
 
     await user.type(screen.getByLabelText(/target weight/i), '80')
@@ -124,7 +125,7 @@ describe('GoalForm', () => {
 
   it('rejects a rate above the 1.5 kg/week ceiling', async () => {
     const onSubmit = vi.fn()
-    await renderSuspended(GoalForm, { props: { latestWeight, onSubmit } })
+    await renderSuspended(GoalForm, { props: { currentTrend, onSubmit } })
     const user = userEvent.setup()
 
     await user.type(screen.getByLabelText(/target weight/i), '80')

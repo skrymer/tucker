@@ -78,7 +78,7 @@ class GoalServiceTest {
     fun `the first goal on a fresh install fires the first weekly review`() {
         seedProfileAndWeight()
 
-        service.replaceActiveGoal(newGoal(), today)
+        service.createGoal(today, 80.0, 0.5, today)
 
         val review = reviews.latest()
         assertNotNull(review, "expected a weekly review to have been fired")
@@ -89,11 +89,11 @@ class GoalServiceTest {
     fun `replacing a goal recomputes today's review for the new goal's deficit`() {
         seedProfileAndWeight()
         // An existing plan, with today's review already reflecting its slower rate.
-        service.replaceActiveGoal(newGoal(rate = 0.5), today)
+        service.createGoal(today, 80.0, 0.5, today)
         val before = reviews.findByReviewedOn(today)!!.calorieBudgetKcal
 
         // Replace it with a steeper rate — a deliberate Goal change.
-        service.replaceActiveGoal(newGoal(rate = 0.75), today)
+        service.createGoal(today, 80.0, 0.75, today)
 
         // Today's review is recomputed in place: same maintenance, larger deficit, so
         // the Budget drops immediately rather than waiting for the weekly cadence.
@@ -106,7 +106,7 @@ class GoalServiceTest {
     @Test
     fun `deactivating the active goal switches to maintenance and recomputes today's review`() {
         seedProfileAndWeight()
-        service.replaceActiveGoal(newGoal(rate = 0.5), today)
+        service.createGoal(today, 80.0, 0.5, today)
         val cutBudget = reviews.findByReviewedOn(today)!!.calorieBudgetKcal
 
         service.deactivateActiveGoal(today)
@@ -123,15 +123,13 @@ class GoalServiceTest {
 
     @Test
     fun `rejects a goal whose target is not below the current trend weight`() {
-        // The latest reading is 86.0, so the Trend Weight is 86.0. A start of 90
-        // keeps the domain start-weight rule satisfied, but a target of 86 equals
-        // the trend — the Goal would be already-reached and stamp reachedOn on the
-        // next measurement, so it must be rejected at creation (ADR 0008).
+        // The latest reading is 86.0, so the Trend Weight — and thus the derived
+        // start weight (ADR 0016) — is 86.0. A target of 86 equals the trend, so the
+        // Goal is already-reached and is rejected at creation, naming the rule.
         seedProfileAndWeight()
-        val alreadyReached = Goal(null, today, 90.0, 86.0, 0.5, active = true)
 
         val ex = assertThrows<IllegalArgumentException> {
-            service.replaceActiveGoal(alreadyReached, today)
+            service.createGoal(today, 86.0, 0.5, today)
         }
         assertTrue(
             ex.message!!.contains("trend", ignoreCase = true),
@@ -146,7 +144,7 @@ class GoalServiceTest {
         seedProfileAndWeight()
         val prior = goals.insert(Goal(null, today.minusMonths(2), 95.0, 85.0, 0.5, active = true))
 
-        val replacement = service.replaceActiveGoal(newGoal(rate = 0.75), today)
+        val replacement = service.createGoal(today, 80.0, 0.75, today)
 
         val active = goals.findActive()
         assertNotNull(active)

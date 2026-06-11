@@ -38,35 +38,39 @@ class GoalProgressApiTest {
         }.andExpect { status { isOk() } }
     }
 
-    private fun seedGoal(startWeightKg: Double, targetWeightKg: Double, rateKgPerWeek: Double) {
+    private fun seedGoal(targetWeightKg: Double, rateKgPerWeek: Double) {
+        // The start weight is derived from the live trend at creation (ADR 0016).
         mockMvc.post("/api/goal") {
             contentType = MediaType.APPLICATION_JSON
-            content = """{"startedOn":"$today","startWeightKg":$startWeightKg,
-                          "targetWeightKg":$targetWeightKg,"rateKgPerWeek":$rateKgPerWeek}"""
+            content = """{"startedOn":"$today","targetWeightKg":$targetWeightKg,"rateKgPerWeek":$rateKgPerWeek}"""
         }.andExpect { status { isCreated() } }
     }
 
     @Test
     fun `reports kg-to-go, percent complete, and planned finish from the active goal and live trend`() {
         seedProfile()
-        seedWeight(today, 86.0)
-        seedGoal(startWeightKg = 90.0, targetWeightKg = 80.0, rateKgPerWeek = 0.5)
+        // The trend seeds at 90.0 (the day-before reading), which the Goal anchors its
+        // start on (ADR 0016). Today's 80.0 pulls the EWMA to 0.1·80 + 0.9·90 = 89.0,
+        // so the trend has moved 1 kg of the 10 kg to lose — 10% complete, 9 kg to go.
+        seedWeight(today.minusDays(1), 90.0)
+        seedGoal(targetWeightKg = 80.0, rateKgPerWeek = 0.5)
+        seedWeight(today, 80.0)
 
         mockMvc.get("/api/goal/progress").andExpect {
             status { isOk() }
-            jsonPath("$.startWeightKg") { value(90.0) }
+            jsonPath("$.startWeightKg", closeTo(90.0, 1e-2))
             jsonPath("$.targetWeightKg") { value(80.0) }
-            jsonPath("$.currentTrendKg") { value(86.0) }
-            jsonPath("$.kgToGo") { value(6.0) }
-            jsonPath("$.percentComplete") { value(40.0) }
-            // 6 kg to go at 0.5 kg/week is 12 weeks — 84 days from today.
-            jsonPath("$.plannedFinishDate") { value(today.plusWeeks(12).toString()) }
+            jsonPath("$.currentTrendKg", closeTo(89.0, 1e-6))
+            jsonPath("$.kgToGo", closeTo(9.0, 1e-6))
+            jsonPath("$.percentComplete", closeTo(10.0, 1e-6))
+            // 9 kg to go at 0.5 kg/week is 18 weeks — 126 days from today.
+            jsonPath("$.plannedFinishDate") { value(today.plusWeeks(18).toString()) }
             jsonPath("$.plannedRateKgPerWeek") { value(0.5) }
             // Observed pace is a later slice — present in the shape but null for now.
             jsonPath("$.paceStatus") { value(nullValue()) }
             jsonPath("$.observedRateKgPerWeek") { value(nullValue()) }
             jsonPath("$.observedFinishDate") { value(nullValue()) }
-            // The trend (86) is still above target (80), so the Goal isn't reached.
+            // The trend (89) is still above target (80), so the Goal isn't reached.
             jsonPath("$.reachedOn") { value(nullValue()) }
         }
     }
@@ -74,9 +78,10 @@ class GoalProgressApiTest {
     @Test
     fun `surfaces reachedOn once a measurement pulls the trend across the target`() {
         seedProfile()
-        // Trend sits at 80.4; the goal targets 80.0 (still below trend, so accepted).
+        // Trend sits at 80.4 (the derived start); the goal targets 80.0 (still below
+        // the trend, so accepted).
         seedWeight(today.minusDays(1), 80.4)
-        seedGoal(startWeightKg = 90.0, targetWeightKg = 80.0, rateKgPerWeek = 0.5)
+        seedGoal(targetWeightKg = 80.0, rateKgPerWeek = 0.5)
 
         // A 76.0 reading pulls the EWMA to ~79.96 — across the target.
         seedWeight(today, 76.0)
@@ -101,7 +106,7 @@ class GoalProgressApiTest {
         // barely moves, so progress must report ~89, never the raw 80.
         seedWeight(today.minusDays(10), 90.0)
         seedWeight(today, 80.0)
-        seedGoal(startWeightKg = 90.0, targetWeightKg = 75.0, rateKgPerWeek = 0.5)
+        seedGoal(targetWeightKg = 75.0, rateKgPerWeek = 0.5)
 
         mockMvc.get("/api/goal/progress").andExpect {
             status { isOk() }

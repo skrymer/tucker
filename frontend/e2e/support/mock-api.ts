@@ -106,15 +106,39 @@ type GoalSeed = {
 }
 
 /**
+ * Stub `GET /api/weight/trend` returning the live Trend Weight the Goal form
+ * anchors its start on (ADR 0016). Pass null for the no-readings 404.
+ */
+export async function mockWeightTrend(
+  page: Page,
+  trend: { trendKg: number; asOf: string } | null,
+) {
+  await page.route('**/api/weight/trend', (route) => {
+    if (route.request().method() !== 'GET') return route.fallback()
+    if (trend === null) {
+      return route.fulfill({ status: 404, json: { message: 'Not found' } })
+    }
+    return route.fulfill({ json: trend })
+  })
+}
+
+/**
  * Stub `GET /api/goals` (history, newest first) + `POST /api/goal` so the Goal
  * section on `/profile` works without a real backend. Each POST deactivates the
  * prior active goal and prepends the new active one, mirroring the backend's
  * replacement semantics; `dailyDeficitKcal` is derived as the real domain does.
+ *
+ * The start weight is *not* sent — the backend anchors it on the live Trend
+ * Weight at creation (ADR 0016), passed here as `currentTrendKg`: the created
+ * goal's start is that trend, and a target at or above it is already-reached and
+ * rejected with the backend's start-weight 400. (The client validates against the
+ * trend it fetched; a `currentTrendKg` below that models the stale-trend window
+ * where a reading moved the live trend after the form loaded.)
  */
 export async function mockGoals(
   page: Page,
   initial: GoalSeed[] = [],
-  options: { rejectTargetAtOrAbove?: number } = {},
+  options: { currentTrendKg?: number } = {},
 ) {
   const goals = [...initial]
   let nextId = Math.max(0, ...goals.map((g) => g.id)) + 1
@@ -133,21 +157,28 @@ export async function mockGoals(
     if (route.request().method() !== 'POST') return route.fallback()
     const body = route.request().postDataJSON() as Omit<
       GoalSeed,
-      'id' | 'active'
+      'id' | 'active' | 'startWeightKg'
     >
-    // Mirror the backend's trend-weight guard (ADR 0008): a target at or above
-    // the current Trend Weight is already-reached and rejected with a 400.
-    const floor = options.rejectTargetAtOrAbove
-    if (floor !== undefined && body.targetWeightKg >= floor) {
+    const trendKg = options.currentTrendKg
+    if (trendKg !== undefined && body.targetWeightKg >= trendKg) {
       return route.fulfill({
         status: 400,
         json: {
-          message: `a weight-loss Goal needs a target below your current trend weight (${floor.toFixed(1)} kg)`,
+          // Mirror the real backend's rejection (GoalService.createGoal), so the
+          // e2e exercises the actual message the SPA renders, not an invented one.
+          message: `a weight-loss Goal needs a target below your current trend weight (${trendKg.toFixed(1)} kg)`,
         },
       })
     }
     goals.forEach((g) => (g.active = false))
-    const created: GoalSeed = { id: nextId++, active: true, ...body }
+    const created: GoalSeed = {
+      id: nextId++,
+      active: true,
+      // The backend derives the start from the trend; fall back above target so
+      // the goal card still renders when no trend is configured for the POST.
+      startWeightKg: trendKg ?? body.targetWeightKg + 5,
+      ...body,
+    }
     goals.unshift(created)
     return route.fulfill({ status: 201, json: withDeficit(created) })
   })

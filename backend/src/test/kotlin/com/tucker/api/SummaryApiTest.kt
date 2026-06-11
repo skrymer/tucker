@@ -56,7 +56,7 @@ class SummaryApiTest {
 
         mockMvc.post("/api/goal") {
             contentType = MediaType.APPLICATION_JSON
-            content = """{"startedOn":"$on","startWeightKg":86.0,
+            content = """{"startedOn":"$on",
                           "targetWeightKg":80.0,"rateKgPerWeek":0.5}"""
         }.andExpect { status { isCreated() } }
     }

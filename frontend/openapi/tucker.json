@@ -834,6 +834,56 @@
         }
       }
     },
+    "/api/weight/trend": {
+      "get": {
+        "tags": [
+          "weight-controller"
+        ],
+        "operationId": "trend",
+        "responses": {
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeightTrendResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/weight/latest": {
       "get": {
         "tags": [
@@ -1663,7 +1713,6 @@
       "CreateGoalRequest": {
         "required": [
           "rateKgPerWeek",
-          "startWeightKg",
           "startedOn",
           "targetWeightKg"
         ],
@@ -1672,10 +1721,6 @@
           "startedOn": {
             "type": "string",
             "format": "date"
-          },
-          "startWeightKg": {
-            "type": "number",
-            "format": "double"
           },
           "targetWeightKg": {
             "type": "number",
@@ -1902,6 +1947,23 @@
           "protein": {
             "type": "number",
             "format": "double"
+          }
+        }
+      },
+      "WeightTrendResponse": {
+        "required": [
+          "asOf",
+          "trendKg"
+        ],
+        "type": "object",
+        "properties": {
+          "trendKg": {
+            "type": "number",
+            "format": "double"
+          },
+          "asOf": {
+            "type": "string",
+            "format": "date"
           }
         }
       },

@@ -2,19 +2,19 @@
 import { z } from 'zod'
 import type { components } from '#open-fetch-schemas/api'
 
-type LatestWeight = components['schemas']['WeightMeasurementResponse']
+type CurrentTrend = components['schemas']['WeightTrendResponse']
 
 type GoalPayload = {
   startedOn: string
-  startWeightKg: number
   targetWeightKg: number
   rateKgPerWeek: number
 }
 
 const props = defineProps<{
-  latestWeight: LatestWeight
-  // The live Trend Weight isn't known on the client, so the trend-weight rule
-  // (ADR 0008) is enforced server-side; a 400 is fed back here as a field error.
+  currentTrend: CurrentTrend
+  // The client validates against the trend it was handed, but the backend
+  // re-derives the live trend at creation and is authoritative (ADR 0016); a 400
+  // is fed back here as a field error.
   targetError?: string
 }>()
 
@@ -28,7 +28,7 @@ const schema = z.object({
   targetWeightKg: z
     .number({ error: 'Enter a target weight' })
     .positive('Target weight must be greater than 0')
-    .lt(props.latestWeight.weightKg, 'Target must be below your start weight'),
+    .lt(props.currentTrend.trendKg, 'Target must be below your start weight'),
   rateKgPerWeek: z
     .number({ error: 'Enter a weekly rate' })
     .min(0.05, 'Rate must be at least 0.05 kg/week')
@@ -40,18 +40,15 @@ const state = reactive({
   rateKgPerWeek: undefined as number | undefined,
 })
 
+// The start weight isn't sent: the backend anchors it on the live Trend Weight at
+// creation (ADR 0016), so a fresh Goal reads 0% (start == now).
 function onSubmit() {
   emit('submit', {
     startedOn: today(),
-    startWeightKg: props.latestWeight.weightKg,
     targetWeightKg: state.targetWeightKg!,
     rateKgPerWeek: state.rateKgPerWeek!,
   })
 }
-
-const formattedDate = computed(() =>
-  formatDateFromISO(props.latestWeight.measuredOn),
-)
 </script>
 
 <template>
@@ -63,8 +60,8 @@ const formattedDate = computed(() =>
   >
     <UFormField label="Starting weight">
       <p class="text-default">
-        {{ props.latestWeight.weightKg.toFixed(1) }} kg · as of
-        {{ formattedDate }}
+        {{ props.currentTrend.trendKg.toFixed(1) }} kg · your trend, smoothed
+        from recent readings
       </p>
     </UFormField>
 

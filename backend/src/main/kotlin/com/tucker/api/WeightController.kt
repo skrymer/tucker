@@ -1,6 +1,7 @@
 package com.tucker.api
 
 import com.tucker.domain.WeightMeasurement
+import com.tucker.domain.WeightTrend
 import com.tucker.persistence.WeightMeasurementRepository
 import com.tucker.service.WeightMeasurementService
 import org.springframework.http.HttpStatus
@@ -19,6 +20,16 @@ data class WeightMeasurementResponse(
     val id: Long,
     val measuredOn: LocalDate,
     val weightKg: Double,
+)
+
+/**
+ * The live Trend Weight — the latest EWMA point over every reading, dated by the
+ * latest reading. A Goal's start weight is anchored on this (ADR 0016), so the
+ * Goal form reads it to preview the start and validate the target against it.
+ */
+data class WeightTrendResponse(
+    val trendKg: Double,
+    val asOf: LocalDate,
 )
 
 /**
@@ -56,6 +67,11 @@ class WeightController(
     @GetMapping("/latest")
     fun latest(): WeightMeasurementResponse =
         weights.latest()?.toResponse() ?: throw NotFoundException("no weight measurements recorded yet")
+
+    @GetMapping("/trend")
+    fun trend(): WeightTrendResponse =
+        WeightTrend.from(weights.findAll()).latest()?.let { WeightTrendResponse(it.trendKg, it.date) }
+            ?: throw NotFoundException("no weight measurements recorded yet")
 
     @PostMapping
     fun save(@RequestBody request: SaveWeightRequest): WeightMeasurementResponse {
