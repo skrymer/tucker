@@ -18,3 +18,16 @@ export const navDestinations: NavDestination[] = [
   { label: 'Review', to: '/review', icon: 'i-lucide-trending-down' },
   { label: 'Profile', to: '/profile', icon: 'i-lucide-user' },
 ]
+
+/**
+ * Whether a nav destination should read as the active route for the current
+ * path.
+ */
+export function isDestinationActive(to: string, path: string): boolean {
+  // The Today root would prefix-match every route, so it's active only on an
+  // exact '/'. Every other destination is active on its own route and on any
+  // nested child (e.g. Profile stays active on /profile/weight), matched on a
+  // path-segment boundary so a string-prefix sibling can't light it up.
+  if (to === '/') return path === '/'
+  return path === to || path.startsWith(`${to}/`)
+}

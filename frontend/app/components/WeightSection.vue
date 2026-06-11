@@ -18,33 +18,30 @@ function handleSubmit(payload: { date: string; weightKg: number }) {
   emit('logged', payload)
 }
 
-// The weight log is reference material, not a control — cap it so it never
-// buries the actionable sections. Show the most recent few, fold the rest.
-const RECENT_LIMIT = 5
-
-// Splitting the already-fetched list into the visible head and the collapsed
-// tail, newest-first, grouped as one named concern.
-function useRecentSplit() {
+// The current weight at a glance: the latest reading and its neutral delta
+// against the one before it. The full chronological log is reference material,
+// not a control, so it lives on its own /profile/weight page reached via "View
+// history" rather than sharing space with the actionable Profile sections (#105).
+function useLatestReading() {
   const ordered = computed(() => sortByMeasuredOnDesc(props.measurements))
-  const recent = computed(() => ordered.value.slice(0, RECENT_LIMIT))
-  const rest = computed(() => ordered.value.slice(RECENT_LIMIT))
-  return { recent, rest }
+  const latest = computed(() => ordered.value[0] ?? null)
+  const previous = computed(() => ordered.value[1] ?? null)
+  return { latest, previous }
 }
 
-const { recent, rest } = useRecentSplit()
-const showAll = ref(false)
+const { latest, previous } = useLatestReading()
 </script>
 
 <template>
   <section
     class="flex flex-col gap-3"
-    aria-labelledby="weight-log-heading"
+    aria-labelledby="weight-heading"
     :aria-disabled="props.disabled || undefined"
     :class="{ 'pointer-events-none opacity-50 select-none': props.disabled }"
   >
     <header class="flex items-center justify-between">
-      <h2 id="weight-log-heading" class="text-lg font-semibold text-default">
-        Weight log
+      <h2 id="weight-heading" class="text-lg font-semibold text-default">
+        Weight
       </h2>
       <UButton
         v-if="!props.disabled"
@@ -63,31 +60,17 @@ const showAll = ref(false)
 
     <template v-else>
       <template v-if="measurements.length > 0">
-        <WeightSummary
-          :latest="recent[0] ?? null"
-          :previous="recent[1] ?? null"
-        />
+        <WeightSummary :latest="latest" :previous="previous" />
 
-        <WeightList :measurements="recent" />
-
-        <UCollapsible v-if="rest.length > 0" v-model:open="showAll">
-          <UButton
-            variant="ghost"
-            color="neutral"
-            block
-            :trailing-icon="
-              showAll ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'
-            "
-          >
-            {{
-              showAll ? 'Show less' : `Show all ${measurements.length} readings`
-            }}
-          </UButton>
-
-          <template #content>
-            <WeightList :measurements="rest" />
-          </template>
-        </UCollapsible>
+        <UButton
+          to="/profile/weight"
+          variant="subtle"
+          color="neutral"
+          block
+          trailing-icon="i-lucide-chevron-right"
+        >
+          View history
+        </UButton>
       </template>
       <p v-else class="text-sm text-muted">No weight logged yet.</p>
 

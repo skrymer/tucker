@@ -89,62 +89,66 @@ const { enabled, hourForm, toggle, saveHour } = useReminderPrefs()
   <section class="flex flex-col gap-4">
     <h2 class="text-lg font-semibold text-default">Weekly-review reminder</h2>
 
-    <!-- Firefox-on-some-platforms / older browsers can't subscribe at all. -->
-    <p v-if="!isSupported" class="text-sm text-muted">
-      Reminders aren't supported on this browser. Open Tucker in a recent
-      Chrome, Edge, Firefox, or Safari to turn them on.
-    </p>
+    <UCard>
+      <div class="flex flex-col gap-4">
+        <!-- Firefox-on-some-platforms / older browsers can't subscribe at all. -->
+        <p v-if="!isSupported" class="text-sm text-muted">
+          Reminders aren't supported on this browser. Open Tucker in a recent
+          Chrome, Edge, Firefox, or Safari to turn them on.
+        </p>
 
-    <!-- iOS only allows push once installed (ADR 0011): point the way first. -->
-    <UAlert
-      v-else-if="requiresInstall"
-      icon="i-lucide-share"
-      color="neutral"
-      variant="subtle"
-      title="Add Tucker to your home screen first"
-      description="On iPhone, reminders work once Tucker is installed. Tap Share, then Add to Home Screen, and open Tucker from there."
-    />
-
-    <template v-else>
-      <USwitch
-        :model-value="enabled"
-        label="Weekly-review reminders"
-        :description="
-          enabled
-            ? 'You\'ll get a nudge when a review is due.'
-            : 'Get a nudge when a weekly review is due.'
-        "
-        @update:model-value="toggle"
-      />
-
-      <UForm
-        :state="hourForm"
-        :schema="hourSchema"
-        class="flex flex-col gap-3"
-        @submit="saveHour"
-      >
-        <UFormField
-          label="Reminder hour"
-          name="reminderHour"
-          description="The local hour (0–23) to send the reminder at."
-        >
-          <UInput
-            v-model.number="hourForm.reminderHour"
-            type="number"
-            min="0"
-            max="23"
-            class="w-24"
-          />
-        </UFormField>
-        <UButton
-          type="submit"
+        <!-- iOS only allows push once installed (ADR 0011): point the way first. -->
+        <UAlert
+          v-else-if="requiresInstall"
+          icon="i-lucide-share"
           color="neutral"
           variant="subtle"
-          class="self-start"
-        >
-          Save reminder time
-        </UButton>
-      </UForm>
-    </template>
+          title="Add Tucker to your home screen first"
+          description="On iPhone, reminders work once Tucker is installed. Tap Share, then Add to Home Screen, and open Tucker from there."
+        />
+
+        <template v-else>
+          <USwitch
+            :model-value="enabled"
+            label="Weekly-review reminders"
+            :description="
+              enabled
+                ? 'You\'ll get a nudge when a review is due.'
+                : 'Get a nudge when a weekly review is due.'
+            "
+            @update:model-value="toggle"
+          />
+
+          <UForm
+            :state="hourForm"
+            :schema="hourSchema"
+            class="flex flex-col gap-3"
+            @submit="saveHour"
+          >
+            <UFormField
+              label="Reminder hour"
+              name="reminderHour"
+              description="The local hour (0–23) to send the reminder at."
+            >
+              <UInput
+                v-model.number="hourForm.reminderHour"
+                type="number"
+                min="0"
+                max="23"
+                class="w-24"
+              />
+            </UFormField>
+            <UButton
+              type="submit"
+              color="neutral"
+              variant="subtle"
+              class="self-start"
+            >
+              Save reminder time
+            </UButton>
+          </UForm>
+        </template>
+      </div>
+    </UCard>
   </section>
 </template>

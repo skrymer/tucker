@@ -1,0 +1,8 @@
+- region "Weight":
+    - heading "Weight" [level=2]
+    - button "Add weight"
+    - heading "Latest" [level=3]
+    - paragraph: /\d+\.\d+ kg/
+    - paragraph: /\d+ Mar \d+/
+    - link "View history":
+        - /url: /profile/weight
