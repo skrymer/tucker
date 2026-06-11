@@ -14,11 +14,7 @@ const emit = defineEmits<{
   dismiss: []
 }>()
 
-const schema = z.object({
-  grams: z
-    .number({ error: 'Enter the weight in grams' })
-    .positive('Grams must be greater than 0'),
-})
+const schema = z.object({ grams: gramsSchema })
 
 const state = reactive({ grams: undefined as number | undefined })
 

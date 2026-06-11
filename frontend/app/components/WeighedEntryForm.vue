@@ -6,9 +6,7 @@ type FoodResponse = components['schemas']['FoodResponse']
 
 const schema = z.object({
   foodId: z.number({ error: 'Select a food from the list' }),
-  grams: z
-    .number({ error: 'Enter the weight in grams' })
-    .positive('Grams must be greater than 0'),
+  grams: gramsSchema,
 })
 
 const props = defineProps<{

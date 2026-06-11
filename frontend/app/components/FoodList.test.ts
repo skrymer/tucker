@@ -35,14 +35,29 @@ describe('FoodList', () => {
     expect(screen.getByText('Chicken breast')).toBeVisible()
   })
 
-  it('bubbles select with the picked food when the user clicks a row', async () => {
-    const onSelect = vi.fn()
+  it('bubbles log with the picked food when the user taps a row', async () => {
+    const onLog = vi.fn()
     await renderSuspended(FoodList, {
-      props: { foods: sampleFoods, onSelect },
+      props: { foods: sampleFoods, onLog },
     })
 
-    await userEvent.setup().click(screen.getByRole('button', { name: /skyr/i }))
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: 'Log Skyr' }))
 
-    expect(onSelect).toHaveBeenCalledWith(sampleFoods[1])
+    expect(onLog).toHaveBeenCalledWith(sampleFoods[1])
+  })
+
+  it("bubbles delete with the picked food when the user activates a row's delete button", async () => {
+    const onDelete = vi.fn()
+    await renderSuspended(FoodList, {
+      props: { foods: sampleFoods, onDelete },
+    })
+
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: 'Delete Oats' }))
+
+    expect(onDelete).toHaveBeenCalledWith(sampleFoods[0])
   })
 })

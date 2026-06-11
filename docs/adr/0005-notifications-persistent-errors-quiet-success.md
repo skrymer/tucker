@@ -71,8 +71,10 @@ This decision covers only network/server failures and success confirmations.
   timer), `close: true`, a stable `id`, and a Retry action bound to
   `() => execute(...args)`. The success path stays optional via `successTitle`.
 - Adding a `successTitle` to a flow whose result is already visible is a
-  regression — the default is silent. After this change only the entry-log
-  mutations in `LogEntrySheet` pass one.
+  regression — the default is silent. Only entry-log mutations pass one
+  ("Entry logged"): the `LogEntrySheet` flows on Today, and the Foods-page
+  flows (catalog tap-to-log, barcode "log it now") whose Entry also lands on
+  Today while the user stays on `/foods`.
 - **a11y:** errors use `type: 'foreground'` (aria-live **assertive** — a direct
   result of user action that must interrupt). Success **must explicitly** pass
   `type: 'background'` (aria-live **polite**), because Reka defaults `type` to
