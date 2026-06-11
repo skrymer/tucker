@@ -7,6 +7,12 @@ type GoalProgress = components['schemas']['GoalProgressResponse']
 // The day to show — the user's local date.
 const today = localToday()
 
+// The Log-entry action lives on the page (header button on desktop, FAB on
+// phone) so it's always reachable, matching Foods/Profile; the sheet is the
+// controlled overlay it opens.
+const isDesktop = useIsDesktop()
+const logEntryOpen = ref(false)
+
 const { $api } = useNuxtApp()
 
 const { data: summary, refresh } = await useApi('/api/summary', {
@@ -84,7 +90,17 @@ const { logWeight } = useWeightLogging({ today, onSaved: onWeightSaved })
 
 <template>
   <section class="flex flex-col gap-4">
-    <h1 class="text-2xl font-bold text-default">Today</h1>
+    <header class="flex items-center justify-between">
+      <h1 class="text-2xl font-bold text-default">Today</h1>
+      <UButton
+        v-if="isDesktop"
+        icon="i-lucide-plus"
+        color="primary"
+        @click="logEntryOpen = true"
+      >
+        Log entry
+      </UButton>
+    </header>
     <SetupBanner :calorie-budget="summary?.calorieBudget" />
     <BudgetChangeBanner :budget-change="summary?.budgetChange" />
     <WeightTile :today="today" :latest="latestWeight" @logged="logWeight" />
@@ -105,6 +121,21 @@ const { logWeight } = useWeightLogging({ today, onSaved: onWeightSaved })
       v-else-if="goalProgress && !goalProgress.reachedOn"
       :progress="goalProgress"
     />
-    <LogEntrySheet :date="today" @logged="onEntryLogged" />
+    <UButton
+      v-if="!isDesktop"
+      icon="i-lucide-plus"
+      color="primary"
+      size="xl"
+      aria-label="Log entry"
+      class="fixed right-4 bottom-20 size-14 rounded-full shadow-lg"
+      :ui="{ base: 'justify-center' }"
+      @click="logEntryOpen = true"
+    />
+
+    <LogEntrySheet
+      v-model:open="logEntryOpen"
+      :date="today"
+      @logged="onEntryLogged"
+    />
   </section>
 </template>

@@ -1,9 +1,8 @@
 <script setup lang="ts">
-defineProps<{ date: string }>()
+defineProps<{ date: string; open: boolean }>()
 
-const emit = defineEmits<{ logged: [] }>()
+const emit = defineEmits<{ logged: []; 'update:open': [boolean] }>()
 
-const open = ref(false)
 const { $api } = useNuxtApp()
 
 // Foods catalog for the Weighed form. Non-awaited so the component
@@ -13,7 +12,7 @@ const { $api } = useNuxtApp()
 const { data: foods } = useApi('/api/foods')
 
 function closeAndEmit() {
-  open.value = false
+  emit('update:open', false)
   emit('logged')
 }
 
@@ -53,14 +52,11 @@ const submitting = computed(
 </script>
 
 <template>
-  <UButton color="primary" icon="i-lucide-plus" block @click="open = true">
-    Log entry
-  </UButton>
-
   <ResponsiveOverlay
-    v-model:open="open"
+    :open="open"
     title="Log entry"
     :dismissible="!submitting"
+    @update:open="(value) => emit('update:open', value)"
   >
     <LogEntryBody
       :date="date"
