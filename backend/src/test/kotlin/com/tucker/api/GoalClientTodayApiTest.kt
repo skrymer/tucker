@@ -60,7 +60,7 @@ class GoalClientTodayApiTest {
 
         mockMvc.post("/api/goal") {
             contentType = MediaType.APPLICATION_JSON
-            content = """{"startedOn":"$CLIENT_TODAY","startWeightKg":86.0,
+            content = """{"startedOn":"$CLIENT_TODAY",
                           "targetWeightKg":80.0,"rateKgPerWeek":0.5,"clientToday":"$CLIENT_TODAY"}"""
         }.andExpect { status { isCreated() } }
 
@@ -75,7 +75,7 @@ class GoalClientTodayApiTest {
         seedProfileAndWeight(CLIENT_TODAY)
         mockMvc.post("/api/goal") {
             contentType = MediaType.APPLICATION_JSON
-            content = """{"startedOn":"$CLIENT_TODAY","startWeightKg":86.0,
+            content = """{"startedOn":"$CLIENT_TODAY",
                           "targetWeightKg":80.0,"rateKgPerWeek":0.5,"clientToday":"$CLIENT_TODAY"}"""
         }.andExpect { status { isCreated() } }
 

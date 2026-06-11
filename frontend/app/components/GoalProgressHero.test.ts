@@ -51,6 +51,14 @@ describe('GoalProgressHero', () => {
     expect(screen.getByText('80.0 kg')).toBeVisible()
   })
 
+  it('captions the weight strip as the smoothed trend so the values read as the trend, not the scale', async () => {
+    await renderSuspended(GoalProgressHero, { props: { progress: withheld } })
+
+    expect(
+      screen.getByText(/tracked on your smoothed trend weight/i),
+    ).toBeVisible()
+  })
+
   it('shows the planned finish date and rate', async () => {
     await renderSuspended(GoalProgressHero, { props: { progress: withheld } })
 

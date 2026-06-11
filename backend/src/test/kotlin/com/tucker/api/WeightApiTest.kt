@@ -45,6 +45,30 @@ class WeightApiTest {
     }
 
     @Test
+    fun `GET weight trend returns the live EWMA trend point dated the latest reading`() {
+        mockMvc.post("/api/weight") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"date":"2026-06-10","weightKg":107.0}"""
+        }.andExpect { status { isOk() } }
+        mockMvc.post("/api/weight") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"date":"2026-06-11","weightKg":107.5}"""
+        }.andExpect { status { isOk() } }
+
+        // EWMA (α = 0.10): 0.1·107.5 + 0.9·107.0 = 107.05, dated the latest reading.
+        mockMvc.get("/api/weight/trend").andExpect {
+            status { isOk() }
+            jsonPath("$.trendKg", closeTo(107.05, 1e-3))
+            jsonPath("$.asOf") { value("2026-06-11") }
+        }
+    }
+
+    @Test
+    fun `GET weight trend returns 404 when no measurements exist`() {
+        mockMvc.get("/api/weight/trend").andExpect { status { isNotFound() } }
+    }
+
+    @Test
     fun `DELETE weight removes the measurement and 404s on a re-fetch`() {
         val saved = mockMvc.post("/api/weight") {
             contentType = MediaType.APPLICATION_JSON

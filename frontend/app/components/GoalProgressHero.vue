@@ -66,7 +66,9 @@ const { planned, pace, observedFinish, observedRate } = usePaceColumns()
       aria-label="Goal completion"
     />
 
-    <!-- Start → now (Trend Weight) → target. -->
+    <!-- Start → now → target, all on the smoothed Trend Weight (ADR 0016): the
+         start is the trend at creation, so a fresh Goal reads 0%. The caption says
+         so, since these won't match a single morning's scale reading. -->
     <dl class="mt-6 grid grid-cols-3 gap-2 text-center">
       <div v-for="stop in stops" :key="stop.label">
         <dt class="text-xs font-medium text-muted">{{ stop.label }}</dt>
@@ -75,6 +77,9 @@ const { planned, pace, observedFinish, observedRate } = usePaceColumns()
         </dd>
       </div>
     </dl>
+    <p class="mt-2 text-center text-xs text-muted">
+      Tracked on your smoothed trend weight
+    </p>
 
     <!-- Planned vs observed finish — stacked on phone, two columns on desktop. -->
     <div class="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">

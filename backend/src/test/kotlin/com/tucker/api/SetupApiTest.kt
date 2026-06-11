@@ -37,7 +37,7 @@ class SetupApiTest {
         // review in the same transaction — no manual review trigger needed.
         mockMvc.post("/api/goal") {
             contentType = MediaType.APPLICATION_JSON
-            content = """{"startedOn":"$today","startWeightKg":86.0,
+            content = """{"startedOn":"$today",
                           "targetWeightKg":80.0,"rateKgPerWeek":0.5}"""
         }.andExpect {
             status { isCreated() }
@@ -63,9 +63,21 @@ class SetupApiTest {
 
     @Test
     fun `a goal whose target is above the start weight is rejected with 400`() {
+        // The start weight is the live trend (ADR 0016): a reading of 86.0 makes it
+        // 86.0, and a target of 90.0 sits above it, so the loss Goal is rejected.
+        val today = LocalDate.now()
+        mockMvc.put("/api/profile") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"sex":"MALE","birthDate":"1986-05-22","heightCm":180.0}"""
+        }.andExpect { status { isOk() } }
+        mockMvc.post("/api/weight") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"date":"$today","weightKg":86.0}"""
+        }.andExpect { status { isOk() } }
+
         mockMvc.post("/api/goal") {
             contentType = MediaType.APPLICATION_JSON
-            content = """{"startedOn":"2026-05-01","startWeightKg":80.0,
+            content = """{"startedOn":"$today",
                           "targetWeightKg":90.0,"rateKgPerWeek":0.5}"""
         }.andExpect { status { isBadRequest() } }
     }

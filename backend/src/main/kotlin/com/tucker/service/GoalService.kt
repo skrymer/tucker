@@ -17,10 +17,17 @@ class GoalService(
 ) {
 
     /**
-     * Deactivate any current Goal and make [goal] the single active one, then
-     * force-recompute today's [com.tucker.domain.WeeklyReview] so the new deficit
-     * (and therefore the Calorie Budget and Protein Floor) takes effect immediately
-     * rather than waiting up to a week for the next review cadence.
+     * Create a Goal, make it the single active one, and force-recompute today's
+     * [com.tucker.domain.WeeklyReview] so the new deficit (and therefore the Calorie
+     * Budget and Protein Floor) takes effect immediately rather than waiting up to a
+     * week for the next review cadence.
+     *
+     * The **start weight is derived here** as the live Trend Weight at creation
+     * (ADR 0016) — the client can't compute the EWMA, and anchoring on the trend
+     * makes a fresh Goal read 0% (start == now). It's computed once and reused as
+     * both the anchor and the target guard: a target at or above the trend is
+     * already-reached and rejected. With no reading there is no trend, so the Goal
+     * can't be anchored and is rejected.
      *
      * A deliberate Goal change is one of the few moments the Budget is allowed to
      * move mid-week — clock-driven ticks still hold it steady. The recompute
@@ -30,27 +37,30 @@ class GoalService(
      * one transaction.
      */
     @Transactional
-    fun replaceActiveGoal(goal: Goal, today: LocalDate): Goal {
-        requireBelowCurrentTrend(goal)
+    fun createGoal(
+        startedOn: LocalDate,
+        targetWeightKg: Double,
+        rateKgPerWeek: Double,
+        today: LocalDate,
+    ): Goal {
+        val trendKg = currentTrendKg()
+            ?: throw IllegalArgumentException("log your weight before setting a goal")
+        require(targetWeightKg < trendKg) {
+            "a weight-loss Goal needs a target below your current trend weight " +
+                "(${"%.1f".format(trendKg)} kg)"
+        }
+        val goal = Goal(
+            id = null,
+            startedOn = startedOn,
+            startWeightKg = trendKg,
+            targetWeightKg = targetWeightKg,
+            rateKgPerWeek = rateKgPerWeek,
+            active = true,
+        )
         goals.deactivateAll()
         val saved = goals.insert(goal)
         weeklyReview.recomputeFor(today)
         return saved
-    }
-
-    /**
-     * Guard a loss Goal against an already-reached target: its target must be below
-     * the current Trend Weight (ADR 0008). Reaching is checked on the live trend, so
-     * a target at or above it would stamp `reachedOn` on the very next measurement —
-     * it isn't a loss campaign at all. When no measurements exist there is no trend
-     * yet; the Goal's own start-weight invariant carries the check until one does.
-     */
-    private fun requireBelowCurrentTrend(goal: Goal) {
-        val currentTrendKg = currentTrendKg() ?: return
-        require(!goal.isReachedAt(currentTrendKg)) {
-            "a weight-loss Goal needs a target below your current trend weight " +
-                "(${"%.1f".format(currentTrendKg)} kg)"
-        }
     }
 
     /**

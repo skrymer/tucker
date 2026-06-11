@@ -1,5 +1,10 @@
 import { expect, test } from './support/test'
-import { mockProfile, mockWeightList, mockGoals } from './support/mock-api'
+import {
+  mockProfile,
+  mockWeightList,
+  mockWeightTrend,
+  mockGoals,
+} from './support/mock-api'
 
 test('setting a goal on /profile replaces the form with the new goal card', async ({
   page,
@@ -13,14 +18,16 @@ test('setting a goal on /profile replaces the form with the new goal card', asyn
   await mockWeightList(page, [
     { id: 1, measuredOn: '2026-05-28', weightKg: 84.2 },
   ])
-  await mockGoals(page, [])
+  // The start is anchored on the live Trend Weight (ADR 0016), not the raw reading.
+  await mockWeightTrend(page, { trendKg: 84.2, asOf: '2026-05-28' })
+  await mockGoals(page, [], { currentTrendKg: 84.2 })
 
   await goto('/profile', { waitUntil: 'hydration' })
 
   const goal = page.getByRole('region', { name: /^goal$/i })
 
-  // No active goal → Maintenance Mode: the creation form is behind the
-  // "Start a goal" CTA. Opening it anchors the form to the latest weight (84.2 kg).
+  // No active goal → Maintenance Mode: the creation form is behind the "Start a
+  // goal" CTA. Opening it shows the starting trend weight (84.2 kg).
   await goal.getByRole('button', { name: /start a goal/i }).click()
   await expect(goal.getByText(/84\.2 kg/)).toBeVisible()
   await goal.getByLabel(/target weight/i).fill('80')
@@ -37,7 +44,7 @@ test('setting a goal on /profile replaces the form with the new goal card', asyn
   await expect(goal.getByLabel(/target weight/i)).toBeHidden()
 })
 
-test('a target not below the current trend weight is rejected with a field error', async ({
+test('a target at or above the trend is rejected with a field error, no submit', async ({
   page,
   goto,
 }) => {
@@ -49,31 +56,31 @@ test('a target not below the current trend weight is rejected with a field error
   await mockWeightList(page, [
     { id: 1, measuredOn: '2026-05-28', weightKg: 85.0 },
   ])
-  // The latest reading (85.0, the form's start weight) sits above the Trend Weight
-  // (84.0), so a target of 84.5 clears the client start-weight rule yet is at/above
-  // the trend — exactly the case the backend trend-weight guard catches (ADR 0008).
-  await mockGoals(page, [], { rejectTargetAtOrAbove: 84.0 })
+  // The form validates the target against the trend it fetched (ADR 0016), so a
+  // target at/above 84.0 is caught client-side — no request leaves the page.
+  await mockWeightTrend(page, { trendKg: 84.0, asOf: '2026-05-28' })
+  await mockGoals(page, [], { currentTrendKg: 84.0 })
 
   await goto('/profile', { waitUntil: 'hydration' })
 
   const goal = page.getByRole('region', { name: /^goal$/i })
 
-  // No active goal → open the creation form from the maintenance CTA.
   await goal.getByRole('button', { name: /start a goal/i }).click()
   await goal.getByLabel(/target weight/i).fill('84.5')
   await goal.getByLabel(/rate/i).fill('0.5')
   await goal.getByRole('button', { name: /^set goal$/i }).click()
 
-  // The rejection surfaces as a field error naming the rule — not a generic toast,
-  // and the form stays put so the user can correct the target.
-  await expect(goal.getByText(/below your current trend weight/i)).toBeVisible()
+  // The rejection surfaces as a field error, not a toast, and the form stays put.
+  await expect(
+    goal.getByText('Target must be below your start weight'),
+  ).toBeVisible()
   await expect(goal.getByLabel(/target weight/i)).toBeVisible()
   await expect(
     goal.getByRole('button', { name: /set a new goal/i }),
   ).toHaveCount(0)
 })
 
-test('replacing a goal with a rejected target keeps the form open and shows the error', async ({
+test('a backend-rejected target keeps the replacement form open and shows the error', async ({
   page,
   goto,
 }) => {
@@ -85,7 +92,11 @@ test('replacing a goal with a rejected target keeps the form open and shows the 
   await mockWeightList(page, [
     { id: 1, measuredOn: '2026-05-28', weightKg: 85.0 },
   ])
-  // An existing active goal, and the same latest-above-trend setup as above.
+  // The form's fetched trend (85.0) is momentarily stale: a reading logged after
+  // it loaded moved the live trend to 84.0. So the client passes a target of 84.5
+  // (< 85.0) that the backend re-derives against and rejects (ADR 0016) — the path
+  // that must keep the form open rather than closing it optimistically.
+  await mockWeightTrend(page, { trendKg: 85.0, asOf: '2026-05-28' })
   await mockGoals(
     page,
     [
@@ -98,7 +109,7 @@ test('replacing a goal with a rejected target keeps the form open and shows the 
         active: true,
       },
     ],
-    { rejectTargetAtOrAbove: 84.0 },
+    { currentTrendKg: 84.0 },
   )
 
   await goto('/profile', { waitUntil: 'hydration' })
@@ -111,8 +122,8 @@ test('replacing a goal with a rejected target keeps the form open and shows the 
   await goal.getByLabel(/rate/i).fill('0.5')
   await goal.getByRole('button', { name: /^set goal$/i }).click()
 
-  // The form must not close optimistically on submit — otherwise the rejection
-  // would have nowhere to render and the user would get no feedback at all.
+  // The form must not close optimistically on submit — otherwise the backend
+  // rejection would have nowhere to render and the user would get no feedback.
   await expect(goal.getByText(/below your current trend weight/i)).toBeVisible()
   await expect(goal.getByLabel(/target weight/i)).toBeVisible()
 })
