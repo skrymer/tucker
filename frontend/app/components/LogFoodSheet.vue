@@ -15,6 +15,11 @@ const emit = defineEmits<{
   close: []
 }>()
 
+// Autofocus the grams field on desktop for quick entry, but NOT on phone: there
+// the focus pops the on-screen keyboard the instant the drawer opens, which
+// covers the controls and blocks swipe-to-dismiss — leaving no way to cancel.
+const isDesktop = useIsDesktop()
+
 const schema = z.object({ grams: gramsSchema })
 
 const state = reactive({ grams: undefined as number | undefined })
@@ -50,7 +55,7 @@ function onSubmit() {
       <UFormField label="Weight (g)" name="grams" required>
         <UInputNumber
           v-model="state.grams"
-          autofocus
+          :autofocus="isDesktop"
           :step="1"
           placeholder="e.g. 150"
           class="w-full"
@@ -59,6 +64,16 @@ function onSubmit() {
 
       <UButton type="submit" color="primary" :loading="pending" class="w-full">
         Log entry
+      </UButton>
+
+      <UButton
+        type="button"
+        color="neutral"
+        variant="ghost"
+        class="w-full"
+        @click="emit('close')"
+      >
+        Cancel
       </UButton>
     </UForm>
   </ResponsiveOverlay>
