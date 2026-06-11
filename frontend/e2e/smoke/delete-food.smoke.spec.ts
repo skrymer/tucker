@@ -1,8 +1,9 @@
 import { test, expect } from './support/smoke-test'
 
 // F3 Slice 3 smoke: deletes a food through the UI against the real
-// backend. Seeds a uniquely-named food, opens its row, confirms the
-// delete, and asserts the row is gone from the list (and the catalog).
+// backend. Seeds a uniquely-named food, activates its row's delete
+// button, confirms the delete, and asserts the row is gone from the
+// list (and the catalog).
 test('user deletes a food from the catalog', async ({
   page,
   goto,
@@ -27,7 +28,7 @@ test('user deletes a food from the catalog', async ({
 
     await expect(page.getByText(foodName)).toBeVisible()
 
-    await page.getByRole('button', { name: new RegExp(foodName) }).click()
+    await page.getByRole('button', { name: `Delete ${foodName}` }).click()
 
     const dialog = page.getByRole('dialog', { name: /delete this food/i })
     await expect(dialog).toBeVisible()

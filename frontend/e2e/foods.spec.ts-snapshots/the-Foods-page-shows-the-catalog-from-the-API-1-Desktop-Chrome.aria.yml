@@ -3,10 +3,12 @@
     - button "Add food"
     - list:
         - listitem:
-            - button /Oats \d+ kcal · \d+ g protein \/100g/:
+            - button "Log Oats":
                 - paragraph: Oats
                 - paragraph: /\d+ kcal · \d+ g protein \/100g/
+            - button "Delete Oats"
         - listitem:
-            - button /Skyr \d+ kcal · \d+ g protein \/100g/:
+            - button "Log Skyr":
                 - paragraph: Skyr
                 - paragraph: /\d+ kcal · \d+ g protein \/100g/
+            - button "Delete Skyr"

@@ -7,6 +7,8 @@ const { data: foods, refresh } = await useApi('/api/foods')
 
 const open = ref(false)
 const selectedFood = ref<FoodResponse | null>(null)
+// The Food whose row was tapped — non-null opens the grams-only log sheet.
+const foodToLog = ref<FoodResponse | null>(null)
 // The Food just saved through the Add-Food flow. Its presence pivots the sheet
 // into the "log it now" continuation (issue #52); cleared whenever the sheet
 // closes so the next open starts on a blank add form.
@@ -40,10 +42,10 @@ const { execute: handleSubmit } = useApiMutation(
   },
 )
 
-// "Log it now" — an explicit, user-driven Weighed Entry against today for a Food
-// that already exists (just saved, or a catalog hit). Scanning never logs by
-// itself; the user supplies the grams.
-const { execute: handleLog } = useApiMutation(
+// An explicit, user-driven Weighed Entry against today for a Food that
+// already exists — a tapped catalog row, a barcode catalog hit, or the
+// "log it now" continuation after a save. The user always supplies the grams.
+const { pending: logPending, execute: handleLog } = useApiMutation(
   (payload: { foodId: number; grams: number }) =>
     $api('/api/entries/weighed', {
       method: 'POST',
@@ -59,6 +61,7 @@ const { execute: handleLog } = useApiMutation(
     errorTitle: 'Could not log entry',
     onSuccess: () => {
       open.value = false
+      foodToLog.value = null
     },
   },
 )
@@ -99,7 +102,8 @@ function handleDeleteConfirm() {
     <FoodList
       v-if="foods && foods.length > 0"
       :foods="foods"
-      @select="selectedFood = $event"
+      @log="foodToLog = $event"
+      @delete="selectedFood = $event"
     />
     <FoodEmptyState v-else @add="open = true" />
 
@@ -119,6 +123,13 @@ function handleDeleteConfirm() {
       :created-food="createdFood"
       @submit="handleSubmit"
       @log="handleLog"
+    />
+
+    <LogFoodSheet
+      :food="foodToLog"
+      :pending="logPending"
+      @log="handleLog"
+      @close="foodToLog = null"
     />
 
     <DeleteFoodConfirm

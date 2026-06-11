@@ -21,14 +21,31 @@ describe('FoodListItem', () => {
     expect(screen.getByText(/11 g protein/)).toBeVisible()
   })
 
-  it('emits select with the food when the user clicks the row', async () => {
-    const onSelect = vi.fn()
+  it('emits log with the food when the user taps the row', async () => {
+    const onLog = vi.fn()
     await renderSuspended(FoodListItem, {
-      props: { food: skyr, onSelect },
+      props: { food: skyr, onLog },
     })
 
-    await userEvent.setup().click(screen.getByRole('button', { name: /skyr/i }))
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: 'Log Skyr' }))
 
-    expect(onSelect).toHaveBeenCalledWith(skyr)
+    expect(onLog).toHaveBeenCalledWith(skyr)
+  })
+
+  it('emits delete — not log — when the user activates the delete button', async () => {
+    const onLog = vi.fn()
+    const onDelete = vi.fn()
+    await renderSuspended(FoodListItem, {
+      props: { food: skyr, onLog, onDelete },
+    })
+
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: 'Delete Skyr' }))
+
+    expect(onDelete).toHaveBeenCalledWith(skyr)
+    expect(onLog).not.toHaveBeenCalled()
   })
 })
