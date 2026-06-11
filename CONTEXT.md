@@ -232,7 +232,7 @@ _Avoid_: device token, push token, registration
 - A **Goal** and the current **Trend Weight** yield **Goal Progress** — how far the
   trend has moved toward the target and when, at the Goal's rate, it's projected to arrive
 - **Maintenance** is corrected over time from **Entries** and the **Trend Weight**
-- A day is on-target when intake is under the **Calorie Budget** and over the **Protein Floor**
+- A day is **on-target** once the **Protein Floor** is met and intake is at or under the **Calorie Budget**; it is **over budget** the moment intake exceeds the **Calorie Budget**. An in-progress day in neither state has no verdict — being under the floor mid-day isn't a failure, the day just isn't finished.
 - A **Weekly-Review Reminder** is sent when a **Weekly Review** is overdue and the
   user has at least one **Push Subscription** — it nudges, it never computes the review
 - A user has zero or more **Push Subscriptions** (one per device); each **Weekly-Review

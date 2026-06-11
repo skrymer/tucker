@@ -9,12 +9,12 @@ test('the Today page shows the daily summary from the API', async ({
   await mockSummary(page, {
     date: '2026-05-22',
     caloriesConsumed: 1500,
-    proteinConsumed: 120,
+    proteinConsumed: 140,
     estimatedCalorieShare: 0,
     calorieBudget: 2000,
     proteinFloor: 140,
     caloriesRemaining: 500,
-    onTarget: false,
+    dayStatus: 'on-target',
     entries: [
       {
         id: 1,
@@ -40,8 +40,8 @@ test('the Today page shows the daily summary from the API', async ({
       - heading "Calories" [level=2]
       - paragraph: 1500 / 2000 kcal
       - heading "Protein" [level=2]
-      - paragraph: 120 / 140 g protein
-      - paragraph: Off target
+      - paragraph: 140 / 140 g protein
+      - paragraph: On target
       - heading "Today's entries" [level=2]
       - list:
         - listitem: "Oats — 240 kcal"

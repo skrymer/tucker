@@ -11,7 +11,7 @@ const emptySummary: Json = {
   calorieBudget: null,
   proteinFloor: null,
   caloriesRemaining: null,
-  onTarget: null,
+  dayStatus: null,
   entries: [],
 }
 

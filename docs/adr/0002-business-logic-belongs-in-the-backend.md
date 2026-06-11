@@ -1,10 +1,11 @@
 # Compute business logic in the backend, not the frontend
 
 Tucker's rules — calorie and budget maths, the adaptive maintenance engine, and
-derived states such as whether a day is *on-target* (intake under the Calorie
-Budget and over the Protein Floor) — are business logic. The backend domain
-model computes them and exposes the results through the REST API as plain
-values. The frontend presents what the API returns and never re-derives a rule.
+derived states such as a day's verdict against the Calorie Budget and Protein
+Floor (*on-target*, *over-budget*, or in-progress) — are business logic. The
+backend domain model computes them and exposes the results through the REST API
+as plain values. The frontend presents what the API returns and never re-derives
+a rule.
 
 A rule duplicated in the UI couples that rule to one specific frontend. The UI
 should be swappable — a redesign, a native app, or a future WhatsApp adapter —
@@ -16,7 +17,7 @@ deterministically and contradicts the rich domain model of
 ## Consequences
 
 - Derived domain state is a field on the API response, not a frontend
-  computation. `DailySummaryResponse` carries an `onTarget` boolean; the
+  computation. `DailySummaryResponse` carries a `dayStatus` verdict; the
   dashboard renders it rather than comparing intake to the budget and floor.
 - The frontend holds presentation logic only — formatting, layout, breakpoints,
   interaction and loading state. A component's computed value may depend on

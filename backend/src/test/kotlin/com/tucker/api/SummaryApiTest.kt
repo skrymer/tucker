@@ -88,7 +88,8 @@ class SummaryApiTest {
             // Protein Floor = 2 g/kg of the trend (a single 86.0 reading → trend 86.0).
             jsonPath("$.proteinFloor") { value(172.0) }
             jsonPath("$.trendWeightKg") { value(86.0) }
-            jsonPath("$.onTarget") { isBoolean() }
+            // Zero intake with the floor unmet — a fresh day in progress, no verdict yet.
+            jsonPath("$.dayStatus") { value("in-progress") }
         }
     }
 
@@ -104,6 +105,21 @@ class SummaryApiTest {
             // A single same-day reading is under 14 days of history.
             jsonPath("$.driftStatus") { value("gathering-data") }
             jsonPath("$.observedRateKgPerWeek") { value(null) }
+        }
+    }
+
+    @Test
+    fun `the summary reports no day status before the first weekly review`() {
+        // A fresh database has no WeeklyReview, so there is no Budget or Floor to
+        // judge the day against — the verdict is withheld (null), unchanged from
+        // the old null onTarget.
+        val day = LocalDate.of(2026, 6, 10)
+
+        mockMvc.get("/api/summary") {
+            param("date", "$day")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.dayStatus") { value(null) }
         }
     }
 

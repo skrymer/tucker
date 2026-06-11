@@ -3,7 +3,6 @@ package com.tucker.domain
 import org.junit.jupiter.api.Test
 import java.time.LocalDate
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /** Pure-domain tests for the adaptive engine's arithmetic. */
@@ -64,20 +63,47 @@ class AdaptiveEngineTest {
     }
 
     @Test
-    fun `DailyLog is on target under the budget and over the protein floor`() {
+    fun `DailyLog is on target under the budget with the protein floor met`() {
         val log = DailyLog(day(1), listOf(EstimatedEntry(null, day(1), "Lunch", 1500.0, 150.0)))
-        assertTrue(log.isOnTarget(calorieBudgetKcal = 2000.0, proteinFloorG = 140.0))
+        assertEquals(
+            DayStatus.ON_TARGET,
+            log.dayStatus(calorieBudgetKcal = 2000.0, proteinFloorG = 140.0),
+        )
     }
 
     @Test
-    fun `DailyLog is off target over the calorie budget`() {
+    fun `DailyLog is over budget when intake exceeds the budget even with the floor met`() {
         val log = DailyLog(day(1), listOf(EstimatedEntry(null, day(1), "Lunch", 2200.0, 150.0)))
-        assertFalse(log.isOnTarget(calorieBudgetKcal = 2000.0, proteinFloorG = 140.0))
+        assertEquals(
+            DayStatus.OVER_BUDGET,
+            log.dayStatus(calorieBudgetKcal = 2000.0, proteinFloorG = 140.0),
+        )
     }
 
     @Test
-    fun `DailyLog is off target under the protein floor`() {
+    fun `DailyLog is over budget when intake exceeds the budget with the floor unmet`() {
+        val log = DailyLog(day(1), listOf(EstimatedEntry(null, day(1), "Lunch", 2200.0, 90.0)))
+        assertEquals(
+            DayStatus.OVER_BUDGET,
+            log.dayStatus(calorieBudgetKcal = 2000.0, proteinFloorG = 140.0),
+        )
+    }
+
+    @Test
+    fun `DailyLog is in progress under the budget with the protein floor unmet`() {
         val log = DailyLog(day(1), listOf(EstimatedEntry(null, day(1), "Lunch", 1500.0, 90.0)))
-        assertFalse(log.isOnTarget(calorieBudgetKcal = 2000.0, proteinFloorG = 140.0))
+        assertEquals(
+            DayStatus.IN_PROGRESS,
+            log.dayStatus(calorieBudgetKcal = 2000.0, proteinFloorG = 140.0),
+        )
+    }
+
+    @Test
+    fun `DailyLog is on target at exactly the calorie budget with the floor met`() {
+        val log = DailyLog(day(1), listOf(EstimatedEntry(null, day(1), "Lunch", 2000.0, 150.0)))
+        assertEquals(
+            DayStatus.ON_TARGET,
+            log.dayStatus(calorieBudgetKcal = 2000.0, proteinFloorG = 140.0),
+        )
     }
 }

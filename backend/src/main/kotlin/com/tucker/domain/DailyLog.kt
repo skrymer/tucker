@@ -24,9 +24,13 @@ data class DailyLog(
     }
 
     /**
-     * Whether the day is on-target: calories consumed at or under
-     * [calorieBudgetKcal] and protein consumed at or over [proteinFloorG].
+     * The day's earned [DayStatus] against [calorieBudgetKcal] and [proteinFloorG].
+     * Over budget wins unconditionally — it is real the moment it happens; a met
+     * Protein Floor under budget is on-target; anything else is still in progress.
      */
-    fun isOnTarget(calorieBudgetKcal: Double, proteinFloorG: Double): Boolean =
-        caloriesConsumed() <= calorieBudgetKcal && proteinConsumed() >= proteinFloorG
+    fun dayStatus(calorieBudgetKcal: Double, proteinFloorG: Double): DayStatus = when {
+        caloriesConsumed() > calorieBudgetKcal -> DayStatus.OVER_BUDGET
+        proteinConsumed() >= proteinFloorG -> DayStatus.ON_TARGET
+        else -> DayStatus.IN_PROGRESS
+    }
 }

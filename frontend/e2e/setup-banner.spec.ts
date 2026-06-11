@@ -32,7 +32,7 @@ test('the Today page hides the setup nudge once a budget exists', async ({
     calorieBudget: 2000,
     proteinFloor: 140,
     caloriesRemaining: 2000,
-    onTarget: true,
+    dayStatus: 'in-progress',
     entries: [],
   })
 

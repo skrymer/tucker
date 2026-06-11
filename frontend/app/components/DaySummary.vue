@@ -7,6 +7,13 @@ const props = defineProps<{
 
 // Budget and floor are absent until the first weekly review has run.
 const hasBudget = computed(() => props.summary.calorieBudget != null)
+
+// The earned day verdict, or null for an in-progress or pre-review day that has
+// none — the progress bars carry the numbers instead. Presentation mapping lives
+// in the shared util, alongside its drift/pace siblings.
+const verdict = computed(() =>
+  dayStatusVerdict(props.summary.dayStatus as DayStatus | undefined),
+)
 </script>
 
 <template>
@@ -21,6 +28,7 @@ const hasBudget = computed(() => props.summary.calorieBudget != null)
         class="mt-3"
         :value="summary.caloriesConsumed"
         :max="summary.calorieBudget ?? 1"
+        :color="caloriesBarColor(summary.dayStatus as DayStatus | undefined)"
         aria-label="Calories consumed against the Calorie Budget"
       />
 
@@ -36,20 +44,15 @@ const hasBudget = computed(() => props.summary.calorieBudget != null)
         aria-label="Protein consumed against the Protein Floor"
       />
 
-      <div class="mt-6 border-t border-default pt-3">
+      <div v-if="verdict" class="mt-6 border-t border-default pt-3">
         <p
-          v-if="summary.onTarget"
-          class="flex items-center gap-2 text-sm font-medium text-success"
+          :class="[
+            'flex items-center gap-2 text-sm font-medium',
+            verdict.class,
+          ]"
         >
-          <UIcon name="i-lucide-circle-check" class="size-4" aria-hidden />
-          On target
-        </p>
-        <p
-          v-else-if="summary.onTarget === false"
-          class="flex items-center gap-2 text-sm font-medium text-error"
-        >
-          <UIcon name="i-lucide-circle-x" class="size-4" aria-hidden />
-          Off target
+          <UIcon :name="verdict.icon" class="size-4" aria-hidden />
+          {{ verdict.label }}
         </p>
       </div>
     </UCard>
