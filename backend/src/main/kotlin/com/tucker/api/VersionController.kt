@@ -20,15 +20,18 @@ data class VersionResponse(
 /**
  * Reports the build stamp baked into the image at build time (Dockerfile ARG ->
  * ENV -> these properties). No Actuator: a single read-only endpoint over three
- * configuration values. The properties default to dev/unknown so a local
- * `bootRun` or a CI image built without the args never fails to start.
+ * configuration values. Each @Value carries its own dev/unknown default so the
+ * controller is self-sufficient even when the active property source omits the
+ * key entirely — e.g. the test `application.yml`, which shadows the main one and
+ * defines no `tucker.version`; without the inline default every @SpringBootTest
+ * context would fail to load.
  */
 @RestController
 @RequestMapping("/api/version")
 class VersionController(
-    @param:Value("\${tucker.version}") private val version: String,
-    @param:Value("\${tucker.git-sha}") private val gitSha: String,
-    @param:Value("\${tucker.built-at}") private val builtAt: String,
+    @param:Value("\${tucker.version:dev}") private val version: String,
+    @param:Value("\${tucker.git-sha:unknown}") private val gitSha: String,
+    @param:Value("\${tucker.built-at:unknown}") private val builtAt: String,
 ) {
 
     @GetMapping
