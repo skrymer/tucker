@@ -14,6 +14,16 @@ RUN corepack enable && corepack prepare pnpm@10.30.3 --activate
 # (ADR 0015 accepts the on-host build cost; GHCR is the documented next step).
 COPY . .
 RUN pnpm install --frozen-lockfile
+
+# Build stamp (issue #117): baked into the client bundle at `nuxt build` via
+# runtimeConfig.public (nuxt.config reads these from process.env), so the
+# Profile footer can show the running build. Placed after install so a changing
+# GIT_SHA only re-runs the build, not the dependency layer. Defaults degrade
+# gracefully for local/CI builds that pass no args.
+ARG APP_VERSION=dev
+ARG GIT_SHA=unknown
+ENV APP_VERSION=$APP_VERSION \
+    GIT_SHA=$GIT_SHA
 RUN pnpm build
 
 # ---- Runtime stage ----

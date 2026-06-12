@@ -11,6 +11,18 @@ export default defineNuxtConfig({
 
   css: ['~/assets/css/main.css'],
 
+  // Build stamp (issue #117): baked into the client bundle at `nuxt build` time
+  // (the Dockerfile sets these env vars from build args; ssr:false bakes the
+  // values into the prerendered shell). The Profile footer reads them and shows
+  // the backend SHA from /api/version beside this when a partial deploy splits
+  // them. Defaults degrade gracefully for local dev.
+  runtimeConfig: {
+    public: {
+      appVersion: process.env.APP_VERSION || 'dev',
+      gitSha: process.env.GIT_SHA || 'unknown',
+    },
+  },
+
   // Typed API client generated from the backend's OpenAPI spec.
   openFetch: {
     clients: {

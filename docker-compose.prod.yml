@@ -17,6 +17,12 @@ services:
   frontend:
     build:
       context: ./frontend
+      # Build stamp (issue #117): the same APP_VERSION/GIT_SHA update.sh exports
+      # for the backend, baked into the SPA bundle so the frontend and backend
+      # report the identical semver and a partial deploy is a visible SHA split.
+      args:
+        APP_VERSION: ${APP_VERSION:-dev}
+        GIT_SHA: ${GIT_SHA:-unknown}
     image: tucker-frontend:latest
     container_name: tucker-frontend
     restart: unless-stopped

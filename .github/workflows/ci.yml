@@ -121,7 +121,10 @@ jobs:
       # Build the deployable image once. The smoke webServer's `up --build`
       # then hits the layer cache and only needs to boot the container.
       - name: Build the backend image
-        run: docker compose build backend
+        # Stamp the image with the commit SHA (issue #117) so the smoke and
+        # /api/version exercise a real GIT_SHA; APP_VERSION and BUILT_AT stay at
+        # their dev/unknown build-arg defaults.
+        run: GIT_SHA="$(git rev-parse --short HEAD)" docker compose build backend
 
       - name: Backend e2e (Docker image)
         working-directory: backend
