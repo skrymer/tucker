@@ -24,6 +24,17 @@ RUN useradd --system --uid 1001 --create-home tucker \
 
 COPY --from=build --chown=tucker:tucker /build/build/libs/*.jar app.jar
 
+# Build stamp (issue #117): baked from build args so GET /api/version can report
+# the running build. Declared here, after the jar copy, so a changing GIT_SHA /
+# BUILT_AT never busts the expensive Gradle build layers. Graceful defaults keep
+# local/CI builds that pass no args from failing — they read as dev/unknown.
+ARG APP_VERSION=dev
+ARG GIT_SHA=unknown
+ARG BUILT_AT=unknown
+ENV APP_VERSION=$APP_VERSION \
+    GIT_SHA=$GIT_SHA \
+    BUILT_AT=$BUILT_AT
+
 USER tucker
 ENV TUCKER_DB_PATH=/data/tucker.db
 EXPOSE 8080

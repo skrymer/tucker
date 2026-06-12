@@ -175,5 +175,9 @@ await Promise.all([loadProfile(), refreshCurrentTrend()])
 
     <!-- Renders the install affordance, or nothing once Tucker is installed. -->
     <InstallPrompt />
+
+    <!-- Unobtrusive footer: the running build (semver + git SHA), flagging a
+         frontend/backend SHA split from a partial deploy (#117). -->
+    <BuildTag />
   </section>
 </template>

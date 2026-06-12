@@ -17,3 +17,11 @@ springdoc:
   swagger-ui:
     path: /docs
   writer-with-default-pretty-printer: true
+
+# Build stamp (issue #117): baked into the image as env at build time
+# (Dockerfile ARG -> ENV) and surfaced by GET /api/version. Defaults keep local
+# `bootRun` and CI builds that set nothing reading as dev/unknown.
+tucker:
+  version: ${APP_VERSION:dev}
+  git-sha: ${GIT_SHA:unknown}
+  built-at: ${BUILT_AT:unknown}
