@@ -6,9 +6,9 @@ const open = defineModel<boolean>('open', { required: true })
 // Dialog (UModal). On phone we deliberately avoid UDrawer (Vaul): on an
 // installed iOS PWA, Vaul's fixed-position + body scroll-lock leaves the sheet
 // unresponsive after the soft keyboard dismisses — a stray tap outside the
-// field then freezes the field, Log, and Cancel (issue #107-followup; see
-// vaul iOS pointer-isolation reports). A Reka Dialog keeps modal semantics —
-// backdrop dim, focus trap, tap-outside to close — without that Vaul iOS bug.
+// field then freezes the field, Log, and Cancel. A Reka Dialog keeps the modal
+// semantics we want (backdrop dim, focus trap) without that bug; it closes via
+// the corner close button or a sheet's own Cancel. See ADR 0017.
 const isDesktop = useIsDesktop()
 
 // Phone: pin the dialog to the bottom edge, full-width, rounded top, sliding up
