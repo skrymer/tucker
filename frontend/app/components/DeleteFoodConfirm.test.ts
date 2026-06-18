@@ -24,6 +24,15 @@ describe('DeleteFoodConfirm', () => {
     expect(screen.getByRole('button', { name: /cancel/i })).toBeVisible()
   })
 
+  it('warns that a food with logged entries cannot be deleted', async () => {
+    await renderSuspended(DeleteFoodConfirm, { props: { food: oats } })
+
+    expect(screen.getByText(/logged entries.*can't be deleted/i)).toBeVisible()
+    // The old copy promised deletion always works ("entries keep their
+    // numbers") — it contradicts the rule and must be gone.
+    expect(screen.queryByText(/keep their numbers/i)).toBeNull()
+  })
+
   it('confirms the deletion when the user clicks Delete', async () => {
     const onConfirm = vi.fn()
     await renderSuspended(DeleteFoodConfirm, {

@@ -63,6 +63,10 @@ class EntryRepository(private val dsl: DSLContext) {
         dsl.deleteFrom(ENTRY).where(ENTRY.ID.eq(id.toInt())).execute()
     }
 
+    /** Whether any Entry (necessarily a Weighed one) references the Food [foodId]. */
+    fun referencesFood(foodId: Long): Boolean =
+        dsl.fetchExists(ENTRY, ENTRY.FOOD_ID.eq(foodId.toInt()))
+
     private fun EntryRecord.toEntry(): Entry = when (EntryKind.valueOf(kind)) {
         EntryKind.WEIGHED -> WeighedEntry(
             id = id!!.toLong(),
