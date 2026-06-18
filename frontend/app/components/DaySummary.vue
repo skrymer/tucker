@@ -5,6 +5,10 @@ const props = defineProps<{
   summary: components['schemas']['DailySummaryResponse']
 }>()
 
+const emit = defineEmits<{
+  delete: [components['schemas']['EntryResponse']]
+}>()
+
 // Budget and floor are absent until the first weekly review has run.
 const hasBudget = computed(() => props.summary.calorieBudget != null)
 
@@ -95,18 +99,29 @@ const { expanded, visibleEntries, canExpand, toggle } = useEntryLog()
           :key="entry.id"
           class="flex items-center justify-between gap-2 py-2"
         >
-          <span class="text-default">
-            {{ entry.foodName ?? entry.label }} —
-            {{ Math.round(entry.calories) }} kcal
+          <span class="min-w-0 text-default">
+            {{ formatEntryName(entry) }}
           </span>
-          <UBadge
-            v-if="entry.isEstimate"
-            color="warning"
-            variant="subtle"
-            size="xs"
-          >
-            est.
-          </UBadge>
+          <div class="flex shrink-0 items-center gap-1">
+            <UBadge
+              v-if="entry.isEstimate"
+              color="warning"
+              variant="subtle"
+              size="xs"
+            >
+              est.
+            </UBadge>
+            <UButton
+              :aria-label="`Delete ${formatEntryName(entry)}`"
+              icon="i-lucide-trash-2"
+              color="neutral"
+              variant="ghost"
+              square
+              class="size-9 text-muted hover:text-default"
+              :ui="{ base: 'justify-center' }"
+              @click="emit('delete', entry)"
+            />
+          </div>
         </li>
       </ul>
 

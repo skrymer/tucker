@@ -3,6 +3,7 @@ import type { components } from '#open-fetch-schemas/api'
 
 type WeightMeasurement = components['schemas']['WeightMeasurementResponse']
 type GoalProgress = components['schemas']['GoalProgressResponse']
+type EntryResponse = components['schemas']['EntryResponse']
 
 // The day to show — the user's local date.
 const today = localToday()
@@ -79,6 +80,30 @@ async function onEntryLogged() {
   await refresh()
 }
 
+// Delete a mislogged Entry (issue #113) — today's only, so it never rewrites
+// intake a Weekly Review has already counted. A tapped trash icon selects the
+// row; confirming removes it and refreshes the day, whose totals/dayStatus then
+// re-derive without it. No success toast (ADR 0005): the vanishing row is the
+// feedback.
+const selectedEntry = ref<EntryResponse | null>(null)
+
+const { execute: deleteEntry } = useApiMutation(
+  (entry: EntryResponse) =>
+    $api('/api/entries/{id}', { method: 'DELETE', path: { id: entry.id } }),
+  {
+    errorTitle: 'Could not delete entry',
+    onSuccess: () => {
+      selectedEntry.value = null
+      return refresh()
+    },
+  },
+)
+
+function confirmDeleteEntry() {
+  const entry = selectedEntry.value
+  if (entry) deleteEntry(entry)
+}
+
 // The dashboard weigh-in is silent (no success toast) — the tile updating to
 // the new reading is feedback enough. A new reading also nudges the trend, so
 // goal progress is refreshed alongside it.
@@ -104,7 +129,11 @@ const { logWeight } = useWeightLogging({ today, onSaved: onWeightSaved })
     <SetupBanner :calorie-budget="summary?.calorieBudget" />
     <BudgetChangeBanner :budget-change="summary?.budgetChange" />
     <WeightTile :today="today" :latest="latestWeight" @logged="logWeight" />
-    <DaySummary v-if="summary" :summary="summary" />
+    <DaySummary
+      v-if="summary"
+      :summary="summary"
+      @delete="selectedEntry = $event"
+    />
     <ReachedGoalBanner
       v-if="goalProgress?.reachedOn"
       :target-weight-kg="goalProgress.targetWeightKg"
@@ -136,6 +165,12 @@ const { logWeight } = useWeightLogging({ today, onSaved: onWeightSaved })
       v-model:open="logEntryOpen"
       :date="today"
       @logged="onEntryLogged"
+    />
+
+    <DeleteEntryConfirm
+      :entry="selectedEntry"
+      @cancel="selectedEntry = null"
+      @confirm="confirmDeleteEntry"
     />
   </section>
 </template>
