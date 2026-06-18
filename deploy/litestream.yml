@@ -1,11 +1,15 @@
-# Litestream — continuous replication of the Tucker SQLite database.
+# Litestream — continuous replication of the Tucker SQLite database to an
+# S3-compatible target (Cloudflare R2; B2 or any S3 works identically).
 #
 # Prerequisite: the database must be in WAL journal mode. Litestream replicates
-# the WAL; without it, replication will not work. Enabling WAL is a follow-up
-# task (it cannot run inside a Flyway-wrapped transaction).
+# the WAL; without it, replication ships nothing. The backend enables WAL at
+# startup (SqliteWalMode), so this is satisfied automatically once the backend
+# has booted against the database.
 #
 # Credentials come from LITESTREAM_ACCESS_KEY_ID / LITESTREAM_SECRET_ACCESS_KEY
-# in the environment; the values below are expanded from the compose env.
+# in the environment; the values below are expanded from the compose env. Modern
+# Litestream auto-detects R2 from the endpoint (path-style, concurrency), so no
+# provider-specific flags are needed here — only the LITESTREAM_* env values.
 
 dbs:
   - path: /data/tucker.db

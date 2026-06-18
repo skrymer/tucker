@@ -9,8 +9,9 @@
 # ingress (<host> -> http://frontend:3000) is a one-time operator step, not
 # expressible here (token tunnel) — see deploy/README.md.
 #
-# Off-host backup (litestream) stays profile-gated and therefore down on a bare
-# `up -d`: the first deploy ships without it (accepted; issue #89).
+# Off-host backup (litestream) is ungated here so a bare `up -d` brings it up in
+# prod (issue #89); it needs the LITESTREAM_* secrets in .env and the backend's
+# database in WAL mode (enabled at startup by SqliteWalMode).
 #
 # Requires Docker Compose >= v2.24.4 for the `!reset` tag.
 services:
@@ -50,3 +51,9 @@ services:
     profiles: !reset []
     depends_on:
       - frontend
+
+  litestream:
+    # Off-host backup is always wanted in prod, so clear the base `backup` profile
+    # — a bare `up -d` brings it up (issue #89). It replicates the backend's WAL to
+    # the LITESTREAM_* S3 target (Cloudflare R2); the keys live in the host .env.
+    profiles: !reset []
