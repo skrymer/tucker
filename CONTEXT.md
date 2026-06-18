@@ -54,7 +54,9 @@ _Avoid_: result, product, match, scan result
 
 **Entry**:
 One occurrence of the user eating a Food — a date, a quantity, and the resulting
-calories. Creating an Entry is what "logging" means.
+calories. Creating an Entry is what "logging" means. A mislogged Entry can be
+deleted to undo it — in practice only the current day's, so deletion never
+rewrites intake a Weekly Review has already counted (a review is irreversible).
 _Avoid_: log, record
 
 **Weighed Entry**:

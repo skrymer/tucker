@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
@@ -178,30 +178,47 @@ describe('DaySummary', () => {
     expect(screen.getByRole('button', { name: /show all 5/i })).toBeVisible()
   })
 
+  const withEntries: DailySummary = {
+    ...summary,
+    entries: [
+      {
+        id: 1,
+        loggedOn: '2026-05-22',
+        kind: 'WEIGHED',
+        calories: 107,
+        isEstimate: false,
+        foodId: 5,
+        foodName: 'Banana',
+        grams: 120,
+      },
+      {
+        id: 2,
+        loggedOn: '2026-05-22',
+        kind: 'ESTIMATED',
+        calories: 600,
+        isEstimate: true,
+        label: 'Cafe lunch',
+      },
+    ],
+  }
+
+  it('offers a delete control on entries revealed by Show all', async () => {
+    await renderSuspended(DaySummary, { props: { summary: fiveEntries } })
+    const user = userEvent.setup()
+
+    // Hidden behind the cap until expanded — no delete control yet.
+    expect(
+      screen.queryByRole('button', { name: 'Delete Breakfast — 100 kcal' }),
+    ).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /show all 5/i }))
+
+    expect(
+      screen.getByRole('button', { name: 'Delete Breakfast — 100 kcal' }),
+    ).toBeVisible()
+  })
+
   it('lists each entry with its name and calories', async () => {
-    const withEntries: DailySummary = {
-      ...summary,
-      entries: [
-        {
-          id: 1,
-          loggedOn: '2026-05-22',
-          kind: 'WEIGHED',
-          calories: 107,
-          isEstimate: false,
-          foodId: 5,
-          foodName: 'Banana',
-          grams: 120,
-        },
-        {
-          id: 2,
-          loggedOn: '2026-05-22',
-          kind: 'ESTIMATED',
-          calories: 600,
-          isEstimate: true,
-          label: 'Cafe lunch',
-        },
-      ],
-    }
     await renderSuspended(DaySummary, { props: { summary: withEntries } })
 
     expect(screen.getAllByRole('listitem')).toHaveLength(2)
@@ -211,5 +228,29 @@ describe('DaySummary', () => {
     expect(
       screen.queryByRole('button', { name: /show all/i }),
     ).not.toBeInTheDocument()
+  })
+
+  it('offers a delete control naming each Weighed and Estimated entry', async () => {
+    await renderSuspended(DaySummary, { props: { summary: withEntries } })
+
+    expect(
+      screen.getByRole('button', { name: 'Delete Banana — 107 kcal' }),
+    ).toBeVisible()
+    expect(
+      screen.getByRole('button', { name: 'Delete Cafe lunch — 600 kcal' }),
+    ).toBeVisible()
+  })
+
+  it('emits delete with the entry when its delete control is activated', async () => {
+    const onDelete = vi.fn()
+    await renderSuspended(DaySummary, {
+      props: { summary: withEntries, onDelete },
+    })
+
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: 'Delete Banana — 107 kcal' }))
+
+    expect(onDelete).toHaveBeenCalledWith(withEntries.entries[0])
   })
 })
