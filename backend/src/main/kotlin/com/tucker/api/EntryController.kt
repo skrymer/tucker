@@ -1,11 +1,13 @@
 package com.tucker.api
 
+import com.tucker.domain.DailyLog
 import com.tucker.domain.Entry
 import com.tucker.domain.EntryKind
 import com.tucker.domain.EstimatedEntry
 import com.tucker.domain.WeighedEntry
 import com.tucker.persistence.EntryRepository
 import com.tucker.persistence.FoodRepository
+import com.tucker.service.WeeklyReviewService
 import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.DeleteMapping
@@ -48,6 +50,18 @@ data class LogEstimatedEntryRequest(
     val protein: Double?,
 )
 
+/**
+ * A Budget Projection on the wire (CONTEXT.md): whether logging a prospective Entry
+ * would push the day over the Calorie Budget, and by how much. [calorieBudget] and
+ * [overByKcal] are null when no budget exists yet (before the first WeeklyReview).
+ */
+data class BudgetProjectionResponse(
+    val wouldExceedBudget: Boolean,
+    val projectedCaloriesConsumed: Double,
+    val calorieBudget: Double?,
+    val overByKcal: Double?,
+)
+
 internal fun Entry.toResponse(foodName: String? = null): EntryResponse = when (this) {
     is WeighedEntry -> EntryResponse(
         id = persistedId(id),
@@ -79,6 +93,7 @@ internal fun List<Entry>.toResponses(foods: FoodRepository): List<EntryResponse>
 class EntryController(
     private val entries: EntryRepository,
     private val foods: FoodRepository,
+    private val weeklyReview: WeeklyReviewService,
 ) {
 
     @GetMapping
@@ -93,6 +108,34 @@ class EntryController(
             ?: throw NotFoundException("no Food with id ${request.foodId}")
         return entries.insert(WeighedEntry.log(request.date, food, request.grams))
             .toResponse(food.name)
+    }
+
+    /**
+     * A non-persisting Budget Projection: would logging this weighed Entry push the
+     * day over the Calorie Budget? Nothing is written — this only forecasts.
+     */
+    @PostMapping("/weighed/preview")
+    fun previewWeighed(@RequestBody request: LogWeighedEntryRequest): BudgetProjectionResponse {
+        val food = foods.findById(request.foodId)
+            ?: throw NotFoundException("no Food with id ${request.foodId}")
+        return projectionFor(request.date, WeighedEntry.log(request.date, food, request.grams))
+    }
+
+    /**
+     * Forecast the day's over-budget state if [prospective] were logged on [date],
+     * against the latest review's budget and floor. With no review yet there is no
+     * budget to exceed, so the projection reports the running total only.
+     */
+    private fun projectionFor(date: LocalDate, prospective: Entry): BudgetProjectionResponse {
+        val log = DailyLog(date, entries.findByDate(date))
+        val review = weeklyReview.recentReviews().firstOrNull()
+        val projection = log.project(prospective, review?.calorieBudgetKcal, review?.proteinFloorG)
+        return BudgetProjectionResponse(
+            wouldExceedBudget = projection.wouldExceedBudget,
+            projectedCaloriesConsumed = projection.projectedCaloriesConsumed,
+            calorieBudget = review?.calorieBudgetKcal,
+            overByKcal = projection.overByKcal,
+        )
     }
 
     @PostMapping("/estimated")

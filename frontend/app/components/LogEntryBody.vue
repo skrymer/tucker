@@ -1,12 +1,17 @@
 <script setup lang="ts">
 import type { TabsItem } from '@nuxt/ui'
 import type { components } from '#open-fetch-schemas/api'
+import type { BudgetWarning } from '~/composables/useBudgetGate'
 
 type FoodResponse = components['schemas']['FoodResponse']
 
 defineProps<{
   date: string
   foods: FoodResponse[]
+  /** Over-budget warning for the weighed entry being composed; null when within budget. */
+  weighedWarning?: BudgetWarning | null
+  /** True while the weighed entry's budget projection is in flight. */
+  weighedPending?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -19,6 +24,7 @@ const emit = defineEmits<{
     },
   ]
   submitWeighed: [{ date: string; foodId: number; grams: number }]
+  editedWeighed: []
 }>()
 
 const items: TabsItem[] = [
@@ -46,8 +52,11 @@ const items: TabsItem[] = [
       <WeighedEntryForm
         :date="date"
         :foods="foods"
+        :warning="weighedWarning"
+        :pending="weighedPending"
         class="mt-4"
         @submit="(payload) => emit('submitWeighed', payload)"
+        @edited="() => emit('editedWeighed')"
       />
     </template>
   </UTabs>

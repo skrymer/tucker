@@ -33,4 +33,30 @@ data class DailyLog(
         proteinConsumed() >= proteinFloorG -> DayStatus.ON_TARGET
         else -> DayStatus.IN_PROGRESS
     }
+
+    /**
+     * A [BudgetProjection]: the would-be state of this day if [prospective] were also
+     * logged. The over-budget verdict reuses [dayStatus] against the day's existing
+     * Entries plus the prospective one, so the forecast and the realized verdict can
+     * never disagree. With no budget yet ([calorieBudgetKcal] null, before the first
+     * WeeklyReview) there is nothing to exceed — the projection reports the running
+     * total only.
+     */
+    fun project(
+        prospective: Entry,
+        calorieBudgetKcal: Double?,
+        proteinFloorG: Double?,
+    ): BudgetProjection {
+        val projected = DailyLog(date, entries + prospective)
+        val projectedConsumed = projected.caloriesConsumed()
+        if (calorieBudgetKcal == null || proteinFloorG == null) {
+            return BudgetProjection(false, projectedConsumed, overByKcal = null)
+        }
+        val wouldExceed = projected.dayStatus(calorieBudgetKcal, proteinFloorG) == DayStatus.OVER_BUDGET
+        return BudgetProjection(
+            wouldExceedBudget = wouldExceed,
+            projectedCaloriesConsumed = projectedConsumed,
+            overByKcal = if (wouldExceed) projectedConsumed - calorieBudgetKcal else null,
+        )
+    }
 }

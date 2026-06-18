@@ -133,6 +133,49 @@ describe('WeighedEntryForm', () => {
     expect(onSubmit).not.toHaveBeenCalled()
   })
 
+  it('warns and relabels the action to "Log anyway" when the entry would exceed the budget', async () => {
+    await renderSuspended(WeighedEntryForm, {
+      props: {
+        date: '2026-05-25',
+        foods: sampleFoods,
+        warning: { overByKcal: 180, calorieBudget: 2000 },
+      },
+    })
+
+    expect(screen.getByText(/~180 kcal over your 2000 budget/i)).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Log anyway' })).toBeVisible()
+    expect(
+      screen.queryByRole('button', { name: 'Log weighed entry' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('shows the normal action and no warning when within budget', async () => {
+    await renderSuspended(WeighedEntryForm, {
+      props: { date: '2026-05-25', foods: sampleFoods, warning: null },
+    })
+
+    expect(
+      screen.getByRole('button', { name: 'Log weighed entry' }),
+    ).toBeVisible()
+    expect(
+      screen.queryByRole('button', { name: 'Log anyway' }),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByText(/over your .* budget/i)).not.toBeInTheDocument()
+  })
+
+  it('emits "edited" when the food selection changes so a showing warning can be cleared', async () => {
+    const onEdited = vi.fn()
+    await renderSuspended(WeighedEntryForm, {
+      props: { date: '2026-05-25', foods: sampleFoods, onEdited },
+    })
+    const user = userEvent.setup()
+
+    await user.click(screen.getByLabelText('Food'))
+    await user.click(screen.getByRole('option', { name: 'Oats' }))
+
+    expect(onEdited).toHaveBeenCalled()
+  })
+
   it('shows an empty-catalog CTA when the foods catalog is empty', async () => {
     await renderSuspended(WeighedEntryForm, {
       props: { date: '2026-05-25', foods: [] },

@@ -66,6 +66,16 @@ An Entry for a meal that can't be weighed or scanned (restaurant, canteen, on th
 go) — a name plus an estimated calorie figure, with no Food and no mass. Always
 flagged as an estimate so the app can report how much of a day was guessed.
 
+**Budget Projection**:
+A forecast of whether logging a prospective **Entry** would push the day over the
+**Calorie Budget** — the over-budget rule applied to the day's intake *plus* one
+not-yet-logged Entry. Computed before the Entry is committed, so Tucker can warn
+that it would exceed the Budget and by how many calories. The user may log it
+anyway: the projection informs the choice, it never blocks it. Defined only while a
+Calorie Budget exists, and about calories alone — the **Protein Floor** is a
+minimum, not a ceiling, so it has no projection.
+_Avoid_: budget check, calorie warning, what-if
+
 ### Goals
 
 **Goal**:
@@ -239,6 +249,7 @@ _Avoid_: device token, push token, registration
   trend has moved toward the target and when, at the Goal's rate, it's projected to arrive
 - **Maintenance** is corrected over time from **Entries** and the **Trend Weight**
 - A day is **on-target** once the **Protein Floor** is met and intake is at or under the **Calorie Budget**; it is **over budget** the moment intake exceeds the **Calorie Budget**. An in-progress day in neither state has no verdict — being under the floor mid-day isn't a failure, the day just isn't finished.
+- A **Budget Projection** applies the over-budget rule to the day's intake plus a prospective **Entry**, warning before it's logged; the user may log it regardless
 - A **Weekly-Review Reminder** is sent when a **Weekly Review** is overdue and the
   user has at least one **Push Subscription** — it nudges, it never computes the review
 - A user has zero or more **Push Subscriptions** (one per device); each **Weekly-Review
