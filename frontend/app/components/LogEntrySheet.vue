@@ -45,10 +45,26 @@ const { pending: submittingWeighed, execute: handleSubmitWeighed } =
     },
   )
 
-// Confirm-to-proceed gate (CONTEXT.md — Budget Projection): a weighed Save first
-// previews against the Calorie Budget; within budget it commits, over budget it
-// raises a warning and the next deliberate tap logs anyway. Editing the form resets
-// it; a failed preview fails open and logs anyway.
+// Confirm-to-proceed gate (CONTEXT.md — Budget Projection): a Save first previews
+// against the Calorie Budget; within budget it commits, over budget it raises a
+// warning and the next deliberate tap logs anyway. Editing the form resets it; a
+// failed preview fails open and logs anyway. Each entry type has its own gate.
+const {
+  warning: estimatedWarning,
+  pending: estimatedProjecting,
+  attempt: attemptEstimated,
+  reset: resetEstimated,
+} = useBudgetGate({
+  preview: (payload: {
+    date: string
+    label: string
+    calories: number
+    protein?: number
+  }) =>
+    $api('/api/entries/estimated/preview', { method: 'POST', body: payload }),
+  commit: handleSubmitEstimated,
+})
+
 const {
   warning: weighedWarning,
   pending: weighedProjecting,
@@ -65,6 +81,7 @@ const submitting = computed(
   () =>
     submittingEstimated.value ||
     submittingWeighed.value ||
+    estimatedProjecting.value ||
     weighedProjecting.value,
 )
 </script>
@@ -79,10 +96,13 @@ const submitting = computed(
     <LogEntryBody
       :date="date"
       :foods="foods ?? []"
+      :estimated-warning="estimatedWarning"
+      :estimated-pending="estimatedProjecting || submittingEstimated"
       :weighed-warning="weighedWarning"
       :weighed-pending="weighedProjecting || submittingWeighed"
-      @submit-estimated="handleSubmitEstimated"
+      @submit-estimated="attemptEstimated"
       @submit-weighed="attemptWeighed"
+      @edited-estimated="resetEstimated"
       @edited-weighed="resetWeighed"
     />
   </ResponsiveOverlay>

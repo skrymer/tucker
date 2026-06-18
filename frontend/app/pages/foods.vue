@@ -113,7 +113,7 @@ function handleDeleteConfirm() {
       color="primary"
       size="xl"
       aria-label="Add food"
-      class="fixed right-4 bottom-20 size-14 rounded-full shadow-lg"
+      class="fixed right-4 bottom-[calc(5rem+env(safe-area-inset-bottom))] size-14 rounded-full shadow-lg"
       :ui="{ base: 'justify-center' }"
       @click="open = true"
     />

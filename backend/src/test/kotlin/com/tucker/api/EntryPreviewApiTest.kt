@@ -92,6 +92,38 @@ class EntryPreviewApiTest {
     }
 
     @Test
+    fun `previewing an estimated entry that would exceed the budget reports it`() {
+        seedBudget(2000.0)
+        logEstimated(1500.0) // 500 kcal to spare
+
+        mockMvc.post("/api/entries/estimated/preview") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"date":"$date","label":"dinner out","calories":600.0,"protein":null}""" // → 2,100
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.wouldExceedBudget") { value(true) }
+            jsonPath("$.projectedCaloriesConsumed", closeTo(2100.0, 1e-6))
+            jsonPath("$.calorieBudget", closeTo(2000.0, 1e-6))
+            jsonPath("$.overByKcal", closeTo(100.0, 1e-6))
+        }
+    }
+
+    @Test
+    fun `previewing an estimated entry persists nothing`() {
+        seedBudget(2000.0)
+
+        mockMvc.post("/api/entries/estimated/preview") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"date":"$date","label":"dinner out","calories":600.0,"protein":null}"""
+        }.andExpect { status { isOk() } }
+
+        mockMvc.get("/api/entries") { param("date", "$date") }.andExpect {
+            status { isOk() }
+            jsonPath("$.length()") { value(0) }
+        }
+    }
+
+    @Test
     fun `previewing before any review reports a null budget and cannot exceed it`() {
         val foodId = seedFoodAt100KcalPer100g() // no budget seeded yet
 
