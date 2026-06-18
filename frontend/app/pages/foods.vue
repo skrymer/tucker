@@ -15,6 +15,7 @@ const foodToLog = ref<FoodResponse | null>(null)
 const createdFood = ref<FoodResponse | null>(null)
 const isDesktop = useIsDesktop()
 const { $api } = useNuxtApp()
+const toast = useToast()
 
 watch(open, (isOpen) => {
   if (!isOpen) createdFood.value = null
@@ -75,6 +76,23 @@ const { execute: deleteFood } = useApiMutation(
     onSuccess: () => {
       selectedFood.value = null
       return refresh()
+    },
+    // A Food with logged Entries can't be deleted (issue #107): the backend
+    // rejects with a 400 naming the Food. Surface that message instead of the
+    // transient "check your connection" retry toast — retrying never succeeds.
+    // Close the confirm and leave the Food in the catalog.
+    onValidationError: (message) => {
+      selectedFood.value = null
+      toast.add({
+        title: 'Could not delete food',
+        description: message,
+        color: 'error',
+        // Assertive and dismissible, but no Retry — the rejection is permanent.
+        type: 'foreground',
+        duration: Infinity,
+        close: true,
+        progress: false,
+      })
     },
   },
 )

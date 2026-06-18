@@ -19,6 +19,9 @@ every user — whereas a **Recipe** or a hand-entered Food is private to whoever
 created it; correcting a shared Food forks a private copy rather than changing it
 for everyone. (Tucker is single-user today; this is the ownership model it grows
 into — the global `barcode` uniqueness already assumes it.)
+A Food referenced by at least one **Entry** **cannot be deleted** — Entries are
+permanent history, so a logged-against Food is rejected (it stays in the catalog);
+only a Food with no Entries can be removed.
 _Avoid_: food item, product
 
 **Recipe**:

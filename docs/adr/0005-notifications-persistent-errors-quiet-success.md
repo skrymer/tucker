@@ -64,6 +64,22 @@ Validation errors (bad input) are **not** toasts and never were — they stay
 inline next to the field via the Zod `UForm` setup ([0003](0003-validate-forms-with-zod.md)).
 This decision covers only network/server failures and success confirmations.
 
+## Rejections — a persistent, dismissible toast with no Retry
+
+A 400 that isn't bad form input but a **deterministic domain rejection** of an
+action with no field to attach to — e.g. deleting a Food that has logged Entries
+(issue #107): "Skyr has logged Entries and can't be deleted." — is a third case.
+It is **not** a transient failure (Retry would re-run the same call and fail
+identically — the rule won't change), and **not** an inline field error (the
+trigger is a confirm dialog, not a `UForm`). So it gets the persistent,
+assertive toast of the error path (`type: 'foreground'`, `duration: Infinity`,
+`close: true`) but **without** the Retry action — dismissed only by the user.
+The shared factory already routes these: a 400's `{ message }` goes to
+`useApiMutation`'s `onValidationError` hook (bypassing the transient
+"check your connection" + Retry toast); the call site presents it — closing the
+overlay and surfacing the backend's message — so the rule's wording stays in the
+backend ([0002](0002-business-logic-belongs-in-the-backend.md)).
+
 ## Consequences
 
 - The error/success behaviour lives in `useApiMutation`. The error path emits a

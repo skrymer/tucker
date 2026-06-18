@@ -6,6 +6,7 @@ import com.tucker.domain.FoodCandidate
 import com.tucker.domain.Nutrition
 import com.tucker.persistence.FoodRepository
 import com.tucker.service.BarcodeLookupService
+import com.tucker.service.FoodService
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
@@ -97,6 +98,7 @@ internal fun Food.toResponse() = FoodResponse(
 @RequestMapping("/api/foods")
 class FoodController(
     private val foods: FoodRepository,
+    private val foodService: FoodService,
     private val barcodeLookup: BarcodeLookupService,
 ) {
 
@@ -138,7 +140,12 @@ class FoodController(
         return foods.insert(food).toResponse()
     }
 
+    /**
+     * Remove a Food from the catalog. A Food referenced by at least one Entry
+     * cannot be deleted (CONTEXT.md, Food); [FoodService] enforces that rule and
+     * surfaces a 400 naming the Food.
+     */
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    fun delete(@PathVariable id: Long) = foods.delete(id)
+    fun delete(@PathVariable id: Long) = foodService.delete(id)
 }

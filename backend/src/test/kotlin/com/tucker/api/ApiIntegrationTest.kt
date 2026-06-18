@@ -8,6 +8,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.delete
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
 import org.springframework.transaction.annotation.Transactional
@@ -56,5 +57,43 @@ class ApiIntegrationTest {
     @Test
     fun `an unknown food id is rejected with 404`() {
         mockMvc.get("/api/foods/999999").andExpect { status { isNotFound() } }
+    }
+
+    @Test
+    fun `deleting a food that has logged entries is rejected by the domain`() {
+        val foodJson = mockMvc.post("/api/foods") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"name":"Skyr","proteinPer100g":11.0,"carbsPer100g":4.0,"fatPer100g":0.2}"""
+        }.andExpect { status { isCreated() } }.andReturn().response.contentAsString
+        val foodId = objectMapper.readTree(foodJson).get("id").asLong()
+
+        mockMvc.post("/api/entries/weighed") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"date":"2026-05-22","foodId":$foodId,"grams":150.0}"""
+        }.andExpect { status { isCreated() } }
+
+        mockMvc.delete("/api/foods/$foodId").andExpect {
+            status { isBadRequest() }
+            jsonPath("$.message") { value(org.hamcrest.Matchers.containsString("Skyr")) }
+        }
+
+        // The Food is permanent history's anchor: it and the Entry both survive.
+        mockMvc.get("/api/foods/$foodId").andExpect { status { isOk() } }
+        mockMvc.get("/api/summary") { param("date", "2026-05-22") }.andExpect {
+            status { isOk() }
+            jsonPath("$.entries.length()") { value(1) }
+        }
+    }
+
+    @Test
+    fun `deleting a food with no logged entries removes it`() {
+        val foodJson = mockMvc.post("/api/foods") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"name":"Unlogged","proteinPer100g":1.0,"carbsPer100g":1.0,"fatPer100g":1.0}"""
+        }.andExpect { status { isCreated() } }.andReturn().response.contentAsString
+        val foodId = objectMapper.readTree(foodJson).get("id").asLong()
+
+        mockMvc.delete("/api/foods/$foodId").andExpect { status { isNoContent() } }
+        mockMvc.get("/api/foods/$foodId").andExpect { status { isNotFound() } }
     }
 }
