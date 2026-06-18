@@ -90,13 +90,13 @@ describe('LogFoodSheet', () => {
     expect(onClose).toHaveBeenCalled()
   })
 
-  it('emits close from the Cancel button on a phone, where the drawer has no close X', async () => {
+  it('emits close from the Cancel button on a phone', async () => {
     viewport.desktop = false
     const onClose = vi.fn()
     await renderSuspended(LogFoodSheet, { props: { food: skyr, onClose } })
 
-    // The phone drawer renders no corner close button, so Cancel is the out.
-    expect(screen.queryByRole('button', { name: /close/i })).toBeNull()
+    // The phone bottom sheet is a Reka Dialog (not a Vaul drawer), so Cancel and
+    // the corner close button are both an out; Cancel is the explicit one.
     await userEvent
       .setup()
       .click(screen.getByRole('button', { name: /cancel/i }))
