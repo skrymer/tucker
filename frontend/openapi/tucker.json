@@ -774,6 +774,66 @@
         }
       }
     },
+    "/api/entries/weighed/preview": {
+      "post": {
+        "tags": [
+          "entry-controller"
+        ],
+        "operationId": "previewWeighed",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LogWeighedEntryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/BudgetProjectionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/entries/estimated": {
       "post": {
         "tags": [
@@ -1972,6 +2032,30 @@
           },
           "label": {
             "type": "string"
+          }
+        }
+      },
+      "BudgetProjectionResponse": {
+        "required": [
+          "projectedCaloriesConsumed",
+          "wouldExceedBudget"
+        ],
+        "type": "object",
+        "properties": {
+          "wouldExceedBudget": {
+            "type": "boolean"
+          },
+          "projectedCaloriesConsumed": {
+            "type": "number",
+            "format": "double"
+          },
+          "calorieBudget": {
+            "type": "number",
+            "format": "double"
+          },
+          "overByKcal": {
+            "type": "number",
+            "format": "double"
           }
         }
       },

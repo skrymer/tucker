@@ -45,9 +45,27 @@ const { pending: submittingWeighed, execute: handleSubmitWeighed } =
     },
   )
 
-// Either submit in flight locks the sheet against dismissal mid-request.
+// Confirm-to-proceed gate (CONTEXT.md — Budget Projection): a weighed Save first
+// previews against the Calorie Budget; within budget it commits, over budget it
+// raises a warning and the next deliberate tap logs anyway. Editing the form resets
+// it; a failed preview fails open and logs anyway.
+const {
+  warning: weighedWarning,
+  pending: weighedProjecting,
+  attempt: attemptWeighed,
+  reset: resetWeighed,
+} = useBudgetGate({
+  preview: (payload: { date: string; foodId: number; grams: number }) =>
+    $api('/api/entries/weighed/preview', { method: 'POST', body: payload }),
+  commit: handleSubmitWeighed,
+})
+
+// Any submit or projection in flight locks the sheet against dismissal mid-request.
 const submitting = computed(
-  () => submittingEstimated.value || submittingWeighed.value,
+  () =>
+    submittingEstimated.value ||
+    submittingWeighed.value ||
+    weighedProjecting.value,
 )
 </script>
 
@@ -61,8 +79,11 @@ const submitting = computed(
     <LogEntryBody
       :date="date"
       :foods="foods ?? []"
+      :weighed-warning="weighedWarning"
+      :weighed-pending="weighedProjecting || submittingWeighed"
       @submit-estimated="handleSubmitEstimated"
-      @submit-weighed="handleSubmitWeighed"
+      @submit-weighed="attemptWeighed"
+      @edited-weighed="resetWeighed"
     />
   </ResponsiveOverlay>
 </template>
