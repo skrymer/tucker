@@ -38,6 +38,13 @@ the prod-overlay rebuild with the compose file pair hardcoded — never run a
 bare `docker compose up -d` on the box; without the overlay it drops the
 frontend and the tunnel and re-publishes the backend port.
 
+`update.sh` also stamps the build version (`APP_VERSION`/`GIT_SHA`/`BUILT_AT`)
+into `.env`, so `/api/version` and the Profile footer report the running build.
+**Always deploy through `update.sh`** (or `--no-pull`, below): a bare
+`docker compose ... up --build` that skips it would otherwise bake the
+`dev`/`unknown` defaults — though now, thanks to the `.env` stamp, a bare rebuild
+inherits the *last* `update.sh` stamp rather than resetting to `dev`/`unknown`.
+
 Run it in the background — the build takes 10–20 min on the 1-vCPU box.
 **Slow is normal; OOM is not**: the Gradle and Vite stages dip into the 4 GB
 swapfile by design. If the build is OOM-killed, check swap is on
@@ -69,9 +76,12 @@ deployed.
 
 ## Rollback
 
-`ssh tucker 'cd tucker && git checkout <previous-sha> && docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build'`
+`ssh tucker 'cd tucker && git checkout <previous-sha> && deploy/update.sh --no-pull'`
 — images aren't tagged per release (yet), so rollback is a rebuild of the
-previous commit. Return the checkout to `main` once fixed.
+previous commit. `--no-pull` deploys the checked-out SHA as-is (no `git pull` to
+drag it back to the branch tip) and **stamps that SHA's version** the same way a
+forward deploy does. Return the checkout to `main` (`git checkout main`, then a
+normal `update.sh`) once fixed.
 
 ## Hard rules
 

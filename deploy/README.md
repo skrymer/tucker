@@ -94,12 +94,19 @@ Over the real HTTPS origin, with DevTools → Application:
 ## Updating a running deployment
 
 ```bash
-git pull
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+deploy/update.sh
 ```
 
-Both images rebuild on the host and the containers recreate. (Building in CI and
-pulling from GHCR is the recorded next step in
+`git pull` + the prod-overlay rebuild, with the compose file pair hardcoded.
+Both images rebuild on the host and the containers recreate. Use this rather than
+a bare `docker compose ... up --build`: `update.sh` also stamps the build version
+(`APP_VERSION`/`GIT_SHA`/`BUILT_AT`) into `.env` so `/api/version` and the Profile
+footer report the running build; a bare rebuild that skips it would bake the
+`dev`/`unknown` defaults (it now inherits the *last* stamp from `.env`, but only
+`update.sh` advances it). To redeploy an older commit, `git checkout <sha>` then
+`deploy/update.sh --no-pull`.
+
+(Building in CI and pulling from GHCR is the recorded next step in
 [ADR 0015](../docs/adr/0015-production-deployment-topology.md), taken when
 reproducible promotion or VPS RAM pressure justifies it.)
 
