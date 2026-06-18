@@ -106,6 +106,12 @@ footer report the running build; a bare rebuild that skips it would bake the
 `update.sh` advances it). To redeploy an older commit, `git checkout <sha>` then
 `deploy/update.sh --no-pull`.
 
+**Versioning.** The root `VERSION` file holds the `major.minor` base (e.g. `0.1`);
+`update.sh` derives the patch as the number of commits since `VERSION` last
+changed, so the version advances on every deploy (`v0.1.0`, `v0.1.1`, …) with no
+manual bump. To start a new line, edit `VERSION` (`0.1` → `0.2`, or `1.0`) — that
+commit resets the patch to 0.
+
 (Building in CI and pulling from GHCR is the recorded next step in
 [ADR 0015](../docs/adr/0015-production-deployment-topology.md), taken when
 reproducible promotion or VPS RAM pressure justifies it.)
