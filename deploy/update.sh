@@ -20,17 +20,29 @@ if [[ "${1:-}" != "--no-pull" ]]; then
   git pull
 fi
 
-# Build stamp (issue #117): the version the images will report at /api/version
-# and in the Profile footer. Computed AFTER the checkout/pull so the SHA pins the
-# commit being deployed. The root VERSION file is the single semver source both
-# images bake; the short SHA distinguishes builds between bumps.
-# Assign before exporting: under `set -e` a failing `$(...)` in a bare
-# assignment aborts the deploy, but the same substitution inside `export` is
-# masked by the builtin's own exit status — so a missing VERSION would otherwise
-# ship a blank version instead of failing fast.
-APP_VERSION="$(cat VERSION)"
+# Build stamp (issue #117): the version the images report at /api/version and in
+# the Profile footer. Computed AFTER the checkout/pull so the SHA pins the commit
+# being deployed. The short SHA distinguishes builds.
+#
+# Semver: the root VERSION file holds the `major.minor` base (e.g. `0.1`); the
+# patch is *derived* as the number of commits since VERSION last changed, so every
+# deploy advances it (v0.1.0, v0.1.1, …) with no manual bump, and it resets to 0
+# when you bump the minor/major by editing VERSION. Assign before exporting: under
+# `set -e` a failing `$(...)` in a bare assignment aborts the deploy, but the same
+# substitution inside `export` is masked by the builtin's own exit status — so a
+# missing VERSION would otherwise ship a blank version instead of failing fast.
+BASE_VERSION="$(cat VERSION)"
 GIT_SHA="$(git rev-parse --short HEAD)"
 BUILT_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+# Commit that last touched VERSION → patch = commits since (0 right after a bump).
+# Fall back to the full count if VERSION has no history (shouldn't happen).
+version_commit="$(git log -1 --format=%H -- VERSION)"
+if [ -n "$version_commit" ]; then
+  patch="$(git rev-list --count "${version_commit}..HEAD")"
+else
+  patch="$(git rev-list --count HEAD)"
+fi
+APP_VERSION="${BASE_VERSION}.${patch}"
 export APP_VERSION GIT_SHA BUILT_AT
 
 # Persist the stamp into .env as well, not just this shell's environment. Compose
