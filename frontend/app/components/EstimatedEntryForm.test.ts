@@ -39,6 +39,33 @@ describe('EstimatedEntryForm', () => {
     })
   })
 
+  it('warns and relabels the action to "Log anyway" when the entry would exceed the budget', async () => {
+    await renderSuspended(EstimatedEntryForm, {
+      props: {
+        date: '2026-05-24',
+        warning: { overByKcal: 180, calorieBudget: 2000 },
+      },
+    })
+
+    expect(screen.getByText(/~180 kcal over your 2000 budget/i)).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Log anyway' })).toBeVisible()
+    expect(
+      screen.queryByRole('button', { name: 'Log estimated entry' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('emits "edited" when the entry is changed so a showing warning can be cleared', async () => {
+    const onEdited = vi.fn()
+    await renderSuspended(EstimatedEntryForm, {
+      props: { date: '2026-05-24', onEdited },
+    })
+    const user = userEvent.setup()
+
+    await user.type(screen.getByLabelText('Label'), 'Cafe lunch')
+
+    expect(onEdited).toHaveBeenCalled()
+  })
+
   it('requires a label for the entry', async () => {
     const onSubmit = vi.fn()
     await renderSuspended(EstimatedEntryForm, {

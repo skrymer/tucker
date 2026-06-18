@@ -36,11 +36,7 @@ watch(
   () => emit('edited'),
 )
 
-const warningMessage = computed(() =>
-  props.warning
-    ? `This puts you ~${Math.round(props.warning.overByKcal)} kcal over your ${Math.round(props.warning.calorieBudget)} budget.`
-    : null,
-)
+const warningMessage = computed(() => formatBudgetWarning(props.warning))
 
 function onSubmit() {
   emit('submit', {

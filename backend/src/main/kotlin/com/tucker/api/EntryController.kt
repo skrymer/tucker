@@ -145,6 +145,17 @@ class EntryController(
             EstimatedEntry(null, request.date, request.label, request.calories, request.protein),
         ).toResponse()
 
+    /**
+     * A non-persisting Budget Projection: would logging this estimated Entry push the
+     * day over the Calorie Budget? Nothing is written — this only forecasts.
+     */
+    @PostMapping("/estimated/preview")
+    fun previewEstimated(@RequestBody request: LogEstimatedEntryRequest): BudgetProjectionResponse =
+        projectionFor(
+            request.date,
+            EstimatedEntry(null, request.date, request.label, request.calories, request.protein),
+        )
+
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     fun delete(@PathVariable id: Long) = entries.delete(id)

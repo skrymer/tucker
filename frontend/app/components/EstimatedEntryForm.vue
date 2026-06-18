@@ -1,7 +1,14 @@
 <script setup lang="ts">
 import { z } from 'zod'
+import type { BudgetWarning } from '~/composables/useBudgetGate'
 
-const props = defineProps<{ date: string }>()
+const props = defineProps<{
+  date: string
+  /** Over-budget heads-up for the entry being composed; null/absent when within budget. */
+  warning?: BudgetWarning | null
+  /** True while the budget projection is in flight, to lock the action. */
+  pending?: boolean
+}>()
 
 const emit = defineEmits<{
   submit: [
@@ -12,7 +19,10 @@ const emit = defineEmits<{
       protein?: number
     },
   ]
+  edited: []
 }>()
+
+const warningMessage = computed(() => formatBudgetWarning(props.warning))
 
 const schema = z.object({
   label: z.string().min(1, 'Enter a label for this entry'),
@@ -25,6 +35,13 @@ const state = reactive({
   calories: undefined as number | undefined,
   protein: undefined as number | undefined,
 })
+
+// Editing any field clears a showing budget warning so the next Save re-checks
+// against the new numbers (no stale "Log anyway").
+watch(
+  () => [state.label, state.calories, state.protein],
+  () => emit('edited'),
+)
 
 function onSubmit() {
   emit('submit', {
@@ -64,8 +81,16 @@ function onSubmit() {
       <UInputNumber v-model="state.protein" :min="0" :step="1" class="w-full" />
     </UFormField>
 
-    <UButton type="submit" color="primary" class="w-full">
-      Log estimated entry
+    <UAlert
+      v-if="warningMessage"
+      color="warning"
+      variant="soft"
+      icon="i-lucide-triangle-alert"
+      :title="warningMessage"
+    />
+
+    <UButton type="submit" color="primary" class="w-full" :loading="pending">
+      {{ warningMessage ? 'Log anyway' : 'Log estimated entry' }}
     </UButton>
   </UForm>
 </template>

@@ -8,6 +8,10 @@ type FoodResponse = components['schemas']['FoodResponse']
 defineProps<{
   date: string
   foods: FoodResponse[]
+  /** Over-budget warning for the estimated entry being composed; null when within budget. */
+  estimatedWarning?: BudgetWarning | null
+  /** True while the estimated entry's budget projection is in flight. */
+  estimatedPending?: boolean
   /** Over-budget warning for the weighed entry being composed; null when within budget. */
   weighedWarning?: BudgetWarning | null
   /** True while the weighed entry's budget projection is in flight. */
@@ -24,6 +28,7 @@ const emit = defineEmits<{
     },
   ]
   submitWeighed: [{ date: string; foodId: number; grams: number }]
+  editedEstimated: []
   editedWeighed: []
 }>()
 
@@ -43,8 +48,11 @@ const items: TabsItem[] = [
     <template #estimated>
       <EstimatedEntryForm
         :date="date"
+        :warning="estimatedWarning"
+        :pending="estimatedPending"
         class="mt-4"
         @submit="(payload) => emit('submitEstimated', payload)"
+        @edited="() => emit('editedEstimated')"
       />
     </template>
 
