@@ -23,10 +23,17 @@ code path).
 
 1. **`/verify` — does it actually work?** Drive the running app to where the
    change executes and observe it, at **both phone and desktop viewports**
-   (CLAUDE.md's responsive split). This is runtime evidence, not tests. A FAIL
-   or BLOCKED here stops the sign-off — fix the behaviour and re-verify before
-   continuing. (If the WM clamps the browser so a viewport can't be forced, fall
-   back to a Playwright Pixel-7 capture and say so.)
+   (CLAUDE.md's responsive split). This is runtime evidence, not tests. **Use the
+   `claude-in-chrome` MCP tools to walk through it in a real browser** — this is
+   CLAUDE.md's PR walk-through gate, and real-browser runs have caught issues a
+   scripted Playwright capture sails past (overlapping toasts, broken responsive
+   layout, focus/scroll traps). Resize the same Chrome window between desktop and
+   a phone viewport (e.g. DevTools device mode / a narrow window) and walk the
+   golden path **plus** a couple of edge probes at each. A scripted Playwright
+   drive is **not** a substitute here — only a fallback if `claude-in-chrome` is
+   genuinely unavailable (no browser connected), in which case say so explicitly
+   in the report. A FAIL or BLOCKED here stops the sign-off — fix the behaviour
+   and re-verify before continuing.
 
 2. **`/simplify` — clean it up.** Apply reuse / simplification / efficiency /
    altitude cleanups to the changed code. It *edits* the working tree, so run it
@@ -70,7 +77,7 @@ Emit a short sign-off summary the user (and PR reviewer) can replay:
 ```
 ## Feature sign-off — <feature/issue>
 
-1. /verify         ✅ PASS — desktop walk-through + Pixel-7 capture (phone WM-clamped)
+1. /verify         ✅ PASS — claude-in-chrome walk-through, desktop + phone viewport
 2. /simplify       ✅ applied 1 cleanup (consolidated kg formatter)
 3. /code-review md ⚠️ 2 findings → both fixed (double-render, banner copy); 4 by-design
 4. /check-adrs     ⚠️ 1 FAIL → fixed CONTEXT.md (stale auto-deactivate wording)
