@@ -116,8 +116,16 @@ _Avoid_: protein target, protein goal
 
 **Maintenance**:
 The estimated daily calories that hold the user's weight steady (their TDEE).
-Seeded from a standard BMR formula, then recomputed each week from the
-Trend Weight and logged intake once enough history exists.
+Seeded from a standard BMR formula, then corrected each week by an energy
+balance: the average daily intake over the **days actually logged** in the
+trailing two weeks, plus the energy equivalent of the Trend Weight's change over
+that window. Averaging over logged days — not over the whole window — keeps a day
+the user didn't log from reading as a zero-calorie day and dragging Maintenance
+(and the Calorie Budget) down. The correction is only trusted with enough
+coverage: at least 10 of the trailing 14 days must carry an Entry, otherwise the
+previous review's Maintenance is held steady — the Budget moves with the trend,
+not with logging diligence. The BMR seed applies only at cold start, before any
+review exists. See [ADR 0018](docs/adr/0018-adaptive-maintenance-averages-over-logged-days.md).
 _Avoid_: TDEE, baseline
 
 **Maintenance Mode**:

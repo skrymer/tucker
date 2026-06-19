@@ -51,6 +51,19 @@ class WeeklyReviewServiceTest {
         weights.save(WeightMeasurement(null, today, 85.8))
     }
 
+    /** A flat trend (every reading 86.0) so the adaptive weight-change term is zero. */
+    private fun seedFlatTrend() {
+        weights.save(WeightMeasurement(null, today.minusDays(14), 86.0))
+        weights.save(WeightMeasurement(null, today, 86.0))
+    }
+
+    /** Log 2000 kcal on each window day in [offsets] (days before today). */
+    private fun logIntakeDays(offsets: IntProgression) {
+        for (offset in offsets) {
+            entries.insert(EstimatedEntry(null, today.minusDays(offset.toLong()), "Day's intake", 2000.0, 130.0))
+        }
+    }
+
     /** A prior review on [reviewedOn], inserted directly to stand in as the cadence anchor. */
     private fun seedReviewOn(reviewedOn: LocalDate): WeeklyReview =
         reviews.insert(
@@ -122,6 +135,85 @@ class WeeklyReviewServiceTest {
         assertTrue(review.note!!.contains(Maintenance.Basis.ADAPTIVE.name))
         assertTrue(review.maintenanceKcal > 0)
         assertTrue(review.calorieBudgetKcal > 0)
+    }
+
+    @Test
+    fun `adaptive maintenance averages intake over the days actually logged, not the whole window`() {
+        seedProfileAndGoal()
+        seedFlatTrend() // zeroes the weight-change term, so maintenance == the intake average
+        // 2000 kcal on 10 of the 14 window days; today-4..today-1 are left unlogged.
+        // Averaged over the whole window the four gaps would read as zero-calorie days
+        // and drag the average to ~1429; over the 10 logged days it is the true 2000.
+        logIntakeDays(14 downTo 5)
+
+        val review = service.runReview(today)
+
+        assertTrue(review.note!!.contains(Maintenance.Basis.ADAPTIVE.name))
+        assertEquals(2000.0, review.maintenanceKcal, 0.5)
+    }
+
+    @Test
+    fun `enough logged days but no calories falls back instead of computing a non-positive maintenance`() {
+        seedProfileAndGoal()
+        seedFlatTrend() // flat trend → zero weight-change term, so a zero intake would yield 0 kcal
+        // 10 logged days clearing the coverage floor, but every entry is zero-calorie
+        // (e.g. water): real coverage, no intake signal. Averaging would produce a
+        // non-positive maintenance, which must never be persisted.
+        for (offset in 14 downTo 5) {
+            entries.insert(EstimatedEntry(null, today.minusDays(offset.toLong()), "Water", 0.0, 0.0))
+        }
+
+        val review = service.runReview(today) // must not throw
+
+        assertTrue(review.maintenanceKcal > 0)
+        assertTrue(review.note!!.contains(Maintenance.Basis.FORMULA_SEED.name)) // no prior → seed
+    }
+
+    @Test
+    fun `below the logging-coverage floor maintenance holds the previous review's value`() {
+        seedProfileAndGoal()
+        seedFlatTrend()
+        val prior = seedReviewOn(today.minusDays(7)) // maintenance 2400
+        // Only 9 of the 14 window days logged — below the 10-day floor, so the engine
+        // must not recompute from this thin sample; it holds the prior maintenance.
+        logIntakeDays(14 downTo 6)
+
+        val review = service.runReview(today)
+
+        assertTrue(review.note!!.contains(Maintenance.Basis.HELD.name))
+        assertEquals(prior.maintenanceKcal, review.maintenanceKcal, 1e-9)
+    }
+
+    @Test
+    fun `below the floor holds the most recent earlier review, not a later-dated one`() {
+        seedProfileAndGoal()
+        seedFlatTrend()
+        val earlier = seedReviewOn(today.minusDays(7)) // maintenance 2400
+        // A later-dated review must not be what gets held — the global latest would
+        // wrongly carry its value backward.
+        reviews.insert(
+            WeeklyReview(null, today.plusDays(7), 86.0, 9999.0, 9000.0, 172.0, "later"),
+        )
+        logIntakeDays(14 downTo 6) // 9 days, below the floor
+
+        val review = service.runReview(today)
+
+        assertTrue(review.note!!.contains(Maintenance.Basis.HELD.name))
+        assertEquals(earlier.maintenanceKcal, review.maintenanceKcal, 1e-9)
+    }
+
+    @Test
+    fun `sparse logging with no prior review to hold falls back to the seed`() {
+        seedProfileAndGoal()
+        seedFlatTrend()
+        // 5 logged days — below the floor — and no prior review exists to hold, so the
+        // only sound figure is the formula seed (the cold-start path). The old engine
+        // would have adapted off this thin sample.
+        logIntakeDays(14 downTo 10)
+
+        val review = service.runReview(today)
+
+        assertTrue(review.note!!.contains(Maintenance.Basis.FORMULA_SEED.name))
     }
 
     @Test

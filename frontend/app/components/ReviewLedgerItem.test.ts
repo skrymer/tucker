@@ -97,4 +97,13 @@ describe('ReviewLedgerItem', () => {
     expect(screen.getByText('Seed')).toBeVisible()
     expect(screen.queryByText('Adaptive')).not.toBeInTheDocument()
   })
+
+  it('badges a held review as Held, not Seed', async () => {
+    const [latest] = rows({ note: 'Maintenance basis: HELD' })
+    await renderSuspended(ReviewLedgerItem, { props: { row: latest } })
+
+    expect(screen.getByText('Held')).toBeVisible()
+    expect(screen.queryByText('Seed')).not.toBeInTheDocument()
+    expect(screen.queryByText('Adaptive')).not.toBeInTheDocument()
+  })
 })

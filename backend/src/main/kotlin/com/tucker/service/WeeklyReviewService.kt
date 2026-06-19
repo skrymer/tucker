@@ -113,7 +113,11 @@ class WeeklyReviewService(
         )
     }
 
-    /** Adaptive once a full window of trend data exists; the formula seed before then. */
+    /**
+     * Adaptive with a trend anchor and at least [MIN_LOGGED_DAYS] of logging coverage;
+     * below the floor it holds the prior review's Maintenance, or seeds at cold start
+     * when there is none to hold (ADR 0018).
+     */
     private fun estimateMaintenance(
         on: LocalDate,
         profile: Profile,
@@ -121,20 +125,36 @@ class WeeklyReviewService(
         currentTrendKg: Double,
     ): Maintenance {
         val windowStart = on.minusDays(ADAPTIVE_WINDOW_DAYS.toLong())
+        val windowEnd = on.minusDays(1)
         val startTrendKg = trend.asOf(windowStart)
-        val totalIntake = entries.totalCaloriesBetween(windowStart, on.minusDays(1))
+        val loggedDays = entries.loggedDayCount(windowStart, windowEnd)
+        val totalIntake =
+            if (loggedDays >= MIN_LOGGED_DAYS) entries.totalCaloriesBetween(windowStart, windowEnd) else 0.0
 
-        // Adapt only once the window holds enough history: both a trend anchor to
-        // measure the change against and some logged intake to correct against.
-        // Absent either (a fresh start, or a gap in logging), fall back to the
-        // formula seed rather than derive maintenance from a phantom zero-calorie
-        // diet — which would be non-positive and meaningless.
-        return if (startTrendKg != null && totalIntake > 0.0) {
-            Maintenance.adaptive(
-                averageDailyIntakeKcal = totalIntake / ADAPTIVE_WINDOW_DAYS,
+        // Adapt only with a trend anchor to measure the change against, enough logging
+        // coverage that the average isn't set by one or two noisy days, and real
+        // intake to average (days logged only as zero-calorie carry no signal).
+        // Average over the days actually logged, not the whole window, so an unlogged
+        // day doesn't read as a zero-calorie day and drag maintenance down; the
+        // weight-change term keeps the full calendar span — the scale integrated the
+        // real eating on the unlogged days regardless (ADR 0018).
+        if (startTrendKg != null && loggedDays >= MIN_LOGGED_DAYS && totalIntake > 0.0) {
+            return Maintenance.adaptive(
+                totalIntakeKcal = totalIntake,
+                loggedDays = loggedDays,
                 trendWeightChangeKg = currentTrendKg - startTrendKg,
-                days = ADAPTIVE_WINDOW_DAYS,
+                windowDays = ADAPTIVE_WINDOW_DAYS,
             )
+        }
+
+        // Can't adapt — no trend anchor yet, too few logged days, or no real intake.
+        // Hold the most recent earlier review's maintenance steady rather than
+        // recompute from thin data: the Budget moves with the trend, not with logging
+        // diligence (ADR 0018). The BMR seed is only for cold start, when there is no
+        // prior review to hold.
+        val prior = reviews.latestBefore(on)
+        return if (prior != null) {
+            Maintenance.held(prior.maintenanceKcal)
         } else {
             Maintenance.seed(profile, currentTrendKg, on)
         }
@@ -143,5 +163,12 @@ class WeeklyReviewService(
     private companion object {
         /** The review window for the adaptive Maintenance correction. */
         const val ADAPTIVE_WINDOW_DAYS = 14
+
+        /**
+         * Minimum logged days in the window before the adaptive correction is trusted
+         * (ADR 0018). Below it the prior maintenance is held, so a thin, noisy sample
+         * can't set the Budget.
+         */
+        const val MIN_LOGGED_DAYS = 10
     }
 }

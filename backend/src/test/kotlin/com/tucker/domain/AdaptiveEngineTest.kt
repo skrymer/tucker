@@ -36,13 +36,16 @@ class AdaptiveEngineTest {
     }
 
     @Test
-    fun `Maintenance adaptive adds the energy of weight lost`() {
-        // Ate 2000 kcal/day, trend fell 0.5 kg over 14 days.
-        // 0.5 kg x 7700 / 14 = 275 kcal/day shortfall -> maintenance 2275.
+    fun `Maintenance adaptive averages intake over logged days and spreads weight loss over the window`() {
+        // Logged 2000 kcal on each of 10 days (20000 total), but the trend fell 0.5 kg
+        // over the full 14-day window. Intake averages over the 10 logged days (2000),
+        // while the weight loss spreads over 14 days: 0.5 x 7700 / 14 = 275 kcal/day
+        // shortfall -> maintenance 2275. The two divisors differ on purpose (ADR 0018).
         val adaptive = Maintenance.adaptive(
-            averageDailyIntakeKcal = 2000.0,
+            totalIntakeKcal = 20000.0,
+            loggedDays = 10,
             trendWeightChangeKg = -0.5,
-            days = 14,
+            windowDays = 14,
         )
         assertEquals(2275.0, adaptive.kcal, 0.01)
         assertEquals(Maintenance.Basis.ADAPTIVE, adaptive.basis)

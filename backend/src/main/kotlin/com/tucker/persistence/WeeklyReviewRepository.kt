@@ -17,6 +17,18 @@ class WeeklyReviewRepository(private val dsl: DSLContext) {
             .limit(1)
             .fetchOne()?.toDomain()
 
+    /**
+     * The most recent review dated strictly before [date], if any — the value the
+     * engine carries forward when it can't adapt (ADR 0018). Strictly-earlier, not the
+     * global latest, so a same-day recompute or a later-dated review can't be held.
+     */
+    fun latestBefore(date: LocalDate): WeeklyReview? =
+        dsl.selectFrom(WEEKLY_REVIEW)
+            .where(WEEKLY_REVIEW.REVIEWED_ON.lt(date.toString()))
+            .orderBy(WEEKLY_REVIEW.REVIEWED_ON.desc())
+            .limit(1)
+            .fetchOne()?.toDomain()
+
     /** The review recorded on [reviewedOn], if one exists — `reviewed_on` is UNIQUE. */
     fun findByReviewedOn(reviewedOn: LocalDate): WeeklyReview? =
         dsl.selectFrom(WEEKLY_REVIEW)
