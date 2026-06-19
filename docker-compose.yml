@@ -32,8 +32,10 @@ services:
           memory: 1G            # shared box (NAS, Jellyfin) — keep Tucker bounded
 
   # Off-host backup: continuous replication of the SQLite database to S3-compatible
-  # storage (e.g. Backblaze B2). Requires the database in WAL mode (see deploy/README).
-  # Activate with:  docker compose --profile backup up -d
+  # storage (Cloudflare R2; B2 or any S3 works too). The backend puts the database
+  # in WAL mode at startup (SqliteWalMode), which Litestream requires. Profile-gated
+  # in this dev base; the prod overlay ungates it. Activate locally with:
+  #   docker compose --profile backup up -d
   litestream:
     image: litestream/litestream:latest
     container_name: tucker-litestream

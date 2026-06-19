@@ -24,10 +24,9 @@ nothing binds `8080` on the host. Run everything through both files:
 docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 ```
 
-This brings up `backend`, `frontend`, and `cloudflared`. Off-host backup
-(`litestream`) stays profile-gated and is **not** part of the first deploy
-(accepted for a greenfield start — issue #89); enable it later with
-`--profile backup`.
+This brings up `backend`, `frontend`, `cloudflared`, and `litestream` (the prod
+overlay ungates off-host backup — see [Off-host backup](#off-host-backup) below;
+it needs the `LITESTREAM_*` secrets in `.env`).
 
 > Requires Docker Compose ≥ v2.24.4 (the overlay uses the `!reset` tag).
 
@@ -116,8 +115,63 @@ commit resets the patch to 0.
 [ADR 0015](../docs/adr/0015-production-deployment-topology.md), taken when
 reproducible promotion or VPS RAM pressure justifies it.)
 
-## Off-host backup (later)
+## Off-host backup
 
-Litestream continuously replicates the SQLite database to S3-compatible storage.
-It requires the database in WAL journal mode and the `litestream.yml` credentials
-in `.env`; enable with `--profile backup`. Tracked in issue #89.
+Litestream continuously replicates the SQLite database to S3-compatible storage so
+the user's logged history survives losing the box (Weekly Reviews are irreversible
+by design — issue #89). The replica target is **Cloudflare R2** (already on
+Cloudflare, no egress fees; B2 or any S3 works identically). Two prerequisites are
+handled for you: the backend puts the database into **WAL journal mode** at startup
+(`SqliteWalMode`), which Litestream requires, and the prod overlay **ungates** the
+`litestream` service so `deploy/update.sh` brings it up. All that's left is the R2
+target and credentials.
+
+Because it's ungated, `litestream` comes up on every prod deploy. Until the
+`LITESTREAM_*` secrets are in `.env` it can't reach a bucket and simply
+restart-loops — harmless to the app (nothing `depends_on` it; `backend` and
+`frontend` serve normally), just a noisy container. So provision R2 **before** the
+deploy that should start backing up; a deploy in between is safe, it just isn't
+replicating yet.
+
+### Provision R2 (one-time operator step)
+
+1. In the Cloudflare dashboard → **R2** → create a bucket (e.g. `tucker-backups`).
+2. **R2 → Manage R2 API Tokens → Create API token** (Object Read & Write, scoped to
+   the bucket). Copy the **Access Key ID** and **Secret Access Key**, and note your
+   **Account ID** (the R2 endpoint is `https://<ACCOUNT_ID>.r2.cloudflarestorage.com`).
+3. Fill the host `.env` (git-ignored — never commit) per `.env.example`:
+   `LITESTREAM_BUCKET`, `LITESTREAM_ENDPOINT`, `LITESTREAM_REGION=auto`,
+   `LITESTREAM_ACCESS_KEY_ID`, `LITESTREAM_SECRET_ACCESS_KEY`.
+4. Deploy (`deploy/update.sh`). `docker logs tucker-litestream` should show it
+   replicating; objects appear under `tucker/` in the bucket within a minute.
+
+### Restore drill (verify recovery, don't just trust replication)
+
+An untested backup isn't a backup. Confirm a restore yields real data. Restore into
+a host directory (this never touches the live `tucker-data` volume):
+
+```bash
+# Fresh output dir each run — litestream restore refuses to overwrite -o.
+rm -rf restore-check && mkdir -p restore-check
+# Pull the latest replica from R2 into ./restore-check/tucker.db. The trailing
+# /data/tucker.db is the db key in litestream.yml, NOT a local path it reads.
+docker run --rm --env-file .env \
+  -v "$PWD/deploy/litestream.yml:/etc/litestream.yml:ro" \
+  -v "$PWD/restore-check:/out" \
+  litestream/litestream:latest \
+  restore -config /etc/litestream.yml -o /out/tucker.db /data/tucker.db
+```
+
+Then confirm the user's rows are present. `sqlite3` ships in the Python stdlib, so
+a throwaway `python` container needs no host tooling:
+
+```bash
+docker run --rm -v "$PWD/restore-check:/db" python:3-slim python -c \
+  "import sqlite3; db = sqlite3.connect('/db/tucker.db'); \
+   print('entries', db.execute('select count(*) from entry').fetchone()[0], \
+         'reviews', db.execute('select count(*) from weekly_review').fetchone()[0])"
+```
+
+Counts that match production prove recovery works. Clean up with
+`rm -rf restore-check`. Re-run the drill after any change to the backup path or
+credentials.
