@@ -16,9 +16,9 @@ function review(overrides: Partial<WeeklyReview> = {}): WeeklyReview {
     reviewedOn: '2026-06-01',
     trendWeightKg: 85,
     maintenanceKcal: 2400,
+    maintenanceBasis: 'FORMULA_SEED',
     calorieBudgetKcal: 1900,
     proteinFloorG: 170,
-    note: 'Maintenance basis: FORMULA_SEED',
     ...overrides,
   }
 }
@@ -30,7 +30,7 @@ const history: WeeklyReview[] = [
     id: 2,
     reviewedOn: '2026-06-08',
     calorieBudgetKcal: 1850,
-    note: 'Maintenance basis: ADAPTIVE',
+    maintenanceBasis: 'ADAPTIVE',
   }),
 ]
 

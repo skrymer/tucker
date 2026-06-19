@@ -1,5 +1,6 @@
 package com.tucker.api
 
+import com.tucker.domain.Maintenance
 import com.tucker.domain.WeeklyReview
 import com.tucker.persistence.WeeklyReviewRepository
 import com.tucker.service.WeeklyReviewService
@@ -19,19 +20,19 @@ data class WeeklyReviewResponse(
     val reviewedOn: LocalDate,
     val trendWeightKg: Double,
     val maintenanceKcal: Double,
+    val maintenanceBasis: Maintenance.Basis,
     val calorieBudgetKcal: Double,
     val proteinFloorG: Double,
-    val note: String?,
 )
 
 private fun WeeklyReview.toResponse() = WeeklyReviewResponse(
     id = persistedId(id),
     reviewedOn = reviewedOn,
     trendWeightKg = trendWeightKg,
-    maintenanceKcal = maintenanceKcal,
+    maintenanceKcal = maintenance.kcal,
+    maintenanceBasis = maintenance.basis,
     calorieBudgetKcal = calorieBudgetKcal,
     proteinFloorG = proteinFloorG,
-    note = note,
 )
 
 @RestController

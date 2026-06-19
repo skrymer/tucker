@@ -105,10 +105,9 @@ class WeeklyReviewService(
                 id = null,
                 reviewedOn = on,
                 trendWeightKg = trendWeightKg,
-                maintenanceKcal = maintenance.kcal,
+                maintenance = maintenance,
                 calorieBudgetKcal = calorieBudget,
                 proteinFloorG = proteinFloor,
-                note = "Maintenance basis: ${maintenance.basis}",
             ),
         )
     }
@@ -154,7 +153,7 @@ class WeeklyReviewService(
         // prior review to hold.
         val prior = reviews.latestBefore(on)
         return if (prior != null) {
-            Maintenance.held(prior.maintenanceKcal)
+            Maintenance.held(prior.maintenance.kcal)
         } else {
             Maintenance.seed(profile, currentTrendKg, on)
         }

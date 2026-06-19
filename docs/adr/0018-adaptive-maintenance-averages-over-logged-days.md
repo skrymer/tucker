@@ -87,8 +87,14 @@ weight term:        −Δtrend × 7700 / 14  (unchanged — full calendar span)
   so the whole two-span energy balance lives in the domain rather than being
   pre-divided by the service.
 - A new engine fallback path (hold the prior review's Maintenance) and a
-  `Maintenance.Basis.HELD` value, recorded in each review's note for transparency
-  alongside `FORMULA_SEED` / `ADAPTIVE`.
+  `Maintenance.Basis.HELD` value, surfaced alongside `FORMULA_SEED` / `ADAPTIVE`
+  as the review's basis. (Originally stamped into the review's free-text `note`;
+  [#130](https://github.com/skrymer/tucker/issues/130) promoted it to a structured
+  `maintenanceBasis` API field and dropped the `note`, so the frontend reads the
+  basis instead of parsing prose — honouring [0002](0002-business-logic-belongs-in-the-backend.md).
+  Its V7 backfills each existing row's basis from the note it was stamped with — a
+  faithful label copy, not a recomputation — so the "No data migration" note below
+  still holds: no historical Maintenance value is rewritten.)
 - Redefines **Maintenance** in [`CONTEXT.md`](../../CONTEXT.md).
 - **No data migration** (single-user, ADR 0012): past reviews remain honest
   history under the old rule; the next review recomputes today under the new one.

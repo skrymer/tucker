@@ -1,5 +1,6 @@
 package com.tucker.service
 
+import com.tucker.domain.Maintenance
 import com.tucker.domain.PushSubscription
 import com.tucker.domain.SendResult
 import com.tucker.domain.WebPushSender
@@ -66,7 +67,12 @@ class ReminderSchedulerIntegrationTest {
             Profile(Sex.MALE, LocalDate.of(1986, 5, 22), 180.0, "UTC", reminderHour = 9, remindersEnabled = true),
         )
         weights.save(WeightMeasurement(null, today.minusDays(1), 86.0))
-        reviews.insert(WeeklyReview(null, today.minusDays(8), 86.0, 2400.0, 1850.0, 172.0, "seed"))
+        reviews.insert(
+            WeeklyReview(
+                null, today.minusDays(8), 86.0,
+                Maintenance(2400.0, Maintenance.Basis.FORMULA_SEED), 1850.0, 172.0,
+            ),
+        )
         subscriptions.save(PushSubscription(null, endpoint, "BKey", "Auth", null))
     }
 

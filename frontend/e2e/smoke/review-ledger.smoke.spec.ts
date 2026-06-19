@@ -78,15 +78,15 @@ test('the ledger lists each review newest-first with its delta and basis badge',
   // mint a review equal to its predecessor, so the new row's own delta isn't a
   // reliable assertion — but the accumulated history always carries deltas.)
   const newBudget = String(Math.round(after.calorieBudgetKcal))
-  // The basis lives only in the review note; the badge mirrors it. With no logged
-  // entries the catch-up holds the prior maintenance (basis HELD) rather than
-  // re-seeding (ADR 0018), so the mapping is tri-state.
-  const note: string = after.note ?? ''
-  const expectedBadge = note.includes('ADAPTIVE')
-    ? 'Adaptive'
-    : note.includes('HELD')
-      ? 'Held'
-      : 'Seed'
+  // The basis is a structured field on the response (#130); the badge mirrors it.
+  // With no logged entries the catch-up holds the prior maintenance (basis HELD)
+  // rather than re-seeding (ADR 0018), so the mapping is tri-state.
+  const badgeByBasis: Record<string, string> = {
+    ADAPTIVE: 'Adaptive',
+    HELD: 'Held',
+    FORMULA_SEED: 'Seed',
+  }
+  const expectedBadge = badgeByBasis[after.maintenanceBasis]
 
   await goto('/review', { waitUntil: 'hydration' })
 

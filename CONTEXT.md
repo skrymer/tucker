@@ -128,6 +128,13 @@ not with logging diligence. The BMR seed applies only at cold start, before any
 review exists. See [ADR 0018](docs/adr/0018-adaptive-maintenance-averages-over-logged-days.md).
 _Avoid_: TDEE, baseline
 
+**Maintenance Basis**:
+How a **Weekly Review**'s **Maintenance** was derived — `FORMULA_SEED` at cold
+start, `ADAPTIVE` when corrected from logged intake, or `HELD` when carried
+forward below the coverage floor. A structured field on each review (not prose),
+surfaced to the user as the review's basis badge.
+_Avoid_: maintenance source, derivation note
+
 **Maintenance Mode**:
 The app's resting state whenever no Goal is active. With no deficit to chase, the
 Calorie Budget equals Maintenance, while the Protein Floor still applies (2 g/kg

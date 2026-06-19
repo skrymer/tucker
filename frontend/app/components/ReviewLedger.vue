@@ -41,11 +41,11 @@ const columns: TableColumn<LedgerRow>[] = [
 
     <template #basis-cell="{ row }">
       <UBadge
-        :color="REVIEW_BASIS_BADGE[row.original.basis].color"
+        :color="REVIEW_BASIS_BADGE[row.original.review.maintenanceBasis].color"
         variant="subtle"
         size="sm"
       >
-        {{ REVIEW_BASIS_BADGE[row.original.basis].label }}
+        {{ REVIEW_BASIS_BADGE[row.original.review.maintenanceBasis].label }}
       </UBadge>
     </template>
 

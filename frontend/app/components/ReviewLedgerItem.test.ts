@@ -13,9 +13,9 @@ function review(overrides: Partial<WeeklyReview> = {}): WeeklyReview {
     reviewedOn: '2026-06-08',
     trendWeightKg: 84,
     maintenanceKcal: 2350,
+    maintenanceBasis: 'ADAPTIVE',
     calorieBudgetKcal: 1850,
     proteinFloorG: 168,
-    note: 'Maintenance basis: ADAPTIVE',
     ...overrides,
   }
 }
@@ -83,7 +83,7 @@ describe('ReviewLedgerItem', () => {
   })
 
   it('badges an adaptive-basis review as Adaptive', async () => {
-    const [latest] = rows({ note: 'Maintenance basis: ADAPTIVE' })
+    const [latest] = rows({ maintenanceBasis: 'ADAPTIVE' })
     await renderSuspended(ReviewLedgerItem, { props: { row: latest } })
 
     expect(screen.getByText('Adaptive')).toBeVisible()
@@ -91,7 +91,7 @@ describe('ReviewLedgerItem', () => {
   })
 
   it('badges a formula-seed review as Seed', async () => {
-    const [latest] = rows({ note: 'Maintenance basis: FORMULA_SEED' })
+    const [latest] = rows({ maintenanceBasis: 'FORMULA_SEED' })
     await renderSuspended(ReviewLedgerItem, { props: { row: latest } })
 
     expect(screen.getByText('Seed')).toBeVisible()
@@ -99,7 +99,7 @@ describe('ReviewLedgerItem', () => {
   })
 
   it('badges a held review as Held, not Seed', async () => {
-    const [latest] = rows({ note: 'Maintenance basis: HELD' })
+    const [latest] = rows({ maintenanceBasis: 'HELD' })
     await renderSuspended(ReviewLedgerItem, { props: { row: latest } })
 
     expect(screen.getByText('Held')).toBeVisible()

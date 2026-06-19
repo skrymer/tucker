@@ -1,6 +1,7 @@
 package com.tucker.api
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.tucker.domain.Maintenance
 import com.tucker.domain.WeeklyReview
 import com.tucker.persistence.WeeklyReviewRepository
 import org.hamcrest.Matchers.closeTo
@@ -33,10 +34,9 @@ class EntryPreviewApiTest {
                 id = null,
                 reviewedOn = date,
                 trendWeightKg = 86.0,
-                maintenanceKcal = 2400.0,
+                maintenance = Maintenance(2400.0, Maintenance.Basis.FORMULA_SEED),
                 calorieBudgetKcal = budgetKcal,
                 proteinFloorG = floorG,
-                note = "seed",
             ),
         )
     }

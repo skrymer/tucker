@@ -12,9 +12,9 @@ function review(overrides: Partial<WeeklyReview> = {}): WeeklyReview {
     reviewedOn: '2026-06-01',
     trendWeightKg: 85,
     maintenanceKcal: 2400,
+    maintenanceBasis: 'ADAPTIVE',
     calorieBudgetKcal: 1900,
     proteinFloorG: 170,
-    note: 'Maintenance basis: ADAPTIVE',
     ...overrides,
   }
 }
@@ -68,25 +68,5 @@ describe('toLedgerRows', () => {
     ])
 
     expect(rows.find((r) => r.review.id === 1)?.delta).toBeNull()
-  })
-
-  it('reads an adaptive-basis note as an adaptive review', () => {
-    const rows = toLedgerRows([review({ note: 'Maintenance basis: ADAPTIVE' })])
-
-    expect(rows[0]?.basis).toBe('adaptive')
-  })
-
-  it('reads a held-basis note as a held review', () => {
-    const rows = toLedgerRows([review({ note: 'Maintenance basis: HELD' })])
-
-    expect(rows[0]?.basis).toBe('held')
-  })
-
-  it('reads a formula-seed note as a seed review', () => {
-    const rows = toLedgerRows([
-      review({ note: 'Maintenance basis: FORMULA_SEED' }),
-    ])
-
-    expect(rows[0]?.basis).toBe('seed')
   })
 })

@@ -71,10 +71,9 @@ class WeeklyReviewServiceTest {
                 id = null,
                 reviewedOn = reviewedOn,
                 trendWeightKg = 86.0,
-                maintenanceKcal = 2400.0,
+                maintenance = Maintenance(2400.0, Maintenance.Basis.FORMULA_SEED),
                 calorieBudgetKcal = 1850.0,
                 proteinFloorG = 172.0,
-                note = "seed",
             ),
         )
 
@@ -86,10 +85,10 @@ class WeeklyReviewServiceTest {
 
         val review = service.runReview(today)
 
-        assertTrue(review.note!!.contains(Maintenance.Basis.FORMULA_SEED.name))
-        assertTrue(review.maintenanceKcal > 0)
+        assertEquals(Maintenance.Basis.FORMULA_SEED, review.maintenance.basis)
+        assertTrue(review.maintenance.kcal > 0)
         // Budget = maintenance - the deficit implied by 0.5 kg/week (~550 kcal).
-        assertEquals(review.maintenanceKcal - 0.5 * 7700.0 / 7.0, review.calorieBudgetKcal, 0.5)
+        assertEquals(review.maintenance.kcal - 0.5 * 7700.0 / 7.0, review.calorieBudgetKcal, 0.5)
         // Protein floor = 2 g per kg of trend weight.
         assertEquals(2.0 * review.trendWeightKg, review.proteinFloorG, 0.01)
     }
@@ -101,7 +100,7 @@ class WeeklyReviewServiceTest {
         val review = service.runReview(today)
 
         // Maintenance Mode: no deficit is subtracted, so the Budget is Maintenance.
-        assertEquals(review.maintenanceKcal, review.calorieBudgetKcal, 1e-9)
+        assertEquals(review.maintenance.kcal, review.calorieBudgetKcal, 1e-9)
         // The Protein Floor still applies, derived from the trend (2 g/kg).
         assertEquals(2.0 * review.trendWeightKg, review.proteinFloorG, 1e-9)
     }
@@ -116,8 +115,8 @@ class WeeklyReviewServiceTest {
 
         val review = service.runReview(today)
 
-        assertTrue(review.note!!.contains(Maintenance.Basis.FORMULA_SEED.name))
-        assertTrue(review.maintenanceKcal > 0)
+        assertEquals(Maintenance.Basis.FORMULA_SEED, review.maintenance.basis)
+        assertTrue(review.maintenance.kcal > 0)
     }
 
     @Test
@@ -132,8 +131,8 @@ class WeeklyReviewServiceTest {
 
         val review = service.runReview(today)
 
-        assertTrue(review.note!!.contains(Maintenance.Basis.ADAPTIVE.name))
-        assertTrue(review.maintenanceKcal > 0)
+        assertEquals(Maintenance.Basis.ADAPTIVE, review.maintenance.basis)
+        assertTrue(review.maintenance.kcal > 0)
         assertTrue(review.calorieBudgetKcal > 0)
     }
 
@@ -148,8 +147,8 @@ class WeeklyReviewServiceTest {
 
         val review = service.runReview(today)
 
-        assertTrue(review.note!!.contains(Maintenance.Basis.ADAPTIVE.name))
-        assertEquals(2000.0, review.maintenanceKcal, 0.5)
+        assertEquals(Maintenance.Basis.ADAPTIVE, review.maintenance.basis)
+        assertEquals(2000.0, review.maintenance.kcal, 0.5)
     }
 
     @Test
@@ -165,8 +164,8 @@ class WeeklyReviewServiceTest {
 
         val review = service.runReview(today) // must not throw
 
-        assertTrue(review.maintenanceKcal > 0)
-        assertTrue(review.note!!.contains(Maintenance.Basis.FORMULA_SEED.name)) // no prior → seed
+        assertTrue(review.maintenance.kcal > 0)
+        assertEquals(Maintenance.Basis.FORMULA_SEED, review.maintenance.basis) // no prior → seed
     }
 
     @Test
@@ -180,8 +179,8 @@ class WeeklyReviewServiceTest {
 
         val review = service.runReview(today)
 
-        assertTrue(review.note!!.contains(Maintenance.Basis.HELD.name))
-        assertEquals(prior.maintenanceKcal, review.maintenanceKcal, 1e-9)
+        assertEquals(Maintenance.Basis.HELD, review.maintenance.basis)
+        assertEquals(prior.maintenance.kcal, review.maintenance.kcal, 1e-9)
     }
 
     @Test
@@ -192,14 +191,17 @@ class WeeklyReviewServiceTest {
         // A later-dated review must not be what gets held — the global latest would
         // wrongly carry its value backward.
         reviews.insert(
-            WeeklyReview(null, today.plusDays(7), 86.0, 9999.0, 9000.0, 172.0, "later"),
+            WeeklyReview(
+                null, today.plusDays(7), 86.0,
+                Maintenance(9999.0, Maintenance.Basis.FORMULA_SEED), 9000.0, 172.0,
+            ),
         )
         logIntakeDays(14 downTo 6) // 9 days, below the floor
 
         val review = service.runReview(today)
 
-        assertTrue(review.note!!.contains(Maintenance.Basis.HELD.name))
-        assertEquals(earlier.maintenanceKcal, review.maintenanceKcal, 1e-9)
+        assertEquals(Maintenance.Basis.HELD, review.maintenance.basis)
+        assertEquals(earlier.maintenance.kcal, review.maintenance.kcal, 1e-9)
     }
 
     @Test
@@ -213,7 +215,7 @@ class WeeklyReviewServiceTest {
 
         val review = service.runReview(today)
 
-        assertTrue(review.note!!.contains(Maintenance.Basis.FORMULA_SEED.name))
+        assertEquals(Maintenance.Basis.FORMULA_SEED, review.maintenance.basis)
     }
 
     @Test
@@ -303,7 +305,7 @@ class WeeklyReviewServiceTest {
         val review = reviews.latest()!!
         assertEquals(today, review.reviewedOn)
         // It is a Maintenance review: Budget = Maintenance, no deficit.
-        assertEquals(review.maintenanceKcal, review.calorieBudgetKcal, 1e-9)
+        assertEquals(review.maintenance.kcal, review.calorieBudgetKcal, 1e-9)
     }
 
     @Test
