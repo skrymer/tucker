@@ -3,7 +3,9 @@ import { REVIEW_BASIS_BADGE, type LedgerRow } from '~/utils/reviewLedger'
 
 const props = defineProps<{ row: LedgerRow }>()
 
-const badge = computed(() => REVIEW_BASIS_BADGE[props.row.basis])
+const badge = computed(
+  () => REVIEW_BASIS_BADGE[props.row.review.maintenanceBasis],
+)
 </script>
 
 <template>

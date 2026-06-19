@@ -116,7 +116,7 @@ class GoalServiceTest {
         // Today's review is recomputed in place to the Maintenance budget (no deficit),
         // so it lifts above the cut budget rather than waiting for the weekly cadence.
         val review = reviews.findByReviewedOn(today)!!
-        assertEquals(review.maintenanceKcal, review.calorieBudgetKcal, 1e-9)
+        assertEquals(review.maintenance.kcal, review.calorieBudgetKcal, 1e-9)
         assertEquals(cutBudget + newGoal(rate = 0.5).dailyDeficitKcal(), review.calorieBudgetKcal, 0.5)
         assertEquals(1, reviews.findAll().size)
     }

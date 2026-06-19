@@ -1,5 +1,6 @@
 package com.tucker.api
 
+import com.tucker.domain.Maintenance
 import com.tucker.domain.WeeklyReview
 import com.tucker.persistence.ReminderStateRepository
 import com.tucker.persistence.WeeklyReviewRepository
@@ -36,10 +37,9 @@ class SummaryApiTest {
                 id = null,
                 reviewedOn = on,
                 trendWeightKg = 86.0,
-                maintenanceKcal = 2400.0,
+                maintenance = Maintenance(2400.0, Maintenance.Basis.FORMULA_SEED),
                 calorieBudgetKcal = budgetKcal,
                 proteinFloorG = floorG,
-                note = "seed",
             ),
         )
 

@@ -6,6 +6,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
 import org.springframework.test.web.servlet.put
 import org.springframework.transaction.annotation.Transactional
@@ -34,6 +35,21 @@ class WeeklyReviewApiTest {
             content = """{"startedOn":"$on",
                           "targetWeightKg":80.0,"rateKgPerWeek":0.5}"""
         }.andExpect { status { isCreated() } }
+    }
+
+    @Test
+    fun `the review response carries the maintenance basis as a field and omits the note`() {
+        val today = LocalDate.now()
+        completeSetup(today)
+        mockMvc.post("/api/weekly-review").andExpect { status { isOk() } }
+
+        // The basis is a first-class field (ADR 0002), not buried in human-readable
+        // prose; with little history the cold-start seed is what the engine picks.
+        mockMvc.get("/api/weekly-review").andExpect {
+            status { isOk() }
+            jsonPath("$.maintenanceBasis") { value("FORMULA_SEED") }
+            jsonPath("$.note") { doesNotExist() }
+        }
     }
 
     @Test
