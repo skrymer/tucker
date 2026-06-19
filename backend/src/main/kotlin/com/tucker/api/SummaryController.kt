@@ -29,6 +29,7 @@ data class DailySummaryResponse(
     val calorieBudget: Double?,
     val proteinFloor: Double?,
     val caloriesRemaining: Double?,
+    val proteinRemaining: Double?,
     /**
      * The day's earned verdict (DayStatus): "on-target", "over-budget", or
      * "in-progress" — null until the first WeeklyReview has run. An in-progress
@@ -118,14 +119,20 @@ class SummaryController(
         val observedRateKgPerWeek = trend?.observedRateKgPerWeek(date)
         val driftStatus = trend?.let { DriftStatus.forRate(observedRateKgPerWeek).value }
 
+        // Sum each total once and reuse it for both the consumed field and the
+        // signed remaining figure (the day verdict re-derives its own).
+        val caloriesConsumed = log.caloriesConsumed()
+        val proteinConsumed = log.proteinConsumed()
+
         return DailySummaryResponse(
             date = date,
-            caloriesConsumed = log.caloriesConsumed(),
-            proteinConsumed = log.proteinConsumed(),
+            caloriesConsumed = caloriesConsumed,
+            proteinConsumed = proteinConsumed,
             estimatedCalorieShare = log.estimatedCalorieShare(),
             calorieBudget = review?.calorieBudgetKcal,
             proteinFloor = review?.proteinFloorG,
-            caloriesRemaining = review?.let { it.calorieBudgetKcal - log.caloriesConsumed() },
+            caloriesRemaining = review?.let { it.calorieBudgetKcal - caloriesConsumed },
+            proteinRemaining = review?.let { it.proteinFloorG - proteinConsumed },
             dayStatus = review?.let { log.dayStatus(it.calorieBudgetKcal, it.proteinFloorG).value },
             trendWeightKg = review?.trendWeightKg,
             entries = log.entries.toResponses(foods),

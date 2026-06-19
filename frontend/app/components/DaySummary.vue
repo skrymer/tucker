@@ -19,6 +19,64 @@ const verdict = computed(() =>
   dayStatusVerdict(props.summary.dayStatus as DayStatus | undefined),
 )
 
+// The headroom readouts beneath each headline: how much budget / floor is left,
+// and the cosmetic colour each bar ramps to. The signed remaining figures are
+// backend-sourced (ADR 0002); only the bar colour is a frontend presentation cue.
+function useHeadroom() {
+  const caloriesRemaining = computed(() => props.summary.caloriesRemaining ?? 0)
+  const caloriesOver = computed(() => caloriesRemaining.value < 0)
+  const caloriesRemainingLabel = computed(() =>
+    caloriesOver.value
+      ? `${Math.round(-caloriesRemaining.value)} kcal over`
+      : `${Math.round(caloriesRemaining.value)} kcal left`,
+  )
+  const proteinRemaining = computed(() => props.summary.proteinRemaining ?? 0)
+  const proteinRemainingLabel = computed(() =>
+    proteinRemaining.value > 0
+      ? `${Math.round(proteinRemaining.value)} g to go`
+      : 'floor met',
+  )
+  // The bar's fill is capped at its target, so an over-target day shows a full
+  // bar rather than passing UProgress a value beyond its max. The colour ramps
+  // below read the *uncapped* figures, so the headroom thresholds are unaffected.
+  const caloriesBarValue = computed(() =>
+    Math.min(props.summary.caloriesConsumed, props.summary.calorieBudget ?? 1),
+  )
+  const proteinBarValue = computed(() =>
+    Math.min(props.summary.proteinConsumed, props.summary.proteinFloor ?? 1),
+  )
+  // Cosmetic headroom ramps (issue #133): green→yellow→red on the calorie bar as
+  // the budget runs out, the reverse on the protein bar as the floor fills.
+  const caloriesColor = computed(() =>
+    caloriesBarColor(caloriesRemaining.value, props.summary.calorieBudget ?? 1),
+  )
+  const proteinColor = computed(() =>
+    proteinBarColor(
+      props.summary.proteinConsumed,
+      props.summary.proteinFloor ?? 1,
+    ),
+  )
+  return {
+    caloriesOver,
+    caloriesRemainingLabel,
+    proteinRemainingLabel,
+    caloriesBarValue,
+    proteinBarValue,
+    caloriesColor,
+    proteinColor,
+  }
+}
+
+const {
+  caloriesOver,
+  caloriesRemainingLabel,
+  proteinRemainingLabel,
+  caloriesBarValue,
+  proteinBarValue,
+  caloriesColor,
+  proteinColor,
+} = useHeadroom()
+
 // Cap the day's entries so the ledger never buries the at-a-glance numbers or
 // the Log-entry action. Entries arrive oldest-first (ORDER BY id), so the most
 // recent few — including a just-logged one — are the visible tail; the rest fold
@@ -48,11 +106,17 @@ const { expanded, visibleEntries, canExpand, toggle } = useEntryLog()
         {{ Math.round(summary.caloriesConsumed) }} /
         {{ Math.round(summary.calorieBudget ?? 0) }} kcal
       </p>
+      <p
+        class="mt-1 text-sm"
+        :class="caloriesOver ? 'text-error' : 'text-muted'"
+      >
+        {{ caloriesRemainingLabel }}
+      </p>
       <UProgress
         class="mt-3"
-        :value="summary.caloriesConsumed"
+        :model-value="caloriesBarValue"
         :max="summary.calorieBudget ?? 1"
-        :color="caloriesBarColor(summary.dayStatus as DayStatus | undefined)"
+        :color="caloriesColor"
         aria-label="Calories consumed against the Calorie Budget"
       />
 
@@ -61,10 +125,12 @@ const { expanded, visibleEntries, canExpand, toggle } = useEntryLog()
         {{ Math.round(summary.proteinConsumed) }} /
         {{ Math.round(summary.proteinFloor ?? 0) }} g protein
       </p>
+      <p class="mt-1 text-sm text-muted">{{ proteinRemainingLabel }}</p>
       <UProgress
         class="mt-3"
-        :value="summary.proteinConsumed"
+        :model-value="proteinBarValue"
         :max="summary.proteinFloor ?? 1"
+        :color="proteinColor"
         aria-label="Protein consumed against the Protein Floor"
       />
 
