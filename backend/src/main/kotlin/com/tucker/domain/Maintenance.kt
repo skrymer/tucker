@@ -12,7 +12,7 @@ data class Maintenance(
     val basis: Basis,
 ) {
     /** How a Maintenance figure was derived. */
-    enum class Basis { FORMULA_SEED, ADAPTIVE }
+    enum class Basis { FORMULA_SEED, ADAPTIVE, HELD }
 
     init {
         require(kcal > 0) { "maintenance kcal must be > 0, was $kcal" }
@@ -30,22 +30,33 @@ data class Maintenance(
             )
 
         /**
-         * The adaptive estimate over a window: average daily intake adjusted by
-         * the energy equivalent of the Trend Weight change. If the trend fell,
-         * the user ate below maintenance — so maintenance is the intake plus that
-         * shortfall.
+         * The adaptive estimate over a window, as an energy balance: average daily
+         * intake plus the energy equivalent of the Trend Weight change. If the trend
+         * fell, the user ate below maintenance — so maintenance is the intake plus
+         * that shortfall.
+         *
+         * The two terms divide by different denominators on purpose (ADR 0018):
+         * intake by [loggedDays] (the days that actually carry an Entry, so an
+         * unlogged day isn't a phantom zero-calorie day that drags the average down),
+         * while the weight change is spread over the full [windowDays] — the scale
+         * integrated the real eating on the unlogged days regardless.
          */
         fun adaptive(
-            averageDailyIntakeKcal: Double,
+            totalIntakeKcal: Double,
+            loggedDays: Int,
             trendWeightChangeKg: Double,
-            days: Int,
+            windowDays: Int,
         ): Maintenance {
-            require(days > 0) { "days must be > 0, was $days" }
-            val energyFromWeightChange = -trendWeightChangeKg * Goal.KCAL_PER_KG_FAT / days
+            require(loggedDays > 0) { "loggedDays must be > 0, was $loggedDays" }
+            require(windowDays > 0) { "windowDays must be > 0, was $windowDays" }
+            val energyFromWeightChange = -trendWeightChangeKg * Goal.KCAL_PER_KG_FAT / windowDays
             return Maintenance(
-                kcal = averageDailyIntakeKcal + energyFromWeightChange,
+                kcal = totalIntakeKcal / loggedDays + energyFromWeightChange,
                 basis = Basis.ADAPTIVE,
             )
         }
+
+        /** Carry a prior Maintenance figure forward unchanged — used below the coverage floor (ADR 0018). */
+        fun held(kcal: Double): Maintenance = Maintenance(kcal, Basis.HELD)
     }
 }

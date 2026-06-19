@@ -45,8 +45,10 @@ test('the ledger lists each review newest-first with its delta and basis badge',
 
   const before = await (await request.get(`${API}/weekly-review`)).json()
 
-  // Remember the current reading to restore it, then nudge the weight so the
-  // next review's figures differ from `before` and the delta is non-zero.
+  // Remember the current reading to restore it, then nudge the weight so the next
+  // review's trend (and the trend-derived protein floor) differ from `before`,
+  // giving the ledger a visible delta. With no logged intake the Budget itself
+  // holds (basis HELD, ADR 0018), so the trend is what moves the deltas here.
   // Toggling around the current trend keeps the change real on every run.
   const origWeight = await (await request.get(`${API}/weight/latest`)).json()
   const nudgeKg = before.trendWeightKg > 83 ? 78 : 92
@@ -76,18 +78,21 @@ test('the ledger lists each review newest-first with its delta and basis badge',
   // mint a review equal to its predecessor, so the new row's own delta isn't a
   // reliable assertion — but the accumulated history always carries deltas.)
   const newBudget = String(Math.round(after.calorieBudgetKcal))
-  // The basis lives only in the review note; the badge mirrors it.
-  const expectedBadge = after.note?.includes('ADAPTIVE') ? 'Adaptive' : 'Seed'
+  // The basis lives only in the review note; the badge mirrors it. With no logged
+  // entries the catch-up holds the prior maintenance (basis HELD) rather than
+  // re-seeding (ADR 0018), so the mapping is tri-state.
+  const note: string = after.note ?? ''
+  const expectedBadge = note.includes('ADAPTIVE')
+    ? 'Adaptive'
+    : note.includes('HELD')
+      ? 'Held'
+      : 'Seed'
 
   await goto('/review', { waitUntil: 'hydration' })
 
-  // The newest review's Calorie Budget headline renders.
+  // The newest review's Calorie Budget headline and basis badge render (both
+  // viewports), plus the manual "Run review now" trigger.
   await expect(page.getByText(newBudget, { exact: true }).first()).toBeVisible()
-  // Deltas are rendered as signed muted text against the previous review.
-  await expect(
-    page.getByText(/versus the previous review/i).first(),
-  ).toBeAttached()
-  // The basis badge, and the manual "Run review now" trigger.
   await expect(page.getByText(expectedBadge).first()).toBeVisible()
   await expect(
     page.getByRole('button', { name: /run review now/i }),
@@ -98,12 +103,22 @@ test('the ledger lists each review newest-first with its delta and basis badge',
   const isDesktop = (page.viewportSize()?.width ?? 0) >= 1024
   if (isDesktop) {
     await expect(page.getByRole('table')).toBeVisible()
+    // Deltas render as signed muted text versus the previous review. The trend and
+    // protein-floor columns moved with the nudge, so the table carries deltas even
+    // though the Budget holds under no-intake (ADR 0018).
+    await expect(
+      page.getByText(/versus the previous review/i).first(),
+    ).toBeAttached()
   } else {
     await expect(page.getByRole('table')).toHaveCount(0)
-    // The newest review renders as a card (a listitem), not a table row.
-    await expect(
-      page.getByRole('listitem').filter({ hasText: newBudget }).first(),
-    ).toBeVisible()
+    // The newest review renders as a card (a listitem) with its figure and badge.
+    // The phone card shows only the Budget delta, which a held review hasn't moved.
+    const card = page
+      .getByRole('listitem')
+      .filter({ hasText: newBudget })
+      .first()
+    await expect(card).toBeVisible()
+    await expect(card.getByText(expectedBadge)).toBeVisible()
   }
 
   // Restore the weight reading we nudged.

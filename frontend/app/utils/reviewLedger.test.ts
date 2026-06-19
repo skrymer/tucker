@@ -70,13 +70,23 @@ describe('toLedgerRows', () => {
     expect(rows.find((r) => r.review.id === 1)?.delta).toBeNull()
   })
 
-  it('marks an adaptive-basis review adaptive and a formula-seed review not', () => {
+  it('reads an adaptive-basis note as an adaptive review', () => {
+    const rows = toLedgerRows([review({ note: 'Maintenance basis: ADAPTIVE' })])
+
+    expect(rows[0]?.basis).toBe('adaptive')
+  })
+
+  it('reads a held-basis note as a held review', () => {
+    const rows = toLedgerRows([review({ note: 'Maintenance basis: HELD' })])
+
+    expect(rows[0]?.basis).toBe('held')
+  })
+
+  it('reads a formula-seed note as a seed review', () => {
     const rows = toLedgerRows([
-      review({ id: 1, note: 'Maintenance basis: FORMULA_SEED' }),
-      review({ id: 2, note: 'Maintenance basis: ADAPTIVE' }),
+      review({ note: 'Maintenance basis: FORMULA_SEED' }),
     ])
 
-    expect(rows.find((r) => r.review.id === 2)?.isAdaptive).toBe(true)
-    expect(rows.find((r) => r.review.id === 1)?.isAdaptive).toBe(false)
+    expect(rows[0]?.basis).toBe('seed')
   })
 })

@@ -34,6 +34,17 @@ class EntryRepository(private val dsl: DSLContext) {
         return sum?.toDouble() ?: 0.0
     }
 
+    /**
+     * Number of distinct calendar days from [start] to [endInclusive] that carry at
+     * least one Entry — the divisor the adaptive engine averages intake over, so an
+     * unlogged day isn't counted as a zero-calorie day (ADR 0018).
+     */
+    fun loggedDayCount(start: LocalDate, endInclusive: LocalDate): Int =
+        dsl.select(DSL.countDistinct(ENTRY.LOGGED_ON))
+            .from(ENTRY)
+            .where(ENTRY.LOGGED_ON.between(start.toString(), endInclusive.toString()))
+            .fetchOne(0, Int::class.java) ?: 0
+
     fun insert(entry: Entry): Entry {
         val rec = dsl.newRecord(ENTRY)
         rec.loggedOn = entry.loggedOn.toString()

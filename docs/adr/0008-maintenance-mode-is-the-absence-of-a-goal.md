@@ -110,7 +110,10 @@ The adaptive Maintenance formula —
 `Maintenance = avgDailyIntake + (−trendChange × 7700 / days)` — reconstructs
 Maintenance from intake and observed weight change and **never references the
 deficit or the Goal**. So it needs no change in Maintenance Mode: only the Budget
-step drops the subtraction.
+step drops the subtraction. (The intake term's averaging was later refined to
+divide by the days actually logged, with a coverage floor and a hold-prior
+fallback — see [ADR 0018](0018-adaptive-maintenance-averages-over-logged-days.md);
+the cadence and trend basis here are unchanged.)
 
 This also settles the "cadence with no deficit to chase" question: keep the
 **same weekly cadence**. The formula is a *stabilizing feedback loop* even with no

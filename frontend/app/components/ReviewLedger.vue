@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { TableColumn } from '@nuxt/ui'
 import type { components } from '#open-fetch-schemas/api'
-import type { LedgerRow } from '~/utils/reviewLedger'
+import { REVIEW_BASIS_BADGE, type LedgerRow } from '~/utils/reviewLedger'
 
 const props = defineProps<{
   reviews: components['schemas']['WeeklyReviewResponse'][]
@@ -41,11 +41,11 @@ const columns: TableColumn<LedgerRow>[] = [
 
     <template #basis-cell="{ row }">
       <UBadge
-        :color="row.original.isAdaptive ? 'primary' : 'neutral'"
+        :color="REVIEW_BASIS_BADGE[row.original.basis].color"
         variant="subtle"
         size="sm"
       >
-        {{ row.original.isAdaptive ? 'Adaptive' : 'Seed' }}
+        {{ REVIEW_BASIS_BADGE[row.original.basis].label }}
       </UBadge>
     </template>
 

@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import type { LedgerRow } from '~/utils/reviewLedger'
+import { REVIEW_BASIS_BADGE, type LedgerRow } from '~/utils/reviewLedger'
 
-defineProps<{ row: LedgerRow }>()
+const props = defineProps<{ row: LedgerRow }>()
+
+const badge = computed(() => REVIEW_BASIS_BADGE[props.row.basis])
 </script>
 
 <template>
@@ -10,12 +12,8 @@ defineProps<{ row: LedgerRow }>()
       <p class="text-sm font-medium text-muted">
         {{ formatDateFromISO(row.review.reviewedOn) }}
       </p>
-      <UBadge
-        :color="row.isAdaptive ? 'primary' : 'neutral'"
-        variant="subtle"
-        size="sm"
-      >
-        {{ row.isAdaptive ? 'Adaptive' : 'Seed' }}
+      <UBadge :color="badge.color" variant="subtle" size="sm">
+        {{ badge.label }}
       </UBadge>
     </div>
 
