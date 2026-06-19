@@ -109,6 +109,25 @@ class SummaryApiTest {
     }
 
     @Test
+    fun `the summary reports protein remaining as the signed floor minus consumed`() {
+        val day = LocalDate.of(2026, 6, 10)
+        seedReview(day, budgetKcal = 2000.0, floorG = 140.0)
+        mockMvc.post("/api/entries/estimated") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"date":"$day","label":"lunch","calories":500,"protein":90}"""
+        }.andExpect { status { isCreated() } }
+
+        // Read on the seeded review's own day, so no catch-up is due to disturb it.
+        mockMvc.get("/api/summary") {
+            param("date", "$day")
+        }.andExpect {
+            status { isOk() }
+            // Floor 140 g, 90 g consumed → 50 g still to go (signed, like caloriesRemaining).
+            jsonPath("$.proteinRemaining") { value(50.0) }
+        }
+    }
+
+    @Test
     fun `the summary reports no day status before the first weekly review`() {
         // A fresh database has no WeeklyReview, so there is no Budget or Floor to
         // judge the day against — the verdict is withheld (null), unchanged from

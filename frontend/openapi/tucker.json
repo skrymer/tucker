@@ -2256,6 +2256,10 @@
             "type": "number",
             "format": "double"
           },
+          "proteinRemaining": {
+            "type": "number",
+            "format": "double"
+          },
           "dayStatus": {
             "type": "string"
           },
