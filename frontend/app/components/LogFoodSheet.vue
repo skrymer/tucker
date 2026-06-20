@@ -17,7 +17,8 @@ const emit = defineEmits<{
 
 // Autofocus the grams field on desktop for quick entry, but NOT on phone: there
 // the focus pops the on-screen keyboard the instant the drawer opens, which
-// covers the controls and blocks swipe-to-dismiss — leaving no way to cancel.
+// covers the controls and blocks swipe-to-dismiss, making the sheet hard to
+// dismiss (the corner close button stays the reliable exit).
 const isDesktop = useIsDesktop()
 
 const schema = z.object({ grams: gramsSchema })
@@ -64,16 +65,6 @@ function onSubmit() {
 
       <UButton type="submit" color="primary" :loading="pending" class="w-full">
         Log entry
-      </UButton>
-
-      <UButton
-        type="button"
-        color="neutral"
-        variant="ghost"
-        class="w-full"
-        @click="emit('close')"
-      >
-        Cancel
       </UButton>
     </UForm>
   </ResponsiveOverlay>
