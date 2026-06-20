@@ -37,7 +37,16 @@ services:
   # in this dev base; the prod overlay ungates it. Activate locally with:
   #   docker compose --profile backup up -d
   litestream:
-    image: litestream/litestream:latest
+    # Pinned, not :latest — a floating tag silently moved v0.3 → v0.5, which
+    # changed the replication model: v0.5 *writes* to the database to coordinate
+    # replication, where v0.3 opened it read-only. That write is why `user:` below
+    # is required, and why the version is pinned so the model can't shift under us.
+    image: litestream/litestream:0.5.12
+    # Run as the same uid:gid that owns the DB file — the backend's `tucker` user
+    # (uid 1001 / gid 999; see backend/Dockerfile). The DB is shared 0644, so as any
+    # other user it is read-only and every sync fails with "attempt to write a
+    # readonly database (8)".
+    user: "1001:999"
     container_name: tucker-litestream
     restart: unless-stopped
     profiles: [backup]
