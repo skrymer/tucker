@@ -11,6 +11,25 @@ export default defineNuxtConfig({
 
   css: ['~/assets/css/main.css'],
 
+  // Self-host the "Vital" display face (frontend/DESIGN.md). @nuxt/fonts is
+  // registered by @nuxt/ui; it downloads Nunito at build and serves it from the
+  // app origin (no runtime CDN), so the installed PWA renders it offline — the
+  // woff2 files fall under the Workbox precache glob below.
+  fonts: {
+    // Pin subsets + styles: without them @nuxt/fonts resolves every Google
+    // subset × italic (~20 woff2 files, all swept into the offline precache) for
+    // the two faces this English-only app actually renders.
+    families: [
+      {
+        name: 'Nunito',
+        provider: 'google',
+        weights: [700, 800],
+        styles: ['normal'],
+        subsets: ['latin'],
+      },
+    ],
+  },
+
   // Build stamp (issue #117): baked into the client bundle at `nuxt build` time
   // (the Dockerfile sets these env vars from build args; ssr:false bakes the
   // values into the prerendered shell). The Profile footer reads them and shows
@@ -85,7 +104,8 @@ export default defineNuxtConfig({
       short_name: 'Tucker',
       description: 'A personal diet tracker.',
       theme_color: '#00c16a',
-      background_color: '#ffffff',
+      // Matches the `.app-canvas` wash in main.css (keep the two in sync).
+      background_color: '#eff6f1',
       display: 'standalone',
       start_url: '/',
       scope: '/',

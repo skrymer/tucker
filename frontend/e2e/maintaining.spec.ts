@@ -42,7 +42,7 @@ test('the Today page shows the Maintaining card in place of Goal-Progress when t
 
   // Budget and Floor still render in the daily summary as normal.
   await expect(page.getByText('1200 / 2400 kcal')).toBeVisible()
-  await expect(page.getByText('90 / 172 g protein')).toBeVisible()
+  await expect(page.getByText('90 / 172 g')).toBeVisible()
 
   // The Goal-Progress card is gone — no "Goal progress" tile, no "Set a goal" CTA.
   await expect(

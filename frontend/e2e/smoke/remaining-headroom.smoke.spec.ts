@@ -1,15 +1,14 @@
 import { test, expect } from './support/smoke-test'
 import { todayIso } from '../support/date'
 
-// Remaining-figure smoke (issue #133): the "kcal left" / "g to go" / "floor met"
-// readouts on /today against the real backend. proteinRemaining is a new backend
-// field, so this proves it round-trips from SQLite through the summary into the
-// card. No /api mocks: we complete setup to earn a Budget + Floor, read them, then
-// log Estimated entries through the API to move the day through the readout
+// Day Ring smoke: the calorie centre on /today against the real backend — it
+// counts down "kcal left" as Estimated entries are logged, then flips to
+// "kcal over" once the Budget is breached. No /api mocks: complete setup to earn
+// a Budget, read it, then log entries through the API to move the day between
 // states. The per-test reset (smoke-test.ts) wipes the seeded review + entries.
 const API = 'http://localhost:8080/api'
 
-test('the daily-summary card counts down calories left and protein to go, then reports the floor met', async ({
+test('the Day Ring centre counts calories left, then flips to over budget', async ({
   page,
   goto,
   request,
@@ -18,7 +17,7 @@ test('the daily-summary card counts down calories left and protein to go, then r
 
   // Complete setup the way a real install does — profile, a weight reading, then
   // an active goal, which fires the first Weekly Review and yields a Calorie
-  // Budget and Protein Floor to count down from.
+  // Budget to count down from.
   await request.put(`${API}/profile`, {
     data: { sex: 'MALE', birthDate: '1990-06-15', heightCm: 180 },
   })
@@ -33,45 +32,46 @@ test('the daily-summary card counts down calories left and protein to go, then r
   })
   expect(goal.status()).toBe(201)
 
-  // Read the Budget and Floor the review produced, so the expected readouts are
-  // derived from real engine numbers rather than hard-coded.
+  // Read the Budget the review produced, so the assertions ride on real engine
+  // numbers rather than hard-coded ones.
   const summary = await (
     await request.get(`${API}/summary`, { params: { date: today } })
   ).json()
   const budget = summary.calorieBudget as number
-  const floor = summary.proteinFloor as number
   expect(budget).toBeGreaterThan(0)
-  expect(floor).toBeGreaterThan(0)
 
-  // Log a partial meal — under budget, under the floor — so both readouts count
-  // down rather than report met/over.
-  const calories = Math.round(budget * 0.4)
-  const protein = Math.floor(floor * 0.5)
+  // Log a partial meal under budget — the ring counts down; the centre reads
+  // "kcal left" and the legend reflects the consumed calories.
+  const partialCalories = Math.round(budget * 0.4)
   const partial = await request.post(`${API}/entries/estimated`, {
-    data: { date: today, label: 'partial meal', calories, protein },
+    data: {
+      date: today,
+      label: 'partial meal',
+      calories: partialCalories,
+      protein: 20,
+    },
   })
   expect(partial.ok()).toBe(true)
 
-  // The exact protein readout — matched precisely, since a loose /g to go/ would
-  // also catch the Goal-progress card's "kg to go".
-  const proteinToGo = `${Math.round(floor - protein)} g to go`
-
   await goto('/', { waitUntil: 'hydration' })
+  await expect(page.getByText('kcal left')).toBeVisible()
   await expect(
-    page.getByText(`${Math.round(budget - calories)} kcal left`),
+    page.getByText(`${partialCalories} / ${Math.round(budget)} kcal`),
   ).toBeVisible()
-  await expect(page.getByText(proteinToGo, { exact: true })).toBeVisible()
-  await expect(page.getByText('floor met')).toHaveCount(0)
+  await expect(page.getByText('kcal over')).toHaveCount(0)
 
-  // Top up the protein past the floor without breaching the budget — the protein
-  // readout flips to "floor met", the calorie readout still counts down.
-  const topUp = await request.post(`${API}/entries/estimated`, {
-    data: { date: today, label: 'protein top-up', calories: 1, protein: floor },
+  // Log a large entry that breaches the Budget — the centre flips to "kcal over".
+  const over = await request.post(`${API}/entries/estimated`, {
+    data: {
+      date: today,
+      label: 'over budget',
+      calories: Math.round(budget),
+      protein: 20,
+    },
   })
-  expect(topUp.ok()).toBe(true)
+  expect(over.ok()).toBe(true)
 
   await goto('/', { waitUntil: 'hydration' })
-  await expect(page.getByText('floor met')).toBeVisible()
-  await expect(page.getByText(proteinToGo, { exact: true })).toHaveCount(0)
-  await expect(page.getByText(/kcal left/)).toBeVisible()
+  await expect(page.getByText('kcal over')).toBeVisible()
+  await expect(page.getByText('kcal left')).toHaveCount(0)
 })

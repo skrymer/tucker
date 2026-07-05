@@ -4,13 +4,15 @@
     - heading "Today's weight" [level=2]
     - paragraph: No weight logged today.
     - button "Log weight"
-    - heading "Calories" [level=2]
+    - text: /\d+ kcal left Calories/
     - paragraph: /\d+ \/ \d+ kcal/
-    - progressbar
-    - heading "Protein" [level=2]
-    - paragraph: /\d+ \/ \d+ g protein/
-    - progressbar
+    - progressbar /\d+%/
+    - text: Protein
+    - paragraph: /\d+ \/ \d+ g/
+    - progressbar /\d+%/
     - paragraph: On target
     - heading "Today's entries" [level=2]
     - list:
-        - listitem: /Oats — \d+ kcal/
+        - listitem:
+            - text: /Oats — \d+ kcal/
+            - button /Delete Oats — \d+ kcal/

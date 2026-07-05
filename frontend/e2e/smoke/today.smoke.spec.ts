@@ -15,8 +15,6 @@ test('Today page renders against the real backend', async ({ page, goto }) => {
   // either/or — but for now its presence proves /api/summary returned real
   // data (not a 502 from a missing backend, not a mock).
   await expect(
-    page
-      .getByText(/No budget yet/)
-      .or(page.getByRole('heading', { name: 'Calories', level: 2 })),
+    page.getByText(/No budget yet/).or(page.getByText(/\d+ \/ \d+ kcal/)),
   ).toBeVisible()
 })
