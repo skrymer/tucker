@@ -54,9 +54,7 @@ test('loading Today a week on fires a catch-up review and the budget reflects it
 
   // The dashboard shows a real Calorie Budget, not the no-budget fallback.
   await expect(page.getByText(/No budget yet/)).toHaveCount(0)
-  await expect(
-    page.getByRole('heading', { name: 'Calories', level: 2 }),
-  ).toBeVisible()
+  await expect(page.getByText(/\d+ \/ \d+ kcal/)).toBeVisible()
 
   // The catch-up ran on the summary read: the latest review snapped to today.
   await expect

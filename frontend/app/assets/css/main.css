@@ -1,2 +1,85 @@
 @import 'tailwindcss';
 @import '@nuxt/ui';
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Tucker "Vital" design system (frontend/DESIGN.md). Light-only for now.
+   ───────────────────────────────────────────────────────────────────────── */
+@theme static {
+  /* Display face — self-hosted via @nuxt/fonts (see nuxt.config `fonts`).
+     Body stays on the system stack; only headings + headline numerics use this. */
+  --font-display: 'Nunito', ui-sans-serif, system-ui, sans-serif;
+
+  /* Primary — Tucker brand green (#00c16a), pinned so --ui-primary matches the
+     mark used by the PWA icons + manifest.theme_color. Equals Nuxt UI `green`. */
+  --color-green-50: #effdf5;
+  --color-green-100: #d9fbe8;
+  --color-green-200: #b3f5d1;
+  --color-green-300: #75edae;
+  --color-green-400: #00dc82;
+  --color-green-500: #00c16a;
+  --color-green-600: #00a155;
+  --color-green-700: #007f45;
+  --color-green-800: #016538;
+  --color-green-900: #0a5331;
+  --color-green-950: #052e16;
+
+  /* Secondary — Coral (protein). New to the identity; means protein, not status. */
+  --color-coral-50: #fff1ed;
+  --color-coral-100: #ffe0d6;
+  --color-coral-200: #ffc3b0;
+  --color-coral-300: #ff9e82;
+  --color-coral-400: #ff8460;
+  --color-coral-500: #ff6b4a;
+  --color-coral-600: #ed4e2c;
+  --color-coral-700: #c63c20;
+  --color-coral-800: #9e3220;
+  --color-coral-900: #7f2c1e;
+  --color-coral-950: #451208;
+
+  /* Soft green-tinted elevation — a lift, not a grey drop (DESIGN.md → Shape). */
+  --shadow-card:
+    0 8px 22px -12px rgb(0 193 106 / 0.28), 0 2px 6px -3px rgb(0 0 0 / 0.06);
+  --shadow-float: 0 10px 24px -6px rgb(0 193 106 / 0.45);
+}
+
+/* Green-biased neutrals + brand status tokens. Unlayered, so these win over
+   Nuxt UI's layered light-mode defaults regardless of import order. */
+:root {
+  --ui-radius: 0.5rem;
+
+  --ui-bg: #ffffff;
+  --ui-bg-muted: #f1f8f3;
+  --ui-bg-elevated: #ecf5ef;
+  --ui-bg-accented: #ddeee3;
+  --ui-bg-inverted: #10201a;
+
+  --ui-border: #e3efe8;
+  --ui-border-muted: #edf4ef;
+  --ui-border-accented: #d3e6db;
+
+  --ui-text-dimmed: #93a79b;
+  --ui-text-muted: #5a6b62;
+  --ui-text-toned: #3a4a42;
+  --ui-text: #24352c;
+  --ui-text-highlighted: #10201a;
+  --ui-text-inverted: #ffffff;
+
+  /* Status is its own axis, separate from the green/coral accents. */
+  --ui-success: #00a155;
+  --ui-warning: #d9922b;
+  --ui-error: #e5484d;
+}
+
+/* The app canvas carries a faint green wash so white cards lift off it. Keep
+   this in sync with `pwa.manifest.background_color` in nuxt.config.ts so the
+   PWA launch splash matches the in-app wash. */
+.app-canvas {
+  background-color: #eff6f1;
+}
+
+/* Headings + the numerics that headline a card wear the rounded display face. */
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+}

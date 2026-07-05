@@ -27,10 +27,19 @@ describe('DaySummary', () => {
     expect(screen.getByText('1500 / 2000 kcal')).toBeVisible()
   })
 
+  it('wires the calories remaining into the ring centre', async () => {
+    await renderSuspended(DaySummary, {
+      props: { summary: { ...summary, caloriesRemaining: 500 } },
+    })
+
+    expect(screen.getByText('500')).toBeVisible()
+    expect(screen.getByText('kcal left')).toBeVisible()
+  })
+
   it('shows protein consumed against the floor', async () => {
     await renderSuspended(DaySummary, { props: { summary } })
 
-    expect(screen.getByText('90 / 140 g protein')).toBeVisible()
+    expect(screen.getByText('90 / 140 g')).toBeVisible()
   })
 
   it('fills the bars to real progress rather than an indeterminate animation', async () => {
@@ -59,40 +68,6 @@ describe('DaySummary', () => {
     expect(protein).toHaveAttribute('aria-valuenow', '170') // capped at the floor
   })
 
-  it('shows how many calories are left while under budget', async () => {
-    await renderSuspended(DaySummary, {
-      props: { summary: { ...summary, caloriesRemaining: 500 } },
-    })
-
-    expect(screen.getByText('500 kcal left')).toBeVisible()
-  })
-
-  it('shows how many calories are over once past the budget', async () => {
-    await renderSuspended(DaySummary, {
-      props: { summary: { ...summary, caloriesRemaining: -120 } },
-    })
-
-    expect(screen.getByText('120 kcal over')).toBeVisible()
-    expect(screen.queryByText(/kcal left/)).not.toBeInTheDocument()
-  })
-
-  it('shows how much protein is still to go until the floor is met', async () => {
-    await renderSuspended(DaySummary, {
-      props: { summary: { ...summary, proteinRemaining: 50 } },
-    })
-
-    expect(screen.getByText('50 g to go')).toBeVisible()
-  })
-
-  it('reports the floor met once protein reaches it', async () => {
-    await renderSuspended(DaySummary, {
-      props: { summary: { ...summary, proteinRemaining: 0 } },
-    })
-
-    expect(screen.getByText('floor met')).toBeVisible()
-    expect(screen.queryByText(/g to go/)).not.toBeInTheDocument()
-  })
-
   it('rounds the budget and floor from the engine to whole numbers', async () => {
     await renderSuspended(DaySummary, {
       props: {
@@ -105,7 +80,7 @@ describe('DaySummary', () => {
     })
 
     expect(screen.getByText('1500 / 1966 kcal')).toBeVisible()
-    expect(screen.getByText('90 / 168 g protein')).toBeVisible()
+    expect(screen.getByText('90 / 168 g')).toBeVisible()
   })
 
   it('shows the day as on target when the summary reports it', async () => {

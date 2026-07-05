@@ -46,9 +46,9 @@ test('the day verdict goes from none to on target to over budget as entries land
 
   // A fresh day with no entries is in progress — it has earned no verdict.
   await goto('/', { waitUntil: 'hydration' })
-  await expect(
-    page.getByRole('heading', { name: 'Calories', level: 2 }),
-  ).toBeVisible()
+  // The Day Ring's calorie legend renders only when a Budget exists (the
+  // no-budget fallback reads "N kcal, N g protein" instead).
+  await expect(page.getByText(/\d+ \/ \d+ kcal/)).toBeVisible()
   await expect(page.getByText('On target')).toHaveCount(0)
   await expect(page.getByText('Over budget')).toHaveCount(0)
 
