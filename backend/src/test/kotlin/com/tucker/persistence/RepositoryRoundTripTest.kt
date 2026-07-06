@@ -50,6 +50,20 @@ class RepositoryRoundTripTest {
     }
 
     @Test
+    fun `foods are listed alphabetically ignoring case`() {
+        foods.insert(Food.plain(null, "banana", null, Nutrition(89.0, 1.1, 22.8, 0.3)))
+        foods.insert(Food.plain(null, "Cherry", null, Nutrition(50.0, 1.0, 12.0, 0.3)))
+        foods.insert(Food.plain(null, "apple", null, Nutrition(52.0, 0.3, 13.8, 0.2)))
+
+        val listed = foods.findAll().map { it.name }
+            .filter { it in setOf("banana", "Cherry", "apple") }
+
+        // BINARY collation would sort "Cherry" first (uppercase before lowercase);
+        // case-insensitive order interleaves the cases.
+        assertEquals(listOf("apple", "banana", "Cherry"), listed)
+    }
+
+    @Test
     fun `a weighed Entry round-trips with computed calories`() {
         val banana = foods.insert(Food.plain(null, "Banana", null, Nutrition(89.0, 1.1, 22.8, 0.3)))
         val date = LocalDate.of(2026, 5, 22)

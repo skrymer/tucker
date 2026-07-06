@@ -19,7 +19,7 @@ class FoodRepository(private val dsl: DSLContext) {
         dsl.selectFrom(FOOD).where(FOOD.BARCODE.eq(barcode)).fetchOne()?.toFood()
 
     fun findAll(): List<Food> =
-        dsl.selectFrom(FOOD).orderBy(FOOD.NAME).fetch().map { it.toFood() }
+        dsl.selectFrom(FOOD).orderBy(FOOD.NAME.lower()).fetch().map { it.toFood() }
 
     /** Load every Food in [ids] in a single query (used to resolve recipe ingredients). */
     fun findByIds(ids: Collection<Long>): List<Food> {
