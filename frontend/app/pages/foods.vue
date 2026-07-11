@@ -7,6 +7,9 @@ const { data: foods, error: foodsError, refresh } = await useApi('/api/foods')
 
 const open = ref(false)
 const selectedFood = ref<FoodResponse | null>(null)
+// The recipe whose row's view button was tapped — non-null opens the read-only
+// composition sheet. Logging a recipe still goes through the ordinary log path.
+const recipeToView = ref<FoodResponse | null>(null)
 // The Food whose row was tapped — non-null opens the grams-only log sheet.
 const foodToLog = ref<FoodResponse | null>(null)
 // The Food just saved through the Add-Food flow. Its presence pivots the sheet
@@ -173,6 +176,7 @@ function handleDeleteConfirm() {
         :foods="foods"
         @log="foodToLog = $event"
         @delete="selectedFood = $event"
+        @view="recipeToView = $event"
       />
       <FoodEmptyState v-else @add="open = true" />
     </LoadErrorState>
@@ -211,6 +215,11 @@ function handleDeleteConfirm() {
       :food="selectedFood"
       @cancel="selectedFood = null"
       @confirm="handleDeleteConfirm"
+    />
+
+    <RecipeCompositionSheet
+      :recipe="recipeToView"
+      @close="recipeToView = null"
     />
   </section>
 </template>

@@ -5,7 +5,11 @@ type FoodResponse = components['schemas']['FoodResponse']
 
 defineProps<{ foods: FoodResponse[] }>()
 
-const emit = defineEmits<{ log: [FoodResponse]; delete: [FoodResponse] }>()
+const emit = defineEmits<{
+  log: [FoodResponse]
+  delete: [FoodResponse]
+  view: [FoodResponse]
+}>()
 </script>
 
 <template>
@@ -15,6 +19,7 @@ const emit = defineEmits<{ log: [FoodResponse]; delete: [FoodResponse] }>()
         :food="food"
         @log="(picked) => emit('log', picked)"
         @delete="(picked) => emit('delete', picked)"
+        @view="(picked) => emit('view', picked)"
       />
     </li>
   </ul>
