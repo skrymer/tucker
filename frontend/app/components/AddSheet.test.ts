@@ -3,7 +3,7 @@ import { registerEndpoint, renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import { readBarcodes } from 'zxing-wasm/reader'
-import BarcodeScanSheet from './BarcodeScanSheet.vue'
+import AddSheet from './AddSheet.vue'
 
 // The camera scanner's hardware + WASM decoder are mocked (ADR 0006: the live
 // lifecycle is a real-stack smoke). These helpers drive the sheet's camera
@@ -131,9 +131,9 @@ registerEndpoint(`/api/foods/barcode/${EXISTING_BARCODE}`, {
   }),
 })
 
-describe('BarcodeScanSheet', () => {
+describe('AddSheet', () => {
   it('offers a barcode lookup alongside the manual form', async () => {
-    await renderSuspended(BarcodeScanSheet, { props: { open: true } })
+    await renderSuspended(AddSheet, { props: { open: true } })
 
     expect(screen.getByLabelText(/barcode/i)).toBeVisible()
     expect(screen.getByRole('button', { name: /look up/i })).toBeVisible()
@@ -142,19 +142,19 @@ describe('BarcodeScanSheet', () => {
   })
 
   it('marks the barcode as an optional shortcut', async () => {
-    await renderSuspended(BarcodeScanSheet, { props: { open: true } })
+    await renderSuspended(AddSheet, { props: { open: true } })
 
     expect(screen.getByText(/^optional$/i)).toBeVisible()
   })
 
   it('frames the barcode as an optional pre-fill for the form', async () => {
-    await renderSuspended(BarcodeScanSheet, { props: { open: true } })
+    await renderSuspended(AddSheet, { props: { open: true } })
 
     expect(screen.getByText(/pre-fill from a barcode/i)).toBeVisible()
   })
 
   it('prefills the form from a provider candidate after lookup', async () => {
-    await renderSuspended(BarcodeScanSheet, { props: { open: true } })
+    await renderSuspended(AddSheet, { props: { open: true } })
     const user = userEvent.setup()
 
     await user.type(screen.getByLabelText(/barcode/i), CANDIDATE_BARCODE)
@@ -172,7 +172,7 @@ describe('BarcodeScanSheet', () => {
   it('keeps what the user typed when a slow look-up lands a candidate', async () => {
     let releaseLookup!: () => void
     candidateGate = new Promise((resolve) => (releaseLookup = resolve))
-    await renderSuspended(BarcodeScanSheet, { props: { open: true } })
+    await renderSuspended(AddSheet, { props: { open: true } })
     const user = userEvent.setup()
 
     await user.type(screen.getByLabelText(/barcode/i), SLOW_CANDIDATE_BARCODE)
@@ -195,7 +195,7 @@ describe('BarcodeScanSheet', () => {
   })
 
   it('notes that the form was pre-filled from the provider after a candidate lookup', async () => {
-    await renderSuspended(BarcodeScanSheet, { props: { open: true } })
+    await renderSuspended(AddSheet, { props: { open: true } })
     const user = userEvent.setup()
 
     // No note before a look-up — nothing has been pre-filled.
@@ -212,7 +212,7 @@ describe('BarcodeScanSheet', () => {
   })
 
   it('surfaces an existing catalog Food instead of the add form', async () => {
-    await renderSuspended(BarcodeScanSheet, { props: { open: true } })
+    await renderSuspended(AddSheet, { props: { open: true } })
     const user = userEvent.setup()
 
     await user.type(screen.getByLabelText(/barcode/i), EXISTING_BARCODE)
@@ -225,7 +225,7 @@ describe('BarcodeScanSheet', () => {
   })
 
   it('leads a catalog hit with the option to log it now', async () => {
-    await renderSuspended(BarcodeScanSheet, { props: { open: true } })
+    await renderSuspended(AddSheet, { props: { open: true } })
     const user = userEvent.setup()
 
     await user.type(screen.getByLabelText(/barcode/i), EXISTING_BARCODE)
@@ -248,7 +248,7 @@ describe('BarcodeScanSheet', () => {
       fatPer100g: 0.2,
       cookedWeightG: null,
     }
-    await renderSuspended(BarcodeScanSheet, {
+    await renderSuspended(AddSheet, {
       props: { open: true, createdFood },
     })
 
@@ -270,7 +270,7 @@ describe('BarcodeScanSheet', () => {
       cookedWeightG: null,
     }
     const onLog = vi.fn()
-    await renderSuspended(BarcodeScanSheet, {
+    await renderSuspended(AddSheet, {
       props: { open: true, createdFood, onLog },
     })
     const user = userEvent.setup()
@@ -283,7 +283,7 @@ describe('BarcodeScanSheet', () => {
   })
 
   it('resets to a fresh add form after closing and reopening', async () => {
-    const { rerender } = await renderSuspended(BarcodeScanSheet, {
+    const { rerender } = await renderSuspended(AddSheet, {
       props: { open: true },
     })
     const user = userEvent.setup()
@@ -307,7 +307,7 @@ describe('BarcodeScanSheet', () => {
     // MISS_BARCODE is intentionally unregistered, so the lookup 404s.
     const MISS_BARCODE = '0000000000000'
     const onSubmit = vi.fn()
-    await renderSuspended(BarcodeScanSheet, { props: { open: true, onSubmit } })
+    await renderSuspended(AddSheet, { props: { open: true, onSubmit } })
     const user = userEvent.setup()
 
     await user.type(screen.getByLabelText(/barcode/i), MISS_BARCODE)
@@ -343,7 +343,7 @@ describe('BarcodeScanSheet', () => {
       },
     })
     const onSubmit = vi.fn()
-    await renderSuspended(BarcodeScanSheet, { props: { open: true, onSubmit } })
+    await renderSuspended(AddSheet, { props: { open: true, onSubmit } })
     const user = userEvent.setup()
 
     await user.type(screen.getByLabelText(/barcode/i), OFFLINE_BARCODE)
@@ -367,7 +367,7 @@ describe('BarcodeScanSheet', () => {
   })
 
   it('shows the add-food form when open', async () => {
-    await renderSuspended(BarcodeScanSheet, { props: { open: true } })
+    await renderSuspended(AddSheet, { props: { open: true } })
 
     expect(screen.getByRole('dialog', { name: /add food/i })).toBeVisible()
     expect(screen.getByLabelText(/^name$/i)).toBeVisible()
@@ -378,7 +378,7 @@ describe('BarcodeScanSheet', () => {
 
   it('emits the new-food payload when the user saves', async () => {
     const onSubmit = vi.fn()
-    await renderSuspended(BarcodeScanSheet, {
+    await renderSuspended(AddSheet, {
       props: { open: true, onSubmit },
     })
     const user = userEvent.setup()
@@ -396,12 +396,46 @@ describe('BarcodeScanSheet', () => {
       fatPer100g: 0.2,
     })
   })
+
+  it('offers a Food or Recipe switch, defaulting to the Food builder', async () => {
+    await renderSuspended(AddSheet, { props: { open: true, foods: [] } })
+
+    expect(screen.getByRole('tab', { name: /food/i })).toBeVisible()
+    expect(screen.getByRole('tab', { name: /recipe/i })).toBeVisible()
+    // The Food builder leads by default.
+    expect(screen.getByLabelText(/^name$/i)).toBeVisible()
+  })
+
+  it('switches to the recipe builder when Recipe is chosen', async () => {
+    const user = userEvent.setup()
+    await renderSuspended(AddSheet, { props: { open: true, foods: [] } })
+
+    await user.click(screen.getByRole('tab', { name: /recipe/i }))
+
+    expect(screen.getByLabelText(/recipe name/i)).toBeVisible()
+    // The Food form gives way to the recipe builder (its panel stays mounted so
+    // in-progress input survives a tab round-trip, but is hidden).
+    expect(screen.getByLabelText(/^name$/i)).not.toBeVisible()
+  })
+
+  it('keeps the recipe draft when toggling to Food and back', async () => {
+    const user = userEvent.setup()
+    await renderSuspended(AddSheet, { props: { open: true, foods: [] } })
+
+    await user.click(screen.getByRole('tab', { name: /recipe/i }))
+    await user.type(screen.getByLabelText(/recipe name/i), 'Cottage pie')
+    await user.click(screen.getByRole('tab', { name: /food/i }))
+    await user.click(screen.getByRole('tab', { name: /recipe/i }))
+
+    // The half-built recipe survives the round-trip (panel not unmounted).
+    expect(screen.getByLabelText(/recipe name/i)).toHaveValue('Cottage pie')
+  })
 })
 
-describe('BarcodeScanSheet camera scanning', () => {
+describe('AddSheet camera scanning', () => {
   it('offers a Scan barcode button alongside the manual input', async () => {
     mockCameraGranted()
-    await renderSuspended(BarcodeScanSheet, { props: { open: true } })
+    await renderSuspended(AddSheet, { props: { open: true } })
 
     expect(screen.getByRole('button', { name: /scan barcode/i })).toBeVisible()
     // The manual barcode input stays an always-on peer of the camera.
@@ -410,7 +444,7 @@ describe('BarcodeScanSheet camera scanning', () => {
 
   it('shows the live viewfinder and a Stop control while scanning', async () => {
     mockCameraGranted()
-    await renderSuspended(BarcodeScanSheet, { props: { open: true } })
+    await renderSuspended(AddSheet, { props: { open: true } })
 
     await userEvent
       .setup()
@@ -423,7 +457,7 @@ describe('BarcodeScanSheet camera scanning', () => {
   it('runs the lookup on a decoded barcode and pre-fills the candidate', async () => {
     // A decoded barcode must branch identically to a typed one (ADR 0006).
     mockCameraGranted(CANDIDATE_BARCODE)
-    await renderSuspended(BarcodeScanSheet, { props: { open: true } })
+    await renderSuspended(AddSheet, { props: { open: true } })
 
     await userEvent
       .setup()
@@ -440,7 +474,7 @@ describe('BarcodeScanSheet camera scanning', () => {
 
   it('falls back to the manual input when the camera is denied', async () => {
     mockCameraDenied()
-    await renderSuspended(BarcodeScanSheet, { props: { open: true } })
+    await renderSuspended(AddSheet, { props: { open: true } })
 
     await userEvent
       .setup()
@@ -460,7 +494,7 @@ describe('BarcodeScanSheet camera scanning', () => {
       configurable: true,
       writable: true,
     })
-    await renderSuspended(BarcodeScanSheet, { props: { open: true } })
+    await renderSuspended(AddSheet, { props: { open: true } })
 
     await userEvent
       .setup()
@@ -471,7 +505,7 @@ describe('BarcodeScanSheet camera scanning', () => {
 
   it('releases the camera when the sheet is closed', async () => {
     const { track } = mockCameraGranted()
-    const { rerender } = await renderSuspended(BarcodeScanSheet, {
+    const { rerender } = await renderSuspended(AddSheet, {
       props: { open: true },
     })
 
@@ -492,7 +526,7 @@ describe('BarcodeScanSheet camera scanning', () => {
       configurable: true,
       writable: true,
     })
-    await renderSuspended(BarcodeScanSheet, { props: { open: true } })
+    await renderSuspended(AddSheet, { props: { open: true } })
 
     await userEvent
       .setup()
