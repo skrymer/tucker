@@ -7,6 +7,11 @@ data class RecipeIngredient(
 ) {
     init {
         require(grams > 0) { "ingredient grams must be > 0, was $grams" }
+        // Ingredients are plain Foods only — no nested recipes in v1 (CONTEXT.md),
+        // which would invite cycles and compounded estimates.
+        require(ingredient.kind == FoodKind.FOOD) {
+            "a recipe ingredient must be a plain Food, not a ${ingredient.kind}"
+        }
     }
 }
 
