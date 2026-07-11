@@ -42,7 +42,11 @@ export default defineNuxtConfig({
     },
   },
 
-  // Typed API client generated from the backend's OpenAPI spec.
+  // Typed API client generated from the backend's OpenAPI spec. The
+  // `redirect: 'manual'` fetch option the auth-gate plugin needs
+  // (app/plugins/auth-gate.client.ts) isn't part of this client config's
+  // type (only baseURL/query/headers are), so it's set per-request via an
+  // openFetch:onRequest hook instead.
   openFetch: {
     clients: {
       api: {
