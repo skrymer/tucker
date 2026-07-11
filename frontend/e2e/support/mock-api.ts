@@ -25,6 +25,20 @@ export async function mockSummary(page: Page, summary: Json = emptySummary) {
   )
 }
 
+/** Stub `GET /api/summary` failing with a real (non-empty-state) server error. */
+export async function mockSummaryError(page: Page) {
+  await page.route('**/api/summary**', (route) =>
+    route.fulfill({ status: 500, json: { message: 'boom' } }),
+  )
+}
+
+/** Stub `GET /api/weekly-review/history` failing with a real server error. */
+export async function mockReviewHistoryError(page: Page) {
+  await page.route('**/api/weekly-review/history', (route) =>
+    route.fulfill({ status: 500, json: { message: 'boom' } }),
+  )
+}
+
 /**
  * Stub `GET /api/foods` so the Foods page renders without a real backend.
  * Pass an array of foods, or omit for the empty-catalog state.

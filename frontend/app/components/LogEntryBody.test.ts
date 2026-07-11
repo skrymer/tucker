@@ -77,4 +77,18 @@ describe('LogEntryBody', () => {
       screen.getByRole('button', { name: 'Log weighed entry' }),
     ).toBeVisible()
   })
+
+  it('shows a retryable error on the Weighed tab when the catalog fails to load', async () => {
+    await renderSuspended(LogEntryBody, {
+      props: { date: '2026-05-24', foods: [], foodsError: new Error('boom') },
+    })
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole('tab', { name: 'Weighed' }))
+
+    expect(
+      screen.getByRole('heading', { name: "Couldn't load your foods" }),
+    ).toBeVisible()
+    expect(screen.queryByLabelText('Food')).not.toBeInTheDocument()
+  })
 })

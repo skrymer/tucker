@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { renderSuspended, registerEndpoint } from '@nuxt/test-utils/runtime'
+import { createError } from 'h3'
 import { screen } from '@testing-library/vue'
 import WeightHistory from './weight.vue'
 
@@ -58,5 +59,19 @@ describe('/profile/weight history page', () => {
 
     expect(screen.queryByRole('button', { name: /add weight/i })).toBeNull()
     expect(screen.queryByRole('dialog', { name: /log weight/i })).toBeNull()
+  })
+
+  it('shows a retryable error instead of the empty state when the history fails to load', async () => {
+    registerEndpoint('/api/weight', () => {
+      throw createError({ statusCode: 500 })
+    })
+    await renderSuspended(WeightHistory)
+
+    expect(
+      screen.getByRole('heading', {
+        name: "Couldn't load your weight history",
+      }),
+    ).toBeVisible()
+    expect(screen.queryByText(/no weight logged yet/i)).not.toBeInTheDocument()
   })
 })

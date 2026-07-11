@@ -3,19 +3,17 @@ import type { components } from '#open-fetch-schemas/api'
 
 type ProfileDto = components['schemas']['ProfileDto']
 
-// Loading and saving the Profile, grouped as one named concern.
+// Loading and saving the Profile, grouped as one named concern. A 404 (no
+// profile yet) is an expected empty state; any other failure is a real error
+// (useOptionalFetch), surfaced in place of the details form instead of
+// silently rendering as though there were simply nothing to show.
 function useProfileForm() {
   const { $api } = useNuxtApp()
-  const profile = ref<ProfileDto | null>(null)
-
-  async function load() {
-    try {
-      profile.value = await $api('/api/profile')
-    } catch {
-      // 404 → no profile yet. Leave the form empty.
-      profile.value = null
-    }
-  }
+  const {
+    data: profile,
+    error,
+    load,
+  } = useOptionalFetch(() => $api('/api/profile'))
 
   const { execute: save } = useApiMutation(
     (payload: { sex: string; birthDate: string; heightCm: number }) =>
@@ -32,7 +30,7 @@ function useProfileForm() {
     },
   )
 
-  return { profile, load, save }
+  return { profile, error, load, save }
 }
 
 // Setting a Goal — the backend replaces the active one and preserves history.
@@ -80,24 +78,42 @@ function useGoalSubmission(onSubmitted: () => void | Promise<void>) {
   return { submit, targetError }
 }
 
-const { profile, load: loadProfile, save: saveProfile } = useProfileForm()
+const {
+  profile,
+  error: profileError,
+  load: loadProfile,
+  save: saveProfile,
+} = useProfileForm()
 
-const { data: weights, refresh: refreshWeights } = await useApi('/api/weight')
-const { data: goals, refresh: refreshGoals } = await useApi('/api/goals')
+const {
+  data: weights,
+  error: weightsError,
+  refresh: refreshWeights,
+} = await useApi('/api/weight')
+const {
+  data: goals,
+  error: goalsError,
+  refresh: refreshGoals,
+} = await useApi('/api/goals')
 
 // The live Trend Weight the new Goal anchors its start on (ADR 0016). Fetched,
 // never computed client-side (ADR 0002 — the EWMA is the backend's); 404 (no
 // readings yet) → null, which leaves the gated Goal section disabled.
 const { $api } = useNuxtApp()
-const currentTrend = ref<components['schemas']['WeightTrendResponse'] | null>(
-  null,
+const {
+  data: currentTrend,
+  error: currentTrendError,
+  load: refreshCurrentTrend,
+} = useOptionalFetch(() => $api('/api/weight/trend'))
+
+// The Goal section depends on both reads — either failing means it can't
+// render correctly, so one error state covers both and retries whichever
+// (or both) failed.
+const goalSectionError = computed(
+  () => goalsError.value ?? currentTrendError.value,
 )
-async function refreshCurrentTrend() {
-  try {
-    currentTrend.value = await $api('/api/weight/trend')
-  } catch {
-    currentTrend.value = null
-  }
+function retryGoalSection() {
+  return Promise.all([refreshGoals(), refreshCurrentTrend()])
 }
 
 // The user's local date — the latest weight a backfill may target.
@@ -140,20 +156,32 @@ await Promise.all([loadProfile(), refreshCurrentTrend()])
       history lives on /profile/weight). The body-stats form and reminder
       settings follow as the less-often-touched setup (#105).
     -->
-    <GoalSection
-      :goals="goals ?? []"
-      :current-trend="currentTrend"
-      :target-error="goalTargetError"
-      :disabled="!gating.goalEnabled"
-      @submit="submitGoal"
-    />
+    <LoadErrorState
+      :error="goalSectionError"
+      title="Couldn't load your goal"
+      @retry="retryGoalSection"
+    >
+      <GoalSection
+        :goals="goals ?? []"
+        :current-trend="currentTrend"
+        :target-error="goalTargetError"
+        :disabled="!gating.goalEnabled"
+        @submit="submitGoal"
+      />
+    </LoadErrorState>
 
-    <WeightSection
-      :today="today"
-      :measurements="weights ?? []"
-      :disabled="!gating.weightEnabled"
-      @logged="logWeight"
-    />
+    <LoadErrorState
+      :error="weightsError"
+      title="Couldn't load your weight"
+      @retry="refreshWeights"
+    >
+      <WeightSection
+        :today="today"
+        :measurements="weights ?? []"
+        :disabled="!gating.weightEnabled"
+        @logged="logWeight"
+      />
+    </LoadErrorState>
 
     <section
       class="flex flex-col gap-4"
@@ -165,9 +193,15 @@ await Promise.all([loadProfile(), refreshCurrentTrend()])
       >
         Your details
       </h2>
-      <UCard>
-        <ProfileForm :initial="profile ?? undefined" @submit="saveProfile" />
-      </UCard>
+      <LoadErrorState
+        :error="profileError"
+        title="Couldn't load your profile"
+        @retry="loadProfile"
+      >
+        <UCard>
+          <ProfileForm :initial="profile ?? undefined" @submit="saveProfile" />
+        </UCard>
+      </LoadErrorState>
     </section>
 
     <!-- Reminder opt-in lives once the profile exists (it edits the profile). -->

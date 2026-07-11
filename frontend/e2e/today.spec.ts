@@ -1,5 +1,10 @@
 import { expect, test } from './support/test'
-import { mockSummary, mockWeightApi } from './support/mock-api'
+import {
+  mockNoActiveGoal,
+  mockSummary,
+  mockSummaryError,
+  mockWeightApi,
+} from './support/mock-api'
 
 test('the Today page shows the daily summary from the API', async ({
   page,
@@ -80,4 +85,20 @@ test("logging a weight from the tile shows it as today's weight", async ({
     page.getByRole('button', { name: /edit today's weight/i }),
   ).toBeVisible()
   await expect(page.getByRole('button', { name: 'Log weight' })).toHaveCount(0)
+})
+
+test("shows a retryable error instead of an empty dashboard when today's summary fails to load", async ({
+  page,
+  goto,
+}) => {
+  await mockWeightApi(page)
+  await mockNoActiveGoal(page)
+  await mockSummaryError(page)
+
+  await goto('/', { waitUntil: 'hydration' })
+
+  await expect(
+    page.getByRole('heading', { name: "Couldn't load today's summary" }),
+  ).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Retry' })).toBeVisible()
 })
