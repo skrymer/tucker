@@ -19,16 +19,35 @@ every user — whereas a **Recipe** or a hand-entered Food is private to whoever
 created it; correcting a shared Food forks a private copy rather than changing it
 for everyone. (Tucker is single-user today; this is the ownership model it grows
 into — the global `barcode` uniqueness already assumes it.)
-A Food referenced by at least one **Entry** **cannot be deleted** — Entries are
-permanent history, so a logged-against Food is rejected (it stays in the catalog);
-only a Food with no Entries can be removed.
+A Food referenced by at least one **Entry** — or used as an ingredient in a
+**Recipe** — **cannot be deleted**. Entries are permanent history, and a Recipe's
+ingredients are part of its definition, so a referenced Food is rejected (it stays
+in the catalog) with a message naming what references it; only a Food that is
+neither logged nor an ingredient can be removed.
 _Avoid_: food item, product
 
 **Recipe**:
-A composite Food: defined once from ingredient Foods, their weights, and the
-finished dish's cooked weight, then rolled up into per-100g nutrition. Logged
-like any other Food — you weigh your portion. The third way to create a Food,
-alongside barcode scan and manual entry.
+A composite Food, defined once from ingredient Foods and rolled up into per-100g
+nutrition. Two weights, meaning different things:
+
+- Each **ingredient** is weighed **as added** — its per-100g must match the form
+  weighed in (raw mince uses raw-mince values). The sum across ingredients is the
+  batch's **total** calories and protein.
+- The **cooked weight** is what the finished dish weighs on the scale after
+  cooking. Cooking changes only the dish's weight — water carries no calories or
+  protein — so the total is conserved and simply re-expressed per 100g of the
+  cooked weight (`per-100g = total ÷ cooked weight`). A dish that loses water is
+  denser per gram; one that absorbs it (pasta, rice) is lighter.
+
+The cooked weight is a **representative batch**, not a per-batch measurement:
+cook the same recipe longer another day and the real density shifts a little.
+That drift is a bounded estimate (it never touches the total, only how a portion
+is sliced out of it) and sits below the estimation error already in any Food's
+per-100g — the same way a supermarket ready-meal's label is a batch average. A
+Recipe's cooked weight (hence its density) can be **edited** to recalibrate; because
+**Entries snapshot** their calories, editing a Recipe never rewrites past logs, only
+future ones. Logged like any other Food — you weigh your portion of the finished
+dish. The third way to create a Food, alongside barcode scan and manual entry.
 
 **Nutrition Provider**:
 An external source of nutrition data Tucker integrates with to autofill a new
