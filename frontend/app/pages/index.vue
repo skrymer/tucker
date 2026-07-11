@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import type { components } from '#open-fetch-schemas/api'
 
-type WeightMeasurement = components['schemas']['WeightMeasurementResponse']
-type GoalProgress = components['schemas']['GoalProgressResponse']
 type EntryResponse = components['schemas']['EntryResponse']
 
 // The day to show — the user's local date.
@@ -16,30 +14,28 @@ const logEntryOpen = ref(false)
 
 const { $api } = useNuxtApp()
 
-const { data: summary, refresh } = await useApi('/api/summary', {
+const {
+  data: summary,
+  error: summaryError,
+  refresh,
+} = await useApi('/api/summary', {
   query: { date: today },
 })
 
-const latestWeight = ref<WeightMeasurement | null>(null)
-async function refreshLatestWeight() {
-  // 404 (no measurements yet) is an expected state, not a failure.
-  try {
-    latestWeight.value = await $api('/api/weight/latest')
-  } catch {
-    latestWeight.value = null
-  }
-}
+// 404 (no measurements yet) is an expected state, not a failure.
+const {
+  data: latestWeight,
+  error: latestWeightError,
+  load: refreshLatestWeight,
+} = useOptionalFetch(() => $api('/api/weight/latest'))
 
 // Goal progress runs off the smoothed Trend Weight, so a fresh weigh-in moves
 // it; 404 (no active Goal) is an expected state, surfaced as the tile's CTA.
-const goalProgress = ref<GoalProgress | null>(null)
-async function refreshGoalProgress() {
-  try {
-    goalProgress.value = await $api('/api/goal/progress')
-  } catch {
-    goalProgress.value = null
-  }
-}
+const {
+  data: goalProgress,
+  error: goalProgressError,
+  load: refreshGoalProgress,
+} = useOptionalFetch(() => $api('/api/goal/progress'))
 
 await Promise.all([refreshLatestWeight(), refreshGoalProgress()])
 
@@ -126,30 +122,49 @@ const { logWeight } = useWeightLogging({ today, onSaved: onWeightSaved })
         Log entry
       </UButton>
     </header>
-    <SetupBanner :calorie-budget="summary?.calorieBudget" />
-    <BudgetChangeBanner :budget-change="summary?.budgetChange" />
-    <WeightTile :today="today" :latest="latestWeight" @logged="logWeight" />
-    <DaySummary
-      v-if="summary"
-      :summary="summary"
-      @delete="selectedEntry = $event"
-    />
-    <ReachedGoalBanner
-      v-if="goalProgress?.reachedOn"
-      :target-weight-kg="goalProgress.targetWeightKg"
-      @switch-to-maintenance="switchToMaintenance"
-    />
-    <MaintainingTile
-      v-if="maintainingTrendWeightKg != null"
-      :trend-weight-kg="maintainingTrendWeightKg"
-      :drift-status="maintainingDriftStatus"
-    />
-    <!-- The reached banner already carries the milestone; a 100% Goal-Progress
-         tile beside it would be redundant, so it's suppressed while reached. -->
-    <GoalGlanceTile
-      v-else-if="goalProgress && !goalProgress.reachedOn"
-      :progress="goalProgress"
-    />
+    <LoadErrorState
+      :error="summaryError"
+      title="Couldn't load today's summary"
+      @retry="refresh"
+    >
+      <SetupBanner :calorie-budget="summary?.calorieBudget" />
+      <BudgetChangeBanner :budget-change="summary?.budgetChange" />
+      <LoadErrorState
+        :error="latestWeightError"
+        title="Couldn't load your weight"
+        @retry="refreshLatestWeight"
+      >
+        <WeightTile :today="today" :latest="latestWeight" @logged="logWeight" />
+      </LoadErrorState>
+      <DaySummary
+        v-if="summary"
+        :summary="summary"
+        @delete="selectedEntry = $event"
+      />
+      <LoadErrorState
+        :error="goalProgressError"
+        title="Couldn't load your goal"
+        @retry="refreshGoalProgress"
+      >
+        <ReachedGoalBanner
+          v-if="goalProgress?.reachedOn"
+          :target-weight-kg="goalProgress.targetWeightKg"
+          @switch-to-maintenance="switchToMaintenance"
+        />
+        <MaintainingTile
+          v-if="maintainingTrendWeightKg != null"
+          :trend-weight-kg="maintainingTrendWeightKg"
+          :drift-status="maintainingDriftStatus"
+        />
+        <!-- The reached banner already carries the milestone; a 100%
+             Goal-Progress tile beside it would be redundant, so it's
+             suppressed while reached. -->
+        <GoalGlanceTile
+          v-else-if="goalProgress && !goalProgress.reachedOn"
+          :progress="goalProgress"
+        />
+      </LoadErrorState>
+    </LoadErrorState>
     <UButton
       v-if="!isDesktop"
       icon="i-lucide-plus"

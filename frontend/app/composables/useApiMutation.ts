@@ -45,6 +45,11 @@ export function useApiMutation<TArgs extends unknown[]>(
   const { pending, busy, run } = useAsyncAction<TArgs, void>(
     async (_signal, ...args) => {
       await mutate(...args)
+      // A mutation that resolves without throwing — e.g. an intercepted
+      // opaque-redirect response the underlying fetch client didn't treat
+      // as an error — must not be celebrated as a real save; the logged-out
+      // interstitial is about to replace the whole app regardless.
+      if (useAuthGate().isLoggedOut.value) return
       await options.onSuccess?.()
     },
   )
@@ -58,6 +63,12 @@ export function useApiMutation<TArgs extends unknown[]>(
     try {
       await run(...args)
     } catch (error) {
+      // An expired session already switches the whole app to the logged-out
+      // interstitial (useAuthGate) — the generic "check your connection,
+      // Retry" toast would be exactly the wrong advice DESIGN.md's Feedback
+      // states section warns against layering on top of it, and Retry would
+      // just repeat the same expired-session failure forever.
+      if (useAuthGate().isLoggedOut.value) return
       const message = validationMessage(error)
       if (message && options.onValidationError) {
         // A wrong input, not a flaky connection: hand it to the form and clear
@@ -69,7 +80,7 @@ export function useApiMutation<TArgs extends unknown[]>(
       toast.add({
         id: errorToastId,
         title: options.errorTitle,
-        description: 'Check your connection and try again.',
+        description: CONNECTION_ERROR_MESSAGE,
         color: 'error',
         // A failed save is high-stakes on a phone: persist until the user
         // acknowledges it, with an assertive live region and an explicit close.
@@ -85,6 +96,7 @@ export function useApiMutation<TArgs extends unknown[]>(
       })
       return
     }
+    if (useAuthGate().isLoggedOut.value) return
     // A successful (re)try clears any persistent failure toast for this
     // mutation — the snackbar is dismissed only by success or by the user.
     toast.remove(errorToastId)

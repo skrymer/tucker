@@ -75,11 +75,16 @@ compose overlay; images are built on the host for now.**
 - **The prod overlay is the single source of "what prod adds."** Backend host-port,
   tunnel wiring, and the frontend service live in one readable diff, the base file stays
   dev-friendly.
-- **Access session expiry is visible in-app.** When the Access session lapses inside
-  the installed PWA, `/api` fetches fail (the login redirect is cross-origin) until a
-  reload re-runs the redirect — the SPA has no auth-expiry handling of its own
-  because Access is the only auth. Accepted; mitigated operationally with the
-  maximum Access session duration (see `deploy/README.md`).
+- **Access session expiry is detected in-app (issue #139).** The installed PWA's
+  precached app shell (ADR 0011) serves any navigation from cache, so Access's login
+  redirect never gets a chance to run at launch — only the subsequent `/api/*` calls
+  hit the gate. A client plugin (`app/plugins/auth-gate.client.ts`) sets
+  `redirect: 'manual'` on the `api` client so that interception surfaces as an
+  inspectable opaque-redirect response instead of a silent cross-origin failure, and
+  switches the whole app to a "You've been logged out" interstitial (DESIGN.md
+  Feedback states) whose action forces a real navigation to `/api/version` — the one
+  path the offline-shell precache always sends to the network — so Access's login
+  challenge actually runs.
 - **Backup is not wired by this ADR.** Off-host Litestream replication (and its WAL
   prerequisite) is deferred to issue #89; the first deploy runs without it (accepted for
   a greenfield start, must land before real reliance).

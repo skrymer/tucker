@@ -5,11 +5,15 @@ const emit = defineEmits<{ logged: []; 'update:open': [boolean] }>()
 
 const { $api } = useNuxtApp()
 
-// Foods catalog for the Weighed form. Non-awaited so the component
-// renders immediately; the picker populates when the fetch resolves.
-// In tests without a backend the fetch silently rejects and `foods`
-// stays null — the Weighed form just shows the empty-catalog CTA.
-const { data: foods } = useApi('/api/foods')
+// Foods catalog for the Weighed form. Non-awaited so the component renders
+// immediately; the picker populates when the fetch resolves. A failed fetch
+// (distinct from a genuinely empty catalog) surfaces as a retryable error on
+// the Weighed tab instead of the empty-catalog CTA (issue #139).
+const {
+  data: foods,
+  error: foodsError,
+  refresh: refreshFoods,
+} = useApi('/api/foods')
 
 function closeAndEmit() {
   emit('update:open', false)
@@ -96,6 +100,7 @@ const submitting = computed(
     <LogEntryBody
       :date="date"
       :foods="foods ?? []"
+      :foods-error="foodsError"
       :estimated-warning="estimatedWarning"
       :estimated-pending="estimatedProjecting || submittingEstimated"
       :weighed-warning="weighedWarning"
@@ -104,6 +109,7 @@ const submitting = computed(
       @submit-weighed="attemptWeighed"
       @edited-estimated="resetEstimated"
       @edited-weighed="resetWeighed"
+      @retry-foods="refreshFoods"
     />
   </ResponsiveOverlay>
 </template>

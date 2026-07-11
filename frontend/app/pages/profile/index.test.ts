@@ -110,3 +110,76 @@ describe('/profile progressive disclosure', () => {
     expect(within(goal).queryByText(/log your weight first/i)).toBeNull()
   })
 })
+
+describe('/profile when a section fails to load', () => {
+  it('shows a retryable error in place of the Weight section', async () => {
+    registerEndpoint('/api/profile', () => {
+      throw createError({ statusCode: 404 })
+    })
+    registerEndpoint('/api/weight', () => {
+      throw createError({ statusCode: 500 })
+    })
+    registerEndpoint('/api/goals', () => [])
+    await renderSuspended(Profile)
+
+    expect(
+      screen.getByRole('heading', { name: "Couldn't load your weight" }),
+    ).toBeVisible()
+    expect(
+      screen.queryByRole('region', { name: /^weight$/i }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('shows a retryable error in place of the Goal section', async () => {
+    registerEndpoint('/api/profile', () => {
+      throw createError({ statusCode: 404 })
+    })
+    registerEndpoint('/api/weight', () => [])
+    registerEndpoint('/api/goals', () => {
+      throw createError({ statusCode: 500 })
+    })
+    await renderSuspended(Profile)
+
+    expect(
+      screen.getByRole('heading', { name: "Couldn't load your goal" }),
+    ).toBeVisible()
+    expect(
+      screen.queryByRole('region', { name: /^goal$/i }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('shows a retryable error in place of the Goal section when the trend fails to load', async () => {
+    registerEndpoint('/api/profile', () => {
+      throw createError({ statusCode: 404 })
+    })
+    registerEndpoint('/api/weight', () => [])
+    registerEndpoint('/api/goals', () => [])
+    registerEndpoint('/api/weight/trend', () => {
+      throw createError({ statusCode: 500 })
+    })
+    await renderSuspended(Profile)
+
+    expect(
+      screen.getByRole('heading', { name: "Couldn't load your goal" }),
+    ).toBeVisible()
+    expect(
+      screen.queryByRole('region', { name: /^goal$/i }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('shows a retryable error in place of the profile details form', async () => {
+    registerEndpoint('/api/profile', () => {
+      throw createError({ statusCode: 500 })
+    })
+    registerEndpoint('/api/weight', () => [])
+    registerEndpoint('/api/goals', () => [])
+    await renderSuspended(Profile)
+
+    expect(
+      screen.getByRole('heading', { name: "Couldn't load your profile" }),
+    ).toBeVisible()
+    expect(
+      screen.queryByRole('button', { name: /save profile/i }),
+    ).not.toBeInTheDocument()
+  })
+})

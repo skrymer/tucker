@@ -3,7 +3,7 @@ import type { components } from '#open-fetch-schemas/api'
 
 type FoodResponse = components['schemas']['FoodResponse']
 
-const { data: foods, refresh } = await useApi('/api/foods')
+const { data: foods, error: foodsError, refresh } = await useApi('/api/foods')
 
 const open = ref(false)
 const selectedFood = ref<FoodResponse | null>(null)
@@ -117,13 +117,19 @@ function handleDeleteConfirm() {
       </UButton>
     </header>
 
-    <FoodList
-      v-if="foods && foods.length > 0"
-      :foods="foods"
-      @log="foodToLog = $event"
-      @delete="selectedFood = $event"
-    />
-    <FoodEmptyState v-else @add="open = true" />
+    <LoadErrorState
+      :error="foodsError"
+      title="Couldn't load your foods"
+      @retry="refresh"
+    >
+      <FoodList
+        v-if="foods && foods.length > 0"
+        :foods="foods"
+        @log="foodToLog = $event"
+        @delete="selectedFood = $event"
+      />
+      <FoodEmptyState v-else @add="open = true" />
+    </LoadErrorState>
 
     <UButton
       v-if="!isDesktop"

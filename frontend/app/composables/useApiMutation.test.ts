@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mockNuxtImport } from '@nuxt/test-utils/runtime'
+import { ref } from 'vue'
 import { useApiMutation } from './useApiMutation'
 
 const { toastAdd, toastRemove } = vi.hoisted(() => ({
@@ -11,9 +12,18 @@ mockNuxtImport('useToast', () => () => ({
   remove: toastRemove,
 }))
 
+const authGateState = vi.hoisted(() => ({ isLoggedOut: false }))
+mockNuxtImport('useAuthGate', () => () => ({
+  isLoggedOut: ref(authGateState.isLoggedOut),
+  markLoggedOut: () => {
+    authGateState.isLoggedOut = true
+  },
+}))
+
 beforeEach(() => {
   toastAdd.mockClear()
   toastRemove.mockClear()
+  authGateState.isLoggedOut = false
 })
 
 describe('useApiMutation', () => {
@@ -168,5 +178,37 @@ describe('useApiMutation', () => {
     await execute()
 
     expect(toastRemove).toHaveBeenCalledWith(errorId)
+  })
+
+  it('skips the generic retry toast once the session has ended', async () => {
+    authGateState.isLoggedOut = true
+    const { execute } = useApiMutation(() => Promise.reject(new Error('x')), {
+      errorTitle: 'Could not save',
+    })
+
+    await execute()
+
+    // The logged-out interstitial already replaces the whole app — a
+    // "check your connection, Retry" toast on top would be the wrong
+    // advice, and Retry would just repeat the same expired-session failure.
+    expect(toastAdd).not.toHaveBeenCalled()
+  })
+
+  it('skips onSuccess and the success toast once the session has ended', async () => {
+    authGateState.isLoggedOut = true
+    const onSuccess = vi.fn()
+    // A mutation that resolves without throwing — e.g. an intercepted
+    // opaque-redirect response the underlying fetch client didn't treat as
+    // an error — must not be celebrated as a real save.
+    const { execute } = useApiMutation(() => Promise.resolve(), {
+      successTitle: 'Saved',
+      errorTitle: 'Could not save',
+      onSuccess,
+    })
+
+    await execute()
+
+    expect(onSuccess).not.toHaveBeenCalled()
+    expect(toastAdd).not.toHaveBeenCalled()
   })
 })

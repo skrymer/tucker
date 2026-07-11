@@ -4,7 +4,7 @@ import {
   registerEndpoint,
   renderSuspended,
 } from '@nuxt/test-utils/runtime'
-import { setResponseStatus } from 'h3'
+import { createError, setResponseStatus } from 'h3'
 import { screen, within } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import Foods from './foods.vue'
@@ -59,5 +59,22 @@ describe('/foods deleting a food with logged entries', () => {
     expect(
       screen.queryByRole('dialog', { name: /delete this food/i }),
     ).toBeNull()
+  })
+})
+
+describe('/foods when the catalog fails to load', () => {
+  it('shows a retryable error instead of the empty-catalog state', async () => {
+    registerEndpoint('/api/foods', () => {
+      throw createError({ statusCode: 500 })
+    })
+
+    await renderSuspended(Foods)
+
+    expect(
+      screen.getByRole('heading', { name: "Couldn't load your foods" }),
+    ).toBeVisible()
+    expect(
+      screen.queryByRole('heading', { name: /build your food catalog/i }),
+    ).not.toBeInTheDocument()
   })
 })

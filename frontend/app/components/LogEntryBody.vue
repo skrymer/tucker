@@ -8,6 +8,8 @@ type FoodResponse = components['schemas']['FoodResponse']
 defineProps<{
   date: string
   foods: FoodResponse[]
+  /** Set when the catalog fetch failed — distinct from a genuinely empty catalog. */
+  foodsError?: unknown
   /** Over-budget warning for the estimated entry being composed; null when within budget. */
   estimatedWarning?: BudgetWarning | null
   /** True while the estimated entry's budget projection is in flight. */
@@ -30,6 +32,7 @@ const emit = defineEmits<{
   submitWeighed: [{ date: string; foodId: number; grams: number }]
   editedEstimated: []
   editedWeighed: []
+  retryFoods: []
 }>()
 
 const items: TabsItem[] = [
@@ -57,15 +60,21 @@ const items: TabsItem[] = [
     </template>
 
     <template #weighed>
-      <WeighedEntryForm
-        :date="date"
-        :foods="foods"
-        :warning="weighedWarning"
-        :pending="weighedPending"
-        class="mt-4"
-        @submit="(payload) => emit('submitWeighed', payload)"
-        @edited="() => emit('editedWeighed')"
-      />
+      <LoadErrorState
+        :error="foodsError"
+        title="Couldn't load your foods"
+        @retry="emit('retryFoods')"
+      >
+        <WeighedEntryForm
+          :date="date"
+          :foods="foods"
+          :warning="weighedWarning"
+          :pending="weighedPending"
+          class="mt-4"
+          @submit="(payload) => emit('submitWeighed', payload)"
+          @edited="() => emit('editedWeighed')"
+        />
+      </LoadErrorState>
     </template>
   </UTabs>
 </template>

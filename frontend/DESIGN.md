@@ -189,6 +189,50 @@ budget exists.
 
 ---
 
+## Feedback states — empty / load-error / logged-out
+
+Three states share one shape (icon + heading + body + optional button, centred,
+`flex flex-col items-center gap-3 py-12 text-center`) but read differently
+through icon and colour, never through colour alone.
+
+| State      | Icon                                 | Icon colour  | Heading pattern                          | Body                                   | Action                                   |
+| ---------- | ------------------------------------ | ------------ | ---------------------------------------- | -------------------------------------- | ---------------------------------------- |
+| Empty      | subject icon (e.g. `i-lucide-salad`) | `text-muted` | "Build your…" — invites the first action | says what to do next                   | primary CTA (e.g. "Add your first food") |
+| Load error | `i-lucide-cloud-off`                 | `text-error` | "Couldn't load your `<thing>`"           | "Check your connection and try again." | "Retry" — replays the same fetch         |
+| Logged out | `i-lucide-lock`                      | `text-error` | "You've been logged out"                 | "Log back in to keep tracking."        | "Log back in" — forces a real navigation |
+
+- **Empty** means "nothing here yet, and that's expected" — quiet, muted icon,
+  inviting tone. **Load error** and **logged out** both use the Status **error**
+  red (`#E5484D`, see Colour) on the icon only; the surrounding card stays the
+  same restrained white/quiet treatment as everywhere else. Colour is always
+  paired with a distinct icon and heading per state — never the only signal.
+- **Load error and logged out are deliberately different icons and verbs**
+  (`cloud-off` / "Retry" vs. `lock` / "Log back in"), because they call for
+  different user actions — telling someone to "check your connection" when
+  they're actually logged out is wrong advice.
+- **Placement:** a load-error state replaces the specific region that failed to
+  load — the full page body for a page's primary data (Today's summary, the
+  Foods catalog, a Review), or just the one card for a secondary widget (e.g.
+  Today's weight or goal-progress card). It never sits beside a misleading
+  empty state.
+- **Logged out is a single, page-level interstitial** — rendered once at the
+  shell, not duplicated per-widget. If the session is gone, every fetch fails
+  identically; one clear message beats six identical "Retry" cards that would
+  all fail the same way.
+- **No toast for read failures.** The persistent-retry toast in
+  [ADR 0005](../docs/adr/0005-notifications-persistent-errors-quiet-success.md)
+  exists because a mutation's sheet closes and focus moves away from the
+  failure. A failed read renders its error exactly where focus already is, so a
+  toast on top would just repeat what's already on screen — the same "don't
+  confirm what's already visible" logic ADR 0005 applies to success, applied
+  here to failure. Toasts stay reserved for mutations.
+- **Copy reuse:** the load-error body text ("Check your connection and try
+  again.") is the exact phrase already used in the mutation-error toast
+  (`useApiMutation.ts`), and "Retry" is the same verb — one vocabulary for
+  "this action failed, try it again" everywhere in the app.
+
+---
+
 ## Mapping to Nuxt UI (implementation)
 
 1. **`app/app.config.ts`** — `ui.colors`: `primary: 'green'`, `secondary:
