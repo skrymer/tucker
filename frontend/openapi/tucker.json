@@ -1278,6 +1278,67 @@
         }
       }
     },
+    "/api/recipes/{id}": {
+      "get": {
+        "tags": [
+          "recipe-controller"
+        ],
+        "operationId": "byId",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecipeResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/push/vapid-public-key": {
       "get": {
         "tags": [
@@ -1436,7 +1497,7 @@
         "tags": [
           "food-controller"
         ],
-        "operationId": "byId",
+        "operationId": "byId_1",
         "parameters": [
           {
             "name": "id",
@@ -1995,6 +2056,10 @@
           "cookedWeightG": {
             "type": "number",
             "format": "double"
+          },
+          "ingredientCount": {
+            "type": "integer",
+            "format": "int32"
           }
         }
       },
@@ -2382,6 +2447,55 @@
           "observedRateKgPerWeek": {
             "type": "number",
             "format": "double"
+          }
+        }
+      },
+      "RecipeIngredientResponse": {
+        "required": [
+          "foodId",
+          "grams",
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "foodId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          },
+          "grams": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
+      "RecipeResponse": {
+        "required": [
+          "cookedWeightG",
+          "id",
+          "ingredients",
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          },
+          "cookedWeightG": {
+            "type": "number",
+            "format": "double"
+          },
+          "ingredients": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RecipeIngredientResponse"
+            }
           }
         }
       },

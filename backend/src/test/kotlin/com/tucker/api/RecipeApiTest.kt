@@ -2,6 +2,8 @@ package com.tucker.api
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.hamcrest.Matchers.closeTo
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
@@ -27,6 +29,12 @@ class RecipeApiTest {
             content = """{"name":"$name","proteinPer100g":$protein,"carbsPer100g":$carbs,"fatPer100g":$fat}"""
         }.andExpect { status { isCreated() } }.andReturn().response.contentAsString
         return objectMapper.readTree(json).get("id").asLong()
+    }
+
+    /** Build a create-recipe request body from `foodId to grams` ingredient pairs. */
+    private fun recipeBody(name: String, cookedWeightG: Double, vararg ingredients: Pair<Long, Double>): String {
+        val lines = ingredients.joinToString(",") { (id, grams) -> """{"foodId":$id,"grams":$grams}""" }
+        return """{"name":"$name","cookedWeightG":$cookedWeightG,"ingredients":[$lines]}"""
     }
 
     @Test
@@ -117,6 +125,77 @@ class RecipeApiTest {
             content =
                 """{"name":"Nested","cookedWeightG":200.0,"ingredients":[{"foodId":$recipeId,"grams":100.0}]}"""
         }.andExpect { status { isBadRequest() } }
+    }
+
+    @Test
+    fun `creating a recipe reports its ingredient count`() {
+        val minceId = createFood("Mince", 20.0, 0.0, 10.0)
+        val onionId = createFood("Onion", 1.0, 9.0, 0.0)
+
+        mockMvc.post("/api/recipes") {
+            contentType = MediaType.APPLICATION_JSON
+            content = recipeBody("Cottage Pie", 250.0, minceId to 300.0, onionId to 100.0)
+        }.andExpect {
+            status { isCreated() }
+            jsonPath("$.ingredientCount") { value(2) }
+        }
+    }
+
+    @Test
+    fun `the foods catalog carries the ingredient count for recipes and null for plain foods`() {
+        val minceId = createFood("Mince", 20.0, 0.0, 10.0)
+        val onionId = createFood("Onion", 1.0, 9.0, 0.0)
+        val recipeJson = mockMvc.post("/api/recipes") {
+            contentType = MediaType.APPLICATION_JSON
+            content = recipeBody("Cottage Pie", 250.0, minceId to 300.0, onionId to 100.0)
+        }.andExpect { status { isCreated() } }.andReturn().response.contentAsString
+        val recipeId = objectMapper.readTree(recipeJson).get("id").asLong()
+
+        val listJson = mockMvc.get("/api/foods")
+            .andExpect { status { isOk() } }.andReturn().response.contentAsString
+        val rows = objectMapper.readTree(listJson)
+        val recipeRow = rows.first { it.get("id").asLong() == recipeId }
+        val foodRow = rows.first { it.get("id").asLong() == minceId }
+
+        assertEquals(2, recipeRow.get("ingredientCount").asInt())
+        assertTrue(foodRow.get("ingredientCount").isNull, "a plain Food carries no ingredient count")
+    }
+
+    @Test
+    fun `getting a recipe by id returns its ingredient lines and cooked weight`() {
+        val minceId = createFood("Mince", protein = 20.0, carbs = 0.0, fat = 10.0)
+        val onionId = createFood("Onion", protein = 1.0, carbs = 9.0, fat = 0.0)
+
+        val recipeJson = mockMvc.post("/api/recipes") {
+            contentType = MediaType.APPLICATION_JSON
+            content = recipeBody("Cottage Pie", 250.0, minceId to 300.0, onionId to 100.0)
+        }.andExpect { status { isCreated() } }.andReturn().response.contentAsString
+        val recipeId = objectMapper.readTree(recipeJson).get("id").asLong()
+
+        mockMvc.get("/api/recipes/$recipeId").andExpect {
+            status { isOk() }
+            jsonPath("$.id") { value(recipeId) }
+            jsonPath("$.name") { value("Cottage Pie") }
+            jsonPath("$.cookedWeightG") { value(250.0) }
+            // Ingredient lines in insertion order, each name + grams for the read-only view.
+            jsonPath("$.ingredients.length()") { value(2) }
+            jsonPath("$.ingredients[0].foodId") { value(minceId) }
+            jsonPath("$.ingredients[0].name") { value("Mince") }
+            jsonPath("$.ingredients[0].grams") { value(300.0) }
+            jsonPath("$.ingredients[1].name") { value("Onion") }
+            jsonPath("$.ingredients[1].grams") { value(100.0) }
+        }
+    }
+
+    @Test
+    fun `getting a recipe by the id of a plain Food 404s`() {
+        val foodId = createFood("Beef", 20.0, 0.0, 10.0)
+        mockMvc.get("/api/recipes/$foodId").andExpect { status { isNotFound() } }
+    }
+
+    @Test
+    fun `getting a recipe by an unknown id 404s`() {
+        mockMvc.get("/api/recipes/999999").andExpect { status { isNotFound() } }
     }
 
     @Test
