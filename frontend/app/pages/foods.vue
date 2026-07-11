@@ -18,7 +18,10 @@ const { $api } = useNuxtApp()
 const toast = useToast()
 
 watch(open, (isOpen) => {
-  if (!isOpen) createdFood.value = null
+  if (!isOpen) {
+    createdFood.value = null
+    createdIngredient.value = null
+  }
 })
 
 const { execute: handleSubmit } = useApiMutation(
@@ -39,6 +42,49 @@ const { execute: handleSubmit } = useApiMutation(
     // No success toast: the new food appears in the list, and the sheet stays
     // open offering the "log it now" continuation.
     errorTitle: 'Could not add food',
+    onSuccess: () => refresh(),
+  },
+)
+
+// A new Food created inline from the recipe builder's "Add a new food". The page
+// owns catalog mutations, so it persists here and refreshes the catalog; the
+// created Food flows back down to the builder, which selects it (F9 #142).
+const createdIngredient = ref<FoodResponse | null>(null)
+const { execute: handleCreateIngredient } = useApiMutation(
+  async (payload: {
+    name: string
+    barcode?: string
+    proteinPer100g: number
+    carbsPer100g: number
+    fatPer100g: number
+  }) => {
+    createdIngredient.value = await $api('/api/foods', {
+      method: 'POST',
+      body: payload,
+    })
+  },
+  {
+    errorTitle: 'Could not add food',
+    onSuccess: () => refresh(),
+  },
+)
+
+// A Recipe is a composite Food (kind = RECIPE); the backend rolls up its
+// nutrition and returns a FoodResponse, so it pivots into the same "log it now"
+// continuation and appears in the catalog exactly like a plain Food (F9 #142).
+const { pending: recipePending, execute: handleSubmitRecipe } = useApiMutation(
+  async (payload: {
+    name: string
+    cookedWeightG: number
+    ingredients: { foodId: number; grams: number }[]
+  }) => {
+    createdFood.value = await $api('/api/recipes', {
+      method: 'POST',
+      body: payload,
+    })
+  },
+  {
+    errorTitle: 'Could not add recipe',
     onSuccess: () => refresh(),
   },
 )
@@ -142,10 +188,15 @@ function handleDeleteConfirm() {
       @click="open = true"
     />
 
-    <BarcodeScanSheet
+    <AddSheet
       v-model:open="open"
       :created-food="createdFood"
+      :created-ingredient="createdIngredient"
+      :foods="foods ?? []"
+      :recipe-pending="recipePending"
       @submit="handleSubmit"
+      @submit-recipe="handleSubmitRecipe"
+      @create-food="handleCreateIngredient"
       @log="handleLog"
     />
 

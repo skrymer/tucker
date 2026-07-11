@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { TabsItem } from '@nuxt/ui'
 import type { components } from '#open-fetch-schemas/api'
 
 type Candidate = components['schemas']['FoodCandidateResponse']
@@ -11,6 +12,12 @@ const props = defineProps<{
    * Its presence flips the sheet from "add" to the "log it now" continuation.
    */
   createdFood?: Food | null
+  /** The catalog, for the recipe builder's ingredient picker (recipes excluded). */
+  foods?: Food[]
+  /** True while a recipe save is in flight, to lock the builder's Save. */
+  recipePending?: boolean
+  /** A Food just persisted from the recipe builder's inline "Add a new food". */
+  createdIngredient?: Food | null
 }>()
 
 const emit = defineEmits<{
@@ -24,8 +31,32 @@ const emit = defineEmits<{
       fatPer100g: number
     },
   ]
+  'submit-recipe': [
+    {
+      name: string
+      cookedWeightG: number
+      ingredients: { foodId: number; grams: number }[]
+    },
+  ]
+  'create-food': [
+    {
+      name: string
+      barcode?: string
+      proteinPer100g: number
+      carbsPer100g: number
+      fatPer100g: number
+    },
+  ]
   log: [{ foodId: number; grams: number }]
 }>()
+
+// The overlay hosts two builders (CONTEXT.md): a plain Food (with its barcode
+// pre-fill) or a composite Recipe. Food leads by default.
+const mode = ref<'food' | 'recipe'>('food')
+const modeItems: TabsItem[] = [
+  { value: 'food', label: 'Food', slot: 'food' },
+  { value: 'recipe', label: 'Recipe', slot: 'recipe' },
+]
 
 /**
  * The barcode-lookup half of the Add-Food flow (ADR 0006). Resolves a barcode —
@@ -115,6 +146,14 @@ watch(scannedBarcode, (code) => {
   lookup()
 })
 
+// Leaving the Food tab must release the camera: the scanner lives in this
+// sheet's scope (not the tab panel), so switching to the Recipe builder wouldn't
+// otherwise stop it — leaving the light on, and letting a stray decode hijack
+// the sheet (ADR 0006, "never leave the camera light on").
+watch(mode, (current) => {
+  if (current !== 'food') stopScan()
+})
+
 // Release the camera whenever the sheet is dismissed — by the overlay or by the
 // parent flipping `open` after a save. The overlay keeps this component mounted
 // while closed, so onScopeDispose alone would leave the camera light on.
@@ -130,6 +169,8 @@ watch(
       // Remount the add form on the next open so typed/merged values don't
       // linger across opens (within one open it stays mounted; see formSession).
       formSession.value++
+      // Reopen on the Food builder — the mode is a per-session choice.
+      mode.value = 'food'
     }
   },
 )
@@ -185,14 +226,15 @@ const loggable = computed<{
 <template>
   <ResponsiveOverlay
     :open="open"
-    title="Add food"
+    :title="mode === 'recipe' ? 'Add recipe' : 'Add food'"
     @update:open="(value) => emit('update:open', value)"
   >
     <div class="flex flex-col gap-4 pb-4">
       <!-- Once a Food exists (catalog hit or just saved), the flow pivots to the
            offered "log it now" continuation. Otherwise the food details lead:
            manual entry is the primary, always-available path, and a barcode is
-           just an optional way to pre-fill those fields. -->
+           just an optional way to pre-fill those fields. A saved Recipe is a
+           Food too, so it pivots into the very same continuation. -->
       <LogItNow
         v-if="loggable"
         :food="loggable.food"
@@ -200,120 +242,143 @@ const loggable = computed<{
         @log="(payload) => emit('log', payload)"
         @dismiss="emit('update:open', false)"
       />
-      <AddFoodForm
+      <UTabs
         v-else
-        :key="formSession"
-        :initial="formInitial"
-        :stated-energy-kcal-per100g="statedEnergy"
-        :filled-from-source="filledFromSource"
-        @submit="(payload) => emit('submit', payload)"
+        v-model="mode"
+        :items="modeItems"
+        color="primary"
+        class="w-full"
+        :unmount-on-hide="false"
       >
-        <!-- Optional barcode pre-fill, between the fields and Save so a scanned
+        <template #food>
+          <AddFoodForm
+            :key="formSession"
+            :initial="formInitial"
+            :stated-energy-kcal-per100g="statedEnergy"
+            :filled-from-source="filledFromSource"
+            class="mt-4"
+            @submit="(payload) => emit('submit', payload)"
+          >
+            <!-- Optional barcode pre-fill, between the fields and Save so a scanned
              result lands right above the Save button. -->
-        <USeparator label="or pre-fill from a barcode" />
+            <USeparator label="or pre-fill from a barcode" />
 
-        <div class="flex flex-col gap-3">
-          <p class="text-center text-xs text-muted">
-            Scan or type a product's barcode to fill in the details above.
-          </p>
+            <div class="flex flex-col gap-3">
+              <p class="text-center text-xs text-muted">
+                Scan or type a product's barcode to fill in the details above.
+              </p>
 
-          <UButton
-            v-if="scanState === 'idle' || scanState === 'decoded'"
-            block
-            icon="i-lucide-scan-barcode"
-            color="primary"
-            variant="subtle"
-            @click="startScan"
-          >
-            Scan barcode
-          </UButton>
+              <UButton
+                v-if="scanState === 'idle' || scanState === 'decoded'"
+                block
+                icon="i-lucide-scan-barcode"
+                color="primary"
+                variant="subtle"
+                @click="startScan"
+              >
+                Scan barcode
+              </UButton>
 
-          <UButton
-            v-else-if="scanState === 'requesting'"
-            block
-            color="primary"
-            variant="subtle"
-            loading
-            disabled
-          >
-            Requesting camera…
-          </UButton>
+              <UButton
+                v-else-if="scanState === 'requesting'"
+                block
+                color="primary"
+                variant="subtle"
+                loading
+                disabled
+              >
+                Requesting camera…
+              </UButton>
 
-          <div
-            v-else-if="scanState === 'scanning'"
-            class="relative overflow-hidden rounded-lg bg-black"
-          >
-            <video
-              ref="videoEl"
-              class="max-h-[45vh] w-full object-cover"
-              playsinline
-              muted
-              autoplay
-              aria-hidden="true"
-            ></video>
-            <p
-              class="absolute inset-x-0 top-2 text-center text-sm font-medium text-white drop-shadow"
-            >
-              Point the camera at a barcode
-            </p>
-            <UButton
-              class="absolute inset-x-0 bottom-3 mx-auto w-fit"
-              color="neutral"
-              variant="solid"
-              icon="i-lucide-square"
-              @click="stopScan"
-            >
-              Stop
-            </UButton>
-          </div>
+              <div
+                v-else-if="scanState === 'scanning'"
+                class="relative overflow-hidden rounded-lg bg-black"
+              >
+                <video
+                  ref="videoEl"
+                  class="max-h-[45vh] w-full object-cover"
+                  playsinline
+                  muted
+                  autoplay
+                  aria-hidden="true"
+                ></video>
+                <p
+                  class="absolute inset-x-0 top-2 text-center text-sm font-medium text-white drop-shadow"
+                >
+                  Point the camera at a barcode
+                </p>
+                <UButton
+                  class="absolute inset-x-0 bottom-3 mx-auto w-fit"
+                  color="neutral"
+                  variant="solid"
+                  icon="i-lucide-square"
+                  @click="stopScan"
+                >
+                  Stop
+                </UButton>
+              </div>
 
-          <UAlert
-            v-if="scanState === 'denied'"
-            icon="i-lucide-camera-off"
-            color="warning"
-            variant="subtle"
-            title="Camera access is blocked"
-            description="Enable it in your device settings, or enter the barcode below."
-          />
-
-          <UAlert
-            v-else-if="scanState === 'unsupported'"
-            icon="i-lucide-camera-off"
-            color="neutral"
-            variant="subtle"
-            title="Camera scanning isn't available here"
-            description="Enter the barcode below instead."
-          />
-
-          <!-- Not a <form>: this lives inside AddFoodForm's <form>, and nested
-               forms are invalid. Look up is a button; Enter triggers it too. -->
-          <div class="flex items-end gap-2">
-            <UFormField
-              label="Barcode"
-              hint="optional"
-              name="barcode"
-              class="flex-1"
-            >
-              <UInput
-                v-model="barcode"
-                inputmode="numeric"
-                placeholder="Type a barcode number"
-                class="w-full"
-                @keydown.enter.prevent="lookup"
+              <UAlert
+                v-if="scanState === 'denied'"
+                icon="i-lucide-camera-off"
+                color="warning"
+                variant="subtle"
+                title="Camera access is blocked"
+                description="Enable it in your device settings, or enter the barcode below."
               />
-            </UFormField>
-            <UButton
-              type="button"
-              color="neutral"
-              variant="subtle"
-              :loading="looking"
-              @click="lookup"
-            >
-              Look up
-            </UButton>
-          </div>
-        </div>
-      </AddFoodForm>
+
+              <UAlert
+                v-else-if="scanState === 'unsupported'"
+                icon="i-lucide-camera-off"
+                color="neutral"
+                variant="subtle"
+                title="Camera scanning isn't available here"
+                description="Enter the barcode below instead."
+              />
+
+              <!-- Not a <form>: this lives inside AddFoodForm's <form>, and nested
+               forms are invalid. Look up is a button; Enter triggers it too. -->
+              <div class="flex items-end gap-2">
+                <UFormField
+                  label="Barcode"
+                  hint="optional"
+                  name="barcode"
+                  class="flex-1"
+                >
+                  <UInput
+                    v-model="barcode"
+                    inputmode="numeric"
+                    placeholder="Type a barcode number"
+                    class="w-full"
+                    @keydown.enter.prevent="lookup"
+                  />
+                </UFormField>
+                <UButton
+                  type="button"
+                  color="neutral"
+                  variant="subtle"
+                  :loading="looking"
+                  @click="lookup"
+                >
+                  Look up
+                </UButton>
+              </div>
+            </div>
+          </AddFoodForm>
+        </template>
+
+        <template #recipe>
+          <RecipeBuilder
+            :key="formSession"
+            :foods="foods ?? []"
+            :pending="recipePending"
+            :created-ingredient="createdIngredient"
+            class="mt-4"
+            @submit="(payload) => emit('submit-recipe', payload)"
+            @create-food="(payload) => emit('create-food', payload)"
+          />
+        </template>
+      </UTabs>
     </div>
   </ResponsiveOverlay>
 </template>
