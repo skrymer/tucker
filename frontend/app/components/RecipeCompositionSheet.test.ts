@@ -45,6 +45,33 @@ const stewComposition = {
   ],
 }
 
+// The catalog the edit builder resolves its pre-filled ingredient lines against —
+// the composition's foodIds must be present here for the builder to weigh them.
+const catalog = [
+  {
+    id: 1,
+    name: 'Mince',
+    kind: 'FOOD',
+    caloriesPer100g: 170,
+    proteinPer100g: 20,
+    carbsPer100g: 0,
+    fatPer100g: 0,
+    cookedWeightG: null,
+    ingredientCount: null,
+  },
+  {
+    id: 2,
+    name: 'Potato',
+    kind: 'FOOD',
+    caloriesPer100g: 77,
+    proteinPer100g: 2,
+    carbsPer100g: 17,
+    fatPer100g: 0,
+    cookedWeightG: null,
+    ingredientCount: null,
+  },
+]
+
 describe('RecipeCompositionSheet', () => {
   it("lists each ingredient's name and grams for the passed recipe", async () => {
     registerEndpoint('/api/recipes/4', () => composition)
@@ -114,6 +141,47 @@ describe('RecipeCompositionSheet', () => {
     await new Promise((resolve) => setTimeout(resolve, 0))
     expect(screen.getByText('Beef')).toBeVisible()
     expect(screen.queryByText('Mince')).not.toBeInTheDocument()
+  })
+
+  it('opens the pre-filled edit builder from the composition view', async () => {
+    registerEndpoint('/api/recipes/4', () => composition)
+    const user = userEvent.setup()
+    await renderSuspended(RecipeCompositionSheet, {
+      props: { recipe: cottagePie, foods: catalog },
+    })
+
+    // The read-only composition leads; Edit switches it to the seeded builder.
+    expect(await screen.findByText('Mince')).toBeVisible()
+    await user.click(screen.getByRole('button', { name: /edit recipe/i }))
+
+    // The builder is the edit form, pre-filled from the fetched composition.
+    expect(screen.getByLabelText(/recipe name/i)).toHaveDisplayValue(
+      'Cottage Pie',
+    )
+    expect(screen.getByLabelText(/cooked weight/i)).toHaveDisplayValue('1,400')
+    expect(screen.getByRole('button', { name: /save changes/i })).toBeVisible()
+  })
+
+  it('emits the edited payload when the builder saves', async () => {
+    registerEndpoint('/api/recipes/4', () => composition)
+    const onSubmitEdit = vi.fn()
+    const user = userEvent.setup()
+    await renderSuspended(RecipeCompositionSheet, {
+      props: { recipe: cottagePie, foods: catalog, onSubmitEdit },
+    })
+
+    await screen.findByText('Mince')
+    await user.click(screen.getByRole('button', { name: /edit recipe/i }))
+    await user.click(screen.getByRole('button', { name: /save changes/i }))
+
+    expect(onSubmitEdit).toHaveBeenCalledWith({
+      name: 'Cottage Pie',
+      cookedWeightG: 1400,
+      ingredients: [
+        { foodId: 1, grams: 500 },
+        { foodId: 2, grams: 900 },
+      ],
+    })
   })
 
   it('surfaces an error instead of an empty composition when the recipe is gone', async () => {

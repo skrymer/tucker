@@ -31,16 +31,35 @@ class FoodRepository(private val dsl: DSLContext) {
 
     fun insert(food: Food): Food {
         val rec = dsl.newRecord(FOOD)
-        rec.name = food.name
-        rec.kind = food.kind.name
-        rec.barcode = food.barcode
-        rec.caloriesPer_100g = food.nutrition.caloriesPer100g.toFloat()
-        rec.proteinPer_100g = food.nutrition.proteinPer100g.toFloat()
-        rec.carbsPer_100g = food.nutrition.carbsPer100g?.toFloat()
-        rec.fatPer_100g = food.nutrition.fatPer100g?.toFloat()
-        rec.cookedWeightG = food.cookedWeightG?.toFloat()
+        rec.applyFrom(food)
         rec.store()
         return food.copy(id = rec.id!!.toLong())
+    }
+
+    /**
+     * Update an existing Food's row in place, keeping its id (so logged Entries
+     * still resolve and the catalog entry is stable). Used to recalibrate a
+     * Recipe's rolled-up nutrition without minting a new Food.
+     */
+    fun update(food: Food): Food {
+        val id = requireNotNull(food.id) { "cannot update a Food without an id" }
+        val rec = dsl.newRecord(FOOD)
+        rec.applyFrom(food)
+        rec.id = id.toInt()
+        rec.update()
+        return food
+    }
+
+    /** Project a [Food]'s fields onto a [FoodRecord] (shared by insert and update). */
+    private fun FoodRecord.applyFrom(food: Food) {
+        name = food.name
+        kind = food.kind.name
+        barcode = food.barcode
+        caloriesPer_100g = food.nutrition.caloriesPer100g.toFloat()
+        proteinPer_100g = food.nutrition.proteinPer100g.toFloat()
+        carbsPer_100g = food.nutrition.carbsPer100g?.toFloat()
+        fatPer_100g = food.nutrition.fatPer100g?.toFloat()
+        cookedWeightG = food.cookedWeightG?.toFloat()
     }
 
     fun delete(id: Long) {

@@ -19,6 +19,16 @@ const props = defineProps<{
    * missing ingredient never dead-ends the recipe.
    */
   createdIngredient?: FoodResponse | null
+  /**
+   * An existing recipe to edit. When present, the builder opens pre-filled with
+   * its name, ingredient lines, and recorded cooked weight — editing is the same
+   * builder, seeded (F9 Slice 3). Absent means a blank create.
+   */
+  initial?: {
+    name: string
+    cookedWeightG: number
+    ingredients: DraftIngredient[]
+  } | null
 }>()
 
 const emit = defineEmits<{
@@ -51,17 +61,21 @@ const emit = defineEmits<{
  */
 function useRecipeDraft() {
   const form = reactive({
-    name: '',
-    cookedWeightG: undefined as number | undefined,
+    name: props.initial?.name ?? '',
+    cookedWeightG: props.initial?.cookedWeightG,
   })
-  const ingredients = ref<DraftIngredient[]>([])
+  const ingredients = ref<DraftIngredient[]>([
+    ...(props.initial?.ingredients ?? []),
+  ])
   const rawSumG = computed(() =>
     ingredients.value.reduce((sum, line) => sum + line.grams, 0),
   )
 
   // Cooked weight starts from the raw ingredient total (a tagged estimate) and
   // tracks it until the user replaces it with the finished dish's scale weight.
-  const cookedWeightEdited = ref(false)
+  // When editing, the recorded cooked weight is a real value, not an estimate, so
+  // it starts "edited" and the raw-sum tracker never overwrites it.
+  const cookedWeightEdited = ref(!!props.initial)
   watch(rawSumG, (sum) => {
     if (!cookedWeightEdited.value)
       form.cookedWeightG = sum > 0 ? sum : undefined
@@ -369,7 +383,7 @@ function onSave() {
         :disabled="ingredients.length === 0"
         :loading="pending"
       >
-        Save recipe
+        {{ initial ? 'Save changes' : 'Save recipe' }}
       </UButton>
     </UForm>
 

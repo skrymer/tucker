@@ -92,6 +92,39 @@ const { pending: recipePending, execute: handleSubmitRecipe } = useApiMutation(
   },
 )
 
+// Editing a recipe recalibrates it in place (PUT keeps the same Food id), so
+// logged Entries still resolve and their snapshots stand — only future logs see
+// the new density (F9 #144, ADR 0019). Save closes the view sheet and refreshes
+// the catalog so the row reflects the new per-100g.
+const { pending: recipeEditPending, execute: handleEditRecipe } =
+  useApiMutation(
+    (payload: {
+      name: string
+      cookedWeightG: number
+      ingredients: { foodId: number; grams: number }[]
+    }) => {
+      const id = recipeToView.value!.id
+      return $api('/api/recipes/{id}', {
+        method: 'PUT',
+        path: { id },
+        body: payload,
+      })
+    },
+    {
+      errorTitle: 'Could not save recipe',
+      onSuccess: () => {
+        recipeToView.value = null
+        return refresh()
+      },
+    },
+  )
+
+// Start each recipe view/edit clean: a Food added inline during a previous edit
+// must not resurface when the sheet reopens.
+watch(recipeToView, (recipe) => {
+  if (!recipe) createdIngredient.value = null
+})
+
 // An explicit, user-driven Weighed Entry against today for a Food that
 // already exists — a tapped catalog row, a barcode catalog hit, or the
 // "log it now" continuation after a save. The user always supplies the grams.
@@ -219,7 +252,12 @@ function handleDeleteConfirm() {
 
     <RecipeCompositionSheet
       :recipe="recipeToView"
+      :foods="foods ?? []"
+      :pending="recipeEditPending"
+      :created-ingredient="createdIngredient"
       @close="recipeToView = null"
+      @submit-edit="handleEditRecipe"
+      @create-food="handleCreateIngredient"
     />
   </section>
 </template>

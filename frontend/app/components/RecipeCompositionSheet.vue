@@ -4,8 +4,37 @@ import type { components } from '#open-fetch-schemas/api'
 type FoodResponse = components['schemas']['FoodResponse']
 type RecipeResponse = components['schemas']['RecipeResponse']
 
-const props = defineProps<{ recipe: FoodResponse | null }>()
-const emit = defineEmits<{ close: [] }>()
+type RecipePayload = {
+  name: string
+  cookedWeightG: number
+  ingredients: { foodId: number; grams: number }[]
+}
+
+const props = withDefaults(
+  defineProps<{
+    recipe: FoodResponse | null
+    /** The catalog, so the edit builder can resolve its pre-filled ingredients. */
+    foods?: FoodResponse[]
+    /** True while an edit save is in flight, to lock the builder's Save. */
+    pending?: boolean
+    /** A Food just persisted from the edit builder's inline "Add a new food". */
+    createdIngredient?: FoodResponse | null
+  }>(),
+  { foods: () => [], createdIngredient: null },
+)
+const emit = defineEmits<{
+  close: []
+  'submit-edit': [RecipePayload]
+  'create-food': [
+    {
+      name: string
+      barcode?: string
+      proteinPer100g: number
+      carbsPer100g: number
+      fatPer100g: number
+    },
+  ]
+}>()
 
 /**
  * The open recipe's composition, fetched from `GET /api/recipes/{id}` (the
@@ -49,12 +78,53 @@ function useRecipeComposition(recipe: () => FoodResponse | null) {
     () => composition.value?.cookedWeightG ?? recipe()?.cookedWeightG ?? 0,
   )
 
-  return { ingredients, cookedWeightG, error, retry: load }
+  return { composition, ingredients, cookedWeightG, error, retry: load }
 }
 
-const { ingredients, cookedWeightG, error, retry } = useRecipeComposition(
-  () => props.recipe,
-)
+const { composition, ingredients, cookedWeightG, error, retry } =
+  useRecipeComposition(() => props.recipe)
+
+/**
+ * View ⇄ edit within the one sheet. The read-only composition leads; the Edit
+ * action swaps in the recipe builder, pre-filled from the composition already
+ * fetched (Slice 3 reuses that GET). Opening a different recipe — or reopening
+ * the sheet — returns to the read-only view.
+ */
+function useEditMode() {
+  const editing = ref(false)
+  watch(
+    () => props.recipe,
+    () => {
+      editing.value = false
+    },
+  )
+  // The builder's `initial`: the fetched cooked weight and name, plus each
+  // ingredient line resolved to its full catalog Food (for the live rollup).
+  const editInitial = computed(() => {
+    const comp = composition.value
+    if (!comp) return null
+    // Every ingredient resolves: an ingredient Food can't be deleted while a
+    // Recipe references it (CONTEXT.md), and /api/foods returns the whole
+    // catalog — so a line never drops out of the edit seed.
+    const lines = comp.ingredients.flatMap((line) => {
+      const food = props.foods.find((f) => f.id === line.foodId)
+      return food ? [{ food, grams: line.grams }] : []
+    })
+    return {
+      name: comp.name,
+      cookedWeightG: comp.cookedWeightG,
+      ingredients: lines,
+    }
+  })
+  return { editing, start: () => (editing.value = true), editInitial }
+}
+
+const { editing, start: startEditing, editInitial } = useEditMode()
+
+const title = computed(() => {
+  const name = props.recipe?.name ?? ''
+  return editing.value ? `Edit ${name}` : name
+})
 
 const round = (n: number) => Math.round(n)
 </script>
@@ -62,7 +132,7 @@ const round = (n: number) => Math.round(n)
 <template>
   <ResponsiveOverlay
     :open="recipe !== null"
-    :title="recipe?.name ?? ''"
+    :title="title"
     @update:open="(value) => !value && emit('close')"
   >
     <LoadErrorState
@@ -70,7 +140,19 @@ const round = (n: number) => Math.round(n)
       title="Couldn't load your recipe"
       @retry="retry"
     >
-      <div class="flex flex-col gap-4">
+      <!-- Edit: the recipe builder, seeded from the fetched composition. -->
+      <RecipeBuilder
+        v-if="editing && editInitial"
+        :initial="editInitial"
+        :foods="foods"
+        :pending="pending"
+        :created-ingredient="createdIngredient"
+        @submit="(payload) => emit('submit-edit', payload)"
+        @create-food="(payload) => emit('create-food', payload)"
+      />
+
+      <!-- View: the read-only composition, with an Edit affordance. -->
+      <div v-else class="flex flex-col gap-4">
         <!-- Ingredients: name left, grams right, tabular-nums. -->
         <section aria-label="Ingredients" class="flex flex-col gap-2">
           <p class="text-xs font-semibold uppercase tracking-wider text-muted">
@@ -123,6 +205,19 @@ const round = (n: number) => Math.round(n)
             </div>
           </div>
         </section>
+
+        <!-- Only offered once the composition has loaded (editInitial is ready),
+             so the tap can't be a no-op while the fetch is still in flight. -->
+        <UButton
+          v-if="editInitial"
+          icon="i-lucide-pencil"
+          color="primary"
+          variant="subtle"
+          block
+          @click="startEditing"
+        >
+          Edit recipe
+        </UButton>
       </div>
     </LoadErrorState>
   </ResponsiveOverlay>

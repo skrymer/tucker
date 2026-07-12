@@ -8,6 +8,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.ResponseStatus
@@ -80,19 +81,8 @@ class RecipeController(
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     fun create(@RequestBody request: CreateRecipeRequest): FoodResponse {
-        val byId = foods.findByIds(request.ingredients.map { it.foodId }).associateBy { it.id }
-        val ingredients = request.ingredients.map { line ->
-            val food = byId[line.foodId]
-                ?: throw IllegalArgumentException("no Food with id ${line.foodId}")
-            RecipeIngredient(food, line.grams)
-        }
-        val recipe = Recipe(
-            id = null,
-            name = request.name,
-            ingredients = ingredients,
-            cookedWeightG = request.cookedWeightG,
-        )
-        return recipes.insert(recipe).asFood().toResponse(ingredientCount = ingredients.size)
+        val recipe = request.toRecipe(id = null)
+        return recipes.insert(recipe).asFood().toResponse(ingredientCount = recipe.ingredients.size)
     }
 
     /**
@@ -104,4 +94,29 @@ class RecipeController(
     fun byId(@PathVariable id: Long): RecipeResponse =
         recipes.findById(id)?.toResponse()
             ?: throw NotFoundException("no recipe with id $id")
+
+    /**
+     * Update a Recipe in place, keeping its Food id: re-roll its per-100g and
+     * replace its ingredient lines. Because Entries snapshot their calories at log
+     * time, editing changes only future logs — never past ones — which is what
+     * makes the representative-batch cooked-weight model livable (ADR 0019). 404 if
+     * [id] isn't a recipe; the domain's `require` guards surface as 400s.
+     */
+    @PutMapping("/{id}")
+    fun update(@PathVariable id: Long, @RequestBody request: CreateRecipeRequest): FoodResponse {
+        recipes.findById(id) ?: throw NotFoundException("no recipe with id $id")
+        val recipe = request.toRecipe(id = id)
+        return recipes.update(recipe).asFood().toResponse(ingredientCount = recipe.ingredients.size)
+    }
+
+    /** Resolve this request's ingredient Foods and build a [Recipe] with the given [id]. */
+    private fun CreateRecipeRequest.toRecipe(id: Long?): Recipe {
+        val byId = foods.findByIds(ingredients.map { it.foodId }).associateBy { it.id }
+        val lines = ingredients.map { line ->
+            val food = byId[line.foodId]
+                ?: throw IllegalArgumentException("no Food with id ${line.foodId}")
+            RecipeIngredient(food, line.grams)
+        }
+        return Recipe(id = id, name = name, ingredients = lines, cookedWeightG = cookedWeightG)
+    }
 }
