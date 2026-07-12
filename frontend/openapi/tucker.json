@@ -11,6 +11,136 @@
     }
   ],
   "paths": {
+    "/api/recipes/{id}": {
+      "get": {
+        "tags": [
+          "recipe-controller"
+        ],
+        "operationId": "byId",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecipeResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "recipe-controller"
+        ],
+        "operationId": "update",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRecipeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/FoodResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/profile": {
       "get": {
         "tags": [
@@ -1278,67 +1408,6 @@
         }
       }
     },
-    "/api/recipes/{id}": {
-      "get": {
-        "tags": [
-          "recipe-controller"
-        ],
-        "operationId": "byId",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "responses": {
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/RecipeResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/push/vapid-public-key": {
       "get": {
         "tags": [
@@ -1851,6 +1920,95 @@
           }
         }
       },
+      "CreateRecipeIngredient": {
+        "required": [
+          "foodId",
+          "grams"
+        ],
+        "type": "object",
+        "properties": {
+          "foodId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "grams": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
+      "CreateRecipeRequest": {
+        "required": [
+          "cookedWeightG",
+          "ingredients",
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "cookedWeightG": {
+            "type": "number",
+            "format": "double"
+          },
+          "ingredients": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreateRecipeIngredient"
+            }
+          }
+        }
+      },
+      "FoodResponse": {
+        "required": [
+          "caloriesPer100g",
+          "id",
+          "kind",
+          "name",
+          "proteinPer100g"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "barcode": {
+            "type": "string"
+          },
+          "caloriesPer100g": {
+            "type": "number",
+            "format": "double"
+          },
+          "proteinPer100g": {
+            "type": "number",
+            "format": "double"
+          },
+          "carbsPer100g": {
+            "type": "number",
+            "format": "double"
+          },
+          "fatPer100g": {
+            "type": "number",
+            "format": "double"
+          },
+          "cookedWeightG": {
+            "type": "number",
+            "format": "double"
+          },
+          "ingredientCount": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
       "ProfileDto": {
         "required": [
           "birthDate",
@@ -1971,95 +2129,6 @@
           "proteinFloorG": {
             "type": "number",
             "format": "double"
-          }
-        }
-      },
-      "CreateRecipeIngredient": {
-        "required": [
-          "foodId",
-          "grams"
-        ],
-        "type": "object",
-        "properties": {
-          "foodId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "grams": {
-            "type": "number",
-            "format": "double"
-          }
-        }
-      },
-      "CreateRecipeRequest": {
-        "required": [
-          "cookedWeightG",
-          "ingredients",
-          "name"
-        ],
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string"
-          },
-          "cookedWeightG": {
-            "type": "number",
-            "format": "double"
-          },
-          "ingredients": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/CreateRecipeIngredient"
-            }
-          }
-        }
-      },
-      "FoodResponse": {
-        "required": [
-          "caloriesPer100g",
-          "id",
-          "kind",
-          "name",
-          "proteinPer100g"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "name": {
-            "type": "string"
-          },
-          "kind": {
-            "type": "string"
-          },
-          "barcode": {
-            "type": "string"
-          },
-          "caloriesPer100g": {
-            "type": "number",
-            "format": "double"
-          },
-          "proteinPer100g": {
-            "type": "number",
-            "format": "double"
-          },
-          "carbsPer100g": {
-            "type": "number",
-            "format": "double"
-          },
-          "fatPer100g": {
-            "type": "number",
-            "format": "double"
-          },
-          "cookedWeightG": {
-            "type": "number",
-            "format": "double"
-          },
-          "ingredientCount": {
-            "type": "integer",
-            "format": "int32"
           }
         }
       },

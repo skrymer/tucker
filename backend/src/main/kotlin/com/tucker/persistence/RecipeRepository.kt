@@ -24,7 +24,30 @@ class RecipeRepository(
     fun insert(recipe: Recipe): Recipe {
         val recipeFood = foods.insert(recipe.asFood())
         val recipeId = recipeFood.id!!
-        recipe.ingredients.forEach { line ->
+        writeIngredientLines(recipeId, recipe.ingredients)
+        return recipe.copy(id = recipeId)
+    }
+
+    /**
+     * Update a Recipe in place: re-roll its Food row (same id — logged Entries and
+     * the catalog entry are stable) and replace all its ingredient lines, atomically.
+     * Editing recalibrates the representative-batch density (ADR 0019); because
+     * Entries snapshot their calories at log time, only future logs see the change.
+     */
+    @Transactional
+    fun update(recipe: Recipe): Recipe {
+        val recipeId = requireNotNull(recipe.id) { "cannot update a Recipe without an id" }
+        foods.update(recipe.asFood())
+        dsl.deleteFrom(RECIPE_INGREDIENT)
+            .where(RECIPE_INGREDIENT.RECIPE_ID.eq(recipeId.toInt()))
+            .execute()
+        writeIngredientLines(recipeId, recipe.ingredients)
+        return recipe
+    }
+
+    /** Insert a Recipe's ingredient lines (shared by insert and update). */
+    private fun writeIngredientLines(recipeId: Long, ingredients: List<RecipeIngredient>) {
+        ingredients.forEach { line ->
             val ingredientId = requireNotNull(line.ingredient.id) {
                 "ingredient '${line.ingredient.name}' must be persisted before the recipe"
             }
@@ -34,7 +57,6 @@ class RecipeRepository(
             rec.grams = line.grams.toFloat()
             rec.store()
         }
-        return recipe.copy(id = recipeId)
     }
 
     /** Load a Recipe with its ingredient Foods, or null if [id] is not a recipe. */

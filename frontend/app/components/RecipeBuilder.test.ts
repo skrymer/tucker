@@ -208,6 +208,56 @@ describe('RecipeBuilder', () => {
     ).not.toBeInTheDocument()
   })
 
+  it('pre-fills the builder from an existing recipe, showing the recorded cooked weight as final', async () => {
+    await renderSuspended(RecipeBuilder, {
+      props: {
+        foods: sampleFoods,
+        initial: {
+          name: 'Cottage pie',
+          cookedWeightG: 200,
+          ingredients: [{ food: sampleFoods[0], grams: 300 }],
+        },
+      },
+    })
+
+    expect(screen.getByLabelText(/recipe name/i)).toHaveDisplayValue(
+      'Cottage pie',
+    )
+    // The ingredient line is pre-populated with its grams and kcal contribution.
+    const row = screen.getByRole('button', { name: /beef mince/i })
+    expect(row).toHaveTextContent('300 g')
+    expect(row).toHaveTextContent('510 kcal')
+    // The recorded cooked weight (200) stands — it is not overwritten by the raw
+    // 300 g sum, and it is not tagged as an estimate.
+    expect(screen.getByLabelText(/cooked weight/i)).toHaveDisplayValue('200')
+    expect(screen.queryByText(/estimated/i)).not.toBeInTheDocument()
+  })
+
+  it('saves changes to an existing recipe, emitting the edited payload', async () => {
+    const onSubmit = vi.fn()
+    const user = userEvent.setup()
+    await renderSuspended(RecipeBuilder, {
+      props: {
+        foods: sampleFoods,
+        initial: {
+          name: 'Cottage pie',
+          cookedWeightG: 200,
+          ingredients: [{ food: sampleFoods[0], grams: 300 }],
+        },
+        onSubmit,
+      },
+    })
+
+    // Editing keeps the same builder; its save reads as "Save changes".
+    await user.click(screen.getByRole('button', { name: /save changes/i }))
+
+    expect(onSubmit).toHaveBeenCalledWith({
+      name: 'Cottage pie',
+      cookedWeightG: 200,
+      ingredients: [{ foodId: 1, grams: 300 }],
+    })
+  })
+
   it('hands a brand-new food up to the parent, then continues once it is selected', async () => {
     const onCreateFood = vi.fn()
     const user = userEvent.setup()
