@@ -3,6 +3,7 @@ package com.tucker.persistence
 import com.tucker.domain.FoodKind
 import com.tucker.domain.Recipe
 import com.tucker.domain.RecipeIngredient
+import com.tucker.jooq.Tables.FOOD
 import com.tucker.jooq.Tables.RECIPE_INGREDIENT
 import org.jooq.DSLContext
 import org.jooq.impl.DSL
@@ -103,4 +104,20 @@ class RecipeRepository(
 
     /** Delete a recipe; its ingredient rows cascade away with the Food row. */
     fun delete(id: Long) = foods.delete(id)
+
+    /**
+     * The distinct names of Recipes that use the Food [foodId] as an ingredient,
+     * ordered for a stable message. Empty when the Food is not an ingredient of any
+     * Recipe. A deterministic existence query — the join to the recipe's Food row
+     * naturally ignores any orphaned ingredient line — mirroring
+     * [EntryRepository.referencesFood], not a caught FK violation; [FoodService]
+     * uses it to name what blocks a delete.
+     */
+    fun recipesUsingIngredient(foodId: Long): List<String> =
+        dsl.selectDistinct(FOOD.NAME)
+            .from(RECIPE_INGREDIENT)
+            .join(FOOD).on(FOOD.ID.eq(RECIPE_INGREDIENT.RECIPE_ID))
+            .where(RECIPE_INGREDIENT.INGREDIENT_FOOD_ID.eq(foodId.toInt()))
+            .orderBy(FOOD.NAME)
+            .fetch(FOOD.NAME)
 }
