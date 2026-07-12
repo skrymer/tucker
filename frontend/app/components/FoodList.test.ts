@@ -22,6 +22,16 @@ const sampleFoods = [
   },
 ]
 
+const cottagePie = {
+  id: 4,
+  name: 'Cottage Pie',
+  kind: 'RECIPE',
+  caloriesPer100g: 255,
+  proteinPer100g: 30,
+  cookedWeightG: 1400,
+  ingredientCount: 5,
+}
+
 describe('FoodList', () => {
   it('renders one row per food in a single accessible list', async () => {
     await renderSuspended(FoodList, { props: { foods: sampleFoods } })
@@ -46,6 +56,21 @@ describe('FoodList', () => {
       .click(screen.getByRole('button', { name: 'Log Skyr' }))
 
     expect(onLog).toHaveBeenCalledWith(sampleFoods[1])
+  })
+
+  it('bubbles view with the picked recipe when the user taps its view button', async () => {
+    const onView = vi.fn()
+    await renderSuspended(FoodList, {
+      props: { foods: [...sampleFoods, cottagePie], onView },
+    })
+
+    await userEvent
+      .setup()
+      .click(
+        screen.getByRole('button', { name: 'View ingredients in Cottage Pie' }),
+      )
+
+    expect(onView).toHaveBeenCalledWith(cottagePie)
   })
 
   it("bubbles delete with the picked food when the user activates a row's delete button", async () => {

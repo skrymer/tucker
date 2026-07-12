@@ -3,8 +3,10 @@ package com.tucker.api
 import com.tucker.domain.BarcodeLookup
 import com.tucker.domain.Food
 import com.tucker.domain.FoodCandidate
+import com.tucker.domain.FoodKind
 import com.tucker.domain.Nutrition
 import com.tucker.persistence.FoodRepository
+import com.tucker.persistence.RecipeRepository
 import com.tucker.service.BarcodeLookupService
 import com.tucker.service.FoodService
 import org.springframework.http.HttpStatus
@@ -28,6 +30,11 @@ data class FoodResponse(
     val carbsPer100g: Double?,
     val fatPer100g: Double?,
     val cookedWeightG: Double?,
+    /**
+     * How many ingredient lines a Recipe is composed of — the catalog's
+     * "N ingredients" subline. Always `null` for a plain Food (`kind = FOOD`).
+     */
+    val ingredientCount: Int?,
 )
 
 /**
@@ -82,7 +89,7 @@ internal fun FoodCandidate.toResponse() = FoodCandidateResponse(
     source = source,
 )
 
-internal fun Food.toResponse() = FoodResponse(
+internal fun Food.toResponse(ingredientCount: Int? = null) = FoodResponse(
     id = persistedId(id),
     name = name,
     kind = kind.name,
@@ -92,22 +99,35 @@ internal fun Food.toResponse() = FoodResponse(
     carbsPer100g = nutrition.carbsPer100g,
     fatPer100g = nutrition.fatPer100g,
     cookedWeightG = cookedWeightG,
+    ingredientCount = ingredientCount,
 )
 
 @RestController
 @RequestMapping("/api/foods")
 class FoodController(
     private val foods: FoodRepository,
+    private val recipes: RecipeRepository,
     private val foodService: FoodService,
     private val barcodeLookup: BarcodeLookupService,
 ) {
 
     @GetMapping
-    fun list(): List<FoodResponse> = foods.findAll().map { it.toResponse() }
+    fun list(): List<FoodResponse> {
+        val all = foods.findAll()
+        val counts = recipes.ingredientCounts(all.filter { it.kind == FoodKind.RECIPE }.mapNotNull { it.id })
+        return all.map { it.toResponse(ingredientCount = counts[it.id]) }
+    }
 
     @GetMapping("/{id}")
-    fun byId(@PathVariable id: Long): FoodResponse =
-        foods.findById(id)?.toResponse() ?: throw NotFoundException("no Food with id $id")
+    fun byId(@PathVariable id: Long): FoodResponse {
+        val food = foods.findById(id) ?: throw NotFoundException("no Food with id $id")
+        val count = if (food.kind == FoodKind.RECIPE) {
+            recipes.ingredientCounts(listOfNotNull(food.id))[food.id]
+        } else {
+            null
+        }
+        return food.toResponse(ingredientCount = count)
+    }
 
     /**
      * Resolve a barcode catalog-first, then through the operator-configured

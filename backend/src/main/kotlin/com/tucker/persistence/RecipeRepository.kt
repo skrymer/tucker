@@ -5,6 +5,7 @@ import com.tucker.domain.Recipe
 import com.tucker.domain.RecipeIngredient
 import com.tucker.jooq.Tables.RECIPE_INGREDIENT
 import org.jooq.DSLContext
+import org.jooq.impl.DSL
 import org.springframework.stereotype.Repository
 import org.springframework.transaction.annotation.Transactional
 
@@ -61,6 +62,21 @@ class RecipeRepository(
                 "recipe food ${food.id} has no cooked weight"
             },
         )
+    }
+
+    /**
+     * The ingredient-line count for each recipe id, in a single grouped query.
+     * A recipe with no rows (which the domain forbids) is simply absent from the
+     * map. Used by the catalog to show "N ingredients" without an N+1.
+     */
+    fun ingredientCounts(recipeIds: Collection<Long>): Map<Long, Int> {
+        if (recipeIds.isEmpty()) return emptyMap()
+        return dsl.select(RECIPE_INGREDIENT.RECIPE_ID, DSL.count())
+            .from(RECIPE_INGREDIENT)
+            .where(RECIPE_INGREDIENT.RECIPE_ID.`in`(recipeIds.map { it.toInt() }))
+            .groupBy(RECIPE_INGREDIENT.RECIPE_ID)
+            .fetch()
+            .associate { (recipeId, count) -> recipeId!!.toLong() to count }
     }
 
     /** Delete a recipe; its ingredient rows cascade away with the Food row. */
