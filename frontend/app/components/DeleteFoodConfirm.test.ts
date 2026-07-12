@@ -33,6 +33,14 @@ describe('DeleteFoodConfirm', () => {
     expect(screen.queryByText(/keep their numbers/i)).toBeNull()
   })
 
+  it('warns that a food used as a recipe ingredient cannot be deleted', async () => {
+    await renderSuspended(DeleteFoodConfirm, { props: { food: oats } })
+
+    expect(
+      screen.getByText(/recipe ingredient.*can't be deleted/i),
+    ).toBeVisible()
+  })
+
   it('confirms the deletion when the user clicks Delete', async () => {
     const onConfirm = vi.fn()
     await renderSuspended(DeleteFoodConfirm, {
