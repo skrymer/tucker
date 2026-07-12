@@ -1,7 +1,9 @@
 package com.tucker.api
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.tucker.jooq.Tables.RECIPE_INGREDIENT
 import org.hamcrest.Matchers.closeTo
+import org.jooq.DSLContext
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -10,6 +12,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.delete
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
 import org.springframework.test.web.servlet.put
@@ -22,6 +25,7 @@ class RecipeApiTest {
 
     @Autowired lateinit var mockMvc: MockMvc
     @Autowired lateinit var objectMapper: ObjectMapper
+    @Autowired lateinit var dsl: DSLContext
 
     /** Create a plain Food via the public API and return its id. */
     private fun createFood(name: String, protein: Double, carbs: Double, fat: Double): Long {
@@ -332,5 +336,72 @@ class RecipeApiTest {
             contentType = MediaType.APPLICATION_JSON
             content = recipeBody("Base", 0.0, foodId to 300.0)
         }.andExpect { status { isBadRequest() } }
+    }
+
+    @Test
+    fun `deleting a Food used as a recipe ingredient is rejected with 400 naming the recipe`() {
+        val minceId = createFood("Mince", 20.0, 0.0, 10.0)
+        createRecipe("Cottage Pie", 200.0, minceId to 300.0)
+
+        mockMvc.delete("/api/foods/$minceId").andExpect {
+            status { isBadRequest() }
+            jsonPath("$.message") { value(org.hamcrest.Matchers.containsString("Cottage Pie")) }
+        }
+
+        // The ingredient Food is part of the recipe's definition: it stays in the catalog.
+        mockMvc.get("/api/foods/$minceId").andExpect { status { isOk() } }
+    }
+
+    @Test
+    fun `a logged Recipe cannot be deleted`() {
+        // A Recipe is a Food, so the existing "has logged Entries" guard covers it.
+        val minceId = createFood("Mince", 20.0, 0.0, 10.0)
+        val recipeId = createRecipe("Cottage Pie", 200.0, minceId to 300.0)
+
+        mockMvc.post("/api/entries/weighed") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"date":"2026-06-01","foodId":$recipeId,"grams":250.0}"""
+        }.andExpect { status { isCreated() } }
+
+        mockMvc.delete("/api/foods/$recipeId").andExpect {
+            status { isBadRequest() }
+            jsonPath("$.message") { value(org.hamcrest.Matchers.containsString("Cottage Pie")) }
+        }
+        mockMvc.get("/api/foods/$recipeId").andExpect { status { isOk() } }
+    }
+
+    @Test
+    fun `a Food that is neither logged nor a recipe ingredient can still be deleted`() {
+        // A recipe exists in the catalog, but this Food is not one of its ingredients.
+        val minceId = createFood("Mince", 20.0, 0.0, 10.0)
+        createRecipe("Cottage Pie", 200.0, minceId to 300.0)
+        val looseId = createFood("Loose Apple", 0.3, 14.0, 0.2)
+
+        mockMvc.delete("/api/foods/$looseId").andExpect { status { isNoContent() } }
+        mockMvc.get("/api/foods/$looseId").andExpect { status { isNotFound() } }
+    }
+
+    @Test
+    fun `deleting a Recipe cascades away its ingredient lines`() {
+        val minceId = createFood("Mince", 20.0, 0.0, 10.0)
+        val onionId = createFood("Onion", 1.0, 9.0, 0.0)
+        val recipeId = createRecipe("Cottage Pie", 250.0, minceId to 300.0, onionId to 100.0)
+
+        assertEquals(
+            2,
+            dsl.fetchCount(RECIPE_INGREDIENT, RECIPE_INGREDIENT.RECIPE_ID.eq(recipeId.toInt())),
+        )
+
+        mockMvc.delete("/api/foods/$recipeId").andExpect { status { isNoContent() } }
+
+        // The Food row's `recipe_ingredient.recipe_id ON DELETE CASCADE` takes its
+        // lines with it; the ingredient Foods themselves survive.
+        assertEquals(
+            0,
+            dsl.fetchCount(RECIPE_INGREDIENT, RECIPE_INGREDIENT.RECIPE_ID.eq(recipeId.toInt())),
+            "the recipe's ingredient lines cascade away with its Food row",
+        )
+        mockMvc.get("/api/foods/$minceId").andExpect { status { isOk() } }
+        mockMvc.get("/api/foods/$onionId").andExpect { status { isOk() } }
     }
 }

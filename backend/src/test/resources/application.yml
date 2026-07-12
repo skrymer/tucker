@@ -1,6 +1,11 @@
 spring:
   datasource:
     url: jdbc:sqlite:build/test-tucker.db   # throwaway DB; wiped by `./gradlew clean`
+    hikari:
+      # Enforce referential integrity as production does (main application.yml) —
+      # this test config otherwise shadows main entirely, so without it FK rules
+      # (e.g. recipe_ingredient's ON DELETE CASCADE) would silently not fire.
+      connection-init-sql: PRAGMA foreign_keys = ON
 
 # No background reminder cron during tests — they drive ReminderScheduler.runTick
 # explicitly, and an hourly tick firing mid-test would contend for the single

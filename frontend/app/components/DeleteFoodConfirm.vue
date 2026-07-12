@@ -20,8 +20,8 @@ const emit = defineEmits<{
     <template #body>
       <p class="text-sm text-default">
         <span class="font-medium">{{ food?.name }}</span> will be removed from
-        your catalog. A food you've logged entries against can't be deleted —
-        those entries are permanent history.
+        your catalog. A food you've logged entries against, or used as a recipe
+        ingredient, can't be deleted — your entries and recipes depend on it.
       </p>
     </template>
 
