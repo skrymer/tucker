@@ -72,6 +72,13 @@ const grams = ref(80)
       </p>
     </header>
 
+    <!-- Review the whole guide in either mode — this is the real Appearance
+         control from /profile, so it doubles as its own showcase. -->
+    <div class="flex flex-wrap items-center gap-3">
+      <span class="text-sm font-medium text-default">Mode</span>
+      <AppearanceControl />
+    </div>
+
     <!-- ── Colour ─────────────────────────────────────────────── -->
     <div class="flex flex-col gap-4">
       <h2 class="text-sm font-semibold uppercase tracking-wider text-muted">

@@ -207,6 +207,17 @@ await Promise.all([loadProfile(), refreshCurrentTrend()])
     <!-- Reminder opt-in lives once the profile exists (it edits the profile). -->
     <ReminderSettings v-if="profile" :profile="profile" @saved="loadProfile" />
 
+    <!-- Appearance is a per-device preference (cookie, not the Profile), so it's
+         always available — never gated on body-stats setup. -->
+    <section class="flex flex-col gap-4" aria-labelledby="appearance-heading">
+      <h2 id="appearance-heading" class="text-lg font-semibold text-default">
+        Appearance
+      </h2>
+      <UCard>
+        <AppearanceControl />
+      </UCard>
+    </section>
+
     <!-- Renders the install affordance, or nothing once Tucker is installed. -->
     <InstallPrompt />
 

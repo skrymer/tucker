@@ -77,6 +77,50 @@
   background-color: #eff6f1;
 }
 
+/* ─────────────────────────────────────────────────────────────────────────
+   DARK MODE — "Forest" (DESIGN.md → Dark mode). Extension, not fork: the brand
+   green/coral ramps are untouched; only the neutral --ui-* surfaces/inks and
+   the .app-canvas wash flip. Deep green-black ground with green-biased light
+   inks so the dark skin reads as *chosen*, matching the light identity. This
+   block is unlayered and AFTER :root, so `.dark` wins the specificity tie.
+   WCAG-AA verified (body 12.9:1, highlighted 15:1, muted 6.4:1 on --ui-bg).
+   ───────────────────────────────────────────────────────────────────────── */
+.dark {
+  --ui-bg: #16241d;
+  --ui-bg-muted: #1b2b23;
+  --ui-bg-elevated: #22342b;
+  --ui-bg-accented: #2c4137;
+  --ui-bg-inverted: #e7f0eb;
+
+  --ui-border: #26362e;
+  --ui-border-muted: #1e2c25;
+  --ui-border-accented: #34473d;
+
+  --ui-text-dimmed: #6b8177;
+  --ui-text-muted: #93a89d;
+  --ui-text-toned: #b9cdc3;
+  --ui-text: #dce9e2;
+  --ui-text-highlighted: #f2f8f4;
+  --ui-text-inverted: #0f1a15;
+
+  /* Status lifted one step for legibility on dark; families unchanged. Error is
+     a saturated rose (not the washed pink #f26b6f) so the over-budget calorie
+     arc separates from the orange protein coral on the Day Ring. AA on --ui-bg. */
+  --ui-success: #00dc82;
+  --ui-warning: #f5b544;
+  --ui-error: #ff5a76;
+
+  /* The green lift-glow vanishes on dark, so the card's depth comes from the
+     surface step + hairline border + a dark ambient shadow. The FAB keeps its
+     brand-green halo (a coloured glow still reads on dark). */
+  --shadow-card:
+    0 8px 22px -12px rgb(0 0 0 / 0.55), 0 2px 6px -3px rgb(0 0 0 / 0.45);
+  --shadow-float: 0 10px 24px -6px rgb(0 193 106 / 0.5);
+}
+.dark .app-canvas {
+  background-color: #0f1a15;
+}
+
 /* Headings + the numerics that headline a card wear the rounded display face. */
 h1,
 h2,

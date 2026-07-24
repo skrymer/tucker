@@ -19,6 +19,24 @@
 // `max: 1` caps concurrent toasts at one (ADR 0005) so the slot never stacks.
 const isDesktop = useIsDesktop()
 
+// The browser/PWA chrome (status + address bar) tracks the active mode (DESIGN.md
+// → Dark mode) via a single reactive `theme-color`. `colorMode.value` resolves
+// 'system' to the real OS scheme and updates when the OS flips, so this one meta
+// covers light, dark, System, and a *pinned* mode (Dark on a light-OS device)
+// alike. A static media pair is deliberately avoided — it shares the meta name,
+// so Unhead would dedupe the two and the reactive value would clobber it.
+const colorMode = useColorMode()
+useHead({
+  meta: [
+    {
+      name: 'theme-color',
+      content: computed(() =>
+        colorMode.value === 'dark' ? '#0f1a15' : '#eff6f1',
+      ),
+    },
+  ],
+})
+
 const toaster = computed(() => ({
   max: 1,
   position: (isDesktop.value ? 'bottom-right' : 'top-center') as const,

@@ -67,8 +67,8 @@ never for status. Defined as a custom `coral` palette in `main.css` `@theme`.
 ### Neutrals — green-biased (not slate)
 
 Neutrals carry a faint green hue so they read as _chosen_, not inherited. Set via
-`--ui-*` surface/text/border tokens in `main.css` (light mode only — Tucker is
-light-only for now).
+`--ui-*` surface/text/border tokens in `main.css`. The table below is the light
+set; the dark set (same rule, inverted) lives in [Dark mode](#dark-mode).
 
 | Token          | Hex       | Role                                                     |
 | -------------- | --------- | -------------------------------------------------------- |
@@ -96,6 +96,55 @@ White cards sit on the pale-green canvas wash and lift with the card shadow;
 
 Over-budget is the one place the calorie ring leaves green: the arc and centre
 figure switch to **error**, not coral.
+
+---
+
+## Dark mode
+
+The user picks **Light / Dark / System** from an **Appearance** control on
+`/profile`; a fresh device with no stored choice defaults to **System** (follows
+the OS via `prefers-color-scheme`). The preference is a **local device** setting
+— persisted in the `@nuxtjs/color-mode` cookie, not on the backend `Profile`.
+Theme is pure presentation the server never acts on (unlike the reminder prefs,
+which it does), so it stays client-side for now; syncing it per-user once Tucker
+is multi-user is a deliberate later step, not a fork of this work. No ADR — the
+choice is reversible (moving to `Profile` later is purely additive) and dark mode
+isn't diet-domain language, so it's recorded here rather than in `CONTEXT.md` or
+`docs/adr/`.
+
+**Palette rule — extension, not fork.** The 11-step `green-*` and `coral-*` ramps
+are brand constants (pinned to the PWA icons + `manifest.theme_color`) and are
+**identical in both modes**. Only the neutral `--ui-*` surface/text/border tokens
+and the `.app-canvas` wash get dark values. A dark surface may _reference a
+lighter step of the same ramp_ (e.g. `green-400` rather than `green-500`) where
+`green-500` on a dark ground fails contrast — that's re-selecting a step, not
+re-hueing the ramp. The dark neutrals (palette **"Forest"**) are WCAG-AA verified
+on the dark canvas (body 12.9:1, highlighted 15:1, muted 6.4:1 on `--ui-bg`); the
+full set lives in the `.dark` block in `main.css`.
+
+| Token             | Light     | Dark ("Forest")                              |
+| ----------------- | --------- | -------------------------------------------- |
+| `.app-canvas`     | `#eff6f1` | `#0f1a15` (green-tinted near-black, darkest) |
+| `--ui-bg`         | `#ffffff` | `#16241d` (a step up so cards lift)          |
+| `--ui-text`       | `#24352c` | `#dce9e2` (green-biased light ink)           |
+| `--ui-text-muted` | `#5a6b62` | `#93a89d`                                    |
+| `--ui-border`     | `#e3efe8` | `#26362e` (low-contrast dark green-grey)     |
+
+The **status** inks lift one step for legibility on dark, and `--ui-error` is a
+_saturated rose_ (`#ff5a76`, not a washed pink) specifically so the over-budget
+calorie arc separates from the orange protein coral on the Day Ring — two warm
+reds that otherwise muddy together. Card **elevation** in dark comes from the
+surface step + hairline border + a dark ambient shadow (the light green lift-glow
+vanishes on a dark ground); the FAB keeps its brand-green halo.
+
+**PWA chrome.** `manifest.theme_color` / `background_color` stay branded-green —
+the launch splash is static and on-brand. The browser/status-bar colour tracks
+the active mode via a **single reactive** `<meta name="theme-color">` set in
+`app.vue` from `useColorMode().value` — which resolves `System` to the real OS
+scheme (and updates when the OS flips) and reflects a _pinned_ mode (Dark on a
+light-OS device) too. A static `prefers-color-scheme` media pair is deliberately
+avoided: it shares the `theme-color` name, so Unhead dedupes it against the
+reactive meta and the reactive value clobbers the media variants.
 
 ---
 
@@ -243,10 +292,17 @@ through icon and colour, never through colour alone.
      reads it as the `coral` palette).
    - `:root` (light) — override the `--ui-bg*`, `--ui-text*`, `--ui-border*`,
      `--ui-radius`, and the two shadow custom props to the tables above.
+   - `.dark` — an equally-unlayered block **after** `:root` (so it wins the
+     specificity tie) that redefines the same `--ui-*` neutrals + `.app-canvas`
+     for dark; the brand ramps are untouched. `@nuxtjs/color-mode` (ships with
+     `@nuxt/ui`) toggles the `.dark` class on `<html>` from `useColorMode()`.
    - `--font-sans` display wiring + `@nuxt/fonts` `Nunito` declaration; keep a
      system fallback so an offline first-paint never blanks.
-3. **PWA** (`nuxt.config.ts`) — `manifest.theme_color` stays `#00c16a`;
-   `background_color` → the canvas wash `#eff6f1` (matches `.app-canvas`). The
+3. **PWA** (`nuxt.config.ts` + `app.vue`) — `manifest.theme_color` stays
+   `#00c16a`; `background_color` → the canvas wash `#eff6f1` (matches
+   `.app-canvas`). A **single reactive** `<meta name="theme-color">` in `app.vue`,
+   fed by `useColorMode().value`, tracks the active mode so the installed app's
+   status bar matches dark (a static media pair is avoided — see Dark mode). The
    self-hosted font is scoped to `latin`/`normal` and falls under the Workbox
    precache glob so the installed app renders it offline.
 
@@ -259,5 +315,7 @@ through icon and colour, never through colour alone.
   `caloriesRemaining`, and the protein pair); the day verdict comes from
   `dayStatus`. It never re-derives on-target rules. Arc _fractions_ and the
   rounded over/under split are pure presentation.
-- **Light-only** for now; a dark mode is a future extension of this same token
-  set, not a fork of it.
+- **Dark mode is an extension, not a fork** (see [Dark mode](#dark-mode)): the
+  `green-*`/`coral-*` brand ramps are identical across modes; only the neutral
+  `--ui-*` tokens + `.app-canvas` flip. Theme is a local (cookie) preference,
+  not backend state.

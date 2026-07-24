@@ -78,6 +78,12 @@ export default defineNuxtConfig({
           content: 'width=device-width, initial-scale=1, viewport-fit=cover',
         },
         { name: 'description', content: 'A personal diet tracker.' },
+        // The browser/status-bar `theme-color` is set reactively from the active
+        // mode in app.vue (frontend/DESIGN.md → Dark mode) — a single meta that
+        // covers light, dark, System, and a pinned mode alike. It's deliberately
+        // not declared here: a static media pair and the reactive meta share the
+        // `theme-color` name, so Unhead dedupes them and the reactive value
+        // clobbers the media variants.
         // iOS has no maskable/manifest icon support — it reads the
         // apple-touch-icon link and these meta tags for the home-screen app.
         { name: 'apple-mobile-web-app-capable', content: 'yes' },
