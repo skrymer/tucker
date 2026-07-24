@@ -243,8 +243,25 @@ The frontend is built **test-first (red-green TDD)**. Increments:
   fallback chain; calories stay Atwater-derived (provider energy is a cross-check,
   not stored). v1 = Open Food Facts only, keyless, online lookup with graceful
   offline→manual fallback, density 1.0. Caching (shared per-barcode) over a
-  throttle; offline catalog cache and the multi-user shared/private catalog split
-  are deferred (the latter to F6 and a future multi-user ADR respectively).
+  throttle; the offline catalog cache is deferred to F6. The multi-user
+  shared/private catalog split was **rejected** in F10 — every Food is private to
+  its owner and the shared per-barcode *lookup* cache carries the dedupe benefit
+  ([ADR 0021](docs/adr/0021-every-row-is-owned-by-one-user.md)).
+- **F10** — multiple users (design pass **done**, see
+  [ADR 0020](docs/adr/0020-identity-comes-from-cloudflare-access.md),
+  [ADR 0021](docs/adr/0021-every-row-is-owned-by-one-user.md), and the `User` term
+  in `CONTEXT.md`). Invite-only: Cloudflare Access stays the authenticator and its
+  policy is the admission list, while the backend verifies the signed
+  `Cf-Access-Jwt-Assertion` (Spring Security resource server) and provisions a
+  `User` just-in-time from the email claim. Every row is owned by exactly one User
+  with **no sharing**; repositories scope implicitly from the security context, a
+  foreign id 404s, and the cron reminder runs-as each User in turn. Six slices:
+  identity (unscoped) → scope Foods+Entries → scope Weights+Goals+Reviews → scope
+  Profile+Push+Reminder → "Signed in as…" + sign out on `/profile` → invite the
+  second user. Slicing is safe in that order because production holds exactly one
+  User until the last slice. **Out of scope:** self-service email change (the
+  intended design is pending-email adoption, ADR 0020), sharing a Recipe with
+  another User (Spring ACL territory, ADR 0021), and public self-signup.
 
 ## Architecture
 

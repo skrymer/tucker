@@ -1,9 +1,25 @@
 # Tucker
 
-Tucker is a personal diet tracker. The user logs the foods they eat so the app
-can calculate calories consumed and track progress toward a weight-loss goal.
+Tucker is a personal diet tracker. Each **User** logs the foods they eat so the
+app can calculate calories consumed and track progress toward a weight-loss
+goal. Tucker is multi-user by invitation but never social — a User's data is
+theirs alone.
 
 ## Language
+
+### People
+
+**User**:
+One person using Tucker, and the owner of everything in it — their **Foods** and
+**Recipes**, **Entries**, **Weight Measurements**, **Goals**, **Weekly Reviews**,
+**Profile**, and **Push Subscriptions**. Users are strictly isolated: nothing one
+User records is visible to another, and nothing is shared between them. A User is
+**invited**, never self-registered — an operator admits their email address, and
+the User comes into being the first time they open Tucker. The email address
+identifies the person, but everything Tucker stores hangs off the User rather
+than the address, so the address can change without touching their history —
+today that change is an operator step, not something a User can do themselves.
+_Avoid_: account, member, profile (a **Profile** is a User's settings, not the User)
 
 ### Logging
 
@@ -13,12 +29,13 @@ A reusable definition of something edible — a name plus nutrition per 100g
 Food's calorie figure is always `4 × protein + 4 × carbs + 9 × fat` (the
 standard Atwater factors, per gram, scaled to 100g). The user supplies the
 three macros; the app computes calories. Created once (e.g. by scanning a
-barcode or entering manually), then referenced by many Entries. A Food created by
-**barcode scan** is shared product data — global, one per barcode, identical for
-every user — whereas a **Recipe** or a hand-entered Food is private to whoever
-created it; correcting a shared Food forks a private copy rather than changing it
-for everyone. (Tucker is single-user today; this is the ownership model it grows
-into — the global `barcode` uniqueness already assumes it.)
+barcode or entering manually), then referenced by many Entries. Every Food —
+scanned, hand-entered, or a **Recipe** — belongs to exactly one **User** and is
+visible only to them. There is no shared catalog: the same barcode may exist
+once per User, and correcting a Food changes it for its owner alone. Scanning a
+product another User has already scanned is still fast, because the *lookup* is
+cached across Users (see **Nutrition Provider**) — but what it produces is the
+scanning User's own Food.
 A Food referenced by at least one **Entry** — or used as an ingredient in a
 **Recipe** — **cannot be deleted**. Entries are permanent history, and a Recipe's
 ingredients are part of its definition, so a referenced Food is rejected (it stays
@@ -186,15 +203,15 @@ and **Weight Measurement**).
 _Avoid_: recalculation, recompute (as a noun)
 
 **Profile**:
-The user's personal settings — both the body inputs to the BMR seed (sex, birth
+A **User**'s personal settings — both the body inputs to the BMR seed (sex, birth
 date, height) and the user's locale: their **timezone** (an IANA zone, e.g.
 `Europe/Copenhagen`) and weekly-**Reminder** preferences (the local hour to nudge
 at, and whether reminders are on). The body inputs are set once and rarely
 changed; combined with the latest Weight Measurement they seed the initial
 Maintenance estimate. The timezone is user-level state (one human, one local day),
 defaulted from the browser when first captured — it is the proper home for "the
-user's local today," which weight-dating approximates client-side today. As Tucker
-grows multi-user this is the per-user record the reminder engine iterates.
+user's local today," which weight-dating approximates client-side today. It is the
+per-**User** record the reminder engine iterates.
 
 **Weight Measurement**:
 A single dated reading of the user's body weight. The raw, noisy signal behind
@@ -274,6 +291,10 @@ _Avoid_: device token, push token, registration
 
 ## Relationships
 
+- Every **Food**, **Recipe**, **Entry**, **Weight Measurement**, **Goal**,
+  **Weekly Review**, **Profile**, and **Push Subscription** belongs to exactly one
+  **User**; nothing is shared between Users, and every question Tucker answers is
+  asked of one User's data
 - Every **Entry** is either a **Weighed Entry** or an **Estimated Entry**
 - A **Weighed Entry** references exactly one **Food** and a mass in grams
 - An **Estimated Entry** references no **Food** — it carries its own calorie figure
@@ -313,6 +334,13 @@ _Avoid_: device token, push token, registration
 - "meal" is used loosely — resolved: there is no Meal object. "Manually entering a
   meal" is just a flow that creates several **Weighed Entries** at once; "meal" is
   the user's word for a batch of Entries logged together.
+- A shared catalog — this glossary once promised that a barcode-scanned **Food** was
+  global product data, one row per barcode shared by every user, with a correction
+  *forking* a private copy. Resolved against: every Food is private to its owner, the
+  same barcode may exist once per **User**, and the dedupe benefit comes from the shared
+  per-barcode *lookup* cache instead. The reversal and its reasons are recorded in
+  [ADR 0021](docs/adr/0021-every-row-is-owned-by-one-user.md); sharing a **Recipe** with
+  another User remains a deliberate future feature.
 - Liquids vs solids — resolved: everything is weighed in grams, liquids included.
   A scanned drink published per 100 ml is treated as per-100g — Tucker assumes
   water density (1 g/ml) rather than a per-product density. A small, accepted
