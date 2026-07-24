@@ -32,10 +32,12 @@ one composable rather than improvise it per screen.
 We considered an **inline/top banner rendered per surface**. Rejected: it means
 adding banner state, markup, and a Retry wire-up to every page, form, and
 overlay (including inside `LogEntrySheet`, which has no natural banner slot),
-inviting drift across the six flows; and on a tall scroll view a top banner can
-sit above the fold — the same "user misses it" failure we are fixing. A
-bottom-anchored toast is in the phone's thumb zone and is identical everywhere
-because it lives in one composable.
+inviting drift across the six flows; and on a tall scroll view a per-surface
+banner can scroll above the fold — the same "user misses it" failure we are
+fixing. A single toast viewport, owned by one composable, is identical
+everywhere and always on screen. Note this rejects a *per-surface, in-flow*
+banner, **not** the top edge itself: a *fixed* toast viewport at the top never
+scrolls away, and is exactly what phone toasts use — see Positioning below.
 
 The active sheet/overlay stays **open** on error (it closes only in the success
 path, which doesn't run on failure), so Retry replays against the still-populated
@@ -80,6 +82,34 @@ The shared factory already routes these: a 400's `{ message }` goes to
 overlay and surfacing the backend's message — so the rule's wording stays in the
 backend ([0002](0002-business-logic-belongs-in-the-backend.md)).
 
+## Positioning — top on phone, bottom-right on desktop
+
+The toast viewport follows the same phone-vs-desktop split as the rest of the
+app (drawer↔modal, FAB↔header button, bottom-nav↔side-nav). **On a phone it is
+anchored to the top; on desktop it stays bottom-right.**
+
+The original placement lifted a **bottom** toast above the tab bar
+(`bottom-[calc(5rem+env(safe-area-inset-bottom))]`). But on a phone the whole
+bottom belt is contested: an overlay that stays open on error (the error path
+never closes it) puts its inputs and submit button there, the FAB/tab bar live
+there, and the moment a field is focused the **software keyboard** owns the
+bottom ~40% — so a bottom toast either hides behind the keyboard or lands on the
+very input the user is filling. That overlap (issue observed on the Log-entry
+sheet) is the failure this amends. The top edge is the only reliably clear band
+on a phone, and it matches the iOS system-notification convention users already
+read as "a notification." Desktop has no keyboard to dodge and its forms are
+pages/centred modals, not bottom sheets, so it keeps the conventional
+bottom-right corner.
+
+Implementation: `<UApp>`'s `toaster.position` is bound **reactively** to
+`useIsDesktop()` — `top-center` on phone, `bottom-right` on desktop — so Nuxt
+UI's theme wires up each toast's anchor *and* its slide-in direction for the
+chosen edge. Overriding only the viewport classes would leave the toast body
+anchored to the opposite edge (the `position` variant drives both the viewport
+and the per-toast `base` slot), so we let the prop do it and override only the
+safe-area inset. This supersedes the earlier "bottom-anchored, thumb-zone"
+wording above for the phone case.
+
 ## Consequences
 
 - The error/success behaviour lives in `useApiMutation`. The error path emits a
@@ -99,20 +129,21 @@ backend ([0002](0002-business-logic-belongs-in-the-backend.md)).
   rather than re-announcing, so a repeated identical failure may not re-fire the
   assertive announcement.
 - **One toast at a time:** `toaster.max` is `1` on `<UApp>`, satisfying the
-  issue's "cap concurrent toasts at 1 on phone" so the bottom slot never stacks
-  into the phone nav or the `/foods` FAB. Nuxt UI's `max` keeps the **newest**
-  toast (it removes the oldest on overflow) — it does *not* prioritise a
-  persistent error over a later toast. In practice the only thing that can evict
-  a live error is another user-initiated result (the lone "Entry logged" success,
-  or a newer error that supersedes it), and the stable `id` already collapses
-  repeats of the same error; we accept that narrow eviction rather than add
-  priority queueing. The toast viewport's z-index (`z-[100]`) sits above the
-  FAB (no explicit z-index), so the user dismisses an error before adding another
-  food, which is acceptable for an error state.
-- **Safe area:** the toast viewport offset includes `env(safe-area-inset-bottom)`
-  (`bottom-[calc(5rem+env(safe-area-inset-bottom))] lg:bottom-[calc(1rem+env(safe-area-inset-bottom))]`)
-  so a now-long-lived error toast clears the iPhone home indicator. This relies
-  on `viewport-fit=cover`, already set in `nuxt.config.ts`.
+  issue's "cap concurrent toasts at 1 on phone" so the slot never stacks. Nuxt
+  UI's `max` keeps the **newest** toast (it removes the oldest on overflow) — it
+  does *not* prioritise a persistent error over a later toast. In practice the
+  only thing that can evict a live error is another user-initiated result (the
+  lone "Entry logged" success, or a newer error that supersedes it), and the
+  stable `id` already collapses repeats of the same error; we accept that narrow
+  eviction rather than add priority queueing. With the phone toast now at the
+  top (see Positioning) it no longer overlaps the `/foods` FAB at all; the
+  viewport's z-index (`z-[100]`) still keeps a toast above surrounding chrome.
+- **Safe area:** each toast viewport offset includes the matching `env()` inset
+  so a now-long-lived toast clears the device chrome —
+  `top-[calc(1rem+env(safe-area-inset-top))]` on phone (below the notch/status
+  bar), `bottom-[calc(1rem+env(safe-area-inset-bottom))]` on desktop (above the
+  home indicator on a home-screen iPad). This relies on `viewport-fit=cover`,
+  already set in `nuxt.config.ts`.
 - Online-event auto-retry (re-firing when connectivity returns) is **out of
   scope** here; manual Retry covers the come-back-online case. It is a candidate
   for the F6 PWA-polish work.
