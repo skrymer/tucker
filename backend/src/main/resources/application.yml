@@ -25,3 +25,12 @@ tucker:
   version: ${APP_VERSION:dev}
   git-sha: ${GIT_SHA:unknown}
   built-at: ${BUILT_AT:unknown}
+
+  # Nutrition Providers are operator config, not code (ADR 0006). The default is
+  # the live Open Food Facts host, so production is unchanged; the smoke stack
+  # points it at a local stub so CI never depends on OFF's health (issue #163).
+  # OpenFoodFactsProvider repeats this default inline on its @Value, because the
+  # test application.yml shadows this file entirely.
+  providers:
+    open-food-facts:
+      base-url: ${TUCKER_OFF_BASE_URL:https://world.openfoodfacts.org}

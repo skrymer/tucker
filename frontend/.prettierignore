@@ -12,3 +12,7 @@ playwright-report
 # Generated / machine-managed
 pnpm-lock.yaml
 openapi
+
+# A verbatim recorded Open Food Facts response (issue #163) — reformatting it
+# would undermine the point of committing a real third-party payload.
+e2e/smoke/fixtures/off-stub/api
