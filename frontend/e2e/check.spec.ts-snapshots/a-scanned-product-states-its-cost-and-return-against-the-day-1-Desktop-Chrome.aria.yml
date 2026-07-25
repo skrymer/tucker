@@ -1,0 +1,16 @@
+- main:
+    - heading "Check" [level=1]
+    - heading "Nutella" [level=2]
+    - paragraph: /per \d+ g/
+    - paragraph: Costs
+    - text: /\d+%/
+    - paragraph: /\d+ \/ \d+ kcal/
+    - paragraph: Returns
+    - text: 4%
+    - paragraph: /6\.3 \/ \d+ g protein/
+    - paragraph: /1\.2 g protein per \d+ kcal/
+    - paragraph: your day needs 6.8
+    - paragraph: /Balance \d+ g with \d+ g of protein elsewhere today\./
+    - paragraph: /A whole day of it is \d+ g — and still \d+ g under your protein floor\./
+    - text: /6\.3 g protein \d+\.\d+ g carbs \d+\.\d+ g fat/
+    - button "Scan another"
