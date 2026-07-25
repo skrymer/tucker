@@ -8,6 +8,13 @@ import org.springframework.web.bind.annotation.RestControllerAdvice
 /** Thrown when a requested resource does not exist — mapped to HTTP 404. */
 class NotFoundException(message: String) : RuntimeException(message)
 
+/**
+ * The request was understood and the thing exists, but it cannot be processed —
+ * and never will be, unlike a [NotFoundException] or a transient failure. Mapped
+ * to HTTP 422 so a client can tell "try again" apart from "this will not work".
+ */
+class UnprocessableException(message: String) : RuntimeException(message)
+
 /** The error body returned to API clients. */
 data class ApiError(val message: String)
 
@@ -30,4 +37,8 @@ class ApiExceptionHandler {
     @ExceptionHandler(IllegalStateException::class)
     @ResponseStatus(HttpStatus.CONFLICT)
     fun handleConflict(e: IllegalStateException) = ApiError(e.message ?: "conflict")
+
+    @ExceptionHandler(UnprocessableException::class)
+    @ResponseStatus(HttpStatus.UNPROCESSABLE_ENTITY)
+    fun handleUnprocessable(e: UnprocessableException) = ApiError(e.message ?: "unprocessable")
 }

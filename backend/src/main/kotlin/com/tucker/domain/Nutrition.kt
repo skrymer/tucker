@@ -1,6 +1,17 @@
 package com.tucker.domain
 
 /**
+ * Each macro's share of a Food's own calories, summing to 1. A share is `null`
+ * where the macro itself is unknown — absent is never zero (ADR 0006) — and all
+ * three are null for a Food with no calories to divide.
+ */
+data class MacroEnergyShares(
+    val protein: Double?,
+    val carbs: Double?,
+    val fat: Double?,
+)
+
+/**
  * Nutrition values per 100 g of a Food. A value object: immutable, compared by
  * value, and able to scale itself to an actual weight.
  *
@@ -20,11 +31,48 @@ data class Nutrition(
         require(fatPer100g == null || fatPer100g >= 0) { "fatPer100g must be >= 0" }
     }
 
+    /**
+     * Whether this food has any calories to divide. Calories are Atwater-derived,
+     * so none means no macros either — a diet drink or black coffee. Every figure
+     * that divides by them is then genuinely undefined rather than zero.
+     */
+    private val hasCalories: Boolean get() = caloriesPer100g > 0
+
     /** Calories in [grams] of this food. */
     fun caloriesFor(grams: Double): Double = caloriesPer100g * grams / GRAMS_PER_100G
 
     /** Protein (grams) in [grams] of this food. */
     fun proteinFor(grams: Double): Double = proteinPer100g * grams / GRAMS_PER_100G
+
+    /**
+     * The grams of this food that [kcal] calories buy — the inverse of
+     * [caloriesFor]. Null for a food with no calories, which no amount of
+     * exhausts a budget.
+     */
+    fun gramsFor(kcal: Double): Double? =
+        if (hasCalories) kcal / caloriesPer100g * GRAMS_PER_100G else null
+
+    /**
+     * The protein this food carries per 100 kcal — the figure a **Pace** is the
+     * line for (ADR 0022). Null for a food with no calories: it is a ratio to
+     * nothing, not zero.
+     */
+    fun proteinPer100Kcal(): Double? =
+        if (hasCalories) proteinPer100g / caloriesPer100g * Pace.KCAL_PER_100_KCAL else null
+
+    /**
+     * How this food's own calories divide between its macros, by the same Atwater
+     * factors that derived them. Describes composition only — Tucker sets no
+     * target for carbs or fat and passes no judgement on either (CONTEXT.md).
+     */
+    fun macroEnergyShares(): MacroEnergyShares {
+        if (!hasCalories) return MacroEnergyShares(null, null, null)
+        return MacroEnergyShares(
+            protein = KCAL_PER_GRAM_PROTEIN * proteinPer100g / caloriesPer100g,
+            carbs = carbsPer100g?.let { KCAL_PER_GRAM_CARBS * it / caloriesPer100g },
+            fat = fatPer100g?.let { KCAL_PER_GRAM_FAT * it / caloriesPer100g },
+        )
+    }
 
     companion object {
         /** The weight, in grams, that nutrition figures are expressed per. */
