@@ -194,6 +194,14 @@ What survives is the intent: **one decoder, mounted deliberately.** The decode
 path stays `zxing-wasm`, lazy-loaded behind the scan gesture, shared by both
 mount points. New mount points still need a reason as good as this one.
 
+**Everything this ADR says about manual entry still stands for the Add-Food
+flow.** Manual barcode entry remains a permanent peer to the camera here, manual
+macro entry remains an always-on peer, and a provider miss still lands on a
+barcode-pre-filled form. A Check drops both — it produces nothing, so there is
+nothing worth typing for — but that is a rule about *that* tab only. Do not
+"harmonise" the two: a denied camera must still leave the user able to add a
+Food.
+
 ## Multi-user direction (deferred)
 
 Tucker may become multi-user once the single-user app is proven. The intended

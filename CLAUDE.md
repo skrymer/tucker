@@ -276,6 +276,10 @@ The frontend is built **test-first (red-green TDD)**. Increments:
   diet-agnostic — both are now standing rules in `CONTEXT.md`. Backend
   `GET /api/check/{barcode}` returns the portion-invariant rules; the client only
   scales by grams. Amends ADR 0006's "one mount point / no new nav tab".
+  The camera is the **only** way into a Check — no typed barcode, no manual
+  macros, because it produces nothing worth typing for; a denied camera makes the
+  tab unavailable. This narrows **nothing** in Add-Food, where manual barcode and
+  macro entry remain always-on peers (ADR 0006) — do not harmonise the two.
   **Prerequisite:** [#164](https://github.com/skrymer/tucker/issues/164) — with no
   manual fallback, a provider outage and a genuine miss need opposite error
   messages. **Out of scope:** grading fat or carbs, saving anything, comparing

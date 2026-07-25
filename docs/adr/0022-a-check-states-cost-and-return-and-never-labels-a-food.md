@@ -127,14 +127,32 @@ to buy, which is the worst possible place to guess.
   return by grams, which is presentation of already-derived values in the same
   class as the Day Ring's arc sweep, not a re-derived rule
   ([0002](0002-business-logic-belongs-in-the-backend.md)).
-- **A failed lookup shows an error — there is no manual fallback.** Unlike
-  Add-Food, where [0006](0006-provider-agnostic-nutrition-lookup.md) makes manual
-  entry an always-on peer, a Check has nothing to create and so nothing to fall
-  back into. This makes the error message the entire failure experience, which in
-  turn makes [#164](https://github.com/skrymer/tucker/issues/164) a
-  **prerequisite**: a provider outage and a genuine miss are currently
-  indistinguishable, yet they need opposite advice — *retry in a moment* versus
-  *this product will never resolve*.
+- **The camera is the only way into a Check, and a failed lookup shows an error.**
+  No typed barcode, no hand-entered macros — scan or nothing.
+
+  **This narrows nothing in the Add-Food flow.**
+  [0006](0006-provider-agnostic-nutrition-lookup.md) keeps every manual path it
+  specifies: manual barcode entry stays a *permanent peer* to the camera there,
+  manual macro entry stays an always-on peer, and a provider miss still lands on
+  a barcode-pre-filled form. Nothing below is an argument for removing them.
+
+  The difference is what each flow produces. Add-Food always ends in a **Food**
+  worth creating, so a manual path is worth real effort and must exist for a
+  denied camera or a product the provider has never heard of. A Check ends in
+  nothing — it is a question, not a creation — so typing three macros off a label
+  one-handed in an aisle costs more than the answer is worth, when the user can
+  abandon the decision for free. If the scan doesn't work they simply move on,
+  which is a perfectly good outcome for a purchase they had not committed to.
+
+  **Accepted consequence:** a denied or absent camera makes *this tab*
+  unavailable, with no degraded mode. Add-Food remains fully usable without a
+  camera. That is the honest trade for keeping a Check a two-second interaction.
+
+  It also makes the error message the *entire* failure experience, which makes
+  [#164](https://github.com/skrymer/tucker/issues/164) a **prerequisite**: a
+  provider outage and a genuine miss are currently indistinguishable, yet they
+  need opposite advice — *retry in a moment* versus *this product will never
+  resolve*.
 
 ## Consequences
 
