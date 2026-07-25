@@ -10,7 +10,11 @@ import { useBarcodeScanner } from './useBarcodeScanner'
 // real (ADR 0006: the live lifecycle is covered by a real-stack smoke). Here we
 // mock both and assert the exposed state machine + decoded barcode — never the
 // mock internals.
-vi.mock('zxing-wasm/reader', () => ({ readBarcodes: vi.fn(async () => []) }))
+vi.mock('zxing-wasm/reader', () => ({
+  readBarcodes: vi.fn(async () => []),
+  // The composable points the decoder at a same-origin .wasm before using it.
+  setZXingModuleOverrides: vi.fn(),
+}))
 
 const readBarcodesMock = vi.mocked(readBarcodes)
 
@@ -133,6 +137,37 @@ describe('useBarcodeScanner', () => {
 
     await vi.waitFor(() => expect(stateText()).toBe('decoded'))
     expect(screen.getByTestId('barcode').textContent).toBe('5701234567890')
+  })
+
+  it('gives up when the decoder itself cannot run', async () => {
+    // The decoder's WASM loads on the first decode, not on the import, so an
+    // unreachable binary surfaces here. Without this the camera stays live and
+    // the loop retries forever — a viewfinder that can never read anything, on
+    // a surface (a Check) that has no manual path to offer instead.
+    getUserMedia.mockResolvedValue(fakeStream().stream)
+    readBarcodesMock.mockRejectedValue(new Error('failed to load wasm'))
+
+    await renderSuspended(Harness)
+    const video = screen
+      .getByTestId('state')
+      .parentElement!.querySelector('video')!
+    Object.defineProperty(video, 'readyState', { value: 4, configurable: true })
+    Object.defineProperty(video, 'videoWidth', {
+      value: 640,
+      configurable: true,
+    })
+    Object.defineProperty(video, 'videoHeight', {
+      value: 480,
+      configurable: true,
+    })
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
+      drawImage: vi.fn(),
+      getImageData: vi.fn(() => ({ data: new Uint8ClampedArray(4) })),
+    } as unknown as CanvasRenderingContext2D)
+
+    await tapScan()
+
+    await vi.waitFor(() => expect(stateText()).toBe('unsupported'))
   })
 
   it('enters denied when the camera permission is refused', async () => {

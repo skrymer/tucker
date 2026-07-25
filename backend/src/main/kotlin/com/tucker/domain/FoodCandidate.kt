@@ -20,6 +20,23 @@ data class FoodCandidate(
     val statedEnergyKcalPer100g: Double?,
     val source: String,
 ) {
+    /**
+     * The Atwater nutrition this candidate implies, or `null` when a macro is
+     * absent. An absent macro is never defaulted to zero, so an incomplete
+     * candidate has no calories to derive — the user fills the gaps on the
+     * Add-Food form, and a surface with no form (a **Check**) cannot proceed.
+     */
+    fun atwaterNutrition(): Nutrition? {
+        val protein = proteinPer100g
+        val carbs = carbsPer100g
+        val fat = fatPer100g
+        return if (protein != null && carbs != null && fat != null) {
+            Nutrition.fromMacros(proteinPer100g = protein, carbsPer100g = carbs, fatPer100g = fat)
+        } else {
+            null
+        }
+    }
+
     init {
         require(name.isNotBlank()) { "Food Candidate name must not be blank" }
         require(proteinPer100g == null || proteinPer100g >= 0) { "proteinPer100g must be >= 0" }

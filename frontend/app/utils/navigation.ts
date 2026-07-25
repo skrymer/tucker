@@ -8,13 +8,16 @@ export interface NavDestination {
 }
 
 /**
- * Tucker's four primary destinations, shown in the app shell's adaptive
- * navigation. One per roadmap area: Today (F2), Foods (F3), Review (F5),
- * Profile (F4) — see CLAUDE.md.
+ * Tucker's five primary destinations, shown in the app shell's adaptive
+ * navigation. One per roadmap area: Today (F2), Foods (F3), Check (F11),
+ * Review (F5), Profile (F4) — see CLAUDE.md. Check earns a tab of its own
+ * because it creates nothing (ADR 0022, which amends 0006's "no new nav tab");
+ * in a shop, one-handed reachability decides it.
  */
 export const navDestinations: NavDestination[] = [
   { label: 'Today', to: '/', icon: 'i-lucide-house' },
   { label: 'Foods', to: '/foods', icon: 'i-lucide-apple' },
+  { label: 'Check', to: '/check', icon: 'i-lucide-scan-search' },
   { label: 'Review', to: '/review', icon: 'i-lucide-trending-down' },
   { label: 'Profile', to: '/profile', icon: 'i-lucide-user' },
 ]

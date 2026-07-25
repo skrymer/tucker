@@ -141,7 +141,7 @@ class FoodController(
                 BarcodeLookupResponse("EXISTING", food = result.food.toResponse(), candidate = null)
             is BarcodeLookup.Candidate ->
                 BarcodeLookupResponse("CANDIDATE", food = null, candidate = result.candidate.toResponse())
-            null -> throw NotFoundException("no Food or Provider match for barcode $barcode")
+            null -> throw barcodeNotFound(barcode)
         }
 
     @PostMapping

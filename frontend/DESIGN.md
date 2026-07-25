@@ -219,6 +219,45 @@ budget exists.
 
 ---
 
+## The Check pair — peer rings, not the Day Ring
+
+A **Check** (ADR 0022) borrows the Ring's colour keying and geometry but **not**
+its nested form, and the reason is honesty rather than variety.
+
+- **Two rings at equal radius, side by side** — outer-sized arcs on a shared
+  geometry, calories (green) left, protein (coral) right. The Day Ring's
+  concentric arcs have different circumferences, so equal percentages draw as
+  unequal lengths. That costs the Day Ring nothing, because it tracks two
+  independent journeys. A Check _compares_ cost against return, so unequal
+  lengths for equal shares would be a lie told by the geometry. Peer rings also
+  stop the screen being misread as today's progress.
+- **Cost never turns red.** Red on the Day Ring means _over budget_ — a thing
+  that has happened. On a Check nothing has been eaten, so a product costing 90%
+  of the Budget stays green. Tucker never labels a Food (CONTEXT.md), and colour
+  is the easiest place to break that rule by accident.
+- **Centres** carry the share as a percentage; the absolute pair (`533 / 2492
+kcal`) sits beneath its own ring, so no arc is ever colour-alone. Calorie
+  figures are ungrouped, as on the Day Ring; the whole-day allowance goes through
+  `formatGrams`, which groups, because it reaches four digits.
+- **Macro bar** — one rounded track split three ways by each macro's share of the
+  item's own calories. Protein takes coral; **carbs and fat take neutrals**,
+  because protein is the only macro Tucker sets a target for and the palette
+  should say so. Grams are labelled beneath, never colour alone.
+- **Viewfinder** — a Check's landing state is the camera itself: a black,
+  20px-radius surface with the instruction over it, capped at `max-w-md` so it
+  fills a phone but doesn't become a slab on desktop. A denied camera ends the
+  screen (ADR 0022) — it offers no manual path, unlike the Add-Food scanner.
+- **Failure is the whole experience here**, because there is nothing else to
+  offer, so the three outcomes get three headings and three icons rather than one
+  shared apology: nothing came back (`i-lucide-search-x`), the product's
+  nutrition is incomplete and rescanning is futile (`i-lucide-file-question`),
+  and the lookup itself failed (`i-lucide-cloud-off`). Deliberately **not** the
+  load-error treatment below: a scan can't be "retried" without a new scan, so
+  the action stays **Scan another** and never **Retry**. Attribution for
+  Provider-sourced figures (`Data from …`) sits under the macro bar (ADR 0006).
+
+---
+
 ## Component treatments
 
 - **Card** — white surface, 1px `border-default`, 20px radius, green-tinted card

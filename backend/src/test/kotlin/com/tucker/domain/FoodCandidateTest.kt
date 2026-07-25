@@ -2,6 +2,7 @@ package com.tucker.domain
 
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
+import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
 class FoodCandidateTest {
@@ -38,6 +39,24 @@ class FoodCandidateTest {
         )
 
         assertNull(candidate.fatPer100g)
+    }
+
+    @Test
+    fun `derives Atwater nutrition once every macro is present`() {
+        // 4 * 5 + 4 * 5 + 9 * 5 = 85 kcal /100g.
+        val nutrition = candidate().atwaterNutrition()
+
+        assertEquals(85.0, nutrition!!.caloriesPer100g, 1e-9)
+        assertEquals(5.0, nutrition.proteinPer100g)
+    }
+
+    @Test
+    fun `has no Atwater nutrition while any macro is absent`() {
+        // Each arm on its own: one missing macro is enough, and none of the three
+        // may be quietly read as zero (ADR 0006).
+        assertNull(candidate(proteinPer100g = null).atwaterNutrition())
+        assertNull(candidate(carbsPer100g = null).atwaterNutrition())
+        assertNull(candidate(fatPer100g = null).atwaterNutrition())
     }
 
     @Test

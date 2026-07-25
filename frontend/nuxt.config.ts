@@ -150,6 +150,11 @@ export default defineNuxtConfig({
     // navigation falls back to the precached index so the app loads offline
     // instead of white-screening; /api/* is never cached (it's the live backend).
     workbox: {
+      // `wasm` is deliberately absent: the 1 MB barcode decoder is served from
+      // our own origin (see useBarcodeScanner) but left network-only. Precaching
+      // it would add a megabyte to every install to buy nothing — both surfaces
+      // that decode need a live lookup afterwards, so neither can work offline
+      // anyway. Revisit only if an offline catalog lands (deferred in ADR 0006).
       globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
       // The prerendered shell (index.html → '/') is precached by the glob above,
       // so any offline navigation falls back to it instead of white-screening.

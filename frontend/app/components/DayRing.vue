@@ -13,10 +13,12 @@ const props = defineProps<{
   proteinFloor: number
 }>()
 
-// Arc circumferences for the two radii (r 72 outer, 52 inner). A capped
+// The two radii (72 outer, 52 inner) and their circumferences. A capped
 // ringFraction sets each sweep, so an over-target day fills the ring, never past.
-const CIRC_OUTER = 2 * Math.PI * 72
-const CIRC_INNER = 2 * Math.PI * 52
+const R_OUTER = 72
+const R_INNER = 52
+const CIRC_OUTER = 2 * Math.PI * R_OUTER
+const CIRC_INNER = 2 * Math.PI * R_INNER
 
 // Over budget once the *rounded* remaining goes negative — deciding on the same
 // rounded figure the centre shows means a −0.3 kcal overage never flips the ring
@@ -39,15 +41,11 @@ const { centreValue, centreLabel } = useCentre()
 // re-skinning a role — or the calorie arc flipping to error — never leaves the
 // track on a stale hue (e.g. a red arc over a green track).
 function useArcs() {
-  const caloriesOffset = computed(
-    () =>
-      CIRC_OUTER *
-      (1 - ringFraction(props.caloriesConsumed, props.calorieBudget)),
+  const caloriesOffset = computed(() =>
+    ringDashOffset(props.caloriesConsumed, props.calorieBudget, R_OUTER),
   )
-  const proteinOffset = computed(
-    () =>
-      CIRC_INNER *
-      (1 - ringFraction(props.proteinConsumed, props.proteinFloor)),
+  const proteinOffset = computed(() =>
+    ringDashOffset(props.proteinConsumed, props.proteinFloor, R_INNER),
   )
   const caloriesTrack = computed(() =>
     isOver.value

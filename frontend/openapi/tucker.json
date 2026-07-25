@@ -59,6 +59,16 @@
               }
             }
           },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "200": {
             "description": "OK",
             "content": {
@@ -128,6 +138,16 @@
               }
             }
           },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "200": {
             "description": "OK",
             "content": {
@@ -170,6 +190,16 @@
           },
           "409": {
             "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
             "content": {
               "*/*": {
                 "schema": {
@@ -236,6 +266,16 @@
               }
             }
           },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "200": {
             "description": "OK",
             "content": {
@@ -278,6 +318,16 @@
           },
           "409": {
             "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
             "content": {
               "*/*": {
                 "schema": {
@@ -347,6 +397,16 @@
               }
             }
           },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "200": {
             "description": "OK",
             "content": {
@@ -389,6 +449,16 @@
           },
           "409": {
             "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
             "content": {
               "*/*": {
                 "schema": {
@@ -448,6 +518,16 @@
           },
           "409": {
             "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
             "content": {
               "*/*": {
                 "schema": {
@@ -516,6 +596,16 @@
               }
             }
           },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "201": {
             "description": "Created",
             "content": {
@@ -576,6 +666,16 @@
               }
             }
           },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "201": {
             "description": "Created"
           }
@@ -627,6 +727,16 @@
               }
             }
           },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "204": {
             "description": "No Content"
           }
@@ -662,6 +772,16 @@
           },
           "409": {
             "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
             "content": {
               "*/*": {
                 "schema": {
@@ -720,6 +840,16 @@
           },
           "409": {
             "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
             "content": {
               "*/*": {
                 "schema": {
@@ -787,6 +917,16 @@
               }
             }
           },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "204": {
             "description": "No Content"
           }
@@ -822,6 +962,16 @@
           },
           "409": {
             "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
             "content": {
               "*/*": {
                 "schema": {
@@ -891,6 +1041,16 @@
               }
             }
           },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "201": {
             "description": "Created",
             "content": {
@@ -943,6 +1103,16 @@
           },
           "409": {
             "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
             "content": {
               "*/*": {
                 "schema": {
@@ -1011,6 +1181,16 @@
               }
             }
           },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "200": {
             "description": "OK",
             "content": {
@@ -1063,6 +1243,16 @@
           },
           "409": {
             "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
             "content": {
               "*/*": {
                 "schema": {
@@ -1131,6 +1321,16 @@
               }
             }
           },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "200": {
             "description": "OK",
             "content": {
@@ -1173,6 +1373,16 @@
           },
           "409": {
             "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
             "content": {
               "*/*": {
                 "schema": {
@@ -1231,6 +1441,16 @@
               }
             }
           },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "200": {
             "description": "OK",
             "content": {
@@ -1273,6 +1493,16 @@
           },
           "409": {
             "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
             "content": {
               "*/*": {
                 "schema": {
@@ -1326,6 +1556,16 @@
           },
           "409": {
             "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
             "content": {
               "*/*": {
                 "schema": {
@@ -1395,6 +1635,16 @@
               }
             }
           },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "200": {
             "description": "OK",
             "content": {
@@ -1437,6 +1687,16 @@
           },
           "409": {
             "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
             "content": {
               "*/*": {
                 "schema": {
@@ -1495,6 +1755,16 @@
               }
             }
           },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "200": {
             "description": "OK",
             "content": {
@@ -1540,6 +1810,16 @@
           },
           "409": {
             "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
             "content": {
               "*/*": {
                 "schema": {
@@ -1609,6 +1889,16 @@
               }
             }
           },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "200": {
             "description": "OK",
             "content": {
@@ -1668,6 +1958,16 @@
               }
             }
           },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "204": {
             "description": "No Content"
           }
@@ -1713,6 +2013,16 @@
           },
           "409": {
             "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
             "content": {
               "*/*": {
                 "schema": {
@@ -1782,6 +2092,16 @@
               }
             }
           },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "200": {
             "description": "OK",
             "content": {
@@ -1791,6 +2111,76 @@
                   "items": {
                     "$ref": "#/components/schemas/EntryResponse"
                   }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/check/{barcode}": {
+      "get": {
+        "tags": [
+          "check-controller"
+        ],
+        "operationId": "check",
+        "parameters": [
+          {
+            "name": "barcode",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckResponse"
                 }
               }
             }
@@ -1846,6 +2236,16 @@
               }
             }
           },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "204": {
             "description": "No Content"
           }
@@ -1892,6 +2292,16 @@
           },
           "409": {
             "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
             "content": {
               "*/*": {
                 "schema": {
@@ -2685,6 +3095,96 @@
           },
           "source": {
             "type": "string"
+          }
+        }
+      },
+      "CheckResponse": {
+        "required": [
+          "balanceProteinPer100gG",
+          "barcode",
+          "calorieBudgetKcal",
+          "caloriesPer100g",
+          "costSharePer100g",
+          "name",
+          "paceGPer100Kcal",
+          "proteinFloorG",
+          "proteinPer100g",
+          "returnSharePer100g"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "barcode": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "caloriesPer100g": {
+            "type": "number",
+            "format": "double"
+          },
+          "proteinPer100g": {
+            "type": "number",
+            "format": "double"
+          },
+          "carbsPer100g": {
+            "type": "number",
+            "format": "double"
+          },
+          "fatPer100g": {
+            "type": "number",
+            "format": "double"
+          },
+          "proteinEnergyShare": {
+            "type": "number",
+            "format": "double"
+          },
+          "carbsEnergyShare": {
+            "type": "number",
+            "format": "double"
+          },
+          "fatEnergyShare": {
+            "type": "number",
+            "format": "double"
+          },
+          "calorieBudgetKcal": {
+            "type": "number",
+            "format": "double"
+          },
+          "proteinFloorG": {
+            "type": "number",
+            "format": "double"
+          },
+          "costSharePer100g": {
+            "type": "number",
+            "format": "double"
+          },
+          "returnSharePer100g": {
+            "type": "number",
+            "format": "double"
+          },
+          "paceGPer100Kcal": {
+            "type": "number",
+            "format": "double"
+          },
+          "proteinPer100Kcal": {
+            "type": "number",
+            "format": "double"
+          },
+          "balanceProteinPer100gG": {
+            "type": "number",
+            "format": "double"
+          },
+          "gramsInBudget": {
+            "type": "number",
+            "format": "double"
+          },
+          "wholeDayProteinShortfallG": {
+            "type": "number",
+            "format": "double"
           }
         }
       },
