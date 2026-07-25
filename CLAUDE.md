@@ -247,6 +247,31 @@ The frontend is built **test-first (red-green TDD)**. Increments:
   shared/private catalog split was **rejected** in F10 — every Food is private to
   its owner and the shared per-barcode *lookup* cache carries the dedupe benefit
   ([ADR 0021](docs/adr/0021-every-row-is-owned-by-one-user.md)).
+- **F9** — Recipes: a composite Food defined once from ingredient Foods and
+  rolled up into per-100g nutrition (**shipped**, PRD
+  [#141](https://github.com/skrymer/tucker/issues/141), see
+  [ADR 0019](docs/adr/0019-recipe-density-is-a-representative-batch-estimate.md)
+  and the `Recipe` term in `CONTEXT.md`). The two weights are the whole idea:
+  each ingredient is weighed **as added** (its per-100g must match the form
+  weighed in), and the **cooked weight** re-expresses the conserved total per
+  100 g — cooking moves water, not calories. Four slices, each shipped with a
+  real-stack smoke:
+  - Slice 1 ([#142](https://github.com/skrymer/tucker/issues/142)) — create a
+    Recipe end-to-end: `POST /api/recipes` with rolled-up nutrition, and the
+    recipe builder behind a Food | Recipe switch in the Add sheet.
+  - Slice 2 ([#143](https://github.com/skrymer/tucker/issues/143)) — recipes are
+    distinguishable in the catalog (ingredient count) with a read-only
+    composition view over `GET /api/recipes/{id}`.
+  - Slice 3 ([#144](https://github.com/skrymer/tucker/issues/144)) — edit a
+    Recipe: recalibrate the cooked weight or change ingredients.
+  - Slice 4 ([#145](https://github.com/skrymer/tucker/issues/145)) — deleting a
+    Food used as a recipe ingredient is refused, naming what references it (the
+    same rule Entries already enforced).
+
+  The builder's live "Per 100 g" is an optimistic client-side preview of
+  not-yet-saved input, which the backend re-derives authoritatively on save —
+  the carve-out is recorded in
+  [ADR 0002](docs/adr/0002-business-logic-belongs-in-the-backend.md).
 - **F10** — multiple users (design pass **done**, see
   [ADR 0020](docs/adr/0020-identity-comes-from-cloudflare-access.md),
   [ADR 0021](docs/adr/0021-every-row-is-owned-by-one-user.md), and the `User` term
