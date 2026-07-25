@@ -170,7 +170,11 @@ the **Calorie Budget** — `Protein Floor ÷ Calorie Budget × 100`. A Food *abo
 pace carries its own protein weight; one *below* pace spends calories faster than
 it returns protein, so the rest of the day has to make up the difference. Pace is
 derived from the user's own two targets and moves with them: a deeper Goal deficit
-tightens it (fewer calories, same floor), and **Maintenance Mode** eases it. It
+tightens it (fewer calories, same floor), and **Maintenance Mode** eases it. This
+is deliberate — when calories are scarce each one must work harder for protein —
+and it has a visible consequence: the same product's figures can change after a
+**Weekly Review** moves the Budget, without the product changing. The answer is
+that the user's targets moved, not the food, which is why pace is shown. It
 describes a Food's relationship to those targets — it is never a verdict on the
 Food (see the no-good-or-bad rule). Used by a **Check**.
 _Avoid_: protein density (density is mass per volume here — see Recipe and the

@@ -262,6 +262,25 @@ The frontend is built **test-first (red-green TDD)**. Increments:
   User until the last slice. **Out of scope:** self-service email change (the
   intended design is pending-email adoption, ADR 0020), sharing a Recipe with
   another User (Spring ACL territory, ADR 0021), and public self-signup.
+- **F11** — Check: scan a package *before* buying it (design pass **done**, see
+  [ADR 0022](docs/adr/0022-a-check-states-cost-and-return-and-never-labels-a-food.md)
+  and the `Check` / `Pace` terms in `CONTEXT.md`). A second use for the scanner,
+  on its own nav tab: it states what a portion **costs** (share of the Calorie
+  Budget) and what it **returns** (share of the Protein Floor), against **Pace** —
+  the `Floor ÷ Budget × 100` g protein per 100 kcal the day must average. Pace is
+  derived from the user's own targets, so a deeper deficit tightens it and
+  Maintenance Mode eases it. Whole-day framing only (the same product reads the
+  same at 9am and 8pm); nothing is saved — no Food, no Entry; gated behind having
+  a Calorie Budget, because every figure is a share of one. **Tucker never labels
+  a Food good or bad**, and the verdict is protein-only because the app is
+  diet-agnostic — both are now standing rules in `CONTEXT.md`. Backend
+  `GET /api/check/{barcode}` returns the portion-invariant rules; the client only
+  scales by grams. Amends ADR 0006's "one mount point / no new nav tab".
+  **Prerequisite:** [#164](https://github.com/skrymer/tucker/issues/164) — with no
+  manual fallback, a provider outage and a genuine miss need opposite error
+  messages. **Out of scope:** grading fat or carbs, saving anything, comparing
+  products side by side, and "can I fit this in what's left right now?" (that one
+  belongs to logging a Food, not shopping for one).
 
 ## Architecture
 
