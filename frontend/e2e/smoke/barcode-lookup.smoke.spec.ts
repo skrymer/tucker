@@ -1,15 +1,30 @@
 import { test, expect } from './support/smoke-test'
-import type { APIRequestContext, Locator } from '@playwright/test'
+import type { APIRequestContext } from '@playwright/test'
 
 // F8 slice 1 smoke: the typed-barcode pipeline end-to-end against the real
 // backend (which resolves catalog-first, then the Open Food Facts provider).
 //
-// The candidate case depends on a stable, widely-scanned product existing in
-// Open Food Facts; the miss case is fully deterministic (an unknown barcode
-// 404s, falling through even if OFF is unreachable). Both clean up after
-// themselves — the docker volume persists between runs.
+// Neither case touches the internet. The smoke stack points the provider's
+// base-url at a local stub serving a recorded OFF response (issue #163 — a slow
+// OFF reddened a documentation-only PR), so a candidate resolves deterministically
+// and an unrecorded barcode 404s into the miss path. Everything on Tucker's side
+// of the network boundary is still under test. See
+// e2e/smoke/fixtures/off-stub/README.md.
 
 const API = 'http://localhost:8080/api'
+
+// The recorded Nutella payload the stub serves, and the calories Tucker derives
+// from it: 4·6.3 + 4·57.5 + 9·30.9. Deliberately *not* the 539 kcal OFF states —
+// that is a cross-check the user sees, never a stored value (ADR 0006).
+const NUTELLA = {
+  barcode: '3017620422003',
+  name: 'Nutella',
+  protein: 6.3,
+  carbs: 57.5,
+  fat: 30.9,
+  statedKcal: 539,
+  atwaterKcal: 533.3,
+}
 
 async function deleteFoodByBarcode(
   request: APIRequestContext,
@@ -22,21 +37,12 @@ async function deleteFoodByBarcode(
   }
 }
 
-/** Type into a UInputNumber only if it's empty (NumberField ignores .fill()). */
-async function fillIfEmpty(input: Locator, value: string) {
-  if ((await input.inputValue()) === '') {
-    await input.click()
-    await input.page().keyboard.type(value)
-  }
-}
-
 test('typed known barcode resolves to a candidate and saves a Food', async ({
   page,
   goto,
   request,
 }) => {
-  // Nutella — one of the most-scanned products in Open Food Facts.
-  const barcode = '3017620422003'
+  const barcode = NUTELLA.barcode
   // Start clean so the lookup is a provider candidate, not a catalog hit.
   await deleteFoodByBarcode(request, barcode)
 
@@ -51,17 +57,25 @@ test('typed known barcode resolves to a candidate and saves a Food', async ({
     await sheet.getByLabel(/barcode/i).fill(barcode)
     await sheet.getByRole('button', { name: /look up/i }).click()
 
-    // The candidate pre-fills the name and shows the provider's stated energy
-    // as a cross-check (calories are recalculated from macros on save).
-    await expect(sheet.getByLabel(/^name$/i)).not.toHaveValue('', {
-      timeout: 15_000,
-    })
-    await expect(sheet.getByText(/stated on the label/i)).toBeVisible()
+    // The candidate pre-fills the name and every macro the provider supplied,
+    // normalised to per-100g.
+    await expect(sheet.getByLabel(/^name$/i)).toHaveValue(NUTELLA.name)
+    await expect(sheet.getByLabel(/protein \/100\s*g/i)).toHaveValue(
+      String(NUTELLA.protein),
+    )
+    await expect(sheet.getByLabel(/carbs \/100\s*g/i)).toHaveValue(
+      String(NUTELLA.carbs),
+    )
+    await expect(sheet.getByLabel(/fat \/100\s*g/i)).toHaveValue(
+      String(NUTELLA.fat),
+    )
 
-    // Complete any macro the provider didn't supply, then save.
-    await fillIfEmpty(sheet.getByLabel(/protein \/100\s*g/i), '6')
-    await fillIfEmpty(sheet.getByLabel(/carbs \/100\s*g/i), '57')
-    await fillIfEmpty(sheet.getByLabel(/fat \/100\s*g/i), '31')
+    // The provider's own energy figure is shown as a cross-check only.
+    await expect(
+      sheet.getByText(
+        `Stated on the label: ${NUTELLA.statedKcal} kcal /100 g.`,
+      ),
+    ).toBeVisible()
 
     await sheet.getByRole('button', { name: /save food/i }).click()
 
@@ -73,14 +87,19 @@ test('typed known barcode resolves to a candidate and saves a Food', async ({
     await sheet.getByRole('button', { name: /not now/i }).click()
     await expect(sheet).toBeHidden()
 
-    // The Food was created carrying the scanned barcode.
+    // The Food was created carrying the scanned barcode, with its calories
+    // re-derived by Atwater from the macros rather than taken from the provider.
     const list = await request.get(`${API}/foods`)
     const foods = (await list.json()) as Array<{
       id: number
       barcode?: string
+      caloriesPer100g: number
     }>
     const created = foods.find((f) => f.barcode === barcode)
     expect(created, 'created Food should carry the barcode').toBeDefined()
+    // Tolerance for the REAL→float round-trip through SQLite, not for slack:
+    // 533.3 is the derived figure and 539 is the provider's, ~6 kcal apart.
+    expect(created!.caloriesPer100g).toBeCloseTo(NUTELLA.atwaterKcal, 3)
     createdId = created!.id
   } finally {
     if (createdId !== undefined) {
@@ -94,7 +113,8 @@ test('typed unknown barcode drops to manual entry carrying the barcode', async (
   goto,
   request,
 }) => {
-  // Not a real product → catalog miss + provider miss → manual entry.
+  // No such product → catalog miss + provider miss (the stub has no recorded
+  // response for it, and answers 404 exactly as OFF does) → manual entry.
   const barcode = `9990000${Date.now()}`.slice(0, 13)
   const foodName = `Smoke miss ${Date.now()}`
   await deleteFoodByBarcode(request, barcode)
