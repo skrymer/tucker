@@ -117,6 +117,20 @@ Calorie Budget exists, and about calories alone — the **Protein Floor** is a
 minimum, not a ceiling, so it has no projection.
 _Avoid_: budget check, calorie warning, what-if
 
+**Check**:
+A one-off look at a **Food** or **Food Candidate** against the user's **Calorie
+Budget** and **Protein Floor**, taken *before* eating or buying it — typically by
+scanning a package in a shop. It states what a portion **costs** (its share of the
+Budget) and what it **returns** (its share of the Floor), and sets the Food's
+protein per 100 kcal against **Pace**. Nothing is created or stored: no Food, no
+Entry, no history — the answer is read and discarded. The result is never a label
+(see the no-good-or-bad rule below); it is two figures and a consequence.
+Distinct from a **Budget Projection**, its sibling: a Projection previews one
+not-yet-logged **Entry** against what today has left, so its answer changes
+through the day, while a Check weighs a product against the whole day's targets
+and so reads the same at 9am and 8pm.
+_Avoid_: shelf check, scan, food score, rating, grade
+
 ### Goals
 
 **Goal**:
@@ -149,6 +163,22 @@ The minimum daily protein intake: 2 g per kg of current Trend Weight, recomputed
 at the weekly review. A floor to stay above — the counterpart to the Calorie
 Budget's ceiling. Together they protect muscle while losing fat.
 _Avoid_: protein target, protein goal
+
+**Pace**:
+The protein per 100 kcal a day must average to reach the **Protein Floor** inside
+the **Calorie Budget** — `Protein Floor ÷ Calorie Budget × 100`. A Food *above*
+pace carries its own protein weight; one *below* pace spends calories faster than
+it returns protein, so the rest of the day has to make up the difference. Pace is
+derived from the user's own two targets and moves with them: a deeper Goal deficit
+tightens it (fewer calories, same floor), and **Maintenance Mode** eases it. This
+is deliberate — when calories are scarce each one must work harder for protein —
+and it has a visible consequence: the same product's figures can change after a
+**Weekly Review** moves the Budget, without the product changing. The answer is
+that the user's targets moved, not the food, which is why pace is shown. It
+describes a Food's relationship to those targets — it is never a verdict on the
+Food (see the no-good-or-bad rule). Used by a **Check**.
+_Avoid_: protein density (density is mass per volume here — see Recipe and the
+per-100ml rule), protein score, food quality, rating
 
 **Maintenance**:
 The estimated daily calories that hold the user's weight steady (their TDEE).
@@ -305,11 +335,29 @@ _Avoid_: device token, push token, registration
   or **Maintenance** itself when no Goal is active (**Maintenance Mode**)
 - The **Protein Floor** scales from the current **Trend Weight** independent of any
   **Goal**, so it still applies in **Maintenance Mode**
+- Tucker is **diet-agnostic**: protein is the only macro with a target, because it
+  is the lever for retaining muscle while losing fat. Carbs and fat are recorded
+  (they are needed to derive calories) but never judged, so keto, low-fat, and
+  low-carb all track identically. Tucker has no opinion on sugar, saturated fat,
+  or any nutrient it sets no target for
+- **No Food is good or bad.** Tucker never labels, grades, or scores a Food — no
+  verdict word, no letter, no traffic light. It states what a Food *costs* against
+  the **Calorie Budget** and what it *returns* against the **Protein Floor**, and
+  the user draws the conclusion. A label is counter-productive as well as
+  unearned: it moralises an ingredient when only the **day** has a verdict (see
+  the on-target rule below), and a food that reads badly alone is fine paired with
+  something protein-dense
 - A **Goal** and the current **Trend Weight** yield **Goal Progress** — how far the
   trend has moved toward the target and when, at the Goal's rate, it's projected to arrive
 - **Maintenance** is corrected over time from **Entries** and the **Trend Weight**
 - A day is **on-target** once the **Protein Floor** is met and intake is at or under the **Calorie Budget**; it is **over budget** the moment intake exceeds the **Calorie Budget**. An in-progress day in neither state has no verdict — being under the floor mid-day isn't a failure, the day just isn't finished.
 - A **Budget Projection** applies the over-budget rule to the day's intake plus a prospective **Entry**, warning before it's logged; the user may log it regardless
+- A **Check** weighs a **Food** or **Food Candidate** against the whole day's
+  **Calorie Budget** and **Protein Floor** — never against what's left — so the
+  same product reads the same at any hour. It creates nothing and is defined only
+  while a Calorie Budget exists
+- **Pace** is `Protein Floor ÷ Calorie Budget × 100`; a **Food**'s protein per
+  100 kcal sits above or below it
 - A **Weekly-Review Reminder** is sent when a **Weekly Review** is overdue and the
   user has at least one **Push Subscription** — it nudges, it never computes the review
 - A user has zero or more **Push Subscriptions** (one per device); each **Weekly-Review

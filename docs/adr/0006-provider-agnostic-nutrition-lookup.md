@@ -177,6 +177,31 @@ explicit next step (a pre-filled Weighed Entry with that Food selected), never a
 automatic Entry. A catalog hit leads with "log it", since the Food already
 exists.
 
+### Amended by [0022](0022-a-check-states-cost-and-return-and-never-labels-a-food.md): a second mount point, and a nav tab
+
+"Add-Food flow only" and "no new nav tab" no longer hold. F11 adds a **Check** —
+scanning a package in a shop to see what it would cost against the day's targets
+— which gets its own tab and hosts the decoder at a second mount point.
+
+The rule was not broken so much as outgrown. It was written when scanning had
+exactly one purpose, *create a Food*, and its job was to stop a scanner sprawling
+across the app for no reason. A Check is a genuinely different purpose: it happens
+*before* acquisition, it creates nothing, and folding it into the Add-Food flow
+would honour the letter of this rule while telling the user the opposite of the
+truth about what the screen does.
+
+What survives is the intent: **one decoder, mounted deliberately.** The decode
+path stays `zxing-wasm`, lazy-loaded behind the scan gesture, shared by both
+mount points. New mount points still need a reason as good as this one.
+
+**Everything this ADR says about manual entry still stands for the Add-Food
+flow.** Manual barcode entry remains a permanent peer to the camera here, manual
+macro entry remains an always-on peer, and a provider miss still lands on a
+barcode-pre-filled form. A Check drops both — it produces nothing, so there is
+nothing worth typing for — but that is a rule about *that* tab only. Do not
+"harmonise" the two: a denied camera must still leave the user able to add a
+Food.
+
 ## Multi-user direction — **superseded by [ADR 0021](0021-every-row-is-owned-by-one-user.md)**
 
 This section predicted a **hybrid** catalog: barcode-scanned product Foods
