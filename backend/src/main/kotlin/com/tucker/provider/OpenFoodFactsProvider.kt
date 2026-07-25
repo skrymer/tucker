@@ -6,6 +6,7 @@ import com.tucker.domain.FoodCandidate
 import com.tucker.domain.NutritionProvider
 import com.tucker.domain.ProviderCapability
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.context.event.ApplicationReadyEvent
 import org.springframework.context.event.EventListener
 import org.springframework.http.HttpHeaders
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Component
 import org.springframework.web.client.RestClient
 import org.springframework.web.client.RestClientException
 import java.net.InetAddress
+import java.net.URI
 import java.time.Duration
 
 /** OFF v2 product response. `status` is 1 when the product exists, 0 on a miss. */
@@ -49,10 +51,13 @@ data class OffNutriments(
  * failure returns `null` so the chain falls through.
  */
 @Component
-class OpenFoodFactsProvider(builder: RestClient.Builder) : NutritionProvider {
+class OpenFoodFactsProvider(
+    builder: RestClient.Builder,
+    @Value("\${$BASE_URL_PROPERTY:$DEFAULT_BASE_URL}") private val baseUrl: String,
+) : NutritionProvider {
 
     private val client: RestClient = builder
-        .baseUrl(BASE_URL)
+        .baseUrl(baseUrl)
         .defaultHeader(HttpHeaders.USER_AGENT, USER_AGENT)
         // Use the classic HttpURLConnection factory: the JDK HttpClient's NIO
         // async DNS intermittently throws UnresolvedAddressException on the cold
@@ -79,8 +84,13 @@ class OpenFoodFactsProvider(builder: RestClient.Builder) : NutritionProvider {
     }
 
     private fun resolveHostUntilWarm() {
+        val host = runCatching { URI(baseUrl).host }.getOrNull()
+        if (host == null) {
+            log.warn("No host in the configured Open Food Facts base URL '{}'; skipping DNS pre-warm", baseUrl)
+            return
+        }
         repeat(PREWARM_ATTEMPTS) { attempt ->
-            val resolved = runCatching { InetAddress.getAllByName(HOST) }
+            val resolved = runCatching { InetAddress.getAllByName(host) }
             if (resolved.isSuccess) {
                 log.info("Open Food Facts DNS pre-warmed after {} attempt(s)", attempt + 1)
                 return
@@ -105,7 +115,7 @@ class OpenFoodFactsProvider(builder: RestClient.Builder) : NutritionProvider {
         repeat(MAX_ATTEMPTS) { attempt ->
             try {
                 return client.get()
-                    .uri("/api/v2/product/{barcode}.json", barcode)
+                    .uri("/api/v2/product/{barcode}.json?fields=$FIELDS", barcode)
                     .retrieve()
                     .body(OffResponse::class.java)
             } catch (e: RestClientException) {
@@ -123,9 +133,24 @@ class OpenFoodFactsProvider(builder: RestClient.Builder) : NutritionProvider {
 
     companion object {
         private val log = LoggerFactory.getLogger(OpenFoodFactsProvider::class.java)
-        private const val HOST = "world.openfoodfacts.org"
-        private const val BASE_URL = "https://$HOST"
+
+        /**
+         * The provider's origin, as operator config (ADR 0006 — the Provider set
+         * is a deployment choice, not code). Defaulting to the live host keeps
+         * production behaviour unchanged; the smoke stack overrides it to a local
+         * stub so CI never depends on OFF's health (issue #163).
+         */
+        const val BASE_URL_PROPERTY = "tucker.providers.open-food-facts.base-url"
+        const val DEFAULT_BASE_URL = "https://world.openfoodfacts.org"
         const val USER_AGENT = "Tucker/1.0 (personal diet tracker; +https://github.com/skrymer/tucker)"
+
+        /**
+         * OFF's field selector, naming exactly what [OffProduct] reads. Without it
+         * OFF ships the whole product document — ~150 KB to extract a name and
+         * four numbers — and the response time swings past [READ_TIMEOUT], which
+         * silently degrades every scan to manual entry (issue #163).
+         */
+        private const val FIELDS = "product_name,nutriments"
 
         /** ODbL attribution carried on every Candidate sourced from OFF. */
         const val SOURCE = "Open Food Facts"
