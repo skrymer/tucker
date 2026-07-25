@@ -177,24 +177,31 @@ explicit next step (a pre-filled Weighed Entry with that Food selected), never a
 automatic Entry. A catalog hit leads with "log it", since the Food already
 exists.
 
-## Multi-user direction (deferred)
+## Multi-user direction — **superseded by [ADR 0021](0021-every-row-is-owned-by-one-user.md)**
 
-Tucker may become multi-user once the single-user app is proven. The intended
-catalog-ownership model — recorded in `CONTEXT.md` and assumed by today's
-**global** `idx_food_barcode` uniqueness — is **hybrid**: barcode-scanned product
-Foods are **shared/global** (objective, one per barcode, and the same table the
-shared per-barcode cache wants), while Recipes, hand-entered Foods, and Estimated
-Entries are **private**. Corrections to a shared Food are **copy-on-write** (a
-tweak forks a private copy) so one user's fix never rewrites another's logged
-history.
+This section predicted a **hybrid** catalog: barcode-scanned product Foods
+**shared/global** (one row per barcode), Recipes and hand-entered Foods private,
+and corrections **copy-on-write** so one user's fix never rewrote another's logged
+history. It asked to be "promoted to a standalone ADR when multi-user work
+actually starts". That happened in F10 — and the promotion **reversed** it.
 
-For v1 (single user) this changes nothing to build — shared and private collapse
-to "the catalog". The only obligation now is to **keep the seam open**: keep the
-global barcode index, treat barcode Foods as globally-keyed product data, and add
-no assumption that every Food is privately owned (no `owner`/visibility column
-yet — YAGNI). This direction is recorded here rather than in its own ADR because
-it documents an unbuilt future; it should be **promoted to a standalone ADR when
-multi-user work actually starts**.
+[ADR 0021](0021-every-row-is-owned-by-one-user.md) decides that **every row belongs
+to exactly one User and nothing is shared**: `food.barcode` becomes
+`UNIQUE(user_id, barcode)` rather than globally unique, there is no shared row and
+therefore no copy-on-write fork, and a hand-entered Food carrying a scanned barcode
+(this ADR's own third outcome) stops being unclassifiable. Read 0021 for why the
+hybrid model fails with two real users — chiefly that the delete-refusal message,
+which names what references a Food, would leak one user's log to another.
+
+**What survives, and matters here:** the dedupe benefit that motivated sharing rows
+never depended on sharing them. It comes from the **shared per-barcode lookup
+cache** in [Caching, not a rate limiter](#caching-not-a-rate-limiter) above, which
+is keyed by barcode and user-independent. Scanning a product another User has
+already scanned is still one cached lookup — it just produces the scanning User's
+own Food, correctable without touching anyone else's.
+
+Nothing else in this ADR is affected: the port, the operator-chosen chain, the
+Atwater derivation, and the stated-energy cross-check are all ownership-neutral.
 
 ## Consequences
 
@@ -213,8 +220,10 @@ multi-user work actually starts**.
 - **v1 scope is deliberately narrow:** Open Food Facts only, keyless, online
   lookup with graceful manual fallback, density 1.0, single user. USDA (free
   key) is the first proof of the keyed-config seam; text-search autofill, the OFF
-  data-dump backing, a token-bucket throttle, offline catalog cache, and the
-  multi-user catalog split are all explicitly **later**.
+  data-dump backing, a token-bucket throttle, and the offline catalog cache are
+  all explicitly **later**. (The multi-user catalog split was listed here as
+  "later" too; F10 **rejected** it outright — see
+  [0021](0021-every-row-is-owned-by-one-user.md).)
 - This is a substantial feature; it warrants its own **F-number** in `CLAUDE.md`
   rather than the "F3 follow-up" framing.
 - The decode-library choice (`zxing-wasm`) is an implementation detail, not a
@@ -223,6 +232,8 @@ multi-user work actually starts**.
 ## References
 
 - [0002 — business logic belongs in the backend](0002-business-logic-belongs-in-the-backend.md)
+- [0021 — every row is owned by one User](0021-every-row-is-owned-by-one-user.md)
+  — supersedes this ADR's multi-user catalog direction.
 - [`CONTEXT.md`](../../CONTEXT.md) — `Nutrition Provider`, `Food Candidate`, Food
   ownership, liquid density.
 - Open Food Facts API & reuse conditions:
