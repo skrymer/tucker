@@ -8,7 +8,11 @@ import AddSheet from './AddSheet.vue'
 // The camera scanner's hardware + WASM decoder are mocked (ADR 0006: the live
 // lifecycle is a real-stack smoke). These helpers drive the sheet's camera
 // states through the same seams the useBarcodeScanner unit tests use.
-vi.mock('zxing-wasm/reader', () => ({ readBarcodes: vi.fn(async () => []) }))
+vi.mock('zxing-wasm/reader', () => ({
+  readBarcodes: vi.fn(async () => []),
+  // The composable points the decoder at a same-origin .wasm before using it.
+  setZXingModuleOverrides: vi.fn(),
+}))
 
 function mockCameraGranted(barcode?: string) {
   const track = { stop: vi.fn(), kind: 'video' }
