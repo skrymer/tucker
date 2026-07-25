@@ -335,6 +335,18 @@ _Avoid_: device token, push token, registration
   or **Maintenance** itself when no Goal is active (**Maintenance Mode**)
 - The **Protein Floor** scales from the current **Trend Weight** independent of any
   **Goal**, so it still applies in **Maintenance Mode**
+- Tucker is **diet-agnostic**: protein is the only macro with a target, because it
+  is the lever for retaining muscle while losing fat. Carbs and fat are recorded
+  (they are needed to derive calories) but never judged, so keto, low-fat, and
+  low-carb all track identically. Tucker has no opinion on sugar, saturated fat,
+  or any nutrient it sets no target for
+- **No Food is good or bad.** Tucker never labels, grades, or scores a Food — no
+  verdict word, no letter, no traffic light. It states what a Food *costs* against
+  the **Calorie Budget** and what it *returns* against the **Protein Floor**, and
+  the user draws the conclusion. A label is counter-productive as well as
+  unearned: it moralises an ingredient when only the **day** has a verdict (see
+  the on-target rule below), and a food that reads badly alone is fine paired with
+  something protein-dense
 - A **Goal** and the current **Trend Weight** yield **Goal Progress** — how far the
   trend has moved toward the target and when, at the Goal's rate, it's projected to arrive
 - **Maintenance** is corrected over time from **Entries** and the **Trend Weight**
