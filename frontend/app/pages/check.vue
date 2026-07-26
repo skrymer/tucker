@@ -34,12 +34,13 @@ function useCheckLookup() {
   const failure = ref<
     | { kind: 'missed'; barcode: string }
     | { kind: 'incomplete' }
-    | { kind: 'inconclusive' }
+    | { kind: 'inconclusive'; barcode: string }
     | null
   >(null)
 
   const {
     busy: looking,
+    pending: asking,
     run,
     cancel,
   } = useAsyncAction(
@@ -50,14 +51,27 @@ function useCheckLookup() {
         // or a Budget moved by a Weekly Review, changes the answer — so never
         // serve one from the browser cache.
         cache: 'no-store',
+        // ofetch retries a GET once by default, and 503 is in its stock
+        // retryStatusCodes — which would silently undo the backend's own rule:
+        // `OpenFoodFactsProvider` retries only fast transport failures and
+        // deliberately excludes slowness, rate limits and server errors,
+        // because repeating those multiplies load on a Provider that IP-bans
+        // abusive callers (issue #164). A Check raises scan volume sharply
+        // (ADR 0022), so re-adding that multiplication here is the last thing
+        // this screen should do. Asking again is now the user's call, on the
+        // one failure where it can help.
+        retry: 0,
         signal,
       }),
     { mode: 'latest', timeoutMs: 8000 },
   )
 
-  async function lookup(code: string) {
-    check.value = null
-    failure.value = null
+  /**
+   * Ask about a barcode, leaving exactly one of `check` / `failure` set. It
+   * never blanks the screen first, so a caller decides whether the user watches
+   * their current answer be replaced or be held.
+   */
+  async function ask(code: string) {
     try {
       const outcome = await run(code)
       // Superseded by a newer scan, or cleared by `reset` — leave the screen to
@@ -66,10 +80,12 @@ function useCheckLookup() {
       // Aborted on its timeout. Saying nothing here would leave a screen with
       // only a "Scan another" button.
       if (outcome.status === 'timedOut') {
-        failure.value = { kind: 'inconclusive' }
+        failure.value = { kind: 'inconclusive', barcode: code }
+        check.value = null
         return
       }
       check.value = outcome.value
+      failure.value = null
     } catch (error) {
       // The three failures need opposite advice, so they are never collapsed:
       // 404 everything was asked and none of it knew the product (futile to
@@ -82,8 +98,29 @@ function useCheckLookup() {
           ? { kind: 'missed', barcode: code }
           : status === 422
             ? { kind: 'incomplete' }
-            : { kind: 'inconclusive' }
+            : { kind: 'inconclusive', barcode: code }
+      check.value = null
     }
+  }
+
+  /** A newly decoded barcode: the previous product's answer is gone. */
+  function lookup(code: string) {
+    check.value = null
+    failure.value = null
+    return ask(code)
+  }
+
+  /**
+   * Re-ask about the barcode already decoded. The camera is never restarted:
+   * the scan succeeded and only the round-trip after it failed, so re-aiming a
+   * phone at the package would redo the one part that worked. The failure stays
+   * on screen meanwhile — it is what the user is reading when they tap the
+   * button inside it. Offered for an Inconclusive Lookup alone; a miss and
+   * incomplete nutrition are permanent for that product (ADR 0007).
+   */
+  function retry() {
+    if (failure.value?.kind === 'inconclusive')
+      return ask(failure.value.barcode)
   }
 
   function reset() {
@@ -94,9 +131,25 @@ function useCheckLookup() {
     failure.value = null
   }
 
-  return { check, failure, looking, lookup, reset }
+  /**
+   * In flight with nothing on screen to hold. A first look-up is this — there
+   * is no answer yet, so the screen says what it is doing. A retry is not: the
+   * failure it was launched from is still the current answer, and stays put
+   * while the button inside it carries the wait.
+   *
+   * Both answers are excluded, not just the failure. `looking` is deliberately
+   * held past the moment one arrives (`minBusyMs`, so a spinner can't flicker),
+   * so a screen keyed on it alone would blank to "Looking it up…" *after* a
+   * successful retry had already put the product on screen.
+   */
+  const noAnswerYet = computed(
+    () => looking.value && !failure.value && !check.value,
+  )
+
+  return { check, failure, asking, noAnswerYet, lookup, retry, reset }
 }
-const { check, failure, looking, lookup, reset } = useCheckLookup()
+const { check, failure, asking, noAnswerYet, lookup, retry, reset } =
+  useCheckLookup()
 
 /**
  * The screen is the camera: opening the tab starts it, and scanning again after
@@ -252,7 +305,9 @@ const {
         </div>
 
         <div v-else class="flex flex-col items-center gap-4">
-          <p v-if="looking" class="py-12 text-sm text-muted">Looking it up…</p>
+          <p v-if="noAnswerYet" class="py-12 text-sm text-muted">
+            Looking it up…
+          </p>
 
           <template v-else-if="check">
             <h2 class="text-center text-lg font-bold text-highlighted">
@@ -294,12 +349,25 @@ const {
                differently. Blaming the food database would be a guess, and a
                wrong one whenever it was Tucker that broke. -->
           <UAlert
-            v-else-if="failure"
+            v-else-if="failure?.kind === 'inconclusive'"
             icon="i-lucide-cloud-off"
             color="warning"
             variant="subtle"
             title="Couldn't look that up"
-            description="The lookup didn't get through, so Tucker can't say what this costs. Try scanning it again in a moment."
+            description="The lookup didn't get through, so Tucker can't say what this costs. Try again in a moment."
+            :actions="[
+              {
+                label: 'Try again',
+                color: 'warning',
+                variant: 'subtle',
+                // `asking`, not the delayed `looking`: the latter is held on
+                // past the answer so spinners don't flicker, which on a button
+                // means a dead control for the rest of that linger — and a tap
+                // in that window is the user asking again.
+                loading: asking,
+                onClick: retry,
+              },
+            ]"
           />
 
           <UButton

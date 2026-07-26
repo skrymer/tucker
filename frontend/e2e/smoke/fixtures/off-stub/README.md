@@ -35,8 +35,13 @@ That distinction is the whole point: "there is no answer" and "the answer is no"
 used to be
 indistinguishable _because_ the signal died between the provider and the
 controller, so a test that stubs the provider proves nothing about it. Keep this
-barcode out of every other fixture and smoke, and keep it in step with
-`off-stub.conf`.
+barcode out of every other fixture.
+
+On the TypeScript side it is exported once, from
+[`../../support/off-stub.ts`](../../support/off-stub.ts), alongside the
+allowed-error pattern a deliberately-induced 503 needs. Import it from there
+rather than retyping the digits — that leaves exactly two things to keep in step,
+that module and `off-stub.conf`.
 
 ## Provenance
 
