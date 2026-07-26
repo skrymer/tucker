@@ -81,9 +81,11 @@ class CheckController(private val checks: CheckService) {
     /**
      * Check [barcode] against the day's targets. The failure cases are kept
      * distinct because they need opposite advice and the message is the whole
-     * failure experience here (ADR 0022): `404` when nothing knows the product,
-     * `422` when a Provider knows it but its nutrition can never yield a Check,
-     * and `409` before setup has produced a Calorie Budget.
+     * failure experience here (ADR 0022): `404` when everything was asked and
+     * nothing knows the product, `503` when nobody could be asked and it is
+     * therefore still unknown whether it exists (issue #164), `422` when a
+     * Provider knows it but its nutrition can never yield a Check, and `409`
+     * before setup has produced a Calorie Budget.
      */
     @GetMapping("/{barcode}")
     fun check(@PathVariable barcode: String): CheckResponse =
@@ -94,5 +96,6 @@ class CheckController(private val checks: CheckService) {
                     "so Tucker can't say what it costs",
             )
             CheckOutcome.Unknown -> throw barcodeNotFound(barcode)
+            CheckOutcome.Inconclusive -> throw providersUnreachable(barcode)
         }
 }

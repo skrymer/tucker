@@ -1,7 +1,3 @@
-function isNotFound(caught: unknown): boolean {
-  return (caught as { status?: number })?.status === 404
-}
-
 export function useOptionalFetch<T>(fetcher: () => Promise<T>) {
   const data = ref<T | null>(null) as Ref<T | null>
   const error = ref<unknown>(null)

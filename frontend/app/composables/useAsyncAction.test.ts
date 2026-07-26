@@ -9,7 +9,7 @@ describe('useAsyncAction', () => {
     })
     const { run } = useAsyncAction(action)
 
-    await expect(run()).resolves.toBe('done')
+    await expect(run()).resolves.toEqual({ status: 'ok', value: 'done' })
     expect(action).toHaveBeenCalledOnce()
   })
 
@@ -82,7 +82,7 @@ describe('useAsyncAction', () => {
       // Action settles right after the spinner appears: the caller gets the
       // result now, but the spinner must not strobe away.
       resolve('ok')
-      await expect(done).resolves.toBe('ok')
+      await expect(done).resolves.toEqual({ status: 'ok', value: 'ok' })
       expect(busy.value).toBe(true)
 
       await vi.advanceTimersByTimeAsync(400)
@@ -121,11 +121,13 @@ describe('useAsyncAction', () => {
     expect(signals[0]!.aborted).toBe(true)
     expect(signals[1]!.aborted).toBe(false)
 
-    // Even if the superseded request still resolves, its value is discarded.
+    // Even if the superseded request still resolves, its value is discarded —
+    // and it says *why*, so its caller knows to stay quiet rather than to
+    // explain a failure that never happened.
     resolvers[0]!('stale')
     resolvers[1]!('fresh')
-    await expect(second).resolves.toBe('fresh')
-    await expect(first).resolves.toBeUndefined()
+    await expect(second).resolves.toEqual({ status: 'ok', value: 'fresh' })
+    await expect(first).resolves.toEqual({ status: 'superseded' })
   })
 
   it('cancel() aborts the in-flight run, clears pending, and discards the result', async () => {
@@ -144,11 +146,13 @@ describe('useAsyncAction', () => {
     expect(signals[0]!.aborted).toBe(true)
     expect(pending.value).toBe(false)
 
+    // A cancelled run reads as superseded, not as a failure: the caller asked
+    // for it to stop, so it has nothing to explain.
     resolve('late')
-    await expect(first).resolves.toBeUndefined()
+    await expect(first).resolves.toEqual({ status: 'superseded' })
   })
 
-  it('aborts a hung action after timeoutMs and resolves undefined', async () => {
+  it('tells a hung action apart from a superseded one when it aborts', async () => {
     vi.useFakeTimers()
     try {
       const signals: AbortSignal[] = []
@@ -163,7 +167,9 @@ describe('useAsyncAction', () => {
       await vi.advanceTimersByTimeAsync(8000)
 
       expect(signals[0]!.aborted).toBe(true)
-      await expect(done).resolves.toBeUndefined()
+      // Not 'superseded': nothing newer took over, so the caller is the only one
+      // who can explain the silence to the user (issue #164).
+      await expect(done).resolves.toEqual({ status: 'timedOut' })
     } finally {
       vi.useRealTimers()
     }

@@ -5,6 +5,7 @@ import com.tucker.domain.FoodCandidate
 import com.tucker.domain.Maintenance
 import com.tucker.domain.Nutrition
 import com.tucker.domain.ProviderCapability
+import com.tucker.domain.ProviderLookup
 import com.tucker.domain.WeeklyReview
 import com.tucker.persistence.FoodRepository
 import com.tucker.persistence.WeeklyReviewRepository
@@ -76,7 +77,7 @@ class CheckApiTest {
 
     private fun providerKnows(barcode: String, candidate: FoodCandidate) {
         whenever(openFoodFacts.capabilities).thenReturn(setOf(ProviderCapability.BARCODE_LOOKUP))
-        whenever(openFoodFacts.lookupByBarcode(barcode)).thenReturn(candidate)
+        whenever(openFoodFacts.lookupByBarcode(barcode)).thenReturn(ProviderLookup.Found(candidate))
     }
 
     private fun nutella(barcode: String) = FoodCandidate(
@@ -141,9 +142,24 @@ class CheckApiTest {
     fun `a barcode nothing knows is a 404`() {
         seedTargets()
         whenever(openFoodFacts.capabilities).thenReturn(setOf(ProviderCapability.BARCODE_LOOKUP))
-        whenever(openFoodFacts.lookupByBarcode("9999999999999")).thenReturn(null)
+        whenever(openFoodFacts.lookupByBarcode("9999999999999")).thenReturn(ProviderLookup.Missing)
 
         mockMvc.get("/api/check/9999999999999").andExpect { status { isNotFound() } }
+    }
+
+    @Test
+    fun `a barcode no Provider could answer for is distinguishable from one nothing knows`() {
+        // The Check tab has no manual path, so this status picks the entire advice
+        // the user gets: try again in a moment, versus give up on this product.
+        seedTargets()
+        whenever(openFoodFacts.capabilities).thenReturn(setOf(ProviderCapability.BARCODE_LOOKUP))
+        whenever(openFoodFacts.lookupByBarcode("9999999999998"))
+            .thenReturn(ProviderLookup.Inconclusive)
+
+        mockMvc.get("/api/check/9999999999998").andExpect {
+            status { isServiceUnavailable() }
+            jsonPath("$.message") { value(containsString("9999999999998")) }
+        }
     }
 
     @Test

@@ -46,6 +46,71 @@ We considered two endpoints (catalog lookup separate from provider lookup) with
 the frontend orchestrating. Rejected: it puts the resolution order in the UI,
 against 0002.
 
+### Amended by [#164](https://github.com/skrymer/tucker/issues/164): a fourth outcome, because "no answer" is not "the answer is no"
+
+Three outcomes were one too few. "Total miss" above quietly covered two situations
+that share nothing but their emptiness:
+
+- Every Provider was asked, and none knew the product. **The answer is no.**
+- No Provider could answer — unreachable, timed out, rate-limiting, or replying
+  unintelligibly. **There is no answer.**
+
+Collapsing them was not a cosmetic flaw. The user is shown a blank form either
+way, hand-enters macros for a product Open Food Facts knows perfectly well, and
+that Food now owns the barcode — so every future scan is a *catalog hit* and the
+real provider data never arrives. **A bad minute degrades the catalog
+permanently.** And the two need opposite advice: *move on, this will never
+resolve* versus *try again, it may resolve in a minute*. On the **Check** tab
+([0022](0022-a-check-states-cost-and-return-and-never-labels-a-food.md)) there is
+no manual path at all, so the message *is* the whole failure experience — which is
+why 0022 named this a prerequisite.
+
+So the lookup gains a fourth outcome, an **Inconclusive Lookup**
+([`CONTEXT.md`](../../CONTEXT.md)), and the endpoint contract becomes
+`EXISTING | CANDIDATE | 404 miss | 503 inconclusive`. 503 rather than a body field:
+this is a failure, the client already branches on status for 404 and 422, and
+`ApiError`'s single `message` stays untouched.
+
+**Where the boundary sits.** A Provider answering *at all* is an answer, even when
+the answer is "never heard of it":
+
+| Provider behaviour | Outcome | Retried? |
+|---|---|---|
+| `404`, or `200` with `status: 0` | Missing | no — it is a verdict |
+| `200`, known product, no usable name | Missing | no |
+| DNS failure, connection refused | Inconclusive | **yes**, ×3 |
+| Read timeout | Inconclusive | no |
+| `429`, `5xx`, unparseable body | Inconclusive | no |
+
+The retries survive only for what they were actually built for: the JDK's cold
+in-container name resolution, which fails in milliseconds and succeeds on the
+immediate retry. Retrying *slowness* was never intentional — it rode along on the
+same policy and made a degraded Provider cost three times as much. Worse, because
+`RestClient` throws on 4xx, a genuine **miss** was being retried three times too,
+tripling load against a Provider that IP-bans abusive callers, to reach a verdict
+already given on the first attempt.
+
+**Falling through still means falling through, but the chain remembers.** The
+ordered chain is unchanged — the first Provider hit still wins, and a failing
+Provider still yields to the next. What changes is that a failure is no longer
+forgotten on the way past. A lookup is **Missing** only when every barcode-capable
+Provider answered Missing; if any was Inconclusive and none hit, the lookup is
+Inconclusive. Anything less would let a healthy last-place Provider's "no" speak
+for a first-place Provider that was never reached. A deployment with *no*
+barcode-capable Provider configured folds to Missing, not Inconclusive: nothing is
+broken and retrying cannot help.
+
+**Nothing is cached.** The per-barcode cache already held Provider hits only, so an
+Inconclusive Lookup cannot stick — which was already the right behaviour, and now
+has a name.
+
+How this surfaces — the inline note in Add-Food, the two distinct messages on the
+Check tab, and why it is deliberately *not*
+[0005](0005-notifications-persistent-errors-quiet-success.md)'s persistent retry
+toast — belongs to [0007](0007-async-in-flight-state.md), which owns what a failed
+look-up does to a screen. The server/client budget relationship is settled there
+too.
+
 ## Providers are a capability-based backend port, chosen by the operator
 
 A `NutritionProvider` is a backend **port** (interface) with one implementation
@@ -233,14 +298,16 @@ Atwater derivation, and the stated-energy cross-check are all ownership-neutral.
 - **Backend:** a `NutritionProvider` port + an `OpenFoodFactsProvider`
   implementation; a normalisation step (per-100g, density 1.0, Atwater) producing
   a Food Candidate; a shared per-barcode lookup cache; the discriminated
-  `…/barcode/{barcode}` endpoint returning `EXISTING | CANDIDATE | 404`; the
+  `…/barcode/{barcode}` endpoint returning `EXISTING | CANDIDATE | 404` (amended
+  by #164 to `EXISTING | CANDIDATE | 404 miss | 503 inconclusive`); the
   ordered chain with timeout/circuit-breaker/429 fall-through; the Provider chain
   + (future) credentials as deployment config. No new write path — Food creation
   stays `POST /api/foods`.
 - **Frontend:** a `zxing-wasm`-backed scanner hosted in `ResponsiveOverlay`,
   lazy-loaded behind the Scan tap; an always-on manual-barcode input; the
   three-outcome branch (surface existing Food → offer log / pre-fill `AddFoodForm`
-  from a Candidate / open blank manual entry with the barcode); the "log it now"
+  from a Candidate / open blank manual entry with the barcode), which #164 makes
+  four by saying so when the lookup was inconclusive; the "log it now"
   step. Regenerate the typed `nuxt-open-fetch` client after the endpoint change.
 - **v1 scope is deliberately narrow:** Open Food Facts only, keyless, online
   lookup with graceful manual fallback, density 1.0, single user. USDA (free
@@ -259,8 +326,12 @@ Atwater derivation, and the stated-energy cross-check are all ownership-neutral.
 - [0002 — business logic belongs in the backend](0002-business-logic-belongs-in-the-backend.md)
 - [0021 — every row is owned by one User](0021-every-row-is-owned-by-one-user.md)
   — supersedes this ADR's multi-user catalog direction.
-- [`CONTEXT.md`](../../CONTEXT.md) — `Nutrition Provider`, `Food Candidate`, Food
-  ownership, liquid density.
+- [0007 — in-flight async state](0007-async-in-flight-state.md) — where an
+  Inconclusive Lookup surfaces, and the server/client budget relationship.
+- [#164](https://github.com/skrymer/tucker/issues/164) — a Provider that could not
+  answer was indistinguishable from a genuine miss; amends the contract above.
+- [`CONTEXT.md`](../../CONTEXT.md) — `Nutrition Provider`, `Food Candidate`,
+  `Inconclusive Lookup`, Food ownership, liquid density.
 - Open Food Facts API & reuse conditions:
   <https://openfoodfacts.github.io/openfoodfacts-server/api/> — rate limits,
   `User-Agent` requirement, ODbL attribution, data dumps.

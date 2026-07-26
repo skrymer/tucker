@@ -74,6 +74,14 @@ function useBarcodeLookup() {
   const { $api } = useNuxtApp()
   const barcode = ref('')
   const branch = ref<Branch>({ kind: 'manual' })
+  /**
+   * Whether the blank form arrived without a verdict behind it. A miss stays
+   * false and says something true by saying nothing — nothing has this barcode,
+   * so an empty form *is* the answer. An **Inconclusive Lookup** is the opposite:
+   * the same blank form would assert the product is unknown, which is precisely
+   * what nobody managed to find out (ADR 0006, issue #164).
+   */
+  const inconclusive = ref(false)
 
   // The look-up runs through the shared async primitive (ADR 0007): a newer
   // barcode supersedes an in-flight one (`latest`), a hung connection times out
@@ -98,36 +106,60 @@ function useBarcodeLookup() {
   async function lookup() {
     const code = barcode.value.trim()
     if (!code) return
+    inconclusive.value = false
     try {
-      const result = await run(code)
-      // Superseded, aborted, or timed out — leave the manual fallback in place
-      // rather than acting on a stale or absent result.
-      if (!result) return
+      const outcome = await run(code)
+      // Superseded by a newer barcode, or cancelled: leave the screen to whoever
+      // replaced us.
+      if (outcome.status === 'superseded') return
+      // A hung connection settles nothing, exactly like an unreachable source, so
+      // it drops the same way: back to manual entry. That withdraws the previous
+      // candidate's provenance *and* its barcode, so a save can no longer file one
+      // product under another's code — the note tells the user to fill in the
+      // details above, and they must not be another product's details.
+      //
+      // It does not blank the fields themselves: `AddFoodForm` fills only what is
+      // non-null (ADR 0007's merge), so an earlier candidate's name and macros
+      // stay on screen, editable, under the new barcode. Withdrawing them would
+      // mean either remounting the form — the #58 data-loss bug — or changing that
+      // merge for every flow, so it is tracked as issue #180.
+      if (outcome.status === 'timedOut') {
+        branch.value = { kind: 'manual' }
+        inconclusive.value = true
+        return
+      }
+      const result = outcome.value
       branch.value =
         result.outcome === 'EXISTING' && result.food
           ? { kind: 'existing', food: result.food }
           : result.candidate
             ? { kind: 'candidate', candidate: result.candidate }
             : { kind: 'manual' }
-    } catch {
-      // A 404 miss (or an offline lookup) lands on manual entry with the
-      // barcode pre-filled — the same place a deliberate manual add starts.
+    } catch (error) {
+      // Either way manual entry carries the barcode, exactly where a deliberate
+      // manual add starts — but only a 404 has earned the silence. Anything else
+      // means no source could be reached, and saying nothing would let the blank
+      // form imply the product does not exist.
       branch.value = { kind: 'manual' }
+      inconclusive.value = !isNotFound(error)
     }
   }
 
   function reset() {
     // Abort any in-flight look-up so a late result can't resurface after the
-    // sheet is dismissed.
+    // sheet is dismissed. `cancel()` also marks it superseded, so its own
+    // continuation stays quiet.
     cancel()
     barcode.value = ''
     branch.value = { kind: 'manual' }
+    inconclusive.value = false
   }
 
-  return { barcode, looking, branch, lookup, reset }
+  return { barcode, looking, branch, inconclusive, lookup, reset }
 }
 
-const { barcode, looking, branch, lookup, reset } = useBarcodeLookup()
+const { barcode, looking, branch, inconclusive, lookup, reset } =
+  useBarcodeLookup()
 
 // The camera scanner is a peer input to the manual field, lazy-loading
 // zxing-wasm behind the Scan tap (ADR 0006).
@@ -267,6 +299,20 @@ const loggable = computed<{
               <p class="text-center text-xs text-muted">
                 Scan or type a product's barcode to fill in the details above.
               </p>
+
+              <!-- No source could be reached, so the blank form above would
+                   otherwise assert something nobody established (issue #164).
+                   An inline note, not a toast: this surface is already in focus,
+                   and a look-up failure is not a mutation failure (ADR 0005 /
+                   0007). No Retry button either — "Look up" is right below. -->
+              <UAlert
+                v-if="inconclusive"
+                icon="i-lucide-cloud-off"
+                color="warning"
+                variant="subtle"
+                title="Couldn't look that up"
+                description="The lookup didn't get through, so Tucker can't say whether this product is known. Try again in a moment, or just fill in the details above."
+              />
 
               <UButton
                 v-if="scanState === 'idle' || scanState === 'decoded'"

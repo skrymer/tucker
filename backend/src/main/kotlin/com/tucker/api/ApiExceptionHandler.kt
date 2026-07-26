@@ -15,6 +15,15 @@ class NotFoundException(message: String) : RuntimeException(message)
  */
 class UnprocessableException(message: String) : RuntimeException(message)
 
+/**
+ * A dependency Tucker needs could not be reached, so the request settled nothing —
+ * mapped to HTTP 503. Unlike a [NotFoundException] this says nothing about whether
+ * the thing exists, and unlike an [UnprocessableException] it may well succeed on
+ * the next try. Keeping it distinct is what lets a client advise "try again"
+ * instead of "give up" (issue #164).
+ */
+class ServiceUnavailableException(message: String) : RuntimeException(message)
+
 /** The error body returned to API clients. */
 data class ApiError(val message: String)
 
@@ -41,4 +50,8 @@ class ApiExceptionHandler {
     @ExceptionHandler(UnprocessableException::class)
     @ResponseStatus(HttpStatus.UNPROCESSABLE_ENTITY)
     fun handleUnprocessable(e: UnprocessableException) = ApiError(e.message ?: "unprocessable")
+
+    @ExceptionHandler(ServiceUnavailableException::class)
+    @ResponseStatus(HttpStatus.SERVICE_UNAVAILABLE)
+    fun handleUnavailable(e: ServiceUnavailableException) = ApiError(e.message ?: "service unavailable")
 }

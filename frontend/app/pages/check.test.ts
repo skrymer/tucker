@@ -56,6 +56,14 @@ registerEndpoint('/api/check/5001111111111', (event) => {
   return { message: 'boom' }
 })
 
+// No source could be reached, so whether the product exists is still unknown.
+registerEndpoint('/api/check/5002222222222', (event) => {
+  setResponseStatus(event, 503)
+  return {
+    message: 'could not reach a nutrition source for barcode 5002222222222',
+  }
+})
+
 describe('/check with a calorie budget', () => {
   it('starts the camera on arrival and states the product a scan resolves', async () => {
     summary = budget
@@ -88,7 +96,10 @@ describe('/check with a calorie budget', () => {
     expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument()
   })
 
-  it('says nothing came back rather than showing an empty analysis', async () => {
+  it('states plainly that a missed product is not in the food database', async () => {
+    // Everything that could be asked was asked, and none of it knew the product.
+    // That is a verdict, so it can be asserted rather than hedged — and the
+    // advice is to move on, never to keep rescanning.
     summary = budget
     scanner.state.value = 'idle'
     scanner.barcode.value = null
@@ -98,8 +109,11 @@ describe('/check with a calorie budget', () => {
     scanner.barcode.value = '9999999999999'
     scanner.state.value = 'decoded'
 
-    expect(await screen.findByText('Nothing came back')).toBeVisible()
+    expect(await screen.findByText('Not in the food database')).toBeVisible()
+    expect(screen.getByText(/9999999999999/)).toBeVisible()
     expect(screen.queryByText('Costs')).not.toBeInTheDocument()
+    // Not the retryable message: these two must never be interchangeable.
+    expect(screen.queryByText("Couldn't look that up")).not.toBeInTheDocument()
   })
 
   it('tells a product whose nutrition is incomplete apart from one that is missing', async () => {
@@ -118,7 +132,29 @@ describe('/check with a calorie budget', () => {
       await screen.findByText('Not enough nutrition information'),
     ).toBeVisible()
     expect(screen.getByText(/Scanning it again won't help/)).toBeVisible()
-    expect(screen.queryByText('Nothing came back')).not.toBeInTheDocument()
+    // Distinct from both siblings: the product is known, and retrying is futile.
+    expect(
+      screen.queryByText('Not in the food database'),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByText("Couldn't look that up")).not.toBeInTheDocument()
+  })
+
+  it('says the lookup did not get through, not that the targets failed', async () => {
+    // The targets loaded fine — they are what the Check is measured against, and
+    // blaming them would send the user off to fix something that isn't broken.
+    summary = budget
+    scanner.state.value = 'idle'
+    scanner.barcode.value = null
+
+    await renderSuspended(Check)
+
+    scanner.barcode.value = '5002222222222'
+    scanner.state.value = 'decoded'
+
+    expect(await screen.findByText("Couldn't look that up")).toBeVisible()
+    expect(screen.queryByText(/your targets/i)).not.toBeInTheDocument()
+    // And never a claim about the package: nobody found out whether it exists.
+    expect(screen.queryByText('Costs')).not.toBeInTheDocument()
   })
 
   it('does not blame the product when the lookup itself fails', async () => {
@@ -131,12 +167,12 @@ describe('/check with a calorie budget', () => {
     scanner.barcode.value = '5001111111111'
     scanner.state.value = 'decoded'
 
+    expect(await screen.findByText("Couldn't look that up")).toBeVisible()
+    // Never a claim about the package the user is holding, on the strength of a
+    // server error — the product may be perfectly well known.
     expect(
-      await screen.findByText("Couldn't check that right now"),
-    ).toBeVisible()
-    // Never "no such product" — that would be a claim about the package the
-    // user is holding, on the strength of a server error.
-    expect(screen.queryByText('Nothing came back')).not.toBeInTheDocument()
+      screen.queryByText(/not in the food database/i),
+    ).not.toBeInTheDocument()
   })
 
   it('clears the previous result and restarts the camera on Scan another', async () => {

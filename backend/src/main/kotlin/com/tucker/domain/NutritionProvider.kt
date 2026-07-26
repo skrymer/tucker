@@ -23,10 +23,12 @@ interface NutritionProvider {
     val capabilities: Set<ProviderCapability>
 
     /**
-     * Look up a product by [barcode], returning a normalised [FoodCandidate], or
-     * `null` on a miss. Implementations also return `null` (never throw) on a
-     * timeout, rate-limit, or network failure, so the chain falls through to the
-     * next Provider.
+     * Look up a product by [barcode]. Implementations never throw: a timeout,
+     * rate-limit or network failure is reported as
+     * [ProviderLookup.Inconclusive] so the chain can fall through to the next
+     * Provider *and still remember that this one never answered* — which is what
+     * keeps "there is no answer" from being read as "the answer is no"
+     * (ADR 0006, issue #164).
      */
-    fun lookupByBarcode(barcode: String): FoodCandidate?
+    fun lookupByBarcode(barcode: String): ProviderLookup
 }

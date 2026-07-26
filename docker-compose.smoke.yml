@@ -53,11 +53,13 @@ services:
   # Serves recorded Open Food Facts responses over OFF's real URL space, so the
   # provider's request path is unchanged and only the responder is deterministic.
   # A barcode with no recorded file 404s — exactly how OFF answers a miss — which
-  # keeps the miss-case smoke honest. Provenance of the payloads is in the
-  # fixtures directory's README.
+  # keeps the miss-case smoke honest, and one reserved barcode is refused outright
+  # so a smoke can drive a genuine Inconclusive Lookup (issue #164). Provenance of the
+  # payloads, and the reserved barcode, are in the fixtures directory's README.
   off-stub:
     image: nginx:1.29-alpine
     container_name: tucker-off-stub
     restart: "no"
     volumes:
       - ./frontend/e2e/smoke/fixtures/off-stub:/usr/share/nginx/html:ro
+      - ./frontend/e2e/smoke/fixtures/off-stub.conf:/etc/nginx/conf.d/default.conf:ro
