@@ -238,11 +238,27 @@ its nested form, and the reason is honesty rather than variety.
 - **Centres** carry the share as a percentage; the absolute pair (`533 / 2492
 kcal`) sits beneath its own ring, so no arc is ever colour-alone. Calorie
   figures are ungrouped, as on the Day Ring; the whole-day allowance goes through
-  `formatGrams`, which groups, because it reaches four digits.
+  `formatGrams`, which groups, because it reaches four digits. Past a full circle
+  the centre and the arc part company on purpose — the arc caps at 100% (an
+  over-target reading is a full ring, never an overshoot) while the percentage
+  keeps counting, because a 250 g portion of something dense can cost half the
+  day again over and rounding that to "100%" would understate it.
+- **Portion dial** — a full-width slider directly under the rings, 10–250 g in
+  5 g steps, opening at 100 g. Its live readout sits on the same line as the
+  `Portion` label, right-aligned above the track, so a thumb at the bottom of a
+  phone never has to look to the top of the screen to read what it just set. The
+  track deliberately stops well short of the day's allowance: running it to four
+  digits would bury the 10–100 g zone where real portions live. Everything above
+  the dial moves with it and everything below it holds still — that contrast _is_
+  the screen's argument (ADR 0022), so nothing that scales may be placed among
+  the pace lines. Nuxt UI hardcodes the thumb's accessible name to "Thumb", so
+  the `role="group"` wrapper is labelled by the readout instead.
 - **Macro bar** — one rounded track split three ways by each macro's share of the
   item's own calories. Protein takes coral; **carbs and fat take neutrals**,
   because protein is the only macro Tucker sets a target for and the palette
-  should say so. Grams are labelled beneath, never colour alone.
+  should say so. Grams are labelled beneath (at the dialled portion, like every
+  other gram figure on the screen), never colour alone; the segment **widths** are
+  shares of the item's own calories, so the portion never redraws them.
 - **Viewfinder** — a Check's landing state is the camera itself: a black,
   20px-radius surface with the instruction over it, capped at `max-w-md` so it
   fills a phone but doesn't become a slab on desktop. A denied camera ends the
