@@ -263,7 +263,6 @@ const {
             <h2 class="text-center text-lg font-bold text-highlighted">
               {{ check.name }}
             </h2>
-            <p class="-mt-3 text-xs text-dimmed">per 100 g</p>
             <CheckAnalysis :check="check" />
           </template>
 

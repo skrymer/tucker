@@ -13,14 +13,47 @@ const props = defineProps<{ check: Check }>()
 const RING_RADIUS = 72
 const CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS
 
+// The portion the screen is stated at. 100 g is the default because no provider
+// serving size is trustworthy enough to beat it (ADR 0022), and the track stops
+// at 250 g rather than the day's allowance — a track running to four digits
+// would bury the 10–100 g zone where real portions live.
+const DEFAULT_PORTION_G = 100
+const MIN_PORTION_G = 10
+const MAX_PORTION_G = 250
+const PORTION_STEP_G = 5
+
 // Grams to one decimal, without a trailing `.0`. Whole grams would round a 6.3 g
 // protein spread to 6 and a 0.4 g drink to 0, which is most of what it returns.
 const oneDecimal = (g: number) => String(Number(g.toFixed(1)))
+
+/** The portion every figure about the food is stated at. */
+function usePortion() {
+  const grams = ref(DEFAULT_PORTION_G)
+  // A portion is dialled for the product in the user's hand, so a different
+  // product starts over rather than inheriting it. `check.vue` happens to
+  // unmount this component between scans, which resets the ref anyway — this
+  // keeps the guarantee a property of the component's own props rather than of
+  // how one parent currently renders it.
+  watch(
+    () => props.check,
+    () => {
+      grams.value = DEFAULT_PORTION_G
+    },
+  )
+  return { grams, label: computed(() => formatGrams(grams.value)) }
+}
+const { grams: portionG, label: portionLabel } = usePortion()
 
 /**
  * A share drawn as a ring: the whole percentage, the arc sweep, and the faint
  * track derived from the arc's own colour so re-skinning a role can never leave
  * the track on a stale hue (frontend/DESIGN.md).
+ *
+ * Past a full circle the two stop agreeing, deliberately: the arc caps at 100%
+ * (`ringFraction` — an over-target reading is a full ring, never an overshoot)
+ * while the percentage keeps counting. A 250 g portion of something dense can
+ * cost half the day again over, and rounding that down to "100%" would understate
+ * it; the pair beneath the ring names the excess in kcal either way.
  */
 function ring(share: number, stroke: string) {
   return {
@@ -32,8 +65,16 @@ function ring(share: number, stroke: string) {
 }
 
 /**
- * The two peer rings: what 100 g costs against the Calorie Budget and what it
- * returns against the Protein Floor. Cost keeps the calorie green even when it
+ * A per-100 g figure restated at the chosen portion. Cost and return are both
+ * linear in grams, so scaling an already-derived share is presentation in the
+ * same class as the Day Ring's arc sweep, not a rule re-derived in Vue
+ * (ADR 0022, ADR 0002).
+ */
+const inPortion = (per100g: number) => (per100g * portionG.value) / 100
+
+/**
+ * The two peer rings: what the portion costs against the Calorie Budget and what
+ * it returns against the Protein Floor. Cost keeps the calorie green even when it
  * is most of the Budget — red would read as *over budget*, a verdict about a day
  * that has not happened (ADR 0022).
  */
@@ -42,14 +83,14 @@ function useRings() {
     {
       key: 'cost',
       label: 'Costs',
-      line: `${Math.round(props.check.caloriesPer100g)} / ${Math.round(props.check.calorieBudgetKcal)} kcal`,
-      ...ring(props.check.costSharePer100g, 'var(--ui-primary)'),
+      line: `${Math.round(inPortion(props.check.caloriesPer100g))} / ${Math.round(props.check.calorieBudgetKcal)} kcal`,
+      ...ring(inPortion(props.check.costSharePer100g), 'var(--ui-primary)'),
     },
     {
       key: 'return',
       label: 'Returns',
-      line: `${oneDecimal(props.check.proteinPer100g)} / ${Math.round(props.check.proteinFloorG)} g protein`,
-      ...ring(props.check.returnSharePer100g, 'var(--ui-secondary)'),
+      line: `${oneDecimal(inPortion(props.check.proteinPer100g))} / ${Math.round(props.check.proteinFloorG)} g protein`,
+      ...ring(inPortion(props.check.returnSharePer100g), 'var(--ui-secondary)'),
     },
   ])
 }
@@ -75,13 +116,20 @@ function usePaceLine() {
   )
   // What the rest of the day has to make up for this portion — a consequence of
   // the user's own targets, not a criticism of the food. The backend decides
-  // whether anything is owed (it floors the figure at zero); the test here is on
-  // the *rounded* value, so the sentence never contradicts the number it shows.
+  // whether anything is owed (it floors the figure at zero), and scaling a
+  // positive figure by a positive portion keeps it positive: which sentence the
+  // user gets is the food's character, so it can never flip as the dial moves.
   const balance = computed(() => {
-    const owed = Math.round(props.check.balanceProteinPer100gG)
-    return owed > 0
-      ? `Balance 100 g with ${owed} g of protein elsewhere today.`
-      : 'Keeps pace on its own.'
+    const owed = inPortion(props.check.balanceProteinPer100gG)
+    if (owed <= 0) return 'Keeps pace on its own.'
+    // A tenth of a gram is the finest figure worth stating, and a small enough
+    // portion of a food near pace falls under it — "with 0 g" would deny the
+    // debt the same sentence has just asserted. Asking the formatter what it
+    // would print keeps the boundary in one place instead of hard-coding the
+    // 0.05 that happens to be where it rounds to nothing today.
+    const rounded = oneDecimal(owed)
+    const amount = rounded === '0' ? 'under 0.1' : rounded
+    return `Balance ${portionLabel.value} with ${amount} g of protein elsewhere today.`
   })
   return { foodFigure, dayNeeds, balance }
 }
@@ -111,9 +159,13 @@ function useMacroBar() {
   const width = (share: number | null | undefined) =>
     `${((share ?? 0) * 100).toFixed(1)}%`
   // A macro the source never supplied is absent, not zero (ADR 0006) — saying
-  // "0 g carbs" would be a claim nobody made about the product.
+  // "0 g carbs" would be a claim nobody made about the product. The grams are
+  // the portion's, so protein reads the same here as it does under its own ring;
+  // the widths are shares of the food's own calories and so never move.
   const label = (grams: number | null | undefined, macro: string) =>
-    grams == null ? `${macro} unknown` : `${oneDecimal(grams)} g ${macro}`
+    grams == null
+      ? `${macro} unknown`
+      : `${oneDecimal(inPortion(grams))} g ${macro}`
   return computed(() => [
     {
       key: 'protein',
@@ -187,6 +239,31 @@ const macros = useMacroBar()
         </div>
         <p class="text-xs text-muted tabular-nums">{{ r.line }}</p>
       </div>
+    </div>
+
+    <!-- The dial the rings answer to. The live figure sits with the control that
+         changes it, so a thumb at the bottom of a phone never has to look to the
+         top of the screen to read what it just set. Nuxt UI hardcodes the slider
+         thumb's accessible name to "Thumb", so the group carries the real one:
+         the readout the thumb drives, "Portion 100 g". -->
+    <div class="w-full" role="group" aria-labelledby="check-portion-label">
+      <p id="check-portion-label" class="flex items-baseline justify-between">
+        <span class="text-xs font-semibold tracking-wide text-dimmed uppercase">
+          Portion
+        </span>
+        <span
+          class="font-display text-lg font-bold text-highlighted tabular-nums"
+        >
+          {{ portionLabel }}
+        </span>
+      </p>
+      <USlider
+        v-model="portionG"
+        class="mt-2"
+        :min="MIN_PORTION_G"
+        :max="MAX_PORTION_G"
+        :step="PORTION_STEP_G"
+      />
     </div>
 
     <!-- The food's character, which no portion changes. The whole card hangs on
