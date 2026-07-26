@@ -4,8 +4,10 @@ import com.tucker.domain.Food
 import com.tucker.domain.FoodCandidate
 import com.tucker.domain.Nutrition
 import com.tucker.domain.ProviderCapability
+import com.tucker.domain.ProviderLookup
 import com.tucker.persistence.FoodRepository
 import com.tucker.provider.OpenFoodFactsProvider
+import org.hamcrest.Matchers.containsString
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
@@ -52,14 +54,16 @@ class FoodBarcodeApiTest {
     fun `a catalog miss with a Provider hit returns 200 CANDIDATE with the candidate`() {
         whenever(openFoodFacts.capabilities).thenReturn(setOf(ProviderCapability.BARCODE_LOOKUP))
         whenever(openFoodFacts.lookupByBarcode("5709999999999")).thenReturn(
-            FoodCandidate(
-                name = "Mystery bar",
-                barcode = "5709999999999",
-                proteinPer100g = 8.0,
-                carbsPer100g = 60.0,
-                fatPer100g = null,
-                statedEnergyKcalPer100g = 400.0,
-                source = "Open Food Facts",
+            ProviderLookup.Found(
+                FoodCandidate(
+                    name = "Mystery bar",
+                    barcode = "5709999999999",
+                    proteinPer100g = 8.0,
+                    carbsPer100g = 60.0,
+                    fatPer100g = null,
+                    statedEnergyKcalPer100g = 400.0,
+                    source = "Open Food Facts",
+                ),
             ),
         )
 
@@ -79,14 +83,16 @@ class FoodBarcodeApiTest {
     fun `a second look-up of the same barcode is served from the cache without a second Provider call`() {
         whenever(openFoodFacts.capabilities).thenReturn(setOf(ProviderCapability.BARCODE_LOOKUP))
         whenever(openFoodFacts.lookupByBarcode("5702222222222")).thenReturn(
-            FoodCandidate(
-                name = "Cached bar",
-                barcode = "5702222222222",
-                proteinPer100g = 8.0,
-                carbsPer100g = 60.0,
-                fatPer100g = 5.0,
-                statedEnergyKcalPer100g = 400.0,
-                source = "Open Food Facts",
+            ProviderLookup.Found(
+                FoodCandidate(
+                    name = "Cached bar",
+                    barcode = "5702222222222",
+                    proteinPer100g = 8.0,
+                    carbsPer100g = 60.0,
+                    fatPer100g = 5.0,
+                    statedEnergyKcalPer100g = 400.0,
+                    source = "Open Food Facts",
+                ),
             ),
         )
 
@@ -104,10 +110,24 @@ class FoodBarcodeApiTest {
     @Test
     fun `a total miss returns 404`() {
         whenever(openFoodFacts.capabilities).thenReturn(setOf(ProviderCapability.BARCODE_LOOKUP))
-        whenever(openFoodFacts.lookupByBarcode("0000000000000")).thenReturn(null)
+        whenever(openFoodFacts.lookupByBarcode("0000000000000")).thenReturn(ProviderLookup.Missing)
 
         mockMvc.get("/api/foods/barcode/0000000000000").andExpect {
             status { isNotFound() }
+        }
+    }
+
+    @Test
+    fun `a lookup no Provider could answer is distinguishable from a miss`() {
+        whenever(openFoodFacts.capabilities).thenReturn(setOf(ProviderCapability.BARCODE_LOOKUP))
+        whenever(openFoodFacts.lookupByBarcode("0000000000001"))
+            .thenReturn(ProviderLookup.Inconclusive)
+
+        // A 404 here would tell the client the product does not exist, which is
+        // exactly what nobody managed to find out.
+        mockMvc.get("/api/foods/barcode/0000000000001").andExpect {
+            status { isServiceUnavailable() }
+            jsonPath("$.message") { value(containsString("0000000000001")) }
         }
     }
 }

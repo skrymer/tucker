@@ -21,11 +21,11 @@ data class CheckedProduct(
 )
 
 /**
- * What resolving a barcode into a Check produced. The three cases need opposite
- * advice — retry, give up on this product, or scan something else — and the error
+ * What resolving a barcode into a Check produced. The cases need opposite advice —
+ * try again, give up on this product, or scan something else — and the error
  * message is the *entire* failure experience on a surface with no manual path
  * (ADR 0022), so they are discriminated here rather than collapsed into one
- * status. Telling a Provider outage apart from a genuine [Unknown] is issue #164.
+ * status.
  */
 sealed interface CheckOutcome {
     /** The product resolved and its Check is stated. */
@@ -38,8 +38,15 @@ sealed interface CheckOutcome {
      */
     data class Incomplete(val name: String, val source: String) : CheckOutcome
 
-    /** Neither the catalog nor any Provider knew the barcode. */
+    /** Neither the catalog nor any Provider knew the barcode. Rescanning is futile. */
     data object Unknown : CheckOutcome
+
+    /**
+     * Nobody could be asked, so nothing is known about the product either way
+     * (issue #164). The one failure here worth retrying — which is why it must
+     * never arrive dressed as [Unknown].
+     */
+    data object Inconclusive : CheckOutcome
 }
 
 /**
@@ -61,7 +68,8 @@ class CheckService(
         // A saved Food always has calories; only a Provider candidate can arrive
         // with a macro missing, and then there is nothing to derive them from.
         return when (val found = barcodeLookup.lookup(barcode)) {
-            null -> CheckOutcome.Unknown
+            BarcodeLookup.Missing -> CheckOutcome.Unknown
+            BarcodeLookup.Inconclusive -> CheckOutcome.Inconclusive
             is BarcodeLookup.Existing ->
                 state(barcode, found.food.name, source = null, found.food.nutrition, review)
             is BarcodeLookup.Candidate ->

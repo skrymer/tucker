@@ -34,3 +34,9 @@ tucker:
   providers:
     open-food-facts:
       base-url: ${TUCKER_OFF_BASE_URL:https://world.openfoodfacts.org}
+      # The per-attempt budget. Their sum plus the retry backoffs must stay inside
+      # the client's 8s cap, so the server always reaches a verdict first and the
+      # browser never invents one from silence (ADR 0007, issue #164). The provider
+      # enforces that sum, so raising one of these costs retries, not overrun.
+      connect-timeout: ${TUCKER_OFF_CONNECT_TIMEOUT:2s}
+      read-timeout: ${TUCKER_OFF_READ_TIMEOUT:4s}
