@@ -74,7 +74,9 @@ Provider-agnostic, but the set of Providers and the order they're tried is
 Tucker, so which sources to trust is a platform decision. A barcode scan first
 checks the catalog, then tries each configured Provider that supports barcode
 lookup, in order, taking the first match. A Provider may support barcode lookup,
-free-text search, or both; only barcode-capable ones take part in a scan. Whatever a Provider returns is normalised to Tucker's per-100g macro
+free-text search, or both; only barcode-capable ones take part in a scan. A
+Provider answering *no match* and a Provider unable to answer at all are different
+results and are never collapsed into one — see **Inconclusive Lookup**. Whatever a Provider returns is normalised to Tucker's per-100g macro
 model — and its calories re-derived by the Atwater rule, exactly like a
 hand-entered Food. The Provider's own stated energy is shown only as a cross-check
 at confirmation, never stored: scanned Foods follow the same calorie rule as every
@@ -90,6 +92,21 @@ stored), and the scanned barcode. The user completes any missing macro and
 confirms — only then does it become a Food. A catalog hit, by contrast, returns
 an existing Food directly, not a Candidate.
 _Avoid_: result, product, match, scan result
+
+**Inconclusive Lookup**:
+A barcode lookup that reached no verdict, because no **Nutrition Provider** could
+answer — unreachable, timed out, rate-limiting, or answering unintelligibly. It is
+the difference between *the answer is no* and *there is no answer*, and it is not a
+miss: a miss is itself an answer, given by every barcode-capable Provider being
+asked and none knowing the product. The two earn opposite advice — a missed product
+will never resolve, so move on; an Inconclusive one may resolve a minute from now,
+so try again. Left unsaid, an Inconclusive Lookup is worse than useless: the user
+hand-enters a product a Provider knows perfectly well, and because that saved Food
+then wins the catalog-first lookup forever, one bad minute degrades the catalog
+permanently. A lookup is a miss only when *every* barcode-capable Provider
+answered; if any could not, the lookup is Inconclusive. Never cached, so it can
+never stick.
+_Avoid_: error, failure, outage, provider down, offline
 
 **Entry**:
 One occurrence of the user eating a Food — a date, a quantity, and the resulting
@@ -358,6 +375,10 @@ _Avoid_: device token, push token, registration
   while a Calorie Budget exists
 - **Pace** is `Protein Floor ÷ Calorie Budget × 100`; a **Food**'s protein per
   100 kcal sits above or below it
+- An **Inconclusive Lookup** is never presented as a miss and is never silent.
+  Tucker says it could not find out, rather than implying the product is unknown —
+  guessing which of the two happened is exactly what the user cannot do, and the
+  wrong guess costs them a permanently hand-entered **Food**
 - A **Weekly-Review Reminder** is sent when a **Weekly Review** is overdue and the
   user has at least one **Push Subscription** — it nudges, it never computes the review
 - A user has zero or more **Push Subscriptions** (one per device); each **Weekly-Review

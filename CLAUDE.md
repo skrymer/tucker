@@ -305,9 +305,13 @@ The frontend is built **test-first (red-green TDD)**. Increments:
   macros, because it produces nothing worth typing for; a denied camera makes the
   tab unavailable. This narrows **nothing** in Add-Food, where manual barcode and
   macro entry remain always-on peers (ADR 0006) — do not harmonise the two.
-  **Prerequisite:** [#164](https://github.com/skrymer/tucker/issues/164) — with no
-  manual fallback, a provider outage and a genuine miss need opposite error
-  messages. **Out of scope:** grading fat or carbs, saving anything, comparing
+  **Prerequisite:** [#164](https://github.com/skrymer/tucker/issues/164) — ✅ done:
+  with no manual fallback, a provider outage and a genuine miss need opposite error
+  messages, so the lookup gained a fourth outcome (an **Inconclusive Lookup**,
+  `503`, distinct from a miss's `404`) and both surfaces say which happened. Slice 3
+  ([#171](https://github.com/skrymer/tucker/issues/171)) is unblocked and still owns
+  the retry affordance and the camera-unavailable copy.
+  **Out of scope:** grading fat or carbs, saving anything, comparing
   products side by side, and "can I fit this in what's left right now?" (that one
   belongs to logging a Food, not shopping for one).
 
