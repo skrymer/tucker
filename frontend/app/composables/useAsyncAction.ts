@@ -13,6 +13,21 @@ interface UseAsyncActionOptions {
   timeoutMs?: number
 }
 
+/**
+ * How a run ended. `superseded` covers a newer run taking over and an explicit
+ * `cancel()` — in both cases something newer owns the screen, so the caller must
+ * say nothing. `timedOut` is the opposite: nothing newer exists and the request
+ * was abandoned, so the caller is the only one who can explain the silence.
+ *
+ * The two used to be indistinguishable at the boundary, which forced every
+ * look-up to hand-roll a parallel generation counter to tell them apart
+ * (issue #164). This composable already knows; now it says.
+ */
+export type AsyncOutcome<TResult> =
+  | { status: 'ok'; value: TResult }
+  | { status: 'superseded' }
+  | { status: 'timedOut' }
+
 export function useAsyncAction<TArgs extends unknown[], TResult>(
   action: (signal: AbortSignal, ...args: TArgs) => Promise<TResult>,
   options: UseAsyncActionOptions = {},
@@ -26,8 +41,10 @@ export function useAsyncAction<TArgs extends unknown[], TResult>(
   // superseded run must not clear the lifecycle out from under its successor.
   let activeRunId = 0
 
-  async function run(...args: TArgs): Promise<TResult | undefined> {
-    if (mode === 'guard' && pending.value) return
+  async function run(...args: TArgs): Promise<AsyncOutcome<TResult>> {
+    // A guarded re-entry is superseded in the same sense: the call in flight owns
+    // the outcome, and this one must stay quiet.
+    if (mode === 'guard' && pending.value) return { status: 'superseded' }
     if (mode === 'latest') activeController?.abort()
 
     const controller = new AbortController()
@@ -46,6 +63,20 @@ export function useAsyncAction<TArgs extends unknown[], TResult>(
       timeoutMs != null
         ? setTimeout(() => controller.abort(), timeoutMs)
         : undefined
+
+    /**
+     * Classify how this run ended. Staleness wins over abort: `cancel()` aborts
+     * *and* orphans, and a caller that cancelled is not waiting to be told the
+     * request timed out.
+     */
+    function settle(
+      result: TResult | undefined,
+      signal: AbortSignal,
+    ): AsyncOutcome<TResult> {
+      if (isStale()) return { status: 'superseded' }
+      if (signal.aborted) return { status: 'timedOut' }
+      return { status: 'ok', value: result as TResult }
+    }
 
     function settleLifecycle() {
       clearTimeout(delayTimer)
@@ -69,11 +100,15 @@ export function useAsyncAction<TArgs extends unknown[], TResult>(
         action(controller.signal, ...args),
         rejectOnAbort(controller.signal),
       ])
-      // A superseded or aborted run's result is discarded.
-      return controller.signal.aborted || isStale() ? undefined : result
+      // A superseded or aborted run's result is discarded — but which of the two
+      // happened is exactly what the caller needs, so it is reported, not lost.
+      return settle(result, controller.signal)
     } catch (error) {
-      if (controller.signal.aborted || isStale() || isAbortError(error))
-        return undefined
+      if (isStale()) return { status: 'superseded' }
+      // An abort is not an application failure — but it did leave the caller with
+      // nothing, and only the caller can explain that.
+      if (controller.signal.aborted || isAbortError(error))
+        return { status: 'timedOut' }
       throw error
     } finally {
       settleLifecycle()

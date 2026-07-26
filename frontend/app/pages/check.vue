@@ -34,7 +34,7 @@ function useCheckLookup() {
   const failure = ref<
     | { kind: 'missed'; barcode: string }
     | { kind: 'incomplete' }
-    | { kind: 'unavailable' }
+    | { kind: 'inconclusive' }
     | null
   >(null)
 
@@ -55,45 +55,40 @@ function useCheckLookup() {
     { mode: 'latest', timeoutMs: 8000 },
   )
 
-  // Only the newest lookup may write to the screen. `useAsyncAction` returns
-  // undefined for a supersede and for a timeout alike, and the two need opposite
-  // treatment — say nothing, versus say the lookup failed — so the generation is
-  // tracked here rather than inferred.
-  let generation = 0
-
   async function lookup(code: string) {
-    const mine = ++generation
     check.value = null
     failure.value = null
     try {
-      const result = await run(code)
-      // Superseded by a newer scan or cleared by `reset` — leave the screen to
+      const outcome = await run(code)
+      // Superseded by a newer scan, or cleared by `reset` — leave the screen to
       // whoever replaced us.
-      if (mine !== generation) return
-      // Still current but empty: the request was aborted on its timeout. Saying
-      // nothing here would leave a screen with only a "Scan another" button.
-      if (!result) {
-        failure.value = { kind: 'unavailable' }
+      if (outcome.status === 'superseded') return
+      // Aborted on its timeout. Saying nothing here would leave a screen with
+      // only a "Scan another" button.
+      if (outcome.status === 'timedOut') {
+        failure.value = { kind: 'inconclusive' }
         return
       }
-      check.value = result
+      check.value = outcome.value
     } catch (error) {
-      if (mine !== generation) return
       // The three failures need opposite advice, so they are never collapsed:
-      // 404 nothing came back, 422 the product is known but its nutrition can
-      // never yield a Check (rescanning is futile), anything else transient.
-      const status = (error as { status?: number })?.status
+      // 404 everything was asked and none of it knew the product (futile to
+      // rescan), 422 it is known but its nutrition can never yield a Check
+      // (equally futile), 503 and anything else nobody could be asked at all —
+      // the one worth trying again (issue #164).
+      const status = statusOf(error)
       failure.value =
         status === 404
           ? { kind: 'missed', barcode: code }
           : status === 422
             ? { kind: 'incomplete' }
-            : { kind: 'unavailable' }
+            : { kind: 'inconclusive' }
     }
   }
 
   function reset() {
-    generation++
+    // `cancel()` marks the in-flight look-up superseded, so its continuation
+    // stays quiet rather than writing to a screen the user has moved on from.
     cancel()
     check.value = null
     failure.value = null
@@ -266,16 +261,16 @@ const {
             <CheckAnalysis :check="check" />
           </template>
 
-          <!-- Until #164 a Provider outage and a genuine miss arrive the same
-               way, so this says what is true of both rather than asserting the
-               product doesn't exist. -->
+          <!-- Everything that could be asked was asked, and none of it knew the
+               product. That is a verdict, so it is stated rather than hedged
+               (issue #164) — and the advice is to move on, not to keep trying. -->
           <UAlert
             v-else-if="failure?.kind === 'missed'"
             icon="i-lucide-search-x"
             color="neutral"
             variant="subtle"
-            title="Nothing came back"
-            :description="`Tucker found no match for barcode ${failure.barcode}. Try scanning it again, or check a different product.`"
+            title="Not in the food database"
+            :description="`Nothing Tucker can ask has barcode ${failure.barcode}, so another scan will come back the same. Try a different product.`"
           />
 
           <!-- The product is known but will never have derivable calories, so
@@ -289,13 +284,22 @@ const {
             description="The source knows this product but not all of its macros, so Tucker can't say what it costs. Scanning it again won't help."
           />
 
+          <!-- Nothing is known about the package — including whether it exists.
+               The one failure here worth trying again, and the only one that must
+               not read as a verdict.
+
+               The copy names no culprit on purpose: this branch catches the
+               Provider being unreachable, Tucker itself failing, and the
+               connection dropping, and the user can act on none of those
+               differently. Blaming the food database would be a guess, and a
+               wrong one whenever it was Tucker that broke. -->
           <UAlert
             v-else-if="failure"
             icon="i-lucide-cloud-off"
             color="warning"
             variant="subtle"
-            title="Couldn't check that right now"
-            description="Tucker couldn't reach your targets to measure it against. Try scanning it again in a moment."
+            title="Couldn't look that up"
+            description="The lookup didn't get through, so Tucker can't say what this costs. Try scanning it again in a moment."
           />
 
           <UButton

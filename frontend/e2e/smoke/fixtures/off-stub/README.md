@@ -22,6 +22,22 @@ re-derivation, the confirmation step — stays under test. A barcode with no fil
 here 404s, which is exactly how OFF answers a miss, so the miss case keeps working
 unchanged.
 
+## The reserved barcode that answers nothing
+
+`5030000000503` is **not a product and never will be**. The stub refuses it with a
+`503`, via `../off-stub.conf` (mounted over nginx's default server). It exists so a
+smoke can drive a genuine **Inconclusive Lookup**
+([#164](https://github.com/skrymer/tucker/issues/164)) — a provider that cannot
+answer — all the way through the real chain, rather than only against a mocked
+Provider bean.
+
+That distinction is the whole point: "there is no answer" and "the answer is no"
+used to be
+indistinguishable _because_ the signal died between the provider and the
+controller, so a test that stubs the provider proves nothing about it. Keep this
+barcode out of every other fixture and smoke, and keep it in step with
+`off-stub.conf`.
+
 ## Provenance
 
 `api/v2/product/3017620422003.json` is a **real Open Food Facts response**, not an

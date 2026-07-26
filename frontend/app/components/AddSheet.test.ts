@@ -335,6 +335,117 @@ describe('AddSheet', () => {
     )
   })
 
+  it('stays quiet on a genuine miss, where the blank form is already the answer', async () => {
+    // MISS_BARCODE is intentionally unregistered, so the lookup 404s. Everything
+    // that could be asked was asked; an empty form says exactly that, and a note
+    // would only add noise to the overwhelmingly common path.
+    const MISS_BARCODE = '0000000000000'
+    await renderSuspended(AddSheet, { props: { open: true } })
+    const user = userEvent.setup()
+
+    await user.type(screen.getByLabelText(/barcode/i), MISS_BARCODE)
+    await user.click(screen.getByRole('button', { name: /look up/i }))
+
+    await vi.waitFor(() =>
+      expect(screen.getByLabelText(/^name$/i)).toHaveValue(''),
+    )
+    expect(screen.queryByText(/couldn't look that up/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/didn't get through/i)).not.toBeInTheDocument()
+  })
+
+  it('says the lookup did not get through when no source could be reached', async () => {
+    // A blank form on its own asserts "this product is unknown" — which is the one
+    // thing nobody managed to find out. Left unsaid, the user hand-enters a product
+    // Open Food Facts knows, and that Food owns the barcode from then on.
+    const UNREACHABLE_BARCODE = '5704444444444'
+    registerEndpoint(`/api/foods/barcode/${UNREACHABLE_BARCODE}`, {
+      method: 'GET',
+      handler: () => {
+        throw createError({
+          statusCode: 503,
+          statusMessage: 'Service Unavailable',
+        })
+      },
+    })
+    await renderSuspended(AddSheet, { props: { open: true } })
+    const user = userEvent.setup()
+
+    await user.type(screen.getByLabelText(/barcode/i), UNREACHABLE_BARCODE)
+    await user.click(screen.getByRole('button', { name: /look up/i }))
+
+    await vi.waitFor(() =>
+      expect(screen.getByText(/couldn't look that up/i)).toBeVisible(),
+    )
+    expect(screen.getByText(/didn't get through/i)).toBeVisible()
+    // Nothing is gated behind the note: manual entry stays an always-on peer.
+    expect(screen.getByLabelText(/^name$/i)).toBeEnabled()
+    expect(screen.getByRole('button', { name: /save food/i })).toBeEnabled()
+  })
+
+  it('says the lookup did not get through when it hangs past the timeout', async () => {
+    // A hung connection ends the same way as an unreachable source: nothing was
+    // learned. The user must not be left with a blank form implying otherwise.
+    const HANGING_BARCODE = '5705555555555'
+    registerEndpoint(`/api/foods/barcode/${HANGING_BARCODE}`, {
+      method: 'GET',
+      handler: () => new Promise(() => {}),
+    })
+    await renderSuspended(AddSheet, { props: { open: true } })
+    await userEvent
+      .setup()
+      .type(screen.getByLabelText(/barcode/i), HANGING_BARCODE)
+
+    vi.useFakeTimers()
+    try {
+      await userEvent
+        .setup({ delay: null })
+        .click(screen.getByRole('button', { name: /look up/i }))
+      await vi.advanceTimersByTimeAsync(8000)
+
+      expect(screen.getByText(/couldn't look that up/i)).toBeVisible()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('does not leave the previous product on screen when the next lookup hangs', async () => {
+    // The note invites the user to "fill in the details above". If a resolved
+    // candidate is still sitting there under a different barcode, that advice
+    // walks them into saving product A under the barcode of product B — the very
+    // catalog corruption issue #164 is about, arrived at from the other side.
+    const HANGING_BARCODE = '5706666666666'
+    registerEndpoint(`/api/foods/barcode/${HANGING_BARCODE}`, {
+      method: 'GET',
+      handler: () => new Promise(() => {}),
+    })
+    await renderSuspended(AddSheet, { props: { open: true } })
+    const user = userEvent.setup()
+
+    await user.type(screen.getByLabelText(/barcode/i), CANDIDATE_BARCODE)
+    await user.click(screen.getByRole('button', { name: /look up/i }))
+    await vi.waitFor(() =>
+      expect(screen.getByText(/filled from/i)).toBeVisible(),
+    )
+
+    await user.clear(screen.getByLabelText(/barcode/i))
+    await user.type(screen.getByLabelText(/barcode/i), HANGING_BARCODE)
+
+    vi.useFakeTimers()
+    try {
+      await userEvent
+        .setup({ delay: null })
+        .click(screen.getByRole('button', { name: /look up/i }))
+      await vi.advanceTimersByTimeAsync(8000)
+
+      expect(screen.getByText(/couldn't look that up/i)).toBeVisible()
+      // The other product's provenance must not outlive the lookup that failed.
+      expect(screen.queryByText(/filled from/i)).not.toBeInTheDocument()
+      expect(screen.queryByText(/stated on the label/i)).not.toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('degrades to manual entry carrying the barcode when the lookup fails offline', async () => {
     // Decoding runs locally and still works offline, but the lookup needs the
     // network. A network-failed lookup must degrade to the same barcode-pre-filled

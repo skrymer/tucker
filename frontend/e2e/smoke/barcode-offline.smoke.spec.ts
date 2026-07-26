@@ -51,7 +51,11 @@ test('an offline lookup degrades to manual entry carrying the barcode', async ({
     await sheet.getByLabel(/barcode/i).fill(barcode)
     await sheet.getByRole('button', { name: /look up/i }).click()
 
-    // The failed lookup degrades to a blank manual form, barcode preserved.
+    // The failed lookup degrades to a blank manual form, barcode preserved —
+    // and now says why. Offline, the lookup reached nothing, so leaving the form
+    // bare would assert the product is unknown when that was never established
+    // (issue #164). Manual entry stays unblocked either way.
+    await expect(sheet.getByText("Couldn't look that up")).toBeVisible()
     await expect(sheet.getByLabel(/^name$/i)).toHaveValue('')
     await sheet.getByLabel(/^name$/i).fill(foodName)
     await sheet.getByLabel(/protein \/100\s*g/i).click()
