@@ -53,6 +53,12 @@ it does not restate them.
 - **`UProgress`** — pass `:model-value` (not `:value`) and clamp it to `:max`; a wrong `:value` is
   silently ignored → an indeterminate bar. Its progressbar's accessible **name is the percentage**,
   so anchor e2e on visible text, not `getByRole('progressbar', { name })`.
+- **`USlider`** — the thumb's accessible name is hardcoded to `"Thumb"`; no prop overrides it
+  (attr fallthrough lands on the root, which has no role). Wrap it in a `role="group"` labelled
+  via `aria-labelledby` at the visible readout, with a **static** id like every other
+  `aria-labelledby` in the app. Drive it by keyboard in both layers — `slider.focus()` +
+  `user.keyboard('{ArrowRight>20/}')` in Vitest, `locator.press('End')` in Playwright — which
+  works without depending on track geometry; assert `aria-valuenow`, not the name.
 - **Toast body has a hidden `aria-live` twin** — assert with `getByText(fullMessage, { exact: true })`.
 - **Phone overlays are Reka Dialog bottom sheets** (ADR 0017), never Vaul `UDrawer`.
 - **Per-project aria snapshots** (Desktop / Mobile) — after an intended markup change regenerate with
