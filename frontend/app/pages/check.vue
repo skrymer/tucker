@@ -152,6 +152,29 @@ const { check, failure, asking, noAnswerYet, lookup, retry, reset } =
   useCheckLookup()
 
 /**
+ * The Inconclusive alert's own action, and the only recourse a failed Check has.
+ *
+ * `size: 'md'` because a UAlert action defaults to an `xs` chip — 24 px tall,
+ * the bare WCAG minimum and a poor target for a thumb. This one is tapped
+ * one-handed in a shop, which is the reasoning that put a Check on its own nav
+ * tab in the first place (ADR 0022), so it matches "Scan another" beneath it.
+ *
+ * `asking` rather than the delayed `looking`: the latter is held on past the
+ * answer so spinners can't flicker, which on a *button* means a dead control for
+ * the rest of that linger — and a tap in that window is the user asking again.
+ */
+const retryActions = computed(() => [
+  {
+    label: 'Try again',
+    color: 'warning' as const,
+    variant: 'subtle' as const,
+    size: 'md' as const,
+    loading: asking.value,
+    onClick: retry,
+  },
+])
+
+/**
  * The screen is the camera: opening the tab starts it, and scanning again after
  * a result restarts it. A denied or absent camera ends the tab with no degraded
  * mode — the accepted trade for keeping a Check a two-second interaction.
@@ -355,19 +378,7 @@ const {
             variant="subtle"
             title="Couldn't look that up"
             description="The lookup didn't get through, so Tucker can't say what this costs. Try again in a moment."
-            :actions="[
-              {
-                label: 'Try again',
-                color: 'warning',
-                variant: 'subtle',
-                // `asking`, not the delayed `looking`: the latter is held on
-                // past the answer so spinners don't flicker, which on a button
-                // means a dead control for the rest of that linger — and a tap
-                // in that window is the user asking again.
-                loading: asking,
-                onClick: retry,
-              },
-            ]"
+            :actions="retryActions"
           />
 
           <UButton
