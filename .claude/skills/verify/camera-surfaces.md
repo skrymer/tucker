@@ -85,6 +85,28 @@ Then `git status --short` to prove it's gone. **Never commit the scratch PNG.**
 
 ## Gotchas
 
+- **A background Chrome window pauses `requestAnimationFrame`** — and
+  `useBarcodeScanner` drives its decode tick with rAF, so the video shows frames
+  (`readyState 4`) and *nothing ever decodes*. You'll sit at "Point the camera at a
+  barcode" forever with no error. Two things are needed when the tab reports
+  `document.visibilityState === 'hidden'`:
+  - paint the canvas with `setInterval`, not rAF (rAF is throttled to a standstill), and
+  - shim the scheduler so the app's own decode loop runs:
+    ```js
+    window.requestAnimationFrame = (cb) => setTimeout(() => cb(performance.now()), 16)
+    window.cancelAnimationFrame = (id) => clearTimeout(id)
+    ```
+  Only the scheduling primitive is faked — the decode, the lookup and the render stay
+  the app's own code. Foregrounding the Chrome window avoids the shim entirely; prefer
+  that when you can, and say which you did in the verdict.
+- **The stub must be re-injected after any camera release.** The composable drops the
+  camera on visibility loss, so a tab that was ever hidden holds a dead stream. SPA-nav
+  away and back to force `onMounted` → `getUserMedia` against your current canvas.
+- **Swap barcodes without a reload** by exposing a setter alongside the stub —
+  `window.__wtSwap = (src) => { ready = false; img.src = src }` — then hit "Scan
+  another". It's the fastest way to compare two failure messages side by side.
+- **Terminate the inject snippet's final expression with a leading `;`** —
+  `;({ ok: 1 })`. Without it ASI parses the previous line as a call and it throws.
 - **Today is `/`, not `/today`** (`app/pages/index.vue`). Navigating to `/today` renders
   the client 404 — see [#178](https://github.com/skrymer/tucker/issues/178).
 - The Check tab **unmounts its analysis between scans**, so "Scan another" re-decodes

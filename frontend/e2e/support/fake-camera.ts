@@ -1,6 +1,9 @@
 import type { Page } from '@playwright/test'
 import { writeBarcode } from 'zxing-wasm/writer'
 
+/** Where the stub records acquisitions. Private — read it via [cameraStarts]. */
+const CAMERA_STARTS_KEY = '__cameraStarts'
+
 /**
  * Replace `getUserMedia` on [page] before it navigates. [barcodePng] is a raster
  * data-URL of a barcode to hand back as a live camera feed, or `null` to refuse
@@ -14,7 +17,8 @@ import { writeBarcode } from 'zxing-wasm/writer'
  * `getImageData` (and so the decoder) could not read its frames.
  */
 async function stubGetUserMedia(page: Page, barcodePng: string | null) {
-  await page.addInitScript((dataUrl) => {
+  const args = { dataUrl: barcodePng, startsKey: CAMERA_STARTS_KEY }
+  await page.addInitScript(({ dataUrl, startsKey }) => {
     if (!navigator.mediaDevices) {
       Object.defineProperty(navigator, 'mediaDevices', {
         value: {},
@@ -49,14 +53,23 @@ async function stubGetUserMedia(page: Page, barcodePng: string | null) {
       requestAnimationFrame(paint)
     }
     paint()
+    const counter = window as unknown as Record<string, number>
+    counter[startsKey] = 0
     Object.defineProperty(navigator.mediaDevices, 'getUserMedia', {
       configurable: true,
       // A fresh stream per call, as a real camera hands out: the app stops the
       // tracks when it releases the camera, so a shared stream would come back
       // already ended on a second scan.
-      value: async () => canvas.captureStream(30),
+      value: async () => {
+        // Every acquisition is counted, because "the camera was not restarted"
+        // is otherwise unobservable from a test: a restart re-decodes the same
+        // fake barcode within seconds and issues its own look-up, so request
+        // counts and a retrying toBeVisible() both sail straight past it.
+        counter[startsKey]++
+        return canvas.captureStream(30)
+      },
     })
-  }, barcodePng)
+  }, args)
 }
 
 /** Feed [page] a synthetic camera showing [barcode]. Call before navigating. */
@@ -74,4 +87,18 @@ export async function fakeBarcodeCamera(page: Page, barcode: string) {
  */
 export async function denyCamera(page: Page) {
   await stubGetUserMedia(page, null)
+}
+
+/**
+ * How many times [page] has acquired the camera since the stub was installed.
+ * Compare it across an interaction to assert the camera was *not* restarted —
+ * which nothing else can show, because a restart re-decodes the same fake
+ * barcode within seconds and issues its own look-up, so request counts rise and
+ * any auto-retrying assertion just waits out the viewfinder in between.
+ */
+export function cameraStarts(page: Page): Promise<number> {
+  return page.evaluate(
+    (key) => (window as unknown as Record<string, number>)[key] ?? 0,
+    CAMERA_STARTS_KEY,
+  )
 }

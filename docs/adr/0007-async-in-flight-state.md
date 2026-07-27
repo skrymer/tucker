@@ -156,6 +156,46 @@ The acceptance criterion "the backend does not continue retrying a look-up the
 client has abandoned" then holds by construction rather than by plumbing: there is
 nothing left running to abandon.
 
+One more attempt was hiding on the **client** side, found while building
+[#171](https://github.com/skrymer/tucker/issues/171) and recorded here because
+this section is where the arithmetic lives. **ofetch retries a GET once by
+default**, and `503` is in its stock `retryStatusCodes` — so a look-up the
+Provider refused was silently costing *two* round-trips before the screen said
+anything, each one driving the whole provider chain and a real Open Food Facts
+hop.
+
+That quietly undid the rule three paragraphs up. The backend retries only
+fast-failing transport errors and **deliberately excludes** slowness, rate limits
+and server errors, because repeating those multiplies load on a Provider that
+IP-bans abusive callers ([#164](https://github.com/skrymer/tucker/issues/164)) —
+and a **Check** raises scan volume sharply
+([0022](0022-a-check-states-cost-and-return-and-never-labels-a-food.md)). Having
+the client re-add that multiplication one layer up is the opposite of the
+decision. So the Check look-up passes **`retry: 0`**. It halves the provider load
+and the time-to-alert on an **Inconclusive** look-up — and only there, since a
+miss (404) and incomplete nutrition (422) are not in ofetch's retry set and were
+never doubled. It also makes this amendment's own claim — the round-trip was the
+only thing that broke, so it is the only thing redone — literally true. The
+transient blip the silent retry was covering is exactly what the user now has a
+button for, on the one failure where asking again can help.
+
+**Scoped to the Check look-up, deliberately.** The Add-Food look-up keeps
+ofetch's automatic retry, so an Inconclusive Lookup still costs two provider
+chains there. The rationale above is about provider load and would argue for
+changing both; what differs is who pays for the second ask. On the Check tab it
+is the user's only recourse, so it belongs to the thumb. In Add-Food manual entry
+is an always-on peer ([0006](0006-provider-agnostic-nutrition-lookup.md)) and
+there is no retry control by design, so a silent second attempt is free recovery
+on a path the user is not blocked on. That is a judgement, not a strong result —
+if the deferred throttle ([0022](0022-a-check-states-cost-and-return-and-never-labels-a-food.md))
+is ever built, revisit it and probably align the two.
+
+It is also a trap for tests, worth stating because it cost a red-green cycle: a
+fixture that fails the *first* call and succeeds after was silently answered by
+the client's own retry, so the failure never reached the screen. Model an outage
+as a state the test switches off ("the source came back"), never as an attempt
+count — an attempt count measures the HTTP client, not Tucker.
+
 The trade is explicit. A Provider degraded past ~7 s is called Inconclusive even
 though waiting longer might have worked — which is honest ("Tucker could not find
 out") and recoverable in one tap, where the old behaviour was a silent blank form
@@ -186,6 +226,22 @@ useAsyncAction(action /* (signal, ...args) => Promise */, {
 delayed flag bound to `:loading`. The two re-entry policies are deliberate:
 **mutations guard** (a double-tap on Save must not fire two writes), **look-ups
 take the latest** (a new barcode supersedes the old).
+
+**Exception: a control that outlives its answer binds `:loading` to `pending`.**
+`busy` is deliberately *held on* past the moment the answer arrives (`minBusyMs`,
+so a spinner cannot flicker), and that is right for a spinner — it is about to be
+replaced by content either way. It is wrong for a button that is still on screen
+afterwards, because Nuxt UI derives `:disabled` from `:loading`
+(`disabled || isLoading`), so the linger leaves a **dead control for up to 400 ms
+after the work finished** — and a tap in that window is the user asking again.
+The Check tab's "Try again" ([#171](https://github.com/skrymer/tucker/issues/171))
+is the first such control: it lives inside an alert that stays put, so it binds
+`pending`. `disabled: pending` alongside `loading: busy` does not help — loading
+already implies disabled. The accepted cost is that a look-up which fails inside
+150 ms flashes a brief spinner on that button, the glitch the delay exists to
+prevent; it is tolerable here precisely because the button does not move or get
+replaced. **`busy` remains the binding wherever the spinner replaces content** —
+including the same screen's "Looking it up…", and the Add-Food "Look up" button.
 
 ## Consequences
 
@@ -221,13 +277,24 @@ take the latest** (a new barcode supersedes the old).
   "Look up" button is inches away, so a second control bound to the same call
   would be pure duplication. The **Check** tab is the opposite case — no manual
   peer, nothing else to do — and *earns* a retry affordance
-  ([0022](0022-a-check-states-cost-and-return-and-never-labels-a-food.md)); it does
-  not have one yet. Today it offers only "Scan another", which restarts the camera
-  rather than re-running the same look-up, and renders the same for all three
-  failures. Building the real thing belongs to F11 slice 3
-  ([#171](https://github.com/skrymer/tucker/issues/171)), which this amendment
-  unblocks rather than delivers. Neither surface uses a toast either way, so
-  0005's mutation-only scope is untouched.
+  ([0022](0022-a-check-states-cost-and-return-and-never-labels-a-food.md)).
+
+  **Delivered by F11 slice 3
+  ([#171](https://github.com/skrymer/tucker/issues/171)):** a **"Try again"** that
+  re-runs `GET /api/check/{barcode}` against the barcode *already decoded*. The
+  camera is not restarted and the decode — which never failed — is not repeated;
+  the network round-trip was the only thing that broke, so it is the only thing
+  redone. Re-aiming a phone at a package is a cost the user should not pay for a
+  failure that happened after the scan succeeded.
+
+  It lives in the Inconclusive alert's own `actions`, which is what keeps the
+  asymmetry honest: the control cannot render for a miss (404) or for incomplete
+  nutrition (422), because it is inside the one alert those failures never show.
+  Both of those are permanent for that product, and "try again" is actively bad
+  advice while standing in a shop. Those two keep only **"Scan another"** — which
+  restarts the camera, and stays available under all three, so a user can always
+  abandon a product instead of retrying it. Neither surface uses a toast either
+  way, so 0005's mutation-only scope is untouched.
 - `useAsyncAction` is a shared, extracted composable, so it gets its own
   red-green unit tests ([0004](0004-compose-inline-composables.md)).
 - **F6 offline:** when mutations gain an offline queue, a network failure becomes
