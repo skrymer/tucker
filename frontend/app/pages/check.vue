@@ -11,8 +11,10 @@ type CheckResult = components['schemas']['CheckResponse']
 const today = localToday()
 const { $api } = useNuxtApp()
 
-// The summary supplies the setup gate's Calorie Budget, and reading it is also
-// what advances the weekly cadence (ADR 0010) — a Check computes nothing itself.
+// The summary supplies the setup gate's Calorie Budget — and this read is what
+// advances the weekly cadence (ADR 0010). A Check depends on that rather than
+// coinciding with it: it computes nothing itself, so dropping this read would
+// leave it stating figures against a Budget an overdue week has staled.
 const {
   data: summary,
   error: summaryError,

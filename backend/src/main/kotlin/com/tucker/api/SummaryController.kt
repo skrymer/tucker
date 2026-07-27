@@ -95,14 +95,18 @@ class SummaryController(
     fun summary(
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) date: LocalDate,
     ): DailySummaryResponse {
-        // The summary is read on every app open, so it is where two app-open
-        // bookkeeping concerns advance. First: stamp last-seen on the client's local
-        // day (ADR 0014 — never the server's wall clock) to feed the reminder's
-        // absent-today gate (ADR 0010), so a reminder never fires on a day the user
-        // already showed up.
+        // The summary is read on every app open, by any screen — so it is where two
+        // app-open bookkeeping concerns advance. They read like one concern and are
+        // not; ADR 0010, "What counts as showing up", carries the argument.
+        //
+        // Redundant, kept as a guard: last-seen on the client's local day (ADR 0014,
+        // never the server's wall clock), feeding a reminder gate that the catch-up
+        // below has already closed by the time the reminder asks.
         reminderState.stampSeen(date)
-        // Second, lazy catch-up: the weekly cadence advances here — no scheduler.
-        // Runs at most one review, snapped to the client's local today, when due.
+        // Load-bearing: the weekly cadence advances here, with no scheduler — at most
+        // one review, snapped to the client's local today, when due. This is what
+        // stands down the day's reminder, and what lets a Check state its figures
+        // against a current Budget.
         weeklyReview.catchUpIfDue(date)
 
         val log = DailyLog(date, entries.findByDate(date))

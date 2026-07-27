@@ -239,10 +239,12 @@ deliberate **Goal** change (creating or replacing one) force-recomputes today's
 review, overwriting any same-day record so the new Budget and Floor take effect
 immediately rather than at the next cadence. It is the _only_ place Maintenance,
 the Budget, and the Floor are (re)computed; `/today` shows the latest review's
-figures. Reviews fire by **lazy catch-up**: on app use, if the latest review
-is a week or more old, the engine runs one review snapping to today (it does
-not replay each missed week — the adaptive window already looks back two
-weeks). A manual "run now" trigger and a **Goal**-change recompute also exist.
+figures. Reviews fire by **lazy catch-up**: on app use — *any* screen, since it
+is opening Tucker that advances the cadence, not visiting a particular one — if
+the latest review is a week or more old, the engine runs one review snapping to
+today (it does not replay each missed week — the adaptive window already looks
+back two weeks). A manual "run now" trigger and a **Goal**-change recompute also
+exist.
 There is no scheduler. Every recompute is stamped on the user's _local_ today —
 the client supplies it, the server never substitutes its own wall-clock day (the
 "client owns today" boundary rule; see [ADR 0014](docs/adr/0014-client-owns-today.md)
@@ -315,14 +317,18 @@ Review** has come due and they've been away. It does *not* run the review — th
 review still computes lazily on next app open; the Reminder only pulls a
 drifted-away user back. It fires from Tucker's one notification job (see
 [ADR 0010](docs/adr/0010-minimal-scheduler-for-the-weekly-reminder.md)) when the
-latest review is a week or more old, the user has a **Push Subscription**, and
-they haven't opened the app today — delivered at the user's local reminder hour
-(their **Profile** timezone + chosen hour). "Opened the app today" is read from
-the user's **last-seen day**, stamped on each daily-summary read (on the client's
-local day, never the server clock). At most one Reminder per overdue episode: it
-is deduped against the instant the **last Reminder was sent** — suppressed while
-that is after the latest review's date, and re-armed when opening the app writes a
-fresh review whose date moves past it. A displayed nudge, never a guilt-trip.
+latest review is a week or more old and the user has a **Push Subscription** —
+delivered at the user's local reminder hour (their **Profile** timezone + chosen
+hour). Opening Tucker is what ends a Reminder's claim on the day: any screen runs
+the due review, so a Reminder is never owed to someone who has opened the app —
+including through a **Check**. A Check computes nothing itself, but *opening* one
+runs the due review like any other screen, refreshing the very Budget the nudge
+would have asked them to come and refresh. A **last-seen day**
+(the user's local day, never the server clock) is stamped alongside as a second,
+redundant guard. At most one Reminder per overdue episode: it is deduped against
+the instant the **last Reminder was sent** — suppressed while that is after the
+latest review's date, and re-armed when opening the app writes a fresh review
+whose date moves past it. A displayed nudge, never a guilt-trip.
 _Avoid_: alert, notification, push (as the noun for the user-facing nudge)
 
 **Push Subscription**:
