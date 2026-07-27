@@ -287,7 +287,8 @@ The frontend is built **test-first (red-green TDD)**. Increments:
   User until the last slice. **Out of scope:** self-service email change (the
   intended design is pending-email adoption, ADR 0020), sharing a Recipe with
   another User (Spring ACL territory, ADR 0021), and public self-signup.
-- **F11** — Check: scan a package *before* buying it (design pass **done**, see
+- **F11** — Check: scan a package *before* buying it (**shipped**, PRD
+  [#168](https://github.com/skrymer/tucker/issues/168), see
   [ADR 0022](docs/adr/0022-a-check-states-cost-and-return-and-never-labels-a-food.md)
   and the `Check` / `Pace` terms in `CONTEXT.md`). A second use for the scanner,
   on its own nav tab: it states what a portion **costs** (share of the Calorie
@@ -308,12 +309,39 @@ The frontend is built **test-first (red-green TDD)**. Increments:
   **Prerequisite:** [#164](https://github.com/skrymer/tucker/issues/164) — ✅ done:
   with no manual fallback, a provider outage and a genuine miss need opposite error
   messages, so the lookup gained a fourth outcome (an **Inconclusive Lookup**,
-  `503`, distinct from a miss's `404`) and both surfaces say which happened. Slice 3
-  ([#171](https://github.com/skrymer/tucker/issues/171)) is unblocked and still owns
-  the retry affordance and the camera-unavailable copy.
+  `503`, distinct from a miss's `404`) and both surfaces say which happened.
+
+  Three slices, each shipped with a real-stack smoke:
+  - Slice 1 ([#169](https://github.com/skrymer/tucker/issues/169), shipped
+    [#173](https://github.com/skrymer/tucker/pull/173)) — scan a package and see
+    what it costs and returns.
+  - Slice 2 ([#170](https://github.com/skrymer/tucker/issues/170), shipped
+    [#177](https://github.com/skrymer/tucker/pull/177)) — dial the portion.
+  - Slice 3 ([#171](https://github.com/skrymer/tucker/issues/171), shipped
+    [#184](https://github.com/skrymer/tucker/pull/184)) — tell a provider outage
+    apart from a genuine miss. An Inconclusive Lookup earns a **"Try again"**
+    that re-runs `GET /api/check/{barcode}` against the barcode *already
+    decoded* — the camera is not restarted and the decode, which never failed,
+    is not repeated. It lives inside that alert's own `actions`, so it
+    **structurally cannot** render for a miss (404) or incomplete nutrition
+    (422); both are permanent for that product, and "try again" is bad advice
+    while standing in a shop. Those two keep only "Scan another", which stays
+    available under all three. The lookup also passes `retry: 0`: ofetch's stock
+    GET retry was silently re-adding the provider-load multiplication the
+    backend deliberately refuses (ADR 0007, [#164](https://github.com/skrymer/tucker/issues/164)).
+    Proving the retry *is* a retry takes a camera-acquisition count: a restarted
+    camera re-decodes the same barcode and issues its own lookup, so request
+    counts and a retrying `toBeVisible()` both pass either way.
+
   **Out of scope:** grading fat or carbs, saving anything, comparing
   products side by side, and "can I fit this in what's left right now?" (that one
   belongs to logging a Food, not shopping for one).
+  **Open follow-ups:** [#182](https://github.com/skrymer/tucker/issues/182) —
+  the Add-Food lookup still auto-retries a 503 unlike the Check lookup (the
+  asymmetry and its reasoning are recorded in ADR 0007); and
+  [#183](https://github.com/skrymer/tucker/issues/183) — `useAsyncAction`'s
+  min-busy timer has no staleness guard (latent, but it backs every mutation
+  form, so it wants its own red-green tests rather than a drive-by fix).
 
 ## Architecture
 
