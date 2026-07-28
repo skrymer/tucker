@@ -22,9 +22,12 @@ import org.mockito.kotlin.whenever
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.http.MediaType
 import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
+import org.springframework.test.web.servlet.post
+import org.springframework.test.web.servlet.put
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
 import kotlin.math.abs
@@ -62,17 +65,35 @@ class CheckApiTest {
         }
 
     /** A review inserted directly, standing in for one the adaptive engine ran. */
-    private fun seedTargets(budgetKcal: Double = 2492.0, floorG: Double = 170.0) {
+    private fun seedTargets(
+        budgetKcal: Double = 2492.0,
+        floorG: Double = 170.0,
+        on: LocalDate = LocalDate.now(),
+    ) {
         reviews.insert(
             WeeklyReview(
                 id = null,
-                reviewedOn = LocalDate.now(),
+                reviewedOn = on,
                 trendWeightKg = 86.0,
                 maintenance = Maintenance(2400.0, Maintenance.Basis.FORMULA_SEED),
                 calorieBudgetKcal = budgetKcal,
                 proteinFloorG = floorG,
             ),
         )
+    }
+
+    /** Everything the adaptive engine needs before it will run a review of its own. */
+    private fun completeSetup(on: LocalDate) {
+        mockMvc.put("/api/profile") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"sex":"MALE","birthDate":"1986-05-22","heightCm":180.0}"""
+        }.andExpect { status { isOk() } }
+
+        // The 86 kg the Protein Floor assertions are derived from, at 2 g/kg.
+        mockMvc.post("/api/weight") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"date":"$on","weightKg":86.0}"""
+        }.andExpect { status { isOk() } }
     }
 
     private fun providerKnows(barcode: String, candidate: FoodCandidate) {
@@ -135,6 +156,33 @@ class CheckApiTest {
             jsonPath("$.proteinEnergyShare", near(0.047))
             jsonPath("$.carbsEnergyShare", near(0.431))
             jsonPath("$.fatEnergyShare", near(0.521))
+        }
+    }
+
+    @Test
+    fun `a Check measures against the Budget an overdue review has just recomputed`() {
+        // Read once: three separate LocalDate.now() calls can straddle midnight.
+        val today = LocalDate.now()
+        // A week away: the newest review is eight days old and its figures are
+        // deliberately nothing a fresh one would produce.
+        completeSetup(on = today)
+        seedTargets(budgetKcal = 999.0, floorG = 99.0, on = today.minusDays(8))
+        providerKnows(nutellaBarcode, nutella(nutellaBarcode))
+
+        // Opening the Check tab reads the daily summary for its setup gate, and that
+        // read is what runs the due review (ADR 0010) — a Check computes nothing
+        // itself. This is the whole reason a Check may state figures at all.
+        mockMvc.get("/api/summary") { param("date", "$today") }
+            .andExpect { status { isOk() } }
+
+        mockMvc.get("/api/check/$nutellaBarcode").andExpect {
+            status { isOk() }
+            // The fresh review's own figures: Maintenance held at 2400 with no Goal
+            // to take a deficit from, and 2 g/kg of the 86 kg trend. Never 999/99 —
+            // a Check still quoting the stale review would read as entirely
+            // plausible, which is exactly why this is pinned.
+            jsonPath("$.calorieBudgetKcal", near(2400.0, 1e-6))
+            jsonPath("$.proteinFloorG", near(172.0, 1e-6))
         }
     }
 

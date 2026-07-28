@@ -15,10 +15,13 @@ import com.tucker.persistence.WeeklyReviewRepository
 import com.tucker.persistence.WeightMeasurementRepository
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Primary
+import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.get
 import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
 import java.time.LocalDate
@@ -30,8 +33,13 @@ import kotlin.test.assertNotNull
  * the web-push transport faked at its true external boundary (ADR 0013). The fake
  * reports a subscription whose endpoint contains "gone" as 410 GONE, everything
  * else delivered, and records the endpoints it was asked to push to.
+ *
+ * One test also drives the real summary endpoint (hence MockMvc): the rule it pins —
+ * opening Tucker advances the weekly cadence, so no reminder is owed — lives only at
+ * that seam and is invisible from either side alone.
  */
 @SpringBootTest
+@AutoConfigureMockMvc
 @Transactional
 class ReminderSchedulerIntegrationTest {
 
@@ -50,6 +58,7 @@ class ReminderSchedulerIntegrationTest {
         }
     }
 
+    @Autowired lateinit var mockMvc: MockMvc
     @Autowired lateinit var scheduler: ReminderScheduler
     @Autowired lateinit var profiles: ProfileRepository
     @Autowired lateinit var weights: WeightMeasurementRepository
@@ -85,6 +94,26 @@ class ReminderSchedulerIntegrationTest {
         assertEquals(1, result.sent)
         assertEquals(listOf("https://push.example/device-a"), sender.sentEndpoints)
         assertNotNull(reminderState.lastReminderSentAt())
+    }
+
+    @Test
+    fun `owes no reminder once the user has opened Tucker, because that ran the due review`() {
+        seedEligible()
+
+        // One summary read, which is what *any* screen performs on open — the
+        // dashboard and the Check tab are indistinguishable here, and that is the
+        // decision, not an oversight (ADR 0010, issue #174).
+        mockMvc.get("/api/summary") { param("date", "$today") }
+            .andExpect { status { isOk() } }
+
+        val result = scheduler.runTick(now)
+
+        // Asserted by its cause, not merely by the silence: the review the reminder
+        // would have nudged about has already run, dated today, so nothing is overdue.
+        // Without this line a broken absent-today gate would look identical.
+        assertEquals(today, reviews.latest()?.reviewedOn)
+        assertEquals(0, result.sent)
+        assertEquals(emptyList(), sender.sentEndpoints)
     }
 
     @Test
