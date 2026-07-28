@@ -189,8 +189,11 @@ The frontend is built **test-first (red-green TDD)**. Increments:
     absent-today gate) + `lastReminderSentAt` (dedupe); `ReminderScheduler.runTick`
     (send → prune 410 → stamp) behind one prod-only hourly trigger.
   - Service worker `push` / `notificationclick` handlers (icon + badge + collapse
-    `tag`; tap focuses or opens `/today`), layered onto the Workbox SW via
+    `tag`; tap focuses or opens Today at `/`), layered onto the Workbox SW via
     `importScripts`. Real-stack `reminder-send` smoke proves send + dedupe.
+    Reminders shipped before [#178](https://github.com/skrymer/tucker/issues/178)
+    deep-linked to `/today`, which was never a route; `pages/today.vue` redirects
+    those already in a tray to `/`, which stays canonical.
   - Reliability hardening (send timeout, prune malformed keys, DST/timezone dedupe
     edges) deferred to [#96](https://github.com/skrymer/tucker/issues/96).
 

@@ -1,5 +1,6 @@
 package com.tucker.service
 
+import com.fasterxml.jackson.databind.ObjectMapper
 import com.tucker.domain.Maintenance
 import com.tucker.domain.PushSubscription
 import com.tucker.domain.SendResult
@@ -13,6 +14,7 @@ import com.tucker.persistence.PushSubscriptionRepository
 import com.tucker.persistence.ReminderStateRepository
 import com.tucker.persistence.WeeklyReviewRepository
 import com.tucker.persistence.WeightMeasurementRepository
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
@@ -52,12 +54,15 @@ class ReminderSchedulerIntegrationTest {
 
     class RecordingTestSender : WebPushSender {
         val sentEndpoints = mutableListOf<String>()
+        val sentPayloads = mutableListOf<String>()
         override fun send(subscription: PushSubscription, payload: String): SendResult {
             sentEndpoints += subscription.endpoint
+            sentPayloads += payload
             return if ("gone" in subscription.endpoint) SendResult.GONE else SendResult.DELIVERED
         }
     }
 
+    @Autowired lateinit var objectMapper: ObjectMapper
     @Autowired lateinit var mockMvc: MockMvc
     @Autowired lateinit var scheduler: ReminderScheduler
     @Autowired lateinit var profiles: ProfileRepository
@@ -69,6 +74,16 @@ class ReminderSchedulerIntegrationTest {
 
     private val now = Instant.parse("2026-06-10T09:00:00Z")
     private val today = LocalDate.of(2026, 6, 10)
+
+    /**
+     * The recorder is a context-wide singleton, so what one test pushed is still in
+     * it when the next runs — @Transactional rolls back the database, not a bean.
+     */
+    @BeforeEach
+    fun startFromSilence() {
+        sender.sentEndpoints.clear()
+        sender.sentPayloads.clear()
+    }
 
     /** Profile (reminders on, 09:00 UTC), a weight, an 8-day-old review, one device. */
     private fun seedEligible(endpoint: String = "https://push.example/device-a") {
@@ -94,6 +109,17 @@ class ReminderSchedulerIntegrationTest {
         assertEquals(1, result.sent)
         assertEquals(listOf("https://push.example/device-a"), sender.sentEndpoints)
         assertNotNull(reminderState.lastReminderSentAt())
+    }
+
+    @Test
+    fun `sends a reminder a tap on which lands on Tucker's Today screen`() {
+        seedEligible()
+
+        scheduler.runTick(now)
+
+        // Parsed rather than pattern-matched because that is how the service worker
+        // reads it (`event.data.json()`) — issue #178.
+        assertEquals("/", objectMapper.readTree(sender.sentPayloads.single()).path("url").asText())
     }
 
     @Test

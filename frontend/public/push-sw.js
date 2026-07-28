@@ -10,13 +10,20 @@
  *    tagged so a repeat for the same overdue episode replaces the previous one
  *    rather than stacking, and carries the icon + monochrome badge.
  *  - `notificationclick`: focus an already-open Tucker window (navigating it to the
- *    target) or open a new one at /today.
+ *    target) or open a new one at Today.
  *
  * Plain classic-worker JS (importScripts is not an ES module) and pure browser
  * glue — covered by /verify (a real push via DevTools) and the reminder smoke,
  * not a unit test (ADR 0013).
  */
 /* global self, clients */
+
+/**
+ * Where a reminder lands when its payload names no target. Today is `/`, not
+ * `/today` — naming it once is what keeps the two handlers below from drifting
+ * apart, which is how the wrong path survived in three places (issue #178).
+ */
+const TODAY_URL = '/'
 
 self.addEventListener('push', (event) => {
   let payload = {}
@@ -33,7 +40,7 @@ self.addEventListener('push', (event) => {
     badge: '/icons/badge-72x72.png',
     // One reminder per overdue episode: a repeat replaces, never stacks.
     tag: 'weekly-review-reminder',
-    data: { url: payload.url || '/today' },
+    data: { url: payload.url || TODAY_URL },
   }
 
   event.waitUntil(self.registration.showNotification(title, options))
@@ -42,7 +49,7 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
   const targetUrl =
-    (event.notification.data && event.notification.data.url) || '/today'
+    (event.notification.data && event.notification.data.url) || TODAY_URL
 
   event.waitUntil(
     clients

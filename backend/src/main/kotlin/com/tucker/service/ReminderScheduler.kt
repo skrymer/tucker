@@ -95,6 +95,6 @@ class ReminderScheduler(
         const val PAYLOAD =
             """{"title":"Time for your weekly review",""" +
                 """"body":"Open Tucker to log today and refresh your calorie budget.",""" +
-                """"url":"/today"}"""
+                """"url":"/"}"""
     }
 }

@@ -107,8 +107,9 @@ Then `git status --short` to prove it's gone. **Never commit the scratch PNG.**
   another". It's the fastest way to compare two failure messages side by side.
 - **Terminate the inject snippet's final expression with a leading `;`** —
   `;({ ok: 1 })`. Without it ASI parses the previous line as a call and it throws.
-- **Today is `/`, not `/today`** (`app/pages/index.vue`). Navigating to `/today` renders
-  the client 404 — see [#178](https://github.com/skrymer/tucker/issues/178).
+- **Today is `/`, not `/today`** (`app/pages/index.vue`). `/today` is a bare redirect
+  to it (`app/pages/today.vue`), kept only for reminders sent before
+  [#178](https://github.com/skrymer/tucker/issues/178) — never link to it.
 - The Check tab **unmounts its analysis between scans**, so "Scan another" re-decodes
   the same fake barcode — which makes it a free way to verify reset-on-new-product
   behaviour.
