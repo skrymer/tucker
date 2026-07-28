@@ -28,7 +28,6 @@ import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
 import java.time.LocalDate
 import kotlin.test.assertEquals
-import kotlin.test.assertNotNull
 
 /**
  * Drives the [ReminderScheduler] glue end-to-end against real repositories, with
@@ -108,7 +107,8 @@ class ReminderSchedulerIntegrationTest {
 
         assertEquals(1, result.sent)
         assertEquals(listOf("https://push.example/device-a"), sender.sentEndpoints)
-        assertNotNull(reminderState.lastReminderSentAt())
+        // Stamped as the user's local day, which is what the dedupe compares.
+        assertEquals(today, reminderState.lastReminderSentOn())
     }
 
     @Test
@@ -126,9 +126,8 @@ class ReminderSchedulerIntegrationTest {
     fun `owes no reminder once the user has opened Tucker, because that ran the due review`() {
         seedEligible()
 
-        // One summary read, which is what *any* screen performs on open — the
-        // dashboard and the Check tab are indistinguishable here, and that is the
-        // decision, not an oversight (ADR 0010, issue #174).
+        // One summary read — the dashboard and the Check tab are indistinguishable
+        // here, and that is the decision, not an oversight (ADR 0010, issue #174).
         mockMvc.get("/api/summary") { param("date", "$today") }
             .andExpect { status { isOk() } }
 
@@ -147,12 +146,41 @@ class ReminderSchedulerIntegrationTest {
         seedEligible()
 
         val first = scheduler.runTick(now)
-        // The next day, still 09:00, still away, still no fresh review — dedupe, not
-        // the hour gate (which would also zero an unrelated hour), must keep it quiet.
+        // The next day, still 09:00, still away, still no fresh review. Only the
+        // dedupe can keep this quiet — the hour gate passes on both ticks.
         val second = scheduler.runTick(Instant.parse("2026-06-11T09:00:00Z"))
 
         assertEquals(1, first.sent)
         assertEquals(0, second.sent)
+    }
+
+    @Test
+    fun `does not nudge twice within the same day's window`() {
+        seedEligible()
+
+        val atNine = scheduler.runTick(now)
+        // 10:00 is the second and last hour a nudge may go out in, so this tick clears
+        // the hour gate on its own — only the dedupe can keep it quiet, which is the
+        // property the widened gate leans on.
+        val atTen = scheduler.runTick(Instant.parse("2026-06-10T10:00:00Z"))
+
+        assertEquals(1, atNine.sent)
+        assertEquals(0, atTen.sent)
+        assertEquals(listOf("https://push.example/device-a"), sender.sentEndpoints)
+    }
+
+    @Test
+    fun `stops trying once the day is well past the reminder hour`() {
+        seedEligible()
+
+        // Nothing has been delivered, so the dedupe is still open — the hour gate is
+        // all that stands between an undelivered nudge and an attempt every hour until
+        // midnight, each one a fresh connection to a push service that isn't answering.
+        val lateInTheDay = listOf("2026-06-10T15:00:00Z", "2026-06-10T23:00:00Z")
+            .map { scheduler.runTick(Instant.parse(it)).sent }
+
+        assertEquals(listOf(0, 0), lateInTheDay)
+        assertEquals(emptyList(), sender.sentEndpoints)
     }
 
     @Test
@@ -167,7 +195,7 @@ class ReminderSchedulerIntegrationTest {
     }
 
     @Test
-    fun `stays quiet outside the user's reminder hour`() {
+    fun `stays quiet before the user's reminder hour`() {
         seedEligible()
 
         // 08:00 UTC, but the user asked for 09:00 — the scheduler must feed this

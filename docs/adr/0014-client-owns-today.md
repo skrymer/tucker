@@ -53,6 +53,16 @@ user's `Profile` timezone to the clock's instant itself. It reuses this same
 `Clock` bean (no duplicate seam), and freezing the bean lets tests and the `smoke`
 profile control time.
 
+*Amended (issue #96):* that cron now also **writes** a local day —
+`reminder_state.last_reminder_sent_on`, the day its last nudge went out on. This is
+inside the rule, not an exception to it. What "never stamp a persisted domain date"
+protects is the history the user reasons about: what they ate, what they weighed,
+what their Budget was. Reminder bookkeeping is none of those — it is the notifier's
+private memory of its own behaviour, it is never shown, and no client exists to
+supply it. It is also strictly *more* aligned than what it replaced: the cron
+already persisted a server-derived `Instant` here, and converting that to a day in
+the user's own zone is a move toward this ADR's model rather than away from it.
+
 ## Alternatives rejected
 
 - **Keep the server-clock stamp, rely only on the #84 UTC pin.** Leaves the runner

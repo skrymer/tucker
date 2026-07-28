@@ -186,7 +186,7 @@ The frontend is built **test-first (red-green TDD)**. Increments:
     from the injectable `Clock`), and `SendResult.fromStatusCode`.
   - `WebPushSender` port + `MartijndwarsWebPushSender` (`nl.martijndwars:web-push`);
     `reminder_state` (V6) with `lastSeenOn` (stamped on the daily-summary read, the
-    absent-today gate) + `lastReminderSentAt` (dedupe); `ReminderScheduler.runTick`
+    absent-today gate) + `lastReminderSentOn` (dedupe); `ReminderScheduler.runTick`
     (send → prune 410 → stamp) behind one prod-only hourly trigger.
   - Service worker `push` / `notificationclick` handlers (icon + badge + collapse
     `tag`; tap focuses or opens Today at `/`), layered onto the Workbox SW via
@@ -194,8 +194,22 @@ The frontend is built **test-first (red-green TDD)**. Increments:
     Reminders shipped before [#178](https://github.com/skrymer/tucker/issues/178)
     deep-linked to `/today`, which was never a route; `pages/today.vue` redirects
     those already in a tray to `/`, which stays canonical.
-  - Reliability hardening (send timeout, prune malformed keys, DST/timezone dedupe
-    edges) deferred to [#96](https://github.com/skrymer/tucker/issues/96).
+  - Reliability hardening ([#96](https://github.com/skrymer/tucker/issues/96)) — ✅
+    done. The dedupe compares a stored local **day** against the review's date (V8)
+    instead of re-deriving that day from an instant in the Profile's *current*
+    timezone — which is what made it safe to widen the hour gate from "is the
+    reminder hour" to a **two-hour window** opening at it, since the dedupe is then
+    the only thing holding one nudge per episode. Two hours, not the rest of the day:
+    a clock never jumps by more than one, so that is the least that survives a
+    spring-forward gap, and an open-ended window would let a nudge owed since
+    breakfast land at 23:00. Alongside: an undecodable key is `GONE` (prune) rather
+    than retried forever, every send is time-bounded, and the last-seen stamp moved to
+    after a *successful* summary read. Reasoning in ADR 0010, "Clocks the rule has to
+    survive"; the two gaps it exposed but does not close are
+    [#192](https://github.com/skrymer/tucker/issues/192) (only `/` and `/check`
+    advance the cadence) and
+    [#193](https://github.com/skrymer/tucker/issues/193) (web-push leaks a client on
+    a refused connection).
 
   With slices 1–3 shipped, F6's installable-PWA + web-push reminder is **complete**.
   The Nuxt frontend is **deployed** ([#88](https://github.com/skrymer/tucker/issues/88)
