@@ -33,14 +33,83 @@ recompute*, not a vow of notification celibacy; we sharpen the glossary to say s
 - the user **hasn't opened the app today** (the absent-today gate — redundant in
   practice, and never the reason a reminder is suppressed; see *What counts as
   showing up* below), and
-- it is the user's **local reminder hour** (their `Profile` timezone + chosen hour),
-  so the push lands at a civilised time, not whenever the cron first notices.
+- their local day has **reached** the **reminder hour** (their `Profile` timezone +
+  chosen hour), so the push lands at a civilised time, not whenever the cron first
+  notices.
 
-**Dedupe.** Store a single `lastReminderSentAt`. Suppress if it is *after* the
-latest review's date — i.e. we already nudged for the current overdue episode.
-When the user finally opens the app, lazy catch-up writes a fresh review whose date
-moves past `lastReminderSentAt`, and next week's episode becomes eligible again. The
-existing review timeline *is* the cycle boundary; no separate counter.
+**Dedupe.** Store a single `lastReminderSentOn` — the user's local *day* the last
+reminder went out on. Suppress if it is *after* the latest review's date — i.e. we
+already nudged for the current overdue episode. When the user finally opens the app,
+lazy catch-up writes a fresh review whose date moves past `lastReminderSentOn`, and
+next week's episode becomes eligible again. The existing review timeline *is* the
+cycle boundary; no separate counter.
+
+## Clocks the rule has to survive (amended — issue #96)
+
+Two of the gates above are about *the user's day*, and both were originally written
+as if a day were a tidy thing.
+
+**A two-hour window, not a matching hour.** An equality test on the local hour
+assumes every wall-clock hour occurs. On a spring-forward Sunday one does not — New
+York goes 01:59:59 straight to 03:00 — so a user who picked 02:00 would silently
+lose that week's nudge. The gate therefore spans the reminder hour *and the hour
+after it*: two hours, because a clock never jumps by more than one, so that is the
+smallest widening that survives the gap.
+
+**Small is the other half of the decision**, and the first attempt at this widened
+the gate to the whole rest of the day. Three things argued it back down:
+
+- *It breaks the promise the hour makes.* Picking 09:00 is a request not to be
+  pinged at 23:00. Once eligibility runs to midnight, only the dedupe keeps a nudge
+  near the chosen hour, and the dedupe is empty until something is delivered.
+- *"They'd have opened Tucker by then" is false.* The reasoning for the open window
+  was that being owed a nudge all day is unreachable, since coming back stands it
+  down. But **`/profile` does not read the daily summary** — and `/profile` is the
+  only screen that switches reminders on. Enable them at 22:40 while a week overdue
+  and the 23:00 tick fires, twenty minutes after asking for 9am.
+  ([#192](https://github.com/skrymer/tucker/issues/192) closes that gap separately.)
+- *Retries are not free.* The send is stamped only once a device actually takes it,
+  so an endpoint that keeps failing is retried on every eligible tick. Each attempt
+  is a fresh HTTP client inside the transport, and one failure shape — a *refused*
+  connection — leaks its threads and socket permanently
+  ([#193](https://github.com/skrymer/tucker/issues/193)). Fifteen attempts a day
+  instead of one turns a slow leak into a fast one.
+
+So the window keeps exactly one retry, an hour later, and the **dedupe** is still
+what guarantees a single nudge per episode within it — which is why the dedupe had
+to be made sound first. Worth re-checking under F10, where a tick fans out across
+every User in turn.
+
+**A day, not an instant.** The dedupe compares the last send against a review date,
+which is a local day. Recording the send as an instant meant re-deriving *its* day in
+whatever timezone the `Profile` carries at the moment the comparison runs — so a
+user who moved east after being nudged near midnight could have that send re-read as
+the following day, push it past the review it belonged to, and lose the next episode
+entirely. Both sides are now stored days, written once and never recomputed, so
+changing timezone cannot move either of them.
+
+Which is not the same as saying the two days are measured by one clock, and they are
+not. The review's date is the **client's** local day (ADR 0014 — the client owns
+today), while the reminder stamps the day in the **`Profile`'s** timezone, and that
+timezone is a snapshot the frontend writes only when reminder settings are saved. A
+user who relocates and doesn't revisit `/profile` has the two disagreeing by up to a
+day until they do.
+
+That disagreement is not cosmetic, and it long predates this issue. If the `Profile`
+zone runs *ahead* of the device actually in the user's hand, the nudge is stamped on
+the day after the review it produced — and "after the review" is exactly what
+suppresses the next episode. Nothing then clears it: only a send moves one side and
+only an app-open moves the other, and the suppressed thing is the nudge that would
+have caused the app-open. One stale timezone and the reminder is silent for good.
+
+So the comparison allows **one day of slack**. Real episodes are seven days apart, so
+spending one of them on tolerance cannot mask a genuine second nudge, while getting
+it wrong is unrecoverable. That is a repair for a skew that should not exist, not a
+reason to keep it: recording *which episode* was nudged (the `latestReviewOn` current
+at the time) would need no clock at all. It was not done here because "never nudged"
+and "nudged before any review existed" are both the absent value, so identity alone
+cannot tell a fresh user from a nudged one and would need a second column to say
+which. Worth revisiting if the two clocks are ever unified.
 
 ## What counts as showing up (amended — issue #174)
 
@@ -49,11 +118,16 @@ The firing rule has two gates that both mean *the user came back*: the review is
 independent, and the second one is never reached.
 
 **Opening Tucker runs the due review.** Lazy catch-up sits on the daily-summary
-read, every app-open surface performs that read, and its setup gate is the same
-predicate the reminder's is. So any request that could have mattered to the
-reminder has already written a review dated today, and `ReviewCadence.isOverdue`
-answers *no* before the absent-today gate is consulted. There is no reachable
-state in which a reminder is due *and* the user was seen today.
+read, and its setup gate is the same predicate the reminder's is. So a request that
+performed that read has already written a review dated today, and
+`ReviewCadence.isOverdue` answers *no* before the absent-today gate is consulted.
+
+*Corrected (issue #96):* this section originally said **every** app-open surface
+performs that read. Only `/` and `/check` do; `/profile`, `/foods` and `/review` do
+not. The conclusion holds for the case #174 was actually about — a Check is a
+summary reader, which is the whole point — but "any screen" was never true, and the
+gap has teeth on `/profile`, the one screen where reminders are switched on
+([#192](https://github.com/skrymer/tucker/issues/192)).
 
 So **"showed up today" means opened Tucker at all** — not "logged something", not
 "looked at the dashboard". The Check tab ([ADR 0022](0022-a-check-states-cost-and-return-and-never-labels-a-food.md))
@@ -96,7 +170,17 @@ cadence and a push telling someone to open an app they are already holding.
   (single-node, no scale-to-zero). This reinforces, rather than complicates, the
   hosting decision.
 - **One job, hourly, idempotent and deduped.** It is read-only against the domain,
-  sends through the Web Push port, and prunes dead subscriptions on a `410 Gone`.
+  sends through the Web Push port, and prunes a dead subscription — one the push
+  service reports `410 Gone`, or one whose stored keys will not decode, which is
+  just as permanent and was previously retried forever.
+- **One job means one thread, so every send is time-bounded.** The scheduler is
+  single-threaded by design (it has nothing to run concurrently with), which makes an
+  unbounded wait on a push endpoint a whole-feature outage rather than one lost
+  nudge: a service that accepts the connection and never answers would hold that
+  thread until the app restarts. Each send therefore waits a fixed number of seconds
+  and no longer. This is a documented bound rather than a tested one — the failure
+  needs a deliberately hung server, and the library offers no seam to fake one
+  without also faking the transport this ADR treats as external.
 - **The "no scheduler" language is amended,** not contradicted: the *review engine*
   remains schedulerless; the *reminder* is a separate notifier that computes nothing.
 - **Any new app-open surface inherits both bookkeeping concerns**, and should. The

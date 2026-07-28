@@ -15,7 +15,6 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.transaction.annotation.Transactional
-import java.time.Instant
 import java.time.LocalDate
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -122,11 +121,11 @@ class RepositoryRoundTripTest {
     }
 
     @Test
-    fun `the last-reminder-sent instant round-trips`() {
-        assertNull(reminderState.lastReminderSentAt())
-        val at = Instant.parse("2026-06-10T09:00:00Z")
-        reminderState.stampReminderSent(at)
-        assertEquals(at, reminderState.lastReminderSentAt())
+    fun `the last-reminder-sent day round-trips`() {
+        assertNull(reminderState.lastReminderSentOn())
+        val on = LocalDate.of(2026, 6, 10)
+        reminderState.stampReminderSent(on)
+        assertEquals(on, reminderState.lastReminderSentOn())
     }
 
     @Test
@@ -141,12 +140,12 @@ class RepositoryRoundTripTest {
 
     @Test
     fun `stamping last-seen leaves a recorded last-reminder-sent untouched`() {
-        val sentAt = Instant.parse("2026-06-09T09:00:00Z")
-        reminderState.stampReminderSent(sentAt)
+        val sentOn = LocalDate.of(2026, 6, 9)
+        reminderState.stampReminderSent(sentOn)
         reminderState.stampSeen(LocalDate.of(2026, 6, 10))
 
         // The two stamps share one row but must not clobber one another.
-        assertEquals(sentAt, reminderState.lastReminderSentAt())
+        assertEquals(sentOn, reminderState.lastReminderSentOn())
         assertEquals(LocalDate.of(2026, 6, 10), reminderState.lastSeenOn())
     }
 

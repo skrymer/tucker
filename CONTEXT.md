@@ -239,8 +239,8 @@ deliberate **Goal** change (creating or replacing one) force-recomputes today's
 review, overwriting any same-day record so the new Budget and Floor take effect
 immediately rather than at the next cadence. It is the _only_ place Maintenance,
 the Budget, and the Floor are (re)computed; the Today screen (`/`) shows the
-latest review's figures. Reviews fire by **lazy catch-up**: on app use — *any* screen, since it
-is opening Tucker that advances the cadence, not visiting a particular one — if
+latest review's figures. Reviews fire by **lazy catch-up**: on the daily-summary
+read that opening Tucker performs — today `/` and a **Check**, not every screen — if
 the latest review is a week or more old, the engine runs one review snapping to
 today (it does not replay each missed week — the adaptive window already looks
 back two weeks). A manual "run now" trigger and a **Goal**-change recompute also
@@ -318,17 +318,24 @@ review still computes lazily on next app open; the Reminder only pulls a
 drifted-away user back. It fires from Tucker's one notification job (see
 [ADR 0010](docs/adr/0010-minimal-scheduler-for-the-weekly-reminder.md)) when the
 latest review is a week or more old and the user has a **Push Subscription** —
-delivered at the user's local reminder hour (their **Profile** timezone + chosen
-hour). Opening Tucker is what ends a Reminder's claim on the day: any screen runs
-the due review, so a Reminder is never owed to someone who has opened the app —
-including through a **Check**. A Check computes nothing itself, but *opening* one
-runs the due review like any other screen, refreshing the very Budget the nudge
-would have asked them to come and refresh. A **last-seen day**
+delivered in a short window that opens at the reminder hour (their **Profile**
+timezone + chosen hour) and spans the hour after it — so a spring-forward day
+whose clocks skip the chosen hour still gets its nudge, while a nudge owed since
+morning never arrives at bedtime. Opening Tucker is what ends a Reminder's claim
+on the day: a screen that reads the day's summary runs the due review, so a
+Reminder is never owed to someone who has opened one — including a **Check**. A
+Check computes nothing itself, but *opening* one runs the due review just as the
+Today screen does, refreshing the very Budget the nudge would have asked them to
+come and refresh. A **last-seen day**
 (the user's local day, never the server clock) is stamped alongside as a second,
 redundant guard. At most one Reminder per overdue episode: it is deduped against
-the instant the **last Reminder was sent** — suppressed while that is after the
-latest review's date, and re-armed when opening the app writes a fresh review
-whose date moves past it. A displayed nudge, never a guilt-trip.
+the **last Reminder day** — the user's local day the last one went out on,
+suppressed while that is after the latest review's date (or, before any review has
+run, while any Reminder has gone out at all), and re-armed when opening the app
+writes a fresh review whose date moves past it. Both sides of that
+comparison are stored days rather than instants, so a later timezone change cannot
+move either of them, and "after" allows a day of slack because the two days are read
+off different clocks. A displayed nudge, never a guilt-trip.
 _Avoid_: alert, notification, push (as the noun for the user-facing nudge)
 
 **Push Subscription**:
@@ -337,9 +344,11 @@ that Tucker stores so it can deliver a **Weekly-Review Reminder** to that device
 while the app is closed. One per device: a user's phone and laptop are separate
 Subscriptions, and the same Reminder fans out to all of them. Pure transport — it
 carries no schedule and no timezone (those belong to the user, on the **Profile**).
-Pruned when the browser reports it gone. On iOS a Subscription can only be created
-once Tucker is installed to the home screen; on Android and desktop it can be
-created from the browser tab.
+Pruned when the browser reports it gone, and equally when its stored keys turn
+out not to decode — a device Tucker cannot encrypt to is unreachable for good,
+not worth retrying. On iOS a Subscription can only be created once Tucker is
+installed to the home screen; on Android and desktop it can be created from the
+browser tab.
 _Avoid_: device token, push token, registration
 
 ## Relationships
@@ -388,7 +397,8 @@ _Avoid_: device token, push token, registration
 - A **Weekly-Review Reminder** is sent when a **Weekly Review** is overdue and the
   user has at least one **Push Subscription** — it nudges, it never computes the review
 - A user has zero or more **Push Subscriptions** (one per device); each **Weekly-Review
-  Reminder** fans out to all of them, at the hour set on the user's **Profile**
+  Reminder** fans out to all of them, in a short window opening at the hour set on
+  the user's **Profile**
 
 ## Example dialogue
 

@@ -95,14 +95,12 @@ class SummaryController(
     fun summary(
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) date: LocalDate,
     ): DailySummaryResponse {
-        // The summary is read on every app open, by any screen — so it is where two
+        // This read is what an app-open *means* for the reminder, so it is where two
         // app-open bookkeeping concerns advance. They read like one concern and are
-        // not; ADR 0010, "What counts as showing up", carries the argument.
+        // not; ADR 0010, "What counts as showing up", carries the argument — including
+        // why "any screen performs this read" is not true (only `/` and `/check` do).
+        // The last-seen stamp is deferred to the end of this method — see there.
         //
-        // Redundant, kept as a guard: last-seen on the client's local day (ADR 0014,
-        // never the server's wall clock), feeding a reminder gate that the catch-up
-        // below has already closed by the time the reminder asks.
-        reminderState.stampSeen(date)
         // Load-bearing: the weekly cadence advances here, with no scheduler — at most
         // one review, snapped to the client's local today, when due. This is what
         // stands down the day's reminder, and what lets a Check state its figures
@@ -127,6 +125,22 @@ class SummaryController(
         // signed remaining figure (the day verdict re-derives its own).
         val caloriesConsumed = log.caloriesConsumed()
         val proteinConsumed = log.proteinConsumed()
+
+        // Redundant, kept as a guard: last-seen on the client's local day (ADR 0014,
+        // never the server's wall clock), feeding a reminder gate that the catch-up
+        // above has already closed by the time the reminder asks.
+        //
+        // Stamped last, and deliberately: nothing here is transactional, so a stamp
+        // written on the way in outlives a request that then fails, recording "the
+        // user showed up" for an app-open that showed them nothing.
+        //
+        // Only this stamp, though. The catch-up above commits in its own transaction,
+        // so on that same failed request the review is already written and it — not
+        // this gate — is what stands the day's reminder down. Closing that too means
+        // one transaction spanning both, which would also roll back a review that
+        // legitimately ran; that is a change to the cadence, not to bookkeeping, and
+        // wants deciding on its own.
+        reminderState.stampSeen(date)
 
         return DailySummaryResponse(
             date = date,

@@ -43,14 +43,13 @@ class ReminderScheduler(
     fun runTick(now: Instant): TickResult {
         val profile = profiles.get()
         val subs = subscriptions.findAll()
-        if (profile == null || !ReminderPolicy.shouldSend(stateFor(now, profile, subs))) {
-            return TickResult(sent = 0)
-        }
+        val state = profile?.let { stateFor(now, it, subs) }
+        if (state == null || !ReminderPolicy.shouldSend(state)) return TickResult(sent = 0)
 
         val delivered = subs.count { deliver(it, PAYLOAD) }
         // Stamp only on a real delivery so a transport blip retries next tick rather
         // than silently consuming the whole overdue episode (ADR 0010 dedupe).
-        if (delivered > 0) reminderState.stampReminderSent(now)
+        if (delivered > 0) reminderState.stampReminderSent(state.today)
         return TickResult(sent = delivered)
     }
 
@@ -65,7 +64,7 @@ class ReminderScheduler(
             hasSubscription = subs.isNotEmpty(),
             latestReviewOn = reviews.latest()?.reviewedOn,
             lastSeenOn = reminderState.lastSeenOn(),
-            lastReminderSentAt = reminderState.lastReminderSentAt(),
+            lastReminderSentOn = reminderState.lastReminderSentOn(),
         )
 
     /** Push to one device; prune it on GONE. Returns whether it was delivered. */
