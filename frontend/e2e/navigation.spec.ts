@@ -32,6 +32,19 @@ test.describe('app shell navigation', () => {
     await expect(page.getByTestId('bottom-nav')).toBeHidden()
   })
 
+  test('opens Today for a reminder that deep-links to /today', async ({
+    page,
+    goto,
+  }) => {
+    // The path pre-#178 reminders baked into the tray; see app/pages/today.vue.
+    await goto('/today', { waitUntil: 'hydration' })
+
+    await expect(page).toHaveURL(({ pathname }) => pathname === '/')
+    await expect(
+      page.getByRole('heading', { level: 1, name: 'Today' }),
+    ).toBeVisible()
+  })
+
   test('opens the selected destination while the shell persists', async ({
     page,
     goto,

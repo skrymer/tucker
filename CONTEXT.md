@@ -238,8 +238,8 @@ Clock-driven reviews are held steady — never changed once written — but a
 deliberate **Goal** change (creating or replacing one) force-recomputes today's
 review, overwriting any same-day record so the new Budget and Floor take effect
 immediately rather than at the next cadence. It is the _only_ place Maintenance,
-the Budget, and the Floor are (re)computed; `/today` shows the latest review's
-figures. Reviews fire by **lazy catch-up**: on app use — *any* screen, since it
+the Budget, and the Floor are (re)computed; the Today screen (`/`) shows the
+latest review's figures. Reviews fire by **lazy catch-up**: on app use — *any* screen, since it
 is opening Tucker that advances the cadence, not visiting a particular one — if
 the latest review is a week or more old, the engine runs one review snapping to
 today (it does not replay each missed week — the adaptive window already looks
