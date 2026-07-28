@@ -35,7 +35,7 @@ class WeightApiTest {
         mockMvc.get("/api/weight/latest").andExpect {
             status { isOk() }
             jsonPath("$.measuredOn") { value("2026-05-22") }
-            jsonPath("$.weightKg", closeTo(84.2, 1e-3))
+            jsonPath("$.weightKg") { value(84.2) }
         }
     }
 
@@ -58,7 +58,7 @@ class WeightApiTest {
         // EWMA (α = 0.10): 0.1·107.5 + 0.9·107.0 = 107.05, dated the latest reading.
         mockMvc.get("/api/weight/trend").andExpect {
             status { isOk() }
-            jsonPath("$.trendKg", closeTo(107.05, 1e-3))
+            jsonPath("$.trendKg", closeTo(107.05, 1e-6))
             jsonPath("$.asOf") { value("2026-06-11") }
         }
     }

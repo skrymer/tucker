@@ -39,14 +39,14 @@ class WeightMeasurementRepository(private val dsl: DSLContext) {
             .fetchOne()
         if (existing != null) {
             dsl.update(WEIGHT_MEASUREMENT)
-                .set(WEIGHT_MEASUREMENT.WEIGHT_KG, measurement.weightKg.toFloat())
+                .set(WEIGHT_MEASUREMENT.WEIGHT_KG, measurement.weightKg)
                 .where(WEIGHT_MEASUREMENT.ID.eq(existing.id))
                 .execute()
             return measurement.copy(id = existing.id!!.toLong())
         }
         val rec = dsl.newRecord(WEIGHT_MEASUREMENT)
         rec.measuredOn = measurement.measuredOn.toString()
-        rec.weightKg = measurement.weightKg.toFloat()
+        rec.weightKg = measurement.weightKg
         rec.store()
         return measurement.copy(id = rec.id!!.toLong())
     }
@@ -54,6 +54,6 @@ class WeightMeasurementRepository(private val dsl: DSLContext) {
     private fun WeightMeasurementRecord.toDomain(): WeightMeasurement = WeightMeasurement(
         id = id!!.toLong(),
         measuredOn = LocalDate.parse(measuredOn),
-        weightKg = weightKg.toDouble(),
+        weightKg = weightKg,
     )
 }

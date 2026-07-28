@@ -25,14 +25,11 @@ class EntryRepository(private val dsl: DSLContext) {
             .fetch().map { it.toEntry() }
 
     /** Total calories across every Entry logged from [start] to [endInclusive], in one query. */
-    fun totalCaloriesBetween(start: LocalDate, endInclusive: LocalDate): Double {
-        val sum = dsl.select(DSL.sum(ENTRY.CALORIES))
+    fun totalCaloriesBetween(start: LocalDate, endInclusive: LocalDate): Double =
+        dsl.select(DSL.sum(ENTRY.CALORIES))
             .from(ENTRY)
             .where(ENTRY.LOGGED_ON.between(start.toString(), endInclusive.toString()))
-            .fetchOne()
-            ?.value1()
-        return sum?.toDouble() ?: 0.0
-    }
+            .fetchOne(0, Double::class.java) ?: 0.0
 
     /**
      * Number of distinct calendar days from [start] to [endInclusive] that carry at
@@ -48,18 +45,18 @@ class EntryRepository(private val dsl: DSLContext) {
     fun insert(entry: Entry): Entry {
         val rec = dsl.newRecord(ENTRY)
         rec.loggedOn = entry.loggedOn.toString()
-        rec.calories = entry.calories.toFloat()
+        rec.calories = entry.calories
         when (entry) {
             is WeighedEntry -> {
                 rec.kind = EntryKind.WEIGHED.name
                 rec.foodId = entry.foodId.toInt()
-                rec.grams = entry.grams.toFloat()
-                rec.protein = entry.protein.toFloat()
+                rec.grams = entry.grams
+                rec.protein = entry.protein
             }
             is EstimatedEntry -> {
                 rec.kind = EntryKind.ESTIMATED.name
                 rec.label = entry.label
-                rec.protein = entry.protein?.toFloat()
+                rec.protein = entry.protein
             }
         }
         rec.store()
@@ -83,16 +80,16 @@ class EntryRepository(private val dsl: DSLContext) {
             id = id!!.toLong(),
             loggedOn = LocalDate.parse(loggedOn),
             foodId = foodId!!.toLong(),
-            grams = grams!!.toDouble(),
-            calories = calories.toDouble(),
-            protein = protein!!.toDouble(),
+            grams = grams!!,
+            calories = calories,
+            protein = protein!!,
         )
         EntryKind.ESTIMATED -> EstimatedEntry(
             id = id!!.toLong(),
             loggedOn = LocalDate.parse(loggedOn),
             label = label!!,
-            calories = calories.toDouble(),
-            protein = protein?.toDouble(),
+            calories = calories,
+            protein = protein,
         )
     }
 }

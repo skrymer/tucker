@@ -58,11 +58,11 @@ class WeeklyReviewRepository(private val dsl: DSLContext) {
     fun insert(review: WeeklyReview): WeeklyReview {
         val rec = dsl.newRecord(WEEKLY_REVIEW)
         rec.reviewedOn = review.reviewedOn.toString()
-        rec.trendWeightKg = review.trendWeightKg.toFloat()
-        rec.maintenanceKcal = review.maintenance.kcal.toFloat()
+        rec.trendWeightKg = review.trendWeightKg
+        rec.maintenanceKcal = review.maintenance.kcal
         rec.maintenanceBasis = review.maintenance.basis.name
-        rec.calorieBudgetKcal = review.calorieBudgetKcal.toFloat()
-        rec.proteinFloorG = review.proteinFloorG.toFloat()
+        rec.calorieBudgetKcal = review.calorieBudgetKcal
+        rec.proteinFloorG = review.proteinFloorG
         rec.store()
         return review.copy(id = rec.id!!.toLong())
     }
@@ -70,12 +70,12 @@ class WeeklyReviewRepository(private val dsl: DSLContext) {
     private fun WeeklyReviewRecord.toDomain(): WeeklyReview = WeeklyReview(
         id = id!!.toLong(),
         reviewedOn = LocalDate.parse(reviewedOn),
-        trendWeightKg = trendWeightKg.toDouble(),
+        trendWeightKg = trendWeightKg,
         maintenance = Maintenance(
-            kcal = maintenanceKcal.toDouble(),
+            kcal = maintenanceKcal,
             basis = Maintenance.Basis.valueOf(maintenanceBasis),
         ),
-        calorieBudgetKcal = calorieBudgetKcal.toDouble(),
-        proteinFloorG = proteinFloorG.toDouble(),
+        calorieBudgetKcal = calorieBudgetKcal,
+        proteinFloorG = proteinFloorG,
     )
 }

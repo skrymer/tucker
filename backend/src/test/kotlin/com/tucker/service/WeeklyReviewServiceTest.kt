@@ -90,7 +90,7 @@ class WeeklyReviewServiceTest {
         // Budget = maintenance - the deficit implied by 0.5 kg/week (~550 kcal).
         assertEquals(review.maintenance.kcal - 0.5 * 7700.0 / 7.0, review.calorieBudgetKcal, 0.5)
         // Protein floor = 2 g per kg of trend weight.
-        assertEquals(2.0 * review.trendWeightKg, review.proteinFloorG, 0.01)
+        assertEquals(2.0 * review.trendWeightKg, review.proteinFloorG)
     }
 
     @Test
@@ -256,7 +256,7 @@ class WeeklyReviewServiceTest {
         assertEquals(today, recomputed.reviewedOn)
         val reloaded = reviews.findByReviewedOn(today)!!
         assertTrue(reloaded.calorieBudgetKcal != stale.calorieBudgetKcal)
-        assertEquals(recomputed.calorieBudgetKcal, reloaded.calorieBudgetKcal, 0.01)
+        assertEquals(recomputed.calorieBudgetKcal, reloaded.calorieBudgetKcal)
     }
 
     @Test

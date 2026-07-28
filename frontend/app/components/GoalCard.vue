@@ -5,8 +5,10 @@ const props = defineProps<{
   goal: components['schemas']['GoalResponse']
 }>()
 
-// The rate is stored as a 32-bit float server-side, so values like 0.6 widen
-// to 0.6000000238…; round to the 0.05 granularity the rate is chosen at.
+// New Goals now store the rate as a full double, but Goals written before that
+// fix hold values like 0.6000000238… — and a goal row is never recomputed, so
+// they keep it for life. Round to the 0.05 granularity the rate is chosen at.
+// Do not delete this as dead code; it still carries every pre-existing Goal.
 const formattedRate = computed(() =>
   Number(props.goal.rateKgPerWeek.toFixed(2)),
 )

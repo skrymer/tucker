@@ -45,7 +45,7 @@ class RepositoryRoundTripTest {
         assertNotNull(loaded)
         assertEquals("Rolled oats", loaded.name)
         assertEquals(FoodKind.FOOD, loaded.kind)
-        assertEquals(389.0, loaded.nutrition.caloriesPer100g, 0.01)
+        assertEquals(389.0, loaded.nutrition.caloriesPer100g)
     }
 
     @Test
@@ -72,7 +72,7 @@ class RepositoryRoundTripTest {
         assertEquals(1, onDate.size)
         val logged = onDate.single() as WeighedEntry
         assertEquals(banana.id, logged.foodId)
-        assertEquals(106.8, logged.calories, 0.05) // 89 kcal/100 g x 120 g
+        assertEquals(106.8, logged.calories) // 89 kcal/100 g x 120 g
     }
 
     @Test
@@ -91,8 +91,18 @@ class RepositoryRoundTripTest {
         weights.save(WeightMeasurement(null, date, 88.4))
         weights.save(WeightMeasurement(null, date, 88.1))
 
-        assertEquals(88.1, weights.findOn(date)?.weightKg ?: 0.0, 0.01)
+        assertEquals(88.1, weights.findOn(date)?.weightKg)
         assertEquals(1, weights.findAll().size)
+    }
+
+    @Test
+    fun `a stored decimal reads back exactly`() {
+        val date = LocalDate.of(2026, 5, 22)
+        // 107.05 has no exact 32-bit representation: a Float round-trip degrades it to
+        // 107.05000305175781. SQLite REAL is a full double, so nothing should be lost.
+        weights.save(WeightMeasurement(null, date, 107.05))
+
+        assertEquals(107.05, weights.findOn(date)?.weightKg)
     }
 
     @Test
@@ -100,8 +110,8 @@ class RepositoryRoundTripTest {
         goals.insert(Goal(null, LocalDate.of(2026, 5, 1), 90.0, 80.0, 0.5, active = true))
         val active = goals.findActive()
         assertNotNull(active)
-        assertEquals(80.0, active.targetWeightKg, 0.01)
-        assertEquals(0.5, active.rateKgPerWeek, 0.01)
+        assertEquals(80.0, active.targetWeightKg)
+        assertEquals(0.5, active.rateKgPerWeek)
     }
 
     @Test
@@ -110,7 +120,7 @@ class RepositoryRoundTripTest {
         val loaded = profiles.get()
         assertNotNull(loaded)
         assertEquals(Sex.MALE, loaded.sex)
-        assertEquals(182.0, loaded.heightCm, 0.01)
+        assertEquals(182.0, loaded.heightCm)
     }
 
     @Test
@@ -167,6 +177,6 @@ class RepositoryRoundTripTest {
         assertNotNull(loaded)
         assertEquals(2, loaded.ingredients.size)
         // (389*0.8 + 64*3.0) = 503.2 kcal over 360 g of finished dish
-        assertEquals(503.2 / 360.0 * 100.0, loaded.nutrition().caloriesPer100g, 0.1)
+        assertEquals(503.2 / 360.0 * 100.0, loaded.nutrition().caloriesPer100g, 1e-9)
     }
 }

@@ -55,11 +55,11 @@ class FoodRepository(private val dsl: DSLContext) {
         name = food.name
         kind = food.kind.name
         barcode = food.barcode
-        caloriesPer_100g = food.nutrition.caloriesPer100g.toFloat()
-        proteinPer_100g = food.nutrition.proteinPer100g.toFloat()
-        carbsPer_100g = food.nutrition.carbsPer100g?.toFloat()
-        fatPer_100g = food.nutrition.fatPer100g?.toFloat()
-        cookedWeightG = food.cookedWeightG?.toFloat()
+        caloriesPer_100g = food.nutrition.caloriesPer100g
+        proteinPer_100g = food.nutrition.proteinPer100g
+        carbsPer_100g = food.nutrition.carbsPer100g
+        fatPer_100g = food.nutrition.fatPer100g
+        cookedWeightG = food.cookedWeightG
     }
 
     fun delete(id: Long) {
@@ -72,11 +72,11 @@ class FoodRepository(private val dsl: DSLContext) {
         kind = FoodKind.valueOf(kind),
         barcode = barcode,
         nutrition = Nutrition(
-            caloriesPer100g = caloriesPer_100g.toDouble(),
-            proteinPer100g = proteinPer_100g.toDouble(),
-            carbsPer100g = carbsPer_100g?.toDouble(),
-            fatPer100g = fatPer_100g?.toDouble(),
+            caloriesPer100g = caloriesPer_100g,
+            proteinPer100g = proteinPer_100g,
+            carbsPer100g = carbsPer_100g,
+            fatPer100g = fatPer_100g,
         ),
-        cookedWeightG = cookedWeightG?.toDouble(),
+        cookedWeightG = cookedWeightG,
     )
 }

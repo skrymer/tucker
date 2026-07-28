@@ -20,7 +20,7 @@ class ProfileRepository(private val dsl: DSLContext) {
             dsl.update(PROFILE)
                 .set(PROFILE.SEX, profile.sex.name)
                 .set(PROFILE.BIRTH_DATE, profile.birthDate.toString())
-                .set(PROFILE.HEIGHT_CM, profile.heightCm.toFloat())
+                .set(PROFILE.HEIGHT_CM, profile.heightCm)
                 .set(PROFILE.TIMEZONE, profile.timezone)
                 .set(PROFILE.REMINDER_HOUR, profile.reminderHour)
                 .set(PROFILE.REMINDERS_ENABLED, profile.remindersEnabled.toFlag())
@@ -31,7 +31,7 @@ class ProfileRepository(private val dsl: DSLContext) {
                 .set(PROFILE.ID, SINGLETON_ID)
                 .set(PROFILE.SEX, profile.sex.name)
                 .set(PROFILE.BIRTH_DATE, profile.birthDate.toString())
-                .set(PROFILE.HEIGHT_CM, profile.heightCm.toFloat())
+                .set(PROFILE.HEIGHT_CM, profile.heightCm)
                 .set(PROFILE.TIMEZONE, profile.timezone)
                 .set(PROFILE.REMINDER_HOUR, profile.reminderHour)
                 .set(PROFILE.REMINDERS_ENABLED, profile.remindersEnabled.toFlag())
@@ -42,7 +42,7 @@ class ProfileRepository(private val dsl: DSLContext) {
     private fun ProfileRecord.toProfile(): Profile = Profile(
         sex = Sex.valueOf(sex),
         birthDate = LocalDate.parse(birthDate),
-        heightCm = heightCm.toDouble(),
+        heightCm = heightCm,
         timezone = timezone,
         reminderHour = reminderHour,
         remindersEnabled = remindersEnabled != 0,
