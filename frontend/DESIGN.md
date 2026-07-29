@@ -267,10 +267,14 @@ kcal`) sits beneath its own ring, so no arc is ever colour-alone. Calorie
   offer, so the three outcomes get three headings and three icons rather than one
   shared apology: nothing came back (`i-lucide-search-x`), the product's
   nutrition is incomplete and rescanning is futile (`i-lucide-file-question`),
-  and the lookup itself failed (`i-lucide-cloud-off`). Deliberately **not** the
-  load-error treatment below: a scan can't be "retried" without a new scan, so
-  the action stays **Scan another** and never **Retry**. Attribution for
-  Provider-sourced figures (`Data from …`) sits under the macro bar (ADR 0006).
+  and the lookup itself failed (`i-lucide-cloud-off`). **Scan another** is the
+  action all three share, because moving on is always available. Only the third
+  also gets **Try again** — it lives inside that alert's own `actions`, so it
+  structurally cannot render for the two permanent outcomes, where re-asking is
+  bad advice (ADR 0007). It re-runs the lookup against the barcode already
+  decoded; the camera is not restarted, since the scan was never what failed.
+  Attribution for Provider-sourced figures (`Data from …`) sits under the macro
+  bar (ADR 0006).
 
 ---
 

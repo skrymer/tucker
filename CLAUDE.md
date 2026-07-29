@@ -343,8 +343,8 @@ The frontend is built **test-first (red-green TDD)**. Increments:
     **structurally cannot** render for a miss (404) or incomplete nutrition
     (422); both are permanent for that product, and "try again" is bad advice
     while standing in a shop. Those two keep only "Scan another", which stays
-    available under all three. The lookup also passes `retry: 0`: ofetch's stock
-    GET retry was silently re-adding the provider-load multiplication the
+    available under all three. The Check lookup also passes `retry: 0`: ofetch's
+    stock GET retry was silently re-adding the provider-load multiplication the
     backend deliberately refuses (ADR 0007, [#164](https://github.com/skrymer/tucker/issues/164)).
     Proving the retry *is* a retry takes a camera-acquisition count: a restarted
     camera re-decodes the same barcode and issues its own lookup, so request
@@ -353,12 +353,16 @@ The frontend is built **test-first (red-green TDD)**. Increments:
   **Out of scope:** grading fat or carbs, saving anything, comparing
   products side by side, and "can I fit this in what's left right now?" (that one
   belongs to logging a Food, not shopping for one).
-  **Open follow-ups:** [#182](https://github.com/skrymer/tucker/issues/182) —
-  the Add-Food lookup still auto-retries a 503 unlike the Check lookup (the
-  asymmetry and its reasoning are recorded in ADR 0007); and
-  [#183](https://github.com/skrymer/tucker/issues/183) — `useAsyncAction`'s
-  min-busy timer has no staleness guard (latent, but it backs every mutation
-  form, so it wants its own red-green tests rather than a drive-by fix).
+  **Follow-ups:** [#183](https://github.com/skrymer/tucker/issues/183) (a
+  superseded `useAsyncAction` run could clear a newer run's spinner) shipped in
+  [#196](https://github.com/skrymer/tucker/pull/196), and
+  [#182](https://github.com/skrymer/tucker/issues/182) closed the retry
+  asymmetry — **both barcode look-ups now pass `retry: 0`**; ADR 0007 records why
+  the earlier Check-only scope did not survive. Still open:
+  [#197](https://github.com/skrymer/tucker/issues/197) — a newer `useAsyncAction`
+  run that inherits a *visible* spinner tears it down with no hold, because
+  `shownAt` is scoped to a run while `busy` is scoped to the episode (pre-existing,
+  unchanged by #183, most reachable on `/check`).
 
 ## Architecture
 
