@@ -92,6 +92,75 @@ describe('useAsyncAction', () => {
     }
   })
 
+  it('keeps busy shown when a superseded run is still holding it and a newer run is in flight', async () => {
+    vi.useFakeTimers()
+    try {
+      const resolvers: Array<(v: string) => void> = []
+      const action = vi.fn(() => new Promise<string>((r) => resolvers.push(r)))
+      const { busy, run } = useAsyncAction(action, {
+        mode: 'latest',
+        delayMs: 150,
+        minBusyMs: 400,
+      })
+
+      const first = run()
+      await vi.advanceTimersByTimeAsync(150)
+      expect(busy.value).toBe(true)
+
+      // The first run settles a moment after its spinner showed, so its hold
+      // still has 300ms to go.
+      await vi.advanceTimersByTimeAsync(100)
+      resolvers[0]!('first')
+      await first
+
+      // A newer run takes over while that hold is still outstanding, and its own
+      // delay elapses — so the spinner on screen is now the newer run's.
+      run()
+      expect(action).toHaveBeenCalledTimes(2)
+      await vi.advanceTimersByTimeAsync(150)
+
+      // The superseded run's hold now falls due, and it no longer owns the
+      // spinner — the run still in flight does.
+      await vi.runOnlyPendingTimersAsync()
+      expect(busy.value).toBe(true)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('lets the newer run take the inherited spinner down on its own hold', async () => {
+    vi.useFakeTimers()
+    try {
+      const resolvers: Array<(v: string) => void> = []
+      const action = vi.fn(() => new Promise<string>((r) => resolvers.push(r)))
+      const { busy, run } = useAsyncAction(action, {
+        mode: 'latest',
+        delayMs: 150,
+        minBusyMs: 400,
+      })
+
+      const first = run()
+      await vi.advanceTimersByTimeAsync(250)
+      resolvers[0]!('first')
+      await first
+
+      // The newer run inherits a spinner it did not raise, and finishes while
+      // still holding it.
+      const second = run()
+      await vi.advanceTimersByTimeAsync(250)
+      resolvers[1]!('second')
+      await second
+      expect(busy.value).toBe(true)
+
+      // Ownership has to cut both ways: the run that owns the spinner is also
+      // the one that must eventually release it, or it would hang there.
+      await vi.runOnlyPendingTimersAsync()
+      expect(busy.value).toBe(false)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('guards re-entry by default: a second run while pending is ignored', async () => {
     let resolve!: () => void
     const action = vi.fn(() => new Promise<void>((r) => (resolve = r)))
