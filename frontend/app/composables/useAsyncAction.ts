@@ -87,9 +87,14 @@ export function useAsyncAction<TArgs extends unknown[], TResult>(
       // The spinner, if it showed, lingers on a detached timer so the result is
       // returned now while the spinner can't strobe away under `minBusyMs`.
       if (busy.value) {
+        // Detached means the release can outlive this run: by the time it fires,
+        // a newer run may own the spinner, and only that run may take it down.
+        const releaseBusy = () => {
+          if (!isStale()) busy.value = false
+        }
         const remaining = minBusyMs - (Date.now() - shownAt)
-        if (remaining > 0) setTimeout(() => (busy.value = false), remaining)
-        else busy.value = false
+        if (remaining > 0) setTimeout(releaseBusy, remaining)
+        else releaseBusy()
       }
     }
 
