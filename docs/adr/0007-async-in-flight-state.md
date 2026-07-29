@@ -64,6 +64,67 @@ edit anything that's off"), not a toast — the fill is already visible, so per
 [0005](0005-notifications-persistent-errors-quiet-success.md) it gets an inline
 note, and the note also explains why an edited field didn't change.
 
+### Amended by [#180](https://github.com/skrymer/tucker/issues/180): an untouched field mirrors its seed
+
+Throughout this section the **seed** means the values the sheet hands the form
+(`AddFoodForm`'s `initial` prop) — deliberately not "the source", which this
+codebase already spends on the **Nutrition Provider**
+([0006](0006-provider-agnostic-nutrition-lookup.md), and the `filledFromSource`
+prop right next to it). A Candidate's seed comes from a Provider; a miss's seed
+is a bare barcode; both are seeds.
+
+"Fills only the fields the user has not touched" is a rule about *filling*, and
+it left the opposite case undecided: what an untouched field should show once the
+seed stops supplying it. The merge answered "whatever it showed before" — not
+by choice, but because a value the seed never had and one it has withdrawn are
+the same `undefined`. That is how a failed look-up left the *previous* product's
+name and macros sitting under the *new* barcode, with the Inconclusive note
+inviting the user to "fill in the details above" while the details above
+described something else. Taking that advice files product A under barcode B:
+the catalog corruption [#164](https://github.com/skrymer/tucker/issues/164)
+closed, reached from the other side, and *more* reachable than before because the
+note is what invites it.
+
+The fix is not a new rule but the same one stated completely. **An untouched
+field mirrors its seed, including when the seed says nothing.** An untouched
+field's value can only have come from a seed — the user's own values are, by
+definition, touched — so a value the current seed does not supply belongs to a
+*previous* seed and is stale by construction. There is no case where keeping it
+is right: on a manual start the field is blank anyway, and a candidate lacking a
+macro an earlier candidate supplied is withdrawing it too, just as correctly.
+
+Note what this is **not**. It is not a remount: `state` is never rebuilt, so #58
+stays dead and nothing the user typed is ever at risk. And it needs no signal
+threaded from the caller — withdrawal gets no representation of its own, so the
+merge still cannot tell "withdrawn" from "never supplied" and no longer needs to.
+That matters more than it reads: mirroring is idempotent, and the seed object
+`AddSheet` feeds in is a `computed` that yields a fresh identity on every
+keystroke in the barcode field. A rule phrased as an event — *clear on
+withdrawal* — would have to fire exactly once; a rule phrased as a mirror is
+free to run on every one of them.
+
+That boundary is only as trustworthy as the signal behind it, and the signal had
+a hole worth naming. A number field commits its model on **blur**, so a macro the
+user was *still typing into* looked pristine to the merge — and mirroring would
+blank the digits under their cursor. A field is therefore marked touched on the
+**keystroke**, not on the commit, which is what makes "a dirty field is never
+overwritten" true of the macros rather than only of the name. The hole predates
+this decision (a candidate resolving mid-entry already overwrote those digits);
+what mirroring changed is that the same race stopped producing a wrong value and
+started producing no value, which is worse and is the one outcome
+[0005](0005-notifications-persistent-errors-quiet-success.md)'s sibling rule —
+silent data loss — puts above all others.
+
+The rule stops at the touched boundary, and that is deliberate rather than an
+oversight. A field the user edited while a candidate was showing still carries
+that product's text into the next barcode's save. Clearing it would mean deciding
+their typing was about the old product — the judgement this section refuses to
+make — so it stands, visible and editable, as the bounded residual of "the
+human's value wins". The blast radius is one caller: `AddSheet` is the only
+consumer that seeds `AddFoodForm` at all, and the recipe builder's inline
+"add a new food" mounts the same form with no seed, so the merge never runs
+there.
+
 ## Stale results: supersede, don't reconcile
 
 A superseded async result must never win over newer state. The primitive cancels
@@ -330,6 +391,8 @@ including the same screen's "Looking it up…", and the Add-Food "Look up" butto
 
 - Issue [#164](https://github.com/skrymer/tucker/issues/164) — the budget
   relationship and the Inconclusive Lookup's inline note (both amendments above).
+- Issue [#180](https://github.com/skrymer/tucker/issues/180) — an untouched field
+  mirrors its seed, including its silence (amendment above).
 - Issue #58 (the data-loss bug); ADR [0006](0006-provider-agnostic-nutrition-lookup.md)
   (always-on manual peer, provider-as-cross-check), [0005](0005-notifications-persistent-errors-quiet-success.md)
   (feedback tone), [0004](0004-compose-inline-composables.md) (shared composables).

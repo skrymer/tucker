@@ -53,8 +53,8 @@ const state = reactive({
 })
 
 // A barcode look-up resolves asynchronously and re-seeds the form (ADR 0007).
-// The form is never remounted — it merges the candidate's values into the
-// fields the user hasn't touched, so a slow look-up can't wipe what they typed.
+// The form is never remounted — it merges into the fields the user hasn't
+// touched, so a slow look-up can't wipe what they typed.
 const touched = reactive({
   name: false,
   proteinPer100g: false,
@@ -64,17 +64,21 @@ const touched = reactive({
 function markTouched(field: keyof typeof touched) {
   touched[field] = true
 }
+// An untouched field mirrors its seed (`initial`) — including when the seed
+// says nothing. Its value can only have come from a seed (the user's own values
+// are, by definition, touched), so one the current seed doesn't supply belongs
+// to a previous one, and leaving it there is how a withdrawn candidate's name
+// gets saved under the next barcode (issue #180).
+// Only `name` needs a blank spelled out, because its state is a `string`; an
+// absent macro is already the `undefined` its own blank is.
 watch(
   () => props.initial,
   (next) => {
     if (!next) return
-    if (next.name != null && !touched.name) state.name = next.name
-    if (next.proteinPer100g != null && !touched.proteinPer100g)
-      state.proteinPer100g = next.proteinPer100g
-    if (next.carbsPer100g != null && !touched.carbsPer100g)
-      state.carbsPer100g = next.carbsPer100g
-    if (next.fatPer100g != null && !touched.fatPer100g)
-      state.fatPer100g = next.fatPer100g
+    if (!touched.name) state.name = next.name ?? ''
+    if (!touched.proteinPer100g) state.proteinPer100g = next.proteinPer100g
+    if (!touched.carbsPer100g) state.carbsPer100g = next.carbsPer100g
+    if (!touched.fatPer100g) state.fatPer100g = next.fatPer100g
   },
 )
 
@@ -121,6 +125,7 @@ function onSubmit() {
           :min="0"
           :step="0.1"
           class="w-full"
+          @input="markTouched('proteinPer100g')"
           @update:model-value="markTouched('proteinPer100g')"
         />
       </UFormField>
@@ -130,6 +135,7 @@ function onSubmit() {
           :min="0"
           :step="0.1"
           class="w-full"
+          @input="markTouched('carbsPer100g')"
           @update:model-value="markTouched('carbsPer100g')"
         />
       </UFormField>
@@ -139,6 +145,7 @@ function onSubmit() {
           :min="0"
           :step="0.1"
           class="w-full"
+          @input="markTouched('fatPer100g')"
           @update:model-value="markTouched('fatPer100g')"
         />
       </UFormField>
