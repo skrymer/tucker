@@ -130,7 +130,7 @@ class GoalApiTest {
             content = """{"startedOn":"$today","targetWeightKg":88.0,"rateKgPerWeek":0.5}"""
         }.andExpect {
             status { isCreated() }
-            jsonPath("$.startWeightKg", closeTo(107.05, 1e-2))
+            jsonPath("$.startWeightKg", closeTo(107.05, 1e-6))
         }
 
         // Start == now == the trend (both 107.05, not the raw 107.5), so a fresh Goal
@@ -138,8 +138,11 @@ class GoalApiTest {
         // 107.05 and read ~2.3%. (The exact percent math is covered in GoalProgressApiTest.)
         mockMvc.get("/api/goal/progress").andExpect {
             status { isOk() }
-            jsonPath("$.startWeightKg", closeTo(107.05, 1e-2))
-            jsonPath("$.currentTrendKg", closeTo(107.05, 1e-2))
+            jsonPath("$.startWeightKg", closeTo(107.05, 1e-6))
+            jsonPath("$.currentTrendKg", closeTo(107.05, 1e-6))
+            // Stored start and live trend are the same number, so the difference is
+            // exactly zero — not merely small enough to round to 0%.
+            jsonPath("$.percentComplete") { value(0.0) }
         }
     }
 

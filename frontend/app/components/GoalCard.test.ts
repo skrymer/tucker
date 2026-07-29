@@ -24,8 +24,9 @@ describe('GoalCard', () => {
   })
 
   it('renders the rate cleanly when the stored value carries float imprecision', async () => {
-    // The backend stores the rate as a 32-bit float, so 0.6 round-trips as
-    // 0.6000000238418579. The card must not leak that to the user.
+    // Goals written before the backend stopped narrowing to 32-bit float hold
+    // 0.6 as 0.6000000238418579, and a goal row is never recomputed. The card
+    // must not leak that to the user.
     await renderSuspended(GoalCard, {
       props: { goal: { ...goal, rateKgPerWeek: 0.6000000238418579 } },
     })

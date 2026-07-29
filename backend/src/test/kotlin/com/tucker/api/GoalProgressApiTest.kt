@@ -58,7 +58,7 @@ class GoalProgressApiTest {
 
         mockMvc.get("/api/goal/progress").andExpect {
             status { isOk() }
-            jsonPath("$.startWeightKg", closeTo(90.0, 1e-2))
+            jsonPath("$.startWeightKg") { value(90.0) }
             jsonPath("$.targetWeightKg") { value(80.0) }
             jsonPath("$.currentTrendKg", closeTo(89.0, 1e-6))
             jsonPath("$.kgToGo", closeTo(9.0, 1e-6))

@@ -55,7 +55,7 @@ class RecipeRepository(
             val rec = dsl.newRecord(RECIPE_INGREDIENT)
             rec.recipeId = recipeId.toInt()
             rec.ingredientFoodId = ingredientId.toInt()
-            rec.grams = line.grams.toFloat()
+            rec.grams = line.grams
             rec.store()
         }
     }
@@ -74,7 +74,7 @@ class RecipeRepository(
         val ingredients = ingredientRows.map { row ->
             val ingredient = ingredientFoods[row.ingredientFoodId.toLong()]
                 ?: error("ingredient food ${row.ingredientFoodId} is missing")
-            RecipeIngredient(ingredient, row.grams.toDouble())
+            RecipeIngredient(ingredient, row.grams)
         }
 
         return Recipe(

@@ -8,6 +8,43 @@
         <database>
             <name>org.jooq.meta.sqlite.SQLiteDatabase</name>
             <includes>.*</includes>
+            <forcedTypes>
+                <!--
+                    SQLite REAL is an 8-byte IEEE double, but jOOQ's SQLite dialect maps
+                    it to Float. That narrowing degraded every stored decimal that has no
+                    exact 32-bit form (a 107.05 trend weight read back 107.05000305175781).
+                    Generating Double keeps the round-trip lossless; the column type is
+                    already correct, so no *schema* migration is involved. Rows written
+                    before this fix keep the value they were narrowed to and are not
+                    backfilled, because almost nothing rewrites a stored decimal: a
+                    Weekly Review is irreversible (only today's row is recomputed, and
+                    only on a Goal change), an Entry can be deleted but never edited, and
+                    a Goal's start, target and rate are written once at creation. Reading
+                    such a row is unaffected — it was stored as (double)(float)x, and
+                    that narrowing is idempotent, so a Double read returns exactly what
+                    the Float read did.
+
+                    The residual ~4e-6 is not always invisible. Narrowing rounds to
+                    nearest, so it moves a value either way (107.05 up to 107.05000305,
+                    84.2 down to 84.19999695), and it can carry a figure across a
+                    one-decimal display midpoint: a 107.05 start weight rendered "107.1"
+                    beside a live trend of "107.0". That is corrected for rows written
+                    from here on — an existing Goal keeps the disagreement until it is
+                    replaced, which is why GoalCard still rounds the rate for display.
+
+                    A blanket rule is right here because every REAL column is a domain
+                    double. Do not copy the shape to SQLite's INTEGER (also narrowed, to
+                    Integer): that type also carries boolean flags and reminder_hour,
+                    which should not become Long, so it would need an includeExpression
+                    scoped to id columns. REAL is the only declared type jOOQ narrows
+                    silently — FLOAT/DOUBLE already map to Double, and NUMERIC/DECIMAL
+                    map to BigDecimal, which fails to compile rather than losing data.
+                -->
+                <forcedType>
+                    <name>DOUBLE</name>
+                    <includeTypes>REAL</includeTypes>
+                </forcedType>
+            </forcedTypes>
         </database>
         <target>
             <packageName>com.tucker.jooq</packageName>

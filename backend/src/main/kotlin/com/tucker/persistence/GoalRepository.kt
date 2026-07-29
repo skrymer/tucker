@@ -23,9 +23,9 @@ class GoalRepository(private val dsl: DSLContext) {
     fun insert(goal: Goal): Goal {
         val rec = dsl.newRecord(GOAL)
         rec.startedOn = goal.startedOn.toString()
-        rec.startWeightKg = goal.startWeightKg.toFloat()
-        rec.targetWeightKg = goal.targetWeightKg.toFloat()
-        rec.rateKgPerWeek = goal.rateKgPerWeek.toFloat()
+        rec.startWeightKg = goal.startWeightKg
+        rec.targetWeightKg = goal.targetWeightKg
+        rec.rateKgPerWeek = goal.rateKgPerWeek
         rec.active = if (goal.active) 1 else 0
         rec.reachedOn = goal.reachedOn?.toString()
         rec.store()
@@ -48,9 +48,9 @@ class GoalRepository(private val dsl: DSLContext) {
     private fun GoalRecord.toGoal(): Goal = Goal(
         id = id!!.toLong(),
         startedOn = LocalDate.parse(startedOn),
-        startWeightKg = startWeightKg.toDouble(),
-        targetWeightKg = targetWeightKg.toDouble(),
-        rateKgPerWeek = rateKgPerWeek.toDouble(),
+        startWeightKg = startWeightKg,
+        targetWeightKg = targetWeightKg,
+        rateKgPerWeek = rateKgPerWeek,
         active = active != 0,
         reachedOn = reachedOn?.let(LocalDate::parse),
     )
