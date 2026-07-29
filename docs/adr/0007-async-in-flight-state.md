@@ -171,30 +171,56 @@ IP-bans abusive callers ([#164](https://github.com/skrymer/tucker/issues/164)) �
 and a **Check** raises scan volume sharply
 ([0022](0022-a-check-states-cost-and-return-and-never-labels-a-food.md)). Having
 the client re-add that multiplication one layer up is the opposite of the
-decision. So the Check look-up passes **`retry: 0`**. It halves the provider load
-and the time-to-alert on an **Inconclusive** look-up — and only there, since a
-miss (404) and incomplete nutrition (422) are not in ofetch's retry set and were
-never doubled. It also makes this amendment's own claim — the round-trip was the
-only thing that broke, so it is the only thing redone — literally true. The
-transient blip the silent retry was covering is exactly what the user now has a
-button for, on the one failure where asking again can help.
+decision. So **both barcode look-ups pass `retry: 0`** — the Check's and
+Add-Food's. It halves the provider load and the time-to-alert on an
+**Inconclusive** look-up's 503 — and, less obviously, on every failure with *no
+response at all* (a dropped connection, offline, DNS), because ofetch codes a
+thrown `fetch` as `500`, which is also in its retry set. A proxy 5xx was doubled
+too, but by the status set rather than that fallback.
+A miss (404) was never doubled, nor is the Check's own incomplete-nutrition 422
+(the Add-Food look-up has no such outcome). On the
+Check tab it also makes this amendment's own claim — the round-trip was the only
+thing that broke, so it is the only thing redone — literally true. The transient
+blip the silent retry was covering is exactly what that user now has a button
+for, on the one failure where asking again can help.
 
-**Scoped to the Check look-up, deliberately.** The Add-Food look-up keeps
-ofetch's automatic retry, so an Inconclusive Lookup still costs two provider
-chains there. The rationale above is about provider load and would argue for
-changing both; what differs is who pays for the second ask. On the Check tab it
-is the user's only recourse, so it belongs to the thumb. In Add-Food manual entry
-is an always-on peer ([0006](0006-provider-agnostic-nutrition-lookup.md)) and
-there is no retry control by design, so a silent second attempt is free recovery
-on a path the user is not blocked on. That is a judgement, not a strong result —
-if the deferred throttle ([0022](0022-a-check-states-cost-and-return-and-never-labels-a-food.md))
-is ever built, revisit it and probably align the two.
+**Originally scoped to the Check look-up alone**, reversed by
+[#182](https://github.com/skrymer/tucker/issues/182). The grounds were that
+Add-Food's always-on manual peer ([0006](0006-provider-agnostic-nutrition-lookup.md))
+made a silent second attempt free recovery on a path the user is not blocked on.
+What that got wrong is **"free"**:
+
+- The second attempt is never free, and the two Inconclusive shapes fail it in
+  opposite directions. A **fast** one — a connect/DNS failure that exhausts all
+  three attempts inside the 1 s window, or a Provider 5xx returned immediately —
+  answers well within the client's 8 s, so the retry has room and *completes*:
+  a second full provider chain and a second real Open Food Facts hop, against
+  the one error class the backend has already decided is not worth repeating.
+  A **slow** one — a read timeout burning the whole 7 s budget — leaves the retry
+  about a second before the client's cap aborts it, so the browser's leg is
+  abandoned while the server-side chain it just kicked off runs on. That second
+  case is exactly the failure #164 fixed on the server ("attempts 2 and 3 could
+  never reach a user"), re-created one layer up by the client.
+- Not blocked is not the same as not waiting. The retry buys a not-blocked user
+  nothing they did not already have — the manual peer was on screen the whole
+  time — while delaying the note that tells them to use it by a whole round trip.
+
+So the two look-ups now differ only where they genuinely differ: the Check tab
+adds a **user-driven** "Try again" because it has no manual peer. Neither
+re-asks on its own. If the deferred throttle
+([0022](0022-a-check-states-cost-and-return-and-never-labels-a-food.md)) is ever
+built it inherits one rule instead of two.
 
 It is also a trap for tests, worth stating because it cost a red-green cycle: a
 fixture that fails the *first* call and succeeds after was silently answered by
 the client's own retry, so the failure never reached the screen. Model an outage
 as a state the test switches off ("the source came back"), never as an attempt
-count — an attempt count measures the HTTP client, not Tucker.
+count — an attempt count measures the HTTP client, not Tucker. That trap is
+disarmed on the two look-ups above and still live on every other `$api` GET,
+which keeps ofetch's default. Counting requests is fine where the *count itself*
+is the behaviour under test rather than a proxy for an outcome. Both look-ups'
+smokes now do it: each pins its own first ask at exactly one, and the Check's
+additionally compares counts before and after a tap to prove "Try again" re-asks.
 
 The trade is explicit. A Provider degraded past ~7 s is called Inconclusive even
 though waiting longer might have worked — which is honest ("Tucker could not find

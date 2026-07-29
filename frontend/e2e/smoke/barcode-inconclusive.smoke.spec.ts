@@ -1,3 +1,4 @@
+import type { Locator, Page } from '@playwright/test'
 import { test, expect } from './support/smoke-test'
 import { INDUCED_503_NOISE, UNREACHABLE_BARCODE } from './support/off-stub'
 
@@ -13,6 +14,21 @@ const API = 'http://localhost:8080/api'
 
 /** No recorded fixture, so the stub 404s exactly as OFF answers a miss. */
 const MISSING_BARCODE = '9990000000164'
+
+/**
+ * Open the Add-food sheet on a loaded `/foods` and run one look-up, leaving each
+ * test showing only what differs — the barcode it asked about, and what it
+ * expects back.
+ */
+async function lookUpBarcode(page: Page, barcode: string): Promise<Locator> {
+  await page.getByRole('button', { name: 'Add food' }).click()
+  const sheet = page.getByRole('dialog', { name: /add food/i })
+  await expect(sheet).toBeVisible()
+
+  await sheet.getByLabel(/barcode/i).fill(barcode)
+  await sheet.getByRole('button', { name: /look up/i }).click()
+  return sheet
+}
 
 test('an unreachable source and a genuine miss are different answers at the API', async ({
   request,
@@ -39,13 +55,7 @@ test.describe('a source that could not answer', () => {
     goto,
   }) => {
     await goto('/foods', { waitUntil: 'hydration' })
-
-    await page.getByRole('button', { name: 'Add food' }).click()
-    const sheet = page.getByRole('dialog', { name: /add food/i })
-    await expect(sheet).toBeVisible()
-
-    await sheet.getByLabel(/barcode/i).fill(UNREACHABLE_BARCODE)
-    await sheet.getByRole('button', { name: /look up/i }).click()
+    const sheet = await lookUpBarcode(page, UNREACHABLE_BARCODE)
 
     await expect(sheet.getByText("Couldn't look that up")).toBeVisible()
     await expect(sheet.getByText(/didn't get through/i)).toBeVisible()
@@ -57,6 +67,43 @@ test.describe('a source that could not answer', () => {
       sheet.getByRole('button', { name: /save food/i }),
     ).toBeEnabled()
   })
+
+  test('a lookup no source could answer is asked once, not silently twice', async ({
+    page,
+    goto,
+  }) => {
+    // Counted at the browser's own boundary, because that is where the doubling
+    // lived: ofetch's stock GET retry re-drove the whole Provider chain a second
+    // time, unseen (ADR 0007). Deliberately measuring the HTTP client — here it
+    // is the thing under test.
+    const lookups: string[] = []
+    const statuses: number[] = []
+    page.on('request', (req) => {
+      if (req.url().includes('/api/foods/barcode/')) lookups.push(req.url())
+    })
+    page.on('response', (res) => {
+      if (res.url().includes('/api/foods/barcode/')) statuses.push(res.status())
+    })
+
+    await goto('/foods', { waitUntil: 'hydration' })
+    const sheet = await lookUpBarcode(page, UNREACHABLE_BARCODE)
+
+    // Safe as a settling point because the retry re-issues on the *same* signal
+    // and against an instant 503, so it lands long before anything renders — not
+    // because the wrapper awaits it. `useAsyncAction` races the call against its
+    // own abort, so on the timeout path the note can appear while ofetch is
+    // still mid-retry.
+    await expect(sheet.getByText("Couldn't look that up")).toBeVisible()
+
+    expect(lookups).toHaveLength(1)
+
+    // That the one ask was *answered* 503 is what keeps the count meaningful.
+    // This note renders for a client-side 8 s abort too, and an abort suppresses
+    // ofetch's retry all by itself — so a run that drifted onto the timeout path
+    // would show one request with the retry still enabled, and the assertion
+    // above would pass while guarding nothing.
+    expect(statuses).toEqual([503])
+  })
 })
 
 test('a genuine miss drops to manual entry without claiming the lookup failed', async ({
@@ -64,13 +111,7 @@ test('a genuine miss drops to manual entry without claiming the lookup failed', 
   goto,
 }) => {
   await goto('/foods', { waitUntil: 'hydration' })
-
-  await page.getByRole('button', { name: 'Add food' }).click()
-  const sheet = page.getByRole('dialog', { name: /add food/i })
-  await expect(sheet).toBeVisible()
-
-  await sheet.getByLabel(/barcode/i).fill(MISSING_BARCODE)
-  await sheet.getByRole('button', { name: /look up/i }).click()
+  const sheet = await lookUpBarcode(page, MISSING_BARCODE)
 
   // The blank form is the honest answer here, so it arrives unaccompanied — the
   // two failures must never be interchangeable.

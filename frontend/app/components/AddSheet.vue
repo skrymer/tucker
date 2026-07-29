@@ -98,6 +98,10 @@ function useBarcodeLookup() {
         // dynamic (a barcode flips from Candidate to existing Food once saved,
         // and a transient miss must not stick), so each look-up must be fresh.
         cache: 'no-store',
+        // No auto-retry: ofetch retries a GET once by default and 503 is in its
+        // stock retryStatusCodes, which re-adds one layer up the Provider-load
+        // multiplication the backend deliberately refuses (issue #164, ADR 0007).
+        retry: 0,
         signal,
       }),
     { mode: 'latest', timeoutMs: 8000 },

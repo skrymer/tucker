@@ -53,15 +53,11 @@ function useCheckLookup() {
         // or a Budget moved by a Weekly Review, changes the answer — so never
         // serve one from the browser cache.
         cache: 'no-store',
-        // ofetch retries a GET once by default, and 503 is in its stock
-        // retryStatusCodes — which would silently undo the backend's own rule:
-        // `OpenFoodFactsProvider` retries only fast transport failures and
-        // deliberately excludes slowness, rate limits and server errors,
-        // because repeating those multiplies load on a Provider that IP-bans
-        // abusive callers (issue #164). A Check raises scan volume sharply
-        // (ADR 0022), so re-adding that multiplication here is the last thing
-        // this screen should do. Asking again is now the user's call, on the
-        // one failure where it can help.
+        // No auto-retry: ofetch retries a GET once by default and 503 is in its
+        // stock retryStatusCodes, which re-adds one layer up the Provider-load
+        // multiplication the backend deliberately refuses (issue #164, ADR 0007)
+        // — and a Check raises scan volume sharply (ADR 0022). Asking again is
+        // the user's call here, on the one failure where it can help.
         retry: 0,
         signal,
       }),

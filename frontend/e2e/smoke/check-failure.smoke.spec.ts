@@ -70,6 +70,11 @@ test.describe('a source that could not answer', () => {
     await expect(page.getByText('Not in the food database')).toHaveCount(0)
 
     const asksBeforeRetry = lookups.length
+    // Absolute, not just a baseline for the comparison below: the scan asked
+    // once, because this look-up passes `retry: 0` (ADR 0007). The relative
+    // assertion alone would read 2 then 4 > 2 and stay green if ofetch's stock
+    // retry came back, leaving the Check half of that rule unguarded.
+    expect(asksBeforeRetry).toBe(1)
     const camerasBeforeRetry = await cameraStarts(page)
     // The scan that got us here acquired the camera, so the counter is live.
     // Without this the comparison below would read 0 === 0 and pass even if the
