@@ -118,15 +118,10 @@ function useBarcodeLookup() {
       if (outcome.status === 'superseded') return
       // A hung connection settles nothing, exactly like an unreachable source, so
       // it drops the same way: back to manual entry. That withdraws the previous
-      // candidate's provenance *and* its barcode, so a save can no longer file one
-      // product under another's code — the note tells the user to fill in the
-      // details above, and they must not be another product's details.
-      //
-      // It does not blank the fields themselves: `AddFoodForm` fills only what is
-      // non-null (ADR 0007's merge), so an earlier candidate's name and macros
-      // stay on screen, editable, under the new barcode. Withdrawing them would
-      // mean either remounting the form — the #58 data-loss bug — or changing that
-      // merge for every flow, so it is tracked as issue #180.
+      // candidate's provenance, its barcode, *and* its values: `formInitial`
+      // stops supplying them, and an untouched field mirrors its seed (ADR 0007,
+      // issue #180), so they clear with it. The note tells the user to fill in
+      // the details above, and they must not be another product's details.
       if (outcome.status === 'timedOut') {
         branch.value = { kind: 'manual' }
         inconclusive.value = true

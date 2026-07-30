@@ -91,6 +91,126 @@ describe('AddFoodForm', () => {
     expect(screen.getByLabelText(/carbs \/100\s*g/i)).toHaveDisplayValue('4')
   })
 
+  it('clears an untouched field when the seed no longer supplies it', async () => {
+    // An untouched field's value can only have come from a seed — the user's
+    // own values are, by definition, touched. So a value the current seed
+    // doesn't supply belongs to a previous one, and showing it alongside the new
+    // barcode is how product A gets saved under product B's code.
+    const { rerender } = await renderSuspended(AddFoodForm, {
+      props: {
+        initial: {
+          name: 'Skyr Natural',
+          barcode: '5701234567890',
+          proteinPer100g: 10.3,
+          carbsPer100g: 4,
+          fatPer100g: 0.2,
+        },
+      },
+    })
+
+    expect(screen.getByLabelText(/^name$/i)).toHaveValue('Skyr Natural')
+
+    // The look-up for a different barcode fails, withdrawing the candidate.
+    await rerender({ initial: { barcode: '5709999999999' } })
+
+    expect(screen.getByLabelText(/^name$/i)).toHaveValue('')
+    expect(screen.getByLabelText(/protein \/100\s*g/i)).toHaveDisplayValue('')
+    expect(screen.getByLabelText(/carbs \/100\s*g/i)).toHaveDisplayValue('')
+    expect(screen.getByLabelText(/fat \/100\s*g/i)).toHaveDisplayValue('')
+  })
+
+  it('stops clearing at a field the user has edited', async () => {
+    // The withdrawal takes back what a seed put there, never what the user
+    // typed — clearing that would mean deciding their words were about the old
+    // product, which is the judgement ADR 0007 refuses to make.
+    const user = userEvent.setup()
+    const { rerender } = await renderSuspended(AddFoodForm, {
+      props: {
+        initial: {
+          name: 'Skyr Natural',
+          barcode: '5701234567890',
+          proteinPer100g: 10.3,
+          carbsPer100g: 4,
+          fatPer100g: 0.2,
+        },
+      },
+    })
+
+    await user.type(screen.getByLabelText(/^name$/i), ' (big tub)')
+
+    await rerender({ initial: { barcode: '5709999999999' } })
+
+    expect(screen.getByLabelText(/^name$/i)).toHaveValue(
+      'Skyr Natural (big tub)',
+    )
+    // The macros nobody touched still go back with the seed.
+    expect(screen.getByLabelText(/protein \/100\s*g/i)).toHaveDisplayValue('')
+    expect(screen.getByLabelText(/carbs \/100\s*g/i)).toHaveDisplayValue('')
+    expect(screen.getByLabelText(/fat \/100\s*g/i)).toHaveDisplayValue('')
+  })
+
+  it('keeps a macro the user is still typing into when the seed is withdrawn', async () => {
+    // A number field only commits its model on blur, so a macro being typed
+    // into looks pristine to the merge until the user leaves it. Without the
+    // keystroke marking it touched, a look-up that fails mid-entry blanks the
+    // digits under the cursor — the silent data loss ADR 0007 exists to prevent.
+    const user = userEvent.setup()
+    const { rerender } = await renderSuspended(AddFoodForm, {
+      props: {
+        initial: {
+          name: 'Skyr Natural',
+          barcode: '5701234567890',
+          proteinPer100g: 10.3,
+          carbsPer100g: 4,
+          fatPer100g: 0.2,
+        },
+      },
+    })
+
+    // Still mid-entry: typed, never blurred.
+    await user.clear(screen.getByLabelText(/protein \/100\s*g/i))
+    await user.type(screen.getByLabelText(/protein \/100\s*g/i), '18')
+
+    await rerender({ initial: { barcode: '5709999999999' } })
+
+    expect(screen.getByLabelText(/protein \/100\s*g/i)).toHaveDisplayValue('18')
+    // The macros they never touched still go back with the seed.
+    expect(screen.getByLabelText(/carbs \/100\s*g/i)).toHaveDisplayValue('')
+    expect(screen.getByLabelText(/fat \/100\s*g/i)).toHaveDisplayValue('')
+  })
+
+  it('lets a later candidate replace an earlier one', async () => {
+    // Filling the form is not the user touching it. If a programmatic fill
+    // marked the fields touched, the first candidate would win forever and a
+    // corrected barcode could never take over.
+    const { rerender } = await renderSuspended(AddFoodForm, {
+      props: {
+        initial: {
+          name: 'Skyr Natural',
+          barcode: '5701234567890',
+          proteinPer100g: 10.3,
+          carbsPer100g: 4,
+          fatPer100g: 0.2,
+        },
+      },
+    })
+
+    await rerender({
+      initial: {
+        name: 'Peanut Butter',
+        barcode: '5707777777777',
+        proteinPer100g: 25,
+        carbsPer100g: 12,
+        fatPer100g: 50,
+      },
+    })
+
+    expect(screen.getByLabelText(/^name$/i)).toHaveValue('Peanut Butter')
+    expect(screen.getByLabelText(/protein \/100\s*g/i)).toHaveDisplayValue('25')
+    expect(screen.getByLabelText(/carbs \/100\s*g/i)).toHaveDisplayValue('12')
+    expect(screen.getByLabelText(/fat \/100\s*g/i)).toHaveDisplayValue('50')
+  })
+
   it('shows the provider stated energy as a cross-check', async () => {
     await renderSuspended(AddFoodForm, {
       props: {

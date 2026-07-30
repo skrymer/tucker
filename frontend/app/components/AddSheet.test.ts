@@ -441,9 +441,51 @@ describe('AddSheet', () => {
       // The other product's provenance must not outlive the lookup that failed.
       expect(screen.queryByText(/filled from/i)).not.toBeInTheDocument()
       expect(screen.queryByText(/stated on the label/i)).not.toBeInTheDocument()
+      // Nor its values — those are "the details above" the note points at.
+      expect(screen.getByLabelText(/^name$/i)).toHaveValue('')
+      expect(screen.getByLabelText(/protein \/100\s*g/i)).toHaveDisplayValue('')
+      expect(screen.getByLabelText(/carbs \/100\s*g/i)).toHaveDisplayValue('')
     } finally {
       vi.useRealTimers()
     }
+  })
+
+  it('does not leave the previous product on screen when the next lookup is refused', async () => {
+    // A refused lookup withdraws the candidate down a different path than a hung
+    // one — a thrown response rather than an abort — and has to land the user in
+    // the same place: told nothing was learned, and looking at an empty form.
+    const REFUSED_BARCODE = '5707777777777'
+    registerEndpoint(`/api/foods/barcode/${REFUSED_BARCODE}`, {
+      method: 'GET',
+      handler: () => {
+        throw createError({
+          statusCode: 503,
+          statusMessage: 'Service Unavailable',
+        })
+      },
+    })
+    await renderSuspended(AddSheet, { props: { open: true } })
+    const user = userEvent.setup()
+
+    await user.type(screen.getByLabelText(/barcode/i), CANDIDATE_BARCODE)
+    await user.click(screen.getByRole('button', { name: /look up/i }))
+    await vi.waitFor(() =>
+      expect(screen.getByText(/filled from/i)).toBeVisible(),
+    )
+    expect(screen.getByLabelText(/^name$/i)).toHaveValue('Skyr Natural')
+
+    await user.clear(screen.getByLabelText(/barcode/i))
+    await user.type(screen.getByLabelText(/barcode/i), REFUSED_BARCODE)
+    await user.click(screen.getByRole('button', { name: /look up/i }))
+
+    await vi.waitFor(() =>
+      expect(screen.getByText(/couldn't look that up/i)).toBeVisible(),
+    )
+    expect(screen.queryByText(/filled from/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/stated on the label/i)).not.toBeInTheDocument()
+    expect(screen.getByLabelText(/^name$/i)).toHaveValue('')
+    expect(screen.getByLabelText(/protein \/100\s*g/i)).toHaveDisplayValue('')
+    expect(screen.getByLabelText(/carbs \/100\s*g/i)).toHaveDisplayValue('')
   })
 
   it('degrades to manual entry carrying the barcode when the lookup fails offline', async () => {
