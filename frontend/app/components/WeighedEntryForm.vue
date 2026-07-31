@@ -89,12 +89,7 @@ function onSubmit() {
     </UFormField>
 
     <UFormField label="Grams" name="grams" required>
-      <UInputNumber
-        v-model="state.grams"
-        :step="1"
-        :step-snapping="false"
-        class="w-full"
-      />
+      <AppNumberInput v-model="state.grams" :step="1" class="w-full" />
     </UFormField>
 
     <UAlert

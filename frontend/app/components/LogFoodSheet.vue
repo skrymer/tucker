@@ -44,7 +44,7 @@ function onSubmit() {
     :title="`Log ${food?.name}`"
     @update:open="(value) => !value && emit('close')"
   >
-    <!-- Keyed per food so each open mounts a fresh form — UInputNumber keeps
+    <!-- Keyed per food so each open mounts a fresh form — a number field keeps
          its rendered text when the model resets to undefined. -->
     <UForm
       :key="food?.id"
@@ -54,11 +54,10 @@ function onSubmit() {
       @submit="onSubmit"
     >
       <UFormField label="Weight (g)" name="grams" required>
-        <UInputNumber
+        <AppNumberInput
           v-model="state.grams"
           :autofocus="isDesktop"
           :step="1"
-          :step-snapping="false"
           placeholder="e.g. 150"
           class="w-full"
         />

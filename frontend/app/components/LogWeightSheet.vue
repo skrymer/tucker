@@ -67,12 +67,7 @@ function onSubmit() {
       </UFormField>
 
       <UFormField label="Weight (kg)" name="weightKg" required>
-        <UInputNumber
-          v-model="state.weightKg"
-          :step="0.1"
-          :step-snapping="false"
-          class="w-full"
-        />
+        <AppNumberInput v-model="state.weightKg" :step="0.1" class="w-full" />
       </UFormField>
 
       <UButton type="submit" color="primary" class="w-full">

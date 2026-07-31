@@ -69,21 +69,19 @@ function onSubmit() {
     </UFormField>
 
     <UFormField label="Calories" name="calories" required>
-      <UInputNumber
+      <AppNumberInput
         v-model="state.calories"
         :min="1"
         :step="1"
-        :step-snapping="false"
         class="w-full"
       />
     </UFormField>
 
     <UFormField label="Protein (optional)" name="protein">
-      <UInputNumber
+      <AppNumberInput
         v-model="state.protein"
         :min="0"
         :step="1"
-        :step-snapping="false"
         class="w-full"
       />
     </UFormField>

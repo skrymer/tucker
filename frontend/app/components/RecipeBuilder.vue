@@ -346,11 +346,10 @@ function onSave() {
         :hint="cookedWeightEdited ? undefined : 'estimated'"
         required
       >
-        <UInputNumber
+        <AppNumberInput
           :model-value="form.cookedWeightG"
           :min="0"
           :step="10"
-          :step-snapping="false"
           class="w-full"
           @input="markCookedWeightEdited"
           @update:model-value="updateCookedWeight"
@@ -473,11 +472,10 @@ function onSave() {
       <p class="font-medium text-default">{{ pickedFood?.name }}</p>
 
       <UFormField label="Grams" name="grams" required>
-        <UInputNumber
+        <AppNumberInput
           v-model="gramsState.grams"
           :min="0"
           :step="1"
-          :step-snapping="false"
           class="w-full"
         />
       </UFormField>
