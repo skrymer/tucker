@@ -11,6 +11,22 @@ export default defineNuxtConfig({
 
   css: ['~/assets/css/main.css'],
 
+  // `nuxt typecheck` builds its program from .nuxt/tsconfig.app.json, whose
+  // include covers `app/**/*` but not `test/`. The three helper modules there
+  // are pulled in anyway as imports of the tests that use them — but
+  // `test/setup.ts` is named only in vitest.config.ts's `setupFiles`, so
+  // nothing imports it and it never enters the program. Its
+  // `@testing-library/jest-dom/vitest` import is what augments vitest's
+  // `Assertion` with `toBeVisible`/`toHaveValue`/…, so without it every
+  // jest-dom matcher in every component test is an unknown property (issue
+  // #200: 638 of the 701 errors). Adding the directory as a program root both
+  // loads that augmentation and type-checks the setup file itself.
+  typescript: {
+    tsConfig: {
+      include: ['../test/**/*'],
+    },
+  },
+
   // Self-host the "Vital" display face (frontend/DESIGN.md). @nuxt/fonts is
   // registered by @nuxt/ui; it downloads Nunito at build and serves it from the
   // app origin (no runtime CDN), so the installed PWA renders it offline — the

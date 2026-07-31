@@ -51,9 +51,25 @@ export function useWebPush() {
       applicationServerKey: urlBase64ToUint8Array(publicKey),
     })
 
+    // `toJSON()` marks every field optional (it is the spec's dictionary shape),
+    // while the backend requires the endpoint and both keys. Take the endpoint
+    // from the subscription itself, where it is non-optional, and check the keys
+    // rather than posting a row that could never be encrypted to. A subscription
+    // created with `userVisibleOnly` and an application server key always
+    // carries both, so this throws only if that invariant breaks — and it throws
+    // into the same persistent retry toast a rejected POST would (ADR 0005).
+    const { keys } = subscription.toJSON()
+    if (!keys?.p256dh || !keys.auth) {
+      throw new Error('Push subscription is missing its encryption keys')
+    }
+
     await $api('/api/push/subscriptions', {
       method: 'POST',
-      body: { ...subscription.toJSON(), label },
+      body: {
+        endpoint: subscription.endpoint,
+        keys: { p256dh: keys.p256dh, auth: keys.auth },
+        label,
+      },
     })
     isSubscribed.value = true
   }
@@ -83,8 +99,15 @@ export function useWebPush() {
   }
 }
 
-/** Decode the base64url VAPID key into the byte array PushManager requires. */
-function urlBase64ToUint8Array(base64Url: string): Uint8Array {
+/**
+ * Decode the base64url VAPID key into the byte array PushManager requires.
+ *
+ * The `<ArrayBuffer>` argument is load-bearing: bare `Uint8Array` defaults to
+ * `Uint8Array<ArrayBufferLike>`, which admits a `SharedArrayBuffer` and so is
+ * not assignable to `applicationServerKey`'s `BufferSource`. `Uint8Array.from`
+ * always allocates a plain `ArrayBuffer`, so this states what it already returns.
+ */
+function urlBase64ToUint8Array(base64Url: string): Uint8Array<ArrayBuffer> {
   const padding = '='.repeat((4 - (base64Url.length % 4)) % 4)
   const base64 = (base64Url + padding).replace(/-/g, '+').replace(/_/g, '/')
   const raw = atob(base64)

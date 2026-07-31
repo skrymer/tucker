@@ -193,7 +193,11 @@ function handleDeleteConfirm() {
         v-if="isDesktop"
         icon="i-lucide-plus"
         color="primary"
-        @click="open = true"
+        @click="
+          () => {
+            open = true
+          }
+        "
       >
         Add food
       </UButton>
@@ -222,7 +226,11 @@ function handleDeleteConfirm() {
       aria-label="Add food"
       class="fixed right-4 bottom-[calc(5rem+env(safe-area-inset-bottom))] size-14 rounded-full shadow-lg"
       :ui="{ base: 'justify-center' }"
-      @click="open = true"
+      @click="
+        () => {
+          open = true
+        }
+      "
     />
 
     <AddSheet

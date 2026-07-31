@@ -24,6 +24,16 @@ const emit = defineEmits<{
   edited: []
 }>()
 
+// Keep the on-screen keyboard off the food picker's search field — the catalog
+// is short enough to scroll, and on a phone the keyboard covers the list it is
+// meant to filter. `inputmode` is a native input attribute rather than one of
+// Nuxt UI's InputProps, but UInput sets `inheritAttrs: false` and v-binds
+// `$attrs` onto the <input>, so it lands on the element. `autofocus: false`
+// states the same intent through a real InputProps prop, which is also what
+// keeps this assignable: every InputProps field is optional, so an object
+// sharing none of them is rejected as a weak type.
+const searchInput = { inputmode: 'none', autofocus: false }
+
 const state = reactive({
   foodId: undefined as number | undefined,
   grams: undefined as number | undefined,
@@ -73,7 +83,7 @@ function onSubmit() {
         value-key="id"
         label-key="name"
         placeholder="Select a food"
-        :search-input="{ inputmode: 'none' }"
+        :search-input="searchInput"
         class="w-full"
       />
     </UFormField>

@@ -39,7 +39,9 @@ useHead({
 
 const toaster = computed(() => ({
   max: 1,
-  position: (isDesktop.value ? 'bottom-right' : 'top-center') as const,
+  position: isDesktop.value
+    ? ('bottom-right' as const)
+    : ('top-center' as const),
   ui: {
     viewport: isDesktop.value
       ? 'bottom-[calc(1rem+env(safe-area-inset-bottom))]'

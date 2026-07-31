@@ -16,8 +16,12 @@ const API = 'http://localhost:8080/api'
 // nothing leaks between tests or between runs. Tests still seed whatever they
 // need in their own body.
 export const test = base.extend<{
+  // `void` is Playwright's declared type for a fixture that yields no value —
+  // the framework's own idiom, not a misused void.
+  /* eslint-disable @typescript-eslint/no-invalid-void-type */
   freshDatabase: void
   noPageErrors: void
+  /* eslint-enable @typescript-eslint/no-invalid-void-type */
   /**
    * Extra page-error patterns a single smoke tolerates on top of [SMOKE_NOISE] —
    * for a test that *deliberately* induces a failure (e.g. the offline-lookup

@@ -35,7 +35,11 @@ function handleSubmit(payload: { date: string; weightKg: number }) {
           variant="ghost"
           icon="i-lucide-pencil"
           aria-label="Edit today's weight"
-          @click="open = true"
+          @click="
+            () => {
+              open = true
+            }
+          "
         />
       </div>
     </template>
@@ -47,7 +51,11 @@ function handleSubmit(payload: { date: string; weightKg: number }) {
         icon="i-lucide-plus"
         block
         class="mt-3"
-        @click="open = true"
+        @click="
+          () => {
+            open = true
+          }
+        "
       >
         Log weight
       </UButton>

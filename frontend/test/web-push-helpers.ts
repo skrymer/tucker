@@ -62,6 +62,9 @@ export function setupWebPush(options: WebPushOptions = {}): WebPushEnv {
         ready: Promise.resolve({ pushManager: { subscribe, getSubscription } }),
       },
     })
+    // useWebPush only asks `typeof PushManager !== 'undefined'`, so the stub
+    // needs no members — it exists to make the global defined and constructible.
+    // eslint-disable-next-line @typescript-eslint/no-extraneous-class
     vi.stubGlobal('PushManager', class FakePushManager {})
     vi.stubGlobal('Notification', { requestPermission, permission })
   } else {

@@ -116,7 +116,13 @@ function useEditMode() {
       ingredients: lines,
     }
   })
-  return { editing, start: () => (editing.value = true), editInitial }
+  return {
+    editing,
+    start: () => {
+      editing.value = true
+    },
+    editInitial,
+  }
 }
 
 const { editing, start: startEditing, editInitial } = useEditMode()

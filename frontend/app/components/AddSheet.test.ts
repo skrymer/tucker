@@ -175,7 +175,9 @@ describe('AddSheet', () => {
 
   it('keeps what the user typed when a slow look-up lands a candidate', async () => {
     let releaseLookup!: () => void
-    candidateGate = new Promise((resolve) => (releaseLookup = resolve))
+    candidateGate = new Promise<void>((resolve) => {
+      releaseLookup = resolve
+    })
     await renderSuspended(AddSheet, { props: { open: true } })
     const user = userEvent.setup()
 
@@ -250,7 +252,6 @@ describe('AddSheet', () => {
       proteinPer100g: 10,
       carbsPer100g: 4,
       fatPer100g: 0.2,
-      cookedWeightG: null,
     }
     await renderSuspended(AddSheet, {
       props: { open: true, createdFood },
@@ -271,7 +272,6 @@ describe('AddSheet', () => {
       proteinPer100g: 10,
       carbsPer100g: 4,
       fatPer100g: 0.2,
-      cookedWeightG: null,
     }
     const onLog = vi.fn()
     await renderSuspended(AddSheet, {

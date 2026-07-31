@@ -137,7 +137,9 @@ const { logWeight } = useWeightLogging({
   today,
   // No success toast: the new reading appears in the weight trend below. A new
   // reading also moves the Trend Weight, so refresh it for the Goal form.
-  onSaved: () => Promise.all([refreshWeights(), refreshCurrentTrend()]),
+  onSaved: async () => {
+    await Promise.all([refreshWeights(), refreshCurrentTrend()])
+  },
 })
 const { submit: submitGoal, targetError: goalTargetError } =
   useGoalSubmission(refreshGoals)

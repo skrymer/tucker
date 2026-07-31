@@ -42,6 +42,9 @@ export function useApiMutation<TArgs extends unknown[]>(
   // mutation is `guard` mode — a double-tap must not fire two writes — and the
   // success side effects run inside the action so a failing `onSuccess` lands on
   // the error path, exactly as before.
+  // `void` is useAsyncAction's TResult — a mutation genuinely produces no
+  // value — which is the one position the rule can't tell apart from a misuse.
+  // eslint-disable-next-line @typescript-eslint/no-invalid-void-type
   const { pending, busy, run } = useAsyncAction<TArgs, void>(
     async (_signal, ...args) => {
       await mutate(...args)

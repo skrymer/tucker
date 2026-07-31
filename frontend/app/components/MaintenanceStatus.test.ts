@@ -25,7 +25,10 @@ describe('MaintenanceStatus', () => {
   it('emits start-goal when the CTA is clicked', async () => {
     const onStartGoal = vi.fn()
     await renderSuspended(MaintenanceStatus, {
-      props: { onStartGoal },
+      // The emit is `start-goal`, so the handler prop Vue generates is
+      // `onStart-goal` — a camelCased key happens to work at runtime but is
+      // not part of the component's type.
+      props: { 'onStart-goal': onStartGoal },
     })
     const user = userEvent.setup()
 

@@ -10,6 +10,9 @@ const profile: ProfileDto = {
   sex: 'MALE',
   birthDate: '1990-06-15',
   heightCm: 180,
+  timezone: 'Australia/Brisbane',
+  reminderHour: 9,
+  remindersEnabled: false,
 }
 const weight: WeightMeasurement = {
   id: 1,
@@ -23,6 +26,8 @@ const goal: Goal = {
   startWeightKg: 84,
   targetWeightKg: 80,
   rateKgPerWeek: 0.5,
+  // 0.5 kg/week against the ~7700 kcal/kg convention.
+  dailyDeficitKcal: 550,
 }
 
 describe('useProfileGating', () => {
