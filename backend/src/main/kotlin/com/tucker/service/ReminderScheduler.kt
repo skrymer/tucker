@@ -87,13 +87,16 @@ class ReminderScheduler(
 
         /**
          * The fixed nudge, as the JSON the service worker's push handler parses to
-         * render the notification (it supplies the icon/badge/tag); `url` is where a
-         * tap lands. A constant because the nudge is the same every time — never a
-         * guilt-trip, never personalised (CONTEXT.md Weekly-Review Reminder).
+         * render the notification. Text only: the worker supplies the icon/badge/tag
+         * and decides where a tap lands, because a frontend route is not the backend's
+         * to name — the copy that used to live here disagreed with the route table for
+         * months, uncaught, until a tap 404'd (issues #178, #189).
+         *
+         * A constant because the nudge is the same every time — never a guilt-trip,
+         * never personalised (CONTEXT.md Weekly-Review Reminder).
          */
         const val PAYLOAD =
             """{"title":"Time for your weekly review",""" +
-                """"body":"Open Tucker to log today and refresh your calorie budget.",""" +
-                """"url":"/"}"""
+                """"body":"Open Tucker to log today and refresh your calorie budget."}"""
     }
 }
