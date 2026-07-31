@@ -70,10 +70,13 @@ the gate to the whole rest of the day. Three things argued it back down:
   ([#192](https://github.com/skrymer/tucker/issues/192) closes that gap separately.)
 - *Retries are not free.* The send is stamped only once a device actually takes it,
   so an endpoint that keeps failing is retried on every eligible tick. Each attempt
-  is a fresh HTTP client inside the transport, and one failure shape — a *refused*
-  connection — leaks its threads and socket permanently
+  was a fresh HTTP client inside the transport, and one failure shape — a *refused*
+  connection — leaked its threads and socket permanently
   ([#193](https://github.com/skrymer/tucker/issues/193)). Fifteen attempts a day
-  instead of one turns a slow leak into a fast one.
+  instead of one turned a slow leak into a fast one. #193 has since been fixed — the
+  sender owns one client for its lifetime, so no attempt strands anything — but that
+  removes the multiplier, not the argument: a retry that cannot succeed is still cost
+  without benefit, and the narrow window is what keeps it to one.
 
 So the window keeps exactly one retry, an hour later, and the **dedupe** is still
 what guarantees a single nudge per episode within it — which is why the dedupe had
