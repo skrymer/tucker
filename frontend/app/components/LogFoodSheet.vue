@@ -58,6 +58,7 @@ function onSubmit() {
           v-model="state.grams"
           :autofocus="isDesktop"
           :step="1"
+          :step-snapping="false"
           placeholder="e.g. 150"
           class="w-full"
         />

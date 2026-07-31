@@ -62,12 +62,21 @@ describe('RecipeBuilder', () => {
     expect(row).toHaveTextContent('510 kcal')
   })
 
-  /** Add one ingredient (Beef mince, 300 g) and return to the build step. */
-  async function addBeefMince(user: ReturnType<typeof userEvent.setup>) {
+  /** Pick a Food, weigh it in, and return to the build step. */
+  async function addIngredient(
+    user: ReturnType<typeof userEvent.setup>,
+    name: RegExp,
+    grams: string,
+  ) {
     await user.click(screen.getByRole('button', { name: /add ingredient/i }))
-    await user.click(screen.getByRole('button', { name: /beef mince/i }))
-    await user.type(screen.getByLabelText(/grams/i), '300')
+    await user.click(screen.getByRole('button', { name }))
+    await user.type(screen.getByLabelText(/grams/i), grams)
     await user.click(screen.getByRole('button', { name: /^add$/i }))
+  }
+
+  /** The default first ingredient: Beef mince, 300 g. */
+  async function addBeefMince(user: ReturnType<typeof userEvent.setup>) {
+    await addIngredient(user, /beef mince/i, '300')
   }
 
   it('shows a live Per 100 g result that follows the ingredients and cooked weight', async () => {
@@ -103,10 +112,7 @@ describe('RecipeBuilder', () => {
     expect(screen.getByLabelText(/cooked weight/i)).toHaveDisplayValue('300')
 
     // A second ingredient keeps the field tracking the raw total (300 + 100).
-    await user.click(screen.getByRole('button', { name: /add ingredient/i }))
-    await user.click(screen.getByRole('button', { name: /potato/i }))
-    await user.type(screen.getByLabelText(/grams/i), '100')
-    await user.click(screen.getByRole('button', { name: /^add$/i }))
+    await addIngredient(user, /potato/i, '100')
     expect(screen.getByLabelText(/cooked weight/i)).toHaveDisplayValue('400')
 
     // Once the user sets it, it stops tracking and holds their value.
@@ -117,6 +123,107 @@ describe('RecipeBuilder', () => {
     await vi.waitFor(() =>
       expect(screen.getByLabelText(/cooked weight/i)).toHaveDisplayValue('350'),
     )
+  })
+
+  it('keeps the cooked weight an estimate when the user only tabs past it', async () => {
+    const user = userEvent.setup()
+    await renderSuspended(RecipeBuilder, { props: { foods: sampleFoods } })
+
+    // 305 deliberately sits off the field's 10 g step, so a blur that re-snaps
+    // the value and a blur that merely re-emits it both show up here.
+    await addIngredient(user, /beef mince/i, '305')
+    expect(screen.getByLabelText(/cooked weight/i)).toHaveDisplayValue('305')
+    expect(screen.getByText(/estimated/i)).toBeVisible()
+
+    // Passing through the field on the way to Save is not weighing the dish.
+    await user.click(screen.getByLabelText(/cooked weight/i))
+    await user.tab()
+
+    expect(screen.getByLabelText(/cooked weight/i)).toHaveDisplayValue('305')
+    expect(screen.getByText(/estimated/i)).toBeVisible()
+
+    // Still an estimate, so a further ingredient still moves it (305 + 100).
+    // Were it stuck at 305, the rollup would divide a 405 g dish's calories by
+    // 305 and overstate its per-100 g nutrition by a third.
+    await addIngredient(user, /potato/i, '100')
+
+    expect(screen.getByLabelText(/cooked weight/i)).toHaveDisplayValue('405')
+  })
+
+  it('keeps the cooked weight an estimate when the ingredients sum inexactly', async () => {
+    // 100.1 + 200.2 is 300.29999999999995 in binary floating point, and the
+    // field can only show three decimals — so the figure it hands back on a
+    // blur is not bit-identical to the one it was seeded with. That difference
+    // is invisible to the user and must not read as them weighing the dish.
+    const user = userEvent.setup()
+    await renderSuspended(RecipeBuilder, { props: { foods: sampleFoods } })
+
+    await addIngredient(user, /beef mince/i, '100.1')
+    await addIngredient(user, /potato/i, '200.2')
+    expect(screen.getByLabelText(/cooked weight/i)).toHaveDisplayValue('300.3')
+    expect(screen.getByText(/estimated/i)).toBeVisible()
+
+    await user.click(screen.getByLabelText(/cooked weight/i))
+    await user.tab()
+
+    expect(screen.getByText(/estimated/i)).toBeVisible()
+
+    // Still tracking: reweighing an ingredient moves it (200.1 + 200.2).
+    await user.click(screen.getByRole('button', { name: /beef mince/i }))
+    await user.clear(screen.getByLabelText(/grams/i))
+    await user.type(screen.getByLabelText(/grams/i), '200.1')
+    await user.click(screen.getByRole('button', { name: /update/i }))
+
+    expect(screen.getByLabelText(/cooked weight/i)).toHaveDisplayValue('400.3')
+  })
+
+  it('counts weighing the dish as an edit even when it matches the raw total', async () => {
+    // A dish that loses no water — overnight oats, a shake — weighs what went
+    // into it. The user still weighed it, so the figure stops being an estimate
+    // and must stop tracking; otherwise the next ingredient overwrites the one
+    // number they actually measured.
+    const user = userEvent.setup()
+    await renderSuspended(RecipeBuilder, { props: { foods: sampleFoods } })
+
+    await addBeefMince(user)
+    expect(screen.getByText(/estimated/i)).toBeVisible()
+
+    const cooked = screen.getByLabelText(/cooked weight/i)
+    await user.clear(cooked)
+    await user.type(cooked, '300')
+    await user.tab()
+
+    expect(screen.queryByText(/estimated/i)).not.toBeInTheDocument()
+
+    await addIngredient(user, /potato/i, '100')
+
+    expect(screen.getByLabelText(/cooked weight/i)).toHaveDisplayValue('300')
+  })
+
+  it('records the cooked weight the scales showed, not one rounded to the step', async () => {
+    // The step sizes the arrows for a coarse first guess; the field still has
+    // to hold the real scale weight the help text asks for, because that number
+    // is what re-expresses the conserved total per 100 g (ADR 0019).
+    const onSubmit = vi.fn()
+    const user = userEvent.setup()
+    await renderSuspended(RecipeBuilder, {
+      props: { foods: sampleFoods, onSubmit },
+    })
+
+    await addBeefMince(user)
+    await user.type(screen.getByLabelText(/recipe name/i), 'Cottage pie')
+    const cooked = screen.getByLabelText(/cooked weight/i)
+    await user.clear(cooked)
+    await user.type(cooked, '1234')
+    await user.tab()
+
+    await user.click(screen.getByRole('button', { name: /save recipe/i }))
+
+    expect(onSubmit).toHaveBeenCalledWith({
+      name: 'Cottage pie',
+      cookedWeightG: 1234,
+      ingredients: [{ foodId: 1, grams: 300 }],
+    })
   })
 
   it('edits an ingredient row, reweighing it in place', async () => {

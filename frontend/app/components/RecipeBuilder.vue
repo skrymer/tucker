@@ -80,8 +80,21 @@ function useRecipeDraft() {
     if (!cookedWeightEdited.value)
       form.cookedWeightG = sum > 0 ? sum : undefined
   })
+  // Typing is the signal that the dish was weighed, and it has to be its own
+  // one: a number field commits on blur, so the committed value alone can't
+  // tell a typed weight from a tab-through — and a dish that loses no water
+  // weighs exactly the raw total it was seeded with, so "the value moved" would
+  // miss the very case the help text asks for.
   function markCookedWeightEdited() {
     cookedWeightEdited.value = true
+  }
+  // The blur re-emits whatever the field is showing, touched or not. That is
+  // not an edit when it leaves the weight where it was — treating it as one
+  // would freeze the estimate and roll the recipe up against a stale total.
+  function updateCookedWeight(value: number | undefined) {
+    if (isSameToDisplayedPrecision(value, form.cookedWeightG)) return
+    form.cookedWeightG = value
+    markCookedWeightEdited()
   }
 
   const rollup = computed(() =>
@@ -112,6 +125,7 @@ function useRecipeDraft() {
     rawSumG,
     cookedWeightEdited,
     markCookedWeightEdited,
+    updateCookedWeight,
     rollup,
     addIngredient,
     updateIngredient,
@@ -125,6 +139,7 @@ const {
   rawSumG,
   cookedWeightEdited,
   markCookedWeightEdited,
+  updateCookedWeight,
   rollup,
   addIngredient,
   updateIngredient,
@@ -332,11 +347,13 @@ function onSave() {
         required
       >
         <UInputNumber
-          v-model="form.cookedWeightG"
+          :model-value="form.cookedWeightG"
           :min="0"
           :step="10"
+          :step-snapping="false"
           class="w-full"
-          @update:model-value="markCookedWeightEdited"
+          @input="markCookedWeightEdited"
+          @update:model-value="updateCookedWeight"
         />
         <template #help>
           <span v-if="!cookedWeightEdited">
@@ -460,6 +477,7 @@ function onSave() {
           v-model="gramsState.grams"
           :min="0"
           :step="1"
+          :step-snapping="false"
           class="w-full"
         />
       </UFormField>

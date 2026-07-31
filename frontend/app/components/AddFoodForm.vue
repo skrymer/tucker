@@ -45,42 +45,64 @@ const emit = defineEmits<{
   ]
 }>()
 
-const state = reactive({
-  name: props.initial?.name ?? '',
-  proteinPer100g: props.initial?.proteinPer100g,
-  carbsPer100g: props.initial?.carbsPer100g,
-  fatPer100g: props.initial?.fatPer100g,
-})
+type Macro = 'proteinPer100g' | 'carbsPer100g' | 'fatPer100g'
 
-// A barcode look-up resolves asynchronously and re-seeds the form (ADR 0007).
-// The form is never remounted — it merges into the fields the user hasn't
-// touched, so a slow look-up can't wipe what they typed.
-const touched = reactive({
-  name: false,
-  proteinPer100g: false,
-  carbsPer100g: false,
-  fatPer100g: false,
-})
-function markTouched(field: keyof typeof touched) {
-  touched[field] = true
+/**
+ * The form's fields, and which of them are the user's rather than the seed's.
+ *
+ * A barcode look-up resolves asynchronously and re-seeds the form (ADR 0007).
+ * The form is never remounted — it merges into the fields the user hasn't
+ * touched, so a slow look-up can't wipe what they typed.
+ */
+function useFoodDraft() {
+  const state = reactive({
+    name: props.initial?.name ?? '',
+    proteinPer100g: props.initial?.proteinPer100g,
+    carbsPer100g: props.initial?.carbsPer100g,
+    fatPer100g: props.initial?.fatPer100g,
+  })
+  const touched = reactive({
+    name: false,
+    proteinPer100g: false,
+    carbsPer100g: false,
+    fatPer100g: false,
+  })
+  function markTouched(field: keyof typeof touched) {
+    touched[field] = true
+  }
+  // A number field re-reads its own display on every blur and re-emits the
+  // result even when nothing changed, so `update:model-value` on its own can't
+  // tell a stepper click from a tab-through — and a field wrongly marked here is
+  // skipped by the merge for the rest of the sheet-open. An update that leaves
+  // the value where it was is not an edit, so the macros bind one way and commit
+  // here; typing is carried separately, by the field's own `@input`.
+  function updateMacro(field: Macro, value: number | undefined) {
+    if (isSameToDisplayedPrecision(value, state[field])) return
+    state[field] = value
+    markTouched(field)
+  }
+  // An untouched field mirrors its seed (`initial`) — including when the seed
+  // says nothing. Its value can only have come from a seed (the user's own
+  // values are, by definition, touched), so one the current seed doesn't supply
+  // belongs to a previous one, and leaving it there is how a withdrawn
+  // candidate's name gets saved under the next barcode (issue #180).
+  // Only `name` needs a blank spelled out, because its state is a `string`; an
+  // absent macro is already the `undefined` its own blank is.
+  watch(
+    () => props.initial,
+    (next) => {
+      if (!next) return
+      if (!touched.name) state.name = next.name ?? ''
+      if (!touched.proteinPer100g) state.proteinPer100g = next.proteinPer100g
+      if (!touched.carbsPer100g) state.carbsPer100g = next.carbsPer100g
+      if (!touched.fatPer100g) state.fatPer100g = next.fatPer100g
+    },
+  )
+
+  return { state, markTouched, updateMacro }
 }
-// An untouched field mirrors its seed (`initial`) — including when the seed
-// says nothing. Its value can only have come from a seed (the user's own values
-// are, by definition, touched), so one the current seed doesn't supply belongs
-// to a previous one, and leaving it there is how a withdrawn candidate's name
-// gets saved under the next barcode (issue #180).
-// Only `name` needs a blank spelled out, because its state is a `string`; an
-// absent macro is already the `undefined` its own blank is.
-watch(
-  () => props.initial,
-  (next) => {
-    if (!next) return
-    if (!touched.name) state.name = next.name ?? ''
-    if (!touched.proteinPer100g) state.proteinPer100g = next.proteinPer100g
-    if (!touched.carbsPer100g) state.carbsPer100g = next.carbsPer100g
-    if (!touched.fatPer100g) state.fatPer100g = next.fatPer100g
-  },
-)
+
+const { state, markTouched, updateMacro } = useFoodDraft()
 
 function onSubmit() {
   emit('submit', {
@@ -121,32 +143,35 @@ function onSubmit() {
     <div class="grid grid-cols-3 gap-3">
       <UFormField label="Protein /100g" name="proteinPer100g" required>
         <UInputNumber
-          v-model="state.proteinPer100g"
+          :model-value="state.proteinPer100g"
           :min="0"
           :step="0.1"
+          :step-snapping="false"
           class="w-full"
           @input="markTouched('proteinPer100g')"
-          @update:model-value="markTouched('proteinPer100g')"
+          @update:model-value="updateMacro('proteinPer100g', $event)"
         />
       </UFormField>
       <UFormField label="Carbs /100g" name="carbsPer100g" required>
         <UInputNumber
-          v-model="state.carbsPer100g"
+          :model-value="state.carbsPer100g"
           :min="0"
           :step="0.1"
+          :step-snapping="false"
           class="w-full"
           @input="markTouched('carbsPer100g')"
-          @update:model-value="markTouched('carbsPer100g')"
+          @update:model-value="updateMacro('carbsPer100g', $event)"
         />
       </UFormField>
       <UFormField label="Fat /100g" name="fatPer100g" required>
         <UInputNumber
-          v-model="state.fatPer100g"
+          :model-value="state.fatPer100g"
           :min="0"
           :step="0.1"
+          :step-snapping="false"
           class="w-full"
           @input="markTouched('fatPer100g')"
-          @update:model-value="markTouched('fatPer100g')"
+          @update:model-value="updateMacro('fatPer100g', $event)"
         />
       </UFormField>
     </div>

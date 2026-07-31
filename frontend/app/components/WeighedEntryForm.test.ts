@@ -70,6 +70,28 @@ describe('WeighedEntryForm', () => {
     })
   })
 
+  it('logs a fraction of a gram as weighed', async () => {
+    // Grams are validated as a positive number, not a whole one, so a scale
+    // reading finer than the arrows' step has to reach the API intact.
+    const onSubmit = vi.fn()
+    await renderSuspended(WeighedEntryForm, {
+      props: { date: '2026-05-25', foods: sampleFoods, onSubmit },
+    })
+    const user = userEvent.setup()
+
+    await user.click(screen.getByLabelText('Food'))
+    await user.click(screen.getByRole('option', { name: 'Oats' }))
+
+    await user.type(screen.getByLabelText('Grams'), '12.5')
+    await user.click(screen.getByRole('button', { name: 'Log weighed entry' }))
+
+    expect(onSubmit).toHaveBeenCalledWith({
+      date: '2026-05-25',
+      foodId: 1,
+      grams: 12.5,
+    })
+  })
+
   it('requires a food to be picked', async () => {
     const onSubmit = vi.fn()
     await renderSuspended(WeighedEntryForm, {

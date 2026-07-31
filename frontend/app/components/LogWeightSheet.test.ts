@@ -30,6 +30,26 @@ describe('LogWeightSheet', () => {
     })
   })
 
+  it('saves the weight the scale showed, not one rounded to the step', async () => {
+    // The step sizes the arrows; it is not the precision of a scale. A reading
+    // re-rounded on its way out would feed the smoothed Trend Weight, and
+    // through it every Calorie Budget the weekly review derives.
+    const onSubmit = vi.fn()
+    await renderSuspended(LogWeightSheet, {
+      props: { open: true, date: '2026-05-29', onSubmit },
+    })
+    const user = userEvent.setup()
+
+    await user.type(screen.getByLabelText(/weight \(kg\)/i), '82.35')
+    await user.click(screen.getByRole('button', { name: /save weight/i }))
+
+    expect(screen.getByLabelText(/weight \(kg\)/i)).toHaveDisplayValue('82.35')
+    expect(onSubmit).toHaveBeenCalledWith({
+      date: '2026-05-29',
+      weightKg: 82.35,
+    })
+  })
+
   it('shows the "enter weight" message when the form is submitted empty', async () => {
     const onSubmit = vi.fn()
     await renderSuspended(LogWeightSheet, {

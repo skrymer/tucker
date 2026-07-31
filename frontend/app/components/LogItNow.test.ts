@@ -39,6 +39,22 @@ describe('LogItNow', () => {
     expect(onLog).toHaveBeenCalledWith({ foodId: 42, grams: 150 })
   })
 
+  it('logs a fraction of a gram as weighed', async () => {
+    // Grams are validated as a positive number, not a whole one, so a scale
+    // reading finer than the arrows' step has to survive the field.
+    const onLog = vi.fn()
+    await renderSuspended(LogItNow, {
+      props: { food, origin: 'created', onLog },
+    })
+    const user = userEvent.setup()
+
+    await user.click(screen.getByLabelText(/grams/i))
+    await user.keyboard('12.5')
+    await user.click(screen.getByRole('button', { name: /log it now/i }))
+
+    expect(onLog).toHaveBeenCalledWith({ foodId: 42, grams: 12.5 })
+  })
+
   it('never logs automatically — logging waits for the user', async () => {
     const onLog = vi.fn()
     await renderSuspended(LogItNow, {
