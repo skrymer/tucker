@@ -48,7 +48,7 @@ function onSubmit() {
     />
 
     <UFormField label="Grams" name="grams" required>
-      <AppNumberInput v-model="state.grams" :step="1" class="w-full" />
+      <NumberField v-model="state.grams" :step="1" class="w-full" />
     </UFormField>
 
     <UButton type="submit" color="primary" class="w-full"> Log it now </UButton>

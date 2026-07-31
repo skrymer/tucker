@@ -71,15 +71,11 @@ function onSubmit() {
       :error="props.targetError"
       required
     >
-      <AppNumberInput
-        v-model="state.targetWeightKg"
-        :step="0.1"
-        class="w-full"
-      />
+      <NumberField v-model="state.targetWeightKg" :step="0.1" class="w-full" />
     </UFormField>
 
     <UFormField label="Rate (kg/week)" name="rateKgPerWeek" required>
-      <AppNumberInput
+      <NumberField
         v-model="state.rateKgPerWeek"
         :min="0"
         :step="0.05"

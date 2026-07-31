@@ -54,7 +54,7 @@ function onSubmit() {
       @submit="onSubmit"
     >
       <UFormField label="Weight (g)" name="grams" required>
-        <AppNumberInput
+        <NumberField
           v-model="state.grams"
           :autofocus="isDesktop"
           :step="1"

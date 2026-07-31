@@ -2,15 +2,15 @@ import { describe, expect, it, vi } from 'vitest'
 import { renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
-import AppNumberInput from './AppNumberInput.vue'
+import NumberField from './NumberField.vue'
 
-describe('AppNumberInput', () => {
+describe('NumberField', () => {
   it('keeps a figure finer than the step when the field commits', async () => {
     // The whole reason this component exists: the step sizes the arrows, it is
     // not the precision of what is being entered. Left to itself the field
     // re-reads its own display on blur and snaps the result to the step.
     const user = userEvent.setup()
-    await renderSuspended(AppNumberInput, {
+    await renderSuspended(NumberField, {
       attrs: { 'aria-label': 'Grams', step: 10 },
     })
 
@@ -23,7 +23,7 @@ describe('AppNumberInput', () => {
   it('carries the value back out as the field is edited', async () => {
     const onUpdate = vi.fn()
     const user = userEvent.setup()
-    await renderSuspended(AppNumberInput, {
+    await renderSuspended(NumberField, {
       attrs: {
         'aria-label': 'Grams',
         step: 10,
@@ -41,7 +41,7 @@ describe('AppNumberInput', () => {
     // The component sets a default, not a law — an explicit prop still wins,
     // the same way Nuxt UI resolves its own.
     const user = userEvent.setup()
-    await renderSuspended(AppNumberInput, {
+    await renderSuspended(NumberField, {
       attrs: { 'aria-label': 'Grams', step: 10, stepSnapping: true },
     })
 

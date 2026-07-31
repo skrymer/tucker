@@ -142,7 +142,7 @@ function onSubmit() {
 
     <div class="grid grid-cols-3 gap-3">
       <UFormField label="Protein /100g" name="proteinPer100g" required>
-        <AppNumberInput
+        <NumberField
           :model-value="state.proteinPer100g"
           :min="0"
           :step="0.1"
@@ -152,7 +152,7 @@ function onSubmit() {
         />
       </UFormField>
       <UFormField label="Carbs /100g" name="carbsPer100g" required>
-        <AppNumberInput
+        <NumberField
           :model-value="state.carbsPer100g"
           :min="0"
           :step="0.1"
@@ -162,7 +162,7 @@ function onSubmit() {
         />
       </UFormField>
       <UFormField label="Fat /100g" name="fatPer100g" required>
-        <AppNumberInput
+        <NumberField
           :model-value="state.fatPer100g"
           :min="0"
           :step="0.1"

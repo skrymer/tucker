@@ -346,7 +346,7 @@ function onSave() {
         :hint="cookedWeightEdited ? undefined : 'estimated'"
         required
       >
-        <AppNumberInput
+        <NumberField
           :model-value="form.cookedWeightG"
           :min="0"
           :step="10"
@@ -472,7 +472,7 @@ function onSave() {
       <p class="font-medium text-default">{{ pickedFood?.name }}</p>
 
       <UFormField label="Grams" name="grams" required>
-        <AppNumberInput
+        <NumberField
           v-model="gramsState.grams"
           :min="0"
           :step="1"
