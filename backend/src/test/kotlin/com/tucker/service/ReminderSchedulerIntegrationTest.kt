@@ -28,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
 import java.time.LocalDate
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 /**
  * Drives the [ReminderScheduler] glue end-to-end against real repositories, with
@@ -112,14 +113,20 @@ class ReminderSchedulerIntegrationTest {
     }
 
     @Test
-    fun `sends a reminder a tap on which lands on Tucker's Today screen`() {
+    fun `sends the nudge text alone, naming no screen for a tap to land on`() {
         seedEligible()
 
         scheduler.runTick(now)
 
         // Parsed rather than pattern-matched because that is how the service worker
-        // reads it (`event.data.json()`) — issue #178.
-        assertEquals("/", objectMapper.readTree(sender.sentPayloads.single()).path("url").asText())
+        // reads it (`event.data.json()`), and PAYLOAD is hand-concatenated JSON.
+        val payload = objectMapper.readTree(sender.sentPayloads.single())
+        // Exactly what the worker renders, and nothing more: a route belongs to the
+        // frontend's table beside the nav, and the backend's copy of one is what went
+        // stale for months until a tap 404'd (issue #178).
+        assertEquals(setOf("title", "body"), payload.fieldNames().asSequence().toSet())
+        assertTrue(payload.path("title").asText().isNotBlank())
+        assertTrue(payload.path("body").asText().isNotBlank())
     }
 
     @Test
