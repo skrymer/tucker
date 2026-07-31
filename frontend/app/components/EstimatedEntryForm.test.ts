@@ -39,6 +39,30 @@ describe('EstimatedEntryForm', () => {
     })
   })
 
+  it('logs a fractional estimate as entered', async () => {
+    // The step sizes the arrows; the schema asks only for a number, so a
+    // half-figure carried over from a label or a split portion stands.
+    const onSubmit = vi.fn()
+    await renderSuspended(EstimatedEntryForm, {
+      props: { date: '2026-05-24', onSubmit },
+    })
+    const user = userEvent.setup()
+
+    await user.type(screen.getByLabelText('Label'), 'Half a pastry')
+    await user.type(screen.getByLabelText('Calories'), '212.5')
+    await user.type(screen.getByLabelText(/protein/i), '3.5')
+    await user.click(
+      screen.getByRole('button', { name: 'Log estimated entry' }),
+    )
+
+    expect(onSubmit).toHaveBeenCalledWith({
+      date: '2026-05-24',
+      label: 'Half a pastry',
+      calories: 212.5,
+      protein: 3.5,
+    })
+  })
+
   it('warns and relabels the action to "Log anyway" when the entry would exceed the budget', async () => {
     await renderSuspended(EstimatedEntryForm, {
       props: {

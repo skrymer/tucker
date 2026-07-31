@@ -4,6 +4,26 @@ import { screen } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import AddFoodForm from './AddFoodForm.vue'
 
+// The corrected scan the dirty-tracking tests rerender with. It is the same
+// every time, so each test differs only in what it seeded first.
+const peanutButterCandidate = {
+  name: 'Peanut Butter',
+  barcode: '5707777777777',
+  proteinPer100g: 25,
+  carbsPer100g: 12,
+  fatPer100g: 50,
+}
+
+// A candidate whose macros carry finer figures than the step — the decimals a
+// bare tab-through used to round away.
+const highPrecisionCandidate = {
+  name: 'Skyr Natural',
+  barcode: '5701234567890',
+  proteinPer100g: 10.34,
+  carbsPer100g: 8.57,
+  fatPer100g: 0.23,
+}
+
 describe('AddFoodForm', () => {
   it('shows fields for name and the three macros, with a save button', async () => {
     await renderSuspended(AddFoodForm)
@@ -195,20 +215,158 @@ describe('AddFoodForm', () => {
       },
     })
 
-    await rerender({
-      initial: {
-        name: 'Peanut Butter',
-        barcode: '5707777777777',
-        proteinPer100g: 25,
-        carbsPer100g: 12,
-        fatPer100g: 50,
-      },
-    })
+    await rerender({ initial: peanutButterCandidate })
 
     expect(screen.getByLabelText(/^name$/i)).toHaveValue('Peanut Butter')
     expect(screen.getByLabelText(/protein \/100\s*g/i)).toHaveDisplayValue('25')
     expect(screen.getByLabelText(/carbs \/100\s*g/i)).toHaveDisplayValue('12')
     expect(screen.getByLabelText(/fat \/100\s*g/i)).toHaveDisplayValue('50')
+  })
+
+  it('saves a candidate macro at the precision the provider gave it', async () => {
+    // Reaching Save by keyboard means tabbing through all three macro fields,
+    // and a number field re-reads its own display on every blur — typed into or
+    // not. With the step doing double duty as a quantum, that bare pass rounds
+    // 8.57 to 8.6 and stores a figure no provider ever stated (ADR 0006).
+    const onSubmit = vi.fn()
+    const user = userEvent.setup()
+    await renderSuspended(AddFoodForm, {
+      props: {
+        onSubmit,
+        initial: highPrecisionCandidate,
+      },
+    })
+
+    await user.click(screen.getByLabelText(/protein \/100\s*g/i))
+    await user.tab()
+    await user.tab()
+    await user.tab()
+
+    expect(screen.getByLabelText(/protein \/100\s*g/i)).toHaveDisplayValue(
+      '10.34',
+    )
+    expect(screen.getByLabelText(/carbs \/100\s*g/i)).toHaveDisplayValue('8.57')
+    expect(screen.getByLabelText(/fat \/100\s*g/i)).toHaveDisplayValue('0.23')
+
+    await user.click(screen.getByRole('button', { name: /save food/i }))
+
+    expect(onSubmit).toHaveBeenCalledWith({
+      name: 'Skyr Natural',
+      barcode: '5701234567890',
+      proteinPer100g: 10.34,
+      carbsPer100g: 8.57,
+      fatPer100g: 0.23,
+    })
+  })
+
+  it('lets a later candidate replace a macro the user only tabbed past', async () => {
+    // Passing through a field is not editing it. If a bare blur marks it
+    // touched, the merge skips it for the rest of the sheet-open (ADR 0007) —
+    // so scanning a corrected barcode would keep the first product's macro
+    // under the second product's code.
+    const user = userEvent.setup()
+    const { rerender } = await renderSuspended(AddFoodForm, {
+      props: { initial: highPrecisionCandidate },
+    })
+
+    await user.click(screen.getByLabelText(/carbs \/100\s*g/i))
+    await user.tab()
+
+    await rerender({ initial: peanutButterCandidate })
+
+    expect(screen.getByLabelText(/carbs \/100\s*g/i)).toHaveDisplayValue('12')
+    expect(screen.getByLabelText(/^name$/i)).toHaveValue('Peanut Butter')
+    expect(screen.getByLabelText(/protein \/100\s*g/i)).toHaveDisplayValue('25')
+    expect(screen.getByLabelText(/fat \/100\s*g/i)).toHaveDisplayValue('50')
+  })
+
+  it('lets a later candidate replace a macro carrying more precision than the field shows', async () => {
+    // Providers publish per-100 g figures computed from a serving size, so a
+    // macro can arrive with more decimals than the field can render. The field
+    // hands its rounded display back on every blur; treating that as an edit
+    // would freeze the field against the next barcode.
+    const user = userEvent.setup()
+    const { rerender } = await renderSuspended(AddFoodForm, {
+      props: {
+        initial: {
+          name: 'Skyr Natural',
+          barcode: '5701234567890',
+          proteinPer100g: 8.928571428571429,
+          carbsPer100g: 4,
+          fatPer100g: 0.2,
+        },
+      },
+    })
+
+    expect(screen.getByLabelText(/protein \/100\s*g/i)).toHaveDisplayValue(
+      '8.929',
+    )
+
+    await user.click(screen.getByLabelText(/protein \/100\s*g/i))
+    await user.tab()
+
+    await rerender({ initial: peanutButterCandidate })
+
+    expect(screen.getByLabelText(/protein \/100\s*g/i)).toHaveDisplayValue('25')
+  })
+
+  it('keeps a macro the user nudged with the arrow keys', async () => {
+    // Arrow keys and the +/- steppers change the value without a keystroke, so
+    // they never reach the typing listener — the commit is the only place that
+    // can tell they happened, and a nudged macro is just as edited as a typed
+    // one.
+    const user = userEvent.setup()
+    const { rerender } = await renderSuspended(AddFoodForm, {
+      props: {
+        initial: {
+          name: 'Skyr Natural',
+          barcode: '5701234567890',
+          proteinPer100g: 10.3,
+          carbsPer100g: 4,
+          fatPer100g: 0.2,
+        },
+      },
+    })
+
+    await user.click(screen.getByLabelText(/protein \/100\s*g/i))
+    await user.keyboard('{ArrowUp}')
+    expect(screen.getByLabelText(/protein \/100\s*g/i)).toHaveDisplayValue(
+      '10.4',
+    )
+
+    await rerender({ initial: peanutButterCandidate })
+
+    // The nudge wins; the untouched macros still take the new candidate.
+    expect(screen.getByLabelText(/protein \/100\s*g/i)).toHaveDisplayValue(
+      '10.4',
+    )
+    expect(screen.getByLabelText(/carbs \/100\s*g/i)).toHaveDisplayValue('12')
+  })
+
+  it('takes a candidate that lands while the user is resting in a macro field', async () => {
+    // Focus is not an edit. A look-up can resolve while the cursor sits in a
+    // field the user never typed into — leaving on it must not commit the old
+    // figure back over the seed that arrived underneath.
+    const user = userEvent.setup()
+    const { rerender } = await renderSuspended(AddFoodForm, {
+      props: {
+        initial: {
+          name: 'Skyr Natural',
+          barcode: '5701234567890',
+          proteinPer100g: 10.3,
+          carbsPer100g: 4,
+          fatPer100g: 0.2,
+        },
+      },
+    })
+
+    await user.click(screen.getByLabelText(/protein \/100\s*g/i))
+
+    await rerender({ initial: peanutButterCandidate })
+
+    await user.tab()
+
+    expect(screen.getByLabelText(/protein \/100\s*g/i)).toHaveDisplayValue('25')
   })
 
   it('shows the provider stated energy as a cross-check', async () => {

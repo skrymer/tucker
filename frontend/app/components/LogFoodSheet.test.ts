@@ -66,6 +66,19 @@ describe('LogFoodSheet', () => {
     expect(onLog).toHaveBeenCalledWith({ foodId: 1, grams: 150 })
   })
 
+  it('logs a fraction of a gram as weighed', async () => {
+    // Grams are validated as a positive number, not a whole one, so a scale
+    // reading finer than the arrows' step has to survive the field.
+    const onLog = vi.fn()
+    await renderSuspended(LogFoodSheet, { props: { food: skyr, onLog } })
+    const user = userEvent.setup()
+
+    await user.type(screen.getByLabelText(/weight \(g\)/i), '12.5')
+    await user.click(screen.getByRole('button', { name: /log entry/i }))
+
+    expect(onLog).toHaveBeenCalledWith({ foodId: 1, grams: 12.5 })
+  })
+
   it('shows the "enter weight" message when the form is submitted empty', async () => {
     const onLog = vi.fn()
     await renderSuspended(LogFoodSheet, { props: { food: skyr, onLog } })
