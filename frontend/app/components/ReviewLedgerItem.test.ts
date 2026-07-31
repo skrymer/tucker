@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen } from '@testing-library/vue'
 import type { components } from '#open-fetch-schemas/api'
-import { toLedgerRows } from '~/utils/reviewLedger'
+import { toLedgerRows, type LedgerRow } from '~/utils/reviewLedger'
 import ReviewLedgerItem from './ReviewLedgerItem.vue'
 
 type WeeklyReview = components['schemas']['WeeklyReviewResponse']
@@ -24,11 +24,14 @@ function review(overrides: Partial<WeeklyReview> = {}): WeeklyReview {
 function rows(
   latest: Partial<WeeklyReview> = {},
   seed: Partial<WeeklyReview> = {},
-) {
+): [LedgerRow, LedgerRow] {
+  // toLedgerRows emits one row per review, so a two-review history is always a
+  // pair — stated as a tuple here so each test can take a row without having to
+  // re-establish that at every call site.
   return toLedgerRows([
     review({ id: 1, reviewedOn: '2026-06-01', ...seed }),
     review({ id: 2, ...latest }),
-  ])
+  ]) as [LedgerRow, LedgerRow]
 }
 
 describe('ReviewLedgerItem', () => {

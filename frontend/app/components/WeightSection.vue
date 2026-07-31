@@ -47,7 +47,11 @@ const { latest, previous } = useLatestReading()
         v-if="!props.disabled"
         icon="i-lucide-plus"
         color="primary"
-        @click="open = true"
+        @click="
+          () => {
+            open = true
+          }
+        "
       >
         Add weight
       </UButton>

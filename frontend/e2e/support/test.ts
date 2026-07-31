@@ -8,6 +8,9 @@ import { assertNoPageErrors, MOCKED_E2E_NOISE } from './console-guard'
  * mocked suite never asserted on before (#85). Known-benign noise is allowlisted
  * in `console-guard.ts`.
  */
+// `void` is Playwright's declared type for a fixture that yields no value —
+// the framework's own idiom, not a misused void.
+// eslint-disable-next-line @typescript-eslint/no-invalid-void-type
 export const test = base.extend<{ noPageErrors: void }>({
   noPageErrors: [
     ({ page }, use) => assertNoPageErrors(page, use, MOCKED_E2E_NOISE),

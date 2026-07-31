@@ -68,7 +68,9 @@ const { execute: switchToMaintenance } = useApiMutation(
     }),
   {
     errorTitle: 'Could not switch to maintenance',
-    onSuccess: () => Promise.all([refresh(), refreshGoalProgress()]),
+    onSuccess: async () => {
+      await Promise.all([refresh(), refreshGoalProgress()])
+    },
   },
 )
 
@@ -117,7 +119,11 @@ const { logWeight } = useWeightLogging({ today, onSaved: onWeightSaved })
         v-if="isDesktop"
         icon="i-lucide-plus"
         color="primary"
-        @click="logEntryOpen = true"
+        @click="
+          () => {
+            logEntryOpen = true
+          }
+        "
       >
         Log entry
       </UButton>
@@ -173,7 +179,11 @@ const { logWeight } = useWeightLogging({ today, onSaved: onWeightSaved })
       aria-label="Log entry"
       class="fixed right-4 bottom-[calc(5rem+env(safe-area-inset-bottom))] size-14 rounded-full shadow-lg"
       :ui="{ base: 'justify-center' }"
-      @click="logEntryOpen = true"
+      @click="
+        () => {
+          logEntryOpen = true
+        }
+      "
     />
 
     <LogEntrySheet

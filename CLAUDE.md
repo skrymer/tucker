@@ -61,13 +61,22 @@ Frontend commands (run in `frontend/`, package manager is pnpm):
   One-time setup: `docker compose build backend` from the repo root.
 - `pnpm lint` / `pnpm lint:fix` — ESLint (`@nuxt/eslint`)
 - `pnpm format` / `pnpm format:check` — Prettier
+- `pnpm typecheck` — `nuxt typecheck` (vue-tsc) over the whole program
 
 Continuous integration — every pull request runs `.github/workflows/ci.yml`:
 the backend `./gradlew detekt` + `./gradlew build`, the frontend ESLint +
-Vitest + mocked Playwright suite, and a real-stack `e2e` job that builds the
-backend Docker image once and runs both the backend Testcontainers e2e
-(`./gradlew e2eTest`) and the frontend smokes (`pnpm test:smoke`) against it.
-Detekt and ESLint failures fail the build.
+typecheck + Vitest + mocked Playwright suite, and a real-stack `e2e` job that
+builds the backend Docker image once and runs both the backend Testcontainers
+e2e (`./gradlew e2eTest`) and the frontend smokes (`pnpm test:smoke`) against
+it. Detekt, ESLint, and typecheck failures fail the build.
+
+`pnpm typecheck` is CI-only and deliberately **not** in the pre-commit hook
+(issue #200). Not for speed — it runs in ~5s, comparable to ESLint — but
+because it is whole-program by nature while the hook is staged-file scoped via
+`lint-staged`. A type error usually lands in a *different* file from the one
+edited (change a component's props, break its test), so a staged-file check
+can't express it, and a whole-program check would block committing in-progress
+work over errors elsewhere in the tree. CI is where the guarantee has to hold.
 
 **PR walk-through gate.** Before a PR can be merged, drive a feature
 walk-through in a real browser using the `claude-in-chrome` MCP tools —

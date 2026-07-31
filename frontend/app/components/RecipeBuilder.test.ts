@@ -2,18 +2,12 @@ import { describe, expect, it, vi } from 'vitest'
 import { renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen, within } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
+import type { components } from '#open-fetch-schemas/api'
 import RecipeBuilder from './RecipeBuilder.vue'
 
-type Food = {
-  id: number
-  name: string
-  kind: string
-  caloriesPer100g: number
-  proteinPer100g: number
-  carbsPer100g: number | null
-  fatPer100g: number | null
-  cookedWeightG: number | null
-}
+// The catalog shape the component actually receives, rather than a hand-rolled
+// copy that can drift from it.
+type Food = components['schemas']['FoodResponse']
 
 function food(partial: Partial<Food> & { id: number; name: string }): Food {
   return {
@@ -22,15 +16,23 @@ function food(partial: Partial<Food> & { id: number; name: string }): Food {
     proteinPer100g: 10,
     carbsPer100g: 0,
     fatPer100g: 0,
-    cookedWeightG: null,
     ...partial,
   }
 }
 
-const sampleFoods: Food[] = [
-  food({ id: 1, name: 'Beef mince', caloriesPer100g: 170, proteinPer100g: 20 }),
-  food({ id: 2, name: 'Potato', caloriesPer100g: 77, proteinPer100g: 2 }),
-]
+const beefMince = food({
+  id: 1,
+  name: 'Beef mince',
+  caloriesPer100g: 170,
+  proteinPer100g: 20,
+})
+const potato = food({
+  id: 2,
+  name: 'Potato',
+  caloriesPer100g: 77,
+  proteinPer100g: 2,
+})
+const sampleFoods: Food[] = [beefMince, potato]
 
 describe('RecipeBuilder', () => {
   it('opens on the build step with a recipe name field and a way to add ingredients', async () => {
@@ -215,7 +217,7 @@ describe('RecipeBuilder', () => {
         initial: {
           name: 'Cottage pie',
           cookedWeightG: 200,
-          ingredients: [{ food: sampleFoods[0], grams: 300 }],
+          ingredients: [{ food: beefMince, grams: 300 }],
         },
       },
     })
@@ -242,7 +244,7 @@ describe('RecipeBuilder', () => {
         initial: {
           name: 'Cottage pie',
           cookedWeightG: 200,
-          ingredients: [{ food: sampleFoods[0], grams: 300 }],
+          ingredients: [{ food: beefMince, grams: 300 }],
         },
         onSubmit,
       },
@@ -262,7 +264,8 @@ describe('RecipeBuilder', () => {
     const onCreateFood = vi.fn()
     const user = userEvent.setup()
     const { rerender } = await renderSuspended(RecipeBuilder, {
-      props: { foods: sampleFoods, onCreateFood },
+      // Keyed to the emit name (`create-food`), not its camelCase form.
+      props: { foods: sampleFoods, 'onCreate-food': onCreateFood },
     })
 
     await user.click(screen.getByRole('button', { name: /add ingredient/i }))

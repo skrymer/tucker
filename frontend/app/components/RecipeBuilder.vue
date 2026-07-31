@@ -472,7 +472,11 @@ function onSave() {
           size="sm"
           color="neutral"
           variant="subtle"
-          @click="gramsState.grams = preset"
+          @click="
+            () => {
+              gramsState.grams = preset
+            }
+          "
         >
           {{ preset }} g
         </UButton>

@@ -1,5 +1,6 @@
 // Bundled as a same-origin asset rather than left to zxing-wasm's CDN default.
 import zxingReaderWasmUrl from 'zxing-wasm/reader/zxing_reader.wasm?url'
+import type { ReaderOptions } from 'zxing-wasm/reader'
 
 export type ScannerState =
   | 'idle'
@@ -72,7 +73,12 @@ export function useBarcodeScanner() {
   // Narrowing the format set keeps the per-frame decode cheap enough to afford
   // tryHarder, which is what actually reads a code held at an angle or wrapped
   // around a curved package (a flat, head-on label decodes either way).
-  const READER_OPTIONS = {
+  // Typed against ReaderOptions rather than `as const`: the readonly tuple an
+  // `as const` produced wasn't assignable to the mutable `formats` the decoder
+  // takes, and — more usefully — this checks each name against zxing's format
+  // union, so a typo is a compile error instead of a format that silently
+  // never decodes.
+  const READER_OPTIONS: ReaderOptions = {
     formats: [
       'EAN-13',
       'EAN-8',
@@ -85,7 +91,7 @@ export function useBarcodeScanner() {
       'DataMatrix',
     ],
     tryHarder: true,
-  } as const
+  }
 
   async function decodeFrame() {
     if (!readBarcodes || decoding) return

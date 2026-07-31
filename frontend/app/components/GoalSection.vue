@@ -70,7 +70,11 @@ function handleSubmit(payload: GoalPayload) {
         v-if="!props.disabled && activeGoal && !formOpen"
         icon="i-lucide-target"
         color="primary"
-        @click="formOpen = true"
+        @click="
+          () => {
+            formOpen = true
+          }
+        "
       >
         Set a new goal
       </UButton>
