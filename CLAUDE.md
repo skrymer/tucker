@@ -214,11 +214,15 @@ The frontend is built **test-first (red-green TDD)**. Increments:
     breakfast land at 23:00. Alongside: an undecodable key is `GONE` (prune) rather
     than retried forever, every send is time-bounded, and the last-seen stamp moved to
     after a *successful* summary read. Reasoning in ADR 0010, "Clocks the rule has to
-    survive"; the two gaps it exposed but does not close are
+    survive"; of the two gaps it exposed but does not close,
+    [#193](https://github.com/skrymer/tucker/issues/193) is now fixed — the transport
+    built a fresh HTTP client per send and closed it from a callback that ran on the
+    reactor thread and joined itself, so a *refused* connect stranded that client and
+    its `availableProcessors + 1` threads for the life of the process. The sender now
+    owns one client, posting the library's own `preparePost` request on it, so the
+    per-send close that deadlocked is gone rather than guarded. Still open:
     [#192](https://github.com/skrymer/tucker/issues/192) (only `/` and `/check`
-    advance the cadence) and
-    [#193](https://github.com/skrymer/tucker/issues/193) (web-push leaks a client on
-    a refused connection).
+    advance the cadence).
 
   With slices 1–3 shipped, F6's installable-PWA + web-push reminder is **complete**.
   The Nuxt frontend is **deployed** ([#88](https://github.com/skrymer/tucker/issues/88)

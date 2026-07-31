@@ -3,11 +3,15 @@ package com.tucker.persistence
 import com.tucker.domain.PushSubscription
 import com.tucker.domain.SendResult
 import com.tucker.domain.WebPushSender
+import jakarta.annotation.PreDestroy
 import nl.martijndwars.webpush.Encoding
 import nl.martijndwars.webpush.Notification
 import nl.martijndwars.webpush.PushService
 import nl.martijndwars.webpush.Utils
 import org.apache.http.HttpResponse
+import org.apache.http.impl.nio.client.CloseableHttpAsyncClient
+import org.apache.http.impl.nio.client.HttpAsyncClients
+import org.apache.http.impl.nio.reactor.IOReactorConfig
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.slf4j.LoggerFactory
 import org.springframework.context.annotation.Profile
@@ -27,8 +31,9 @@ import java.util.concurrent.TimeUnit
  * (ADR 0013), so what happens *across* that boundary is not specified here: the
  * status→[SendResult] mapping is the deep bit and is tested in `SendResultTest`, and
  * the scheduler glue around it is driven by the integration test and the real-stack
- * smoke. The one behaviour that never reaches the wire — rejecting a subscription
- * whose keys will not decode — is pinned in `MartijndwarsWebPushSenderTest`.
+ * smoke. What `MartijndwarsWebPushSenderTest` does pin is the part that is ours
+ * either way: rejecting a subscription whose keys will not decode, which never
+ * reaches the wire, and still releasing everything a send that never arrives took.
  *
  * Excluded from the `smoke` profile, where a recording fake stands in (the smoke
  * has no real push service to talk to, the same reason its browser stub fakes
@@ -41,6 +46,71 @@ class MartijndwarsWebPushSender(private val vapidKeys: VapidKeyStore) : WebPushS
     // Built once, lazily: the keypair is stable, and deferring construction keeps
     // context startup free of crypto work (and never fails it).
     private val pushService by lazy { buildPushService() }
+
+    /**
+     * The HTTP transport, owned here rather than by the library, and kept across sends
+     * instead of built for each one.
+     *
+     * `PushService.sendAsync` builds a *fresh* client per call and closes it again from
+     * its own completion callback — a close that runs on the reactor thread and ends in
+     * `reactorThread.join()`, joining itself. On a refused connect that join never
+     * returns, so the client is never closed and its reactor (`availableProcessors + 1`
+     * threads, plus a socket) is stranded for the life of the process. Owning one client
+     * removes the per-send close entirely, so there is nothing left to deadlock.
+     *
+     * Built on first send, so a sender that never sends never starts a reactor at all,
+     * and rebuilt if that reactor dies — see [transport].
+     */
+    private var transport: CloseableHttpAsyncClient? = null
+
+    /**
+     * The live transport, started and ready.
+     *
+     * Rebuilt when the previous one has stopped, which is the price of holding a client
+     * across sends: an exception escaping the I/O reactor kills the worker and leaves
+     * the client `STOPPED` for good — nothing restarts it, and `execute` answers every
+     * later send with a cancellation. Discarding a client per send used to make that
+     * self-healing by accident; without this it would be an hourly WARN and no reminder
+     * to any device until someone restarted the app, which is the outage ADR 0010 set
+     * out to avoid. Rare enough to log at ERROR when it happens.
+     *
+     * One dispatcher, because this client now outlives the sends instead of being
+     * discarded with each one: the default sizes the reactor at `availableProcessors`,
+     * which would park a thread per core for the life of the app to serve a tick that
+     * sends to one device at a time. A dispatcher multiplexes, so this bounds resident
+     * threads, not concurrent requests.
+     *
+     * [CONNECTION_TTL] because a pooled connection otherwise has no expiry, and one
+     * left over from the previous tick is an hour stale — long since dropped at the far
+     * end, but only *known* closed once the reactor has read the FIN, so it can be
+     * handed out and fail the send. Shorter than the gap between ticks and longer than
+     * one tick's burst, so reuse still pays across the devices of a single run.
+     *
+     * System properties stay honoured — push endpoints are third-party hosts, and that
+     * is what reads any proxy and trust-store settings.
+     */
+    private fun transport(): CloseableHttpAsyncClient = synchronized(this) {
+        transport?.let { existing ->
+            if (existing.isRunning) return@synchronized existing
+            log.error("Web Push transport stopped; rebuilding it for endpoint delivery")
+            existing.close()
+        }
+        HttpAsyncClients.custom()
+            .useSystemProperties()
+            .setDefaultIOReactorConfig(IOReactorConfig.custom().setIoThreadCount(1).build())
+            .setConnectionTimeToLive(CONNECTION_TTL.toSeconds(), TimeUnit.SECONDS)
+            .build()
+            .also {
+                it.start()
+                transport = it
+            }
+    }
+
+    @PreDestroy
+    fun shutdown() = synchronized(this) {
+        transport?.close()
+        transport = null
+    }
 
     // The two halves are caught apart because they fail for unrelated reasons and
     // deserve opposite answers: building the notification decodes *this device's*
@@ -91,20 +161,16 @@ class MartijndwarsWebPushSender(private val vapidKeys: VapidKeyStore) : WebPushS
      * Spring's single-threaded scheduler: a push endpoint that accepts the connection
      * and then says nothing would hold that thread forever, taking down every future
      * reminder with it, for every device, until the app is restarted. So the wait is
-     * the bound, and cancelling releases the connection (the library's own callback
-     * closes its client on cancellation as well as on completion).
+     * the bound, and cancelling releases the connection.
      *
-     * A timed-out device costs a little more than [SEND_TIMEOUT], because that close
-     * runs here rather than on the reactor and waits on the connection pool — call it
-     * a couple of seconds on top. Immaterial against an hourly tick over a handful of
-     * devices, but the bound is an order of magnitude, not a promise.
-     *
-     * The encoding is passed explicitly because `sendAsync`'s default differs from the
-     * `send` this replaces — the bound is the only change intended here.
+     * Only the *request* comes from the library ([PushService.preparePost] is what
+     * `sendAsync` itself posts, so the bytes on the wire are unchanged); it goes out on
+     * the client [transport] owns. The encoding stays explicit — real devices are
+     * subscribed under `AESGCM`, and a device sent a different one fails silently
+     * rather than erroring anywhere we would see it.
      */
-    @Suppress("DEPRECATION") // sendAsync is the only bounded way in; its successor swaps HTTP clients
     private fun post(notification: Notification): HttpResponse {
-        val pending = pushService.sendAsync(notification, Encoding.AESGCM)
+        val pending = transport().execute(pushService.preparePost(notification, Encoding.AESGCM), null)
         try {
             return pending.get(SEND_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS)
         } finally {
@@ -134,6 +200,9 @@ class MartijndwarsWebPushSender(private val vapidKeys: VapidKeyStore) : WebPushS
          * time to spare.
          */
         val SEND_TIMEOUT: Duration = Duration.ofSeconds(10)
+
+        /** How long a pooled connection may be reused before it is retired. */
+        val CONNECTION_TTL: Duration = Duration.ofMinutes(1)
 
         init {
             // web-push signs/encrypts with BouncyCastle; register it once.
