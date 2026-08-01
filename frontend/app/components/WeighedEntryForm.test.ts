@@ -2,23 +2,17 @@ import { describe, expect, it, vi } from 'vitest'
 import { renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
+import { food } from '~~/test/food-fixtures'
 import WeighedEntryForm from './WeighedEntryForm.vue'
 
 const sampleFoods = [
-  {
-    id: 1,
-    name: 'Oats',
-    kind: 'raw',
-    caloriesPer100g: 380,
-    proteinPer100g: 13,
-  },
-  {
+  food({ id: 1, name: 'Oats', caloriesPer100g: 380, proteinPer100g: 13 }),
+  food({
     id: 2,
     name: 'Chicken breast',
-    kind: 'raw',
     caloriesPer100g: 165,
     proteinPer100g: 31,
-  },
+  }),
 ]
 
 describe('WeighedEntryForm', () => {

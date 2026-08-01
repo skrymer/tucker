@@ -1,25 +1,14 @@
 import { expect, test } from './support/test'
 import { mockFoods } from './support/mock-api'
+import { food } from '../test/food-fixtures'
 
 test('the Foods page shows the catalog from the API', async ({
   page,
   goto,
 }) => {
   await mockFoods(page, [
-    {
-      id: 1,
-      name: 'Oats',
-      kind: 'raw',
-      caloriesPer100g: 380,
-      proteinPer100g: 13,
-    },
-    {
-      id: 2,
-      name: 'Skyr',
-      kind: 'raw',
-      caloriesPer100g: 64,
-      proteinPer100g: 11,
-    },
+    food({ id: 1, name: 'Oats', caloriesPer100g: 380, proteinPer100g: 13 }),
+    food({ id: 2, name: 'Skyr', caloriesPer100g: 64, proteinPer100g: 11 }),
   ])
 
   await goto('/foods', { waitUntil: 'hydration' })

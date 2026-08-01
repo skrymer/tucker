@@ -1,5 +1,6 @@
 import { expect, test } from './support/test'
 import { mockFoods } from './support/mock-api'
+import { food, recipe } from '../test/food-fixtures'
 
 // F9 Slice 3: editing a recipe from its composition view, with /api mocked, on
 // both Desktop and Mobile Chrome (the responsive check). Open the recipe's
@@ -10,28 +11,20 @@ test('recalibrates a recipe from its composition view via the pre-filled builder
   goto,
 }) => {
   await mockFoods(page, [
-    {
+    food({
       id: 1,
       name: 'Beef mince',
-      kind: 'FOOD',
       caloriesPer100g: 170,
       proteinPer100g: 20,
-      carbsPer100g: 0,
-      fatPer100g: 0,
-      cookedWeightG: null,
-      ingredientCount: null,
-    },
-    {
+    }),
+    recipe({
       id: 2,
       name: 'Cottage pie',
-      kind: 'RECIPE',
       caloriesPer100g: 255,
       proteinPer100g: 30,
-      carbsPer100g: null,
-      fatPer100g: null,
       cookedWeightG: 200,
       ingredientCount: 1,
-    },
+    }),
   ])
 
   let putBody: { name?: string; cookedWeightG?: number } | null = null
@@ -41,18 +34,14 @@ test('recalibrates a recipe from its composition view via the pre-filled builder
       putBody = request.postDataJSON()
       // The recalibrated recipe: cooking down to 100 g doubles the density.
       return route.fulfill({
-        json: {
+        json: recipe({
           id: 2,
           name: 'Cottage pie',
-          kind: 'RECIPE',
-          barcode: null,
           caloriesPer100g: 510,
           proteinPer100g: 60,
-          carbsPer100g: null,
-          fatPer100g: null,
           cookedWeightG: 100,
           ingredientCount: 1,
-        },
+        }),
       })
     }
     // GET: the composition the edit form is seeded from.

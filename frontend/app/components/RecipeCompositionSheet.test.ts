@@ -3,17 +3,17 @@ import { registerEndpoint, renderSuspended } from '@nuxt/test-utils/runtime'
 import { setResponseStatus } from 'h3'
 import { screen } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
+import { food, recipe } from '~~/test/food-fixtures'
 import RecipeCompositionSheet from './RecipeCompositionSheet.vue'
 
-const cottagePie = {
+const cottagePie = recipe({
   id: 4,
   name: 'Cottage Pie',
-  kind: 'RECIPE',
   caloriesPer100g: 255,
   proteinPer100g: 30,
   cookedWeightG: 1400,
   ingredientCount: 2,
-}
+})
 
 const composition = {
   id: 4,
@@ -25,15 +25,14 @@ const composition = {
   ],
 }
 
-const beefStew = {
+const beefStew = recipe({
   id: 5,
   name: 'Beef stew',
-  kind: 'RECIPE',
   caloriesPer100g: 120,
   proteinPer100g: 9,
   cookedWeightG: 900,
   ingredientCount: 2,
-}
+})
 
 const stewComposition = {
   id: 5,
@@ -48,28 +47,14 @@ const stewComposition = {
 // The catalog the edit builder resolves its pre-filled ingredient lines against —
 // the composition's foodIds must be present here for the builder to weigh them.
 const catalog = [
-  {
-    id: 1,
-    name: 'Mince',
-    kind: 'FOOD',
-    caloriesPer100g: 170,
-    proteinPer100g: 20,
-    carbsPer100g: 0,
-    fatPer100g: 0,
-    cookedWeightG: null,
-    ingredientCount: null,
-  },
-  {
+  food({ id: 1, name: 'Mince', caloriesPer100g: 170, proteinPer100g: 20 }),
+  food({
     id: 2,
     name: 'Potato',
-    kind: 'FOOD',
     caloriesPer100g: 77,
     proteinPer100g: 2,
     carbsPer100g: 17,
-    fatPer100g: 0,
-    cookedWeightG: null,
-    ingredientCount: null,
-  },
+  }),
 ]
 
 describe('RecipeCompositionSheet', () => {

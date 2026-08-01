@@ -2,24 +2,8 @@ import { describe, expect, it, vi } from 'vitest'
 import { renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen, within } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
-import type { components } from '#open-fetch-schemas/api'
+import { food, recipe } from '~~/test/food-fixtures'
 import RecipeBuilder from './RecipeBuilder.vue'
-
-// The catalog shape the component actually receives, rather than a hand-rolled
-// copy that can drift from it.
-type Food = components['schemas']['FoodResponse']
-
-function food(partial: Partial<Food> & { id: number; name: string }): Food {
-  return {
-    kind: 'FOOD',
-    caloriesPer100g: 100,
-    proteinPer100g: 10,
-    carbsPer100g: 0,
-    fatPer100g: 0,
-    cookedWeightG: null,
-    ...partial,
-  }
-}
 
 const beefMince = food({
   id: 1,
@@ -33,7 +17,7 @@ const potato = food({
   caloriesPer100g: 77,
   proteinPer100g: 2,
 })
-const sampleFoods: Food[] = [beefMince, potato]
+const sampleFoods = [beefMince, potato]
 
 describe('RecipeBuilder', () => {
   it('opens on the build step with a recipe name field and a way to add ingredients', async () => {
@@ -301,11 +285,11 @@ describe('RecipeBuilder', () => {
     const user = userEvent.setup()
     const withRecipe = [
       ...sampleFoods,
-      food({
+      recipe({
         id: 3,
         name: 'Existing stew',
-        kind: 'RECIPE',
         cookedWeightG: 500,
+        ingredientCount: 2,
       }),
     ]
     await renderSuspended(RecipeBuilder, { props: { foods: withRecipe } })

@@ -2,25 +2,24 @@ import { describe, expect, it, vi } from 'vitest'
 import { renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
+import { food, recipe } from '~~/test/food-fixtures'
 import FoodListItem from './FoodListItem.vue'
 
-const skyr = {
+const skyr = food({
   id: 1,
   name: 'Skyr',
-  kind: 'raw',
   caloriesPer100g: 63.7,
   proteinPer100g: 11.4,
-}
+})
 
-const cottagePie = {
+const cottagePie = recipe({
   id: 2,
   name: 'Cottage Pie',
-  kind: 'RECIPE',
   caloriesPer100g: 255,
   proteinPer100g: 30,
   cookedWeightG: 1400,
   ingredientCount: 5,
-}
+})
 
 describe('FoodListItem', () => {
   it("shows the food's name with rounded per-100g calories and protein", async () => {

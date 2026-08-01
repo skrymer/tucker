@@ -2,24 +2,23 @@ import { describe, expect, it, vi } from 'vitest'
 import { renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
-import type { components } from '#open-fetch-schemas/api'
+import { food } from '~~/test/food-fixtures'
 import LogItNow from './LogItNow.vue'
 
-type FoodResponse = components['schemas']['FoodResponse']
-
-const food: FoodResponse = {
+const skyr = food({
   id: 42,
   name: 'Skyr Natural',
-  kind: 'FOOD',
   caloriesPer100g: 63,
   proteinPer100g: 10.3,
   carbsPer100g: 4,
   fatPer100g: 0.2,
-}
+})
 
 describe('LogItNow', () => {
   it('offers a grams field and a log-it-now action for the food', async () => {
-    await renderSuspended(LogItNow, { props: { food, origin: 'created' } })
+    await renderSuspended(LogItNow, {
+      props: { food: skyr, origin: 'created' },
+    })
 
     expect(screen.getByLabelText(/grams/i)).toBeVisible()
     expect(screen.getByRole('button', { name: /log it now/i })).toBeVisible()
@@ -28,7 +27,7 @@ describe('LogItNow', () => {
   it('emits the weighed-entry payload when grams are entered and logged', async () => {
     const onLog = vi.fn()
     await renderSuspended(LogItNow, {
-      props: { food, origin: 'created', onLog },
+      props: { food: skyr, origin: 'created', onLog },
     })
     const user = userEvent.setup()
 
@@ -44,7 +43,7 @@ describe('LogItNow', () => {
     // reading finer than the arrows' step has to survive the field.
     const onLog = vi.fn()
     await renderSuspended(LogItNow, {
-      props: { food, origin: 'created', onLog },
+      props: { food: skyr, origin: 'created', onLog },
     })
     const user = userEvent.setup()
 
@@ -58,21 +57,25 @@ describe('LogItNow', () => {
   it('never logs automatically — logging waits for the user', async () => {
     const onLog = vi.fn()
     await renderSuspended(LogItNow, {
-      props: { food, origin: 'created', onLog },
+      props: { food: skyr, origin: 'created', onLog },
     })
 
     expect(onLog).not.toHaveBeenCalled()
   })
 
   it('confirms a just-saved food and names it', async () => {
-    await renderSuspended(LogItNow, { props: { food, origin: 'created' } })
+    await renderSuspended(LogItNow, {
+      props: { food: skyr, origin: 'created' },
+    })
 
     expect(screen.getByText(/saved/i)).toBeVisible()
     expect(screen.getByText('Skyr Natural')).toBeVisible()
   })
 
   it('leads with an already-in-catalog note for an existing food', async () => {
-    await renderSuspended(LogItNow, { props: { food, origin: 'existing' } })
+    await renderSuspended(LogItNow, {
+      props: { food: skyr, origin: 'existing' },
+    })
 
     expect(screen.getByText(/already in your catalog/i)).toBeVisible()
     expect(screen.getByText('Skyr Natural')).toBeVisible()
@@ -84,7 +87,7 @@ describe('LogItNow', () => {
     const onLog = vi.fn()
     const onDismiss = vi.fn()
     await renderSuspended(LogItNow, {
-      props: { food, origin: 'created', onLog, onDismiss },
+      props: { food: skyr, origin: 'created', onLog, onDismiss },
     })
     const user = userEvent.setup()
 

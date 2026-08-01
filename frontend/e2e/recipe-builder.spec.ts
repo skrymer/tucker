@@ -1,5 +1,6 @@
 import { expect, test } from './support/test'
 import { mockFoods } from './support/mock-api'
+import { food, recipe } from '../test/food-fixtures'
 
 // F9 Slice 1: the recipe builder happy path with /api mocked, on both Desktop
 // and Mobile Chrome (the responsive check). Drives the Food|Recipe switch, the
@@ -10,16 +11,7 @@ test('user builds and saves a recipe through the Food or Recipe switch', async (
   goto,
 }) => {
   await mockFoods(page, [
-    {
-      id: 1,
-      name: 'Chicken',
-      kind: 'FOOD',
-      caloriesPer100g: 100,
-      proteinPer100g: 25,
-      carbsPer100g: 0,
-      fatPer100g: 0,
-      cookedWeightG: null,
-    },
+    food({ id: 1, name: 'Chicken', caloriesPer100g: 100, proteinPer100g: 25 }),
   ])
 
   let recipeBody: unknown
@@ -27,16 +19,15 @@ test('user builds and saves a recipe through the Food or Recipe switch', async (
     recipeBody = route.request().postDataJSON()
     await route.fulfill({
       status: 201,
-      json: {
+      json: recipe({
         id: 50,
         name: 'Cottage pie',
-        kind: 'RECIPE',
         caloriesPer100g: 200,
         proteinPer100g: 50,
-        carbsPer100g: null,
-        fatPer100g: null,
         cookedWeightG: 400,
-      },
+        // The one ingredient this test weighs in, not a placeholder.
+        ingredientCount: 1,
+      }),
     })
   })
 

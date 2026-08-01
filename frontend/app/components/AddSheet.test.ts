@@ -3,6 +3,7 @@ import { registerEndpoint, renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import { readBarcodes } from 'zxing-wasm/reader'
+import { food } from '~~/test/food-fixtures'
 import AddSheet from './AddSheet.vue'
 
 // The camera scanner's hardware + WASM decoder are mocked (ADR 0006: the live
@@ -121,18 +122,27 @@ registerEndpoint(`/api/foods/barcode/${EXISTING_BARCODE}`, {
   method: 'GET',
   handler: () => ({
     outcome: 'EXISTING',
-    food: {
+    food: food({
       id: 7,
       name: 'Existing Skyr',
-      kind: 'FOOD',
       barcode: EXISTING_BARCODE,
       caloriesPer100g: 63,
       proteinPer100g: 10,
       carbsPer100g: 4,
       fatPer100g: 0.2,
-      cookedWeightG: null,
-    },
+    }),
   }),
+})
+
+// The Food the parent hands back after a save — the same one either
+// continuation test needs, so it is stated once.
+const createdFood = food({
+  id: 99,
+  name: 'Saved Skyr',
+  caloriesPer100g: 63,
+  proteinPer100g: 10,
+  carbsPer100g: 4,
+  fatPer100g: 0.2,
 })
 
 describe('AddSheet', () => {
@@ -244,16 +254,6 @@ describe('AddSheet', () => {
   })
 
   it('offers to log a Food the parent just saved', async () => {
-    const createdFood = {
-      id: 99,
-      name: 'Saved Skyr',
-      kind: 'FOOD',
-      caloriesPer100g: 63,
-      proteinPer100g: 10,
-      carbsPer100g: 4,
-      fatPer100g: 0.2,
-      cookedWeightG: null,
-    }
     await renderSuspended(AddSheet, {
       props: { open: true, createdFood },
     })
@@ -265,16 +265,6 @@ describe('AddSheet', () => {
   })
 
   it('forwards the weighed-entry payload when the user logs it', async () => {
-    const createdFood = {
-      id: 99,
-      name: 'Saved Skyr',
-      kind: 'FOOD',
-      caloriesPer100g: 63,
-      proteinPer100g: 10,
-      carbsPer100g: 4,
-      fatPer100g: 0.2,
-      cookedWeightG: null,
-    }
     const onLog = vi.fn()
     await renderSuspended(AddSheet, {
       props: { open: true, createdFood, onLog },

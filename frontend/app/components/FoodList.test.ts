@@ -2,35 +2,28 @@ import { describe, expect, it, vi } from 'vitest'
 import { renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
+import { food, recipe } from '~~/test/food-fixtures'
 import FoodList from './FoodList.vue'
 
 const sampleFoods = [
-  {
-    id: 1,
-    name: 'Oats',
-    kind: 'raw',
-    caloriesPer100g: 380,
-    proteinPer100g: 13,
-  },
-  { id: 2, name: 'Skyr', kind: 'raw', caloriesPer100g: 64, proteinPer100g: 11 },
-  {
+  food({ id: 1, name: 'Oats', caloriesPer100g: 380, proteinPer100g: 13 }),
+  food({ id: 2, name: 'Skyr', caloriesPer100g: 64, proteinPer100g: 11 }),
+  food({
     id: 3,
     name: 'Chicken breast',
-    kind: 'raw',
     caloriesPer100g: 165,
     proteinPer100g: 31,
-  },
+  }),
 ]
 
-const cottagePie = {
+const cottagePie = recipe({
   id: 4,
   name: 'Cottage Pie',
-  kind: 'RECIPE',
   caloriesPer100g: 255,
   proteinPer100g: 30,
   cookedWeightG: 1400,
   ingredientCount: 5,
-}
+})
 
 describe('FoodList', () => {
   it('renders one row per food in a single accessible list', async () => {

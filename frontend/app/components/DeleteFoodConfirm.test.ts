@@ -2,15 +2,15 @@ import { describe, expect, it, vi } from 'vitest'
 import { renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
+import { food } from '~~/test/food-fixtures'
 import DeleteFoodConfirm from './DeleteFoodConfirm.vue'
 
-const oats = {
+const oats = food({
   id: 7,
   name: 'Oats',
-  kind: 'raw',
   caloriesPer100g: 380,
   proteinPer100g: 13,
-}
+})
 
 describe('DeleteFoodConfirm', () => {
   it('asks the user to confirm deleting the named food', async () => {
