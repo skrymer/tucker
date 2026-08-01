@@ -14,9 +14,9 @@ const progress: GoalProgress = {
   percentComplete: 40,
   plannedFinishDate: '2026-08-26',
   plannedRateKgPerWeek: 0.5,
-  paceStatus: undefined,
-  observedRateKgPerWeek: undefined,
-  observedFinishDate: undefined,
+  paceStatus: null,
+  observedRateKgPerWeek: null,
+  observedFinishDate: null,
 }
 
 describe('GoalGlanceTile', () => {

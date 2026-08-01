@@ -16,6 +16,7 @@ function food(partial: Partial<Food> & { id: number; name: string }): Food {
     proteinPer100g: 10,
     carbsPer100g: 0,
     fatPer100g: 0,
+    cookedWeightG: null,
     ...partial,
   }
 }

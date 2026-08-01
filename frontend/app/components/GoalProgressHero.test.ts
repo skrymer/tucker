@@ -16,9 +16,9 @@ const withheld: GoalProgress = {
   percentComplete: 40,
   plannedFinishDate: '2026-08-26',
   plannedRateKgPerWeek: 0.5,
-  paceStatus: undefined,
-  observedRateKgPerWeek: undefined,
-  observedFinishDate: undefined,
+  paceStatus: null,
+  observedRateKgPerWeek: null,
+  observedFinishDate: null,
 }
 
 const onPace: GoalProgress = {
@@ -32,7 +32,7 @@ const stalled: GoalProgress = {
   ...withheld,
   paceStatus: 'stalled',
   observedRateKgPerWeek: -0.1,
-  observedFinishDate: undefined,
+  observedFinishDate: null,
 }
 
 describe('GoalProgressHero', () => {

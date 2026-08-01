@@ -2741,7 +2741,8 @@
             "type": "string"
           },
           "barcode": {
-            "type": "string"
+            "type": "string",
+            "nullable": true
           },
           "caloriesPer100g": {
             "type": "number",
@@ -2753,19 +2754,23 @@
           },
           "carbsPer100g": {
             "type": "number",
-            "format": "double"
+            "format": "double",
+            "nullable": true
           },
           "fatPer100g": {
             "type": "number",
-            "format": "double"
+            "format": "double",
+            "nullable": true
           },
           "cookedWeightG": {
             "type": "number",
-            "format": "double"
+            "format": "double",
+            "nullable": true
           },
           "ingredientCount": {
             "type": "integer",
-            "format": "int32"
+            "format": "int32",
+            "nullable": true
           }
         }
       },
@@ -2820,7 +2825,8 @@
           },
           "clientToday": {
             "type": "string",
-            "format": "date"
+            "format": "date",
+            "nullable": true
           }
         }
       },
@@ -2906,7 +2912,8 @@
             "$ref": "#/components/schemas/SubscriptionKeysDto"
           },
           "label": {
-            "type": "string"
+            "type": "string",
+            "nullable": true
           }
         }
       },
@@ -2947,7 +2954,8 @@
           },
           "clientToday": {
             "type": "string",
-            "format": "date"
+            "format": "date",
+            "nullable": true
           }
         }
       },
@@ -2992,7 +3000,8 @@
           },
           "reachedOn": {
             "type": "string",
-            "format": "date"
+            "format": "date",
+            "nullable": true
           }
         }
       },
@@ -3009,7 +3018,8 @@
             "type": "string"
           },
           "barcode": {
-            "type": "string"
+            "type": "string",
+            "nullable": true
           },
           "proteinPer100g": {
             "type": "number",
@@ -3074,24 +3084,29 @@
           },
           "protein": {
             "type": "number",
-            "format": "double"
+            "format": "double",
+            "nullable": true
           },
           "isEstimate": {
             "type": "boolean"
           },
           "foodId": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "nullable": true
           },
           "foodName": {
-            "type": "string"
+            "type": "string",
+            "nullable": true
           },
           "grams": {
             "type": "number",
-            "format": "double"
+            "format": "double",
+            "nullable": true
           },
           "label": {
-            "type": "string"
+            "type": "string",
+            "nullable": true
           }
         }
       },
@@ -3111,11 +3126,13 @@
           },
           "calorieBudget": {
             "type": "number",
-            "format": "double"
+            "format": "double",
+            "nullable": true
           },
           "overByKcal": {
             "type": "number",
-            "format": "double"
+            "format": "double",
+            "nullable": true
           }
         }
       },
@@ -3140,7 +3157,8 @@
           },
           "protein": {
             "type": "number",
-            "format": "double"
+            "format": "double",
+            "nullable": true
           }
         }
       },
@@ -3240,26 +3258,32 @@
           },
           "calorieBudget": {
             "type": "number",
-            "format": "double"
+            "format": "double",
+            "nullable": true
           },
           "proteinFloor": {
             "type": "number",
-            "format": "double"
+            "format": "double",
+            "nullable": true
           },
           "caloriesRemaining": {
             "type": "number",
-            "format": "double"
+            "format": "double",
+            "nullable": true
           },
           "proteinRemaining": {
             "type": "number",
-            "format": "double"
+            "format": "double",
+            "nullable": true
           },
           "dayStatus": {
-            "type": "string"
+            "type": "string",
+            "nullable": true
           },
           "trendWeightKg": {
             "type": "number",
-            "format": "double"
+            "format": "double",
+            "nullable": true
           },
           "entries": {
             "type": "array",
@@ -3268,14 +3292,21 @@
             }
           },
           "budgetChange": {
-            "$ref": "#/components/schemas/BudgetChange"
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BudgetChange"
+              }
+            ]
           },
           "driftStatus": {
-            "type": "string"
+            "type": "string",
+            "nullable": true
           },
           "observedRateKgPerWeek": {
             "type": "number",
-            "format": "double"
+            "format": "double",
+            "nullable": true
           }
         }
       },
@@ -3380,19 +3411,23 @@
             "format": "double"
           },
           "paceStatus": {
-            "type": "string"
+            "type": "string",
+            "nullable": true
           },
           "observedRateKgPerWeek": {
             "type": "number",
-            "format": "double"
+            "format": "double",
+            "nullable": true
           },
           "observedFinishDate": {
             "type": "string",
-            "format": "date"
+            "format": "date",
+            "nullable": true
           },
           "reachedOn": {
             "type": "string",
-            "format": "date"
+            "format": "date",
+            "nullable": true
           }
         }
       },
@@ -3406,10 +3441,20 @@
             "type": "string"
           },
           "food": {
-            "$ref": "#/components/schemas/FoodResponse"
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FoodResponse"
+              }
+            ]
           },
           "candidate": {
-            "$ref": "#/components/schemas/FoodCandidateResponse"
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FoodCandidateResponse"
+              }
+            ]
           }
         }
       },
@@ -3429,19 +3474,23 @@
           },
           "proteinPer100g": {
             "type": "number",
-            "format": "double"
+            "format": "double",
+            "nullable": true
           },
           "carbsPer100g": {
             "type": "number",
-            "format": "double"
+            "format": "double",
+            "nullable": true
           },
           "fatPer100g": {
             "type": "number",
-            "format": "double"
+            "format": "double",
+            "nullable": true
           },
           "statedEnergyKcalPer100g": {
             "type": "number",
-            "format": "double"
+            "format": "double",
+            "nullable": true
           },
           "source": {
             "type": "string"
@@ -3470,7 +3519,8 @@
             "type": "string"
           },
           "source": {
-            "type": "string"
+            "type": "string",
+            "nullable": true
           },
           "caloriesPer100g": {
             "type": "number",
@@ -3482,23 +3532,28 @@
           },
           "carbsPer100g": {
             "type": "number",
-            "format": "double"
+            "format": "double",
+            "nullable": true
           },
           "fatPer100g": {
             "type": "number",
-            "format": "double"
+            "format": "double",
+            "nullable": true
           },
           "proteinEnergyShare": {
             "type": "number",
-            "format": "double"
+            "format": "double",
+            "nullable": true
           },
           "carbsEnergyShare": {
             "type": "number",
-            "format": "double"
+            "format": "double",
+            "nullable": true
           },
           "fatEnergyShare": {
             "type": "number",
-            "format": "double"
+            "format": "double",
+            "nullable": true
           },
           "calorieBudgetKcal": {
             "type": "number",
@@ -3522,7 +3577,8 @@
           },
           "proteinPer100Kcal": {
             "type": "number",
-            "format": "double"
+            "format": "double",
+            "nullable": true
           },
           "balanceProteinPer100gG": {
             "type": "number",
@@ -3530,11 +3586,13 @@
           },
           "gramsInBudget": {
             "type": "number",
-            "format": "double"
+            "format": "double",
+            "nullable": true
           },
           "wholeDayProteinShortfallG": {
             "type": "number",
-            "format": "double"
+            "format": "double",
+            "nullable": true
           }
         }
       },
