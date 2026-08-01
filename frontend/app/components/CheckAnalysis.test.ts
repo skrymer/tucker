@@ -269,7 +269,7 @@ describe('CheckAnalysis', () => {
     const mine: CheckResult = {
       ...nutellaCheck,
       name: 'My skyr',
-      source: undefined,
+      source: null,
     }
 
     await renderSuspended(CheckAnalysis, { props: { check: mine } })
@@ -310,8 +310,8 @@ describe('CheckAnalysis', () => {
     // (ADR 0006), and "0 g carbs" would be a claim the source never made.
     const partial: CheckResult = {
       ...nutellaCheck,
-      carbsPer100g: undefined,
-      carbsEnergyShare: undefined,
+      carbsPer100g: null,
+      carbsEnergyShare: null,
     }
 
     await renderSuspended(CheckAnalysis, { props: { check: partial } })
@@ -331,13 +331,13 @@ describe('CheckAnalysis', () => {
       fatPer100g: 0,
       costSharePer100g: 0,
       returnSharePer100g: 0,
-      proteinPer100Kcal: undefined,
+      proteinPer100Kcal: null,
       balanceProteinPer100gG: 0,
-      gramsInBudget: undefined,
-      wholeDayProteinShortfallG: undefined,
-      proteinEnergyShare: undefined,
-      carbsEnergyShare: undefined,
-      fatEnergyShare: undefined,
+      gramsInBudget: null,
+      wholeDayProteinShortfallG: null,
+      proteinEnergyShare: null,
+      carbsEnergyShare: null,
+      fatEnergyShare: null,
     }
 
     await renderSuspended(CheckAnalysis, { props: { check: dietDrink } })

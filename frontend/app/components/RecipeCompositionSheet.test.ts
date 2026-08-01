@@ -56,6 +56,8 @@ const catalog = [
     proteinPer100g: 20,
     carbsPer100g: 0,
     fatPer100g: 0,
+    cookedWeightG: null,
+    ingredientCount: null,
   },
   {
     id: 2,
@@ -65,6 +67,8 @@ const catalog = [
     proteinPer100g: 2,
     carbsPer100g: 17,
     fatPer100g: 0,
+    cookedWeightG: null,
+    ingredientCount: null,
   },
 ]
 

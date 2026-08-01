@@ -115,10 +115,11 @@ describe('DaySummary', () => {
       props: {
         summary: {
           ...summary,
-          calorieBudget: undefined,
-          proteinFloor: undefined,
-          caloriesRemaining: undefined,
-          dayStatus: undefined,
+          calorieBudget: null,
+          proteinFloor: null,
+          caloriesRemaining: null,
+          proteinRemaining: null,
+          dayStatus: null,
         },
       },
     })

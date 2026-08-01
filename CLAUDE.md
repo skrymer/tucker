@@ -409,6 +409,17 @@ The frontend is built **test-first (red-green TDD)**. Increments:
   state (e.g. whether a day is on-target) are computed by the backend and
   exposed as plain API fields; the frontend only presents them, keeping the UI
   swappable. See `docs/adr/0002-business-logic-belongs-in-the-backend.md`.
+- **Absence on the wire is an explicit `null`, and the spec says so.** A field
+  the backend has no value for is serialized as `null`, never omitted, and the
+  OpenAPI spec marks it `nullable`, so the generated client reads
+  `paceStatus?: string | null` where it used to read `string | undefined` — the
+  `null` arm the wire actually carries. The nullability is derived from the
+  Kotlin types by a `ModelConverter`, not hand-annotated, so a new nullable DTO
+  field is described correctly the day it is written. Only that axis moved:
+  responses stay `required`-optional, so an `undefined` arm the API never
+  produces remains, and ADR 0023 records why it can't be removed while one
+  schema serves both a request and a response. See
+  [`docs/adr/0023`](docs/adr/0023-absence-on-the-wire-is-an-explicit-null.md).
 - **Forms validate with Zod.** Every frontend form passes a Zod schema to
   Nuxt UI's `<UForm>`; the schema is the single source of truth for required
   fields, ranges, and error messages, and its inferred type drives the form's

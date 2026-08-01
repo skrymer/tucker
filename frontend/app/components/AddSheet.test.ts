@@ -252,6 +252,7 @@ describe('AddSheet', () => {
       proteinPer100g: 10,
       carbsPer100g: 4,
       fatPer100g: 0.2,
+      cookedWeightG: null,
     }
     await renderSuspended(AddSheet, {
       props: { open: true, createdFood },
@@ -272,6 +273,7 @@ describe('AddSheet', () => {
       proteinPer100g: 10,
       carbsPer100g: 4,
       fatPer100g: 0.2,
+      cookedWeightG: null,
     }
     const onLog = vi.fn()
     await renderSuspended(AddSheet, {
