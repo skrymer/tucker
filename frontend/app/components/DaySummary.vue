@@ -15,9 +15,7 @@ const hasBudget = computed(() => props.summary.calorieBudget != null)
 // The earned day verdict, or null for an in-progress or pre-review day that has
 // none — the Day Ring carries the numbers instead. Presentation mapping lives in
 // the shared util, alongside its drift/pace siblings.
-const verdict = computed(() =>
-  dayStatusVerdict(props.summary.dayStatus as DayStatus | undefined),
-)
+const verdict = computed(() => dayStatusVerdict(props.summary.dayStatus))
 
 // Cap the day's entries so the ledger never buries the at-a-glance numbers or
 // the Log-entry action. Entries arrive oldest-first (ORDER BY id), so the most

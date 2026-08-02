@@ -1,5 +1,7 @@
 package com.tucker.domain
 
+import com.fasterxml.jackson.annotation.JsonValue
+
 /**
  * The earned verdict on a day's intake against that day's Calorie Budget and
  * Protein Floor. Unlike a binary on/off-target test, it distinguishes a day
@@ -16,7 +18,7 @@ package com.tucker.domain
  *
  * A displayed verdict, not an alert.
  */
-enum class DayStatus(val value: String) {
+enum class DayStatus(@JsonValue val value: String) {
     ON_TARGET("on-target"),
     OVER_BUDGET("over-budget"),
     IN_PROGRESS("in-progress"),

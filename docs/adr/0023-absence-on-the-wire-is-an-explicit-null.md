@@ -105,6 +105,16 @@ Two details the implementation is pinned to:
   whole gap between 43 and 46 — `BarcodeLookupResponse.food` and `.candidate`,
   and `DailySummaryResponse.budgetChange`. The standard wrap makes them
   round-trip, and `openapi-typescript` renders them `FoodResponse | null`.
+- **Nullable enums list `null` as a value.** Added with
+  [#215](https://github.com/skrymer/tucker/issues/215), which typed
+  `dayStatus`/`driftStatus`/`paceStatus` as their domain enums. `enum` is the
+  stricter keyword — it admits exactly what it lists, and `nullable` beside it
+  adds nothing — so `{"nullable": true, "enum": ["on-target", …]}` forbids the
+  `null` the same schema declares legal, on the API's most common response.
+  Appending `null` to the list resolves it. `openapi-typescript` already derived
+  the `| null` arm from `nullable`, so the generated client does not move; this
+  is for every *other* reader of the spec — a linter, a mock server, a
+  second-language generator — which would otherwise flag the pre-review day.
 
 ## What holds it in place
 
@@ -119,6 +129,9 @@ drift:
   it that branch is exercised only by the coincidence that three fields happen to
   be nullable refs today; flatten those and the wrap could rot unnoticed until
   the next one silently lost its `nullable`.
+- A nullable enum lists `null`. Same reasoning one keyword over, and it carries
+  the same floor: it asserts a nullable enum exists at all first, so the check
+  cannot pass vacuously once the last one is flattened.
 - A response carries every field its schema declares, even the ones it has no
   value for. Fails if inclusion is ever switched to `non_null` — verified by
   temporarily doing so, which fails this test while the first one still passes.

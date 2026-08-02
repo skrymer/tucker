@@ -2,6 +2,7 @@ package com.tucker.api
 
 import com.tucker.domain.Goal
 import com.tucker.domain.GoalProgress
+import com.tucker.domain.PaceStatus
 import com.tucker.domain.WeightTrend
 import com.tucker.persistence.GoalRepository
 import com.tucker.persistence.WeightMeasurementRepository
@@ -44,7 +45,7 @@ data class GoalProgressResponse(
     val percentComplete: Double,
     val plannedFinishDate: LocalDate,
     val plannedRateKgPerWeek: Double,
-    val paceStatus: String?,
+    val paceStatus: PaceStatus?,
     val observedRateKgPerWeek: Double?,
     val observedFinishDate: LocalDate?,
     /** The date this Goal was reached (trend met target), or null while still pursuing it (ADR 0008). */
@@ -78,7 +79,7 @@ private fun GoalProgress.toResponse(reachedOn: LocalDate?) = GoalProgressRespons
     percentComplete = percentComplete,
     plannedFinishDate = plannedFinishDate,
     plannedRateKgPerWeek = plannedRateKgPerWeek,
-    paceStatus = paceStatus?.value,
+    paceStatus = paceStatus,
     observedRateKgPerWeek = observedRateKgPerWeek,
     observedFinishDate = observedFinishDate,
     reachedOn = reachedOn,

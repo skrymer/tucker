@@ -1,6 +1,7 @@
 package com.tucker.api
 
 import com.tucker.domain.DailyLog
+import com.tucker.domain.DayStatus
 import com.tucker.domain.DriftStatus
 import com.tucker.domain.WeeklyReview
 import com.tucker.domain.WeightTrend
@@ -35,7 +36,7 @@ data class DailySummaryResponse(
      * "in-progress" — null until the first WeeklyReview has run. An in-progress
      * day carries no verdict; the progress bars carry the numbers.
      */
-    val dayStatus: String?,
+    val dayStatus: DayStatus?,
     /** The smoothed Trend Weight from the latest review; null until the first runs. */
     val trendWeightKg: Double?,
     val entries: List<EntryResponse>,
@@ -45,7 +46,7 @@ data class DailySummaryResponse(
      * Maintenance Mode (no active Goal); "gathering-data" until 14 days of
      * measurements exist. Null while a Goal is active — pace lives on the Goal.
      */
-    val driftStatus: String?,
+    val driftStatus: DriftStatus?,
     /** The trailing 28-day Trend-Weight slope (kg/week); null outside Maintenance Mode or before 14 days. */
     val observedRateKgPerWeek: Double?,
 )
@@ -119,7 +120,7 @@ class SummaryController(
         val trend = if (goals.findActive() == null) WeightTrend.from(weights.findAll()) else null
         // One walk of the trend feeds both fields: the raw rate and its classification.
         val observedRateKgPerWeek = trend?.observedRateKgPerWeek(date)
-        val driftStatus = trend?.let { DriftStatus.forRate(observedRateKgPerWeek).value }
+        val driftStatus = trend?.let { DriftStatus.forRate(observedRateKgPerWeek) }
 
         // Sum each total once and reuse it for both the consumed field and the
         // signed remaining figure (the day verdict re-derives its own).
@@ -151,7 +152,7 @@ class SummaryController(
             proteinFloor = review?.proteinFloorG,
             caloriesRemaining = review?.let { it.calorieBudgetKcal - caloriesConsumed },
             proteinRemaining = review?.let { it.proteinFloorG - proteinConsumed },
-            dayStatus = review?.let { log.dayStatus(it.calorieBudgetKcal, it.proteinFloorG).value },
+            dayStatus = review?.let { log.dayStatus(it.calorieBudgetKcal, it.proteinFloorG) },
             trendWeightKg = review?.trendWeightKg,
             entries = log.entries.toResponses(foods),
             budgetChange = budgetChange,

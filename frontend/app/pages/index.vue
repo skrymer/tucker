@@ -50,7 +50,7 @@ const maintainingTrendWeightKg = computed(() =>
 // Drift Status rides along on the summary in Maintenance Mode; before the first
 // review supplies one it reads as gathering-data (ADR 0008).
 const maintainingDriftStatus = computed<DriftStatus>(
-  () => (summary.value?.driftStatus as DriftStatus) ?? 'gathering-data',
+  () => summary.value?.driftStatus ?? 'gathering-data',
 )
 
 // Reaching a Goal (ADR 0008) latches and surfaces an insistent two-way fork:

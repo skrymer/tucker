@@ -70,12 +70,21 @@ data class FoodCandidateResponse(
 )
 
 /**
- * The discriminated result of a barcode lookup. [outcome] is `EXISTING` (with
- * [food] set) or `CANDIDATE` (with [candidate] set); a miss is HTTP 404, not a
- * body. See ADR 0006.
+ * Which arm of a barcode lookup came back — the value the client branches on.
+ *
+ * A wire type rather than a domain one: the domain models this as the sealed
+ * [BarcodeLookup], whose other two arms ([BarcodeLookup.Missing],
+ * [BarcodeLookup.Inconclusive]) are statuses, not bodies (404 and 503, ADR 0006).
+ * Only the two that carry a payload reach a response.
+ */
+enum class BarcodeLookupOutcome { EXISTING, CANDIDATE }
+
+/**
+ * The discriminated result of a barcode lookup: [outcome] says which of [food] and
+ * [candidate] is set, and the other is null.
  */
 data class BarcodeLookupResponse(
-    val outcome: String,
+    val outcome: BarcodeLookupOutcome,
     val food: FoodResponse?,
     val candidate: FoodCandidateResponse?,
 )
@@ -138,10 +147,16 @@ class FoodController(
     @GetMapping("/barcode/{barcode}")
     fun byBarcode(@PathVariable barcode: String): BarcodeLookupResponse =
         when (val result = barcodeLookup.lookup(barcode)) {
-            is BarcodeLookup.Existing ->
-                BarcodeLookupResponse("EXISTING", food = result.food.toResponse(), candidate = null)
-            is BarcodeLookup.Candidate ->
-                BarcodeLookupResponse("CANDIDATE", food = null, candidate = result.candidate.toResponse())
+            is BarcodeLookup.Existing -> BarcodeLookupResponse(
+                BarcodeLookupOutcome.EXISTING,
+                food = result.food.toResponse(),
+                candidate = null,
+            )
+            is BarcodeLookup.Candidate -> BarcodeLookupResponse(
+                BarcodeLookupOutcome.CANDIDATE,
+                food = null,
+                candidate = result.candidate.toResponse(),
+            )
             BarcodeLookup.Missing -> throw barcodeNotFound(barcode)
             BarcodeLookup.Inconclusive -> throw providersUnreachable(barcode)
         }

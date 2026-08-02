@@ -1,5 +1,13 @@
-/** The backend's earned day verdict on `DailySummaryResponse.dayStatus`. */
-export type DayStatus = 'on-target' | 'over-budget' | 'in-progress'
+import type { components } from '#open-fetch-schemas/api'
+
+type DailySummary = components['schemas']['DailySummaryResponse']
+
+/**
+ * The backend's earned day verdict, arriving verbatim on the API response. Taken
+ * from the spec rather than restated here, so the set cannot drift from the one
+ * the backend actually sends.
+ */
+export type DayStatus = NonNullable<DailySummary['dayStatus']>
 
 /**
  * Presentation for a [DayStatus]: the verdict label, its icon, and a text

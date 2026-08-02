@@ -30,7 +30,7 @@ const usePaceColumns = () => {
   // unless stalled, a projected finish date.
   const pace = computed(() => {
     const status = props.progress.paceStatus
-    return status ? paceBadge(status as PaceStatus) : null
+    return status ? paceBadge(status) : null
   })
   const observedFinish = computed(() =>
     props.progress.observedFinishDate

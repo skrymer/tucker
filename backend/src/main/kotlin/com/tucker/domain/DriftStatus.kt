@@ -1,5 +1,6 @@
 package com.tucker.domain
 
+import com.fasterxml.jackson.annotation.JsonValue
 import java.time.LocalDate
 
 /**
@@ -10,7 +11,7 @@ import java.time.LocalDate
  * displayed status, not an alert (ADR 0008): the self-correcting Calorie Budget
  * already responds to drift at the next Weekly Review.
  */
-enum class DriftStatus(val value: String) {
+enum class DriftStatus(@JsonValue val value: String) {
     HOLDING("holding"),
     DRIFTING_UP("drifting-up"),
     DRIFTING_DOWN("drifting-down"),
