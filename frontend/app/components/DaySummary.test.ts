@@ -3,6 +3,7 @@ import { renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import type { components } from '#open-fetch-schemas/api'
+import { estimatedEntry, weighedEntry } from '~~/test/entry-fixtures'
 import DaySummary from './DaySummary.vue'
 
 type DailySummary = components['schemas']['DailySummaryResponse']
@@ -132,46 +133,11 @@ describe('DaySummary', () => {
   const fiveEntries: DailySummary = {
     ...summary,
     entries: [
-      {
-        id: 1,
-        loggedOn: '2026-05-22',
-        kind: 'ESTIMATED',
-        calories: 100,
-        isEstimate: true,
-        label: 'Breakfast',
-      },
-      {
-        id: 2,
-        loggedOn: '2026-05-22',
-        kind: 'ESTIMATED',
-        calories: 200,
-        isEstimate: true,
-        label: 'Morning snack',
-      },
-      {
-        id: 3,
-        loggedOn: '2026-05-22',
-        kind: 'ESTIMATED',
-        calories: 300,
-        isEstimate: true,
-        label: 'Lunch',
-      },
-      {
-        id: 4,
-        loggedOn: '2026-05-22',
-        kind: 'ESTIMATED',
-        calories: 400,
-        isEstimate: true,
-        label: 'Afternoon snack',
-      },
-      {
-        id: 5,
-        loggedOn: '2026-05-22',
-        kind: 'ESTIMATED',
-        calories: 500,
-        isEstimate: true,
-        label: 'Dinner',
-      },
+      estimatedEntry({ id: 1, calories: 100, label: 'Breakfast' }),
+      estimatedEntry({ id: 2, calories: 200, label: 'Morning snack' }),
+      estimatedEntry({ id: 3, calories: 300, label: 'Lunch' }),
+      estimatedEntry({ id: 4, calories: 400, label: 'Afternoon snack' }),
+      estimatedEntry({ id: 5, calories: 500, label: 'Dinner' }),
     ],
   }
 
@@ -218,24 +184,14 @@ describe('DaySummary', () => {
   const withEntries: DailySummary = {
     ...summary,
     entries: [
-      {
+      weighedEntry({
         id: 1,
-        loggedOn: '2026-05-22',
-        kind: 'WEIGHED',
         calories: 107,
-        isEstimate: false,
         foodId: 5,
         foodName: 'Banana',
         grams: 120,
-      },
-      {
-        id: 2,
-        loggedOn: '2026-05-22',
-        kind: 'ESTIMATED',
-        calories: 600,
-        isEstimate: true,
-        label: 'Cafe lunch',
-      },
+      }),
+      estimatedEntry({ id: 2, calories: 600, label: 'Cafe lunch' }),
     ],
   }
 
