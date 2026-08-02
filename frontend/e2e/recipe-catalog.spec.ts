@@ -1,5 +1,6 @@
 import { expect, test } from './support/test'
 import { mockFoods } from './support/mock-api'
+import { food, recipe } from '../test/food-fixtures'
 
 // F9 Slice 2: the catalog distinction + read-only composition view with /api
 // mocked, on both Desktop and Mobile Chrome (the responsive check). A recipe row
@@ -10,28 +11,15 @@ test('a recipe reads as a recipe in the catalog and opens its composition', asyn
   goto,
 }) => {
   await mockFoods(page, [
-    {
-      id: 1,
-      name: 'Chicken',
-      kind: 'FOOD',
-      caloriesPer100g: 100,
-      proteinPer100g: 25,
-      carbsPer100g: 0,
-      fatPer100g: 0,
-      cookedWeightG: null,
-      ingredientCount: null,
-    },
-    {
+    food({ id: 1, name: 'Chicken', caloriesPer100g: 100, proteinPer100g: 25 }),
+    recipe({
       id: 2,
       name: 'Cottage pie',
-      kind: 'RECIPE',
       caloriesPer100g: 255,
       proteinPer100g: 30,
-      carbsPer100g: null,
-      fatPer100g: null,
       cookedWeightG: 1400,
       ingredientCount: 2,
-    },
+    }),
   ])
 
   // The composition detail fetch (GET /api/recipes/{id}) — distinct from the

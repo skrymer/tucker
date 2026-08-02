@@ -7,6 +7,7 @@ import {
 import { createError, setResponseStatus } from 'h3'
 import { screen, within } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
+import { food } from '~~/test/food-fixtures'
 import Foods from './foods.vue'
 
 const { toastAdd } = vi.hoisted(() => ({ toastAdd: vi.fn() }))
@@ -15,13 +16,12 @@ mockNuxtImport('useToast', () => () => ({
   remove: vi.fn(),
 }))
 
-const oats = {
+const oats = food({
   id: 7,
   name: 'Oats',
-  kind: 'raw',
   caloriesPer100g: 380,
   proteinPer100g: 13,
-}
+})
 
 registerEndpoint('/api/foods', () => [oats])
 

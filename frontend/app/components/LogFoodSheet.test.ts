@@ -3,19 +3,19 @@ import { ref } from 'vue'
 import { renderSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime'
 import { screen, waitFor } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
+import { food } from '~~/test/food-fixtures'
 import LogFoodSheet from './LogFoodSheet.vue'
 
 // Autofocus is desktop-only (see below), so the tests drive the viewport.
 const viewport = vi.hoisted(() => ({ desktop: false }))
 mockNuxtImport('useIsDesktop', () => () => ref(viewport.desktop))
 
-const skyr = {
+const skyr = food({
   id: 1,
   name: 'Skyr',
-  kind: 'raw',
   caloriesPer100g: 63.7,
   proteinPer100g: 11.4,
-}
+})
 
 describe('LogFoodSheet', () => {
   // jsdom's width resolves useIsDesktop to desktop (UModal); keep that as the
