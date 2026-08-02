@@ -11,7 +11,7 @@ const kgToGo = computed(() => (props.progress?.kgToGo ?? 0).toFixed(1))
 // The observed-pace badge is withheld until the backend has enough weigh-ins.
 const pace = computed(() => {
   const status = props.progress?.paceStatus
-  return status ? paceBadge(status as PaceStatus) : null
+  return status ? paceBadge(status) : null
 })
 </script>
 

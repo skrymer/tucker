@@ -3286,7 +3286,13 @@
           },
           "dayStatus": {
             "type": "string",
-            "nullable": true
+            "nullable": true,
+            "enum": [
+              "on-target",
+              "over-budget",
+              "in-progress",
+              null
+            ]
           },
           "trendWeightKg": {
             "type": "number",
@@ -3309,7 +3315,14 @@
           },
           "driftStatus": {
             "type": "string",
-            "nullable": true
+            "nullable": true,
+            "enum": [
+              "holding",
+              "drifting-up",
+              "drifting-down",
+              "gathering-data",
+              null
+            ]
           },
           "observedRateKgPerWeek": {
             "type": "number",
@@ -3420,7 +3433,14 @@
           },
           "paceStatus": {
             "type": "string",
-            "nullable": true
+            "nullable": true,
+            "enum": [
+              "behind",
+              "on-pace",
+              "ahead",
+              "stalled",
+              null
+            ]
           },
           "observedRateKgPerWeek": {
             "type": "number",
@@ -3446,7 +3466,11 @@
         "type": "object",
         "properties": {
           "outcome": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "EXISTING",
+              "CANDIDATE"
+            ]
           },
           "food": {
             "nullable": true,

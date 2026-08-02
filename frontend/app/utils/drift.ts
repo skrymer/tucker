@@ -1,9 +1,13 @@
-/** The backend's Drift Status on `DailySummaryResponse.driftStatus` (ADR 0008). */
-export type DriftStatus =
-  | 'holding'
-  | 'drifting-up'
-  | 'drifting-down'
-  | 'gathering-data'
+import type { components } from '#open-fetch-schemas/api'
+
+type DailySummary = components['schemas']['DailySummaryResponse']
+
+/**
+ * The backend's Drift Status (ADR 0008), arriving verbatim on the API response.
+ * Taken from the spec rather than restated here, so the set cannot drift from the
+ * one the backend actually sends.
+ */
+export type DriftStatus = NonNullable<DailySummary['driftStatus']>
 
 /** A drift badge's colour — a subset of Nuxt UI's badge colours. */
 export type DriftColor = 'success' | 'warning' | 'neutral'

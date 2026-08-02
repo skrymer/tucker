@@ -84,6 +84,13 @@ private class KotlinNullableModelConverter(private val objectMapper: ObjectMappe
             // Mutable, because swagger's own addAllOfItem appends to this list in place.
             allOf = mutableListOf(Schema<Any>().`$ref`(ref))
         }
+        // `enum` is the stricter keyword: it admits exactly what it lists, and
+        // `nullable` beside it adds nothing. So a nullable enum has to list null
+        // too, or the spec forbids the very value this call is marking legal.
+        if (enum?.isNotEmpty() == true && !enum.contains(null)) {
+            @Suppress("UNCHECKED_CAST")
+            (this as Schema<Any>).addEnumItemObject(null)
+        }
         nullable = true
     }
 }

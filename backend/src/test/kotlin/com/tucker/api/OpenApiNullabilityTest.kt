@@ -80,6 +80,29 @@ class OpenApiNullabilityTest {
     }
 
     /**
+     * `nullable` and `enum` are separate keywords in OpenAPI 3.0, and `enum` is the
+     * stricter one: it restricts the value to exactly what it lists, and `nullable`
+     * does not add `null` to that list. A nullable enum that omits it describes a
+     * payload the backend contradicts on every pre-review day — the same untruth
+     * ADR 0023 exists to remove, one keyword over.
+     */
+    @Test
+    fun `a nullable enum lists null, which OpenAPI 3 dot 0 does not infer from nullable`() {
+        val nullableEnums = specProperties().filter { it.nullable && it.enumValues.isNotEmpty() }
+
+        assertTrue(
+            nullableEnums.isNotEmpty(),
+            "No nullable enum in the spec — this check proves nothing until one exists.",
+        )
+        assertEquals(
+            emptyList(),
+            nullableEnums.filter { !it.enumValues.contains(null) }.map { it.path }.sorted(),
+            "These properties are nullable but their enum omits null, so a strict " +
+                "validator reads the API's own null as a schema violation.",
+        )
+    }
+
+    /**
      * Reads a day no Weekly Review covers, which is what makes the absent values
      * absent. That rests on the suite leaving no Profile and weight committed —
      * every writing test is `@Transactional` — so a future non-transactional test
@@ -110,8 +133,17 @@ class OpenApiNullabilityTest {
         )
     }
 
-    /** One property of one schema, reduced to the two axes that describe absence. */
-    private data class SpecProperty(val path: String, val required: Boolean, val nullable: Boolean)
+    /**
+     * One property of one schema, reduced to the axes that describe absence.
+     * [enumValues] holds `null` for a listed JSON null, which is the thing the
+     * nullable-enum check is looking for.
+     */
+    private data class SpecProperty(
+        val path: String,
+        val required: Boolean,
+        val nullable: Boolean,
+        val enumValues: List<String?>,
+    )
 
     private fun specProperties(): List<SpecProperty> =
         schemas().properties().flatMap { (schemaName, schema) ->
@@ -121,6 +153,7 @@ class OpenApiNullabilityTest {
                     path = "$schemaName.$name",
                     required = name in required,
                     nullable = property.path("nullable").asBoolean(),
+                    enumValues = property.path("enum").map { if (it.isNull) null else it.asText() },
                 )
             }
         }

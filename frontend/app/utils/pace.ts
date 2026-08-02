@@ -1,5 +1,13 @@
-/** The backend's observed-pace classification on `GoalProgressResponse.paceStatus`. */
-export type PaceStatus = 'behind' | 'on-pace' | 'ahead' | 'stalled'
+import type { components } from '#open-fetch-schemas/api'
+
+type GoalProgress = components['schemas']['GoalProgressResponse']
+
+/**
+ * The backend's observed-pace classification, arriving verbatim on the API
+ * response. Taken from the spec rather than restated here, so the set cannot
+ * drift from the one the backend actually sends.
+ */
+export type PaceStatus = NonNullable<GoalProgress['paceStatus']>
 
 /** A pace badge's colour — a subset of Nuxt UI's badge colours. */
 export type PaceColor = 'success' | 'warning' | 'neutral'

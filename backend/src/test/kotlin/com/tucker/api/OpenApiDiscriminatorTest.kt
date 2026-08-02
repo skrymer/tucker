@@ -47,8 +47,50 @@ class OpenApiDiscriminatorTest {
             enumOf("EntryResponse", "kind"),
             "An Entry's kind is a closed set for the same reason.",
         )
+        assertEquals(
+            setOf("EXISTING", "CANDIDATE"),
+            enumOf("BarcodeLookupResponse", "outcome"),
+            "A barcode lookup's outcome is the discriminator the client branches on " +
+                "(AddSheet compares it to 'EXISTING'), so it has to say what it can be.",
+        )
+        assertEquals(
+            setOf("FORMULA_SEED", "ADAPTIVE", "HELD"),
+            enumOf("WeeklyReviewResponse", "maintenanceBasis"),
+            "The Maintenance Basis the ledger keys REVIEW_BASIS_BADGE by.",
+        )
     }
 
+    /**
+     * The status enums carry a custom `value` ("on-target", not "ON_TARGET"), so the
+     * spec has to list *that* text — the frontend compares against what the wire
+     * sends, not what the constant is called. This is what `@JsonValue` buys, and
+     * asserting the kebab-case form is what stops the annotation being dropped.
+     */
+    @Test
+    fun `a status lists the wire values it sends, not its constant names`() {
+        assertEquals(
+            setOf("on-target", "over-budget", "in-progress"),
+            enumOf("DailySummaryResponse", "dayStatus"),
+            "The day verdict the frontend maps in dayStatusVerdict.",
+        )
+        assertEquals(
+            setOf("holding", "drifting-up", "drifting-down", "gathering-data"),
+            enumOf("DailySummaryResponse", "driftStatus"),
+            "The Drift Status the frontend maps in driftBadge (ADR 0008).",
+        )
+        assertEquals(
+            setOf("behind", "on-pace", "ahead", "stalled"),
+            enumOf("GoalProgressResponse", "paceStatus"),
+            "The observed-pace classification the frontend maps in paceBadge.",
+        )
+    }
+
+    /**
+     * `kind`'s wire half is pinned here because it had none anywhere when it became
+     * an enum. Its siblings already have theirs and are deliberately not repeated:
+     * `dayStatus` and `driftStatus` in [SummaryApiTest], `outcome` in
+     * [FoodBarcodeApiTest], `paceStatus` in the goal-progress real-stack smoke.
+     */
     @Test
     fun `the wire carries a kind as the enum constant name`() {
         val foodJson = mockMvc.post("/api/foods") {
@@ -81,12 +123,16 @@ class OpenApiDiscriminatorTest {
     }
 
     /**
-     * The values a spec property admits. A set, not a list: the constants' order
-     * carries no meaning — persistence stores the name, not the ordinal — so
-     * pinning it would fail on a harmless reorder.
+     * The values a spec property admits, ignoring the `null` a nullable enum also
+     * has to list — that one expresses absence rather than a value, and belongs to
+     * [OpenApiNullabilityTest], which checks it is there.
+     *
+     * A set, not a list: the constants' order carries no meaning — persistence
+     * stores the name, not the ordinal — so pinning it would fail on a harmless
+     * reorder.
      */
     private fun enumOf(schema: String, property: String): Set<String> =
         mockMvc.specSchemas(objectMapper)
             .path(schema).path("properties").path(property).path("enum")
-            .map { it.asText() }.toSet()
+            .filterNot { it.isNull }.map { it.asText() }.toSet()
 }
