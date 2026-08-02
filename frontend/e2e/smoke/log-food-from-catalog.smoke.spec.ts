@@ -1,5 +1,6 @@
 import { test, expect } from './support/smoke-test'
 import { todayIso } from '../support/date'
+import { toast } from '../support/toast'
 
 // Issue #103 smoke: the full UI → API → DB path for logging a Weighed
 // entry straight from the Foods catalog. Seeds a food, taps its row on
@@ -44,13 +45,12 @@ test('user logs a food from the catalog and stays on the Foods page', async ({
 
     await expect(sheet).toBeHidden()
     // The dashboard isn't visible here, so success is announced (ADR 0005)
-    // and the user stays on the catalog.
-    await expect(
-      page
-        .getByRole('region', { name: /notifications/i })
-        .getByRole('listitem')
-        .filter({ hasText: 'Entry logged' }),
-    ).toBeVisible()
+    // and the user stays on the catalog. The announcement names the Entry —
+    // on this path the row is never seen at all, so the toast is the only
+    // thing that can say *which* Food was logged.
+    await expect(toast(page, 'Entry logged')).toContainText(
+      `${foodName} — 383 kcal`,
+    )
     await expect(
       page.getByRole('heading', { name: 'Foods', level: 1 }),
     ).toBeVisible()

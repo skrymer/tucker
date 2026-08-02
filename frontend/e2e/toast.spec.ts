@@ -1,14 +1,11 @@
 import { expect, test } from './support/test'
+import { toastRegion } from './support/toast'
 
 const PHONE = { width: 375, height: 812 }
 const DESKTOP = { width: 1280, height: 800 }
 
 // A saved profile so the form loads populated; tests override the PUT per-case.
 const SAVED = { sex: 'MALE', birthDate: '1990-06-15', heightCm: 180 }
-
-function toastRegion(page: import('@playwright/test').Page) {
-  return page.getByRole('region', { name: /notifications/i })
-}
 
 test('at phone width a failed save anchors the error toast to the top, clear of the sheet and keyboard zone', async ({
   page,
