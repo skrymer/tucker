@@ -2,17 +2,21 @@ import { describe, expect, it, vi } from 'vitest'
 import { renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
+import type { components } from '#open-fetch-schemas/api'
 import DeleteEntryConfirm from './DeleteEntryConfirm.vue'
 
-const banana = {
+// Typed, so `kind` stays the discriminator rather than widening to `string`.
+const banana: components['schemas']['EntryResponse'] = {
   id: 1,
   loggedOn: '2026-05-22',
   kind: 'WEIGHED',
   calories: 107,
+  protein: null,
   isEstimate: false,
   foodId: 5,
   foodName: 'Banana',
   grams: 120,
+  label: null,
 }
 
 describe('DeleteEntryConfirm', () => {

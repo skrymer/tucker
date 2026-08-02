@@ -2738,7 +2738,11 @@
             "type": "string"
           },
           "kind": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "FOOD",
+              "RECIPE"
+            ]
           },
           "barcode": {
             "type": "string",
@@ -3076,7 +3080,11 @@
             "format": "date"
           },
           "kind": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "WEIGHED",
+              "ESTIMATED"
+            ]
           },
           "calories": {
             "type": "number",
