@@ -25,7 +25,17 @@ import java.time.LocalDate
 data class EntryResponse(
     val id: Long,
     val loggedOn: LocalDate,
-    val kind: String,
+    /**
+     * The domain enum rather than a String, so the spec describes `kind` by the
+     * values it can take and the generated client reads a union instead of an open
+     * `string` (issue #213, and `maintenanceBasis` already does this).
+     *
+     * Safe here because this DTO is response-only and Jackson renders an enum as its
+     * constant name — the text the String form spelled out with `.name` — so the wire
+     * does not move. A DTO that also serves a request body cannot follow without
+     * deciding what an unparseable value should return (ADR 0023 on `ProfileDto`).
+     */
+    val kind: EntryKind,
     val calories: Double,
     val protein: Double?,
     val isEstimate: Boolean,
@@ -65,12 +75,12 @@ data class BudgetProjectionResponse(
 internal fun Entry.toResponse(foodName: String? = null): EntryResponse = when (this) {
     is WeighedEntry -> EntryResponse(
         id = persistedId(id),
-        loggedOn = loggedOn, kind = EntryKind.WEIGHED.name, calories = calories, protein = protein,
+        loggedOn = loggedOn, kind = EntryKind.WEIGHED, calories = calories, protein = protein,
         isEstimate = false, foodId = foodId, foodName = foodName, grams = grams, label = null,
     )
     is EstimatedEntry -> EntryResponse(
         id = persistedId(id),
-        loggedOn = loggedOn, kind = EntryKind.ESTIMATED.name, calories = calories, protein = protein,
+        loggedOn = loggedOn, kind = EntryKind.ESTIMATED, calories = calories, protein = protein,
         isEstimate = true, foodId = null, foodName = null, grams = null, label = label,
     )
 }

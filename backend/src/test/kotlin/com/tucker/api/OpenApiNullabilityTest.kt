@@ -125,12 +125,5 @@ class OpenApiNullabilityTest {
             }
         }
 
-    private fun schemas(): JsonNode = fetchSpec().path("components").path("schemas")
-
-    private fun fetchSpec(): JsonNode =
-        objectMapper.readTree(
-            mockMvc.get("/v3/api-docs")
-                .andExpect { status { isOk() } }
-                .andReturn().response.contentAsString,
-        )
+    private fun schemas(): JsonNode = mockMvc.specSchemas(objectMapper)
 }

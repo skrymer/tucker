@@ -23,7 +23,8 @@ import org.springframework.web.bind.annotation.RestController
 data class FoodResponse(
     val id: Long,
     val name: String,
-    val kind: String,
+    /** The domain enum, so the spec lists the values (see [EntryResponse.kind]). */
+    val kind: FoodKind,
     val barcode: String?,
     val caloriesPer100g: Double,
     val proteinPer100g: Double,
@@ -92,7 +93,7 @@ internal fun FoodCandidate.toResponse() = FoodCandidateResponse(
 internal fun Food.toResponse(ingredientCount: Int? = null) = FoodResponse(
     id = persistedId(id),
     name = name,
-    kind = kind.name,
+    kind = kind,
     barcode = barcode,
     caloriesPer100g = nutrition.caloriesPer100g,
     proteinPer100g = nutrition.proteinPer100g,
