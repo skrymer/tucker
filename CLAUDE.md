@@ -234,9 +234,10 @@ The frontend is built **test-first (red-green TDD)**. Increments:
   the offline shell, and the reminder Push Subscription are verified on the real
   HTTPS origin. The missing manifest link that blocked Chromium install was found
   and fixed in [#99](https://github.com/skrymer/tucker/pull/99) (`<NuxtPwaManifest />`
-  + credentialed manifest fetch behind Access). Remaining siblings: off-host backup
-  [#89](https://github.com/skrymer/tucker/issues/89) (**next priority** — the
-  production DB has no backup yet), GHCR build-and-push (ADR 0015 next step), and
+  + credentialed manifest fetch behind Access). Off-host backup
+  [#89](https://github.com/skrymer/tucker/issues/89) is **done** — WAL is on and
+  Litestream replicates the production DB to R2. Remaining siblings: GHCR
+  build-and-push (ADR 0015 next step) and
   [#100](https://github.com/skrymer/tucker/issues/100) (install-button SPA-nav
   timing, ready-for-agent).
 - **F7** — Maintenance Mode after a Goal is reached (design pass **done**, see
@@ -310,11 +311,16 @@ The frontend is built **test-first (red-green TDD)**. Increments:
   `Cf-Access-Jwt-Assertion` (Spring Security resource server) and provisions a
   `User` just-in-time from the email claim. Every row is owned by exactly one User
   with **no sharing**; repositories scope implicitly from the security context, a
-  foreign id 404s, and the cron reminder runs-as each User in turn. Six slices:
-  identity (unscoped) → scope Foods+Entries → scope Weights+Goals+Reviews → scope
-  Profile+Push+Reminder → "Signed in as…" + sign out on `/profile` → invite the
-  second user. Slicing is safe in that order because production holds exactly one
-  User until the last slice. **Out of scope:** self-service email change (the
+  foreign id 404s, and the cron reminder runs-as each User in turn. **Seven**
+  slices, one issue each ([#155](https://github.com/skrymer/tucker/issues/155)–[#161](https://github.com/skrymer/tucker/issues/161)):
+  the auth gate alone (no `User` yet) → the `User`, provisioned just-in-time, with
+  the existing rows backfilled to the owner → scope Foods+Recipes+Entries → scope
+  Weight Measurements+Goals+Weekly Reviews → scope Profile+Push+Reminder and run
+  the cron as each User → "Signed in as…" + sign out on `/profile` → invite the
+  second User. The first two are deliberately separate: the gate can land and be
+  verified while every request still behaves byte-for-byte as it does today.
+  Slicing is safe in that order because production holds exactly one User until
+  the last slice. **Out of scope:** self-service email change (the
   intended design is pending-email adoption, ADR 0020), sharing a Recipe with
   another User (Spring ACL territory, ADR 0021), and public self-signup.
 - **F11** — Check: scan a package *before* buying it (**shipped**, PRD
