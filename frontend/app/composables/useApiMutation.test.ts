@@ -70,10 +70,38 @@ describe('useApiMutation', () => {
 
     expect(onSuccess).toHaveBeenCalledOnce()
     expect(calls).toEqual(['onSuccess', 'toast'])
-    // Success is low-stakes: announce politely so it never interrupts.
+    // Success is low-stakes: announce politely so it never interrupts. A flow
+    // that names no `successDescription` stays a bare title — the second line is
+    // opt-in, so a stray one here would be a regression.
     expect(toastAdd).toHaveBeenCalledWith(
       expect.objectContaining({
         title: 'Saved',
+        description: undefined,
+        color: 'success',
+        type: 'background',
+      }),
+    )
+  })
+
+  it('describes the success toast from what the mutation returned', async () => {
+    // The server is the only honest source for the figures — deriving them
+    // client-side is the business logic ADR 0002 keeps out of the UI.
+    const { execute } = useApiMutation(
+      () => Promise.resolve({ foodName: 'Banana', calories: 107 }),
+      {
+        successTitle: 'Entry logged',
+        errorTitle: 'Could not save entry',
+        successDescription: (entry) =>
+          `${entry.foodName} — ${entry.calories} kcal`,
+      },
+    )
+
+    await execute()
+
+    expect(toastAdd).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'Entry logged',
+        description: 'Banana — 107 kcal',
         color: 'success',
         type: 'background',
       }),

@@ -139,8 +139,10 @@ const { pending: logPending, execute: handleLog } = useApiMutation(
       },
     }),
   {
-    // The new Entry lives on Today, not here — a toast confirms it landed.
+    // The new Entry lives on Today, not here — a toast confirms it landed, and
+    // names it, since the user stays on /foods and never sees the row.
     successTitle: 'Entry logged',
+    successDescription: formatEntryName,
     errorTitle: 'Could not log entry',
     onSuccess: () => {
       open.value = false

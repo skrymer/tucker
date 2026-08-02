@@ -1,8 +1,16 @@
-interface ApiMutationOptions {
+interface ApiMutationOptions<TResult> {
   /** Toast title shown when the mutation throws. */
   errorTitle: string
   /** Toast title shown on success. Omit for a silent success. */
   successTitle?: string
+  /**
+   * Second line of the success toast, naming *which* record landed — e.g. the
+   * Entry the server just recorded, in the words the Today row uses for it
+   * (ADR 0005, "The kept toast names the Entry it confirms"). A function of the
+   * result rather than a string because only the response knows. Ignored
+   * without a [successTitle]: there is no toast to describe.
+   */
+  successDescription?: (result: TResult) => string
   /** Side effects to run after a successful mutation (close, refresh, emit). */
   onSuccess?: () => void | Promise<void>
   /**
@@ -31,9 +39,9 @@ function validationMessage(error: unknown): string | null {
  * stay with the caller via [options.onSuccess] and [options.successTitle], since
  * they vary per form; only the truly identical parts live here.
  */
-export function useApiMutation<TArgs extends unknown[]>(
-  mutate: (...args: TArgs) => Promise<unknown>,
-  options: ApiMutationOptions,
+export function useApiMutation<TArgs extends unknown[], TResult>(
+  mutate: (...args: TArgs) => Promise<TResult>,
+  options: ApiMutationOptions<TResult>,
 ) {
   const toast = useToast()
 
@@ -42,18 +50,15 @@ export function useApiMutation<TArgs extends unknown[]>(
   // mutation is `guard` mode — a double-tap must not fire two writes — and the
   // success side effects run inside the action so a failing `onSuccess` lands on
   // the error path, exactly as before.
-  // `void` is useAsyncAction's TResult — a mutation genuinely produces no
-  // value — which is the one position the rule can't tell apart from a misuse.
-  // eslint-disable-next-line @typescript-eslint/no-invalid-void-type
-  const { pending, busy, run } = useAsyncAction<TArgs, void>(
+  const { pending, busy, run } = useAsyncAction<TArgs, TResult>(
     async (_signal, ...args) => {
-      await mutate(...args)
+      const result = await mutate(...args)
       // A mutation that resolves without throwing — e.g. an intercepted
       // opaque-redirect response the underlying fetch client didn't treat
       // as an error — must not be celebrated as a real save; the logged-out
       // interstitial is about to replace the whole app regardless.
-      if (useAuthGate().isLoggedOut.value) return
-      await options.onSuccess?.()
+      if (!useAuthGate().isLoggedOut.value) await options.onSuccess?.()
+      return result
     },
   )
 
@@ -63,8 +68,9 @@ export function useApiMutation<TArgs extends unknown[]>(
 
   async function execute(...args: TArgs) {
     if (pending.value) return
+    let outcome: AsyncOutcome<TResult>
     try {
-      await run(...args)
+      outcome = await run(...args)
     } catch (error) {
       // An expired session already switches the whole app to the logged-out
       // interstitial (useAuthGate) — the generic "check your connection,
@@ -99,6 +105,19 @@ export function useApiMutation<TArgs extends unknown[]>(
       })
       return
     }
+    // A run that didn't finish owns nothing to announce, so it may neither clear
+    // a failure it never resolved nor confirm a save that may not have landed.
+    //
+    // `superseded` is unreachable from here — `guard` mode, no `cancel` exposed,
+    // and `execute` bounces re-entry before `run` is ever called. `timedOut` is
+    // *not*: this factory passes no `timeoutMs`, but useAsyncAction also
+    // classifies an `AbortError` DOMException thrown by the action itself as a
+    // timeout, and the reminder toggle's mutation calls `pushManager.subscribe()`
+    // — spec'd to reject with exactly that when the push service is unreachable.
+    // Without this guard that run falls through and silently *dismisses* the
+    // retry toast a previous failure left up, telling the user a subscribe that
+    // never happened had succeeded.
+    if (outcome.status !== 'ok') return
     if (useAuthGate().isLoggedOut.value) return
     // A successful (re)try clears any persistent failure toast for this
     // mutation — the snackbar is dismissed only by success or by the user.
@@ -108,6 +127,7 @@ export function useApiMutation<TArgs extends unknown[]>(
       // should never interrupt.
       toast.add({
         title: options.successTitle,
+        description: options.successDescription?.(outcome.value),
         color: 'success',
         type: 'background',
       })

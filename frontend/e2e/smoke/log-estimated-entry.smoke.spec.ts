@@ -1,5 +1,6 @@
 import { test, expect } from './support/smoke-test'
 import { todayIso } from '../support/date'
+import { toast } from '../support/toast'
 
 // Slice 1 smoke: the full UI → API → DB path for logging an Estimated
 // entry against the real backend. No mocks.
@@ -28,9 +29,20 @@ test('user logs an Estimated entry from Today and the dashboard updates', async 
   await sheet.getByLabel('Calories').fill(String(calories))
   await sheet.getByRole('button', { name: /log estimated entry/i }).click()
 
-  // The sheet closes and the entry surfaces in the Today entries list.
+  // The sheet closes and the toast names the entry that just landed, so a
+  // mis-typed label is caught without hunting for the row (ADR 0005 keeps this
+  // one success toast precisely because the delta may be scrolled off-screen).
   await expect(sheet).toBeHidden()
-  await expect(page.getByText(`${label} — ${calories} kcal`)).toBeVisible()
+  await expect(toast(page, 'Entry logged')).toContainText(
+    `${label} — ${calories} kcal`,
+  )
+
+  // The entry surfaces in the Today entries list. Scoped to the page, because
+  // the toast now says the same words — `formatEntryName` is deliberately
+  // shared — and an unscoped match would be ambiguous while the toast is up.
+  await expect(
+    page.getByRole('main').getByText(`${label} — ${calories} kcal`),
+  ).toBeVisible()
 
   // Cleanup: find today's entries through the API, delete the one we made.
   const today = todayIso()

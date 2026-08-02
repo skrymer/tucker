@@ -69,8 +69,12 @@ test('user creates a Food from a barcode then logs it now from the same flow', a
 
     // The Weighed Entry shows up on the dashboard with the derived calories.
     await goto('/', { waitUntil: 'hydration' })
+    // Scoped to the page: the success toast names the Entry with this same
+    // `formatEntryName` string (ADR 0005). The full navigation above happens to
+    // destroy the toast first, but that is the `goto` fixture's business, not
+    // this assertion's — say which surface is meant.
     await expect(
-      page.getByText(`${foodName} — ${expectedKcal} kcal`),
+      page.getByRole('main').getByText(`${foodName} — ${expectedKcal} kcal`),
     ).toBeVisible()
 
     // Capture ids for cleanup.
