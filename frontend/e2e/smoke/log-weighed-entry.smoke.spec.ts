@@ -1,5 +1,6 @@
 import { test, expect } from './support/smoke-test'
 import { todayIso } from '../support/date'
+import { toast } from '../support/toast'
 
 // Slice 2 smoke: the full UI → API → DB path for logging a Weighed entry
 // against the real backend. Creates a food in the catalog, logs an
@@ -55,8 +56,16 @@ test('user logs a Weighed entry from Today and the dashboard updates', async ({
     await sheet.getByRole('button', { name: /log weighed entry/i }).click()
 
     await expect(sheet).toBeHidden()
+    // The toast names the Food and the derived calories, so a mis-picked food
+    // or a stale grams value is visible without leaving the point of focus.
+    await expect(toast(page, 'Entry logged')).toContainText(
+      `${foodName} — ${expectedKcal} kcal`,
+    )
+
+    // Scoped to the page: the toast carries the same words by design, so an
+    // unscoped match would be ambiguous while the toast is still up.
     await expect(
-      page.getByText(`${foodName} — ${expectedKcal} kcal`),
+      page.getByRole('main').getByText(`${foodName} — ${expectedKcal} kcal`),
     ).toBeVisible()
 
     // Capture the logged entry id for cleanup.

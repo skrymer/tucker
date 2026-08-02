@@ -31,7 +31,10 @@ const { pending: submittingEstimated, execute: handleSubmitEstimated } =
     {
       // Kept: the sheet closes back to Today, where the calorie/protein delta
       // may be scrolled off-screen — the toast bridges "sheet closed → it worked".
+      // Named from the response so it says *which* entry landed, in the words
+      // the Today row is about to use for it.
       successTitle: 'Entry logged',
+      successDescription: formatEntryName,
       errorTitle: 'Could not save entry',
       onSuccess: closeAndEmit,
     },
@@ -42,8 +45,9 @@ const { pending: submittingWeighed, execute: handleSubmitWeighed } =
     (payload: { date: string; foodId: number; grams: number }) =>
       $api('/api/entries/weighed', { method: 'POST', body: payload }),
     {
-      // Kept for the same reason as the estimated entry above.
+      // Kept, and named, for the same reasons as the estimated entry above.
       successTitle: 'Entry logged',
+      successDescription: formatEntryName,
       errorTitle: 'Could not save entry',
       onSuccess: closeAndEmit,
     },

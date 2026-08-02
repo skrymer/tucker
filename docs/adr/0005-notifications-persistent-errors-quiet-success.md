@@ -62,6 +62,40 @@ lands** after the action. Default to silent. By that test:
   scrolled off-screen. Focus lands somewhere the result isn't reliably visible,
   so the toast bridges "sheet closed → it worked."
 
+### The kept toast names the Entry it confirms
+
+"Entry logged" alone says that *an* Entry landed, not which one — and a mis-tap
+on the neighbouring food in the picker, a "log it now" on the wrong scanned
+product, and a grams field that silently kept a stale value all produce a
+message identical to the correct outcome (issue #206). Since this toast is by
+design the *only* confirmation the user gets, it carries the thing worth
+confirming: the title stays `Entry logged` and the **description** names the
+Entry — `Banana — 107 kcal`, `Cafe lunch — 600 kcal` — which is also the
+title-plus-detail shape the error path already uses.
+
+Three properties of that are deliberate:
+
+- **The words are the row's words.** The description is `formatEntryName(response)`,
+  the same helper the Today row and the delete confirm use, so the toast cannot
+  drift from the row the user is about to read. It also names both arms without a
+  branch: it reads `foodName ?? label`, so an Estimated Entry is named by its
+  label for free. Keeping one string for all three surfaces is the point — the
+  cost is that a test asserting an entry's name must scope itself to the surface
+  it means, because while the toast is up the words genuinely appear twice.
+- **The figures are the server's.** The description is composed from the
+  `EntryResponse` the POST returns, never re-derived client-side: computing
+  `grams ÷ 100 × caloriesPer100g` in the UI is exactly the business logic
+  [0002](0002-business-logic-belongs-in-the-backend.md) keeps in the backend, and
+  a client that recomputed it could "confirm" a save with figures the save never
+  produced. `useApiMutation` threads the mutation's result through to a
+  `successDescription(result)` hook for this reason, rather than each call site
+  composing a title from state it happens to hold.
+- **A long name wraps; it is not truncated.** Nothing in Tucker bounds a Food
+  name — not Zod, not the domain, not the column — and provider-sourced ones run
+  long. But the calorie figure sits at the *end* of the string, so clamping the
+  description would drop precisely the part that confirms the log. The Today row
+  already wraps a long name, and the toast matches it.
+
 Validation errors (bad input) are **not** toasts and never were — they stay
 inline next to the field via the Zod `UForm` setup ([0003](0003-validate-forms-with-zod.md)).
 This decision covers only network/server failures and success confirmations.
@@ -120,7 +154,9 @@ wording above for the phone case.
   regression — the default is silent. Only entry-log mutations pass one
   ("Entry logged"): the `LogEntrySheet` flows on Today, and the Foods-page
   flows (catalog tap-to-log, barcode "log it now") whose Entry also lands on
-  Today while the user stays on `/foods`.
+  Today while the user stays on `/foods`. Those same three pass
+  `successDescription: formatEntryName`; a `successDescription` without a
+  `successTitle` is inert, since there is no toast to describe.
 - **a11y:** errors use `type: 'foreground'` (aria-live **assertive** — a direct
   result of user action that must interrupt). Success **must explicitly** pass
   `type: 'background'` (aria-live **polite**), because Reka defaults `type` to

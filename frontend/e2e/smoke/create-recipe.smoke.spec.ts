@@ -98,8 +98,10 @@ test('user builds a recipe, saves it, and logs a portion onto Today', async ({
 
     // The portion lands on Today's dashboard.
     await goto('/', { waitUntil: 'hydration' })
+    // Scoped for the same reason as the sibling log smokes: the success toast
+    // carries this exact string too (ADR 0005), so name the surface meant.
     await expect(
-      page.getByText(`${recipeName} — ${expectedKcal} kcal`),
+      page.getByRole('main').getByText(`${recipeName} — ${expectedKcal} kcal`),
     ).toBeVisible()
 
     // The saved recipe is in the catalog as a Food.
