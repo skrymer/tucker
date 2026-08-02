@@ -1,3 +1,4 @@
+import { weighedEntry } from '../test/entry-fixtures'
 import { expect, test } from './support/test'
 import {
   mockNoActiveGoal,
@@ -21,16 +22,13 @@ test('the Today page shows the daily summary from the API', async ({
     caloriesRemaining: 500,
     dayStatus: 'on-target',
     entries: [
-      {
+      weighedEntry({
         id: 1,
-        loggedOn: '2026-05-22',
-        kind: 'WEIGHED',
         calories: 240,
-        isEstimate: false,
         foodId: 3,
         foodName: 'Oats',
         grams: 60,
-      },
+      }),
     ],
   })
 
