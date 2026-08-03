@@ -172,12 +172,26 @@ Three further boundaries, none of which any current DTO crosses:
   `properties` node, so it passes vacuously rather than complaining. No DTO
   composes its schema today. Anything that starts to must re-check both halves
   here, because neither will say a word.
-- **The committed spec is still refreshed by hand.** The *derivation* is now
-  automatic; getting it into `frontend/openapi/tucker.json`, which is what the
-  client types are generated from, is still the two-command step in CLAUDE.md
-  with no CI check that the snapshot matches the backend. A new nullable field is
-  correct in the spec the backend serves and absent from the client until someone
-  remembers, with every test green throughout.
+
+A fourth boundary stood here and no longer does. The *derivation* was automatic,
+but getting it into `frontend/openapi/tucker.json` — what the client types are
+generated from — was the two-command step in CLAUDE.md with nothing checking the
+snapshot against the backend, so a new nullable field could be correct in the
+served spec and absent from the client with every test green.
+`OpenApiSnapshotTest` closes that (issue #209): it compares the two on every
+build and fails naming both the differing paths and the commands that regenerate
+them. It compares parsed JSON by path rather than as text, because the two
+documents come from two different JVM runs and nothing makes those enumerate
+schemas in the same order; and it excludes `servers`, which records the address
+the spec was generated from rather than anything the API promises.
+
+It replaces that boundary with a narrower one of its own, recorded on the test:
+the committed copy is generated from `src/main/resources/application.yml` while
+the test reads a context built from `src/test/resources/application.yml`, which
+**shadows** it. Both springdoc keys in main are spec-neutral today, which is the
+only reason the two agree; a spec-affecting one added to main would turn this
+guard red against a snapshot that is right about production, and the answer then
+is to make the contexts agree — never to edit the snapshot to match the test.
 
 ## Consequences
 

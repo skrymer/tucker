@@ -27,7 +27,14 @@ Backend commands (run in `backend/`):
   springdoc Gradle plugin and writes the live OpenAPI spec to
   `frontend/openapi/tucker.json`. Run after any controller change, then run
   `pnpm exec nuxt prepare` in `frontend/` to regenerate the typed
-  `nuxt-open-fetch` client.
+  `nuxt-open-fetch` client. Forgetting is caught rather than shipped:
+  `OpenApiSnapshotTest` compares the committed snapshot against the spec the
+  backend serves on every build, and fails naming both the differing paths and
+  those two commands (issue #209). It compares parsed JSON by path rather than
+  as text: the two documents are produced by two different JVM runs, nothing
+  makes those enumerate controllers and schemas in the same order, and JSON key
+  order carries no meaning — so a textual diff would be free to go red over a
+  document that says exactly the same thing.
 
 The **Nuxt frontend** (`frontend/`) is scaffolded — **F1 is done**: a SPA
 (`ssr: false`) Nuxt 4 + Nuxt UI + `@vite-pwa/nuxt` project, UI testing wired up,
