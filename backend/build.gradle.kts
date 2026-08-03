@@ -150,10 +150,16 @@ tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach {
 // any controller change so the typed nuxt-open-fetch client stays in sync:
 //   ./gradlew generateOpenApiDocs
 // Uses port 8181 to avoid colliding with any locally running tucker-backend.
+// Named once here because two tasks care about it: `generateOpenApiDocs` writes
+// it, and `test` reads it back (OpenApiSnapshotTest, below).
+val openApiSnapshotDir = file("../frontend/openapi")
+val openApiSnapshotName = "tucker.json"
+val openApiSnapshot = openApiSnapshotDir.resolve(openApiSnapshotName)
+
 openApi {
     apiDocsUrl.set("http://localhost:8181/v3/api-docs")
-    outputDir.set(file("../frontend/openapi"))
-    outputFileName.set("tucker.json")
+    outputDir.set(openApiSnapshotDir)
+    outputFileName.set(openApiSnapshotName)
     customBootRun {
         args.set(listOf("--server.port=8181"))
     }
@@ -162,6 +168,15 @@ openApi {
 // The default test task runs the fast in-JVM suite (no Docker required).
 tasks.named<Test>("test") {
     useJUnitPlatform { excludeTags("e2e") }
+    // OpenApiSnapshotTest reads the committed spec through java.io.File, which
+    // Gradle cannot see. Undeclared, a change to the snapshot alone leaves the
+    // backend bytecode identical, so :test comes back UP-TO-DATE or FROM-CACHE
+    // and the guard never runs — skipped in precisely the case it exists for
+    // (a hand-edited or badly-merged tucker.json, with no backend change to
+    // invalidate anything). Declaring it makes that edit a cache miss.
+    inputs.file(openApiSnapshot)
+        .withPropertyName("committedOpenApiSpec")
+        .withPathSensitivity(PathSensitivity.NONE)
 }
 
 // End-to-end tests run the real tucker-backend Docker image via Testcontainers.
