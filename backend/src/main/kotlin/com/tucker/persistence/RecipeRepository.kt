@@ -5,6 +5,7 @@ import com.tucker.domain.Recipe
 import com.tucker.domain.RecipeIngredient
 import com.tucker.jooq.Tables.FOOD
 import com.tucker.jooq.Tables.RECIPE_INGREDIENT
+import com.tucker.security.CurrentUser
 import org.jooq.DSLContext
 import org.jooq.impl.DSL
 import org.springframework.stereotype.Repository
@@ -18,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional
 class RecipeRepository(
     private val dsl: DSLContext,
     private val foods: FoodRepository,
+    private val currentUser: CurrentUser,
 ) {
 
     /** Persist a Recipe: its rolled-up Food, then its ingredient lines, atomically. */
@@ -112,12 +114,19 @@ class RecipeRepository(
      * naturally ignores any orphaned ingredient line — mirroring
      * [EntryRepository.referencesFood], not a caught FK violation; [FoodService]
      * uses it to name what blocks a delete.
+     *
+     * Scoped to the current User's Recipes (ADR 0021). Belt-and-braces rather than a
+     * reachable guard — an ingredient line can only name a Food its Recipe's owner
+     * has — but these names are read back to whoever tried the delete, so it is worth
+     * the predicate that this can never answer "you can't, because of «somebody
+     * else's dinner»".
      */
     fun recipesUsingIngredient(foodId: Long): List<String> =
         dsl.selectDistinct(FOOD.NAME)
             .from(RECIPE_INGREDIENT)
             .join(FOOD).on(FOOD.ID.eq(RECIPE_INGREDIENT.RECIPE_ID))
             .where(RECIPE_INGREDIENT.INGREDIENT_FOOD_ID.eq(foodId.toInt()))
+            .and(FOOD.USER_ID.eq(currentUser.id.toInt()))
             .orderBy(FOOD.NAME)
             .fetch(FOOD.NAME)
 }

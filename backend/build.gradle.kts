@@ -85,7 +85,13 @@ val prepareJooqDatabase by tasks.registering {
         dbFile.delete()
         DriverManager.getConnection("jdbc:sqlite:${dbFile.absolutePath}").use { conn ->
             migrationDir.listFiles { f -> f.extension == "sql" }!!
-                .sortedBy { it.name }
+                // By version *number*, the way Flyway orders them — not by name.
+                // Lexicographically "V10__" sorts before "V1__" ('0' < '_'), so a
+                // name sort quietly ran the tenth migration first, against an empty
+                // database. It went unnoticed while every migration was single-digit
+                // and failed the moment V10 arrived. The application was never
+                // affected: Flyway parses the version and orders on that.
+                .sortedBy { it.name.substringAfter("V").substringBefore("__").toInt() }
                 .forEach { script ->
                     conn.createStatement().use { stmt ->
                         script.readText().split(";")

@@ -11,6 +11,7 @@ import com.tucker.domain.RecipeIngredient
 import com.tucker.domain.Sex
 import com.tucker.domain.WeighedEntry
 import com.tucker.domain.WeightMeasurement
+import com.tucker.security.WithTuckerUser
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
@@ -27,6 +28,7 @@ import kotlin.test.assertTrue
  */
 @SpringBootTest
 @Transactional
+@WithTuckerUser
 class RepositoryRoundTripTest {
 
     @Autowired lateinit var foods: FoodRepository

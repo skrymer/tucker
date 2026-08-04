@@ -113,8 +113,13 @@ class RecipeController(
     private fun CreateRecipeRequest.toRecipe(id: Long?): Recipe {
         val byId = foods.findByIds(ingredients.map { it.foodId }).associateBy { it.id }
         val lines = ingredients.map { line ->
+            // 404 rather than 400, and for an unknown id exactly as for one belonging
+            // to somebody else — the two must agree or the status code itself tells a
+            // caller which of the two it hit (ADR 0021). It also matches
+            // POST /api/entries/weighed, the other endpoint that resolves a foodId out
+            // of a request body; 400 here stays for malformed input alone.
             val food = byId[line.foodId]
-                ?: throw IllegalArgumentException("no Food with id ${line.foodId}")
+                ?: throw NotFoundException("no Food with id ${line.foodId}")
             RecipeIngredient(food, line.grams)
         }
         return Recipe(id = id, name = name, ingredients = lines, cookedWeightG = cookedWeightG)
