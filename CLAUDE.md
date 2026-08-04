@@ -402,6 +402,49 @@ The frontend is built **test-first (red-green TDD)**. Increments:
     **deferred to [#157](https://github.com/skrymer/tucker/issues/157)**: nothing reads
     the principal until queries are scoped, so a context installed now would be
     asserted by no test. The isolation suite lands there too, driven RED first.
+
+  Slice 3 ([#157](https://github.com/skrymer/tucker/issues/157)) — **the catalog and
+  log become private** — ✅ done. Foods, Recipes and Entries read and write against a
+  constructor-injected `CurrentUser` (`SecurityContextHolder` at call time, loud
+  `NoCurrentUserException` — its own type, since `IllegalStateException` would arrive
+  dressed as a 409). No repository signature carries an owner, so there is no id to get
+  wrong.
+  - **Two of the holes were live, not theoretical**, and the isolation suite fails on
+    both when the predicates come off: `EntryController` deleted by primary key with no
+    scoped read in front of it, so one User could delete another's Entry outright; and
+    the adaptive engine's window aggregates were unscoped, so a second User's logged
+    days and calories set your Maintenance — a leak that shows no wrong name, only a
+    wrong number. `FoodRepository.update` was a third in waiting: `applyFrom` writes
+    `user_id`, so a key-only UPDATE would not merely overwrite a foreign Food, it would
+    silently **re-own** it.
+  - **Status codes agree on purpose** (ADR 0021 Consequences). A foreign Food and an
+    absent one both delete as **204** — delete is idempotent and always was, so a 404
+    for the foreign case would be exactly the existence oracle the ADR forbids. A
+    Recipe ingredient naming a Food the caller does not have is now **404** rather than
+    400, matching `POST /api/entries/weighed`, which resolves a `foodId` out of a
+    request body the same way; 400 keeps malformed input alone.
+  - **V10** makes `food.barcode` unique per User — a plain `DROP INDEX` +
+    `CREATE UNIQUE INDEX`, because `idx_food_barcode` was a *named* index. It surfaced a
+    latent build bug: `prepareJooqDatabase` sorted migrations by **name**, and `"V10__"`
+    sorts before `"V1__"` (`'0'` < `'_'`), so codegen ran the tenth migration first
+    against an empty database. Sorted by parsed version now; Flyway was never affected,
+    which is why it went unnoticed for nine migrations.
+  - **Direct-bean tests sign in with `@WithTuckerUser`** — Spring Security's own
+    `@WithSecurityContext` hook, whose factory is a bean that *provisions* the User so
+    the foreign key has a row to point at. It defaults to `AccessTokens.EMAIL`, which is
+    load-bearing: several tests seed through a repository and read back over HTTP, and
+    those must be the same person. Opt-in per class, because an ambient identity would
+    also reach the cron scheduler and make slice 5's `runAs` untestable.
+  - **AC 8 is met by construction, not by a guard.** No cross-owner reference can exist:
+    V9 backfilled every legacy row to one User, and scoped ids stop the API making a new
+    one. Its wording was lifted from ADR 0021's argument *against* the shared catalog.
+    The `referencesFood` / `recipesUsingIngredient` predicates are still there as
+    belt-and-braces, and are commented as such rather than as reachable guards.
+  - **Waiting for slice 5**: `SecurityContextHolderFilter` clears `SecurityContextHolder`
+    in a `finally`, so `PushApiTest:46` and `SummaryApiTest:264` — which read a repository
+    *after* a MockMvc call — break the moment those repositories are scoped.
+    `TestSecurityContextHolder` keeps a second ThreadLocal that survives exactly this,
+    and is the intended restore source.
 - **F11** — Check: scan a package *before* buying it (**shipped**, PRD
   [#168](https://github.com/skrymer/tucker/issues/168), see
   [ADR 0022](docs/adr/0022-a-check-states-cost-and-return-and-never-labels-a-food.md)
