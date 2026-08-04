@@ -30,14 +30,19 @@ it does not restate them.
 - **The client owns "today".** Send the user's local date to endpoints that resolve a calendar day.
   (ADR 0014.)
 
-## Test strategy — four layers, test-first
+## Test strategy — five layers, test-first
 
 | Layer                       | Tool · env                                            | Where                     | Skill                             |
 | --------------------------- | ----------------------------------------------------- | ------------------------- | --------------------------------- |
 | Pure presentation helpers   | Vitest · env `nuxt`                                   | `app/utils/*.test.ts`     | **tdd**                           |
 | Components                  | Vitest · `renderSuspended` + Testing Library          | co-located `*.test.ts`    | **component-testing-best-practices** |
+| Nitro server routes         | Vitest · plain, no Nuxt render                        | `server/**/*.test.ts`     | **tdd**                           |
 | Rendered behaviour (mocked) | Playwright · Desktop + Mobile Pixel 7, `/api` mocked  | `e2e/*.spec.ts`           | **playwright-best-practices**     |
 | Real-stack behaviour        | Playwright smokes vs the Docker backend               | `e2e/smoke/*.smoke.spec.ts` | **playwright-best-practices**   |
+
+The `server/` layer is thin on purpose — the only route is the `/api` proxy — but it is
+real production code with a rule of its own (it must never overwrite a Cloudflare Access
+assertion with the dev token), and no browser-level layer can reach it.
 
 - One test at a time, RED first (the `tdd` skill). A **deep module** (an interface worth
   specifying) gets its own test; thin glue is covered by the integrated / smoke test — never call

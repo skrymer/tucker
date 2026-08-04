@@ -1,5 +1,9 @@
 import { test as base, expect } from '@nuxt/test-utils/playwright'
 import { assertNoPageErrors, SMOKE_NOISE } from '../../support/console-guard'
+import {
+  ACCESS_ASSERTION_HEADER,
+  mintAccessToken,
+} from '../../../scripts/access-token.mjs'
 
 const API = 'http://localhost:8080/api'
 
@@ -31,6 +35,24 @@ export const test = base.extend<{
   allowedErrors: RegExp[]
 }>({
   allowedErrors: [[], { option: true }],
+  // The API the smokes seed and clean up through is gated now (ADR 0020), so this
+  // context carries a real assertion minted with the committed non-production key —
+  // every seeding call goes through the backend's real decoder. Minting per test
+  // rather than per run means switching identity is one line, which is what makes
+  // cross-user isolation testable once Users arrive (F10 #157).
+  //
+  // A context of its own rather than the `extraHTTPHeaders` option, which looks
+  // like the obvious way to do this and is a trap: that option applies to the
+  // *browser* too, and an unrecognised request header turns the SPA's cross-origin
+  // icon fetches into preflighted ones that api.iconify.design refuses. The
+  // browser gets its credential a different way — see global-backend.setup.ts.
+  request: async ({ playwright }, use) => {
+    const api = await playwright.request.newContext({
+      extraHTTPHeaders: { [ACCESS_ASSERTION_HEADER]: await mintAccessToken() },
+    })
+    await use(api)
+    await api.dispose()
+  },
   freshDatabase: [
     async ({ request }, use) => {
       const res = await request.post(`${API}/test/reset`)

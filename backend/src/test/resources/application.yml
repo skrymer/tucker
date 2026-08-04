@@ -13,3 +13,13 @@ spring:
 tucker:
   reminders:
     scheduler-enabled: false
+
+  # Verify against the committed non-production key (dev/access-key/), so the suite
+  # runs through the real decoder rather than a bypass (ADR 0020). These three have
+  # no defaults in main's application.yml — a backend given none refuses to start —
+  # and this file shadows main entirely, so they have to be stated here or every
+  # @SpringBootTest context fails. AccessTokens mints to match.
+  access:
+    issuer: https://access.tucker.invalid
+    audience: tucker-dev
+    jwk-set-uri: classpath:access/jwks.json

@@ -6,7 +6,10 @@ export default defineVitestConfig({
   test: {
     environment: 'nuxt',
     setupFiles: ['./test/setup.ts'],
-    include: ['app/**/*.{test,spec}.ts'],
+    // `server/` as well as `app/`: the runtime /api proxy lives there and carries a
+    // security rule of its own (it must not overwrite a real Access assertion), which
+    // no other layer covers.
+    include: ['app/**/*.{test,spec}.ts', 'server/**/*.{test,spec}.ts'],
     exclude: ['**/node_modules/**', 'e2e/**'],
     // Each test file boots its own Nuxt environment, which is CPU- and
     // IO-heavy. On a many-core machine the default (one worker per core)

@@ -34,7 +34,10 @@ Backend commands (run in `backend/`):
   as text: the two documents are produced by two different JVM runs, nothing
   makes those enumerate controllers and schemas in the same order, and JSON key
   order carries no meaning — so a textual diff would be free to go red over a
-  document that says exactly the same thing.
+  document that says exactly the same thing. That is **observed, not theoretical**:
+  a `--rerun-tasks` regeneration swaps `400` against `404` under `responses` on
+  most paths — ~700 lines of textual churn that a structural comparison of the two
+  documents reports as identical. Discard such a diff rather than committing it.
 
 The **Nuxt frontend** (`frontend/`) is scaffolded — **F1 is done**: a SPA
 (`ssr: false`) Nuxt 4 + Nuxt UI + `@vite-pwa/nuxt` project, UI testing wired up,
@@ -330,6 +333,34 @@ The frontend is built **test-first (red-green TDD)**. Increments:
   the last slice. **Out of scope:** self-service email change (the
   intended design is pending-email adoption, ADR 0020), sharing a Recipe with
   another User (Spring ACL territory, ADR 0021), and public self-signup.
+
+  Slice 1 ([#155](https://github.com/skrymer/tucker/issues/155)) — **the auth gate
+  alone** — ✅ done. `/api/**` needs a verified assertion; `/api/version` and
+  `/v3/api-docs/**` stay open — and the servlet ERROR *dispatch*, matched on dispatcher
+  type rather than on `/error`, so an error on one of those two reports its own status
+  instead of a 401 without opening a third door. `/api/test/**` is **not** permitted — it stays
+  `smoke`-profile-only and its callers carry an assertion like everything else.
+  Missing, expired, tampered, foreign-key, wrong-audience, wrong-issuer and
+  **email-less** assertions each 401 — the last excluding Cloudflare *service*
+  tokens, which authenticate a machine and so have nothing to be a User.
+  - **One verification path everywhere** (ADR 0020): production points
+    `NimbusJwtDecoder` at Cloudflare's team JWKS, everything else at the committed
+    non-production JWK set in `backend/src/main/resources/access/`. Only the key
+    *source* differs — same signature check, same validators, same failure modes.
+  - **Nothing shipped can mint.** The private half lives in `dev/access-key/`,
+    outside every packaged tree; Gradle hands it to the test classpath only. Kotlin
+    tests mint in-process, the smokes mint with `jose`, and `pnpm dev` attaches a
+    pre-minted `TUCKER_DEV_ACCESS_TOKEN` (from `frontend/scripts/mint-dev-token.mjs`)
+    in the `/api` proxy — a static string, not a signing capability.
+  - The ~180 existing MockMvc call sites are **untouched**: one
+    `MockMvcBuilderCustomizer` signs every test request in with a real token minted
+    per request, so the whole suite runs through the real decoder rather than a
+    verification-skipping post-processor.
+  - `tucker.access.issuer` / `.audience` / `.jwk-set-uri` have **no defaults** — a
+    backend given none refuses to start — and the prod overlay supplies all three
+    with compose's `${VAR:?}`, so a production deploy that forgets them fails at
+    parse time instead of inheriting a key that is committed to a public repo.
+    Dashboard locations are in [`deploy/README.md`](deploy/README.md) step 6.
 - **F11** — Check: scan a package *before* buying it (**shipped**, PRD
   [#168](https://github.com/skrymer/tucker/issues/168), see
   [ADR 0022](docs/adr/0022-a-check-states-cost-and-return-and-never-labels-a-food.md)

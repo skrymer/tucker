@@ -39,6 +39,17 @@ services:
           memory: 256M         # light nitro node server — keep Tucker bounded
 
   backend:
+    environment:
+      # The real Access team, application and JWKS (deploy/README.md step 6), which
+      # replace the dev base's non-production values key by key. `:?` makes a missing
+      # one fail at compose-parse time — before any container exists — because the
+      # alternative is inheriting a signing key anyone can read off GitHub. Getting
+      # one of these *wrong* instead of absent 401s every request; recovery is
+      # redeploying the previous image, and /api/version stays open to tell that
+      # apart from the app being down (ADR 0020, Consequences).
+      TUCKER_ACCESS_ISSUER: ${TUCKER_ACCESS_ISSUER:?set in .env — see deploy/README.md}
+      TUCKER_ACCESS_AUDIENCE: ${TUCKER_ACCESS_AUDIENCE:?set in .env — see deploy/README.md}
+      TUCKER_ACCESS_JWK_SET_URI: ${TUCKER_ACCESS_JWK_SET_URI:?set in .env — see deploy/README.md}
     # In prod nothing binds 8080 on the host: only the frontend and the tunnel
     # reach the backend over the internal network. `!reset` clears the dev base's
     # 127.0.0.1:8080 publish (a plain list would merge/append, not replace).
