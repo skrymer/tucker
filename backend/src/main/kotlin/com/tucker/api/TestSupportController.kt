@@ -7,6 +7,7 @@ import com.tucker.jooq.Tables.PROFILE
 import com.tucker.jooq.Tables.PUSH_SUBSCRIPTION
 import com.tucker.jooq.Tables.RECIPE_INGREDIENT
 import com.tucker.jooq.Tables.REMINDER_STATE
+import com.tucker.jooq.Tables.USER
 import com.tucker.jooq.Tables.WEEKLY_REVIEW
 import com.tucker.jooq.Tables.WEIGHT_MEASUREMENT
 import com.tucker.service.ReminderScheduler
@@ -57,6 +58,11 @@ class TestSupportController(
         dsl.deleteFrom(PUSH_SUBSCRIPTION).execute()
         dsl.deleteFrom(REMINDER_STATE).execute()
         dsl.deleteFrom(PROFILE).execute()
+        // Users last: every table above references one, so clearing them first
+        // would be refused. This includes whoever is making *this* request — they
+        // are simply provisioned again by their next one, which is the point: a
+        // smoke about a brand-new User needs a database that has never seen them.
+        dsl.deleteFrom(USER).execute()
     }
 
     /**

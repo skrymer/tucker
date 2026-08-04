@@ -9,6 +9,16 @@ spring:
       connection-init-sql: PRAGMA foreign_keys = ON
   jooq:
     sql-dialect: sqlite
+  flyway:
+    placeholders:
+      # Who V9 attributes a pre-multi-user database to (issue #156). Deliberately
+      # undefaulted, like tucker.access.* — Spring fails to resolve it and the app
+      # refuses to start rather than seeding an owner nobody can authenticate as.
+      # Name it wrong and the owner's next sign-in provisions a *second* User,
+      # leaving their whole history owned by a row no assertion ever matches.
+      # It is read from YAML rather than bound straight from the environment so
+      # the placeholder key keeps its camel case (env vars cannot express that).
+      ownerEmail: ${TUCKER_OWNER_EMAIL}
 
 server:
   port: ${TUCKER_PORT:8080}

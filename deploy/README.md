@@ -81,6 +81,46 @@ it needs the `LITESTREAM_*` secrets in `.env`).
    **wrong** one is quieter — every request 401s — and recovery is redeploying the
    previous image; `/api/version` stays open either way so an operator can tell
    "the app is down" from "the app is rejecting me".
+
+   A fourth key joins them from F10 slice 2 onward, answering a different
+   question — not *who signed this* but *whose data is already here*:
+
+   | `.env` key | Where to find it | Looks like |
+   | --- | --- | --- |
+   | `TUCKER_OWNER_EMAIL` | the address in your Access **policy** — exactly as Access asserts it | `you@example.com` |
+
+   Tucker was single-user before F10, so its database holds years of rows with no
+   owner. The `V9` migration creates the first **User** and attributes every one
+   of those rows to them, and this is the address it uses. It is read **once**, on
+   the deploy that first applies `V9`, and only where there is data to adopt — a
+   fresh install has none, so the first person to sign in is provisioned normally.
+
+   Getting it wrong is the one failure worth rehearsing, because it is silent:
+   sign-in still succeeds, but the assertion matches no `user` row, so
+   just-in-time provisioning creates a **second** User and the app comes up
+   looking factory-fresh — no Foods, no history, no Goal — while every Entry,
+   Weight Measurement, Goal and Weekly Review stays owned by the first row.
+   Nothing is lost and nothing needs restoring; point the owner row at the right
+   address and it all reappears:
+
+   The backend image is a plain JRE and carries no `sqlite3` binary, so borrow the
+   same throwaway-Python trick the restore drill below uses — `sqlite3` is in the
+   Python stdlib, and `--volumes-from` reaches the database without having to guess
+   the compose-prefixed volume name:
+
+   ```bash
+   docker run --rm --volumes-from tucker-backend python:3-slim python -c \
+     "import sqlite3; db = sqlite3.connect('/data/tucker.db'); \
+      db.execute('DELETE FROM user WHERE id <> 1'); \
+      db.execute('UPDATE user SET email = ? WHERE id = 1', ['the-right@address']); \
+      db.commit(); print(db.execute('select id, email from user').fetchall())"
+   ```
+
+   Case is not the trap here — `user.email` is `COLLATE NOCASE`, so `You@` and
+   `you@` are the same person. Nor is an apostrophe: `.env` is escaped for you
+   before Flyway substitutes it, and the `?` parameter above needs no quoting of
+   its own — which is exactly why this is written as a bound parameter rather than
+   pasted into the SQL.
 7. **Set the timezone** if the box isn't already in your zone — the engine works
    in the user's local day, so export `TZ` before composing (e.g.
    `TZ=Australia/Brisbane`); see the note in `docker-compose.yml`.
@@ -119,6 +159,15 @@ Over the real HTTPS origin, with DevTools → Application:
 > value`. The running containers keep serving — it is not an outage — but the checkout and
 > the version stamp have moved ahead of what is deployed, so fill the keys in and re-run
 > `deploy/update.sh` to converge.
+
+> **Once, before the first deploy that includes F10 slice 2:** add
+> `TUCKER_OWNER_EMAIL` too, from the same [step 6](#first-deploy-to-a-vps). It fails the
+> same way when missing — loudly, at compose-parse time — which is the point: it decides
+> who this database's existing history belongs to, and it is far better to be stopped than
+> to guess. Check the result afterwards with the throwaway-Python one-liner in
+> [step 6](#first-deploy-to-a-vps) (swap the writes for
+> `print(db.execute('select id, email from user').fetchall())`): it should report exactly
+> one row, carrying your own address.
 
 ```bash
 deploy/update.sh

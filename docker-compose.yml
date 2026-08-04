@@ -29,6 +29,10 @@ services:
       TUCKER_ACCESS_ISSUER: https://access.tucker.invalid
       TUCKER_ACCESS_AUDIENCE: tucker-dev
       TUCKER_ACCESS_JWK_SET_URI: classpath:access/jwks.json
+      # Who V9 attributes a pre-multi-user database to (issue #156). Also undefaulted,
+      # for the same reason. A dev or smoke database starts empty, so V9 adopts nothing
+      # and this is never actually written — the prod overlay supplies the real one.
+      TUCKER_OWNER_EMAIL: owner@tucker.invalid
     volumes:
       - tucker-data:/data
     ports:

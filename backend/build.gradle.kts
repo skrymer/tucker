@@ -139,6 +139,10 @@ val devAccessArgs = listOf(
     "--tucker.access.issuer=https://access.tucker.invalid",
     "--tucker.access.audience=tucker-dev",
     "--tucker.access.jwk-set-uri=classpath:access/jwks.json",
+    // V9 names the owner of a pre-multi-user database (issue #156) and is likewise
+    // undefaulted, so a locally run app has to state it too. A local database is
+    // normally empty, in which case V9 adopts nothing and never reads this.
+    "--spring.flyway.placeholders.ownerEmail=owner@tucker.invalid",
 )
 
 // Note `--args=` on the command line *replaces* this list rather than appending to it, so
