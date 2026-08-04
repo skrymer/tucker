@@ -361,6 +361,47 @@ The frontend is built **test-first (red-green TDD)**. Increments:
     with compose's `${VAR:?}`, so a production deploy that forgets them fails at
     parse time instead of inheriting a key that is committed to a public repo.
     Dashboard locations are in [`deploy/README.md`](deploy/README.md) step 6.
+
+  Slice 2 ([#156](https://github.com/skrymer/tucker/issues/156)) — **the `User`,
+  provisioned just-in-time, with the existing rows backfilled** — ✅ done.
+  `user(id, email UNIQUE COLLATE NOCASE)`, and `AccessPrincipalConverter` — the
+  `JwtAuthenticationConverter` slice 1 left a seam for — is the single home of
+  provisioning, resolving every verified assertion to a `TuckerPrincipal(userId,
+  email)`. **Nothing is scoped yet**: queries still ignore `user_id`, which is safe
+  because production holds one User until [#161](https://github.com/skrymer/tucker/issues/161).
+  - **`user_id` is nullable, and that is forced, not sloppy.** SQLite refuses to add
+    a `NOT NULL` column carrying a `REFERENCES` clause to a table **that already has
+    rows** — and *only* then. A `NOT NULL` V9 therefore passes every test, every
+    smoke and the jOOQ codegen schema, and fails against exactly one database in the
+    world: the production one. The alternative that buys `NOT NULL` is rebuilding all
+    eight tables, needing `executeInTransaction=false` (no rollback part-way) plus
+    `PRAGMA foreign_keys = OFF`, which — with `maximum-pool-size: 1` — is handed back
+    to the pool and disables referential integrity for the life of the JVM. So the FK
+    lands now and `NOT NULL` rides along with the per-user-uniqueness rebuilds
+    ADR 0021 already requires. `OwnerBackfillMigrationTest` is the guard: it migrates
+    to V8, seeds the schema the way a real installation is filled, and only then
+    migrates forward, **with foreign keys enforced** — the only shape of test that
+    can see this at all.
+  - **Eight owned tables, not nine.** `recipe_ingredient` is owned *through* its
+    Recipe (a Recipe is a Food row): it cascades away with it and every query already
+    reaches it through a Food, so a `user_id` there would be a second copy of a fact
+    nothing keeps in agreement. `app_config` stays global.
+  - **The owner is named by an undefaulted Flyway placeholder** (`${ownerEmail}` ←
+    `TUCKER_OWNER_EMAIL`), mirroring `tucker.access.*`: a value that must be right and
+    cannot be guessed is better as a boot failure than a wrong default. The row is
+    inserted **only where there is data to adopt**, so a fresh install seeds no
+    phantom owner and its first visitor is provisioned normally. Getting it wrong is
+    silent — the app looks factory-fresh while the history sits under an unmatched
+    row — so `deploy/README.md` step 6 carries the one-line fix.
+  - **Provisioning resolves its own race in SQL** (`ON CONFLICT DO NOTHING`), because
+    the exception handler it replaced could never have worked: jOOQ raises its own
+    `IntegrityConstraintViolationException`, *not* Spring's `DuplicateKeyException`,
+    so a catch written against the Spring hierarchy compiles, reads correctly and
+    never fires — and two devices a newcomer opens together would 500.
+  - AC7 (a `SecurityContext` in the ~8 direct-bean test classes) is deliberately
+    **deferred to [#157](https://github.com/skrymer/tucker/issues/157)**: nothing reads
+    the principal until queries are scoped, so a context installed now would be
+    asserted by no test. The isolation suite lands there too, driven RED first.
 - **F11** — Check: scan a package *before* buying it (**shipped**, PRD
   [#168](https://github.com/skrymer/tucker/issues/168), see
   [ADR 0022](docs/adr/0022-a-check-states-cost-and-return-and-never-labels-a-food.md)

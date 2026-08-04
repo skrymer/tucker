@@ -44,6 +44,10 @@ class ApiEndToEndTest {
                 .withEnv("TUCKER_ACCESS_ISSUER", AccessTokens.ISSUER)
                 .withEnv("TUCKER_ACCESS_AUDIENCE", AccessTokens.AUDIENCE)
                 .withEnv("TUCKER_ACCESS_JWK_SET_URI", AccessTokens.JWK_SET_URI)
+                // Undefaulted too (issue #156), so the image refuses to start without it.
+                // The container's database is brand new, so V9 finds nothing to adopt and
+                // never writes this row — the first request provisions the real User.
+                .withEnv("TUCKER_OWNER_EMAIL", "owner@tucker.invalid")
                 .waitingFor(Wait.forHttp("/v3/api-docs").forStatusCode(200))
     }
 

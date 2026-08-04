@@ -33,7 +33,11 @@ class AccessSecurityConfig {
         }
 
     @Bean
-    fun accessFilterChain(http: HttpSecurity, decoder: JwtDecoder): SecurityFilterChain {
+    fun accessFilterChain(
+        http: HttpSecurity,
+        decoder: JwtDecoder,
+        principals: AccessPrincipalConverter,
+    ): SecurityFilterChain {
         http {
             // Disabled because the SPA sends no CSRF token and never has — not because the
             // credential is immune to CSRF. It is worth being precise: unlike an
@@ -68,7 +72,14 @@ class AccessSecurityConfig {
             }
             oauth2ResourceServer {
                 bearerTokenResolver = HeaderBearerTokenResolver(ACCESS_ASSERTION_HEADER)
-                jwt { jwtDecoder = decoder }
+                jwt {
+                    jwtDecoder = decoder
+                    // Resolving the assertion to a User is part of authenticating it,
+                    // not a later concern: every request arrives already knowing whose
+                    // it is, and a newcomer is provisioned here rather than anywhere a
+                    // caller could forget to ask (ADR 0020).
+                    jwtAuthenticationConverter = principals
+                }
             }
         }
         return http.build()

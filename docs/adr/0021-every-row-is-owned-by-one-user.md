@@ -100,6 +100,18 @@ owner. `app_config` (the VAPID keypair) stays global — it is Tucker's, not a u
   User until the second is invited: an unscoped query cannot leak anything before then.
   Inviting the second User is therefore the *last* slice, gated on the isolation suite
   being green.
+- **`user_id` is nullable in the database, though the model says it never is.** SQLite
+  refuses `ADD COLUMN ... NOT NULL ... REFERENCES` against a table **that already holds
+  rows**, and only then — so the stricter migration passes every test, every smoke and the
+  jOOQ codegen schema, and fails against the single database that matters. Buying `NOT
+  NULL` instead means rebuilding all eight tables, which needs a non-transactional
+  migration (no rollback part-way through production data) and `PRAGMA foreign_keys = OFF`,
+  which the one pooled connection then carries for the life of the JVM. The foreign key
+  therefore lands first, and `NOT NULL` is folded into the per-user-uniqueness rebuilds
+  above — `profile` losing `CHECK (id = 1)`, `weight_measurement` and `weekly_review`
+  losing their global `UNIQUE` — which have to rewrite those tables anyway. Until then the
+  invariant is held by the repositories, and an unowned row is *loud* rather than
+  dangerous: from the scoping slices on it is invisible to the very User who created it.
 - `ReminderScheduler` gains impersonation machinery. It is confined to one helper used
   only by the scheduler, and its misuse elsewhere would be a review failure.
 

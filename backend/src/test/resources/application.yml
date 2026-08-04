@@ -1,4 +1,13 @@
 spring:
+  # V9 names the owner of a pre-multi-user database. This file shadows main
+  # entirely, so it has to be stated here or every @SpringBootTest context fails.
+  # Deliberately *not* AccessTokens.EMAIL: a test database starts empty, so V9
+  # adopts nothing and no owner row is written — and if that ever stopped being
+  # true, a distinct address makes the phantom owner obvious instead of letting
+  # it quietly alias the identity every test authenticates as.
+  flyway:
+    placeholders:
+      ownerEmail: owner@tucker.invalid
   datasource:
     url: jdbc:sqlite:build/test-tucker.db   # throwaway DB; wiped by `./gradlew clean`
     hikari:
