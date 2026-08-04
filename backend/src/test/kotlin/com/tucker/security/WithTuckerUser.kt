@@ -1,12 +1,10 @@
 package com.tucker.security
 
-import com.tucker.domain.User
-import com.tucker.persistence.UserRepository
 import org.springframework.security.core.context.SecurityContext
 import org.springframework.security.core.context.SecurityContextHolder
+import org.springframework.security.oauth2.jwt.Jwt
 import org.springframework.security.test.context.support.WithSecurityContext
 import org.springframework.security.test.context.support.WithSecurityContextFactory
-import org.springframework.security.web.authentication.preauth.PreAuthenticatedAuthenticationToken
 
 /**
  * Signs a test class in, for the tests that call beans **directly** with no HTTP in
@@ -31,28 +29,33 @@ import org.springframework.security.web.authentication.preauth.PreAuthenticatedA
 annotation class WithTuckerUser(val email: String = AccessTokens.EMAIL)
 
 /**
- * Builds the context [WithTuckerUser] asks for, **provisioning the User** the same way
- * a first request would.
+ * Builds the context [WithTuckerUser] asks for by handing the email to
+ * [AccessPrincipalConverter] — **the** home of just-in-time provisioning (ADR 0020) —
+ * rather than finding-or-creating the User a second time here.
  *
  * The row has to exist, not merely be named: `user_id` is a real foreign key, so a
- * principal invented out of thin air would write rows pointing at nobody. Constructor
- * injection works here because Spring Security instantiates the factory through the
- * test context's bean factory — the same mechanism `@WithUserDetails` uses to reach a
- * `UserDetailsService`.
+ * principal invented out of thin air would write rows pointing at nobody. Going
+ * through the converter means the test thread is resolved to a User by the same code
+ * that resolves a real request, including the locale-independent `lowercase()` whose
+ * absence `UserProvisioningTest` exists to catch — a hand-rolled copy would be one
+ * `.lowercase()` away from provisioning a *different* User than the assertion in the
+ * same test class resolves to.
+ *
+ * Constructor injection works because Spring Security instantiates the factory through
+ * the test context's bean factory — the same mechanism `@WithUserDetails` uses to reach
+ * a `UserDetailsService`.
  */
 class TuckerUserSecurityContextFactory(
-    private val users: UserRepository,
+    private val converter: AccessPrincipalConverter,
 ) : WithSecurityContextFactory<WithTuckerUser> {
 
-    override fun createSecurityContext(annotation: WithTuckerUser): SecurityContext {
-        val user = users.findByEmail(annotation.email)
-            ?: users.insertIfAbsent(User(id = null, email = annotation.email))
-        return SecurityContextHolder.createEmptyContext().apply {
-            authentication = PreAuthenticatedAuthenticationToken(
-                TuckerPrincipal(userId = checkNotNull(user.id), email = user.email),
-                null,
-                emptyList(),
+    override fun createSecurityContext(annotation: WithTuckerUser): SecurityContext =
+        SecurityContextHolder.createEmptyContext().apply {
+            authentication = converter.convert(
+                Jwt.withTokenValue("with-tucker-user")
+                    .header("alg", "none")
+                    .claim(EMAIL_CLAIM, annotation.email)
+                    .build(),
             )
         }
-    }
 }

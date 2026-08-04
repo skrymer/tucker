@@ -27,7 +27,7 @@ class FoodRepository(
     fun findById(id: Long): Food? =
         dsl.selectFrom(FOOD)
             .where(FOOD.ID.eq(id.toInt()))
-            .and(FOOD.USER_ID.eq(owner))
+            .and(FOOD.USER_ID.eq(currentUser.ownerId))
             .fetchOne()?.toFood()
 
     /**
@@ -39,12 +39,12 @@ class FoodRepository(
     fun findByBarcode(barcode: String): Food? =
         dsl.selectFrom(FOOD)
             .where(FOOD.BARCODE.eq(barcode))
-            .and(FOOD.USER_ID.eq(owner))
+            .and(FOOD.USER_ID.eq(currentUser.ownerId))
             .fetchOne()?.toFood()
 
     fun findAll(): List<Food> =
         dsl.selectFrom(FOOD)
-            .where(FOOD.USER_ID.eq(owner))
+            .where(FOOD.USER_ID.eq(currentUser.ownerId))
             .orderBy(FOOD.NAME.lower())
             .fetch().map { it.toFood() }
 
@@ -53,7 +53,7 @@ class FoodRepository(
         if (ids.isEmpty()) return emptyList()
         return dsl.selectFrom(FOOD)
             .where(FOOD.ID.`in`(ids.map { it.toInt() }))
-            .and(FOOD.USER_ID.eq(owner))
+            .and(FOOD.USER_ID.eq(currentUser.ownerId))
             .fetch().map { it.toFood() }
     }
 
@@ -68,28 +68,30 @@ class FoodRepository(
      * Update an existing Food's row in place, keeping its id (so logged Entries
      * still resolve and the catalog entry is stable). Used to recalibrate a
      * Recipe's rolled-up nutrition without minting a new Food.
+     *
+     * Returns null when [food] is not the caller's, having changed nothing — which is
+     * what lets a caller composing several statements find out before it writes the
+     * rest of them ([RecipeRepository.update] does exactly that).
+     *
+     * The owner is in the WHERE, not merely implied by a scoped read upstream:
+     * `applyFrom` writes `user_id`, so a key-only UPDATE would not just overwrite
+     * somebody else's Food, it would quietly re-own it.
      */
-    fun update(food: Food): Food {
+    fun update(food: Food): Food? {
         val id = requireNotNull(food.id) { "cannot update a Food without an id" }
         val rec = dsl.newRecord(FOOD)
         rec.applyFrom(food)
-        // The owner is in the WHERE, not just implied by a scoped read upstream.
-        // `applyFrom` writes user_id, so a key-only UPDATE would not merely overwrite
-        // somebody else's Food — it would quietly re-own it.
-        dsl.update(FOOD)
+        val rowsChanged = dsl.update(FOOD)
             .set(rec)
             .where(FOOD.ID.eq(id.toInt()))
-            .and(FOOD.USER_ID.eq(owner))
+            .and(FOOD.USER_ID.eq(currentUser.ownerId))
             .execute()
-        return food
+        return food.takeIf { rowsChanged > 0 }
     }
 
     /** Project a [Food]'s fields onto a [FoodRecord] (shared by insert and update). */
-    /** The current User's id, in the width the `user_id` column is generated as. */
-    private val owner: Int get() = currentUser.id.toInt()
-
     private fun FoodRecord.applyFrom(food: Food) {
-        userId = owner
+        userId = currentUser.ownerId
         name = food.name
         kind = food.kind.name
         barcode = food.barcode
@@ -103,7 +105,7 @@ class FoodRepository(
     fun delete(id: Long) {
         dsl.deleteFrom(FOOD)
             .where(FOOD.ID.eq(id.toInt()))
-            .and(FOOD.USER_ID.eq(owner))
+            .and(FOOD.USER_ID.eq(currentUser.ownerId))
             .execute()
     }
 

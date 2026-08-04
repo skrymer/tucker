@@ -1,3 +1,4 @@
+import type { APIResponse } from '@playwright/test'
 import { test, expect } from './support/smoke-test'
 import { todayIso } from '../support/date'
 import {
@@ -102,9 +103,7 @@ test('a User sees only their own catalog and their own day', async ({
 })
 
 /** Assert a seeding call was accepted, failing with the body when it was not. */
-async function expectCreated(
-  pending: Promise<{ status: () => number; text: () => Promise<string> }>,
-) {
+async function expectCreated(pending: Promise<APIResponse>) {
   const response = await pending
   expect(response.status(), await response.text()).toBe(201)
 }

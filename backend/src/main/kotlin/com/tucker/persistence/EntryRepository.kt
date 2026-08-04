@@ -28,13 +28,13 @@ class EntryRepository(
     fun findById(id: Long): Entry? =
         dsl.selectFrom(ENTRY)
             .where(ENTRY.ID.eq(id.toInt()))
-            .and(ENTRY.USER_ID.eq(owner))
+            .and(ENTRY.USER_ID.eq(currentUser.ownerId))
             .fetchOne()?.toEntry()
 
     fun findByDate(date: LocalDate): List<Entry> =
         dsl.selectFrom(ENTRY)
             .where(ENTRY.LOGGED_ON.eq(date.toString()))
-            .and(ENTRY.USER_ID.eq(owner))
+            .and(ENTRY.USER_ID.eq(currentUser.ownerId))
             .orderBy(ENTRY.ID)
             .fetch().map { it.toEntry() }
 
@@ -43,7 +43,7 @@ class EntryRepository(
         dsl.select(DSL.sum(ENTRY.CALORIES))
             .from(ENTRY)
             .where(ENTRY.LOGGED_ON.between(start.toString(), endInclusive.toString()))
-            .and(ENTRY.USER_ID.eq(owner))
+            .and(ENTRY.USER_ID.eq(currentUser.ownerId))
             .fetchOne(0, Double::class.java) ?: 0.0
 
     /**
@@ -55,15 +55,12 @@ class EntryRepository(
         dsl.select(DSL.countDistinct(ENTRY.LOGGED_ON))
             .from(ENTRY)
             .where(ENTRY.LOGGED_ON.between(start.toString(), endInclusive.toString()))
-            .and(ENTRY.USER_ID.eq(owner))
+            .and(ENTRY.USER_ID.eq(currentUser.ownerId))
             .fetchOne(0, Int::class.java) ?: 0
-
-    /** The current User's id, in the width the `user_id` column is generated as. */
-    private val owner: Int get() = currentUser.id.toInt()
 
     fun insert(entry: Entry): Entry {
         val rec = dsl.newRecord(ENTRY)
-        rec.userId = owner
+        rec.userId = currentUser.ownerId
         rec.loggedOn = entry.loggedOn.toString()
         rec.calories = entry.calories
         when (entry) {
@@ -97,7 +94,7 @@ class EntryRepository(
     fun delete(id: Long) {
         dsl.deleteFrom(ENTRY)
             .where(ENTRY.ID.eq(id.toInt()))
-            .and(ENTRY.USER_ID.eq(owner))
+            .and(ENTRY.USER_ID.eq(currentUser.ownerId))
             .execute()
     }
 
@@ -113,7 +110,7 @@ class EntryRepository(
      * that delete rule leaked, and this is the query that used to leak it.
      */
     fun referencesFood(foodId: Long): Boolean =
-        dsl.fetchExists(ENTRY, ENTRY.FOOD_ID.eq(foodId.toInt()).and(ENTRY.USER_ID.eq(owner)))
+        dsl.fetchExists(ENTRY, ENTRY.FOOD_ID.eq(foodId.toInt()).and(ENTRY.USER_ID.eq(currentUser.ownerId)))
 
     private fun EntryRecord.toEntry(): Entry = when (EntryKind.valueOf(kind)) {
         EntryKind.WEIGHED -> WeighedEntry(

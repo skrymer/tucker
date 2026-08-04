@@ -416,7 +416,11 @@ The frontend is built **test-first (red-green TDD)**. Increments:
     days and calories set your Maintenance — a leak that shows no wrong name, only a
     wrong number. `FoodRepository.update` was a third in waiting: `applyFrom` writes
     `user_id`, so a key-only UPDATE would not merely overwrite a foreign Food, it would
-    silently **re-own** it.
+    silently **re-own** it. Note the engine is only **half** scoped after this slice:
+    its *intake* is per-User now, but the fallback it holds when coverage is thin —
+    `reviews.latestBefore`, `profiles.get`, `weights.findAll` — is not, so a second
+    User below the floor would still hold somebody else's Maintenance. That half is
+    slice 4's, and is why [#161](https://github.com/skrymer/tucker/issues/161) is last.
   - **Status codes agree on purpose** (ADR 0021 Consequences). A foreign Food and an
     absent one both delete as **204** — delete is idempotent and always was, so a 404
     for the foreign case would be exactly the existence oracle the ADR forbids. A

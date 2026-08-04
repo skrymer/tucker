@@ -1,8 +1,8 @@
 package com.tucker.api
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.tucker.security.ACCESS_ASSERTION_HEADER
 import com.tucker.provider.OpenFoodFactsProvider
+import com.tucker.security.ACCESS_ASSERTION_HEADER
 import com.tucker.security.AccessTokens
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -10,8 +10,8 @@ import org.mockito.kotlin.whenever
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.http.MediaType
+import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.delete
 import org.springframework.test.web.servlet.get
@@ -19,6 +19,7 @@ import org.springframework.test.web.servlet.post
 import org.springframework.test.web.servlet.put
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
+import java.time.ZoneOffset
 
 /**
  * The guarantee ADR 0021 makes, asserted where it is promised: at the **endpoint**
@@ -57,6 +58,9 @@ class CrossUserIsolationTest {
 
     /** The window the adaptive correction looks back over (WeeklyReviewService). */
     private val adaptiveWindowDays = 14
+
+    /** Comfortably past the MIN_LOGGED_DAYS coverage floor that window demands. */
+    private val daysAliceLogged = 12
 
     @Test
     fun `a User's catalog shows only their own Foods`() {
@@ -240,15 +244,18 @@ class CrossUserIsolationTest {
 
     @Test
     fun `editing another User's Recipe is not found and leaves it as it was`() {
-        val oats = createFood(alice, "Alice's oats")
-        val granola = createRecipe(alice, "Alice's granola", oats)
+        val granola = createRecipe(alice, "Alice's granola", createFood(alice, "Alice's oats"))
+        // Bob's *own* Food as the ingredient, deliberately. Naming Alice's here would
+        // 404 on the ingredient instead, and the test would go on passing with the
+        // recipe-ownership check deleted — green for the wrong reason, on a guard.
+        val rice = createFood(bob, "Bob's rice")
 
         mockMvc.put("/api/recipes/$granola") {
             header(ACCESS_ASSERTION_HEADER, bob)
             contentType = MediaType.APPLICATION_JSON
             content = """
                 {"name":"Bob's rename","cookedWeightG":100.0,
-                 "ingredients":[{"foodId":$oats,"grams":50.0}]}
+                 "ingredients":[{"foodId":$rice,"grams":50.0}]}
             """.trimIndent()
         }.andExpect { status { isNotFound() } }
 
@@ -262,22 +269,11 @@ class CrossUserIsolationTest {
         }
     }
 
-    /** Create a single-ingredient Recipe owned by whoever [token] names, returning its id. */
-    private fun createRecipe(token: String, name: String, ingredientId: Long): Long {
-        val json = mockMvc.post("/api/recipes") {
-            header(ACCESS_ASSERTION_HEADER, token)
-            contentType = MediaType.APPLICATION_JSON
-            content = """
-                {"name":"$name","cookedWeightG":500.0,
-                 "ingredients":[{"foodId":$ingredientId,"grams":600.0}]}
-            """.trimIndent()
-        }.andExpect { status { isCreated() } }.andReturn().response.contentAsString
-        return objectMapper.readTree(json).get("id").asLong()
-    }
-
     @Test
     fun `another User's logged days do not drive this User's adaptive maintenance`() {
-        val today = LocalDate.now()
+        // The server resolves its own today from Clock.systemUTC(), so this must too:
+        // a zone ahead of UTC would otherwise post a future-dated weigh-in and 400.
+        val today = LocalDate.now(ZoneOffset.UTC)
         // Bob has weighed in right across the adaptive window, so a trend anchor
         // exists and the only thing standing between him and an adaptive review is
         // his own logging coverage — of which he has none.
@@ -286,7 +282,7 @@ class CrossUserIsolationTest {
 
         // Alice, meanwhile, has logged most of that window — comfortably past the
         // coverage floor the adaptive correction demands.
-        (1..12).forEach { back ->
+        (1..daysAliceLogged).forEach { back ->
             logEstimated(
                 alice, calories = 2000.0, protein = 100.0,
                 label = "Alice day $back", on = today.minusDays(back.toLong()),
@@ -300,6 +296,82 @@ class CrossUserIsolationTest {
             // shows a wrong name, only a wrong number.
             jsonPath("$.maintenanceBasis") { value("FORMULA_SEED") }
         }
+    }
+
+    /**
+     * The positive control for the test above, and the reason it cannot pass
+     * vacuously. FORMULA_SEED is also what a *broken setup* yields — one weigh-in
+     * short of the window and there is no trend anchor, so the adaptive branch is
+     * skipped for a reason that has nothing to do with ownership, and the isolation
+     * assertion would go green with scoping entirely removed. This pins the same
+     * fixture to ADAPTIVE by moving only whose Entries they are.
+     */
+    @Test
+    fun `a User's own logged days do drive their adaptive maintenance`() {
+        val today = LocalDate.now(ZoneOffset.UTC)
+        completeProfile(bob)
+        (0..adaptiveWindowDays).forEach { back -> weighIn(bob, today.minusDays(back.toLong())) }
+
+        (1..daysAliceLogged).forEach { back ->
+            logEstimated(
+                bob, calories = 2000.0, protein = 100.0,
+                label = "Bob day $back", on = today.minusDays(back.toLong()),
+            )
+        }
+
+        mockMvc.post("/api/weekly-review") { header(ACCESS_ASSERTION_HEADER, bob) }.andExpect {
+            status { isOk() }
+            jsonPath("$.maintenanceBasis") { value("ADAPTIVE") }
+        }
+    }
+
+    /**
+     * POST [body] to [path] as whoever [token] names, and return the created row's id.
+     * The three creating helpers differ only in path and body.
+     */
+    private fun postForId(token: String, path: String, body: String): Long {
+        val json = mockMvc.post(path) {
+            header(ACCESS_ASSERTION_HEADER, token)
+            contentType = MediaType.APPLICATION_JSON
+            content = body
+        }.andExpect { status { isCreated() } }.andReturn().response.contentAsString
+        return objectMapper.readTree(json).get("id").asLong()
+    }
+
+    /** Create a Food owned by whoever [token] names, and return its id. */
+    private fun createFood(token: String, name: String, barcode: String? = null): Long {
+        return postForId(
+            token, "/api/foods",
+            """
+                {"name":"$name",${barcode?.let { """"barcode":"$it",""" } ?: ""}
+                 "proteinPer100g":10.0,"carbsPer100g":4.0,"fatPer100g":0.2}
+            """.trimIndent(),
+        )
+    }
+
+    /** Create a single-ingredient Recipe owned by whoever [token] names, returning its id. */
+    private fun createRecipe(token: String, name: String, ingredientId: Long): Long {
+        return postForId(
+            token, "/api/recipes",
+            """
+                {"name":"$name","cookedWeightG":500.0,
+                 "ingredients":[{"foodId":$ingredientId,"grams":600.0}]}
+            """.trimIndent(),
+        )
+    }
+
+    /** Log an estimated Entry owned by whoever [token] names, and return its id. */
+    private fun logEstimated(
+        token: String,
+        calories: Double,
+        protein: Double,
+        label: String,
+        on: LocalDate = day,
+    ): Long {
+        return postForId(
+            token, "/api/entries/estimated",
+            """{"date":"$on","label":"$label","calories":$calories,"protein":$protein}""",
+        )
     }
 
     private fun completeProfile(token: String) {
@@ -316,34 +388,5 @@ class CrossUserIsolationTest {
             contentType = MediaType.APPLICATION_JSON
             content = """{"date":"$on","weightKg":86.0}"""
         }.andExpect { status { isOk() } }
-    }
-
-    /** Log an estimated Entry owned by whoever [token] names, and return its id. */
-    private fun logEstimated(
-        token: String,
-        calories: Double,
-        protein: Double,
-        label: String,
-        on: LocalDate = day,
-    ): Long {
-        val json = mockMvc.post("/api/entries/estimated") {
-            header(ACCESS_ASSERTION_HEADER, token)
-            contentType = MediaType.APPLICATION_JSON
-            content = """{"date":"$on","label":"$label","calories":$calories,"protein":$protein}"""
-        }.andExpect { status { isCreated() } }.andReturn().response.contentAsString
-        return objectMapper.readTree(json).get("id").asLong()
-    }
-
-    /** Create a Food owned by whoever [token] names, and return its id. */
-    private fun createFood(token: String, name: String, barcode: String? = null): Long {
-        val json = mockMvc.post("/api/foods") {
-            header(ACCESS_ASSERTION_HEADER, token)
-            contentType = MediaType.APPLICATION_JSON
-            content = """
-                {"name":"$name",${barcode?.let { """"barcode":"$it",""" } ?: ""}
-                 "proteinPer100g":10.0,"carbsPer100g":4.0,"fatPer100g":0.2}
-            """.trimIndent()
-        }.andExpect { status { isCreated() } }.andReturn().response.contentAsString
-        return objectMapper.readTree(json).get("id").asLong()
     }
 }

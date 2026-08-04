@@ -1,6 +1,7 @@
 package com.tucker.security
 
 import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.security.web.authentication.preauth.PreAuthenticatedAuthenticationToken
@@ -15,6 +16,9 @@ import kotlin.test.assertTrue
  */
 class CurrentUserTest {
 
+    // Both ends: the "nobody is authenticated" test states a precondition rather than
+    // inheriting whatever an earlier test left on this thread.
+    @BeforeEach
     @AfterEach
     fun clearContext() = SecurityContextHolder.clearContext()
 
@@ -25,14 +29,7 @@ class CurrentUserTest {
         assertEquals(42L, CurrentUser().id)
     }
 
-    /**
-     * Deliberately not an [IllegalStateException] or [IllegalArgumentException]:
-     * [com.tucker.api.ApiExceptionHandler] maps those to 409 and 400, and reaching a
-     * scoped repository with nobody authenticated is neither. The gate already 401s an
-     * unauthenticated request (ADR 0020), so the only ways here are a background thread
-     * running scoped code without `runAs` or a mis-wiring — server faults both, which
-     * must read as 500 rather than borrow a client error's clothes.
-     */
+    /** Why this type rather than [IllegalStateException]: see [NoCurrentUserException]. */
     @Test
     fun `refuses to guess an owner when nobody is authenticated`() {
         val thrown = assertFailsWith<NoCurrentUserException> { CurrentUser().id }

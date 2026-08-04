@@ -36,11 +36,25 @@ class RecipeRepository(
      * the catalog entry are stable) and replace all its ingredient lines, atomically.
      * Editing recalibrates the representative-batch density (ADR 0019); because
      * Entries snapshot their calories at log time, only future logs see the change.
+     *
+     * Returns null, having written nothing, when the Recipe is not the caller's.
+     *
+     * The scoped `foods.update` is the gate, and it has to be read rather than merely
+     * issued: `recipe_ingredient` carries no `user_id` of its own — a Recipe *is* a
+     * Food row, so its lines are owned through it (ADR 0021: eight owned tables, not
+     * nine) — which means neither the delete nor the insert below can express
+     * ownership on its own. Letting them run after a no-op update would clear another
+     * User's ingredient lines and write these in their place; guarding only the delete
+     * is worse still, leaving the insert to graft a foreign line onto their Recipe,
+     * where their own scoped read then cannot resolve it and their Recipe 500s
+     * forever. `RecipeController` never lets such an id through, but the ownership
+     * question is asked once here so that neither statement depends on it having been
+     * asked elsewhere.
      */
     @Transactional
-    fun update(recipe: Recipe): Recipe {
+    fun update(recipe: Recipe): Recipe? {
         val recipeId = requireNotNull(recipe.id) { "cannot update a Recipe without an id" }
-        foods.update(recipe.asFood())
+        foods.update(recipe.asFood()) ?: return null
         dsl.deleteFrom(RECIPE_INGREDIENT)
             .where(RECIPE_INGREDIENT.RECIPE_ID.eq(recipeId.toInt()))
             .execute()
@@ -126,7 +140,7 @@ class RecipeRepository(
             .from(RECIPE_INGREDIENT)
             .join(FOOD).on(FOOD.ID.eq(RECIPE_INGREDIENT.RECIPE_ID))
             .where(RECIPE_INGREDIENT.INGREDIENT_FOOD_ID.eq(foodId.toInt()))
-            .and(FOOD.USER_ID.eq(currentUser.id.toInt()))
+            .and(FOOD.USER_ID.eq(currentUser.ownerId))
             .orderBy(FOOD.NAME)
             .fetch(FOOD.NAME)
 }

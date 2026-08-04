@@ -204,14 +204,9 @@ class RecipeApiTest {
     }
 
     @Test
-    /**
-     * Not found rather than bad request: an id naming a Food the caller does not have
-     * is the same answer whether nobody owns it or somebody else does, because a
-     * difference between those two would itself reveal that the row exists (ADR 0021).
-     * It also matches POST /api/entries/weighed, which resolves a foodId out of a
-     * request body the same way.
-     */
     fun `an unknown ingredient food id is not found`() {
+        // Not found, not bad request: an unknown id and one belonging to somebody else
+        // have to answer alike, or the difference reveals the row (ADR 0021).
         mockMvc.post("/api/recipes") {
             contentType = MediaType.APPLICATION_JSON
             content = """{"name":"Ghost","cookedWeightG":200.0,"ingredients":[{"foodId":999999,"grams":300.0}]}"""

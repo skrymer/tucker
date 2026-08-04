@@ -56,7 +56,10 @@ owner. `app_config` (the VAPID keypair) stays global — it is Tucker's, not a u
   cron path therefore exercises exactly the same scoped code as a real request, rather
   than a parallel set of queries that can drift.
 - **The guarantee is a cross-user isolation suite**: seed two Users, assert every read
-  returns only the caller's rows and every write against a foreign id 404s.
+  returns only the caller's rows and every write against a foreign id answers *exactly
+  as it answers for an absent one* — which is a 404 where the endpoint 404s on a
+  missing row, and a 204 where it already deletes one idempotently. See the
+  status-code consequence below before writing those assertions.
 - **Sharing is a future feature, not a gap.** Sharing a Recipe with another User is
   deliberately deferred; when it lands it should be copy-on-share or a real per-object
   grant, and *that* is when Spring Security's ACL module becomes the right tool.

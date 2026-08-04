@@ -85,13 +85,20 @@ val prepareJooqDatabase by tasks.registering {
         dbFile.delete()
         DriverManager.getConnection("jdbc:sqlite:${dbFile.absolutePath}").use { conn ->
             migrationDir.listFiles { f -> f.extension == "sql" }!!
-                // By version *number*, the way Flyway orders them — not by name.
-                // Lexicographically "V10__" sorts before "V1__" ('0' < '_'), so a
-                // name sort quietly ran the tenth migration first, against an empty
-                // database. It went unnoticed while every migration was single-digit
-                // and failed the moment V10 arrived. The application was never
-                // affected: Flyway parses the version and orders on that.
-                .sortedBy { it.name.substringAfter("V").substringBefore("__").toInt() }
+                // Order by version, the way Flyway does. A name sort puts "V10__"
+                // before "V1__" ('0' < '_'), running the tenth migration against an
+                // empty database — unnoticed while every version was single-digit.
+                // Only codegen was affected; Flyway orders on the version it parses.
+                //
+                // Zero-padded rather than `.toInt()`, so the dotted and underscored
+                // forms Flyway also accepts (`V10_1__`, `V2.1__` — the ordinary idiom
+                // for a hotfix on top of an existing version) sort correctly instead
+                // of failing the whole build with a NumberFormatException naming
+                // neither the file nor the reason.
+                .sortedBy { file ->
+                    file.name.substringAfter("V").substringBefore("__")
+                        .split('.', '_').joinToString(".") { it.padStart(5, '0') }
+                }
                 .forEach { script ->
                     conn.createStatement().use { stmt ->
                         script.readText().split(";")
