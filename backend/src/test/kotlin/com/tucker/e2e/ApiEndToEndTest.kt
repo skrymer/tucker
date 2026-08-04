@@ -1,5 +1,7 @@
 package com.tucker.e2e
 
+import com.tucker.security.ACCESS_ASSERTION_HEADER
+import com.tucker.security.AccessTokens
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.testcontainers.containers.GenericContainer
@@ -34,6 +36,14 @@ class ApiEndToEndTest {
         val tucker: GenericContainer<*> =
             GenericContainer(DockerImageName.parse("tucker-backend:latest"))
                 .withExposedPorts(APP_PORT)
+                // The image has no Access settings baked in and refuses to start without
+                // them (ADR 0020), so point it at the committed non-production key that
+                // ships in its own resources. The readiness probe below is `/v3/api-docs`,
+                // one of the two paths the gate leaves open — gate that by mistake and the
+                // container simply never becomes ready, which looks nothing like a 401.
+                .withEnv("TUCKER_ACCESS_ISSUER", AccessTokens.ISSUER)
+                .withEnv("TUCKER_ACCESS_AUDIENCE", AccessTokens.AUDIENCE)
+                .withEnv("TUCKER_ACCESS_JWK_SET_URI", AccessTokens.JWK_SET_URI)
                 .waitingFor(Wait.forHttp("/v3/api-docs").forStatusCode(200))
     }
 
@@ -41,10 +51,18 @@ class ApiEndToEndTest {
 
     private fun baseUrl(): String = "http://${tucker.host}:${tucker.getMappedPort(APP_PORT)}"
 
+    /**
+     * The real socket carries the real header — nothing here is a test double, so this
+     * proves the deployed image verifies an assertion, not just that the code compiles.
+     */
+    private fun HttpRequest.Builder.signedIn(): HttpRequest.Builder =
+        header(ACCESS_ASSERTION_HEADER, AccessTokens.mint())
+
     private fun post(path: String, body: String): HttpResponse<String> =
         http.send(
             HttpRequest.newBuilder(URI.create(baseUrl() + path))
                 .header("Content-Type", "application/json")
+                .signedIn()
                 .POST(HttpRequest.BodyPublishers.ofString(body))
                 .build(),
             HttpResponse.BodyHandlers.ofString(),
@@ -52,7 +70,7 @@ class ApiEndToEndTest {
 
     private fun get(path: String): HttpResponse<String> =
         http.send(
-            HttpRequest.newBuilder(URI.create(baseUrl() + path)).GET().build(),
+            HttpRequest.newBuilder(URI.create(baseUrl() + path)).signedIn().GET().build(),
             HttpResponse.BodyHandlers.ofString(),
         )
 
@@ -77,5 +95,32 @@ class ApiEndToEndTest {
 
         // An unknown food id must still come back as a clean 404, not a 500.
         assertEquals(404, get("/api/foods/999999").statusCode())
+    }
+
+    /** The deployed image, not just the code, refuses a caller who presents nothing. */
+    @Test
+    fun `the running image refuses a request carrying no Access assertion`() {
+        val refused = http.send(
+            HttpRequest.newBuilder(URI.create(baseUrl() + "/api/foods")).GET().build(),
+            HttpResponse.BodyHandlers.ofString(),
+        )
+        assertEquals(401, refused.statusCode(), "expected the gate to refuse: ${refused.body()}")
+    }
+
+    /**
+     * MockMvc records `sendError` and stops, so it never performs the ERROR dispatch that
+     * Spring Security also filters — which makes this reachable only over a real socket.
+     * The door being open has to mean the status is honest, or an operator diagnosing an
+     * outage reads "rejecting me" when the truth is "up, and you asked wrongly".
+     */
+    @Test
+    fun `an error on an open door reports its own status, not a refusal`() {
+        val wrongMethod = http.send(
+            HttpRequest.newBuilder(URI.create(baseUrl() + "/api/version"))
+                .POST(HttpRequest.BodyPublishers.noBody())
+                .build(),
+            HttpResponse.BodyHandlers.ofString(),
+        )
+        assertEquals(405, wrongMethod.statusCode(), "expected method-not-allowed, not 401")
     }
 }

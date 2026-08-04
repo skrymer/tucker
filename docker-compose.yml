@@ -22,6 +22,13 @@ services:
       # or weight reading can land on the wrong calendar day near midnight.
       # Defaults to the host's zone; override by exporting TZ before compose.
       TZ: ${TZ:-Australia/Brisbane}
+      # Cloudflare Access verification (ADR 0020). The app defaults none of these —
+      # given none, it refuses to start — so a deploy that forgets them fails loudly
+      # instead of quietly trusting a key that is committed to a public repository.
+      # These are the non-production values, and the prod overlay replaces all three.
+      TUCKER_ACCESS_ISSUER: https://access.tucker.invalid
+      TUCKER_ACCESS_AUDIENCE: tucker-dev
+      TUCKER_ACCESS_JWK_SET_URI: classpath:access/jwks.json
     volumes:
       - tucker-data:/data
     ports:

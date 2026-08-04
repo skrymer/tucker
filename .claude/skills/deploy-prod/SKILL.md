@@ -60,11 +60,30 @@ checkout:
 deploy/verify-prod.sh
 ```
 
+**Preflight, once per box:** the backend refuses to start without its three Access
+settings (ADR 0020), and they have no defaults — so on the first deploy after F10
+slice 1, `update.sh` will pull and stamp the new version into `.env` and then die
+at `docker compose`, leaving the checkout ahead of what is running. Check before
+deploying (counts only, never prints values):
+
+```bash
+ssh tucker 'grep -c "^TUCKER_ACCESS_[A-Z_]*=." tucker/.env'   # expect 3
+```
+
+If it isn't 3, add them from `deploy/README.md` step 6 first.
+
 The script ([`deploy/verify-prod.sh`](../../../deploy/verify-prod.sh)) exits
 non-zero on any failure. It asserts: unauthenticated `/`, `/api/*`, manifest
 and SW all **302 to Cloudflare Access** (a 200 = publicly exposed = incident),
-the three containers running, and same-origin `/api` returning 200 inside the
-frontend container. Its final section prints backend error/exception log lines
+the three containers running, and — inside the frontend container, where traffic
+never passed through Access and so carries no assertion — same-origin
+`/api/foods` returning **401** while `/api/version` returns **200**. Both are
+expected: since F10 slice 1 the backend verifies the Access JWT itself (ADR
+0020), so a **200 on `/api/foods` there would mean the gate is off** — an
+incident, exactly like a 200 on the unauthenticated probes. Do not "fix" that
+check back to expecting 200; it would then pass only when the gate is down.
+`/api/version` stays open so an operator can tell "the app is down" from "the
+app is rejecting me". Its final section prints backend error/exception log lines
 from the last 10 minutes — that part is **judged, not asserted**: investigate
 anything that isn't known-benign noise before calling the deploy good.
 

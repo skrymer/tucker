@@ -1,5 +1,6 @@
 import { execSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
+import { mintAccessToken } from '../../scripts/access-token.mjs'
 
 // Global setup for the real-stack smoke suite: boot a fresh, disposable backend
 // (issue #70).
@@ -18,6 +19,26 @@ const READY_URL = 'http://localhost:8080/v3/api-docs'
 const READY_TIMEOUT_MS = 120_000
 
 async function globalSetup() {
+  // The browser's own /api calls go through the Nuxt proxy, and the backend now
+  // rejects anything without a verified Access assertion (ADR 0020). Nothing puts
+  // one there — there is no Cloudflare in front of a smoke run — so hand the Nuxt
+  // server the same pre-minted token `pnpm dev` uses, and its /api proxy attaches
+  // it (server/routes/api/[...].ts). Set here rather than in the config because
+  // minting is async and because workers, and the Nuxt server they start, inherit
+  // this process's environment. It makes the smokes cover the dev credential path
+  // as well as the gate.
+  //
+  // Deliberately not Playwright's `extraHTTPHeaders`: that would put the header on
+  // *every* browser request, including cross-origin icon fetches, which then
+  // preflight and fail. See support/smoke-test.ts.
+  //
+  // It also has to be *here* rather than in a `webServer`: Playwright runs webServer
+  // plugins before globalSetup files, so a server started that way would come up
+  // before this line and 401 every /api call with no obvious cause.
+  process.env.TUCKER_DEV_ACCESS_TOKEN = await mintAccessToken({
+    expiresIn: '12h',
+  })
+
   execSync(`${COMPOSE} up --build --force-recreate -d backend`, {
     cwd: REPO_ROOT,
     stdio: 'inherit',

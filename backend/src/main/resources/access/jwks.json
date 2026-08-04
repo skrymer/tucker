@@ -1,0 +1,12 @@
+{
+  "keys": [
+    {
+      "kty": "RSA",
+      "use": "sig",
+      "alg": "RS256",
+      "kid": "tucker-dev-access-key",
+      "n": "z1bQCwejt3qVqrSluIZ1YuwwjUCxXiFUx7ipM9Ia4qpoK3bIkIMN7nlx2GC_CxNf_MVmpkNn83KtzXdkMekCIlJXKHRsvIqIh0dazBXdd6uw-Mj68hQ6W-x7tyQVco7ZXdel98_gQg9V6GgplvA45rz4EWZlA1xc2DSh7Kt_lnJEQHeIibKLUcuhgapcj6gAM3H-ibFwiAf4VIXZS_iMR_NQrXukqm8Fl-ldM-uiPhn_qNyYNDpxoX5pbo_4R1HcTOCH5mwGCautVROK7jZQiZwuhTPBpskyaybtRW7Daf-sjdcMcHUn9g7vUeZdP6TprOdU9H5xzXfcnfKIFXzY6Q",
+      "e": "AQAB"
+    }
+  ]
+}

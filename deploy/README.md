@@ -61,6 +61,26 @@ it needs the `LITESTREAM_*` secrets in `.env`).
      installed PWA surfaces as failing `/api` calls until a reload re-runs the
      login redirect — single-user behind a screen-locked device doesn't need a
      daily re-auth dance.
+
+   Then copy three values from that application into the host `.env`. Access is
+   the authenticator, but the backend **verifies its signed assertion itself**
+   ([ADR 0020](../docs/adr/0020-identity-comes-from-cloudflare-access.md)), so it
+   has to know which team signed it, which application it was minted for, and
+   where the keys live:
+
+   | `.env` key | Where to find it | Looks like |
+   | --- | --- | --- |
+   | `TUCKER_ACCESS_ISSUER` | Zero Trust → **Settings → Custom Pages**, or the top of any Access app — your **team domain** | `https://tucker.cloudflareaccess.com` |
+   | `TUCKER_ACCESS_AUDIENCE` | the Access application → **Overview → Application Audience (AUD) Tag** | 64 hex characters |
+   | `TUCKER_ACCESS_JWK_SET_URI` | always the team domain + `/cdn-cgi/access/certs` | `https://tucker.cloudflareaccess.com/cdn-cgi/access/certs` |
+
+   None of the three has a default, deliberately: outside production the backend
+   verifies against a key committed to this repository, and inheriting that in
+   production would let anyone mint themselves an assertion. A **missing** value
+   therefore fails at `docker compose` parse time, before a container exists. A
+   **wrong** one is quieter — every request 401s — and recovery is redeploying the
+   previous image; `/api/version` stays open either way so an operator can tell
+   "the app is down" from "the app is rejecting me".
 7. **Set the timezone** if the box isn't already in your zone — the engine works
    in the user's local day, so export `TZ` before composing (e.g.
    `TZ=Australia/Brisbane`); see the note in `docker-compose.yml`.
@@ -91,6 +111,14 @@ Over the real HTTPS origin, with DevTools → Application:
   review is overdue and the app hasn't been opened that day.
 
 ## Updating a running deployment
+
+> **Once, before the first deploy that includes the Access gate:** add the three
+> `TUCKER_ACCESS_*` keys from [step 6](#first-deploy-to-a-vps) to the host `.env`. They have
+> no defaults, so without them `update.sh` pulls, stamps the new version into `.env`, and
+> then dies at `docker compose` with `required variable TUCKER_ACCESS_ISSUER is missing a
+> value`. The running containers keep serving — it is not an outage — but the checkout and
+> the version stamp have moved ahead of what is deployed, so fill the keys in and re-run
+> `deploy/update.sh` to converge.
 
 ```bash
 deploy/update.sh

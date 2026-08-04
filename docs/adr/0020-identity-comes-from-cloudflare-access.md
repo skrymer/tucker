@@ -21,9 +21,14 @@ login screen.
 - **Admission is the Access policy.** Adding someone's email there is what "inviting a
   user" means. There is no second allowlist inside Tucker.
 - **The backend verifies the signed `Cf-Access-Jwt-Assertion` itself**, via Spring
-  Security's OAuth2 resource server: `NimbusJwtDecoder` against the team JWKS, with
-  issuer and audience validators, and a custom `BearerTokenResolver` that reads
-  Cloudflare's header instead of `Authorization: Bearer`. The assertion is *signed*, so
+  Security's OAuth2 resource server: `NimbusJwtDecoder` against the team JWKS, and Spring's
+  stock `HeaderBearerTokenResolver` pointed at Cloudflare's header instead of
+  `Authorization: Bearer`. Four things are then checked, not two — issuer and timestamps,
+  the application's audience, that the assertion **names a person**, and that it carries an
+  `exp` at all. The last two are admission decisions worth stating: a Cloudflare *service*
+  token authenticates a machine and carries `common_name` where a person's carries `email`,
+  so it is refused; and the stock timestamp validator only checks `exp` when present, so
+  requiring it is what stops a token that never expires. The assertion is *signed*, so
   its trustworthiness does not depend on Cloudflare stripping client-supplied headers,
   nor on the backend never being reachable directly.
 - **A `JwtAuthenticationConverter` maps the verified JWT to a `TuckerPrincipal(userId,
@@ -40,10 +45,22 @@ login screen.
   identity is one line and cross-user isolation is genuinely testable), and `pnpm dev`
   attaches a pre-minted `TUCKER_DEV_ACCESS_TOKEN` produced by a committed script — a
   static string, not a signing capability.
-- **Two paths stay unauthenticated**: `/v3/api-docs`, or `./gradlew generateOpenApiDocs`
+- **Two paths stay unauthenticated**: `/v3/api-docs/**`, or `./gradlew generateOpenApiDocs`
   (which boots the app to regenerate the frontend's typed client) breaks; and
   `/api/version`, so an operator can tell "the app is down" from "the app is rejecting
-  me".
+  me". Swagger UI at `/docs` is deliberately *not* one of them — a browser cannot attach
+  the assertion itself, so it is gated and therefore unbrowsable; the raw spec is the door
+  that matters.
+
+  Two *paths*, and additionally the servlet **ERROR dispatch** — matched on the dispatcher
+  type, not on `/error`, so it stays a container-internal forward rather than becoming a
+  third door. Spring Security filters that dispatch as well as the request, so without it
+  an error *on an open path* is re-authorized and comes back 401, turning "the app is up,
+  you asked wrongly" into "the app is rejecting me" — the exact distinction `/api/version`
+  exists to make. It grants nothing on its own: an unauthenticated request to a gated path
+  is refused by the entry point, which sets the status directly and never dispatches. Only
+  a real socket can observe this — MockMvc records `sendError` and stops — so the proof is
+  an e2e test rather than a unit one.
 - **Self-service email change is out of scope.** Changing an email is an operator step
   (update the Access policy, then the row). When it is wanted, the intended design is
   *pending-email adoption*: the new address is parked in `pending_email`, and the first

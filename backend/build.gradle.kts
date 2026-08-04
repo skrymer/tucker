@@ -41,6 +41,9 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-jooq")
     implementation("org.springframework.boot:spring-boot-starter-validation")
+    // Verifies Cloudflare Access's signed assertion (ADR 0020). Resource server
+    // only — Tucker never issues a token, it only ever checks one.
+    implementation("org.springframework.boot:spring-boot-starter-oauth2-resource-server")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("org.flywaydb:flyway-core")
@@ -55,6 +58,9 @@ dependencies {
     "jooqCodegen"("org.xerial:sqlite-jdbc:3.47.1.0")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
+    // `springSecurity()` for the MockMvc the gate test builds by hand — it needs the
+    // real filter chain, and must NOT inherit the good token every other test gets.
+    testImplementation("org.springframework.security:spring-security-test")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
     testImplementation("org.mockito.kotlin:mockito-kotlin:5.4.0")
     testImplementation("org.testcontainers:testcontainers")
@@ -111,6 +117,37 @@ sourceSets {
 tasks.named("compileKotlin") { dependsOn(generateJooq) }
 tasks.named("compileJava") { dependsOn(generateJooq) }
 
+// --- The non-production Access key (ADR 0020) -----------------------------
+// One verification path in every environment: production points the decoder at
+// Cloudflare's team JWKS, everything else at the committed set that ships in
+// src/main/resources/access/jwks.json. Its private half deliberately lives
+// outside every shipped tree — it is only ever needed to *mint*, which nothing
+// in the image may do — so the tests are handed it here, and here alone.
+// Provenance, and why committing it is safe: dev/access-key/README.md.
+tasks.named<ProcessResources>("processTestResources") {
+    from(file("../dev/access-key")) {
+        include("signing-key.json")
+        into("access")
+    }
+}
+
+// The three settings have no defaults, so an app given none of them refuses to
+// start rather than falling back to a key anyone can sign with. Every
+// non-production boot path therefore states them; this is the one for a locally
+// run app, which includes the `generateOpenApiDocs` fork below.
+val devAccessArgs = listOf(
+    "--tucker.access.issuer=https://access.tucker.invalid",
+    "--tucker.access.audience=tucker-dev",
+    "--tucker.access.jwk-set-uri=classpath:access/jwks.json",
+)
+
+// Note `--args=` on the command line *replaces* this list rather than appending to it, so
+// `./gradlew bootRun --args='--server.port=9000'` drops the Access config and the app then
+// refuses to start. Pass the three settings along too, or use environment variables.
+tasks.named<org.springframework.boot.gradle.tasks.run.BootRun>("bootRun") {
+    args(devAccessArgs)
+}
+
 // --------------------------------------------------------------------------
 
 kotlin {
@@ -161,7 +198,9 @@ openApi {
     outputDir.set(openApiSnapshotDir)
     outputFileName.set(openApiSnapshotName)
     customBootRun {
-        args.set(listOf("--server.port=8181"))
+        // `/v3/api-docs` is one of the two paths the Access gate leaves open, but the
+        // app still has to *boot*, and it will not without Access config (ADR 0020).
+        args.set(listOf("--server.port=8181") + devAccessArgs)
     }
 }
 

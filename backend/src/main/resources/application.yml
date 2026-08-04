@@ -15,6 +15,11 @@ server:
 
 springdoc:
   swagger-ui:
+    # Behind the Access gate since F10 slice 1, and so not browsable: a browser cannot
+    # attach `Cf-Access-Jwt-Assertion` itself. ADR 0020 leaves exactly two paths open and
+    # this is deliberately not one of them — the raw spec at /v3/api-docs is, which is what
+    # `generateOpenApiDocs` and the typed client actually consume. Kept because the path
+    # still governs where the UI mounts if it is ever opened up again.
     path: /docs
   writer-with-default-pretty-printer: true
 
