@@ -1,12 +1,18 @@
-import type { APIResponse } from '@playwright/test'
+import type { APIRequestContext, APIResponse } from '@playwright/test'
 import { test, expect } from './support/smoke-test'
-import { todayIso } from '../support/date'
+import { todayIso, isoShiftDays } from '../support/date'
 import {
   ACCESS_ASSERTION_HEADER,
   mintAccessToken,
 } from '../../scripts/access-token.mjs'
 
 const API = 'http://localhost:8080/api'
+
+/** The window the adaptive Maintenance correction looks back over. */
+const ADAPTIVE_WINDOW_DAYS = 14
+
+/** Comfortably past the logging-coverage floor that correction demands. */
+const DAYS_THEY_LOGGED = 12
 
 // F10 slice 3 smoke: a User's catalog and day are theirs alone, proved through
 // the whole real stack — the browser's own requests going out through the Nuxt
@@ -101,6 +107,102 @@ test('a User sees only their own catalog and their own day', async ({
     await other.dispose()
   }
 })
+
+// F10 slice 4 smoke: the Calorie Budget is derived, not stored, and it is derived
+// from *someone's* weight trend and *someone's* intake. A leak there shows no other
+// person's name anywhere — only a number that is quietly wrong for both of them
+// (issue #158, ADR 0021). This drives that through the whole real stack.
+test("another User's logging cannot move this User's Calorie Budget", async ({
+  page,
+  goto,
+  playwright,
+  request,
+}) => {
+  const other = await playwright.request.newContext({
+    extraHTTPHeaders: {
+      [ACCESS_ASSERTION_HEADER]: await mintAccessToken({
+        email: 'someone.else@tucker.invalid',
+      }),
+    },
+  })
+
+  try {
+    const today = todayIso()
+
+    // The other User eats 4000 kcal a day and logs nearly every day of the
+    // window — exactly the shape the adaptive correction is built to read.
+    await weighInAcrossTheWindow(other, today, 110)
+    for (let back = 1; back <= DAYS_THEY_LOGGED; back++) {
+      await expectCreated(
+        other.post(`${API}/entries/estimated`, {
+          data: {
+            date: isoShiftDays(today, -back),
+            label: `Their day ${back}`,
+            calories: 4000,
+            protein: 150,
+          },
+        }),
+      )
+    }
+
+    // Their own review adapts to it. This is the positive control: without it the
+    // assertion below would pass just as well against a fixture in which nothing
+    // could have leaked because nothing was adaptive in the first place.
+    const theirs = await (await other.post(`${API}/weekly-review`)).json()
+    expect(theirs.maintenanceBasis).toBe('ADAPTIVE')
+
+    // The signed-in User has stepped on the scale across the same window and
+    // logged nothing at all.
+    await weighInAcrossTheWindow(request, today, 85)
+
+    // Opening Tucker runs the review that is due (ADR 0010).
+    await goto('/', { waitUntil: 'hydration' })
+    await expect(page.getByText(/\/ \d+ kcal/)).toBeVisible()
+
+    const mine = await (await request.get(`${API}/weekly-review`)).json()
+    // Seeded from the formula, because *they* have logged nothing. Adapting here
+    // would set their Calorie Budget from somebody else's eating.
+    expect(mine.maintenanceBasis).toBe('FORMULA_SEED')
+    // Stated against the fixture rather than a magic number: a leaked Maintenance
+    // would land on the other User's 4000 kcal days, not a kilogram away from it.
+    expect(mine.maintenanceKcal).toBeLessThan(theirs.maintenanceKcal - 1000)
+    // Exactly their own weight, because two identical readings smooth to
+    // themselves. A trend averaged over both people would sit between 85 and 110,
+    // dragging the Protein Floor with it.
+    expect(mine.trendWeightKg).toBe(85)
+
+    // And the dashboard states that Budget — the one figure the whole app is a
+    // presentation of.
+    await expect(
+      page.getByText(`/ ${Math.round(mine.calorieBudgetKcal)} kcal`),
+    ).toBeVisible()
+  } finally {
+    await other.dispose()
+  }
+})
+
+/**
+ * Give [api]'s User a Profile and readings at both ends of the adaptive window,
+ * which is what the correction needs before it will run at all: a Profile to seed
+ * from, and a trend anchor old enough to measure this week's change against.
+ */
+async function weighInAcrossTheWindow(
+  api: APIRequestContext,
+  today: string,
+  weightKg: number,
+) {
+  const profile = await api.put(`${API}/profile`, {
+    data: { sex: 'MALE', birthDate: '1986-05-22', heightCm: 180 },
+  })
+  expect(profile.status(), await profile.text()).toBe(200)
+
+  for (const date of [isoShiftDays(today, -ADAPTIVE_WINDOW_DAYS), today]) {
+    const weighIn = await api.post(`${API}/weight`, {
+      data: { date, weightKg },
+    })
+    expect(weighIn.status(), await weighIn.text()).toBe(200)
+  }
+}
 
 /** Assert a seeding call was accepted, failing with the body when it was not. */
 async function expectCreated(pending: Promise<APIResponse>) {
