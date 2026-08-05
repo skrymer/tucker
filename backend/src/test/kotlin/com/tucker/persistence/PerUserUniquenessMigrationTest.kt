@@ -34,27 +34,45 @@ class PerUserUniquenessMigrationTest {
         migrate(db, upTo = null)
 
         connect(db).use { connection ->
-            // Ids survive, because they are what an Entry, a chart and a URL refer to.
+            // Every column, not just the interesting ones: a rebuild copies by hand, and
+            // a column left out of the copy reads back as the new table's DEFAULT — which
+            // is indistinguishable from the real value unless the fixture avoided it.
+            // Ids survive too, because they are what an Entry, a chart and a URL refer to.
             assertEquals(
-                listOf("1|2026-01-13|91.8|1", "2|2026-01-14|92.4|1"),
-                connection.rows("SELECT id, measured_on, weight_kg, user_id FROM weight_measurement ORDER BY id"),
+                listOf(
+                    "1|2026-01-13|91.8|2026-01-13 06:02:11|1",
+                    "2|2026-01-14|92.4|2026-01-14 06:04:52|1",
+                ),
+                connection.rows(
+                    "SELECT id, measured_on, weight_kg, created_at, user_id " +
+                        "FROM weight_measurement ORDER BY id",
+                ),
                 "every reading should come through the rebuild intact, and still be the owner's",
             )
             assertEquals(
-                listOf("1|2026-01-01|96.0|85.0|0.5|1|1"),
+                listOf(
+                    "1|2025-09-01|104.0|96.0|0.5|0|2025-09-01 07:00:00|2025-12-20|1",
+                    "2|2026-01-01|96.0|85.0|0.5|1|2026-01-01 07:15:00||1",
+                ),
                 connection.rows(
                     "SELECT id, started_on, start_weight_kg, target_weight_kg, rate_kg_per_week, " +
-                        "active, user_id FROM goal ORDER BY id",
+                        "active, created_at, reached_on, user_id FROM goal ORDER BY id",
                 ),
-                "the Goal should still be the owner's, and still be the active one",
+                "both Goals should survive with their own active flag and reached-on latch — " +
+                    "losing reached_on re-arms a fork the User already answered (ADR 0008)",
             )
             assertEquals(
-                listOf("1|2026-01-07|92.9|2560.0|2060.0|150.0|1", "2|2026-01-14|92.6|2545.0|2045.0|150.0|1"),
+                listOf(
+                    "1|2026-01-07|92.9|2560.0|2060.0|150.0|2026-01-07 08:00:00|ADAPTIVE|1",
+                    "2|2026-01-14|92.6|2545.0|2045.0|150.0|2026-01-14 08:00:00|HELD|1",
+                ),
                 connection.rows(
                     "SELECT id, reviewed_on, trend_weight_kg, maintenance_kcal, calorie_budget_kcal, " +
-                        "protein_floor_g, user_id FROM weekly_review ORDER BY id",
+                        "protein_floor_g, created_at, maintenance_basis, user_id " +
+                        "FROM weekly_review ORDER BY id",
                 ),
-                "a review is irreversible history, so the rebuild must not round or reorder it",
+                "a review is irreversible history, so the rebuild must not round, reorder or " +
+                    "rewrite it — dropping maintenance_basis would silently make every one FORMULA_SEED",
             )
 
             // A rebuild is exactly where a foreign key gets quietly dropped: the new
@@ -98,26 +116,51 @@ class PerUserUniquenessMigrationTest {
         }
     }
 
+    /**
+     * The rows written between V9 and here carry no owner, and this slice is what
+     * scopes the repositories reading them — so until it runs they are not stray
+     * detritus, they are the User's live weigh-ins, Goal and reviews. They must be
+     * adopted, not discarded.
+     */
     @Test
-    fun `a row nobody owns does not survive the rebuild, and the owned rows beside it do`() {
-        val db = tempDir.resolve("with-orphans.db").toString()
+    fun `rows written before the owner column was filled in are adopted, not discarded`() {
+        val db = tempDir.resolve("unowned.db").toString()
 
-        // V9 adopts this history as User 1 — and leaves user_id nullable, so anything
-        // the app wrote between then and now carries no owner at all.
+        // V9 adopts the pre-multi-user history as User 1 and leaves user_id nullable,
+        // so everything the app wrote after it carries no owner at all.
         migrate(db, upTo = "8")
         connect(db).use { seedOnePersonsBodyAndPlan(it) }
         migrate(db, upTo = "10")
-        connect(db).use { it.execute(UNOWNED_READING) }
+        connect(db).use { connection -> UNOWNED_AFTER_V9.forEach(connection::execute) }
 
         migrate(db, upTo = null)
 
         connect(db).use { connection ->
             assertEquals(
-                listOf("2026-01-13", "2026-01-14"),
+                listOf("2026-01-13", "2026-01-14", "2026-01-15"),
                 connection.rows("SELECT measured_on FROM weight_measurement ORDER BY measured_on"),
-                "the unowned reading is dropped — it was already invisible to every User, " +
-                    "including whoever recorded it — and the owned ones are untouched",
+                "the unowned reading is the owner's own weigh-in, recorded before the column " +
+                    "was filled in — deleting it would lose a morning off the scale for good",
             )
+            assertEquals(
+                listOf("2026-02-01", "2026-01-01", "2025-09-01"),
+                connection.rows("SELECT started_on FROM goal ORDER BY started_on DESC"),
+                "an unowned Goal is adopted rather than dropped — dropping one would erase a " +
+                    "decision its owner made, and dropping an active one would put them into " +
+                    "Maintenance Mode having decided nothing (ADR 0008)",
+            )
+            assertEquals(
+                listOf("2026-01-07", "2026-01-14", "2026-01-21"),
+                connection.rows("SELECT reviewed_on FROM weekly_review ORDER BY reviewed_on"),
+                "a Weekly Review is irreversible history, so an unowned one is adopted too",
+            )
+            REBUILT_TABLES.forEach { table ->
+                assertEquals(
+                    emptyList(),
+                    connection.rows("SELECT id FROM $table WHERE user_id IS NOT 1"),
+                    "everything in `$table` ends up belonging to the one User there was to adopt it",
+                )
+            }
         }
     }
 
@@ -172,21 +215,47 @@ class PerUserUniquenessMigrationTest {
         }
     }
 
-    /** Fill the three tables this migration rebuilds, the way one person's history fills them. */
+    /**
+     * Fill the three tables this migration rebuilds, the way one person's history
+     * fills them.
+     *
+     * Every column that could be dropped from the rebuild *silently* is seeded away
+     * from its schema default, and asserted above. Seeded at the default instead —
+     * which is what a casual fixture does — a dropped column reads back as the value
+     * the new table's DEFAULT supplies, so the test passes and production loses the
+     * data. `maintenance_basis` is the worst of them: at the default, dropping it
+     * collapses every historical review to FORMULA_SEED with nothing to show for it.
+     */
     private fun seedOnePersonsBodyAndPlan(connection: Connection) = connection.createStatement().use {
-        it.executeUpdate("INSERT INTO weight_measurement (id, measured_on, weight_kg) VALUES (1, '2026-01-13', 91.8)")
-        it.executeUpdate("INSERT INTO weight_measurement (id, measured_on, weight_kg) VALUES (2, '2026-01-14', 92.4)")
         it.executeUpdate(
-            "INSERT INTO goal (id, started_on, start_weight_kg, target_weight_kg, rate_kg_per_week) " +
-                "VALUES (1, '2026-01-01', 96.0, 85.0, 0.5)",
+            "INSERT INTO weight_measurement (id, measured_on, weight_kg, created_at) " +
+                "VALUES (1, '2026-01-13', 91.8, '2026-01-13 06:02:11')",
+        )
+        it.executeUpdate(
+            "INSERT INTO weight_measurement (id, measured_on, weight_kg, created_at) " +
+                "VALUES (2, '2026-01-14', 92.4, '2026-01-14 06:04:52')",
+        )
+        // Reached and retired (active = 0, reached_on set), so neither field reads as
+        // its default — and a second, live Goal beside it, so `active` is discriminating.
+        it.executeUpdate(
+            "INSERT INTO goal (id, started_on, start_weight_kg, target_weight_kg, rate_kg_per_week, " +
+                "active, created_at, reached_on) " +
+                "VALUES (1, '2025-09-01', 104.0, 96.0, 0.5, 0, '2025-09-01 07:00:00', '2025-12-20')",
+        )
+        it.executeUpdate(
+            "INSERT INTO goal (id, started_on, start_weight_kg, target_weight_kg, rate_kg_per_week, " +
+                "active, created_at) VALUES (2, '2026-01-01', 96.0, 85.0, 0.5, 1, '2026-01-01 07:15:00')",
+        )
+        // ADAPTIVE and HELD: the two bases a dropped column would rewrite to FORMULA_SEED.
+        it.executeUpdate(
+            "INSERT INTO weekly_review (id, reviewed_on, trend_weight_kg, maintenance_kcal, " +
+                "calorie_budget_kcal, protein_floor_g, created_at, maintenance_basis) " +
+                "VALUES (1, '2026-01-07', 92.9, 2560, 2060, 150, '2026-01-07 08:00:00', 'ADAPTIVE')",
         )
         it.executeUpdate(
             "INSERT INTO weekly_review (id, reviewed_on, trend_weight_kg, maintenance_kcal, " +
-                "calorie_budget_kcal, protein_floor_g) VALUES (1, '2026-01-07', 92.9, 2560, 2060, 150)",
-        )
-        it.executeUpdate(
-            "INSERT INTO weekly_review (id, reviewed_on, trend_weight_kg, maintenance_kcal, " +
-                "calorie_budget_kcal, protein_floor_g) VALUES (2, '2026-01-14', 92.6, 2545, 2045, 150)",
+                "calorie_budget_kcal, protein_floor_g, created_at, maintenance_basis) " +
+                "VALUES (2, '2026-01-14', 92.6, 2545, 2045, 150, '2026-01-14 08:00:00', 'HELD')",
         )
     }
 
@@ -200,6 +269,20 @@ class PerUserUniquenessMigrationTest {
         /** What a weigh-in looked like between V9 and V11: recorded, but owned by nobody. */
         const val UNOWNED_READING =
             "INSERT INTO weight_measurement (measured_on, weight_kg) VALUES ('2026-01-15', 92.1)"
+
+        /**
+         * A week of ordinary use on a V10 database: real rows, written by repositories
+         * that did not yet stamp an owner. Dates and the inactive flag are chosen not to
+         * collide with the seeded history under the *global* constraints still in force
+         * at V10 — the collision would be the constraint doing its job, not the bug.
+         */
+        val UNOWNED_AFTER_V9 = listOf(
+            UNOWNED_READING,
+            "INSERT INTO goal (started_on, start_weight_kg, target_weight_kg, rate_kg_per_week, active) " +
+                "VALUES ('2026-02-01', 92.0, 88.0, 0.25, 0)",
+            "INSERT INTO weekly_review (reviewed_on, trend_weight_kg, maintenance_kcal, " +
+                "calorie_budget_kcal, protein_floor_g) VALUES ('2026-01-21', 92.1, 2530, 2030, 150)",
+        )
 
         /** The three things a User may hold only one of, as an insert for a given owner. */
         val DUPLICATED_ROWS = listOf<Pair<String, (Int) -> String>>(

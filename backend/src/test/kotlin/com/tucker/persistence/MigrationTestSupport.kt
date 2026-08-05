@@ -45,13 +45,19 @@ private fun jdbcUrl(db: String) = "jdbc:sqlite:$db?foreign_keys=true"
 /** Run [sql] for its effect. */
 fun Connection.execute(sql: String): Int = createStatement().use { it.executeUpdate(sql) }
 
-/** Every row of [sql], each rendered as its columns joined by `|`. */
+/**
+ * Every row of [sql], each rendered as its columns joined by `|`.
+ *
+ * A SQL NULL renders as the empty string rather than throwing, because a nullable
+ * column — `goal.reached_on`, say — is exactly the kind a rebuild can drop, so the
+ * assertions need to be able to state that it came through *as* null.
+ */
 fun Connection.rows(sql: String): List<String> =
     createStatement().use { statement ->
         statement.executeQuery(sql).use { rows ->
             val columns = rows.metaData.columnCount
             generateSequence {
-                if (rows.next()) (1..columns).joinToString("|") { rows.getString(it) } else null
+                if (rows.next()) (1..columns).joinToString("|") { rows.getString(it).orEmpty() } else null
             }.toList()
         }
     }

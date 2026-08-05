@@ -14,16 +14,31 @@
 -- half-migrated state to fear. PerUserUniquenessMigrationTest asserts the
 -- premise rather than trusting this comment.
 --
--- POLICY FOR ALL THREE DELETEs BELOW. A row with no owner was written between V9
--- and here by an app that had not yet learned to stamp one. It is already
--- invisible to every User including whoever created it (ADR 0021), so dropping it
--- loses nothing anyone can see -- and dropping is the only option that guesses no
--- ownership. Production cannot have any, because slices 2-5 ship in a single
--- deploy (the hold recorded in CLAUDE.md and deploy/README.md): V9 and this
--- migration run in the same boot with no window between them for a write to land.
--- Ship them separately and that window opens, and these become unconditional
--- deletes against real data.
-DELETE FROM weight_measurement WHERE user_id IS NULL;
+-- POLICY FOR ALL THREE ADOPTIONS BELOW. A row with no owner was written between
+-- V9 (which added user_id, nullable) and here, by an app that had not yet learned
+-- to stamp one.
+--
+-- These rows are **adopted, never discarded**, and the distinction matters more
+-- here than it does for food or entry. Those two were scoped in slice 3, so an
+-- unowned one really is invisible to everybody and dropping it loses nothing.
+-- These three are scoped by *this* slice -- until it runs, the repositories
+-- reading them have no owner predicate at all, so an unowned weigh-in, Goal or
+-- Weekly Review is fully visible and is actively setting somebody's Trend Weight,
+-- Calorie Budget and Goal banner. Deleting them would destroy live data: every
+-- weigh-in since the previous deploy, the active Goal (dropping its owner into
+-- Maintenance Mode with none of the insistent fork ADR 0008 requires), and
+-- Weekly Reviews, which this project treats as irreversible history.
+--
+-- Adoption is guarded on there being exactly one User, which is every database
+-- that can hold an unowned row: the second User is not invited until issue #161,
+-- long after this migration. With none or several, attribution would be a guess,
+-- so nothing is adopted and the NOT NULL on the rebuild below refuses the
+-- migration -- a boot failure a human resolves, inside a transaction that rolls
+-- back cleanly, rather than a silent deletion nobody can undo.
+UPDATE weight_measurement
+   SET user_id = (SELECT id FROM user)
+ WHERE user_id IS NULL
+   AND (SELECT count(*) FROM user) = 1;
 
 -- Rebuilt to say what it now means: measured_on is unique *within* a User, and
 -- every reading belongs to one. Column order matches the table it replaces
@@ -50,7 +65,10 @@ ALTER TABLE weight_measurement_new RENAME TO weight_measurement;
 CREATE UNIQUE INDEX idx_weight_measurement_user_day
     ON weight_measurement (user_id, measured_on);
 
-DELETE FROM goal WHERE user_id IS NULL;
+UPDATE goal
+   SET user_id = (SELECT id FROM user)
+ WHERE user_id IS NULL
+   AND (SELECT count(*) FROM user) = 1;
 
 -- goal's single-active rule lives in a *named* partial index, so this table
 -- alone could have been widened by an index swap. It is rebuilt anyway, for
@@ -84,7 +102,10 @@ ALTER TABLE goal_new RENAME TO goal;
 CREATE UNIQUE INDEX idx_goal_user_single_active
     ON goal (user_id, active) WHERE active = 1;
 
-DELETE FROM weekly_review WHERE user_id IS NULL;
+UPDATE weekly_review
+   SET user_id = (SELECT id FROM user)
+ WHERE user_id IS NULL
+   AND (SELECT count(*) FROM user) = 1;
 
 -- Column order and defaults are V1's as V7 left them (note dropped,
 -- maintenance_basis appended), so the only thing that changes about a review is

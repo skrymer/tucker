@@ -26,12 +26,14 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Primary
+import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
 import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
 import java.time.LocalDate
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -234,20 +236,51 @@ class ReminderSchedulerIntegrationTest {
         assertEquals(1, result.sent)
     }
 
+    /**
+     * That the tick gives *every* User a turn, rather than stopping at the first —
+     * which is the whole of what the loop added, and all this can honestly claim.
+     *
+     * Deliberately **not** named for #159's "one User being up to date does not
+     * suppress another's": slice 4 does not deliver that. It holds here only because
+     * "up to date" is seeded as a recent review. Reach the same state the way a real
+     * User does — by opening Tucker — and the shared last-seen stamp silences the
+     * overdue User too, because `reminder_state` is still global. Same for the device
+     * the nudge lands on below: subscriptions are global, so it is the only one there
+     * is. Both become per-User in slice 5 (see [UserReminder]).
+     */
     @Test
-    fun `a User who is up to date does not stand down another User's overdue reminder`() {
+    fun `every User gets a turn, so a quiet first one does not end the tick`() {
         // The subscriber reviewed today, so nothing is owed on their turn.
         seedEligible(reviewedDaysAgo = 0)
-        // Somebody else has not reviewed for over a week. Whether the tick reaches
-        // them at all is the question: a loop that stops at the first User, or one
-        // decision taken across everybody at once, both answer "no reminder today"
-        // here — and the person who has been away a week is the one it is for.
+        // Somebody else, later by id, has not reviewed for over a week. A loop that
+        // stopped at the first User would leave them un-nudged and say nothing.
         seedHistory(users.insertIfAbsent(User(id = null, email = "overdue@tucker.invalid")), reviewedDaysAgo = 8)
 
         val result = scheduler.runTick(now)
 
         assertEquals(1, result.sent)
         assertEquals(listOf("https://push.example/device-a"), sender.sentEndpoints)
+    }
+
+    /**
+     * The premise every test in this class rests on, asserted rather than assumed.
+     *
+     * The cron thread has no identity, so `runTick` must establish one per User. If
+     * an identity were ambient here — leaked in by another class, or left behind by
+     * [runAs] failing to restore — then `runTick` would read *that* User's data and
+     * every test above would pass with the impersonation deleted entirely.
+     */
+    @Test
+    fun `the tick runs on a thread with nobody signed in`() {
+        seedEligible()
+
+        assertNull(
+            SecurityContextHolder.getContext().authentication,
+            "seeding through runAs must leave the test thread anonymous, or this class " +
+                "proves nothing about the scheduler establishing its own context",
+        )
+
+        assertEquals(1, scheduler.runTick(now).sent)
     }
 
     @Test

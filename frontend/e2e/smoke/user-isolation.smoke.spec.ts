@@ -135,6 +135,13 @@ test("another User's logging cannot move this User's Calorie Budget", async ({
   await expect(page.getByText(/\/ \d+ kcal/)).toBeVisible()
 
   const mine = await (await request.get(`${API}/weekly-review`)).json()
+  // Both reviews have to be dated the same day for the assertions below to mean
+  // what they say: a run that crosses UTC midnight between `today` and the page
+  // load dates mine a day later than theirs, at which point the engine's fallback
+  // legitimately reaches back to theirs and the basis is HELD for a reason that
+  // has nothing to do with isolation. Pinned, so that reads as a clear failure
+  // rather than a once-a-day mystery.
+  expect(mine.reviewedOn, 'the run crossed UTC midnight').toBe(today)
   // Seeded from the formula, because *they* have logged nothing. Adapting here
   // would set their Calorie Budget from somebody else's eating.
   expect(mine.maintenanceBasis).toBe('FORMULA_SEED')

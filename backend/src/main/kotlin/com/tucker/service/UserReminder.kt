@@ -25,6 +25,22 @@ import java.time.ZoneId
  * makes the reminder see exactly the history that User's own dashboard would
  * (ADR 0021). It knows nothing about there being more than one of them.
  *
+ * **Only half of what it reads is per-User yet.** `weights` and `reviews` are
+ * scoped; [ProfileRepository], [PushSubscriptionRepository] and
+ * [ReminderStateRepository] are still global until slice 5 (issue #159), which is
+ * where they become owned. Until then, with more than one User:
+ * - a nudge fans out to *every* device in the installation, not just its owner's,
+ *   and a 410 from any of them prunes that device;
+ * - one User opening Tucker stamps the shared last-seen day, so the absent-today
+ *   gate silences everybody's reminder for that day;
+ * - the first send of a tick stamps the shared dedupe, suppressing every later
+ *   User in the same episode.
+ *
+ * None of that is reachable in production, which holds exactly one User until the
+ * second is invited in issue #161 — the last slice, deliberately. It is written
+ * down because the loop above arrived a slice before the scoping it assumes, and
+ * a reader would otherwise take this class's per-User framing at face value.
+ *
  * Thin orchestration glue (ADR 0013): the decision lives in [ReminderPolicy] and
  * the transport behind [WebPushSender], so it is specified by
  * `ReminderSchedulerIntegrationTest` driving a whole tick rather than by a test

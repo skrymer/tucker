@@ -24,16 +24,20 @@ class RunAsCallSitesTest {
 
     @Test
     fun `only the reminder scheduler runs as another User`() {
-        val callers = File(MAIN_SOURCES).walkTopDown()
+        val sources = File(MAIN_SOURCES)
+        val callers = sources.walkTopDown()
             .filter { it.isFile && it.extension == "kt" }
+            // Paths, not names: two files may share a basename, and matching on the
+            // name alone would let a second `ReminderScheduler.kt` in another package
+            // call this and go unnoticed — which is the whole failure being guarded.
+            .map { it.relativeTo(sources).path }
             // RunAs.kt declares it, which is not calling it.
-            .filterNot { it.name == DECLARATION }
-            .filter { CALL in it.readText() }
-            .map { it.name }
+            .filterNot { it == DECLARATION }
+            .filter { CALL in sources.resolve(it).readText() }
             .toSortedSet()
 
         assertEquals(
-            sortedSetOf("ReminderScheduler.kt"),
+            sortedSetOf("com/tucker/service/ReminderScheduler.kt"),
             callers,
             "runAs establishes an identity out of thin air, so ADR 0021 confines it to " +
                 "the one job that has no request behind it. A new caller here needs the " +
@@ -43,7 +47,7 @@ class RunAsCallSitesTest {
 
     private companion object {
         const val MAIN_SOURCES = "src/main/kotlin"
-        const val DECLARATION = "RunAs.kt"
+        const val DECLARATION = "com/tucker/security/RunAs.kt"
 
         /** The call, not a KDoc reference — those are written `[runAs]`. */
         const val CALL = "runAs("

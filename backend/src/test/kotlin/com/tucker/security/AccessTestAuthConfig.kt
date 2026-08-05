@@ -3,9 +3,7 @@ package com.tucker.security
 import org.springframework.boot.test.autoconfigure.web.servlet.MockMvcBuilderCustomizer
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import org.springframework.security.core.context.SecurityContextHolder
-import org.springframework.security.test.context.TestSecurityContextHolder
-import org.springframework.test.web.servlet.ResultHandler
+import org.springframework.security.test.web.servlet.response.SecurityMockMvcResultHandlers
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders
 
 /**
@@ -53,11 +51,13 @@ class AccessTestAuthConfig {
      * fails with `NoCurrentUserException`. Nothing about the test says so, and the
      * failure names the repository rather than the request that caused it.
      *
-     * [TestSecurityContextHolder] keeps a second ThreadLocal that the filter's clear
-     * does not reach, which is exactly the record needed to restore from. It is the
-     * same holder `@WithSecurityContext` populated in the first place, so this hands
-     * back what the annotation put there and nothing else — a class with no ambient
-     * identity restores an empty context, which is what it had.
+     * `TestSecurityContextHolder` keeps a second ThreadLocal that the filter's clear
+     * does not reach, which is exactly the record needed to restore from — and Spring
+     * Security ships the handler that does it, so this wires up
+     * [SecurityMockMvcResultHandlers.exportTestSecurityContext] rather than
+     * hand-rolling the same two lines. It restores what `@WithSecurityContext` put
+     * there and nothing else: a class with no ambient identity gets an empty context
+     * back, which is what it had.
      *
      * Three edges worth knowing before relying on it:
      * - It restores **only** contexts installed through [TestSecurityContextHolder].
@@ -74,8 +74,6 @@ class AccessTestAuthConfig {
      */
     @Bean
     fun keepTheTestThreadSignedIn(): MockMvcBuilderCustomizer = MockMvcBuilderCustomizer { builder ->
-        builder.alwaysDo(
-            ResultHandler { SecurityContextHolder.setContext(TestSecurityContextHolder.getContext()) },
-        )
+        builder.alwaysDo(SecurityMockMvcResultHandlers.exportTestSecurityContext())
     }
 }
