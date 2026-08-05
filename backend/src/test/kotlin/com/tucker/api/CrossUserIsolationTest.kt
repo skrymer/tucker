@@ -59,6 +59,12 @@ class CrossUserIsolationTest {
     /** Comfortably before [day], for the review an engine fallback would reach back to. */
     private val earlier = day.minusDays(10)
 
+    // Two very different bodies, so a mixed trend or a borrowed Maintenance lands on
+    // a figure neither of them could have produced. Named because every fixture
+    // weight below has an assertion that has to keep agreeing with it.
+    private val aliceKg = 71.0
+    private val bobKg = 94.5
+
     /** The window the adaptive correction looks back over (WeeklyReviewService). */
     private val adaptiveWindowDays = 14
 
@@ -330,8 +336,8 @@ class CrossUserIsolationTest {
 
     @Test
     fun `two Users can each record a weight for the same day`() {
-        weighIn(alice, day, weightKg = 71.0)
-        weighIn(bob, day, weightKg = 94.5)
+        weighIn(alice, day, weightKg = aliceKg)
+        weighIn(bob, day, weightKg = bobKg)
 
         // One reading each, each their own. Before the day was owned this was not a
         // constraint violation — it was worse: Bob's save found Alice's row for the
@@ -339,32 +345,32 @@ class CrossUserIsolationTest {
         mockMvc.get("/api/weight") { header(ACCESS_ASSERTION_HEADER, alice) }.andExpect {
             status { isOk() }
             jsonPath("$.length()") { value(1) }
-            jsonPath("$[0].weightKg") { value(71.0) }
+            jsonPath("$[0].weightKg") { value(aliceKg) }
         }
         mockMvc.get("/api/weight") { header(ACCESS_ASSERTION_HEADER, bob) }.andExpect {
             status { isOk() }
             jsonPath("$.length()") { value(1) }
-            jsonPath("$[0].weightKg") { value(94.5) }
+            jsonPath("$[0].weightKg") { value(bobKg) }
         }
     }
 
     @Test
     fun `a User's latest reading is their own, not the most recent one on the scale`() {
-        weighIn(bob, day.minusDays(1), weightKg = 94.5)
-        weighIn(alice, day, weightKg = 71.0)
+        weighIn(bob, day.minusDays(1), weightKg = bobKg)
+        weighIn(alice, day, weightKg = aliceKg)
 
         // Alice weighed in more recently, so an unscoped "latest" hands Bob her
         // weight — under his own name, on his own screen.
         mockMvc.get("/api/weight/latest") { header(ACCESS_ASSERTION_HEADER, bob) }.andExpect {
             status { isOk() }
-            jsonPath("$.weightKg") { value(94.5) }
+            jsonPath("$.weightKg") { value(bobKg) }
             jsonPath("$.measuredOn") { value("${day.minusDays(1)}") }
         }
     }
 
     @Test
     fun `deleting another User's weight reading leaves it on their chart`() {
-        val aliceMonday = weighIn(alice, day, weightKg = 71.0)
+        val aliceMonday = weighIn(alice, day, weightKg = aliceKg)
 
         // 204 rather than 404, on the same reasoning as a Food or an Entry: this
         // endpoint already answers 204 for an id nobody owns, so a foreign one must
@@ -374,7 +380,7 @@ class CrossUserIsolationTest {
 
         mockMvc.get("/api/weight") { header(ACCESS_ASSERTION_HEADER, alice) }.andExpect {
             jsonPath("$.length()") { value(1) }
-            jsonPath("$[0].weightKg") { value(71.0) }
+            jsonPath("$[0].weightKg") { value(aliceKg) }
         }
     }
 
@@ -382,26 +388,24 @@ class CrossUserIsolationTest {
     fun `a User's Trend Weight is smoothed over their own readings alone`() {
         // Alice weighs a great deal less than Bob and steps on the scale every day, so
         // an EWMA over the pair of them lands nowhere near either person's body.
-        (0..6).forEach { back -> weighIn(alice, day.minusDays(back.toLong()), weightKg = 71.0) }
-        weighIn(bob, day, weightKg = 94.5)
+        (0..6).forEach { back -> weighIn(alice, day.minusDays(back.toLong()), weightKg = aliceKg) }
+        weighIn(bob, day, weightKg = bobKg)
 
         // One reading, so Bob's trend is exactly that reading — anything else is
         // Alice's weight leaking into the number his Goal and Budget are built on.
         mockMvc.get("/api/weight/trend") { header(ACCESS_ASSERTION_HEADER, bob) }.andExpect {
             status { isOk() }
-            jsonPath("$.trendKg") { value(94.5) }
+            jsonPath("$.trendKg") { value(bobKg) }
             jsonPath("$.asOf") { value("$day") }
         }
     }
 
     @Test
     fun `two Users can each hold an active Goal at the same time`() {
-        completeProfile(alice)
-        weighIn(alice, day, weightKg = 71.0)
+        beginTracking(alice, aliceKg)
         setGoal(alice, targetWeightKg = 68.0)
 
-        completeProfile(bob)
-        weighIn(bob, day, weightKg = 94.5)
+        beginTracking(bob, bobKg)
         setGoal(bob, targetWeightKg = 88.0)
 
         // "At most one active Goal" is a rule about a person, not about the database.
@@ -421,11 +425,10 @@ class CrossUserIsolationTest {
 
     @Test
     fun `a User with no Goal of their own is in Maintenance Mode, whoever else has one`() {
-        completeProfile(alice)
-        weighIn(alice, day, weightKg = 71.0)
+        beginTracking(alice, aliceKg)
         setGoal(alice, targetWeightKg = 68.0)
 
-        weighIn(bob, day, weightKg = 94.5)
+        weighIn(bob, day, weightKg = bobKg)
 
         // Not "403, that Goal is Alice's" — as far as Bob's Tucker is concerned there
         // is no Goal, which is Maintenance Mode (ADR 0008) and exactly what he sees.
@@ -448,12 +451,10 @@ class CrossUserIsolationTest {
 
     @Test
     fun `switching to Maintenance Mode leaves another User's Goal alone`() {
-        completeProfile(alice)
-        weighIn(alice, day, weightKg = 71.0)
+        beginTracking(alice, aliceKg)
         setGoal(alice, targetWeightKg = 68.0)
 
-        completeProfile(bob)
-        weighIn(bob, day, weightKg = 94.5)
+        beginTracking(bob, bobKg)
         setGoal(bob, targetWeightKg = 88.0)
 
         mockMvc.delete("/api/goal") { header(ACCESS_ASSERTION_HEADER, bob) }
@@ -473,10 +474,8 @@ class CrossUserIsolationTest {
 
     @Test
     fun `two Users can each hold a Weekly Review dated the same day`() {
-        completeProfile(alice)
-        weighIn(alice, day, weightKg = 71.0)
-        completeProfile(bob)
-        weighIn(bob, day, weightKg = 94.5)
+        beginTracking(alice, aliceKg)
+        beginTracking(bob, bobKg)
 
         mockMvc.post("/api/weekly-review") { header(ACCESS_ASSERTION_HEADER, alice) }
             .andExpect { status { isOk() } }
@@ -486,24 +485,22 @@ class CrossUserIsolationTest {
         // Maintenance, her Calorie Budget, on his dashboard.
         mockMvc.post("/api/weekly-review") { header(ACCESS_ASSERTION_HEADER, bob) }.andExpect {
             status { isOk() }
-            jsonPath("$.trendWeightKg") { value(94.5) }
+            jsonPath("$.trendWeightKg") { value(bobKg) }
         }
 
         mockMvc.get("/api/weekly-review") { header(ACCESS_ASSERTION_HEADER, alice) }.andExpect {
             status { isOk() }
-            jsonPath("$.trendWeightKg") { value(71.0) }
+            jsonPath("$.trendWeightKg") { value(aliceKg) }
         }
     }
 
     @Test
     fun `starting a Goal recomputes only the review of whoever started it`() {
-        completeProfile(alice)
-        weighIn(alice, day, weightKg = 71.0)
+        beginTracking(alice, aliceKg)
         mockMvc.post("/api/weekly-review") { header(ACCESS_ASSERTION_HEADER, alice) }
             .andExpect { status { isOk() } }
 
-        completeProfile(bob)
-        weighIn(bob, day, weightKg = 94.5)
+        beginTracking(bob, bobKg)
         // A Goal change is one of the few moments the Budget may move mid-week
         // (ADR 0008), so it overwrites today's review — by deleting it first. Held
         // globally, that delete takes Alice's review with it, and hers is not
@@ -513,22 +510,20 @@ class CrossUserIsolationTest {
 
         mockMvc.get("/api/weekly-review") { header(ACCESS_ASSERTION_HEADER, alice) }.andExpect {
             status { isOk() }
-            jsonPath("$.trendWeightKg") { value(71.0) }
+            jsonPath("$.trendWeightKg") { value(aliceKg) }
         }
         mockMvc.get("/api/weekly-review") { header(ACCESS_ASSERTION_HEADER, bob) }.andExpect {
             status { isOk() }
-            jsonPath("$.trendWeightKg") { value(94.5) }
+            jsonPath("$.trendWeightKg") { value(bobKg) }
         }
     }
 
     @Test
     fun `opening Tucker mints a review for whoever opened it, and for nobody else`() {
-        completeProfile(alice)
-        weighIn(alice, day, weightKg = 71.0)
+        beginTracking(alice, aliceKg)
         openTucker(alice)
 
-        completeProfile(bob)
-        weighIn(bob, day, weightKg = 94.5)
+        beginTracking(bob, bobKg)
 
         // The lazy catch-up asks "is the latest review a week or more old?", and a
         // missing review is itself overdue. Asked globally, Bob's app-open finds
@@ -539,7 +534,7 @@ class CrossUserIsolationTest {
             param("date", "$day")
         }.andExpect {
             status { isOk() }
-            jsonPath("$.trendWeightKg") { value(94.5) }
+            jsonPath("$.trendWeightKg") { value(bobKg) }
             jsonPath("$.calorieBudget") { exists() }
         }
 
@@ -548,15 +543,14 @@ class CrossUserIsolationTest {
             .andExpect {
                 status { isOk() }
                 jsonPath("$.length()") { value(1) }
-                jsonPath("$[0].trendWeightKg") { value(71.0) }
+                jsonPath("$[0].trendWeightKg") { value(aliceKg) }
             }
     }
 
     @Test
     fun `a User too thinly logged to adapt is not handed another User's Maintenance`() {
         // Alice has a review on the books, dated well before the one Bob is about to run.
-        completeProfile(alice)
-        weighIn(alice, earlier, weightKg = 71.0)
+        beginTracking(alice, aliceKg, on = earlier)
         openTucker(alice, on = earlier)
 
         // Bob has a trend anchor and no logged days at all, so the adaptive correction
@@ -564,13 +558,12 @@ class CrossUserIsolationTest {
         // Maintenance. Asked globally, the last review is Alice's — and Bob's Calorie
         // Budget is then built on a 71 kg person's metabolism, under his own name,
         // with nothing on any screen to say so.
-        completeProfile(bob)
-        weighIn(bob, day, weightKg = 94.5)
+        beginTracking(bob, bobKg)
 
         mockMvc.post("/api/weekly-review") { header(ACCESS_ASSERTION_HEADER, bob) }.andExpect {
             status { isOk() }
             jsonPath("$.maintenanceBasis") { value("FORMULA_SEED") }
-            jsonPath("$.trendWeightKg") { value(94.5) }
+            jsonPath("$.trendWeightKg") { value(bobKg) }
         }
     }
 
@@ -583,15 +576,14 @@ class CrossUserIsolationTest {
      */
     @Test
     fun `a User too thinly logged to adapt does hold their own earlier Maintenance`() {
-        completeProfile(bob)
-        weighIn(bob, earlier, weightKg = 94.5)
+        beginTracking(bob, bobKg, on = earlier)
         openTucker(bob, on = earlier)
 
         val heldKcal = mockMvc.get("/api/weekly-review") { header(ACCESS_ASSERTION_HEADER, bob) }
             .andExpect { status { isOk() } }.andReturn().response.contentAsString
             .let { objectMapper.readTree(it).get("maintenanceKcal").asDouble() }
 
-        weighIn(bob, day, weightKg = 94.5)
+        weighIn(bob, day, weightKg = bobKg)
 
         mockMvc.post("/api/weekly-review") { header(ACCESS_ASSERTION_HEADER, bob) }.andExpect {
             status { isOk() }
@@ -601,15 +593,17 @@ class CrossUserIsolationTest {
     }
 
     /**
-     * POST [body] to [path] as whoever [token] names, and return the created row's id.
-     * The three creating helpers differ only in path and body.
+     * POST [body] to [path] as whoever [token] names, and return the stored row's id.
+     * Every creating helper below differs only in path, body, and the status the
+     * endpoint answers with — a weigh-in *replaces* the day's reading, so it is a 200.
      */
-    private fun postForId(token: String, path: String, body: String): Long {
+    private fun postForId(token: String, path: String, body: String, created: Boolean = true): Long {
         val json = mockMvc.post(path) {
             header(ACCESS_ASSERTION_HEADER, token)
             contentType = MediaType.APPLICATION_JSON
             content = body
-        }.andExpect { status { isCreated() } }.andReturn().response.contentAsString
+        }.andExpect { status { if (created) isCreated() else isOk() } }
+            .andReturn().response.contentAsString
         return objectMapper.readTree(json).get("id").asLong()
     }
 
@@ -673,12 +667,19 @@ class CrossUserIsolationTest {
     }
 
     /** Record a reading owned by whoever [token] names, and return its id. */
-    private fun weighIn(token: String, on: LocalDate, weightKg: Double = 86.0): Long {
-        val json = mockMvc.post("/api/weight") {
-            header(ACCESS_ASSERTION_HEADER, token)
-            contentType = MediaType.APPLICATION_JSON
-            content = """{"date":"$on","weightKg":$weightKg}"""
-        }.andExpect { status { isOk() } }.andReturn().response.contentAsString
-        return objectMapper.readTree(json).get("id").asLong()
+    private fun weighIn(token: String, on: LocalDate, weightKg: Double = 86.0): Long =
+        postForId(
+            token, "/api/weight",
+            """{"date":"$on","weightKg":$weightKg}""",
+            created = false,
+        )
+
+    /**
+     * Everything a User needs before the engine will produce anything for them: a
+     * Profile to seed Maintenance from, and a reading to anchor their trend on.
+     */
+    private fun beginTracking(token: String, weightKg: Double, on: LocalDate = day) {
+        completeProfile(token)
+        weighIn(token, on, weightKg)
     }
 }

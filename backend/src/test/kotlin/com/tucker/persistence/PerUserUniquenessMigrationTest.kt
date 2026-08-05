@@ -1,11 +1,9 @@
 package com.tucker.persistence
 
-import org.flywaydb.core.Flyway
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Path
 import java.sql.Connection
-import java.sql.DriverManager
 import java.sql.SQLException
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -25,8 +23,6 @@ import kotlin.test.assertTrue
 class PerUserUniquenessMigrationTest {
 
     @TempDir lateinit var tempDir: Path
-
-    private val owner = "owner-under-test@tucker.invalid"
 
     @Test
     fun `a database recorded before multi-user keeps its readings, Goals and reviews`() {
@@ -73,6 +69,35 @@ class PerUserUniquenessMigrationTest {
         }
     }
 
+    /**
+     * The premise V11's whole safety argument rests on, asserted rather than
+     * assumed. Because nothing *references* these three tables, dropping and
+     * recreating them strands no child row — which is why the rebuild needs
+     * neither `PRAGMA foreign_keys = OFF` nor a non-transactional migration
+     * (ADR 0021). That is a fact about the schema's reference graph, not about
+     * this migration, so the day a later table points at one of them the premise
+     * quietly expires. Here it expires loudly instead.
+     */
+    @Test
+    fun `nothing in the schema references the tables this migration rebuilds`() {
+        val db = tempDir.resolve("reference-graph.db").toString()
+        migrate(db, upTo = null)
+
+        connect(db).use { connection ->
+            val inbound = connection.tableNames()
+                .flatMap { table -> connection.foreignKeysOf(table).map { (_, target) -> table to target } }
+                .filter { (_, target) -> target in REBUILT_TABLES }
+
+            assertEquals(
+                emptyList(),
+                inbound,
+                "a table now references one of $REBUILT_TABLES, so rebuilding it would " +
+                    "strand that table's rows — the next rebuild needs the foreign-key " +
+                    "dance V11 was able to skip",
+            )
+        }
+    }
+
     @Test
     fun `a row nobody owns does not survive the rebuild, and the owned rows beside it do`() {
         val db = tempDir.resolve("with-orphans.db").toString()
@@ -102,7 +127,7 @@ class PerUserUniquenessMigrationTest {
         migrate(db, upTo = null)
 
         connect(db).use { connection ->
-            connection.execute("INSERT INTO user (id, email) VALUES (1, '$owner')")
+            connection.execute("INSERT INTO user (id, email) VALUES (1, '$MIGRATION_TEST_OWNER')")
 
             UNOWNED_ROWS.forEach { (table, insert) ->
                 val refusal = assertFailsWith<SQLException>(
@@ -131,18 +156,18 @@ class PerUserUniquenessMigrationTest {
         migrate(db, upTo = null)
 
         connect(db).use { connection ->
-            connection.execute("INSERT INTO user (id, email) VALUES (1, '$owner')")
-            connection.execute("INSERT INTO user (id, email) VALUES (2, 'second@tucker.invalid')")
+            connection.execute("INSERT INTO user (id, email) VALUES ($owner, '$MIGRATION_TEST_OWNER')")
+            connection.execute("INSERT INTO user (id, email) VALUES ($somebodyElse, 'second@tucker.invalid')")
 
             DUPLICATED_ROWS.forEach { (what, insert) ->
-                connection.execute(insert(1))
+                connection.execute(insert(owner))
                 // The same thing again, for the same person.
                 assertFailsWith<SQLException>("a User should not be able to hold two of: $what") {
-                    connection.execute(insert(1))
+                    connection.execute(insert(owner))
                 }
                 // And the identical thing for somebody else, which must still be fine —
                 // otherwise the constraint has merely been left global under a new name.
-                connection.execute(insert(2))
+                connection.execute(insert(somebodyElse))
             }
         }
     }
@@ -165,44 +190,12 @@ class PerUserUniquenessMigrationTest {
         )
     }
 
-    private fun migrate(db: String, upTo: String?) {
-        Flyway.configure()
-            .dataSource("jdbc:sqlite:$db?foreign_keys=true", null, null)
-            .locations("classpath:db/migration")
-            .placeholders(mapOf(OWNER_EMAIL_PLACEHOLDER to sqlLiteralSafe(owner)))
-            .apply { upTo?.let { target(it) } }
-            .load()
-            .migrate()
-    }
-
-    private fun connect(db: String): Connection =
-        DriverManager.getConnection("jdbc:sqlite:$db?foreign_keys=true")
-
-    private fun Connection.execute(sql: String) = createStatement().use { it.executeUpdate(sql) }
-
-    /** Every row of [sql], each rendered as its columns joined by `|`. */
-    private fun Connection.rows(sql: String): List<String> =
-        createStatement().use { statement ->
-            statement.executeQuery(sql).use { rows ->
-                val columns = rows.metaData.columnCount
-                generateSequence {
-                    if (rows.next()) (1..columns).joinToString("|") { rows.getString(it) } else null
-                }.toList()
-            }
-        }
-
-    /** The table `table.column` references, or null when it references nothing. */
-    private fun Connection.foreignKeyTargetOf(table: String, column: String): String? =
-        createStatement().use { statement ->
-            statement.executeQuery("PRAGMA foreign_key_list($table)").use { rows ->
-                generateSequence {
-                    if (rows.next()) rows.getString("from") to rows.getString("table") else null
-                }.firstOrNull { (from, _) -> from == column }?.second
-            }
-        }
-
     private companion object {
         val REBUILT_TABLES = listOf("weight_measurement", "goal", "weekly_review")
+
+        /** Two Users, by id — whose row it is, is the only thing these tests vary. */
+        const val owner = 1
+        const val somebodyElse = 2
 
         /** What a weigh-in looked like between V9 and V11: recorded, but owned by nobody. */
         const val UNOWNED_READING =

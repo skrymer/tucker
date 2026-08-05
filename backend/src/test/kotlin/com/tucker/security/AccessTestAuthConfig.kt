@@ -58,6 +58,19 @@ class AccessTestAuthConfig {
      * same holder `@WithSecurityContext` populated in the first place, so this hands
      * back what the annotation put there and nothing else — a class with no ambient
      * identity restores an empty context, which is what it had.
+     *
+     * Three edges worth knowing before relying on it:
+     * - It restores **only** contexts installed through [TestSecurityContextHolder].
+     *   One set directly on [SecurityContextHolder] before a request is dropped, so
+     *   sign a test class in with `@WithTuckerUser` rather than by hand.
+     * - [AccessGateTest] is unaffected, and that is the whole safety argument for
+     *   doing this globally: it builds its own `MockMvc` through
+     *   `MockMvcBuilders.webAppContextSetup`, which consults no
+     *   [MockMvcBuilderCustomizer] bean. It is the one class that asserts what an
+     *   *unauthenticated* request gets, and nothing here can quietly sign it in.
+     * - `alwaysDo` handlers run after the filter chain with no `finally` around
+     *   them, so a request that throws out of the chain skips the restore and the
+     *   confusing failure lands on the next line instead.
      */
     @Bean
     fun keepTheTestThreadSignedIn(): MockMvcBuilderCustomizer = MockMvcBuilderCustomizer { builder ->

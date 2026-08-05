@@ -2,7 +2,6 @@ package com.tucker.security
 
 import com.tucker.domain.User
 import org.springframework.security.core.context.SecurityContextHolder
-import org.springframework.security.web.authentication.preauth.PreAuthenticatedAuthenticationToken
 
 /**
  * Run [block] on behalf of [user], as though they had made a request.
@@ -17,26 +16,27 @@ import org.springframework.security.web.authentication.preauth.PreAuthenticatedA
  * Deliberately a single narrow function rather than a general impersonation
  * mechanism, and deliberately easy to grep for: any second production call site is a
  * review failure, because everywhere else the current User is a fact about the
- * request and inventing one would be a way to get it wrong.
+ * request and inventing one would be a way to get it wrong. `RunAsCallSitesTest`
+ * makes that rule executable rather than aspirational.
  *
- * The principal is assembled here rather than through [AccessPrincipalConverter],
- * because there is no assertion to convert — this path is reached only for a User the
- * `user` table already holds, and provisioning belongs to a real sign-in.
+ * Not Spring Security's `RunAsManager`, despite the name: that temporarily widens an
+ * already-authenticated caller's *authorities* for one method. This establishes an
+ * identity where there is none, which is a different job with no overlap.
+ *
+ * It does not route through [AccessPrincipalConverter] because there is no assertion
+ * to convert, and because that converter *provisions* — this path is reached only for
+ * a User the `user` table already holds. It shares the converter's token
+ * construction ([asAuthentication]) so the two identities cannot drift apart.
  *
  * The previous context is restored on the way out, so a loop over Users leaves the
  * thread as it found it and one User's turn cannot bleed into the next.
  */
 fun <T> runAs(user: User, block: () -> T): T {
-    val principal = TuckerPrincipal(
-        userId = checkNotNull(user.id) { "cannot run as a User who has never been stored" },
-        email = user.email,
-    )
+    val authentication = TuckerPrincipal.of(user).asAuthentication()
     val previous = SecurityContextHolder.getContext()
     try {
         SecurityContextHolder.setContext(
-            SecurityContextHolder.createEmptyContext().apply {
-                authentication = PreAuthenticatedAuthenticationToken(principal, null, emptyList())
-            },
+            SecurityContextHolder.createEmptyContext().apply { this.authentication = authentication },
         )
         return block()
     } finally {

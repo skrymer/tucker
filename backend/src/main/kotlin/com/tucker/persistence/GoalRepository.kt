@@ -15,6 +15,11 @@ import java.time.LocalDate
  * "At most one active" is a rule about a person: held across everybody, one
  * User starting a Goal deactivates another's and drops them into Maintenance
  * Mode having decided nothing.
+ *
+ * Every statement below carries the owner predicate, whether or not today's
+ * caller could reach a foreign row — see ADR 0021's uniformity rule. Reachability
+ * is deliberately not audited per method: that per-site reasoning is the thing
+ * implicit scoping replaced.
  */
 @Repository
 class GoalRepository(
@@ -57,14 +62,7 @@ class GoalRepository(
             .execute()
     }
 
-    /**
-     * Stamp the date a Goal was reached (ADR 0008).
-     *
-     * The owner predicate is belt-and-braces rather than a reachable guard: the
-     * only caller stamps the id [findActive] just handed it, which is already the
-     * caller's own. It is here so that the *next* caller of this method inherits
-     * the scoping instead of having to remember it.
-     */
+    /** Stamp the date a Goal was reached (ADR 0008). */
     fun updateReachedOn(id: Long, reachedOn: LocalDate) {
         dsl.update(GOAL)
             .set(GOAL.REACHED_ON, reachedOn.toString())

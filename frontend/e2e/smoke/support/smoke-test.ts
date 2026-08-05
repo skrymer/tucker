@@ -1,3 +1,4 @@
+import type { APIRequestContext } from '@playwright/test'
 import { test as base, expect } from '@nuxt/test-utils/playwright'
 import { assertNoPageErrors, SMOKE_NOISE } from '../../support/console-guard'
 import {
@@ -33,6 +34,12 @@ export const test = base.extend<{
    * `test.use({ allowedErrors: [/…/] })`; keep each entry scoped and commented.
    */
   allowedErrors: RegExp[]
+  /**
+   * An API context acting as a *different* User, for the cross-user isolation
+   * smokes. Built only by the tests that ask for it (Playwright fixtures are
+   * lazy), so no other smoke pays to mint a second assertion.
+   */
+  otherUser: APIRequestContext
 }>({
   allowedErrors: [[], { option: true }],
   // The API the smokes seed and clean up through is gated now (ADR 0020), so this
@@ -49,6 +56,22 @@ export const test = base.extend<{
   request: async ({ playwright }, use) => {
     const api = await playwright.request.newContext({
       extraHTTPHeaders: { [ACCESS_ASSERTION_HEADER]: await mintAccessToken() },
+    })
+    await use(api)
+    await api.dispose()
+  },
+  // Somebody else entirely — the second identity the isolation smokes need
+  // (F10 #157, #158). It is the [request] fixture with a different email, which
+  // is the whole point of minting per test: switching identity really is one
+  // line. A fixture rather than a `newContext` in each test body so disposal is
+  // Playwright's job and the tests do not each carry a `try`/`finally`.
+  otherUser: async ({ playwright }, use) => {
+    const api = await playwright.request.newContext({
+      extraHTTPHeaders: {
+        [ACCESS_ASSERTION_HEADER]: await mintAccessToken({
+          email: 'someone.else@tucker.invalid',
+        }),
+      },
     })
     await use(api)
     await api.dispose()

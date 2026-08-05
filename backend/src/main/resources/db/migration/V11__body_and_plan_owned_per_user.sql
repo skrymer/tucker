@@ -6,29 +6,23 @@
 -- *column* constraints, whose backing sqlite_autoindex cannot be dropped. V9
 -- deferred user_id's NOT NULL to exactly these rebuilds.
 --
--- V9's comment priced a rebuild at executeInTransaction=false plus PRAGMA
--- foreign_keys = OFF, and said so about all eight owned tables at once. Neither
--- applies here, and the reason is worth stating rather than rediscovering:
--- step 1 of SQLite's 12-step ALTER recipe disables foreign keys so that
--- dropping the old table does not strand rows in tables that *reference* it.
--- Nothing references weight_measurement, goal or weekly_review -- they are
--- pure children of user, and the only REFERENCES clauses in the schema point at
--- food and at user. So foreign keys stay enforced throughout, and because the
--- PRAGMA is the only thing that would have forced a non-transactional
--- migration (it is a no-op inside a transaction), this one runs inside Flyway's
--- transaction like every other. There is no half-migrated state to fear.
+-- V9 priced a rebuild at executeInTransaction=false plus PRAGMA foreign_keys =
+-- OFF. Neither is needed for these three, because nothing *references* them --
+-- see ADR 0021, "What a rebuild actually costs", which now records the rule and
+-- which tables it covers. So foreign keys stay enforced throughout and this
+-- migration runs inside Flyway's transaction like every other: there is no
+-- half-migrated state to fear. PerUserUniquenessMigrationTest asserts the
+-- premise rather than trusting this comment.
 --
--- The tables that still owe a rebuild -- profile losing CHECK (id = 1), and
--- reminder_state going per User -- are slice 5's, and are referenced by nothing
--- either. food and entry keep a nullable user_id until a rebuild of their own
--- has a reason to happen.
-
--- Rows nobody owns, written between V9 and here by an app that had not yet
--- learned to stamp an owner. They are already invisible to every User including
--- whoever created them (ADR 0021), so dropping them loses nothing anyone can
--- see -- and it is the only option that guesses no ownership. Production cannot
--- have any: it runs V9 and this migration in the same boot, with no window
--- between them for a write to land.
+-- POLICY FOR ALL THREE DELETEs BELOW. A row with no owner was written between V9
+-- and here by an app that had not yet learned to stamp one. It is already
+-- invisible to every User including whoever created it (ADR 0021), so dropping it
+-- loses nothing anyone can see -- and dropping is the only option that guesses no
+-- ownership. Production cannot have any, because slices 2-5 ship in a single
+-- deploy (the hold recorded in CLAUDE.md and deploy/README.md): V9 and this
+-- migration run in the same boot with no window between them for a write to land.
+-- Ship them separately and that window opens, and these become unconditional
+-- deletes against real data.
 DELETE FROM weight_measurement WHERE user_id IS NULL;
 
 -- Rebuilt to say what it now means: measured_on is unique *within* a User, and

@@ -107,6 +107,13 @@ owner. `app_config` (the VAPID keypair) stays global — it is Tucker's, not a u
 - **Repositories gain a hidden input.** `findByDate(date)` returns different data
   depending on invisible state. Mitigated by constructor injection (not a static
   `SecurityContextHolder` call per method) and by the isolation suite.
+- **Every scoped statement carries the owner predicate, reachable or not.** A statement
+  whose only caller has already resolved the id through a scoped read still gets
+  `AND user_id = …`. Reachability is deliberately *not* audited per method: deciding
+  case by case which statements need scoping is exactly the per-site reasoning implicit
+  scoping exists to remove, and it makes the next caller of that method the one who gets
+  it wrong. Uniform is the cheaper rule, so the exceptions are not worth documenting
+  individually.
 - **Repository and service tests need a SecurityContext**, since they call beans directly
   with no HTTP in play.
 - **Duplicate product rows across Users are accepted** — the cost of no shared mutable
@@ -118,15 +125,31 @@ owner. `app_config` (the VAPID keypair) stays global — it is Tucker's, not a u
 - **`user_id` is nullable in the database, though the model says it never is.** SQLite
   refuses `ADD COLUMN ... NOT NULL ... REFERENCES` against a table **that already holds
   rows**, and only then — so the stricter migration passes every test, every smoke and the
-  jOOQ codegen schema, and fails against the single database that matters. Buying `NOT
-  NULL` instead means rebuilding all eight tables, which needs a non-transactional
-  migration (no rollback part-way through production data) and `PRAGMA foreign_keys = OFF`,
-  which the one pooled connection then carries for the life of the JVM. The foreign key
+  jOOQ codegen schema, and fails against the single database that matters. The foreign key
   therefore lands first, and `NOT NULL` is folded into the per-user-uniqueness rebuilds
   above — `profile` losing `CHECK (id = 1)`, `weight_measurement` and `weekly_review`
   losing their global `UNIQUE` — which have to rewrite those tables anyway. Until then the
   invariant is held by the repositories, and an unowned row is *loud* rather than
   dangerous: from the scoping slices on it is invisible to the very User who created it.
+  A rebuild that finds one **deletes** it: an unowned row is already invisible to
+  everybody, so dropping it loses nothing observable, and it is the only choice that
+  guesses no ownership.
+- **What a rebuild actually costs — corrected in slice 4.** This ADR originally priced
+  every rebuild at a non-transactional migration plus `PRAGMA foreign_keys = OFF` (which
+  the one pooled connection would then carry for the life of the JVM). That is the general
+  12-step recipe, and it is **wrong for these tables**. Step 1 turns foreign keys off so
+  that dropping the old table does not strand rows in tables that *reference* it — and
+  nothing references `weight_measurement`, `goal`, `weekly_review`, `profile` or
+  `reminder_state`. They are pure children of `user`; the only `REFERENCES` clauses in the
+  schema point at `food` and at `user`. So foreign keys stay enforced throughout, and
+  since that `PRAGMA` (a no-op inside a transaction) was the only thing forcing
+  `executeInTransaction=false`, the rebuild runs inside Flyway's transaction like any
+  other migration — Flyway's `SQLiteDatabase.supportsDdlTransactions()` is `true`. **The
+  rule is "does anything reference this table?", not "is this a rebuild?"** V11 rebuilt
+  three tables this way against real production-shaped data; slice 5's `profile` and
+  `reminder_state` rebuilds are the same shape. `PerUserUniquenessMigrationTest` asserts
+  the reference graph, so the premise fails loudly the day a new table points at one of
+  them rather than being quietly assumed.
 - `ReminderScheduler` gains impersonation machinery. It is confined to one helper used
   only by the scheduler, and its misuse elsewhere would be a review failure.
 
