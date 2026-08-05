@@ -204,12 +204,14 @@ class RecipeApiTest {
     }
 
     @Test
-    fun `an unknown ingredient food id is rejected with 400`() {
+    fun `an unknown ingredient food id is not found`() {
+        // Not found, not bad request: an unknown id and one belonging to somebody else
+        // have to answer alike, or the difference reveals the row (ADR 0021).
         mockMvc.post("/api/recipes") {
             contentType = MediaType.APPLICATION_JSON
             content = """{"name":"Ghost","cookedWeightG":200.0,"ingredients":[{"foodId":999999,"grams":300.0}]}"""
         }.andExpect {
-            status { isBadRequest() }
+            status { isNotFound() }
             jsonPath("$.message") { value(org.hamcrest.Matchers.containsString("999999")) }
         }
     }

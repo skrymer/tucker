@@ -8,6 +8,7 @@ import com.tucker.persistence.GoalRepository
 import com.tucker.persistence.ProfileRepository
 import com.tucker.persistence.WeeklyReviewRepository
 import com.tucker.persistence.WeightMeasurementRepository
+import com.tucker.security.WithTuckerUser
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.springframework.beans.factory.annotation.Autowired
@@ -21,6 +22,7 @@ import kotlin.test.assertTrue
 
 @SpringBootTest
 @Transactional
+@WithTuckerUser
 class GoalServiceTest {
 
     @Autowired lateinit var service: GoalService

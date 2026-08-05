@@ -56,7 +56,10 @@ owner. `app_config` (the VAPID keypair) stays global — it is Tucker's, not a u
   cron path therefore exercises exactly the same scoped code as a real request, rather
   than a parallel set of queries that can drift.
 - **The guarantee is a cross-user isolation suite**: seed two Users, assert every read
-  returns only the caller's rows and every write against a foreign id 404s.
+  returns only the caller's rows and every write against a foreign id answers *exactly
+  as it answers for an absent one* — which is a 404 where the endpoint 404s on a
+  missing row, and a 204 where it already deletes one idempotently. See the
+  status-code consequence below before writing those assertions.
 - **Sharing is a future feature, not a gap.** Sharing a Recipe with another User is
   deliberately deferred; when it lands it should be copy-on-share or a real per-object
   grant, and *that* is when Spring Security's ACL module becomes the right tool.
@@ -89,6 +92,18 @@ owner. `app_config` (the VAPID keypair) stays global — it is Tucker's, not a u
 
 ## Consequences
 
+- **The rule is "a foreign id answers exactly as an absent one", and 404 is only
+  what that comes to for a read.** Stated as a status code it misleads: `DELETE
+  /api/foods/{id}` has always answered **204** for an id nobody owns, because
+  deleting is idempotent — so a foreign id must answer 204 too, and a 404 there
+  would be the very oracle this forbids. Scoping delivers it for free: the scoped
+  `findById` returns null and the existing early-return does the rest. The same
+  reasoning pushed the other way for a Recipe ingredient, which used to reject an
+  unknown `foodId` with a 400: a foreign one had to match it, and matching it at
+  **404** is better, because that is what `POST /api/entries/weighed` already
+  answers for the same mistake and it leaves 400 to mean malformed input alone.
+  Read the rule off the endpoint's existing answer for "no such row", not off this
+  paragraph's example.
 - **Repositories gain a hidden input.** `findByDate(date)` returns different data
   depending on invisible state. Mitigated by constructor injection (not a static
   `SecurityContextHolder` call per method) and by the isolation suite.

@@ -104,17 +104,23 @@ class RecipeController(
      */
     @PutMapping("/{id}")
     fun update(@PathVariable id: Long, @RequestBody request: CreateRecipeRequest): FoodResponse {
+        // Two questions, not one: this rejects an id that is not a *recipe* (a plain
+        // Food, or nothing), while the scoped update below rejects one that is not the
+        // caller's. Both answer 404, and neither is redundant.
         recipes.findById(id) ?: throw NotFoundException("no recipe with id $id")
         val recipe = request.toRecipe(id = id)
-        return recipes.update(recipe).asFood().toResponse(ingredientCount = recipe.ingredients.size)
+        val updated = recipes.update(recipe) ?: throw NotFoundException("no recipe with id $id")
+        return updated.asFood().toResponse(ingredientCount = recipe.ingredients.size)
     }
 
     /** Resolve this request's ingredient Foods and build a [Recipe] with the given [id]. */
     private fun CreateRecipeRequest.toRecipe(id: Long?): Recipe {
         val byId = foods.findByIds(ingredients.map { it.foodId }).associateBy { it.id }
         val lines = ingredients.map { line ->
+            // 404, matching POST /api/entries/weighed — a foreign id must answer as an
+            // absent one (ADR 0021). 400 stays for malformed input alone.
             val food = byId[line.foodId]
-                ?: throw IllegalArgumentException("no Food with id ${line.foodId}")
+                ?: throw NotFoundException("no Food with id ${line.foodId}")
             RecipeIngredient(food, line.grams)
         }
         return Recipe(id = id, name = name, ingredients = lines, cookedWeightG = cookedWeightG)

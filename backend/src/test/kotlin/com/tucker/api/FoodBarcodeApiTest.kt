@@ -7,6 +7,7 @@ import com.tucker.domain.ProviderCapability
 import com.tucker.domain.ProviderLookup
 import com.tucker.persistence.FoodRepository
 import com.tucker.provider.OpenFoodFactsProvider
+import com.tucker.security.WithTuckerUser
 import org.hamcrest.Matchers.containsString
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.times
@@ -28,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
+@WithTuckerUser
 class FoodBarcodeApiTest {
 
     @Autowired lateinit var mockMvc: MockMvc

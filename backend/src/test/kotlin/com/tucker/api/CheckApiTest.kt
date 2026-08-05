@@ -10,6 +10,7 @@ import com.tucker.domain.WeeklyReview
 import com.tucker.persistence.FoodRepository
 import com.tucker.persistence.WeeklyReviewRepository
 import com.tucker.provider.OpenFoodFactsProvider
+import com.tucker.security.WithTuckerUser
 import org.hamcrest.BaseMatcher
 import org.hamcrest.Description
 import org.hamcrest.Matcher
@@ -40,6 +41,7 @@ import kotlin.math.abs
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
+@WithTuckerUser
 class CheckApiTest {
 
     @Autowired lateinit var mockMvc: MockMvc
