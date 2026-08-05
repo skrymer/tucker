@@ -67,9 +67,22 @@ class ReminderSchedulerIntegrationTest {
     class RecordingTestSender : WebPushSender {
         val sentEndpoints = mutableListOf<String>()
         val sentPayloads = mutableListOf<String>()
+
+        /**
+         * Blow up on the next send, once. The transport itself converts its own
+         * failures to [SendResult.FAILED], so this stands in for the things that
+         * genuinely do throw out of a turn — an exhausted connection pool, a stored
+         * timezone the JVM no longer knows — without needing to manufacture one.
+         */
+        var throwOnNextSend = false
+
         override fun send(subscription: PushSubscription, payload: String): SendResult {
             sentEndpoints += subscription.endpoint
             sentPayloads += payload
+            if (throwOnNextSend) {
+                throwOnNextSend = false
+                error("this User's turn blew up")
+            }
             return if ("gone" in subscription.endpoint) SendResult.GONE else SendResult.DELIVERED
         }
     }
@@ -103,6 +116,7 @@ class ReminderSchedulerIntegrationTest {
     fun startFromSilence() {
         sender.sentEndpoints.clear()
         sender.sentPayloads.clear()
+        sender.throwOnNextSend = false
         subscriber = users.insertIfAbsent(User(id = null, email = AccessTokens.EMAIL))
     }
 
@@ -119,7 +133,7 @@ class ReminderSchedulerIntegrationTest {
     }
 
     /**
-     * The owned half of a seed: a weigh-in, and a review [reviewedDaysAgo] old.
+     * The owned half of a seed: a reading, and a review [reviewedDaysAgo] old.
      *
      * Split out because the Profile and the Push Subscription above are still global
      * until slice 5 (#159), so a second User inherits them and needs only a history of
@@ -260,6 +274,31 @@ class ReminderSchedulerIntegrationTest {
 
         assertEquals(1, result.sent)
         assertEquals(listOf("https://push.example/device-a"), sender.sentEndpoints)
+    }
+
+    /**
+     * A turn that fails is one User's problem, not the tick's.
+     *
+     * Without this, the blast radius of one exhausted connection or one unreadable row
+     * would depend on where its owner happened to sort by id — the lowest-id User
+     * failing would cost everyone their nudge, and the highest-id User failing would
+     * cost nobody. The tick is hourly and deduped (ADR 0010), so the right answer to a
+     * failure is to carry on and let the next tick retry.
+     */
+    @Test
+    fun `a User whose turn throws does not take the rest of the tick down with them`() {
+        // Both are overdue and eligible. The subscriber was provisioned first, so the
+        // tick reaches them first — and their turn blows up.
+        seedEligible()
+        seedHistory(users.insertIfAbsent(User(id = null, email = "second@tucker.invalid")), reviewedDaysAgo = 8)
+        sender.throwOnNextSend = true
+
+        val result = scheduler.runTick(now)
+
+        // The second User's nudge is reachable only by carrying on past the first
+        // User's failure — uncaught, `runTick` would have thrown instead of returning.
+        assertEquals(1, result.sent)
+        assertEquals(2, sender.sentEndpoints.size, "both turns were taken, one of them failing")
     }
 
     /**

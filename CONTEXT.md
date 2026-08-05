@@ -259,8 +259,9 @@ at, and whether reminders are on). The body inputs are set once and rarely
 changed; combined with the latest Weight Measurement they seed the initial
 Maintenance estimate. The timezone is user-level state (one human, one local day),
 defaulted from the browser when first captured — it is the proper home for "the
-user's local today," which weight-dating approximates client-side today. It is the
-per-**User** record the reminder engine iterates.
+user's local today," which weight-dating approximates client-side today. The
+Weekly-**Reminder** engine iterates **Users** and reads each one's Profile to
+resolve their local day and their chosen hour.
 
 **Weight Measurement**:
 A single dated reading of the user's body weight. The raw, noisy signal behind
@@ -357,6 +358,10 @@ _Avoid_: device token, push token, registration
   **Weekly Review**, **Profile**, and **Push Subscription** belongs to exactly one
   **User**; nothing is shared between Users, and every question Tucker answers is
   asked of one User's data
+- Ownership scopes the counting rules too, and each is a rule about a *person*
+  rather than about the app: a **User** has at most one **Weight Measurement** per
+  day, at most one **Weekly Review** per date, and at most one active **Goal** —
+  and two Users may each hold their own on the very same day
 - Every **Entry** is either a **Weighed Entry** or an **Estimated Entry**
 - A **Weighed Entry** references exactly one **Food** and a mass in grams
 - An **Estimated Entry** references no **Food** — it carries its own calorie figure

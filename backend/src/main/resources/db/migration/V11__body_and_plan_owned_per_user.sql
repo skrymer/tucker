@@ -22,10 +22,10 @@
 -- here than it does for food or entry. Those two were scoped in slice 3, so an
 -- unowned one really is invisible to everybody and dropping it loses nothing.
 -- These three are scoped by *this* slice -- until it runs, the repositories
--- reading them have no owner predicate at all, so an unowned weigh-in, Goal or
+-- reading them have no owner predicate at all, so an unowned reading, Goal or
 -- Weekly Review is fully visible and is actively setting somebody's Trend Weight,
 -- Calorie Budget and Goal banner. Deleting them would destroy live data: every
--- weigh-in since the previous deploy, the active Goal (dropping its owner into
+-- reading recorded since the previous deploy, the active Goal (dropping its owner into
 -- Maintenance Mode with none of the insistent fork ADR 0008 requires), and
 -- Weekly Reviews, which this project treats as irreversible history.
 --

@@ -68,7 +68,7 @@ class WeeklyReviewRepository(
             .orderBy(WEEKLY_REVIEW.REVIEWED_ON)
             .fetch().map { it.toDomain() }
 
-    /** Remove the caller's review recorded on [reviewedOn], to force a recompute. */
+    /** Remove the caller's review recorded on [reviewedOn], so it is recomputed. */
     fun deleteByReviewedOn(reviewedOn: LocalDate) {
         dsl.deleteFrom(WEEKLY_REVIEW)
             .where(WEEKLY_REVIEW.REVIEWED_ON.eq(reviewedOn.toString()))

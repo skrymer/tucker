@@ -131,9 +131,20 @@ owner. `app_config` (the VAPID keypair) stays global — it is Tucker's, not a u
   losing their global `UNIQUE` — which have to rewrite those tables anyway. Until then the
   invariant is held by the repositories, and an unowned row is *loud* rather than
   dangerous: from the scoping slices on it is invisible to the very User who created it.
-  A rebuild that finds one **deletes** it: an unowned row is already invisible to
-  everybody, so dropping it loses nothing observable, and it is the only choice that
-  guesses no ownership.
+- **A rebuild that finds an unowned row adopts it, and never deletes it.** The
+  tempting rule — "an unowned row is invisible to everybody, so dropping it loses
+  nothing" — is true only *after* the slice that scopes its table, and a rebuild runs
+  in exactly the slice that does the scoping. Until then the repositories reading that
+  table have no owner predicate at all, so the row is fully visible and is actively
+  setting somebody's Trend Weight, Calorie Budget or Goal banner; deleting it would
+  destroy a reading they recorded, a Weekly Review this project calls irreversible, or an
+  active Goal — silently switching them to Maintenance Mode with none of the insistent
+  fork [ADR 0008](0008-maintenance-mode-is-the-absence-of-a-goal.md) requires.
+  Adoption is guarded on the database holding **exactly one** User, which is every
+  database that can contain such a row: the second User arrives in the last slice of
+  all. With none or several, attribution would be a guess, so nothing is adopted and
+  the new `NOT NULL` refuses the migration — a boot failure a human resolves, inside a
+  transaction that rolls back, rather than a deletion nobody can undo.
 - **What a rebuild actually costs — corrected in slice 4.** This ADR originally priced
   every rebuild at a non-transactional migration plus `PRAGMA foreign_keys = OFF` (which
   the one pooled connection would then carry for the life of the JVM). That is the general

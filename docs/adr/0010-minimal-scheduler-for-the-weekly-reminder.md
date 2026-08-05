@@ -83,6 +83,27 @@ what guarantees a single nudge per episode within it — which is why the dedupe
 to be made sound first. Worth re-checking under F10, where a tick fans out across
 every User in turn.
 
+**That re-check, done (F10 slice 4).** The tick now iterates Users and gives each one
+its own turn through `runAs` ([ADR 0021](0021-every-row-is-owned-by-one-user.md)), so
+the *review* half of the firing rule is per User: whether somebody is overdue is asked
+of their own reviews and their own Weight Measurements. The rest of the rule is **not
+per User yet**, and will not be until the Profile, the Push Subscriptions and the
+reminder state are scoped in F10 slice 5. Until then, with more than one User: a nudge
+fans out to every device in the installation rather than its owner's; one User opening
+Tucker stamps the shared last-seen day and so silences everyone's absent-today gate;
+and the first send of a tick stamps the shared dedupe, suppressing every later User in
+the same episode — a single nudge per *installation* per episode, where this ADR
+specifies one per User. None of it is reachable in production, which holds exactly one
+User until the second is invited in the final slice, and the loop arrived first only
+because scoping the reviews is what forces a security context onto the cron thread.
+
+**A failing turn is one User's, not everyone's.** The tick catches a turn that throws,
+logs it naming whose it was, and carries on. Independence is the whole premise of
+per-User turns, and without it the blast radius of one exhausted connection or one
+unreadable row would depend on where its owner happened to sort by id. It costs
+nothing in retries: a caught turn stamps no send, so that User stays eligible and gets
+exactly the one retry an hour later the narrow window already allows.
+
 **A day, not an instant.** The dedupe compares the last send against a review date,
 which is a local day. Recording the send as an instant meant re-deriving *its* day in
 whatever timezone the `Profile` carries at the moment the comparison runs — so a

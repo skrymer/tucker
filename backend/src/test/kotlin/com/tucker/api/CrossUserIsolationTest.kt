@@ -402,10 +402,10 @@ class CrossUserIsolationTest {
 
     @Test
     fun `two Users can each hold an active Goal at the same time`() {
-        beginTracking(alice, aliceKg)
+        completeSetup(alice, aliceKg)
         setGoal(alice, targetWeightKg = 68.0)
 
-        beginTracking(bob, bobKg)
+        completeSetup(bob, bobKg)
         setGoal(bob, targetWeightKg = 88.0)
 
         // "At most one active Goal" is a rule about a person, not about the database.
@@ -425,7 +425,7 @@ class CrossUserIsolationTest {
 
     @Test
     fun `a User with no Goal of their own is in Maintenance Mode, whoever else has one`() {
-        beginTracking(alice, aliceKg)
+        completeSetup(alice, aliceKg)
         setGoal(alice, targetWeightKg = 68.0)
 
         weighIn(bob, day, weightKg = bobKg)
@@ -451,10 +451,10 @@ class CrossUserIsolationTest {
 
     @Test
     fun `switching to Maintenance Mode leaves another User's Goal alone`() {
-        beginTracking(alice, aliceKg)
+        completeSetup(alice, aliceKg)
         setGoal(alice, targetWeightKg = 68.0)
 
-        beginTracking(bob, bobKg)
+        completeSetup(bob, bobKg)
         setGoal(bob, targetWeightKg = 88.0)
 
         mockMvc.delete("/api/goal") { header(ACCESS_ASSERTION_HEADER, bob) }
@@ -474,8 +474,8 @@ class CrossUserIsolationTest {
 
     @Test
     fun `two Users can each hold a Weekly Review dated the same day`() {
-        beginTracking(alice, aliceKg)
-        beginTracking(bob, bobKg)
+        completeSetup(alice, aliceKg)
+        completeSetup(bob, bobKg)
 
         mockMvc.post("/api/weekly-review") { header(ACCESS_ASSERTION_HEADER, alice) }
             .andExpect { status { isOk() } }
@@ -496,11 +496,11 @@ class CrossUserIsolationTest {
 
     @Test
     fun `starting a Goal recomputes only the review of whoever started it`() {
-        beginTracking(alice, aliceKg)
+        completeSetup(alice, aliceKg)
         mockMvc.post("/api/weekly-review") { header(ACCESS_ASSERTION_HEADER, alice) }
             .andExpect { status { isOk() } }
 
-        beginTracking(bob, bobKg)
+        completeSetup(bob, bobKg)
         // A Goal change is one of the few moments the Budget may move mid-week
         // (ADR 0008), so it overwrites today's review — by deleting it first. Held
         // globally, that delete takes Alice's review with it, and hers is not
@@ -520,10 +520,10 @@ class CrossUserIsolationTest {
 
     @Test
     fun `opening Tucker mints a review for whoever opened it, and for nobody else`() {
-        beginTracking(alice, aliceKg)
+        completeSetup(alice, aliceKg)
         openTucker(alice)
 
-        beginTracking(bob, bobKg)
+        completeSetup(bob, bobKg)
 
         // The lazy catch-up asks "is the latest review a week or more old?", and a
         // missing review is itself overdue. Asked globally, Bob's app-open finds
@@ -550,7 +550,7 @@ class CrossUserIsolationTest {
     @Test
     fun `a User too thinly logged to adapt is not handed another User's Maintenance`() {
         // Alice has a review on the books, dated well before the one Bob is about to run.
-        beginTracking(alice, aliceKg, on = earlier)
+        completeSetup(alice, aliceKg, on = earlier)
         openTucker(alice, on = earlier)
 
         // Bob has a trend anchor and no logged days at all, so the adaptive correction
@@ -558,7 +558,7 @@ class CrossUserIsolationTest {
         // Maintenance. Asked globally, the last review is Alice's — and Bob's Calorie
         // Budget is then built on a 71 kg person's metabolism, under his own name,
         // with nothing on any screen to say so.
-        beginTracking(bob, bobKg)
+        completeSetup(bob, bobKg)
 
         mockMvc.post("/api/weekly-review") { header(ACCESS_ASSERTION_HEADER, bob) }.andExpect {
             status { isOk() }
@@ -576,7 +576,7 @@ class CrossUserIsolationTest {
      */
     @Test
     fun `a User too thinly logged to adapt does hold their own earlier Maintenance`() {
-        beginTracking(bob, bobKg, on = earlier)
+        completeSetup(bob, bobKg, on = earlier)
         openTucker(bob, on = earlier)
 
         val heldKcal = mockMvc.get("/api/weekly-review") { header(ACCESS_ASSERTION_HEADER, bob) }
@@ -595,7 +595,8 @@ class CrossUserIsolationTest {
     /**
      * POST [body] to [path] as whoever [token] names, and return the stored row's id.
      * Every creating helper below differs only in path, body, and the status the
-     * endpoint answers with — a weigh-in *replaces* the day's reading, so it is a 200.
+     * endpoint answers with — recording a reading *replaces* the day's earlier one,
+     * so it answers 200.
      */
     private fun postForId(token: String, path: String, body: String, created: Boolean = true): Long {
         val json = mockMvc.post(path) {
@@ -678,7 +679,7 @@ class CrossUserIsolationTest {
      * Everything a User needs before the engine will produce anything for them: a
      * Profile to seed Maintenance from, and a reading to anchor their trend on.
      */
-    private fun beginTracking(token: String, weightKg: Double, on: LocalDate = day) {
+    private fun completeSetup(token: String, weightKg: Double, on: LocalDate = day) {
         completeProfile(token)
         weighIn(token, on, weightKg)
     }

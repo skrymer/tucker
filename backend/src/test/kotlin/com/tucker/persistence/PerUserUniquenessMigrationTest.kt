@@ -1,5 +1,6 @@
 package com.tucker.persistence
 
+import org.flywaydb.core.api.FlywayException
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Path
@@ -97,19 +98,19 @@ class PerUserUniquenessMigrationTest {
      * quietly expires. Here it expires loudly instead.
      */
     @Test
-    fun `nothing in the schema references the tables this migration rebuilds`() {
+    fun `nothing in the schema references a table that is rebuilt, or is due to be`() {
         val db = tempDir.resolve("reference-graph.db").toString()
         migrate(db, upTo = null)
 
         connect(db).use { connection ->
             val inbound = connection.tableNames()
                 .flatMap { table -> connection.foreignKeysOf(table).map { (_, target) -> table to target } }
-                .filter { (_, target) -> target in REBUILT_TABLES }
+                .filter { (_, target) -> target in REBUILDABLE_TABLES }
 
             assertEquals(
                 emptyList(),
                 inbound,
-                "a table now references one of $REBUILT_TABLES, so rebuilding it would " +
+                "a table now references one of $REBUILDABLE_TABLES, so rebuilding it would " +
                     "strand that table's rows — the next rebuild needs the foreign-key " +
                     "dance V11 was able to skip",
             )
@@ -117,9 +118,59 @@ class PerUserUniquenessMigrationTest {
     }
 
     /**
+     * The other half of the safety argument: when attribution *would* be a guess,
+     * the migration must refuse rather than adopt — and must leave the database
+     * exactly as it found it, which is the transactional claim ADR 0021 rests on.
+     *
+     * Reached here with two Users and an unowned row, the state slice 5 onward could
+     * produce. Nothing asserts this from the happy path: a non-transactional V11
+     * would pass every other test in this class while leaving a half-rebuilt
+     * database behind.
+     */
+    @Test
+    fun `an unowned row nobody can be attributed refuses the migration, and rolls it back`() {
+        val db = tempDir.resolve("ambiguous.db").toString()
+        migrate(db, upTo = "10")
+
+        connect(db).use { connection ->
+            connection.execute("INSERT INTO user (id, email) VALUES ($owner, '$MIGRATION_TEST_OWNER')")
+            connection.execute("INSERT INTO user (id, email) VALUES ($somebodyElse, 'second@tucker.invalid')")
+            connection.execute(UNOWNED_READING)
+        }
+
+        assertFailsWith<FlywayException>(
+            "with two Users, an unowned row cannot be attributed — guessing is worse than refusing",
+        ) { migrate(db, upTo = null) }
+
+        connect(db).use { connection ->
+            assertEquals(
+                emptyList(),
+                connection.rows("SELECT version FROM flyway_schema_history WHERE version = '11'"),
+                "the failed migration must not be recorded as applied",
+            )
+            // Rolled back *whole*, not merely unrecorded: the rebuild's own artefacts are
+            // absent, so the database is still the V10 one and the next boot can retry.
+            // A half-migrated state is precisely what ADR 0021 says cannot happen here.
+            assertEquals(
+                emptyList(),
+                connection.rows(
+                    "SELECT name FROM sqlite_master WHERE type = 'index' " +
+                        "AND name = 'idx_weight_measurement_user_day'",
+                ),
+                "a part-applied rebuild would have left the new index behind",
+            )
+            assertEquals(
+                listOf("2026-01-15"),
+                connection.rows("SELECT measured_on FROM weight_measurement"),
+                "and the row it could not attribute is still there for a human to resolve",
+            )
+        }
+    }
+
+    /**
      * The rows written between V9 and here carry no owner, and this slice is what
      * scopes the repositories reading them — so until it runs they are not stray
-     * detritus, they are the User's live weigh-ins, Goal and reviews. They must be
+     * detritus, they are the User's live readings, Goal and reviews. They must be
      * adopted, not discarded.
      */
     @Test
@@ -139,7 +190,7 @@ class PerUserUniquenessMigrationTest {
             assertEquals(
                 listOf("2026-01-13", "2026-01-14", "2026-01-15"),
                 connection.rows("SELECT measured_on FROM weight_measurement ORDER BY measured_on"),
-                "the unowned reading is the owner's own weigh-in, recorded before the column " +
+                "the unowned reading is the owner's own, recorded before the column " +
                     "was filled in — deleting it would lose a morning off the scale for good",
             )
             assertEquals(
@@ -189,8 +240,8 @@ class PerUserUniquenessMigrationTest {
      * The widening — two Users on the same date — is asserted where it is promised, at
      * the endpoint seam (`CrossUserIsolationTest`). What no endpoint can express is the
      * half that must *survive* it: the old rule, now scoped to one person. Nothing
-     * reaches these indexes through the API, because a weigh-in replaces the day's
-     * reading and a review is idempotent by date, so if a widened index stopped
+     * reaches these indexes through the API, because a reading replaces the day's
+     * earlier one and a review is idempotent by date, so if a widened index stopped
      * constraining anything at all, every other test in the project would still pass.
      */
     @Test
@@ -262,11 +313,20 @@ class PerUserUniquenessMigrationTest {
     private companion object {
         val REBUILT_TABLES = listOf("weight_measurement", "goal", "weekly_review")
 
+        /**
+         * The tables whose rebuild leans on nothing referencing them — V11's three,
+         * plus the two slice 5 (#159) still owes, `profile` losing CHECK (id = 1) and
+         * `reminder_state` going per User. Guarded together, because the premise is a
+         * fact about the schema's reference graph rather than about one migration, and
+         * a guard that stopped at today's three would let slice 5 inherit it unchecked.
+         */
+        val REBUILDABLE_TABLES = REBUILT_TABLES + listOf("profile", "reminder_state")
+
         /** Two Users, by id — whose row it is, is the only thing these tests vary. */
         const val owner = 1
         const val somebodyElse = 2
 
-        /** What a weigh-in looked like between V9 and V11: recorded, but owned by nobody. */
+        /** What a reading looked like between V9 and V11: recorded, but owned by nobody. */
         const val UNOWNED_READING =
             "INSERT INTO weight_measurement (measured_on, weight_kg) VALUES ('2026-01-15', 92.1)"
 
