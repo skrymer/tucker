@@ -9,11 +9,15 @@ import com.tucker.domain.Profile
 import com.tucker.domain.Sex
 import com.tucker.domain.WeeklyReview
 import com.tucker.domain.WeightMeasurement
+import com.tucker.domain.User
 import com.tucker.persistence.ProfileRepository
 import com.tucker.persistence.PushSubscriptionRepository
 import com.tucker.persistence.ReminderStateRepository
+import com.tucker.persistence.UserRepository
 import com.tucker.persistence.WeeklyReviewRepository
 import com.tucker.persistence.WeightMeasurementRepository
+import com.tucker.security.AccessTokens
+import com.tucker.security.runAs
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -39,6 +43,12 @@ import kotlin.test.assertTrue
  * One test also drives the real summary endpoint (hence MockMvc): the rule it pins —
  * opening Tucker advances the weekly cadence, so no reminder is owed — lives only at
  * that seam and is invisible from either side alone.
+ *
+ * Deliberately **not** `@WithTuckerUser`. The whole question this class answers is
+ * whether the scheduler can act on somebody's behalf with no request behind it, and an
+ * ambient identity handed to the test thread would be inherited by `runTick` — every
+ * test here would then pass whether or not the impersonation works. So the thread stays
+ * anonymous, and the seeding says whose data it is by wrapping [runAs] explicitly.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -70,10 +80,18 @@ class ReminderSchedulerIntegrationTest {
     @Autowired lateinit var reviews: WeeklyReviewRepository
     @Autowired lateinit var subscriptions: PushSubscriptionRepository
     @Autowired lateinit var reminderState: ReminderStateRepository
+    @Autowired lateinit var users: UserRepository
     @Autowired lateinit var sender: RecordingTestSender
 
     private val now = Instant.parse("2026-06-10T09:00:00Z")
     private val today = LocalDate.of(2026, 6, 10)
+
+    /**
+     * The person the reminder is for. Provisioned under the address the MockMvc
+     * requests authenticate as, so the one test that opens Tucker over HTTP is the
+     * same person the scheduler then considers.
+     */
+    private lateinit var subscriber: User
 
     /**
      * The recorder is a context-wide singleton, so what one test pushed is still in
@@ -83,21 +101,36 @@ class ReminderSchedulerIntegrationTest {
     fun startFromSilence() {
         sender.sentEndpoints.clear()
         sender.sentPayloads.clear()
+        subscriber = users.insertIfAbsent(User(id = null, email = AccessTokens.EMAIL))
     }
 
     /** Profile (reminders on, 09:00 UTC), a weight, an 8-day-old review, one device. */
-    private fun seedEligible(endpoint: String = "https://push.example/device-a") {
+    private fun seedEligible(
+        endpoint: String = "https://push.example/device-a",
+        reviewedDaysAgo: Long = 8,
+    ) {
         profiles.save(
             Profile(Sex.MALE, LocalDate.of(1986, 5, 22), 180.0, "UTC", reminderHour = 9, remindersEnabled = true),
         )
+        subscriptions.save(PushSubscription(null, endpoint, "BKey", "Auth", null))
+        seedHistory(subscriber, reviewedDaysAgo)
+    }
+
+    /**
+     * The owned half of a seed: a weigh-in, and a review [reviewedDaysAgo] old.
+     *
+     * Split out because the Profile and the Push Subscription above are still global
+     * until slice 5 (#159), so a second User inherits them and needs only a history of
+     * their own to be considered separately.
+     */
+    private fun seedHistory(user: User, reviewedDaysAgo: Long) = runAs(user) {
         weights.save(WeightMeasurement(null, today.minusDays(1), 86.0))
         reviews.insert(
             WeeklyReview(
-                null, today.minusDays(8), 86.0,
+                null, today.minusDays(reviewedDaysAgo), 86.0,
                 Maintenance(2400.0, Maintenance.Basis.FORMULA_SEED), 1850.0, 172.0,
             ),
         )
-        subscriptions.save(PushSubscription(null, endpoint, "BKey", "Auth", null))
     }
 
     @Test
@@ -143,7 +176,7 @@ class ReminderSchedulerIntegrationTest {
         // Asserted by its cause, not merely by the silence: the review the reminder
         // would have nudged about has already run, dated today, so nothing is overdue.
         // Without this line a broken absent-today gate would look identical.
-        assertEquals(today, reviews.latest()?.reviewedOn)
+        assertEquals(today, runAs(subscriber) { reviews.latest()?.reviewedOn })
         assertEquals(0, result.sent)
         assertEquals(emptyList(), sender.sentEndpoints)
     }
@@ -199,6 +232,22 @@ class ReminderSchedulerIntegrationTest {
 
         assertEquals(listOf("https://push.example/device-good"), subscriptions.findAll().map { it.endpoint })
         assertEquals(1, result.sent)
+    }
+
+    @Test
+    fun `a User who is up to date does not stand down another User's overdue reminder`() {
+        // The subscriber reviewed today, so nothing is owed on their turn.
+        seedEligible(reviewedDaysAgo = 0)
+        // Somebody else has not reviewed for over a week. Whether the tick reaches
+        // them at all is the question: a loop that stops at the first User, or one
+        // decision taken across everybody at once, both answer "no reminder today"
+        // here — and the person who has been away a week is the one it is for.
+        seedHistory(users.insertIfAbsent(User(id = null, email = "overdue@tucker.invalid")), reviewedDaysAgo = 8)
+
+        val result = scheduler.runTick(now)
+
+        assertEquals(1, result.sent)
+        assertEquals(listOf("https://push.example/device-a"), sender.sentEndpoints)
     }
 
     @Test

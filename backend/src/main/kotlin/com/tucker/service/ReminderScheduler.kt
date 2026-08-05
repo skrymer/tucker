@@ -1,20 +1,16 @@
 package com.tucker.service
 
-import com.tucker.domain.Profile
 import com.tucker.domain.PushSubscription
 import com.tucker.domain.ReminderPolicy
-import com.tucker.domain.ReminderState
 import com.tucker.domain.SendResult
 import com.tucker.domain.WebPushSender
-import com.tucker.persistence.ProfileRepository
 import com.tucker.persistence.PushSubscriptionRepository
 import com.tucker.persistence.ReminderStateRepository
-import com.tucker.persistence.WeeklyReviewRepository
-import com.tucker.persistence.WeightMeasurementRepository
+import com.tucker.persistence.UserRepository
+import com.tucker.security.runAs
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import java.time.Instant
-import java.time.ZoneId
 
 /** The outcome of one reminder tick: how many devices a reminder was delivered to. */
 data class TickResult(val sent: Int)
@@ -31,41 +27,41 @@ data class TickResult(val sent: Int)
  */
 @Service
 class ReminderScheduler(
-    private val profiles: ProfileRepository,
-    private val weights: WeightMeasurementRepository,
-    private val reviews: WeeklyReviewRepository,
+    private val users: UserRepository,
+    private val states: ReminderStateReader,
     private val subscriptions: PushSubscriptionRepository,
     private val reminderState: ReminderStateRepository,
     private val sender: WebPushSender,
 ) {
 
-    /** Run one reminder tick as of [now] (the server instant), sending if eligible. */
-    fun runTick(now: Instant): TickResult {
-        val profile = profiles.get()
+    /**
+     * Run one reminder tick as of [now] (the server instant), sending to whoever is
+     * eligible.
+     *
+     * A cron thread has no request and therefore no current User, but everything a
+     * reminder reads is scoped to one — so the tick gives each User their own turn
+     * through [runAs] (ADR 0021). Every decision below is then the same scoped code a
+     * real request runs, rather than a second set of queries free to disagree with it.
+     *
+     * One User's turn cannot end another's: their eligibility is decided separately,
+     * so somebody who opened Tucker this morning simply contributes nothing while the
+     * person who has not been seen for a week is still nudged.
+     */
+    fun runTick(now: Instant): TickResult =
+        TickResult(sent = users.findAll().sumOf { user -> runAs(user) { tickFor(now) } })
+
+    /** One User's turn: decide, send to their devices, and stamp the send. */
+    private fun tickFor(now: Instant): Int {
         val subs = subscriptions.findAll()
-        val state = profile?.let { stateFor(now, it, subs) }
-        if (state == null || !ReminderPolicy.shouldSend(state)) return TickResult(sent = 0)
+        val state = states.stateFor(now, subs)
+        if (state == null || !ReminderPolicy.shouldSend(state)) return 0
 
         val delivered = subs.count { deliver(it, PAYLOAD) }
         // Stamp only on a real delivery so a transport blip retries next tick rather
         // than silently consuming the whole overdue episode (ADR 0010 dedupe).
         if (delivered > 0) reminderState.stampReminderSent(state.today)
-        return TickResult(sent = delivered)
+        return delivered
     }
-
-    /** Gather everything the [ReminderPolicy] decision reads, as of [now]. */
-    private fun stateFor(now: Instant, profile: Profile, subs: List<PushSubscription>) =
-        ReminderState(
-            now = now,
-            zone = ZoneId.of(profile.timezone),
-            reminderHour = profile.reminderHour,
-            remindersEnabled = profile.remindersEnabled,
-            setupComplete = weights.latest() != null,
-            hasSubscription = subs.isNotEmpty(),
-            latestReviewOn = reviews.latest()?.reviewedOn,
-            lastSeenOn = reminderState.lastSeenOn(),
-            lastReminderSentOn = reminderState.lastReminderSentOn(),
-        )
 
     /** Push to one device; prune it on GONE. Returns whether it was delivered. */
     private fun deliver(subscription: PushSubscription, payload: String): Boolean =

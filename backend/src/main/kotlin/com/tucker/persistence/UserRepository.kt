@@ -27,6 +27,17 @@ class UserRepository(private val dsl: DSLContext) {
         dsl.selectFrom(USER).where(USER.EMAIL.eq(email)).fetchOne()?.toUser()
 
     /**
+     * Everyone, oldest first — the one system-level query in Tucker (ADR 0021).
+     *
+     * It exists for the Weekly-Review Reminder, which has no request to read a
+     * User from and no single User to be about: it drives the loop that gives each
+     * person their own turn through `runAs`. Ordered by id so a tick considers
+     * people in a stable, reproducible order rather than SQLite's.
+     */
+    fun findAll(): List<User> =
+        dsl.selectFrom(USER).orderBy(USER.ID).fetch().map { it.toUser() }
+
+    /**
      * Store [user] unless their email is already taken, and return the stored row
      * either way.
      *

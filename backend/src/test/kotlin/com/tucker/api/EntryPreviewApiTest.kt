@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.tucker.domain.Maintenance
 import com.tucker.domain.WeeklyReview
 import com.tucker.persistence.WeeklyReviewRepository
+import com.tucker.security.WithTuckerUser
 import org.hamcrest.Matchers.closeTo
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -19,6 +20,7 @@ import java.time.LocalDate
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
+@WithTuckerUser
 class EntryPreviewApiTest {
 
     @Autowired lateinit var mockMvc: MockMvc

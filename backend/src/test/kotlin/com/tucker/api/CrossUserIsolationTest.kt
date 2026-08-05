@@ -56,6 +56,9 @@ class CrossUserIsolationTest {
 
     private val day = LocalDate.of(2026, 6, 18)
 
+    /** Comfortably before [day], for the review an engine fallback would reach back to. */
+    private val earlier = day.minusDays(10)
+
     /** The window the adaptive correction looks back over (WeeklyReviewService). */
     private val adaptiveWindowDays = 14
 
@@ -325,6 +328,278 @@ class CrossUserIsolationTest {
         }
     }
 
+    @Test
+    fun `two Users can each record a weight for the same day`() {
+        weighIn(alice, day, weightKg = 71.0)
+        weighIn(bob, day, weightKg = 94.5)
+
+        // One reading each, each their own. Before the day was owned this was not a
+        // constraint violation — it was worse: Bob's save found Alice's row for the
+        // date and updated it, so her scale reading silently became his.
+        mockMvc.get("/api/weight") { header(ACCESS_ASSERTION_HEADER, alice) }.andExpect {
+            status { isOk() }
+            jsonPath("$.length()") { value(1) }
+            jsonPath("$[0].weightKg") { value(71.0) }
+        }
+        mockMvc.get("/api/weight") { header(ACCESS_ASSERTION_HEADER, bob) }.andExpect {
+            status { isOk() }
+            jsonPath("$.length()") { value(1) }
+            jsonPath("$[0].weightKg") { value(94.5) }
+        }
+    }
+
+    @Test
+    fun `a User's latest reading is their own, not the most recent one on the scale`() {
+        weighIn(bob, day.minusDays(1), weightKg = 94.5)
+        weighIn(alice, day, weightKg = 71.0)
+
+        // Alice weighed in more recently, so an unscoped "latest" hands Bob her
+        // weight — under his own name, on his own screen.
+        mockMvc.get("/api/weight/latest") { header(ACCESS_ASSERTION_HEADER, bob) }.andExpect {
+            status { isOk() }
+            jsonPath("$.weightKg") { value(94.5) }
+            jsonPath("$.measuredOn") { value("${day.minusDays(1)}") }
+        }
+    }
+
+    @Test
+    fun `deleting another User's weight reading leaves it on their chart`() {
+        val aliceMonday = weighIn(alice, day, weightKg = 71.0)
+
+        // 204 rather than 404, on the same reasoning as a Food or an Entry: this
+        // endpoint already answers 204 for an id nobody owns, so a foreign one must
+        // answer identically or the status becomes a way to ask whether a row exists.
+        mockMvc.delete("/api/weight/$aliceMonday") { header(ACCESS_ASSERTION_HEADER, bob) }
+            .andExpect { status { isNoContent() } }
+
+        mockMvc.get("/api/weight") { header(ACCESS_ASSERTION_HEADER, alice) }.andExpect {
+            jsonPath("$.length()") { value(1) }
+            jsonPath("$[0].weightKg") { value(71.0) }
+        }
+    }
+
+    @Test
+    fun `a User's Trend Weight is smoothed over their own readings alone`() {
+        // Alice weighs a great deal less than Bob and steps on the scale every day, so
+        // an EWMA over the pair of them lands nowhere near either person's body.
+        (0..6).forEach { back -> weighIn(alice, day.minusDays(back.toLong()), weightKg = 71.0) }
+        weighIn(bob, day, weightKg = 94.5)
+
+        // One reading, so Bob's trend is exactly that reading — anything else is
+        // Alice's weight leaking into the number his Goal and Budget are built on.
+        mockMvc.get("/api/weight/trend") { header(ACCESS_ASSERTION_HEADER, bob) }.andExpect {
+            status { isOk() }
+            jsonPath("$.trendKg") { value(94.5) }
+            jsonPath("$.asOf") { value("$day") }
+        }
+    }
+
+    @Test
+    fun `two Users can each hold an active Goal at the same time`() {
+        completeProfile(alice)
+        weighIn(alice, day, weightKg = 71.0)
+        setGoal(alice, targetWeightKg = 68.0)
+
+        completeProfile(bob)
+        weighIn(bob, day, weightKg = 94.5)
+        setGoal(bob, targetWeightKg = 88.0)
+
+        // "At most one active Goal" is a rule about a person, not about the database.
+        // Held globally, Bob's new Goal deactivates Alice's on its way in — and she
+        // finds herself in Maintenance Mode having decided nothing.
+        mockMvc.get("/api/goal") { header(ACCESS_ASSERTION_HEADER, alice) }.andExpect {
+            status { isOk() }
+            jsonPath("$.active") { value(true) }
+            jsonPath("$.targetWeightKg") { value(68.0) }
+        }
+        mockMvc.get("/api/goal") { header(ACCESS_ASSERTION_HEADER, bob) }.andExpect {
+            status { isOk() }
+            jsonPath("$.active") { value(true) }
+            jsonPath("$.targetWeightKg") { value(88.0) }
+        }
+    }
+
+    @Test
+    fun `a User with no Goal of their own is in Maintenance Mode, whoever else has one`() {
+        completeProfile(alice)
+        weighIn(alice, day, weightKg = 71.0)
+        setGoal(alice, targetWeightKg = 68.0)
+
+        weighIn(bob, day, weightKg = 94.5)
+
+        // Not "403, that Goal is Alice's" — as far as Bob's Tucker is concerned there
+        // is no Goal, which is Maintenance Mode (ADR 0008) and exactly what he sees.
+        mockMvc.get("/api/goal") { header(ACCESS_ASSERTION_HEADER, bob) }
+            .andExpect { status { isNotFound() } }
+        mockMvc.get("/api/goal/progress") { header(ACCESS_ASSERTION_HEADER, bob) }
+            .andExpect { status { isNotFound() } }
+        mockMvc.get("/api/goals") { header(ACCESS_ASSERTION_HEADER, bob) }.andExpect {
+            status { isOk() }
+            jsonPath("$.length()") { value(0) }
+        }
+
+        // And Alice still has hers, so the emptiness above is ownership and not an
+        // empty database.
+        mockMvc.get("/api/goals") { header(ACCESS_ASSERTION_HEADER, alice) }.andExpect {
+            jsonPath("$.length()") { value(1) }
+            jsonPath("$[0].targetWeightKg") { value(68.0) }
+        }
+    }
+
+    @Test
+    fun `switching to Maintenance Mode leaves another User's Goal alone`() {
+        completeProfile(alice)
+        weighIn(alice, day, weightKg = 71.0)
+        setGoal(alice, targetWeightKg = 68.0)
+
+        completeProfile(bob)
+        weighIn(bob, day, weightKg = 94.5)
+        setGoal(bob, targetWeightKg = 88.0)
+
+        mockMvc.delete("/api/goal") { header(ACCESS_ASSERTION_HEADER, bob) }
+            .andExpect { status { isNoContent() } }
+
+        // Bob decided to maintain. Alice did not, and a sweep that clears "every
+        // active Goal" would have decided it for her — silently, and irreversibly as
+        // far as the banner that would have offered her the choice is concerned.
+        mockMvc.get("/api/goal") { header(ACCESS_ASSERTION_HEADER, alice) }.andExpect {
+            status { isOk() }
+            jsonPath("$.active") { value(true) }
+            jsonPath("$.targetWeightKg") { value(68.0) }
+        }
+        mockMvc.get("/api/goal") { header(ACCESS_ASSERTION_HEADER, bob) }
+            .andExpect { status { isNotFound() } }
+    }
+
+    @Test
+    fun `two Users can each hold a Weekly Review dated the same day`() {
+        completeProfile(alice)
+        weighIn(alice, day, weightKg = 71.0)
+        completeProfile(bob)
+        weighIn(bob, day, weightKg = 94.5)
+
+        mockMvc.post("/api/weekly-review") { header(ACCESS_ASSERTION_HEADER, alice) }
+            .andExpect { status { isOk() } }
+
+        // A review is idempotent by date, so an unscoped lookup doesn't collide — it
+        // hands Bob Alice's review and calls it his. Her trend weight, her
+        // Maintenance, her Calorie Budget, on his dashboard.
+        mockMvc.post("/api/weekly-review") { header(ACCESS_ASSERTION_HEADER, bob) }.andExpect {
+            status { isOk() }
+            jsonPath("$.trendWeightKg") { value(94.5) }
+        }
+
+        mockMvc.get("/api/weekly-review") { header(ACCESS_ASSERTION_HEADER, alice) }.andExpect {
+            status { isOk() }
+            jsonPath("$.trendWeightKg") { value(71.0) }
+        }
+    }
+
+    @Test
+    fun `starting a Goal recomputes only the review of whoever started it`() {
+        completeProfile(alice)
+        weighIn(alice, day, weightKg = 71.0)
+        mockMvc.post("/api/weekly-review") { header(ACCESS_ASSERTION_HEADER, alice) }
+            .andExpect { status { isOk() } }
+
+        completeProfile(bob)
+        weighIn(bob, day, weightKg = 94.5)
+        // A Goal change is one of the few moments the Budget may move mid-week
+        // (ADR 0008), so it overwrites today's review — by deleting it first. Held
+        // globally, that delete takes Alice's review with it, and hers is not
+        // recreated: she opens Tucker to no Budget at all, mid-week, with no
+        // decision of her own behind it.
+        setGoal(bob, targetWeightKg = 88.0)
+
+        mockMvc.get("/api/weekly-review") { header(ACCESS_ASSERTION_HEADER, alice) }.andExpect {
+            status { isOk() }
+            jsonPath("$.trendWeightKg") { value(71.0) }
+        }
+        mockMvc.get("/api/weekly-review") { header(ACCESS_ASSERTION_HEADER, bob) }.andExpect {
+            status { isOk() }
+            jsonPath("$.trendWeightKg") { value(94.5) }
+        }
+    }
+
+    @Test
+    fun `opening Tucker mints a review for whoever opened it, and for nobody else`() {
+        completeProfile(alice)
+        weighIn(alice, day, weightKg = 71.0)
+        openTucker(alice)
+
+        completeProfile(bob)
+        weighIn(bob, day, weightKg = 94.5)
+
+        // The lazy catch-up asks "is the latest review a week or more old?", and a
+        // missing review is itself overdue. Asked globally, Bob's app-open finds
+        // Alice's fresh review, concludes nothing is due, and leaves him with no
+        // Budget at all — no error, no empty state, just a dashboard that never fills in.
+        mockMvc.get("/api/summary") {
+            header(ACCESS_ASSERTION_HEADER, bob)
+            param("date", "$day")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.trendWeightKg") { value(94.5) }
+            jsonPath("$.calorieBudget") { exists() }
+        }
+
+        // And Alice's history is where she left it — one review, still hers.
+        mockMvc.get("/api/weekly-review/history") { header(ACCESS_ASSERTION_HEADER, alice) }
+            .andExpect {
+                status { isOk() }
+                jsonPath("$.length()") { value(1) }
+                jsonPath("$[0].trendWeightKg") { value(71.0) }
+            }
+    }
+
+    @Test
+    fun `a User too thinly logged to adapt is not handed another User's Maintenance`() {
+        // Alice has a review on the books, dated well before the one Bob is about to run.
+        completeProfile(alice)
+        weighIn(alice, earlier, weightKg = 71.0)
+        openTucker(alice, on = earlier)
+
+        // Bob has a trend anchor and no logged days at all, so the adaptive correction
+        // cannot run and the engine falls back to holding the last review's
+        // Maintenance. Asked globally, the last review is Alice's — and Bob's Calorie
+        // Budget is then built on a 71 kg person's metabolism, under his own name,
+        // with nothing on any screen to say so.
+        completeProfile(bob)
+        weighIn(bob, day, weightKg = 94.5)
+
+        mockMvc.post("/api/weekly-review") { header(ACCESS_ASSERTION_HEADER, bob) }.andExpect {
+            status { isOk() }
+            jsonPath("$.maintenanceBasis") { value("FORMULA_SEED") }
+            jsonPath("$.trendWeightKg") { value(94.5) }
+        }
+    }
+
+    /**
+     * The positive control for the test above. FORMULA_SEED is also what a fallback
+     * that reaches *nobody's* review yields, so without this the isolation assertion
+     * would go green against a `latestBefore` that had simply stopped working. This
+     * runs the identical fixture with only the earlier review's owner changed, and
+     * pins it to HELD — and to the very figure that was held.
+     */
+    @Test
+    fun `a User too thinly logged to adapt does hold their own earlier Maintenance`() {
+        completeProfile(bob)
+        weighIn(bob, earlier, weightKg = 94.5)
+        openTucker(bob, on = earlier)
+
+        val heldKcal = mockMvc.get("/api/weekly-review") { header(ACCESS_ASSERTION_HEADER, bob) }
+            .andExpect { status { isOk() } }.andReturn().response.contentAsString
+            .let { objectMapper.readTree(it).get("maintenanceKcal").asDouble() }
+
+        weighIn(bob, day, weightKg = 94.5)
+
+        mockMvc.post("/api/weekly-review") { header(ACCESS_ASSERTION_HEADER, bob) }.andExpect {
+            status { isOk() }
+            jsonPath("$.maintenanceBasis") { value("HELD") }
+            jsonPath("$.maintenanceKcal") { value(heldKcal) }
+        }
+    }
+
     /**
      * POST [body] to [path] as whoever [token] names, and return the created row's id.
      * The three creating helpers differ only in path and body.
@@ -374,6 +649,21 @@ class CrossUserIsolationTest {
         )
     }
 
+    /** Set the active Goal of whoever [token] names, and return its id. */
+    private fun setGoal(token: String, targetWeightKg: Double, rateKgPerWeek: Double = 0.5): Long =
+        postForId(
+            token, "/api/goal",
+            """{"startedOn":"$day","targetWeightKg":$targetWeightKg,"rateKgPerWeek":$rateKgPerWeek}""",
+        )
+
+    /** Read the dashboard as whoever [token] names — the app-open the catch-up rides on. */
+    private fun openTucker(token: String, on: LocalDate = day) {
+        mockMvc.get("/api/summary") {
+            header(ACCESS_ASSERTION_HEADER, token)
+            param("date", "$on")
+        }.andExpect { status { isOk() } }
+    }
+
     private fun completeProfile(token: String) {
         mockMvc.put("/api/profile") {
             header(ACCESS_ASSERTION_HEADER, token)
@@ -382,11 +672,13 @@ class CrossUserIsolationTest {
         }.andExpect { status { isOk() } }
     }
 
-    private fun weighIn(token: String, on: LocalDate) {
-        mockMvc.post("/api/weight") {
+    /** Record a reading owned by whoever [token] names, and return its id. */
+    private fun weighIn(token: String, on: LocalDate, weightKg: Double = 86.0): Long {
+        val json = mockMvc.post("/api/weight") {
             header(ACCESS_ASSERTION_HEADER, token)
             contentType = MediaType.APPLICATION_JSON
-            content = """{"date":"$on","weightKg":86.0}"""
-        }.andExpect { status { isOk() } }
+            content = """{"date":"$on","weightKg":$weightKg}"""
+        }.andExpect { status { isOk() } }.andReturn().response.contentAsString
+        return objectMapper.readTree(json).get("id").asLong()
     }
 }

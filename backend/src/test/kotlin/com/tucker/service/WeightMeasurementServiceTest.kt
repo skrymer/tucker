@@ -4,6 +4,7 @@ import com.tucker.domain.Goal
 import com.tucker.domain.WeightMeasurement
 import com.tucker.persistence.GoalRepository
 import com.tucker.persistence.WeightMeasurementRepository
+import com.tucker.security.WithTuckerUser
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
@@ -13,6 +14,7 @@ import kotlin.test.assertEquals
 
 @SpringBootTest
 @Transactional
+@WithTuckerUser
 class WeightMeasurementServiceTest {
 
     @Autowired lateinit var service: WeightMeasurementService

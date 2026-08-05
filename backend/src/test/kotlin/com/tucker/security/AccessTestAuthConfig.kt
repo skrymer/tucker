@@ -3,6 +3,9 @@ package com.tucker.security
 import org.springframework.boot.test.autoconfigure.web.servlet.MockMvcBuilderCustomizer
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.security.core.context.SecurityContextHolder
+import org.springframework.security.test.context.TestSecurityContextHolder
+import org.springframework.test.web.servlet.ResultHandler
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders
 
 /**
@@ -37,6 +40,29 @@ class AccessTestAuthConfig {
                 }
                 request
             },
+        )
+    }
+
+    /**
+     * Puts the test thread's own identity back after each request.
+     *
+     * `SecurityContextHolderFilter` clears [SecurityContextHolder] in a `finally`, on
+     * whatever thread served the request — which under MockMvc is the test thread
+     * itself. So a `@WithTuckerUser` class is signed in only until its first
+     * `mockMvc.perform`, and a line after it that seeds through a scoped repository
+     * fails with `NoCurrentUserException`. Nothing about the test says so, and the
+     * failure names the repository rather than the request that caused it.
+     *
+     * [TestSecurityContextHolder] keeps a second ThreadLocal that the filter's clear
+     * does not reach, which is exactly the record needed to restore from. It is the
+     * same holder `@WithSecurityContext` populated in the first place, so this hands
+     * back what the annotation put there and nothing else — a class with no ambient
+     * identity restores an empty context, which is what it had.
+     */
+    @Bean
+    fun keepTheTestThreadSignedIn(): MockMvcBuilderCustomizer = MockMvcBuilderCustomizer { builder ->
+        builder.alwaysDo(
+            ResultHandler { SecurityContextHolder.setContext(TestSecurityContextHolder.getContext()) },
         )
     }
 }
