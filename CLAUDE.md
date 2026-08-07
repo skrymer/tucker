@@ -444,11 +444,69 @@ The frontend is built **test-first (red-green TDD)**. Increments:
     one. Its wording was lifted from ADR 0021's argument *against* the shared catalog.
     The `referencesFood` / `recipesUsingIngredient` predicates are still there as
     belt-and-braces, and are commented as such rather than as reachable guards.
-  - **Waiting for slice 5**: `SecurityContextHolderFilter` clears `SecurityContextHolder`
-    in a `finally`, so `PushApiTest:46` and `SummaryApiTest:264` — which read a repository
-    *after* a MockMvc call — break the moment those repositories are scoped.
-    `TestSecurityContextHolder` keeps a second ThreadLocal that survives exactly this,
-    and is the intended restore source.
+  - **Half-answered by slice 4**: `SecurityContextHolderFilter` clears
+    `SecurityContextHolder` in a `finally`, so a `@WithTuckerUser` class is signed in only
+    until its first MockMvc call, and a line after it that reads a scoped repository fails
+    naming the repository rather than the request. That is now fixed for every class at
+    once — `AccessTestAuthConfig.keepTheTestThreadSignedIn` wires up Spring Security's own
+    `exportTestSecurityContext()`, which restores from the second ThreadLocal
+    `TestSecurityContextHolder` keeps and the filter's clear does not reach. `SummaryApiTest`
+    gained the annotation alongside it; `PushApiTest` still carries none and passes only
+    because push is unscoped, so it needs one the moment slice 5 scopes it.
+
+  Slice 4 ([#158](https://github.com/skrymer/tucker/issues/158)) — **the body and the plan
+  become private** — ✅ done. Weight Measurements, Goals and Weekly Reviews are owned rows,
+  scoped from the security context like the catalog and the log before them. This is where
+  multi-user stops being a privacy feature and becomes a correctness one: until here the
+  adaptive engine derived one Trend Weight from two people's scale readings and corrected
+  one Maintenance from two people's intake, producing a Calorie Budget wrong for both.
+  - **Three more live holes, each silent.** `WeightMeasurementRepository.save` looked a date
+    up unscoped, so a second person weighing in on a day found the first person's row and
+    **overwrote their reading**; `deactivateAll` cleared *every* active Goal, so one person
+    starting a Goal dropped another into Maintenance Mode having decided nothing; and a
+    review is idempotent **by date**, so an unscoped lookup never collided at all — it
+    handed the second person the first's trend weight, Maintenance, Budget and Floor under
+    their own name. `latestBefore` did the same for the held-Maintenance fallback, which is
+    the half of the engine slice 3 left unscoped.
+  - **V11 corrected what a rebuild actually costs.** `measured_on` and `reviewed_on` carry
+    *column-level* `UNIQUE`, whose backing `sqlite_autoindex` cannot be dropped, so that
+    constraint can only move per-User by rebuilding the table. ADR 0021 priced every rebuild
+    at `executeInTransaction=false` plus `PRAGMA foreign_keys = OFF`; **neither is needed
+    here**. That is the general 12-step recipe, whose step 1 disables foreign keys so that
+    dropping a table does not strand rows in tables that *reference* it — and nothing
+    references these. The rule is "does anything reference this table?", not "is this a
+    rebuild?", so foreign keys stayed enforced and V11 ran inside Flyway's transaction like
+    any other migration. `PerUserUniquenessMigrationTest` walks the reference graph, so the
+    premise fails loudly the day a new table points at one of them rather than being quietly
+    assumed — and it covers `profile` and `reminder_state`, which slice 5 still owes.
+  - **An unowned row is adopted, never deleted**, guarded on there being exactly one User.
+    The first version deleted them, on the reasoning that an unowned row is invisible to
+    everybody — true of Foods and Entries, scoped in slice 3, and false of these three,
+    which *this* slice scopes. Deploy slice 3, use Tucker for a week, deploy slice 4, and it
+    would have destroyed every reading since, the active Goal, and Weekly Reviews the project
+    calls irreversible. With no User or several, attribution would be a guess, so nothing is
+    adopted and the new `NOT NULL` refuses the migration inside a transaction that rolls back
+    whole — a boot failure a human resolves, rather than a deletion nobody can undo.
+  - **`runAs` came forward from [#159](https://github.com/skrymer/tucker/issues/159).**
+    Scoping reviews breaks the hourly reminder, which runs on a cron thread with no security
+    context — so one system-level `UserRepository.findAll()` (the `user` table is not
+    user-owned) now drives a loop giving each User their own turn through the *same* scoped
+    repositories a request uses. `ReminderScheduler` holds only the loop and the per-User
+    failure isolation; `UserReminder` does one User's turn. A turn that throws is logged
+    naming whose it was and contributes nothing, rather than ending the tick for everyone
+    who sorts after them. `RunAsCallSitesTest` pins `runAs` to that single call site and
+    says in its own failure message that a second one changes the ADR first.
+  - **AC8 was read against the endpoints that exist.** It asked for 404 on a foreign Weight
+    Measurement or Goal "by id"; there is no `GET /api/weight/{id}` or `/api/goal/{id}`, and
+    the only by-id endpoint across the three aggregates is `DELETE /api/weight/{id}`, which
+    has always answered **204** for an unknown id. Per ADR 0021's rule — a foreign id answers
+    exactly as an absent one — it answers 204 for a foreign one too, or the status code
+    becomes the existence oracle the ADR forbids. Both sides are pinned by tests.
+  - **Known intermediate state, unreachable in production**: the Profile, the Push
+    Subscriptions and the reminder state stay global until slice 5, so with two Users a nudge
+    would fan out to every device in the installation and one User opening Tucker would
+    silence everybody's. Recorded in `UserReminder`'s KDoc and in ADR 0010, which had asked
+    to be re-checked at exactly this point.
 - **F11** — Check: scan a package *before* buying it (**shipped**, PRD
   [#168](https://github.com/skrymer/tucker/issues/168), see
   [ADR 0022](docs/adr/0022-a-check-states-cost-and-return-and-never-labels-a-food.md)

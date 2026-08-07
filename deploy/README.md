@@ -152,6 +152,15 @@ Over the real HTTPS origin, with DevTools → Application:
 
 ## Updating a running deployment
 
+> ⚠️ **Do not deploy part-way through F10 (multi-user, issues #155–#161).** Merging each
+> slice to `main` is expected; deploying one is not, until all seven are done. Ownership is
+> migrated incrementally by design — each slice scopes a few more tables and tightens their
+> `user_id` — so a production database stopped between two slices is genuinely
+> half-migrated: some of its rows are owned and enforced, others are still global, and the
+> repositories reading them disagree about which. The hold lifts with
+> [#161](https://github.com/skrymer/tucker/issues/161) (invite the second User), which is
+> deliberately last and gated on the cross-user isolation suite being green.
+
 > **Once, before the first deploy that includes the Access gate:** add the three
 > `TUCKER_ACCESS_*` keys from [step 6](#first-deploy-to-a-vps) to the host `.env`. They have
 > no defaults, so without them `update.sh` pulls, stamps the new version into `.env`, and
