@@ -1,6 +1,7 @@
 package com.tucker.api
 
 import com.tucker.persistence.PushSubscriptionRepository
+import com.tucker.security.WithTuckerUser
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
@@ -14,9 +15,17 @@ import org.springframework.transaction.annotation.Transactional
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
+/**
+ * Signed in as a fixed User, because the assertions read [PushSubscriptionRepository]
+ * back after a request and that repository is scoped (ADR 0021) — the test thread has
+ * to be the same person its own requests authenticate as, or the row it just created
+ * is simply not there. [WithTuckerUser] defaults to that address, which is why the
+ * bare annotation is enough.
+ */
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
+@WithTuckerUser
 class PushApiTest {
 
     @Autowired lateinit var mockMvc: MockMvc

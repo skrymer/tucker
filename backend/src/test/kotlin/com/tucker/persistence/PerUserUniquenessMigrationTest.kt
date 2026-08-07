@@ -314,13 +314,15 @@ class PerUserUniquenessMigrationTest {
         val REBUILT_TABLES = listOf("weight_measurement", "goal", "weekly_review")
 
         /**
-         * The tables whose rebuild leans on nothing referencing them — V11's three,
-         * plus the two slice 5 (#159) still owes, `profile` losing CHECK (id = 1) and
-         * `reminder_state` going per User. Guarded together, because the premise is a
-         * fact about the schema's reference graph rather than about one migration, and
-         * a guard that stopped at today's three would let slice 5 inherit it unchecked.
+         * The tables whose rebuild leans on nothing referencing them — V11's three, plus
+         * V12's `profile`, `reminder_state` and `push_subscription` (issue #159). Guarded
+         * together, because the premise is a fact about the schema's reference graph
+         * rather than about any one migration: a guard that stopped at the tables already
+         * rebuilt would let the next slice inherit the assumption unchecked, which is how
+         * slice 5 found this list waiting for it.
          */
-        val REBUILDABLE_TABLES = REBUILT_TABLES + listOf("profile", "reminder_state")
+        val REBUILDABLE_TABLES =
+            REBUILT_TABLES + listOf("profile", "reminder_state", "push_subscription")
 
         /** Two Users, by id — whose row it is, is the only thing these tests vary. */
         const val owner = 1
