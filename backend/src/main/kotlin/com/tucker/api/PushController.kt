@@ -46,7 +46,7 @@ class PushController(
     @PostMapping("/subscriptions")
     @ResponseStatus(HttpStatus.CREATED)
     fun subscribe(@RequestBody request: SubscriptionDto) {
-        subscriptions.save(
+        subscriptions.claim(
             PushSubscription(
                 id = null,
                 endpoint = request.endpoint,

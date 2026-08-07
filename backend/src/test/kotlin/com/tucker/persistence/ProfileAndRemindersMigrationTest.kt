@@ -31,16 +31,15 @@ class ProfileAndRemindersMigrationTest {
         migrate(db, upTo = null)
 
         connect(db).use { connection ->
-            connection.execute("INSERT INTO user (id, email) VALUES ($owner, '$MIGRATION_TEST_OWNER')")
-            connection.execute("INSERT INTO user (id, email) VALUES ($somebodyElse, 'second@tucker.invalid')")
+            connection.seedTwoUsers()
 
-            connection.execute(profileOwnedBy(owner))
+            connection.execute(profileOwnedBy(OWNER_ID))
             assertFailsWith<SQLException>("a User should not be able to hold two Profiles") {
-                connection.execute(profileOwnedBy(owner))
+                connection.execute(profileOwnedBy(OWNER_ID))
             }
             // And somebody else's own, which must be fine — `CHECK (id = 1)` said this
             // app was for one person, and it is the whole of what this migration widens.
-            connection.execute(profileOwnedBy(somebodyElse))
+            connection.execute(profileOwnedBy(SECOND_USER_ID))
         }
     }
 
@@ -50,18 +49,17 @@ class ProfileAndRemindersMigrationTest {
         migrate(db, upTo = null)
 
         connect(db).use { connection ->
-            connection.execute("INSERT INTO user (id, email) VALUES ($owner, '$MIGRATION_TEST_OWNER')")
-            connection.execute("INSERT INTO user (id, email) VALUES ($somebodyElse, 'second@tucker.invalid')")
+            connection.seedTwoUsers()
 
-            connection.execute(reminderStateOwnedBy(owner))
+            connection.execute(reminderStateOwnedBy(OWNER_ID))
             // Two rows for one person is the shape that matters here, because the reads
             // are `fetchOne`-flavoured: a second row does not announce itself, it just
             // means the absent-today gate and the dedupe start answering from whichever
             // row the query happened to reach.
             assertFailsWith<SQLException>("a User should not be able to hold two reminder states") {
-                connection.execute(reminderStateOwnedBy(owner))
+                connection.execute(reminderStateOwnedBy(OWNER_ID))
             }
-            connection.execute(reminderStateOwnedBy(somebodyElse))
+            connection.execute(reminderStateOwnedBy(SECOND_USER_ID))
         }
     }
 
@@ -78,13 +76,12 @@ class ProfileAndRemindersMigrationTest {
         migrate(db, upTo = null)
 
         connect(db).use { connection ->
-            connection.execute("INSERT INTO user (id, email) VALUES ($owner, '$MIGRATION_TEST_OWNER')")
-            connection.execute("INSERT INTO user (id, email) VALUES ($somebodyElse, 'second@tucker.invalid')")
+            connection.seedTwoUsers()
 
-            connection.execute(deviceOwnedBy(owner))
+            connection.execute(deviceOwnedBy(OWNER_ID))
             assertFailsWith<SQLException>(
                 "two Users must not both hold the same endpoint — there is only one device",
-            ) { connection.execute(deviceOwnedBy(somebodyElse)) }
+            ) { connection.execute(deviceOwnedBy(SECOND_USER_ID)) }
         }
     }
 
@@ -94,9 +91,9 @@ class ProfileAndRemindersMigrationTest {
         migrate(db, upTo = null)
 
         connect(db).use { connection ->
-            connection.execute("INSERT INTO user (id, email) VALUES ($owner, '$MIGRATION_TEST_OWNER')")
+            connection.seedOwner()
 
-            UNOWNED_ROWS.forEach { (table, insert) ->
+            REBUILT.forEach { (table, insert, _) ->
                 val refusal = assertFailsWith<SQLException>(
                     "`$table` should refuse a row with no owner — the invariant the " +
                         "repositories hold is now the database's too (ADR 0021)",
@@ -155,7 +152,7 @@ class ProfileAndRemindersMigrationTest {
 
             // A rebuild is exactly where a foreign key gets quietly dropped: the new table
             // is hand-written, and nothing about the copied values would say so.
-            REBUILT_TABLES.forEach { table ->
+            REBUILT.forEach { (table, _, _) ->
                 assertEquals(
                     "user",
                     connection.foreignKeyTargetOf(table, "user_id"),
@@ -179,16 +176,16 @@ class ProfileAndRemindersMigrationTest {
         // none either. The User arrives the ordinary way, just-in-time on a first visit.
         migrate(db, upTo = "11")
         connect(db).use { connection ->
-            connection.execute("INSERT INTO user (id, email) VALUES ($owner, '$MIGRATION_TEST_OWNER')")
-            UNOWNED_ROWS.forEach { (_, insert) -> connection.execute(insert) }
+            connection.seedOwner()
+            REBUILT.forEach { connection.execute(it.unowned) }
         }
 
         migrate(db, upTo = null)
 
         connect(db).use { connection ->
-            WHAT_ADOPTION_SAVES.forEach { (table, cost) ->
+            REBUILT.forEach { (table, _, cost) ->
                 assertEquals(
-                    listOf("$owner"),
+                    listOf("$OWNER_ID"),
                     connection.rows("SELECT user_id FROM $table"),
                     "the unowned `$table` row is the owner's own, recorded before the column " +
                         "was filled in — dropping it would $cost",
@@ -206,14 +203,13 @@ class ProfileAndRemindersMigrationTest {
      * other test in this class while leaving a half-rebuilt database behind.
      */
     @Test
-    fun `an unowned row nobody can be attributed refuses the migration, and rolls it back`() {
+    fun `an unowned Profile nobody can be attributed refuses the migration, and rolls it back`() {
         val db = tempDir.resolve("ambiguous.db").toString()
         migrate(db, upTo = "11")
 
         connect(db).use { connection ->
-            connection.execute("INSERT INTO user (id, email) VALUES ($owner, '$MIGRATION_TEST_OWNER')")
-            connection.execute("INSERT INTO user (id, email) VALUES ($somebodyElse, 'second@tucker.invalid')")
-            connection.execute(UNOWNED_ROWS.first { (table, _) -> table == "profile" }.second)
+            connection.seedTwoUsers()
+            connection.execute(UNOWNED_PROFILE)
         }
 
         assertFailsWith<FlywayException>(
@@ -281,14 +277,18 @@ class ProfileAndRemindersMigrationTest {
             )
         }
 
+    /**
+     * One rebuilt table: what an unowned row of it looks like, and what adopting rather
+     * than deleting that row saves.
+     *
+     * A single record rather than three lists keyed by table name, because the coupling
+     * between them is silent — a table seeded from one list and missing from another is
+     * inserted and never asserted on, which is a test that quietly stops checking and
+     * stays green.
+     */
+    private data class Rebuilt(val table: String, val unowned: String, val adoptionSaves: String)
+
     private companion object {
-        /** The three tables V12 rebuilds. */
-        val REBUILT_TABLES = listOf("profile", "reminder_state", "push_subscription")
-
-        /** Two Users, by id — whose row it is, is the only thing these tests vary. */
-        const val owner = 1
-        const val somebodyElse = 2
-
         /** A complete Profile, differing between calls only in who it is about. */
         fun profileOwnedBy(user: Int) =
             "INSERT INTO profile (sex, birth_date, height_cm, timezone, reminder_hour, " +
@@ -305,28 +305,38 @@ class ProfileAndRemindersMigrationTest {
             "INSERT INTO push_subscription (endpoint, p256dh, auth, user_id) " +
                 "VALUES ('https://push.example/shared-browser', 'BKey', 'Auth', $user)"
 
-        /**
-         * What is actually lost if a rebuild drops an unowned row instead of adopting it.
-         * Spelled out per table, because "an unowned row is invisible to everybody" is the
-         * reasoning that made deleting look free, and it is only true *after* the slice
-         * that scopes the table — which is this one.
-         */
-        val WHAT_ADOPTION_SAVES = listOf(
-            "profile" to "reset the body every Maintenance seed is computed from, " +
-                "so the owner's Calorie Budget would be rebuilt from nothing",
-            "reminder_state" to "drop the per-episode dedupe, so the owner would be nudged " +
-                "again for an episode they were already nudged about",
-            "push_subscription" to "silently stop reminding a device that is still " +
-                "subscribed in the browser, so the toggle would read on and nothing arrive",
-        )
+        /** A Profile with no owner — named, because one test seeds only this one. */
+        const val UNOWNED_PROFILE =
+            "INSERT INTO profile (sex, birth_date, height_cm) VALUES ('MALE', '1991-11-03', 180.0)"
 
-        /** One well-formed row per rebuilt table, differing from a real one only in having no owner. */
-        val UNOWNED_ROWS = listOf(
-            "profile" to "INSERT INTO profile (sex, birth_date, height_cm) " +
-                "VALUES ('MALE', '1991-11-03', 180.0)",
-            "reminder_state" to "INSERT INTO reminder_state (last_seen_on) VALUES ('2026-06-10')",
-            "push_subscription" to "INSERT INTO push_subscription (endpoint, p256dh, auth) " +
-                "VALUES ('https://push.example/unowned-device', 'BKey', 'Auth')",
+        /**
+         * The three tables V12 rebuilds: a well-formed row of each differing from a real
+         * one only in having no owner, and what is actually lost if the rebuild drops it
+         * instead of adopting it.
+         *
+         * The cost is spelled out per table because "an unowned row is invisible to
+         * everybody" is the reasoning that made deleting look free, and it is only true
+         * *after* the slice that scopes the table — which is this one.
+         */
+        val REBUILT = listOf(
+            Rebuilt(
+                "profile", UNOWNED_PROFILE,
+                "reset the body every Maintenance seed is computed from, " +
+                    "so the owner's Calorie Budget would be rebuilt from nothing",
+            ),
+            Rebuilt(
+                "reminder_state",
+                "INSERT INTO reminder_state (last_seen_on) VALUES ('2026-06-10')",
+                "drop the per-episode dedupe, so the owner would be nudged " +
+                    "again for an episode they were already nudged about",
+            ),
+            Rebuilt(
+                "push_subscription",
+                "INSERT INTO push_subscription (endpoint, p256dh, auth) " +
+                    "VALUES ('https://push.example/unowned-device', 'BKey', 'Auth')",
+                "silently stop reminding a device that is still subscribed in the " +
+                    "browser, so the toggle would read on and nothing arrive",
+            ),
         )
     }
 }

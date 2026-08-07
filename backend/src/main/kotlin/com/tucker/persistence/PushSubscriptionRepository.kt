@@ -11,8 +11,8 @@ import org.springframework.stereotype.Repository
  * Persistence for one User's [PushSubscription]s — the devices their Weekly-Review
  * Reminder fans out to (ADR 0021).
  *
- * Scoped implicitly like everything else, with one deliberate exception in [save]:
- * `endpoint` stays **globally** unique, because it is issued by the browser and is
+ * Scoped implicitly like everything else, keyed on the device rather than the owner in
+ * [claim]: `endpoint` stays **globally** unique, because it is issued by the browser and is
  * globally unique by nature. Everything a reminder reads is the caller's own, so a
  * nudge reaches its owner's devices and nobody else's.
  */
@@ -29,51 +29,46 @@ class PushSubscriptionRepository(
             .fetch().map { it.toDomain() }
 
     /**
-     * Store a device's subscription, keyed on its endpoint: re-subscribing the same
-     * device refreshes its keys/label rather than inserting a duplicate — and, if the
-     * endpoint is one another User holds, **reassigns** it to the caller.
+     * Claim a device for the caller: store its subscription, refresh the keys and label
+     * of one already known, and — if the endpoint is one another User holds — take it
+     * over.
      *
-     * That reassignment is why the lookup below is the one unscoped read in this class,
-     * and it is a rule about devices rather than a hole in the scoping. An endpoint
-     * names one browser profile on one machine; two Users holding it would be two claims
-     * on a single tray, and the person who opted in most recently is the one standing in
-     * front of it. Scoping the lookup instead would leave the other User's row in place
-     * and the insert would then break the global uniqueness the endpoint has by nature —
-     * so the alternative is not "safer", it is a 500 on a supported flow (ADR 0021).
+     * Named `claim` rather than `save` because that last case is the only place in
+     * Tucker where a row changes owner, and a method called `save` would read at the
+     * call site as an ordinary "write mine". The endpoint is the key here, not the
+     * owner: it names one browser profile on one machine, so two Users holding it would
+     * be two claims on a single notification tray, and whoever opted in most recently is
+     * the person standing in front of it (ADR 0010, ADR 0021).
+     *
+     * That rule *is* the statement — `ON CONFLICT (endpoint) DO UPDATE`, with `user_id`
+     * among the columns it sets. Written as a lookup and a branch it needed an unscoped
+     * read to justify, and left a window between the two in which the row could change
+     * hands.
      */
-    fun save(subscription: PushSubscription): PushSubscription {
-        val existing = dsl.selectFrom(PUSH_SUBSCRIPTION)
-            .where(PUSH_SUBSCRIPTION.ENDPOINT.eq(subscription.endpoint))
-            .fetchOne()
-        if (existing != null) {
-            dsl.update(PUSH_SUBSCRIPTION)
-                .set(PUSH_SUBSCRIPTION.P256DH, subscription.p256dh)
-                .set(PUSH_SUBSCRIPTION.AUTH, subscription.auth)
-                .set(PUSH_SUBSCRIPTION.LABEL, subscription.label)
-                // The reassignment itself. Whoever just opted in owns this device now.
-                .set(PUSH_SUBSCRIPTION.USER_ID, currentUser.ownerId)
-                .where(PUSH_SUBSCRIPTION.ID.eq(existing.id))
-                .execute()
-            return subscription.copy(id = existing.id!!.toLong())
+    fun claim(subscription: PushSubscription) {
+        val row = dsl.newRecord(PUSH_SUBSCRIPTION).apply {
+            userId = currentUser.ownerId
+            endpoint = subscription.endpoint
+            p256dh = subscription.p256dh
+            auth = subscription.auth
+            label = subscription.label
         }
-        val record = dsl.newRecord(PUSH_SUBSCRIPTION)
-        record.userId = currentUser.ownerId
-        record.endpoint = subscription.endpoint
-        record.p256dh = subscription.p256dh
-        record.auth = subscription.auth
-        record.label = subscription.label
-        record.store()
-        return subscription.copy(id = record.id!!.toLong())
+        dsl.insertInto(PUSH_SUBSCRIPTION).set(row)
+            .onConflict(PUSH_SUBSCRIPTION.ENDPOINT).doUpdate().set(row)
+            .execute()
     }
 
     /**
-     * Forget one of the caller's own devices. Returns the number of rows removed.
+     * Forget one of the caller's own devices. Returns the number of rows removed, which
+     * no caller branches on — `DELETE /api/push/subscriptions` answers 204 either way,
+     * because a status that singled out "not yours" would be the existence oracle
+     * ADR 0021 forbids.
      *
-     * Scoped, unlike [save], and the asymmetry is the point: subscribing is a device
+     * Scoped, unlike [claim], and the asymmetry is the point: subscribing is a device
      * saying "reminders for *me* land here", which is a claim only the newest opt-in can
      * settle, while unsubscribing is a User forgetting a device of theirs. An endpoint
-     * that has since been reassigned is no longer theirs to forget, so this removes
-     * nothing and says so with a 0 — the same answer an endpoint nobody holds gets.
+     * that has since been claimed by somebody else is no longer theirs to forget, so
+     * this removes nothing — the same answer an endpoint nobody holds gets.
      */
     fun deleteByEndpoint(endpoint: String): Int =
         dsl.deleteFrom(PUSH_SUBSCRIPTION)

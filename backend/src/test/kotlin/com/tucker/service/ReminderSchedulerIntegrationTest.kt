@@ -130,35 +130,33 @@ class ReminderSchedulerIntegrationTest {
      * is also what makes a second User a matter of calling this again rather than of
      * arranging what the two of them share.
      */
-    @Suppress("LongParameterList")
     private fun seedEligible(
         user: User = subscriber,
         endpoint: String = deviceA,
-        reviewedDaysAgo: Long = 8,
         timezone: String = "UTC",
         reminderHour: Int = 9,
     ) = runAs(user) {
         profiles.save(
             Profile(Sex.MALE, LocalDate.of(1986, 5, 22), 180.0, timezone, reminderHour, remindersEnabled = true),
         )
-        subscriptions.save(PushSubscription(null, endpoint, "BKey", "Auth", null))
+        subscriptions.claim(PushSubscription(null, endpoint, "BKey", "Auth", null))
         weights.save(WeightMeasurement(null, today.minusDays(1), 86.0))
         reviews.insert(
             WeeklyReview(
-                null, today.minusDays(reviewedDaysAgo), 86.0,
+                null, today.minusDays(OVERDUE_BY_DAYS), 86.0,
                 Maintenance(2400.0, Maintenance.Basis.FORMULA_SEED), 1850.0, 172.0,
             ),
         )
     }
 
     /** Somebody else, provisioned so the tick has more than one turn to take. */
-    private fun somebodyElse(email: String = "second@tucker.invalid"): User =
-        users.insertIfAbsent(User(id = null, email = email))
+    private fun somebodyElse(): User =
+        users.insertIfAbsent(User(id = null, email = "second@tucker.invalid"))
 
-    /** Read the dashboard as [token]'s User — the app-open the weekly catch-up rides on. */
-    private fun openTucker(token: String = AccessTokens.mint()) {
+    /** Read the dashboard as the subscriber — the app-open the weekly catch-up rides on. */
+    private fun openTucker() {
         mockMvc.get("/api/summary") {
-            header(ACCESS_ASSERTION_HEADER, token)
+            header(ACCESS_ASSERTION_HEADER, AccessTokens.mint())
             param("date", "$today")
         }.andExpect { status { isOk() } }
     }
@@ -256,7 +254,7 @@ class ReminderSchedulerIntegrationTest {
     fun `prunes a subscription the push service reports gone`() {
         seedEligible(endpoint = "https://push.example/device-good")
         runAs(subscriber) {
-            subscriptions.save(PushSubscription(null, "https://push.example/device-gone", "BKey", "Auth", null))
+            subscriptions.claim(PushSubscription(null, "https://push.example/device-gone", "BKey", "Auth", null))
         }
 
         val result = scheduler.runTick(now)
@@ -444,6 +442,9 @@ class ReminderSchedulerIntegrationTest {
     }
 
     private companion object {
+        /** Comfortably past the seven-day cadence, so every seeded User is overdue. */
+        const val OVERDUE_BY_DAYS = 8L
+
         const val deviceA = "https://push.example/device-a"
         const val deviceB = "https://push.example/device-b"
 

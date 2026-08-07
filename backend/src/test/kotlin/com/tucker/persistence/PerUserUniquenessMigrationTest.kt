@@ -133,8 +133,7 @@ class PerUserUniquenessMigrationTest {
         migrate(db, upTo = "10")
 
         connect(db).use { connection ->
-            connection.execute("INSERT INTO user (id, email) VALUES ($owner, '$MIGRATION_TEST_OWNER')")
-            connection.execute("INSERT INTO user (id, email) VALUES ($somebodyElse, 'second@tucker.invalid')")
+            connection.seedTwoUsers()
             connection.execute(UNOWNED_READING)
         }
 
@@ -208,7 +207,7 @@ class PerUserUniquenessMigrationTest {
             REBUILT_TABLES.forEach { table ->
                 assertEquals(
                     emptyList(),
-                    connection.rows("SELECT id FROM $table WHERE user_id IS NOT 1"),
+                    connection.rows("SELECT id FROM $table WHERE user_id IS NOT $OWNER_ID"),
                     "everything in `$table` ends up belonging to the one User there was to adopt it",
                 )
             }
@@ -221,7 +220,7 @@ class PerUserUniquenessMigrationTest {
         migrate(db, upTo = null)
 
         connect(db).use { connection ->
-            connection.execute("INSERT INTO user (id, email) VALUES (1, '$MIGRATION_TEST_OWNER')")
+            connection.seedOwner()
 
             UNOWNED_ROWS.forEach { (table, insert) ->
                 val refusal = assertFailsWith<SQLException>(
@@ -250,18 +249,17 @@ class PerUserUniquenessMigrationTest {
         migrate(db, upTo = null)
 
         connect(db).use { connection ->
-            connection.execute("INSERT INTO user (id, email) VALUES ($owner, '$MIGRATION_TEST_OWNER')")
-            connection.execute("INSERT INTO user (id, email) VALUES ($somebodyElse, 'second@tucker.invalid')")
+            connection.seedTwoUsers()
 
             DUPLICATED_ROWS.forEach { (what, insert) ->
-                connection.execute(insert(owner))
+                connection.execute(insert(OWNER_ID))
                 // The same thing again, for the same person.
                 assertFailsWith<SQLException>("a User should not be able to hold two of: $what") {
-                    connection.execute(insert(owner))
+                    connection.execute(insert(OWNER_ID))
                 }
                 // And the identical thing for somebody else, which must still be fine —
                 // otherwise the constraint has merely been left global under a new name.
-                connection.execute(insert(somebodyElse))
+                connection.execute(insert(SECOND_USER_ID))
             }
         }
     }
@@ -324,10 +322,6 @@ class PerUserUniquenessMigrationTest {
         val REBUILDABLE_TABLES =
             REBUILT_TABLES + listOf("profile", "reminder_state", "push_subscription")
 
-        /** Two Users, by id — whose row it is, is the only thing these tests vary. */
-        const val owner = 1
-        const val somebodyElse = 2
-
         /** What a reading looked like between V9 and V11: recorded, but owned by nobody. */
         const val UNOWNED_READING =
             "INSERT INTO weight_measurement (measured_on, weight_kg) VALUES ('2026-01-15', 92.1)"
@@ -348,18 +342,18 @@ class PerUserUniquenessMigrationTest {
 
         /** The three things a User may hold only one of, as an insert for a given owner. */
         val DUPLICATED_ROWS = listOf<Pair<String, (Int) -> String>>(
-            "a reading on 2026-01-14" to { owner ->
+            "a reading on 2026-01-14" to { user ->
                 "INSERT INTO weight_measurement (measured_on, weight_kg, user_id) " +
-                    "VALUES ('2026-01-14', 92.4, $owner)"
+                    "VALUES ('2026-01-14', 92.4, $user)"
             },
-            "a review dated 2026-01-14" to { owner ->
+            "a review dated 2026-01-14" to { user ->
                 "INSERT INTO weekly_review (reviewed_on, trend_weight_kg, maintenance_kcal, " +
                     "calorie_budget_kcal, protein_floor_g, user_id) " +
-                    "VALUES ('2026-01-14', 92.6, 2545, 2045, 150, $owner)"
+                    "VALUES ('2026-01-14', 92.6, 2545, 2045, 150, $user)"
             },
-            "an active Goal" to { owner ->
+            "an active Goal" to { user ->
                 "INSERT INTO goal (started_on, start_weight_kg, target_weight_kg, " +
-                    "rate_kg_per_week, active, user_id) VALUES ('2026-01-01', 96.0, 85.0, 0.5, 1, $owner)"
+                    "rate_kg_per_week, active, user_id) VALUES ('2026-01-01', 96.0, 85.0, 0.5, 1, $user)"
             },
         )
 

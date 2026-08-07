@@ -31,27 +31,27 @@ class ProfileRepository(
             .where(PROFILE.USER_ID.eq(currentUser.ownerId))
             .fetchOne()?.toProfile()
 
-    /** Replace the caller's own Profile, or write their first one. */
+    /**
+     * Replace the caller's own Profile, or write their first one.
+     *
+     * One statement, keyed on the owner: V12's `idx_profile_user` is what makes
+     * `onConflict` able to say "one Profile each" to the database rather than in Kotlin.
+     * The field list appears once, which matters more than the saved round trip — split
+     * across an update branch and an insert branch, a seventh Profile field omitted from
+     * one of them fails silently, as a field that simply never changes.
+     */
     fun save(profile: Profile) {
-        val updated = dsl.update(PROFILE)
-            .set(PROFILE.SEX, profile.sex.name)
-            .set(PROFILE.BIRTH_DATE, profile.birthDate.toString())
-            .set(PROFILE.HEIGHT_CM, profile.heightCm)
-            .set(PROFILE.TIMEZONE, profile.timezone)
-            .set(PROFILE.REMINDER_HOUR, profile.reminderHour)
-            .set(PROFILE.REMINDERS_ENABLED, profile.remindersEnabled.toFlag())
-            .where(PROFILE.USER_ID.eq(currentUser.ownerId))
-            .execute()
-        if (updated > 0) return
-
-        dsl.insertInto(PROFILE)
-            .set(PROFILE.USER_ID, currentUser.ownerId)
-            .set(PROFILE.SEX, profile.sex.name)
-            .set(PROFILE.BIRTH_DATE, profile.birthDate.toString())
-            .set(PROFILE.HEIGHT_CM, profile.heightCm)
-            .set(PROFILE.TIMEZONE, profile.timezone)
-            .set(PROFILE.REMINDER_HOUR, profile.reminderHour)
-            .set(PROFILE.REMINDERS_ENABLED, profile.remindersEnabled.toFlag())
+        val row = dsl.newRecord(PROFILE).apply {
+            userId = currentUser.ownerId
+            sex = profile.sex.name
+            birthDate = profile.birthDate.toString()
+            heightCm = profile.heightCm
+            timezone = profile.timezone
+            reminderHour = profile.reminderHour
+            remindersEnabled = profile.remindersEnabled.toFlag()
+        }
+        dsl.insertInto(PROFILE).set(row)
+            .onConflict(PROFILE.USER_ID).doUpdate().set(row)
             .execute()
     }
 

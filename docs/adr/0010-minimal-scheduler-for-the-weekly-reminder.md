@@ -104,12 +104,17 @@ forces a security context onto the cron thread.
 
 **A device two people share follows whoever opted in last.** A Web Push endpoint is
 issued by the browser and is globally unique by nature, so it stays globally unique in
-the database while everything around it went per User. Re-subscribing an endpoint
-another User holds therefore *reassigns* the device rather than failing, and the
-reminders that land in that tray are the new owner's. This is the one place the
-reminder's data is read without an owner predicate, and it is a rule about devices:
-there is one tray, and the person who just asked for reminders is the one standing in
-front of it.
+the database while everything around it went per User. Subscribing an endpoint another
+User holds therefore *claims* the device rather than failing, and the reminders that
+land in that tray are the new owner's. It is a rule about devices, not a gap in the
+scoping: there is one tray, and the person who just asked for reminders is the one
+standing in front of it.
+
+It is also the only place in Tucker where a row changes owner, so it is spelled as one
+statement — an upsert whose conflict target is the endpoint — and the repository method
+is called `claim` rather than `save`. Written instead as a lookup and a branch, the
+transfer hid inside an ordinary-looking write, needed an unscoped read to justify, and
+left a window between the two in which the row could change hands.
 
 **A failing turn is one User's, not everyone's.** The tick catches a turn that throws,
 logs it naming whose it was, and carries on. Independence is the whole premise of

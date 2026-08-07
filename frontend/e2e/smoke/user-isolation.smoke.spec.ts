@@ -1,6 +1,7 @@
 import type { APIRequestContext, APIResponse } from '@playwright/test'
 import { test, expect } from './support/smoke-test'
 import { todayIso, isoShiftDays } from '../support/date'
+import { tickAt } from './support/reminder-tick'
 
 const API = 'http://localhost:8080/api'
 
@@ -270,18 +271,6 @@ async function makeOverdueAndSubscribed(
       data: { endpoint, keys: { p256dh: 'BSmokeKey', auth: 'SmokeAuth' } },
     }),
   )
-}
-
-/**
- * Drive one reminder tick at a pinned instant, so the local reminder hour is
- * deterministic rather than whatever hour the suite happens to run in.
- */
-async function tickAt(api: APIRequestContext, atInstant: string) {
-  const res = await api.post(`${API}/test/reminder-tick`, {
-    params: { at: atInstant },
-  })
-  expect(res.ok(), await res.text()).toBe(true)
-  return (await res.json()) as { sent: number }
 }
 
 /**
