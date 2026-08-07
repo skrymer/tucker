@@ -85,6 +85,42 @@ class ProfileAndRemindersMigrationTest {
         }
     }
 
+    /**
+     * The constraints and defaults a rebuild can drop while every stored value still
+     * reads back correctly — so nothing else in this class would notice.
+     *
+     * The fidelity assertions above copy rows that carry an explicit value for each of
+     * these columns, which is exactly what makes a lost `CHECK` or `DEFAULT` invisible
+     * to them: the data is fine, and the table has simply stopped refusing the next bad
+     * row. Only a write that *relies* on them can tell.
+     */
+    @Test
+    fun `a rebuilt Profile still checks its body and still defaults its reminder`() {
+        val db = tempDir.resolve("profile-constraints.db").toString()
+        migrate(db, upTo = null)
+
+        connect(db).use { connection ->
+            connection.seedOwner()
+
+            assertFailsWith<SQLException>("a height of -1 cm is not a body") {
+                connection.execute(bodyOf(heightCm = -1.0))
+            }
+            assertFailsWith<SQLException>("sex drives the Maintenance formula, so it is a closed set") {
+                connection.execute(bodyOf(sex = "OTHER"))
+            }
+
+            // V3's three reminder columns default to the quiet setup. A Profile written
+            // without them must not land in somebody else's timezone, at an hour nobody
+            // picked, opted in to a notification nobody asked for.
+            connection.execute(bodyOf())
+            assertEquals(
+                listOf("UTC|9|0"),
+                connection.rows("SELECT timezone, reminder_hour, reminders_enabled FROM profile"),
+                "the reminder defaults V3 added must survive the rebuild",
+            )
+        }
+    }
+
     @Test
     fun `a Profile, reminder state or device recorded with no owner is refused`() {
         val db = tempDir.resolve("not-null.db").toString()
@@ -130,7 +166,7 @@ class ProfileAndRemindersMigrationTest {
                     "and losing reminders_enabled would switch reminders off outright",
             )
             assertEquals(
-                listOf("1|2026-06-08|2026-06-03|1"),
+                listOf("6|2026-06-08|2026-06-03|1"),
                 connection.rows(
                     "SELECT id, last_seen_on, last_reminder_sent_on, user_id FROM reminder_state",
                 ),
@@ -139,8 +175,8 @@ class ProfileAndRemindersMigrationTest {
             )
             assertEquals(
                 listOf(
-                    "1|https://push.example/phone|BPhoneKey|PhoneAuth|Pixel 7|2026-05-01 08:15:00|1",
-                    "2|https://push.example/laptop|BLaptopKey|LaptopAuth||2026-05-02 09:20:00|1",
+                    "3|https://push.example/phone|BPhoneKey|PhoneAuth|Pixel 7|2026-05-01 08:15:00|1",
+                    "7|https://push.example/laptop|BLaptopKey|LaptopAuth||2026-05-02 09:20:00|1",
                 ),
                 connection.rows(
                     "SELECT id, endpoint, p256dh, auth, label, created_at, user_id " +
@@ -223,14 +259,22 @@ class ProfileAndRemindersMigrationTest {
                 connection.rows("SELECT version FROM flyway_schema_history WHERE version = '12'"),
                 "the failed migration must not be recorded as applied",
             )
-            // Rolled back *whole*, not merely unrecorded: the rebuild's own artefacts are
-            // absent, so this is still the V11 database and the next boot can retry.
+            // Rolled back *whole*, not merely unrecorded: this is still the V11 database
+            // and the next boot can retry.
+            //
+            // Asserted on `profile_new` specifically, because it is the only artefact that
+            // discriminates. V12 fails on the INSERT that fills the new table, so the DROP,
+            // the RENAME and the new index are never reached whether or not anything rolls
+            // back — assertions about *those* pass against a migration running in
+            // autocommit, which is the very thing this test exists to rule out. The empty
+            // shell created just before the INSERT is what only a rollback removes.
             assertEquals(
                 emptyList(),
                 connection.rows(
-                    "SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'idx_profile_user'",
+                    "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'profile_new'",
                 ),
-                "a part-applied rebuild would have left the new index behind",
+                "the half-built table must be gone — it is the one thing a non-transactional " +
+                    "migration would leave behind at the point V12 fails",
             )
             assertEquals(
                 listOf("1991-11-03"),
@@ -247,7 +291,15 @@ class ProfileAndRemindersMigrationTest {
      * Every column that a rebuild could drop *silently* is seeded away from its schema
      * default, because seeded at the default — which is what a casual fixture does — a
      * dropped column reads back as the value the new table's DEFAULT supplies, so the
-     * test passes and production loses the data. `timezone`, `reminder_hour` and
+     * test passes and production loses the data.
+     *
+     * The ids follow the same rule where they can: dropped from a copy, SQLite re-mints
+     * rowids from 1, so a fixture numbered 1, 2, 3 reads back unchanged and proves
+     * nothing. `reminder_state` and `push_subscription` are therefore seeded at 6 and
+     * 3/7. `profile` cannot be — it still carries `CHECK (id = 1)` at the version this
+     * seeds against, which is the very constraint V12 removes — so its id is the one
+     * column here a dropped copy could hide. Nothing references it and there is only
+     * ever one row, so that is a gap worth naming rather than working around. `timezone`, `reminder_hour` and
      * `reminders_enabled` are the ones that matter: at their defaults, losing all three
      * looks identical to a user who chose UTC, 09:00 and off.
      */
@@ -260,19 +312,19 @@ class ProfileAndRemindersMigrationTest {
             )
             it.executeUpdate(
                 "INSERT INTO reminder_state (id, last_seen_on, last_reminder_sent_on) " +
-                    "VALUES (1, '2026-06-08', '2026-06-03')",
+                    "VALUES (6, '2026-06-08', '2026-06-03')",
             )
             // Two devices, one labelled and one not, so `label` is discriminating in both
             // directions — a dropped nullable column reads back as null, which is exactly
             // what an unlabelled device legitimately holds.
             it.executeUpdate(
                 "INSERT INTO push_subscription (id, endpoint, p256dh, auth, label, created_at) " +
-                    "VALUES (1, 'https://push.example/phone', 'BPhoneKey', 'PhoneAuth', " +
+                    "VALUES (3, 'https://push.example/phone', 'BPhoneKey', 'PhoneAuth', " +
                     "'Pixel 7', '2026-05-01 08:15:00')",
             )
             it.executeUpdate(
                 "INSERT INTO push_subscription (id, endpoint, p256dh, auth, created_at) " +
-                    "VALUES (2, 'https://push.example/laptop', 'BLaptopKey', 'LaptopAuth', " +
+                    "VALUES (7, 'https://push.example/laptop', 'BLaptopKey', 'LaptopAuth', " +
                     "'2026-05-02 09:20:00')",
             )
         }
@@ -304,6 +356,15 @@ class ProfileAndRemindersMigrationTest {
         fun deviceOwnedBy(user: Int) =
             "INSERT INTO push_subscription (endpoint, p256dh, auth, user_id) " +
                 "VALUES ('https://push.example/shared-browser', 'BKey', 'Auth', $user)"
+
+        /**
+         * The owner's body, with only the columns V1 requires — so the reminder columns
+         * V3 added are left to their defaults, which is the point at the one call site
+         * that reads them back.
+         */
+        fun bodyOf(sex: String = "MALE", heightCm: Double = 180.0) =
+            "INSERT INTO profile (sex, birth_date, height_cm, user_id) " +
+                "VALUES ('$sex', '1991-11-03', $heightCm, $OWNER_ID)"
 
         /** A Profile with no owner — named, because one test seeds only this one. */
         const val UNOWNED_PROFILE =

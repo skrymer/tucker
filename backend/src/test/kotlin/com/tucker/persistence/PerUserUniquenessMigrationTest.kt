@@ -147,16 +147,23 @@ class PerUserUniquenessMigrationTest {
                 connection.rows("SELECT version FROM flyway_schema_history WHERE version = '11'"),
                 "the failed migration must not be recorded as applied",
             )
-            // Rolled back *whole*, not merely unrecorded: the rebuild's own artefacts are
-            // absent, so the database is still the V10 one and the next boot can retry.
-            // A half-migrated state is precisely what ADR 0021 says cannot happen here.
+            // Rolled back *whole*, not merely unrecorded: the database is still the V10
+            // one and the next boot can retry. A half-migrated state is precisely what
+            // ADR 0021 says cannot happen here.
+            //
+            // On `weight_measurement_new`, because it is the only artefact that
+            // discriminates: V11 fails on the INSERT that fills the new table, so the DROP,
+            // the RENAME and the new index are never reached whether or not anything rolls
+            // back. The empty shell created just before that INSERT is what only a rollback
+            // removes.
             assertEquals(
                 emptyList(),
                 connection.rows(
-                    "SELECT name FROM sqlite_master WHERE type = 'index' " +
-                        "AND name = 'idx_weight_measurement_user_day'",
+                    "SELECT name FROM sqlite_master WHERE type = 'table' " +
+                        "AND name = 'weight_measurement_new'",
                 ),
-                "a part-applied rebuild would have left the new index behind",
+                "the half-built table must be gone — it is the one thing a " +
+                    "non-transactional migration would leave behind at the point V11 fails",
             )
             assertEquals(
                 listOf("2026-01-15"),

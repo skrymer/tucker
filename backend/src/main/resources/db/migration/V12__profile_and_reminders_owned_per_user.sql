@@ -110,7 +110,15 @@ UPDATE push_subscription
 -- the same device rather than two devices. If two Users ever share a browser
 -- profile, re-subscribing therefore *reassigns* that device to whoever opted in
 -- last -- which is the behaviour the notification should follow (ADR 0021).
--- AUTOINCREMENT is kept: unlike the two above, this id reaches the domain.
+--
+-- AUTOINCREMENT is carried over rather than preserved, and the difference is
+-- worth stating because a rebuild cannot keep what it is for. DROP TABLE takes
+-- the sqlite_sequence row with it, and the copy re-seeds the counter from max(id)
+-- among the rows that *survive* -- so an id belonging to a device unsubscribed
+-- before this migration becomes mintable again. Nothing turns on that: no foreign
+-- key targets this id, no endpoint exposes it, and its only use in main sources is
+-- an ORDER BY. What remains is "unique among live rows", which is all the
+-- application ever asked of it. V11 did the same to its three tables.
 CREATE TABLE push_subscription_new (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     endpoint    TEXT    NOT NULL UNIQUE,
