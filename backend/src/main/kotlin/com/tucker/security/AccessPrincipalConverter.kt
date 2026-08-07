@@ -54,11 +54,7 @@ class AccessPrincipalConverter(
         // would go on resolving the stale pairing until someone restarted the app —
         // turning a one-line recovery into a puzzling one.
         val user = users.findByEmail(email) ?: users.insertIfAbsent(User(id = null, email = email))
-        return PreAuthenticatedAuthenticationToken(
-            TuckerPrincipal(userId = checkNotNull(user.id), email = user.email),
-            source,
-            emptyList(),
-        )
+        return TuckerPrincipal.of(user).asAuthentication(credentials = source)
     }
 
 }

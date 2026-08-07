@@ -82,6 +82,18 @@ class WeightApiTest {
         mockMvc.get("/api/weight/latest").andExpect { status { isNotFound() } }
     }
 
+    /**
+     * The other half of ADR 0021's rule that a foreign id answers exactly as an
+     * absent one. `CrossUserIsolationTest` pins the foreign side at 204; this pins
+     * what it has to match. Asserted rather than read off the controller, because
+     * the day someone makes this 404 "for consistency with GET", the status becomes
+     * a way to ask whether another User has a reading.
+     */
+    @Test
+    fun `DELETE weight is idempotent, so an id nobody has still answers 204`() {
+        mockMvc.delete("/api/weight/999999").andExpect { status { isNoContent() } }
+    }
+
     @Test
     fun `POST weight rejects a future date with 400`() {
         val today = LocalDate.now()

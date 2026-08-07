@@ -6,7 +6,6 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Path
 import java.sql.Connection
-import java.sql.DriverManager
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
@@ -29,7 +28,7 @@ class OwnerBackfillMigrationTest {
 
     @TempDir lateinit var tempDir: Path
 
-    private val owner = "owner-under-test@tucker.invalid"
+    private val owner = MIGRATION_TEST_OWNER
 
     @Test
     fun `migrating a database recorded before multi-user attributes every row to the owner`() {
@@ -158,21 +157,6 @@ class OwnerBackfillMigrationTest {
         }
     }
 
-    private fun migrate(db: String, upTo: String?, owner: String = this.owner) {
-        Flyway.configure()
-            .dataSource("jdbc:sqlite:$db?foreign_keys=true", null, null)
-            .locations("classpath:db/migration")
-            // Escaped exactly as the running backend escapes it, so this test exercises
-            // the production path rather than a friendlier one of its own.
-            .placeholders(mapOf(OWNER_EMAIL_PLACEHOLDER to sqlLiteralSafe(owner)))
-            .apply { upTo?.let { target(it) } }
-            .load()
-            .migrate()
-    }
-
-    private fun connect(db: String): Connection =
-        DriverManager.getConnection("jdbc:sqlite:$db?foreign_keys=true")
-
     private fun foreignKeysEnforced(connection: Connection): Boolean =
         connection.queryOne("PRAGMA foreign_keys") == 1
 
@@ -223,16 +207,6 @@ class OwnerBackfillMigrationTest {
 
     private fun Connection.queryOne(sql: String): Int =
         createStatement().use { it.executeQuery(sql).use { rows -> rows.next(); rows.getInt(1) } }
-
-    /** The table `table.column` references, or null when it references nothing. */
-    private fun Connection.foreignKeyTargetOf(table: String, column: String): String? =
-        createStatement().use { statement ->
-            statement.executeQuery("PRAGMA foreign_key_list($table)").use { rows ->
-                generateSequence {
-                    if (rows.next()) rows.getString("from") to rows.getString("table") else null
-                }.firstOrNull { (from, _) -> from == column }?.second
-            }
-        }
 
     private fun Connection.columnNames(table: String): List<String> =
         createStatement().use { statement ->

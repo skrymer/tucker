@@ -4,6 +4,7 @@ import com.tucker.domain.Maintenance
 import com.tucker.domain.WeeklyReview
 import com.tucker.persistence.ReminderStateRepository
 import com.tucker.persistence.WeeklyReviewRepository
+import com.tucker.security.WithTuckerUser
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
@@ -20,6 +21,7 @@ import kotlin.test.assertEquals
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
+@WithTuckerUser
 class SummaryApiTest {
 
     @Autowired lateinit var mockMvc: MockMvc

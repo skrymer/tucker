@@ -1,102 +1,69 @@
 package com.tucker.service
 
-import com.tucker.domain.Profile
-import com.tucker.domain.PushSubscription
-import com.tucker.domain.ReminderPolicy
-import com.tucker.domain.ReminderState
-import com.tucker.domain.SendResult
-import com.tucker.domain.WebPushSender
-import com.tucker.persistence.ProfileRepository
-import com.tucker.persistence.PushSubscriptionRepository
-import com.tucker.persistence.ReminderStateRepository
-import com.tucker.persistence.WeeklyReviewRepository
-import com.tucker.persistence.WeightMeasurementRepository
+import com.tucker.domain.User
+import com.tucker.persistence.UserRepository
+import com.tucker.security.runAs
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import java.time.Instant
-import java.time.ZoneId
 
 /** The outcome of one reminder tick: how many devices a reminder was delivered to. */
 data class TickResult(val sent: Int)
 
 /**
- * The Weekly-Review Reminder *sender* (ADR 0010): Tucker's one scheduled action,
- * scoped solely to sending. It computes nothing about the review — it reads state,
- * asks the pure [ReminderPolicy] whether to nudge, and if so pushes to every device,
- * prunes any the push service reports gone, and stamps the send for dedupe.
+ * Tucker's one scheduled action (ADR 0010), and the only place that knows the
+ * Weekly-Review Reminder is a thing done for *several* people.
  *
- * Thin orchestration glue (ADR 0013): the decision lives in [ReminderPolicy], the
- * transport behind [WebPushSender]; this is driven by `ReminderSchedulerIntegrationTest`
- * and the real-stack smoke. The hourly trigger is a separate, production-only bean.
+ * That is the whole of its job. A cron thread has no request and therefore no
+ * current User, but everything a reminder reads is scoped to one — so this gives
+ * each User their own turn through [runAs] and lets [UserReminder] do the same
+ * work it would do for a request (ADR 0021). Deciding whether to nudge, and
+ * sending, live there; iterating lives here, and the two axes stay apart.
+ *
+ * One User's turn cannot end another's — neither by being ineligible nor by
+ * failing. Eligibility is decided per User, and a turn that throws is logged and
+ * contributes nothing rather than abandoning the rest of the tick: without that,
+ * the blast radius of one bad row or one exhausted connection would depend on
+ * where its owner happened to sort by id, and the lowest-id User failing would
+ * cost everybody their nudge. A tick is hourly and deduped (ADR 0010), so the
+ * right answer to a failure is to carry on and let the next tick retry.
+ *
+ * The hourly trigger is a separate, production-only bean.
  */
 @Service
 class ReminderScheduler(
-    private val profiles: ProfileRepository,
-    private val weights: WeightMeasurementRepository,
-    private val reviews: WeeklyReviewRepository,
-    private val subscriptions: PushSubscriptionRepository,
-    private val reminderState: ReminderStateRepository,
-    private val sender: WebPushSender,
+    private val users: UserRepository,
+    private val reminder: UserReminder,
 ) {
 
-    /** Run one reminder tick as of [now] (the server instant), sending if eligible. */
-    fun runTick(now: Instant): TickResult {
-        val profile = profiles.get()
-        val subs = subscriptions.findAll()
-        val state = profile?.let { stateFor(now, it, subs) }
-        if (state == null || !ReminderPolicy.shouldSend(state)) return TickResult(sent = 0)
+    /** Run one reminder tick as of [now], nudging whoever is due. */
+    fun runTick(now: Instant): TickResult =
+        TickResult(sent = users.findAll().sumOf { user -> nudgeOrCarryOn(user, now) })
 
-        val delivered = subs.count { deliver(it, PAYLOAD) }
-        // Stamp only on a real delivery so a transport blip retries next tick rather
-        // than silently consuming the whole overdue episode (ADR 0010 dedupe).
-        if (delivered > 0) reminderState.stampReminderSent(state.today)
-        return TickResult(sent = delivered)
-    }
-
-    /** Gather everything the [ReminderPolicy] decision reads, as of [now]. */
-    private fun stateFor(now: Instant, profile: Profile, subs: List<PushSubscription>) =
-        ReminderState(
-            now = now,
-            zone = ZoneId.of(profile.timezone),
-            reminderHour = profile.reminderHour,
-            remindersEnabled = profile.remindersEnabled,
-            setupComplete = weights.latest() != null,
-            hasSubscription = subs.isNotEmpty(),
-            latestReviewOn = reviews.latest()?.reviewedOn,
-            lastSeenOn = reminderState.lastSeenOn(),
-            lastReminderSentOn = reminderState.lastReminderSentOn(),
-        )
-
-    /** Push to one device; prune it on GONE. Returns whether it was delivered. */
-    private fun deliver(subscription: PushSubscription, payload: String): Boolean =
-        when (sender.send(subscription, payload)) {
-            SendResult.DELIVERED -> true
-            SendResult.GONE -> {
-                subscriptions.deleteByEndpoint(subscription.endpoint)
-                log.info("Pruned gone push subscription {}", subscription.endpoint)
-                false
-            }
-            SendResult.FAILED -> {
-                log.warn("Web push delivery failed for subscription {}", subscription.endpoint)
-                false
-            }
+    /**
+     * One User's turn, isolated: their failure is theirs alone.
+     *
+     * The catch is broad on purpose, and the breadth *is* the requirement — the
+     * point is that no failure of one User's turn may reach the next one, so
+     * enumerating the failures would defeat it the first time an unlisted one
+     * appeared. They have nothing in common to narrow to in any case: an exhausted
+     * connection pool, a Profile whose stored timezone the JVM no longer knows, a
+     * row predating an invariant its domain type now requires. `RuntimeException`
+     * rather than `Throwable`, so a genuine `Error` — the transport rethrows one on
+     * an unusable VAPID key — still takes the process down as it should.
+     */
+    @Suppress("TooGenericExceptionCaught")
+    private fun nudgeOrCarryOn(user: User, now: Instant): Int =
+        try {
+            runAs(user) { reminder.nudgeIfDue(now) }
+        } catch (e: RuntimeException) {
+            // Named, because the whole point is knowing *whose* turn broke — and logged
+            // rather than swallowed, since nothing else will ever report it.
+            log.warn("Reminder tick failed for {}, continuing with the rest", user.email, e)
+            0
         }
 
     private companion object {
         val log = LoggerFactory.getLogger(ReminderScheduler::class.java)
-
-        /**
-         * The fixed nudge, as the JSON the service worker's push handler parses to
-         * render the notification. Text only: the worker supplies the icon/badge/tag
-         * and decides where a tap lands, because a frontend route is not the backend's
-         * to name — the copy that used to live here disagreed with the route table for
-         * months, uncaught, until a tap 404'd (issues #178, #189).
-         *
-         * A constant because the nudge is the same every time — never a guilt-trip,
-         * never personalised (CONTEXT.md Weekly-Review Reminder).
-         */
-        const val PAYLOAD =
-            """{"title":"Time for your weekly review",""" +
-                """"body":"Open Tucker to log today and refresh your calorie budget."}"""
     }
 }

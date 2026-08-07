@@ -9,11 +9,15 @@ import com.tucker.domain.Profile
 import com.tucker.domain.Sex
 import com.tucker.domain.WeeklyReview
 import com.tucker.domain.WeightMeasurement
+import com.tucker.domain.User
 import com.tucker.persistence.ProfileRepository
 import com.tucker.persistence.PushSubscriptionRepository
 import com.tucker.persistence.ReminderStateRepository
+import com.tucker.persistence.UserRepository
 import com.tucker.persistence.WeeklyReviewRepository
 import com.tucker.persistence.WeightMeasurementRepository
+import com.tucker.security.AccessTokens
+import com.tucker.security.runAs
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -22,12 +26,14 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Primary
+import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
 import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
 import java.time.LocalDate
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -39,6 +45,12 @@ import kotlin.test.assertTrue
  * One test also drives the real summary endpoint (hence MockMvc): the rule it pins —
  * opening Tucker advances the weekly cadence, so no reminder is owed — lives only at
  * that seam and is invisible from either side alone.
+ *
+ * Deliberately **not** `@WithTuckerUser`. The whole question this class answers is
+ * whether the scheduler can act on somebody's behalf with no request behind it, and an
+ * ambient identity handed to the test thread would be inherited by `runTick` — every
+ * test here would then pass whether or not the impersonation works. So the thread stays
+ * anonymous, and the seeding says whose data it is by wrapping [runAs] explicitly.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -55,9 +67,22 @@ class ReminderSchedulerIntegrationTest {
     class RecordingTestSender : WebPushSender {
         val sentEndpoints = mutableListOf<String>()
         val sentPayloads = mutableListOf<String>()
+
+        /**
+         * Blow up on the next send, once. The transport itself converts its own
+         * failures to [SendResult.FAILED], so this stands in for the things that
+         * genuinely do throw out of a turn — an exhausted connection pool, a stored
+         * timezone the JVM no longer knows — without needing to manufacture one.
+         */
+        var throwOnNextSend = false
+
         override fun send(subscription: PushSubscription, payload: String): SendResult {
             sentEndpoints += subscription.endpoint
             sentPayloads += payload
+            if (throwOnNextSend) {
+                throwOnNextSend = false
+                error("this User's turn blew up")
+            }
             return if ("gone" in subscription.endpoint) SendResult.GONE else SendResult.DELIVERED
         }
     }
@@ -70,10 +95,18 @@ class ReminderSchedulerIntegrationTest {
     @Autowired lateinit var reviews: WeeklyReviewRepository
     @Autowired lateinit var subscriptions: PushSubscriptionRepository
     @Autowired lateinit var reminderState: ReminderStateRepository
+    @Autowired lateinit var users: UserRepository
     @Autowired lateinit var sender: RecordingTestSender
 
     private val now = Instant.parse("2026-06-10T09:00:00Z")
     private val today = LocalDate.of(2026, 6, 10)
+
+    /**
+     * The person the reminder is for. Provisioned under the address the MockMvc
+     * requests authenticate as, so the one test that opens Tucker over HTTP is the
+     * same person the scheduler then considers.
+     */
+    private lateinit var subscriber: User
 
     /**
      * The recorder is a context-wide singleton, so what one test pushed is still in
@@ -83,21 +116,37 @@ class ReminderSchedulerIntegrationTest {
     fun startFromSilence() {
         sender.sentEndpoints.clear()
         sender.sentPayloads.clear()
+        sender.throwOnNextSend = false
+        subscriber = users.insertIfAbsent(User(id = null, email = AccessTokens.EMAIL))
     }
 
     /** Profile (reminders on, 09:00 UTC), a weight, an 8-day-old review, one device. */
-    private fun seedEligible(endpoint: String = "https://push.example/device-a") {
+    private fun seedEligible(
+        endpoint: String = "https://push.example/device-a",
+        reviewedDaysAgo: Long = 8,
+    ) {
         profiles.save(
             Profile(Sex.MALE, LocalDate.of(1986, 5, 22), 180.0, "UTC", reminderHour = 9, remindersEnabled = true),
         )
+        subscriptions.save(PushSubscription(null, endpoint, "BKey", "Auth", null))
+        seedHistory(subscriber, reviewedDaysAgo)
+    }
+
+    /**
+     * The owned half of a seed: a reading, and a review [reviewedDaysAgo] old.
+     *
+     * Split out because the Profile and the Push Subscription above are still global
+     * until slice 5 (#159), so a second User inherits them and needs only a history of
+     * their own to be considered separately.
+     */
+    private fun seedHistory(user: User, reviewedDaysAgo: Long) = runAs(user) {
         weights.save(WeightMeasurement(null, today.minusDays(1), 86.0))
         reviews.insert(
             WeeklyReview(
-                null, today.minusDays(8), 86.0,
+                null, today.minusDays(reviewedDaysAgo), 86.0,
                 Maintenance(2400.0, Maintenance.Basis.FORMULA_SEED), 1850.0, 172.0,
             ),
         )
-        subscriptions.save(PushSubscription(null, endpoint, "BKey", "Auth", null))
     }
 
     @Test
@@ -143,7 +192,7 @@ class ReminderSchedulerIntegrationTest {
         // Asserted by its cause, not merely by the silence: the review the reminder
         // would have nudged about has already run, dated today, so nothing is overdue.
         // Without this line a broken absent-today gate would look identical.
-        assertEquals(today, reviews.latest()?.reviewedOn)
+        assertEquals(today, runAs(subscriber) { reviews.latest()?.reviewedOn })
         assertEquals(0, result.sent)
         assertEquals(emptyList(), sender.sentEndpoints)
     }
@@ -199,6 +248,78 @@ class ReminderSchedulerIntegrationTest {
 
         assertEquals(listOf("https://push.example/device-good"), subscriptions.findAll().map { it.endpoint })
         assertEquals(1, result.sent)
+    }
+
+    /**
+     * That the tick gives *every* User a turn, rather than stopping at the first —
+     * which is the whole of what the loop added, and all this can honestly claim.
+     *
+     * Deliberately **not** named for #159's "one User being up to date does not
+     * suppress another's": slice 4 does not deliver that. It holds here only because
+     * "up to date" is seeded as a recent review. Reach the same state the way a real
+     * User does — by opening Tucker — and the shared last-seen stamp silences the
+     * overdue User too, because `reminder_state` is still global. Same for the device
+     * the nudge lands on below: subscriptions are global, so it is the only one there
+     * is. Both become per-User in slice 5 (see [UserReminder]).
+     */
+    @Test
+    fun `every User gets a turn, so a quiet first one does not end the tick`() {
+        // The subscriber reviewed today, so nothing is owed on their turn.
+        seedEligible(reviewedDaysAgo = 0)
+        // Somebody else, later by id, has not reviewed for over a week. A loop that
+        // stopped at the first User would leave them un-nudged and say nothing.
+        seedHistory(users.insertIfAbsent(User(id = null, email = "overdue@tucker.invalid")), reviewedDaysAgo = 8)
+
+        val result = scheduler.runTick(now)
+
+        assertEquals(1, result.sent)
+        assertEquals(listOf("https://push.example/device-a"), sender.sentEndpoints)
+    }
+
+    /**
+     * A turn that fails is one User's problem, not the tick's.
+     *
+     * Without this, the blast radius of one exhausted connection or one unreadable row
+     * would depend on where its owner happened to sort by id — the lowest-id User
+     * failing would cost everyone their nudge, and the highest-id User failing would
+     * cost nobody. The tick is hourly and deduped (ADR 0010), so the right answer to a
+     * failure is to carry on and let the next tick retry.
+     */
+    @Test
+    fun `a User whose turn throws does not take the rest of the tick down with them`() {
+        // Both are overdue and eligible. The subscriber was provisioned first, so the
+        // tick reaches them first — and their turn blows up.
+        seedEligible()
+        seedHistory(users.insertIfAbsent(User(id = null, email = "second@tucker.invalid")), reviewedDaysAgo = 8)
+        sender.throwOnNextSend = true
+
+        val result = scheduler.runTick(now)
+
+        // The second User's nudge is reachable only by carrying on past the first
+        // User's failure — uncaught, `runTick` would have thrown instead of returning.
+        assertEquals(1, result.sent)
+        assertEquals(2, sender.sentEndpoints.size, "both turns were taken, one of them failing")
+    }
+
+    /**
+     * The premise every test in this class rests on, asserted rather than assumed.
+     *
+     * The cron thread has no identity, so `runTick` must establish one per User. If
+     * an identity were ambient here — leaked in by another class, or left behind by
+     * [runAs] failing to restore — then `runTick` would read *that* User's data and
+     * every test above would pass with the impersonation deleted entirely.
+     */
+    @Test
+    fun `the tick runs on a thread with nobody signed in`() {
+        seedEligible()
+
+        assertNull(
+            SecurityContextHolder.getContext().authentication,
+            "seeding through runAs must leave the test thread anonymous, or this class " +
+                "proves nothing about the scheduler establishing its own context",
+        )
+
+        assertEquals(1, scheduler.runTick(now).sent)
     }
 
     @Test

@@ -373,12 +373,12 @@ The frontend is built **test-first (red-green TDD)**. Increments:
     a `NOT NULL` column carrying a `REFERENCES` clause to a table **that already has
     rows** — and *only* then. A `NOT NULL` V9 therefore passes every test, every
     smoke and the jOOQ codegen schema, and fails against exactly one database in the
-    world: the production one. The alternative that buys `NOT NULL` is rebuilding all
-    eight tables, needing `executeInTransaction=false` (no rollback part-way) plus
-    `PRAGMA foreign_keys = OFF`, which — with `maximum-pool-size: 1` — is handed back
-    to the pool and disables referential integrity for the life of the JVM. So the FK
-    lands now and `NOT NULL` rides along with the per-user-uniqueness rebuilds
-    ADR 0021 already requires. `OwnerBackfillMigrationTest` is the guard: it migrates
+    world: the production one. So the FK lands now and `NOT NULL` rides along with the
+    per-user-uniqueness rebuilds ADR 0021 already requires. (V9's comment prices those
+    rebuilds at `executeInTransaction=false` plus `PRAGMA foreign_keys = OFF`; slice 4
+    showed that is the *general* recipe and wrong for these tables, which nothing
+    references — see ADR 0021, "What a rebuild actually costs". V9 is applied and so
+    left as written.) `OwnerBackfillMigrationTest` is the guard: it migrates
     to V8, seeds the schema the way a real installation is filled, and only then
     migrates forward, **with foreign keys enforced** — the only shape of test that
     can see this at all.
