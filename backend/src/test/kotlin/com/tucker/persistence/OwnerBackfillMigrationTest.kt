@@ -256,10 +256,12 @@ class OwnerBackfillMigrationTest {
         /**
          * The two owned tables whose `user_id` is still nullable in the schema. Both
          * were scoped by slice 3 with an index swap rather than a rebuild, and SQLite
-         * cannot add NOT NULL to an existing column — so tightening them means rebuilding
-         * `food`, which `entry` and `recipe_ingredient` reference and which is therefore
-         * the one rebuild in the schema that really does need the foreign-key dance
-         * (issue #232, ADR 0021). Until then the invariant is the repositories'.
+         * cannot add NOT NULL to an existing column — so tightening either means rebuilding
+         * it. `entry` is referenced by nothing and would rebuild as cheaply as V11's three;
+         * `food` is referenced by `entry` and `recipe_ingredient`, which makes it the one
+         * rebuild in the schema that really does need the foreign-key dance, and is why the
+         * pair is its own piece of work (issue #232, ADR 0021). Until then the invariant is
+         * the repositories'.
          */
         val OWNER_OPTIONAL_IN_SCHEMA = listOf("food", "entry")
 

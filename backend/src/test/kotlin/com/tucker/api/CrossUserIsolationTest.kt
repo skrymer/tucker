@@ -488,6 +488,7 @@ class CrossUserIsolationTest {
         subscribe(bob, sharedBrowser)
     }
 
+
     @Test
     fun `two Users can each hold an active Goal at the same time`() {
         completeSetup(alice, aliceKg)

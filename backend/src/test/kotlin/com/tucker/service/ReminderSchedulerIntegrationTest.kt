@@ -29,6 +29,8 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Primary
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.test.web.servlet.MockMvc
+import org.springframework.http.MediaType
+import org.springframework.test.web.servlet.delete
 import org.springframework.test.web.servlet.get
 import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
@@ -381,6 +383,35 @@ class ReminderSchedulerIntegrationTest {
             listOf(sharedBrowser),
             runAs(newOwner) { subscriptions.findAll().map { it.endpoint } },
         )
+    }
+
+    /**
+     * Forgetting a device is the opposite of claiming one, and the asymmetry needs saying
+     * out loud because both answer 204.
+     *
+     * Subscribing is a claim only the newest opt-in can settle, so it may take a device
+     * over. Unsubscribing may only ever forget one of your own — an endpoint somebody else
+     * holds is not theirs to forget, and answering that identically to an endpoint nobody
+     * holds is what ADR 0021 requires. The status alone cannot show the difference, so the
+     * assertion is the nudge that still arrives: unscoped, the delete takes the device with
+     * it and the owner's reminders simply stop, on a device still subscribed in their
+     * browser.
+     */
+    @Test
+    fun `a device stays subscribed when somebody else unsubscribes it`() {
+        seedEligible()
+        val other = somebodyElse()
+
+        mockMvc.delete("/api/push/subscriptions") {
+            header(ACCESS_ASSERTION_HEADER, AccessTokens.mint(email = other.email))
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"endpoint":"$deviceA"}"""
+        }.andExpect { status { isNoContent() } }
+
+        val result = scheduler.runTick(now)
+
+        assertEquals(1, result.sent)
+        assertEquals(listOf(deviceA), sender.sentEndpoints)
     }
 
     /**

@@ -164,9 +164,11 @@ owner. `app_config` (the VAPID keypair) stays global — it is Tucker's, not a u
   premise fails loudly the day a new table points at one of them rather than being
   quietly assumed.
 - **`food` and `entry` keep a nullable `user_id`, and that is residue rather than a
-  rule.** `NOT NULL` rides along with a rebuild a slice needs anyway, and neither of those
-  two ever needed one — slice 3 scoped them by swapping a single index. So there the
-  invariant is held by the repositories alone, as it was everywhere before slice 4. That is
+  rule.** `NOT NULL` has only ever been *paid for* by a rebuild — and slice 3 scoped those
+  two by swapping a single index, so neither has been rebuilt. (Where a rebuild is cheap the
+  project does one for `NOT NULL` alone: V11 did it for `goal` and V12 for
+  `push_subscription`, both of which needed no other change.) So there the invariant is held
+  by the repositories alone, as it was everywhere before slice 4. That is
   tolerable for the reason given above (from the scoping slices on, an unowned row is
   invisible to the very User who created it), but it is a loose end rather than a decision:
   tightening it is its own piece of work, and a more expensive one, because `food` is

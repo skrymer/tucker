@@ -111,7 +111,7 @@ class ProfileAndRemindersMigrationTest {
 
             // V3's three reminder columns default to the quiet setup. A Profile written
             // without them must not land in somebody else's timezone, at an hour nobody
-            // picked, opted in to a notification nobody asked for.
+            // picked, opted in to a Reminder nobody asked for.
             connection.execute(bodyOf())
             assertEquals(
                 listOf("UTC|9|0"),

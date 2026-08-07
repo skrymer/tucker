@@ -109,7 +109,7 @@ UPDATE push_subscription
 -- and is globally unique by nature, so two rows carrying one are two claims on
 -- the same device rather than two devices. If two Users ever share a browser
 -- profile, re-subscribing therefore *reassigns* that device to whoever opted in
--- last -- which is the behaviour the notification should follow (ADR 0021).
+-- last -- which is the behaviour the Reminder should follow (ADR 0021).
 --
 -- AUTOINCREMENT is carried over rather than preserved, and the difference is
 -- worth stating because a rebuild cannot keep what it is for. DROP TABLE takes

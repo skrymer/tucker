@@ -13,7 +13,11 @@ theirs alone.
 One person using Tucker, and the owner of everything in it — their **Foods** and
 **Recipes**, **Entries**, **Weight Measurements**, **Goals**, **Weekly Reviews**,
 **Profile**, and **Push Subscriptions**. Users are strictly isolated: nothing one
-User records is visible to another, and nothing is shared between them. A User is
+User records is visible to another, and nothing is shared between them. The single
+exception is a **Push Subscription**, and it is not sharing: a device belongs to
+whoever opted in on it last, so subscribing on a browser somebody else had
+subscribed *takes it over* rather than adding a second claim to it. The row still
+has exactly one owner, and neither User learns anything about the other. A User is
 **invited**, never self-registered — an operator admits their email address, and
 the User comes into being the first time they open Tucker. The email address
 identifies the person, but everything Tucker stores hangs off the User rather
