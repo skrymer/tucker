@@ -83,19 +83,33 @@ what guarantees a single nudge per episode within it — which is why the dedupe
 to be made sound first. Worth re-checking under F10, where a tick fans out across
 every User in turn.
 
-**That re-check, done (F10 slice 4).** The tick now iterates Users and gives each one
-its own turn through `runAs` ([ADR 0021](0021-every-row-is-owned-by-one-user.md)), so
-the *review* half of the firing rule is per User: whether somebody is overdue is asked
-of their own reviews and their own Weight Measurements. The rest of the rule is **not
-per User yet**, and will not be until the Profile, the Push Subscriptions and the
-reminder state are scoped in F10 slice 5. Until then, with more than one User: a nudge
-fans out to every device in the installation rather than its owner's; one User opening
-Tucker stamps the shared last-seen day and so silences everyone's absent-today gate;
-and the first send of a tick stamps the shared dedupe, suppressing every later User in
-the same episode — a single nudge per *installation* per episode, where this ADR
-specifies one per User. None of it is reachable in production, which holds exactly one
-User until the second is invited in the final slice, and the loop arrived first only
-because scoping the reviews is what forces a security context onto the cron thread.
+**That re-check, done (F10 slices 4 and 5).** The tick iterates Users and gives each
+one its own turn through `runAs` ([ADR 0021](0021-every-row-is-owned-by-one-user.md)),
+and every gate above now reads that User's own row. Slice 4 brought the loop and the
+*review* half — whether somebody is overdue is asked of their own reviews and their own
+Weight Measurements — and slice 5 scoped the rest: the Profile that resolves the
+timezone and the hour, the Push Subscriptions the nudge fans out to, and the reminder
+state holding the last-seen day and the per-episode dedupe.
+
+The intermediate state between those two slices is worth recording, because it is what
+"one shared row" costs when the rule is stated per person: a nudge fanned out to every
+device in the installation rather than its owner's, and a 410 from any of them pruned
+that device; one User opening Tucker stamped the shared last-seen day and silenced
+everyone's absent-today gate; and the first send of a tick stamped the shared dedupe,
+suppressing every later User in the same episode — a single nudge per *installation*
+per episode, where this ADR specifies one per User. None of it was ever reachable in
+production, which holds exactly one User until the second is invited in the final
+slice, and the loop arrived a slice early only because scoping the reviews is what
+forces a security context onto the cron thread.
+
+**A device two people share follows whoever opted in last.** A Web Push endpoint is
+issued by the browser and is globally unique by nature, so it stays globally unique in
+the database while everything around it went per User. Re-subscribing an endpoint
+another User holds therefore *reassigns* the device rather than failing, and the
+reminders that land in that tray are the new owner's. This is the one place the
+reminder's data is read without an owner predicate, and it is a rule about devices:
+there is one tray, and the person who just asked for reminders is the one standing in
+front of it.
 
 **A failing turn is one User's, not everyone's.** The tick catches a turn that throws,
 logs it naming whose it was, and carries on. Independence is the whole premise of

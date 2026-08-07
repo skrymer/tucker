@@ -150,17 +150,29 @@ owner. `app_config` (the VAPID keypair) stays global — it is Tucker's, not a u
   the one pooled connection would then carry for the life of the JVM). That is the general
   12-step recipe, and it is **wrong for these tables**. Step 1 turns foreign keys off so
   that dropping the old table does not strand rows in tables that *reference* it — and
-  nothing references `weight_measurement`, `goal`, `weekly_review`, `profile` or
-  `reminder_state`. They are pure children of `user`; the only `REFERENCES` clauses in the
+  nothing references `weight_measurement`, `goal`, `weekly_review`, `profile`,
+  `reminder_state` or `push_subscription`. They are pure children of `user`; the only
+  `REFERENCES` clauses in the
   schema point at `food` and at `user`. So foreign keys stay enforced throughout, and
   since that `PRAGMA` (a no-op inside a transaction) was the only thing forcing
   `executeInTransaction=false`, the rebuild runs inside Flyway's transaction like any
   other migration — Flyway's `SQLiteDatabase.supportsDdlTransactions()` is `true`. **The
   rule is "does anything reference this table?", not "is this a rebuild?"** V11 rebuilt
-  three tables this way against real production-shaped data; slice 5's `profile` and
-  `reminder_state` rebuilds are the same shape. `PerUserUniquenessMigrationTest` asserts
-  the reference graph, so the premise fails loudly the day a new table points at one of
-  them rather than being quietly assumed.
+  three tables this way against real production-shaped data, and V12 did the same for
+  `profile`, `reminder_state` and `push_subscription`.
+  `PerUserUniquenessMigrationTest` asserts the reference graph over all six, so the
+  premise fails loudly the day a new table points at one of them rather than being
+  quietly assumed.
+- **`food` and `entry` keep a nullable `user_id`, and that is residue rather than a
+  rule.** `NOT NULL` rides along with a rebuild a slice needs anyway, and neither of those
+  two ever needed one — slice 3 scoped them by swapping a single index. So there the
+  invariant is held by the repositories alone, as it was everywhere before slice 4. That is
+  tolerable for the reason given above (from the scoping slices on, an unowned row is
+  invisible to the very User who created it), but it is a loose end rather than a decision:
+  tightening it is its own piece of work, and a more expensive one, because `food` is
+  referenced by `entry` and `recipe_ingredient` and is therefore the one table in the schema
+  whose rebuild really does need the foreign-key dance the bullet above exists to say the
+  others do not.
 - `ReminderScheduler` gains impersonation machinery. It is confined to one helper used
   only by the scheduler, and its misuse elsewhere would be a review failure.
 

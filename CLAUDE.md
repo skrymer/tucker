@@ -507,6 +507,49 @@ The frontend is built **test-first (red-green TDD)**. Increments:
     would fan out to every device in the installation and one User opening Tucker would
     silence everybody's. Recorded in `UserReminder`'s KDoc and in ADR 0010, which had asked
     to be re-checked at exactly this point.
+
+  Slice 5 ([#159](https://github.com/skrymer/tucker/issues/159)) — **the Profile and the
+  reminder become one person's** — ✅ done. The Profile, the Push Subscriptions and the
+  reminder bookkeeping are owned rows, which closes the three gaps slice 4 wrote down and
+  makes the Weekly-Review Reminder per person, as ADR 0010 always specified: this User's
+  Profile resolves the timezone and hour, this User's absence opens the gate, this User's
+  dedupe closes it, and the nudge reaches this User's devices alone. `ReminderScheduler`
+  and `UserReminder` needed no change — the work landed entirely behind the repositories,
+  which is what slice 4's split was for.
+  - **Three shared rows, three different ways of being wrong.** One `profile` meant one
+    answer to "how big is this person": a second User was already set up, from a body that
+    is not theirs, and either of them saving `/profile` silently edited the other's. One
+    `reminder_state` meant one absent-today day and one dedupe, so somebody opening Tucker
+    stood down everybody's nudge and the first send of a tick spent everybody's episode.
+    One device list meant every nudge fanned out to every device in the installation.
+  - **V12 rebuilds all three**, in Flyway's transaction with foreign keys enforced, on
+    ADR 0021's "does anything reference this table?" rule. `profile` loses `CHECK (id = 1)`
+    and `reminder_state` gains a per-User unique index; `push_subscription` needs no
+    widening and is rebuilt only so that every table the slice scopes ends it with a
+    `NOT NULL` owner — V11's rule for `goal`. Unowned rows are **adopted, never deleted**,
+    guarded on there being exactly one User, because it is *this* slice that scopes the
+    repositories reading them.
+  - **`push_subscription.endpoint` stays globally unique, deliberately.** A Web Push
+    endpoint names one browser profile on one machine, so re-subscribing one another User
+    holds **reassigns** the device rather than failing, and its reminders follow whoever
+    opted in last. That is the one unscoped read in the slice; `deleteByEndpoint` *is*
+    scoped, and the asymmetry is the point — subscribing is a claim only the newest opt-in
+    can settle, unsubscribing is a User forgetting a device of theirs.
+  - **Every migration assertion was mutation-checked** rather than assumed green: adoption
+    against a delete, the fidelity assertions against a dropped column, the endpoint's
+    uniqueness against a dropped `UNIQUE`, and the refusal against a missing one-User
+    guard. Same for the scoping predicates, each removed in turn to confirm the test that
+    names it goes red.
+  - **The fudged test is un-fudged.** Slice 4's "every User gets a turn" reached "up to
+    date" by *inserting a review*, because the honest way — opening Tucker — would have
+    tripped the shared last-seen stamp. It is now #159's actual criterion, reached the
+    honest way, and four more cover fan-out, two timezones, per-User dedupe and device
+    reassignment.
+  - **Residue, recorded in ADR 0021 rather than fixed here**: `food` and `entry` still
+    carry a nullable `user_id`. `NOT NULL` only ever rode along with a rebuild a slice
+    needed anyway, and slice 3 scoped those two with an index swap. Tightening `food` is
+    the one rebuild in the schema that really does need the foreign-key dance, since
+    `entry` and `recipe_ingredient` reference it ([#232](https://github.com/skrymer/tucker/issues/232)).
 - **F11** — Check: scan a package *before* buying it (**shipped**, PRD
   [#168](https://github.com/skrymer/tucker/issues/168), see
   [ADR 0022](docs/adr/0022-a-check-states-cost-and-return-and-never-labels-a-food.md)

@@ -342,8 +342,12 @@ _Avoid_: alert, notification, push (as the noun for the user-facing nudge)
 **Push Subscription**:
 One device's Web Push registration — the browser-issued endpoint and its keys —
 that Tucker stores so it can deliver a **Weekly-Review Reminder** to that device
-while the app is closed. One per device: a user's phone and laptop are separate
-Subscriptions, and the same Reminder fans out to all of them. Pure transport — it
+while the app is closed. One per device: a **User**'s phone and laptop are separate
+Subscriptions, and their Reminder fans out to all of theirs and to nobody else's.
+An endpoint identifies one browser profile on one machine, so it names at most one
+Subscription across the whole installation — if two Users ever share a browser,
+subscribing hands that device to whoever opted in last, and its Reminders follow
+them. Pure transport — it
 carries no schedule and no timezone (those belong to the user, on the **Profile**).
 Pruned when the browser reports it gone, and equally when its stored keys turn
 out not to decode — a device Tucker cannot encrypt to is unreachable for good,
