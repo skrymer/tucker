@@ -19,10 +19,11 @@ class NoCurrentUserException(message: String) : RuntimeException(message)
  * Who the scoped repositories answer to (ADR 0021): the owner of every row a
  * request reads or writes.
  *
- * Injected into repositories rather than passed as a parameter, so a caller
- * cannot supply *an* owner instead of the *right* one — the choice is removed
- * rather than policed. It stays visible in each constructor, which is what keeps
- * the hidden input honest.
+ * Injected rather than passed as a parameter, so a caller cannot supply *an*
+ * owner instead of the *right* one — the choice is removed rather than policed.
+ * It stays visible in each constructor, which is what keeps the hidden input
+ * honest. Nine repositories take it for [id]; [MeController] is the one
+ * non-repository injector, and takes it for [email] alone.
  *
  * Read from [SecurityContextHolder] on every access rather than captured once:
  * this is a singleton serving every request, and the context is thread-bound to
@@ -43,6 +44,17 @@ class CurrentUser {
      */
     val ownerId: Int
         get() = id.toInt()
+
+    /**
+     * The address the assertion named, for **display only** — "Signed in as…"
+     * (ADR 0020).
+     *
+     * Deliberately not something to key off: an email is a mutable attribute, and
+     * changing one must not touch a single owned row. That is the whole reason
+     * `user.id` is a surrogate key, so anything that scopes or joins reads [id].
+     */
+    val email: String
+        get() = principal().email
 
     private fun principal(): TuckerPrincipal =
         SecurityContextHolder.getContext().authentication?.principal as? TuckerPrincipal
