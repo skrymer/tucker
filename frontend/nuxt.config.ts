@@ -1,4 +1,8 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
+// Plain constants with no Nuxt runtime dependency, so the config can share the
+// app's definition of "must reach the network" rather than restating it.
+import { NETWORK_ONLY_PREFIXES } from './app/utils/exits'
+
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
 
@@ -175,7 +179,10 @@ export default defineNuxtConfig({
       // The prerendered shell (index.html → '/') is precached by the glob above,
       // so any offline navigation falls back to it instead of white-screening.
       navigateFallback: '/',
-      navigateFallbackDenylist: [/^\/api\//],
+      // Imported rather than written out here, so the SPA's exits and the
+      // prefixes that keep them reachable cannot drift apart — see
+      // app/utils/exits.ts, whose test asserts every exit is covered.
+      navigateFallbackDenylist: NETWORK_ONLY_PREFIXES,
       // Layer the Weekly-Review Reminder push/notificationclick handlers onto the
       // generated worker (the file is served from public/ at /push-sw.js).
       importScripts: ['/push-sw.js'],

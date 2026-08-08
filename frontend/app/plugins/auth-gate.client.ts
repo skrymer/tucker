@@ -6,7 +6,7 @@
 // state. `redirect: 'manual'` stops the browser there, producing an
 // inspectable opaque response (status 0, type 'opaqueredirect') this plugin
 // recognises instead of following it — the auth-gate then short-circuits the
-// whole app to the "log back in" state (see app/layouts/default.vue).
+// whole app to the "signed out" state (see app/layouts/default.vue).
 //
 // Unverified against a real redirect: Playwright's `route.fulfill` with a 3xx
 // status doesn't reproduce this — it surfaces to the page as a genuine
@@ -26,7 +26,7 @@ export default defineNuxtPlugin((nuxtApp) => {
   // as an error, and an opaque redirect's status is 0.
   nuxtApp.hooks.hook('openFetch:onResponse:api', ({ response }) => {
     if (isAuthRedirectResponse(response)) {
-      useAuthGate().markLoggedOut()
+      useAuthGate().markSignedOut()
     }
   })
 })

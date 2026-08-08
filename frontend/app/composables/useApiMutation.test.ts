@@ -12,18 +12,18 @@ mockNuxtImport('useToast', () => () => ({
   remove: toastRemove,
 }))
 
-const authGateState = vi.hoisted(() => ({ isLoggedOut: false }))
+const authGateState = vi.hoisted(() => ({ isSignedOut: false }))
 mockNuxtImport('useAuthGate', () => () => ({
-  isLoggedOut: ref(authGateState.isLoggedOut),
-  markLoggedOut: () => {
-    authGateState.isLoggedOut = true
+  isSignedOut: ref(authGateState.isSignedOut),
+  markSignedOut: () => {
+    authGateState.isSignedOut = true
   },
 }))
 
 beforeEach(() => {
   toastAdd.mockClear()
   toastRemove.mockClear()
-  authGateState.isLoggedOut = false
+  authGateState.isSignedOut = false
 })
 
 describe('useApiMutation', () => {
@@ -209,21 +209,21 @@ describe('useApiMutation', () => {
   })
 
   it('skips the generic retry toast once the session has ended', async () => {
-    authGateState.isLoggedOut = true
+    authGateState.isSignedOut = true
     const { execute } = useApiMutation(() => Promise.reject(new Error('x')), {
       errorTitle: 'Could not save',
     })
 
     await execute()
 
-    // The logged-out interstitial already replaces the whole app — a
+    // The signed-out interstitial already replaces the whole app — a
     // "check your connection, Retry" toast on top would be the wrong
     // advice, and Retry would just repeat the same expired-session failure.
     expect(toastAdd).not.toHaveBeenCalled()
   })
 
   it('skips onSuccess and the success toast once the session has ended', async () => {
-    authGateState.isLoggedOut = true
+    authGateState.isSignedOut = true
     const onSuccess = vi.fn()
     // A mutation that resolves without throwing — e.g. an intercepted
     // opaque-redirect response the underlying fetch client didn't treat as
