@@ -39,6 +39,37 @@ class ProfileApiTest {
         }
     }
 
+    /**
+     * Editing a Profile is the ordinary case — the setup form is a PUT whether or not
+     * one exists — and it is the case a per-User Profile can newly get wrong. The row is
+     * now found by owner rather than by the constant id 1, and `user_id` is uniquely
+     * indexed, so a save that took the insert branch a second time would not quietly
+     * duplicate: it would fail the constraint and 500 on every edit anyone ever makes.
+     */
+    @Test
+    fun `saving a profile again replaces the caller's own rather than adding a second`() {
+        savedProfile(heightCm = 180.0, timezone = "Europe/Copenhagen", reminderHour = 8)
+
+        savedProfile(heightCm = 178.5, timezone = "Australia/Brisbane", reminderHour = 21)
+
+        mockMvc.get("/api/profile").andExpect {
+            status { isOk() }
+            jsonPath("$.heightCm") { value(178.5) }
+            jsonPath("$.timezone") { value("Australia/Brisbane") }
+            jsonPath("$.reminderHour") { value(21) }
+        }
+    }
+
+    /** PUT a complete Profile, asserting it was accepted. */
+    private fun savedProfile(heightCm: Double, timezone: String, reminderHour: Int) {
+        mockMvc.put("/api/profile") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"sex":"MALE","birthDate":"1986-05-22","heightCm":$heightCm,
+                          "timezone":"$timezone","reminderHour":$reminderHour,
+                          "remindersEnabled":true}"""
+        }.andExpect { status { isOk() } }
+    }
+
     @Test
     fun `a profile saved without reminder preferences reads back the safe defaults`() {
         mockMvc.put("/api/profile") {

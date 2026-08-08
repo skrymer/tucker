@@ -133,8 +133,7 @@ class PerUserUniquenessMigrationTest {
         migrate(db, upTo = "10")
 
         connect(db).use { connection ->
-            connection.execute("INSERT INTO user (id, email) VALUES ($owner, '$MIGRATION_TEST_OWNER')")
-            connection.execute("INSERT INTO user (id, email) VALUES ($somebodyElse, 'second@tucker.invalid')")
+            connection.seedTwoUsers()
             connection.execute(UNOWNED_READING)
         }
 
@@ -148,16 +147,23 @@ class PerUserUniquenessMigrationTest {
                 connection.rows("SELECT version FROM flyway_schema_history WHERE version = '11'"),
                 "the failed migration must not be recorded as applied",
             )
-            // Rolled back *whole*, not merely unrecorded: the rebuild's own artefacts are
-            // absent, so the database is still the V10 one and the next boot can retry.
-            // A half-migrated state is precisely what ADR 0021 says cannot happen here.
+            // Rolled back *whole*, not merely unrecorded: the database is still the V10
+            // one and the next boot can retry. A half-migrated state is precisely what
+            // ADR 0021 says cannot happen here.
+            //
+            // On `weight_measurement_new`, because it is the only artefact that
+            // discriminates: V11 fails on the INSERT that fills the new table, so the DROP,
+            // the RENAME and the new index are never reached whether or not anything rolls
+            // back. The empty shell created just before that INSERT is what only a rollback
+            // removes.
             assertEquals(
                 emptyList(),
                 connection.rows(
-                    "SELECT name FROM sqlite_master WHERE type = 'index' " +
-                        "AND name = 'idx_weight_measurement_user_day'",
+                    "SELECT name FROM sqlite_master WHERE type = 'table' " +
+                        "AND name = 'weight_measurement_new'",
                 ),
-                "a part-applied rebuild would have left the new index behind",
+                "the half-built table must be gone — it is the one thing a " +
+                    "non-transactional migration would leave behind at the point V11 fails",
             )
             assertEquals(
                 listOf("2026-01-15"),
@@ -208,7 +214,7 @@ class PerUserUniquenessMigrationTest {
             REBUILT_TABLES.forEach { table ->
                 assertEquals(
                     emptyList(),
-                    connection.rows("SELECT id FROM $table WHERE user_id IS NOT 1"),
+                    connection.rows("SELECT id FROM $table WHERE user_id IS NOT $OWNER_ID"),
                     "everything in `$table` ends up belonging to the one User there was to adopt it",
                 )
             }
@@ -221,7 +227,7 @@ class PerUserUniquenessMigrationTest {
         migrate(db, upTo = null)
 
         connect(db).use { connection ->
-            connection.execute("INSERT INTO user (id, email) VALUES (1, '$MIGRATION_TEST_OWNER')")
+            connection.seedOwner()
 
             UNOWNED_ROWS.forEach { (table, insert) ->
                 val refusal = assertFailsWith<SQLException>(
@@ -250,18 +256,17 @@ class PerUserUniquenessMigrationTest {
         migrate(db, upTo = null)
 
         connect(db).use { connection ->
-            connection.execute("INSERT INTO user (id, email) VALUES ($owner, '$MIGRATION_TEST_OWNER')")
-            connection.execute("INSERT INTO user (id, email) VALUES ($somebodyElse, 'second@tucker.invalid')")
+            connection.seedTwoUsers()
 
             DUPLICATED_ROWS.forEach { (what, insert) ->
-                connection.execute(insert(owner))
+                connection.execute(insert(OWNER_ID))
                 // The same thing again, for the same person.
                 assertFailsWith<SQLException>("a User should not be able to hold two of: $what") {
-                    connection.execute(insert(owner))
+                    connection.execute(insert(OWNER_ID))
                 }
                 // And the identical thing for somebody else, which must still be fine —
                 // otherwise the constraint has merely been left global under a new name.
-                connection.execute(insert(somebodyElse))
+                connection.execute(insert(SECOND_USER_ID))
             }
         }
     }
@@ -314,17 +319,15 @@ class PerUserUniquenessMigrationTest {
         val REBUILT_TABLES = listOf("weight_measurement", "goal", "weekly_review")
 
         /**
-         * The tables whose rebuild leans on nothing referencing them — V11's three,
-         * plus the two slice 5 (#159) still owes, `profile` losing CHECK (id = 1) and
-         * `reminder_state` going per User. Guarded together, because the premise is a
-         * fact about the schema's reference graph rather than about one migration, and
-         * a guard that stopped at today's three would let slice 5 inherit it unchecked.
+         * The tables whose rebuild leans on nothing referencing them — V11's three, plus
+         * V12's `profile`, `reminder_state` and `push_subscription` (issue #159). Guarded
+         * together, because the premise is a fact about the schema's reference graph
+         * rather than about any one migration: a guard that stopped at the tables already
+         * rebuilt would let the next slice inherit the assumption unchecked, which is how
+         * slice 5 found this list waiting for it.
          */
-        val REBUILDABLE_TABLES = REBUILT_TABLES + listOf("profile", "reminder_state")
-
-        /** Two Users, by id — whose row it is, is the only thing these tests vary. */
-        const val owner = 1
-        const val somebodyElse = 2
+        val REBUILDABLE_TABLES =
+            REBUILT_TABLES + listOf("profile", "reminder_state", "push_subscription")
 
         /** What a reading looked like between V9 and V11: recorded, but owned by nobody. */
         const val UNOWNED_READING =
@@ -346,18 +349,18 @@ class PerUserUniquenessMigrationTest {
 
         /** The three things a User may hold only one of, as an insert for a given owner. */
         val DUPLICATED_ROWS = listOf<Pair<String, (Int) -> String>>(
-            "a reading on 2026-01-14" to { owner ->
+            "a reading on 2026-01-14" to { user ->
                 "INSERT INTO weight_measurement (measured_on, weight_kg, user_id) " +
-                    "VALUES ('2026-01-14', 92.4, $owner)"
+                    "VALUES ('2026-01-14', 92.4, $user)"
             },
-            "a review dated 2026-01-14" to { owner ->
+            "a review dated 2026-01-14" to { user ->
                 "INSERT INTO weekly_review (reviewed_on, trend_weight_kg, maintenance_kcal, " +
                     "calorie_budget_kcal, protein_floor_g, user_id) " +
-                    "VALUES ('2026-01-14', 92.6, 2545, 2045, 150, $owner)"
+                    "VALUES ('2026-01-14', 92.6, 2545, 2045, 150, $user)"
             },
-            "an active Goal" to { owner ->
+            "an active Goal" to { user ->
                 "INSERT INTO goal (started_on, start_weight_kg, target_weight_kg, " +
-                    "rate_kg_per_week, active, user_id) VALUES ('2026-01-01', 96.0, 85.0, 0.5, 1, $owner)"
+                    "rate_kg_per_week, active, user_id) VALUES ('2026-01-01', 96.0, 85.0, 0.5, 1, $user)"
             },
         )
 

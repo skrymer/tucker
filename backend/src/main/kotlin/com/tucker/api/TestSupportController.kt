@@ -69,6 +69,12 @@ class TestSupportController(
      * The stored Push Subscription endpoints — exposed only here, under the
      * `smoke` profile, so the enable-reminders smoke can prove that toggling on
      * persisted a subscription (there is no such read on the production API).
+     *
+     * Deliberately **installation-wide**, unlike every production read of that table,
+     * which is scoped to its owner (ADR 0021). A smoke asserting "nothing was stored"
+     * has to be able to see rows belonging to anyone, and one asserting a device was
+     * stored has no signed-in User on the assertion side. Whose a device is, is asserted
+     * where it is decided — `ReminderSchedulerIntegrationTest`.
      */
     @GetMapping("/push-subscriptions")
     fun pushSubscriptions(): List<String> =

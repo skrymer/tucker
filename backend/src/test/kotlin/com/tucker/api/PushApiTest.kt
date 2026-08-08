@@ -1,6 +1,7 @@
 package com.tucker.api
 
 import com.tucker.persistence.PushSubscriptionRepository
+import com.tucker.security.WithTuckerUser
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
@@ -12,11 +13,20 @@ import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
 import org.springframework.transaction.annotation.Transactional
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
+/**
+ * Signed in as a fixed User, because the assertions read [PushSubscriptionRepository]
+ * back after a request and that repository is scoped (ADR 0021) — the test thread has
+ * to be the same person its own requests authenticate as, or the row it just created
+ * is simply not there. [WithTuckerUser] defaults to that address, which is why the
+ * bare annotation is enough.
+ */
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
+@WithTuckerUser
 class PushApiTest {
 
     @Autowired lateinit var mockMvc: MockMvc
@@ -65,6 +75,27 @@ class PushApiTest {
         assertEquals(1, remaining.size)
         assertEquals("https://push.example/device-b", remaining.single().endpoint)
         assertTrue(remaining.none { it.endpoint == "https://push.example/device-a" })
+    }
+
+    /**
+     * The stored subscription says what the browser last sent, including when what it
+     * last sent was nothing. A device that re-subscribes without a label has no label —
+     * keeping the old one would leave a name on a row nothing in the browser still
+     * agrees with, and the label is only ever there to tell two of somebody's devices
+     * apart.
+     */
+    @Test
+    fun `re-subscribing without a label clears the one stored before`() {
+        postSubscription("https://push.example/device-a")
+        assertEquals("Pixel 7", subscriptions.findAll().single().label)
+
+        mockMvc.post("/api/push/subscriptions") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"endpoint":"https://push.example/device-a",
+                          "keys":{"p256dh":"BRotatedKey","auth":"RotatedSecret"}}"""
+        }.andExpect { status { isCreated() } }
+
+        assertNull(subscriptions.findAll().single().label)
     }
 
     @Test

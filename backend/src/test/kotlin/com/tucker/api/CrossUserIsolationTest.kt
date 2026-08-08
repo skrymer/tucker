@@ -20,6 +20,7 @@ import org.springframework.test.web.servlet.put
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
 import java.time.ZoneOffset
+import kotlin.test.assertTrue
 
 /**
  * The guarantee ADR 0021 makes, asserted where it is promised: at the **endpoint**
@@ -64,6 +65,9 @@ class CrossUserIsolationTest {
     // weight below has an assertion that has to keep agreeing with it.
     private val aliceKg = 71.0
     private val bobKg = 94.5
+
+    /** One browser profile two people sign into — the shape AC9 is about. */
+    private val sharedBrowser = "https://push.example/shared-browser"
 
     /** The window the adaptive correction looks back over (WeeklyReviewService). */
     private val adaptiveWindowDays = 14
@@ -401,6 +405,91 @@ class CrossUserIsolationTest {
     }
 
     @Test
+    fun `a User with no Profile of their own has none, whoever else has one`() {
+        completeProfile(alice)
+
+        // Not "here is somebody's body": as far as Bob's Tucker is concerned the setup
+        // step has not been done, which is what the setup banner is there to say. Handed
+        // Alice's, he would instead be quietly set up as a 180 cm man born in 1986 — and
+        // his Maintenance seed, his Calorie Budget and his Protein Floor all follow from
+        // exactly those three fields.
+        mockMvc.get("/api/profile") { header(ACCESS_ASSERTION_HEADER, bob) }
+            .andExpect { status { isNotFound() } }
+    }
+
+    @Test
+    fun `saving a Profile leaves another User's where it was`() {
+        completeProfile(alice)
+        saveProfile(bob, sex = "FEMALE", birthDate = "1991-11-03", heightCm = 165.0)
+
+        // Held as one row, Bob's save is Alice's edit: she opens `/profile` to somebody
+        // else's sex, birth date and height, and every figure derived from them moves.
+        mockMvc.get("/api/profile") { header(ACCESS_ASSERTION_HEADER, alice) }.andExpect {
+            status { isOk() }
+            jsonPath("$.sex") { value("MALE") }
+            jsonPath("$.birthDate") { value("1986-05-22") }
+            jsonPath("$.heightCm") { value(180.0) }
+        }
+        mockMvc.get("/api/profile") { header(ACCESS_ASSERTION_HEADER, bob) }.andExpect {
+            status { isOk() }
+            jsonPath("$.sex") { value("FEMALE") }
+            jsonPath("$.birthDate") { value("1991-11-03") }
+            jsonPath("$.heightCm") { value(165.0) }
+        }
+    }
+
+    @Test
+    fun `a User's reminder preferences are their own`() {
+        saveProfile(alice, timezone = "Europe/Copenhagen", reminderHour = 7, remindersEnabled = true)
+        saveProfile(bob, timezone = "Australia/Brisbane", reminderHour = 20, remindersEnabled = false)
+
+        // Not cosmetic: the timezone is what resolves a User's local day and the hour is
+        // when their nudge may go out, so a shared row wakes one of them on the other's
+        // schedule — or, with remindersEnabled shared, switches theirs off entirely.
+        mockMvc.get("/api/profile") { header(ACCESS_ASSERTION_HEADER, alice) }.andExpect {
+            status { isOk() }
+            jsonPath("$.timezone") { value("Europe/Copenhagen") }
+            jsonPath("$.reminderHour") { value(7) }
+            jsonPath("$.remindersEnabled") { value(true) }
+        }
+    }
+
+    @Test
+    fun `a User's Maintenance is seeded from their own body`() {
+        // The same weight for both, deliberately: Mifflin-St Jeor reads weight, sex,
+        // height and age, so pinning weight leaves the Profile as the only thing that can
+        // move these two figures apart. Held as one row, both reviews compute from
+        // whichever body was written last and the two agree to the kilocalorie.
+        val sharedKg = 80.0
+        saveProfile(alice, sex = "FEMALE", birthDate = "1991-11-03", heightCm = 158.0)
+        weighIn(alice, day, sharedKg)
+        saveProfile(bob, sex = "MALE", birthDate = "1970-01-05", heightCm = 195.0)
+        weighIn(bob, day, sharedKg)
+
+        val aliceKcal = maintenanceOf(alice)
+        val bobKcal = maintenanceOf(bob)
+
+        assertTrue(
+            bobKcal > aliceKcal,
+            "a taller, heavier-framed man should seed a higher Maintenance than a shorter " +
+                "woman at the same weight — got Alice $aliceKcal and Bob $bobKcal, which " +
+                "are equal if both reviews read one shared Profile",
+        )
+    }
+
+    @Test
+    fun `re-subscribing a device another User holds is accepted rather than refused`() {
+        subscribe(alice, sharedBrowser)
+
+        // One browser profile, two people — the endpoint is globally unique by nature, so
+        // this is a claim on a device rather than a second device. Refusing it would 500
+        // the only flow a shared machine has (ADR 0021); whose reminders actually land in
+        // that tray afterwards is asserted in ReminderSchedulerIntegrationTest.
+        subscribe(bob, sharedBrowser)
+    }
+
+
+    @Test
     fun `two Users can each hold an active Goal at the same time`() {
         completeSetup(alice, aliceKg)
         setGoal(alice, targetWeightKg = 68.0)
@@ -659,12 +748,44 @@ class CrossUserIsolationTest {
         }.andExpect { status { isOk() } }
     }
 
-    private fun completeProfile(token: String) {
+    private fun completeProfile(token: String) = saveProfile(token)
+
+    /** Save the Profile of whoever [token] names. Defaults are the body other tests assume. */
+    @Suppress("LongParameterList")
+    private fun saveProfile(
+        token: String,
+        sex: String = "MALE",
+        birthDate: String = "1986-05-22",
+        heightCm: Double = 180.0,
+        timezone: String = "UTC",
+        reminderHour: Int = 9,
+        remindersEnabled: Boolean = false,
+    ) {
         mockMvc.put("/api/profile") {
             header(ACCESS_ASSERTION_HEADER, token)
             contentType = MediaType.APPLICATION_JSON
-            content = """{"sex":"MALE","birthDate":"1986-05-22","heightCm":180.0}"""
+            content = """
+                {"sex":"$sex","birthDate":"$birthDate","heightCm":$heightCm,
+                 "timezone":"$timezone","reminderHour":$reminderHour,
+                 "remindersEnabled":$remindersEnabled}
+            """.trimIndent()
         }.andExpect { status { isOk() } }
+    }
+
+    /** Run a Weekly Review as whoever [token] names, and return the Maintenance it seeded. */
+    private fun maintenanceOf(token: String): Double =
+        mockMvc.post("/api/weekly-review") { header(ACCESS_ASSERTION_HEADER, token) }
+            .andExpect { status { isOk() } }
+            .andReturn().response.contentAsString
+            .let { objectMapper.readTree(it).get("maintenanceKcal").asDouble() }
+
+    /** Register [endpoint] as a device of whoever [token] names. */
+    private fun subscribe(token: String, endpoint: String) {
+        mockMvc.post("/api/push/subscriptions") {
+            header(ACCESS_ASSERTION_HEADER, token)
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"endpoint":"$endpoint","keys":{"p256dh":"BKey","auth":"Auth"}}"""
+        }.andExpect { status { isCreated() } }
     }
 
     /** Record a reading owned by whoever [token] names, and return its id. */

@@ -38,9 +38,8 @@ class CurrentUser {
      * The same owner in the width the `user_id` columns are generated as.
      *
      * A fact about the schema rather than about any one repository, so it lives here
-     * once: the three scoped repositories read the same conversion instead of each
-     * carrying a copy of it, and the six that slices 4 and 5 scope will not add six
-     * more.
+     * once: all nine scoped repositories read the same conversion instead of each
+     * carrying a copy of it.
      */
     val ownerId: Int
         get() = id.toInt()

@@ -1,6 +1,7 @@
 import type { APIRequestContext } from '@playwright/test'
 import { test, expect } from './support/smoke-test'
 import { todayIso, isoShiftDays } from '../support/date'
+import { tickAt } from './support/reminder-tick'
 
 // F6 slice 3 smoke (reminder cron + sender): force an overdue + absent state and
 // drive the reminder job. The first tick, at the user's reminder hour, sends a push
@@ -16,10 +17,6 @@ const API = 'http://localhost:8080/api'
 const REMINDER_HOUR = 9
 const DEVICE_ENDPOINT = 'https://push.example/reminder-smoke-device'
 
-interface TickResult {
-  sent: number
-}
-
 async function seedRemindersOn(request: APIRequestContext) {
   const res = await request.put(`${API}/profile`, {
     data: {
@@ -32,17 +29,6 @@ async function seedRemindersOn(request: APIRequestContext) {
     },
   })
   expect(res.ok()).toBe(true)
-}
-
-async function tickAt(
-  request: APIRequestContext,
-  atInstant: string,
-): Promise<TickResult> {
-  const res = await request.post(`${API}/test/reminder-tick`, {
-    params: { at: atInstant },
-  })
-  expect(res.ok()).toBe(true)
-  return (await res.json()) as TickResult
 }
 
 test('an overdue, absent user is reminded once per overdue episode', async ({

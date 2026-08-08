@@ -1,6 +1,7 @@
 import type { APIRequestContext, APIResponse } from '@playwright/test'
 import { test, expect } from './support/smoke-test'
 import { todayIso, isoShiftDays } from '../support/date'
+import { tickAt } from './support/reminder-tick'
 
 const API = 'http://localhost:8080/api'
 
@@ -9,6 +10,10 @@ const ADAPTIVE_WINDOW_DAYS = 14
 
 /** Comfortably past the logging-coverage floor that correction demands. */
 const DAYS_THEY_LOGGED = 12
+
+/** One device each, so a nudge that reaches the wrong one is a wrong count. */
+const MY_DEVICE = 'https://push.example/my-device'
+const THEIR_DEVICE = 'https://push.example/their-device'
 
 // F10 slice 3 smoke: a User's catalog and day are theirs alone, proved through
 // the whole real stack — the browser's own requests going out through the Nuxt
@@ -159,6 +164,114 @@ test("another User's logging cannot move this User's Calorie Budget", async ({
     page.getByText(`/ ${Math.round(mine.calorieBudgetKcal)} kcal`),
   ).toBeVisible()
 })
+
+// F10 slice 5 smoke: the Profile stops being the installation's settings row and
+// becomes one person's body (issue #159, ADR 0021). Everything the Maintenance seed
+// is computed from lives there, so a shared row does not merely leak — it quietly
+// sets up a User who has never been set up, from somebody else's measurements.
+test("a User's Profile is their own body, not the app's settings", async ({
+  page,
+  goto,
+  otherUser,
+  request,
+}) => {
+  await expectStatus(
+    request.put(`${API}/profile`, {
+      data: { sex: 'MALE', birthDate: '1986-05-22', heightCm: 180 },
+    }),
+    200,
+  )
+
+  // Saved *after* the signed-in User's, deliberately: held as one row, the last
+  // write is the one everybody reads, so this is the order in which the bug shows.
+  await expectStatus(
+    otherUser.put(`${API}/profile`, {
+      data: { sex: 'FEMALE', birthDate: '1991-11-03', heightCm: 158 },
+    }),
+    200,
+  )
+
+  await goto('/profile', { waitUntil: 'hydration' })
+
+  await expect(page.getByRole('radio', { name: /^male$/i })).toBeChecked()
+  await expect(page.getByLabel(/birth date/i)).toHaveValue('1986-05-22')
+  await expect(page.getByLabel(/height/i)).toHaveValue('180')
+})
+
+// F10 slice 5 smoke: the Weekly-Review Reminder is owed to a person, not to the
+// installation (ADR 0010). Both the absent-today gate and the per-episode dedupe
+// used to be one shared row, so one User coming back stood down everybody's nudge.
+test("one User opening Tucker does not spend another User's reminder", async ({
+  page,
+  goto,
+  otherUser,
+  request,
+}) => {
+  const today = todayIso()
+  const overdueDay = isoShiftDays(today, -8)
+
+  // Identical in every respect except who they are: set up, subscribed, a week
+  // without a review, and last seen eight days ago.
+  await makeOverdueAndSubscribed(otherUser, today, overdueDay, THEIR_DEVICE)
+  await makeOverdueAndSubscribed(request, today, overdueDay, MY_DEVICE)
+
+  // The signed-in User opens Tucker in the browser — the real thing, through the
+  // Nuxt proxy. That one request runs the review that was due and stamps their
+  // last-seen day, so by the time the tick runs they are owed nothing. The Budget
+  // on screen is the evidence the review really ran, and it is load-bearing twice
+  // over: it is also what rules the signed-in User out as the nudge counted below,
+  // since a review dated today cannot be overdue.
+  await goto('/', { waitUntil: 'hydration' })
+  await expect(page.getByText(/\/ \d+ kcal/)).toBeVisible()
+
+  const tick = await tickAt(request, `${today}T09:00:00Z`)
+
+  // Exactly one nudge, and the count is what discriminates. Shared reminder state
+  // sends 0 — the browser open above stamps last-seen for everybody and the other
+  // User's absent-today gate fails. Shared subscriptions send 2 — the other User's
+  // turn fans out to every device in the installation, including this one.
+  expect(
+    tick.sent,
+    'a nudge is owed to the other User, and to them alone',
+  ).toBe(1)
+})
+
+/** Everything one User needs to be owed a reminder at 09:00 UTC, through the real API. */
+async function makeOverdueAndSubscribed(
+  api: APIRequestContext,
+  today: string,
+  overdueDay: string,
+  endpoint: string,
+) {
+  await expectStatus(
+    api.put(`${API}/profile`, {
+      data: {
+        sex: 'MALE',
+        birthDate: '1986-05-22',
+        heightCm: 180,
+        timezone: 'UTC',
+        reminderHour: 9,
+        remindersEnabled: true,
+      },
+    }),
+    200,
+  )
+  await expectStatus(
+    api.post(`${API}/weight`, { data: { date: today, weightKg: 86 } }),
+    200,
+  )
+  // Reading the summary eight days back bootstraps a review dated then — now a week
+  // overdue — and stamps last-seen in the past, so this User is absent today.
+  await expectStatus(
+    api.get(`${API}/summary`, { params: { date: overdueDay } }),
+    200,
+  )
+  await expectCreated(
+    api.post(`${API}/push/subscriptions`, {
+      data: { endpoint, keys: { p256dh: 'BSmokeKey', auth: 'SmokeAuth' } },
+    }),
+  )
+}
 
 /**
  * Set [api]'s User up the way the adaptive correction needs before it will run at
