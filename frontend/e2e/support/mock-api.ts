@@ -47,6 +47,13 @@ export async function mockFoods(page: Page, foods: Json[] = []) {
   await page.route('**/api/foods', (route) => route.fulfill({ json: foods }))
 }
 
+/** Stub `GET /api/me` — the address the identity byline prints. */
+export async function mockMe(page: Page, email: string) {
+  // No method guard, unlike the stubs below: `/api/me` is GET-only, so one
+  // would imply a verb that does not exist.
+  await page.route('**/api/me', (route) => route.fulfill({ json: { email } }))
+}
+
 /** Stub `GET /api/profile` returning a saved profile. */
 export async function mockProfile(page: Page, profile: Json) {
   await page.route('**/api/profile', (route) => {
