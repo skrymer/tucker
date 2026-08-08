@@ -4,30 +4,30 @@ import { screen } from '@testing-library/vue'
 import { ref } from 'vue'
 import DefaultLayout from './default.vue'
 
-const state = vi.hoisted(() => ({ isLoggedOut: false }))
+const state = vi.hoisted(() => ({ isSignedOut: false }))
 mockNuxtImport('useAuthGate', () => () => ({
-  isLoggedOut: ref(state.isLoggedOut),
-  markLoggedOut: () => {
-    state.isLoggedOut = true
+  isSignedOut: ref(state.isSignedOut),
+  markSignedOut: () => {
+    state.isSignedOut = true
   },
 }))
 
 describe('default layout', () => {
-  it('shows the logged-out interstitial instead of the page once the session has expired', async () => {
-    state.isLoggedOut = true
+  it('shows the signed-out interstitial instead of the page once the session has expired', async () => {
+    state.isSignedOut = true
 
     await renderSuspended(DefaultLayout, {
       slots: { default: () => 'Page content' },
     })
 
     expect(
-      screen.getByRole('heading', { name: "You've been logged out" }),
+      screen.getByRole('heading', { name: "You've been signed out" }),
     ).toBeVisible()
     expect(screen.queryByText('Page content')).not.toBeInTheDocument()
   })
 
   it('renders the page content while the session is active', async () => {
-    state.isLoggedOut = false
+    state.isSignedOut = false
 
     await renderSuspended(DefaultLayout, {
       slots: { default: () => 'Page content' },
@@ -35,7 +35,7 @@ describe('default layout', () => {
 
     expect(screen.getByText('Page content')).toBeVisible()
     expect(
-      screen.queryByRole('heading', { name: "You've been logged out" }),
+      screen.queryByRole('heading', { name: "You've been signed out" }),
     ).not.toBeInTheDocument()
   })
 })

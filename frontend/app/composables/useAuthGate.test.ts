@@ -22,13 +22,13 @@ describe('isAuthRedirectResponse', () => {
 })
 
 describe('useAuthGate', () => {
-  it('shares markLoggedOut across every consumer, app-wide', () => {
-    const { isLoggedOut } = useAuthGate()
-    expect(isLoggedOut.value).toBe(false)
+  it('shares markSignedOut across every consumer, app-wide', () => {
+    const { isSignedOut } = useAuthGate()
+    expect(isSignedOut.value).toBe(false)
 
-    const { markLoggedOut } = useAuthGate()
-    markLoggedOut()
+    const { markSignedOut } = useAuthGate()
+    markSignedOut()
 
-    expect(isLoggedOut.value).toBe(true)
+    expect(isSignedOut.value).toBe(true)
   })
 })
