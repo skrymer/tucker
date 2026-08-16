@@ -12,6 +12,19 @@ retaining muscle.
 The domain language is defined in [`CONTEXT.md`](./CONTEXT.md). Read it before
 working on anything domain-related, and keep it in sync as the model evolves.
 
+## Communicating back to the user
+
+Answer in a brief **tl;dr** style: the outcome first, in as few lines as it
+takes. A couple of sentences or a short bullet list is the target, not a
+report. Skip the preamble, the recap of what was asked, and the narration of
+steps whose result is already visible. Prose that lands in a terminal, not a
+document.
+
+Detail is earned, not default — add it when it changes what the user does
+next: a failure and its output, a decision they need to make, a caveat that
+would bite them later. State those plainly and stop. The thoroughness belongs
+in the work (commit messages, ADRs, `CONTEXT.md`), not in the chat reply.
+
 ## Status
 
 The **backend is built, tested, and committed** (branch `backend`) — rich domain
