@@ -558,11 +558,10 @@ The frontend is built **test-first (red-green TDD)**. Increments:
     tripped the shared last-seen stamp. It is now #159's actual criterion, reached the
     honest way, and four more cover fan-out, two timezones, per-User dedupe and device
     reassignment.
-  - **Residue, recorded in ADR 0021 rather than fixed here**: `food` and `entry` still
-    carry a nullable `user_id`. `NOT NULL` only ever rode along with a rebuild a slice
-    needed anyway, and slice 3 scoped those two with an index swap. Tightening `food` is
-    the one rebuild in the schema that really does need the foreign-key dance, since
-    `entry` and `recipe_ingredient` reference it ([#232](https://github.com/skrymer/tucker/issues/232)).
+  - **Residue, recorded in ADR 0021 rather than fixed here**: `food` and `entry` were left
+    carrying a nullable `user_id`. `NOT NULL` only ever rode along with a rebuild a slice
+    needed anyway, and slice 3 scoped those two with an index swap. Closed by
+    [#232](https://github.com/skrymer/tucker/issues/232), after slice 6 — see below.
 
   Slice 6 ([#160](https://github.com/skrymer/tucker/issues/160)) — **"Signed in as…" and
   Sign out** — ✅ done, and it is the *entire* user-visible surface of multi-user: one
@@ -616,6 +615,47 @@ The frontend is built **test-first (red-green TDD)**. Increments:
     Everything up to that edge *is* covered: `identity.smoke.spec.ts` drives the real gated
     backend through the SPA's same-origin proxy, and asserts two real assertions get two
     different addresses — the one thing a mocked `/api/me` can never prove.
+
+  Follow-up [#232](https://github.com/skrymer/tucker/issues/232) — **every owned table
+  enforces its owner** — ✅ done, after slice 6 and before [#161](https://github.com/skrymer/tucker/issues/161).
+  V13 rebuilds `food` and `entry` so `user_id` is `NOT NULL`, which is the last of
+  ADR 0021's ownership that lived only in the repositories.
+  - **`food` was thought to need the foreign-key dance, and does not.** Both this file and
+    ADR 0021 priced its rebuild at `PRAGMA foreign_keys = OFF` plus
+    `executeInTransaction=false` — a failure part-way leaving production half-migrated with
+    no rollback, and referential integrity off process-wide for the life of the JVM. The
+    premise was measured before it was accepted: with foreign keys on, `DROP TABLE food`
+    fails outright while `entry` still references it, and the `PRAGMA` inside a transaction
+    is confirmed a no-op. But that is a fact about **order**. V13 parks `food`'s two
+    children in constraint-free holding tables, drops them, and only then drops `food` — a
+    parent of nothing by that point — so the ordinary case ADR 0021 already sanctioned is
+    *reached* rather than circumvented. The whole migration runs inside Flyway's transaction
+    with foreign keys enforced, so there is no non-transactional window to document a
+    recovery for. The ADR's rule is restated to match: not "does anything reference this
+    table?" but "can everything that references it be rebuilt alongside it?".
+  - **The rollback claim is the assertion that matters, and it discriminates.** V13 drops
+    `entry` and `recipe_ingredient` *before* the INSERT it can fail on, so at the moment of
+    refusal the log and every Recipe's composition exist only inside the transaction.
+    Replaying V13 statement by statement in autocommit leaves both tables gone and
+    `food_new` behind — which is what the refusal test asserts against.
+  - Unowned rows are **adopted, never deleted**, as in V11 and V12 — but for a new reason.
+    These two were scoped in slice 3, so the "invisible to everybody" argument that made
+    deletion tempting is finally true of them; it is also moot, because an unowned Food may
+    still be referenced by an Entry or an ingredient line, and both of those edges refuse
+    the delete.
+  - **The two adoption sides masked each other, and the first fix made it worse.** Seeding
+    both an unowned Food and an unowned Entry in one refusal test reads as thorough and
+    costs the test its point: with either row able to refuse the migration, dropping the
+    *Food*'s one-User guard is still caught by the Entry, and vice versa. It is two tests,
+    each with exactly one unattributable row. Every assertion was mutation-checked, and that
+    is what caught it — along with a rebuild that could preserve every foreign-key edge
+    while silently changing what one *does* (`ON DELETE CASCADE` stripped from
+    `recipe_ingredient.recipe_id`), and a `CREATE UNIQUE INDEX` whose deletion dropped an
+    ADR 0021 decision out of the schema with the whole suite still green.
+  - One CHECK is **uncatchable rather than uncovered**: `entry`'s `kind IN ('WEIGHED',
+    'ESTIMATED')` is subsumed by the table-level shape CHECK, whose two branches each pin
+    `kind` to one of those values, so no row can violate the first alone. Said in the test
+    rather than faked with a row that violates two constraints at once.
 - **F11** — Check: scan a package *before* buying it (**shipped**, PRD
   [#168](https://github.com/skrymer/tucker/issues/168), see
   [ADR 0022](docs/adr/0022-a-check-states-cost-and-return-and-never-labels-a-food.md)

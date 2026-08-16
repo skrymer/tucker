@@ -89,30 +89,37 @@ class PerUserUniquenessMigrationTest {
     }
 
     /**
-     * The premise V11's whole safety argument rests on, asserted rather than
-     * assumed. Because nothing *references* these three tables, dropping and
-     * recreating them strands no child row — which is why the rebuild needs
-     * neither `PRAGMA foreign_keys = OFF` nor a non-transactional migration
-     * (ADR 0021). That is a fact about the schema's reference graph, not about
-     * this migration, so the day a later table points at one of them the premise
-     * quietly expires. Here it expires loudly instead.
+     * The premise every rebuild in this schema rests on, asserted rather than assumed.
+     *
+     * A table can be dropped and recreated inside Flyway's transaction, with foreign keys
+     * enforced, as long as **everything that references it is rebuilt alongside it** —
+     * V11's and V12's six are referenced by nothing, so that condition is met by doing
+     * nothing, and V13 met it for `food` by parking and dropping its two children first
+     * (ADR 0021, issue #232). Either way it is a fact about the schema's reference graph
+     * rather than about any one migration, so the day a later table points at one of them
+     * the premise quietly expires. Here it expires loudly instead.
+     *
+     * Stated as one map rather than two lists because it is one rule: the question to ask
+     * of the next rebuild is not whether anything references the table, but whether
+     * everything that does can be rebuilt with it.
      */
     @Test
-    fun `nothing in the schema references a table that is rebuilt, or is due to be`() {
+    fun `every rebuilt table is referenced by exactly the tables its rebuild accounts for`() {
         val db = tempDir.resolve("reference-graph.db").toString()
         migrate(db, upTo = null)
 
         connect(db).use { connection ->
             val inbound = connection.tableNames()
-                .flatMap { table -> connection.foreignKeysOf(table).map { (_, target) -> table to target } }
-                .filter { (_, target) -> target in REBUILDABLE_TABLES }
+                .flatMap { table -> connection.foreignKeysOf(table).map { (_, target) -> target to table } }
+                .groupBy({ (target, _) -> target }, { (_, table) -> table })
 
             assertEquals(
-                emptyList(),
-                inbound,
-                "a table now references one of $REBUILDABLE_TABLES, so rebuilding it would " +
-                    "strand that table's rows — the next rebuild needs the foreign-key " +
-                    "dance V11 was able to skip",
+                REBUILT_TABLE_CHILDREN,
+                REBUILT_TABLE_CHILDREN.keys.associateWith { (inbound[it] ?: emptyList()).distinct().sorted() },
+                "the tables referencing a rebuilt table have changed. A rebuild drops the " +
+                    "table, so every table listed against it must be parked and rebuilt with " +
+                    "it the way V13 does for `food` — otherwise that table's rows are " +
+                    "stranded, or, where the reference cascades, deleted (ADR 0021)",
             )
         }
     }
@@ -319,15 +326,22 @@ class PerUserUniquenessMigrationTest {
         val REBUILT_TABLES = listOf("weight_measurement", "goal", "weekly_review")
 
         /**
-         * The tables whose rebuild leans on nothing referencing them — V11's three, plus
-         * V12's `profile`, `reminder_state` and `push_subscription` (issue #159). Guarded
-         * together, because the premise is a fact about the schema's reference graph
-         * rather than about any one migration: a guard that stopped at the tables already
-         * rebuilt would let the next slice inherit the assumption unchecked, which is how
-         * slice 5 found this list waiting for it.
+         * Every table this schema has rebuilt, against the tables that reference it — the
+         * rows a rebuild would strand if it dropped the table without accounting for them.
+         *
+         * V11's three, V12's `profile`, `reminder_state` and `push_subscription`
+         * (issue #159), and V13's `food`, `entry` and `recipe_ingredient` (issue #232 —
+         * the last of those is rebuilt for `food`'s benefit rather than its own, which
+         * makes it the one nobody would think to list). Guarded together, because a guard
+         * that stopped at the tables already rebuilt would let the next slice inherit the
+         * premise unchecked — which is how slice 5 found this list waiting for it. `food`
+         * is the only one with children, and the only one whose migration had to do
+         * anything about them.
          */
-        val REBUILDABLE_TABLES =
-            REBUILT_TABLES + listOf("profile", "reminder_state", "push_subscription")
+        val REBUILT_TABLE_CHILDREN: Map<String, List<String>> =
+            (REBUILT_TABLES + listOf("profile", "reminder_state", "push_subscription", "entry", "recipe_ingredient"))
+                .associateWith { emptyList<String>() } +
+                mapOf("food" to listOf("entry", "recipe_ingredient"))
 
         /** What a reading looked like between V9 and V11: recorded, but owned by nobody. */
         const val UNOWNED_READING =

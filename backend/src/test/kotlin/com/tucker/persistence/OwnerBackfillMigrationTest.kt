@@ -92,22 +92,18 @@ class OwnerBackfillMigrationTest {
     }
 
     /**
-     * Which owned tables enforce their owner in the schema, and which still lean on the
-     * repositories alone — stated once, over the canonical list, rather than left to be
-     * inferred from which migrations happened to rebuild what.
+     * That every owned table enforces its owner in the schema, stated once over the
+     * canonical list rather than left to be inferred from which migrations happened to
+     * rebuild what.
      *
-     * The rule that produced today's split is about project history, not about the
-     * schema: `NOT NULL` only ever rode along with a rebuild a slice needed for another
-     * reason, and slice 3 scoped `food` and `entry` with an index swap, so those two
-     * never got one ([#232](https://github.com/skrymer/tucker/issues/232)). Nothing in
-     * the schema distinguishes them from the six that are enforced, so without this the
-     * distinction survives only as prose in ADR 0021 — and a ninth owned table added
-     * nullable would join the exceptions in silence.
-     *
-     * Closing #232 is then deleting two strings from [OWNER_OPTIONAL_IN_SCHEMA].
+     * It was not always true — `food` and `entry` carried a nullable owner until V13
+     * rebuilt them ([#232](https://github.com/skrymer/tucker/issues/232)) — and nothing in
+     * the schema distinguished them from the six that were enforced. That is why the
+     * assertion stays now the split is gone: a ninth owned table added nullable would
+     * otherwise join in silence.
      */
     @Test
-    fun `every owned table enforces its owner, except the two still waiting on a rebuild`() {
+    fun `every owned table enforces its owner`() {
         val db = tempDir.resolve("owner-nullability.db").toString()
         migrate(db, upTo = null)
 
@@ -115,11 +111,10 @@ class OwnerBackfillMigrationTest {
             val enforced = OWNED_TABLES.filterNot { connection.isNullable(it, "user_id") }
 
             assertEquals(
-                OWNED_TABLES - OWNER_OPTIONAL_IN_SCHEMA.toSet(),
+                OWNED_TABLES,
                 enforced,
-                "an owned table's `user_id` must be NOT NULL unless it is one of the two " +
-                    "#232 still owes — add a table here only with the issue to match, and " +
-                    "remove one the moment its rebuild lands",
+                "an owned table's `user_id` must be NOT NULL — the invariant the " +
+                    "repositories hold is the database's too (ADR 0021)",
             )
         }
     }
@@ -252,18 +247,6 @@ class OwnerBackfillMigrationTest {
         /** Enough pre-existing history for V9 to find something worth adopting. */
         const val SEED_ONE_FOOD =
             "INSERT INTO food (name, calories_per_100g, protein_per_100g) VALUES ('Oats', 379, 13.2)"
-
-        /**
-         * The two owned tables whose `user_id` is still nullable in the schema. Both
-         * were scoped by slice 3 with an index swap rather than a rebuild, and SQLite
-         * cannot add NOT NULL to an existing column — so tightening either means rebuilding
-         * it. `entry` is referenced by nothing and would rebuild as cheaply as V11's three;
-         * `food` is referenced by `entry` and `recipe_ingredient`, which makes it the one
-         * rebuild in the schema that really does need the foreign-key dance, and is why the
-         * pair is its own piece of work (issue #232, ADR 0021). Until then the invariant is
-         * the repositories'.
-         */
-        val OWNER_OPTIONAL_IN_SCHEMA = listOf("food", "entry")
 
         val OWNED_TABLES = listOf(
             "food", "entry", "weight_measurement", "goal",

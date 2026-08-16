@@ -169,6 +169,17 @@ Over the real HTTPS origin, with DevTools → Application:
 > the version stamp have moved ahead of what is deployed, so fill the keys in and re-run
 > `deploy/update.sh` to converge.
 
+> **Once, before the deploy that carries V13** (issue #232 — `food` and `entry` gain a
+> `NOT NULL` owner): run `PRAGMA foreign_key_check` against the production database and
+> confirm it comes back empty, using the same throwaway-Python one-liner as
+> [step 6](#first-deploy-to-a-vps). V13 rebuilds `food` and re-inserts every Entry and
+> ingredient line against it with foreign keys enforced, which validates references that
+> have never been checked in bulk — `PRAGMA foreign_keys = ON` only ever checked writes. An
+> orphan from an out-of-band edit (that same Python route defaults foreign keys **off**)
+> would surface as a failed migration on the next boot rather than staying quiet. It fails
+> safe — the transaction rolls back whole and the old schema is intact — but it is much
+> better found before the deploy than during it.
+
 > **Once, before the first deploy that includes F10 slice 2:** add
 > `TUCKER_OWNER_EMAIL` too, from the same [step 6](#first-deploy-to-a-vps). It fails the
 > same way when missing — loudly, at compose-parse time — which is the point: it decides
