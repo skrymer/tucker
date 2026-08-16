@@ -36,9 +36,13 @@ login screen.
   matching no `user` row inserts one and proceeds. New users land on the existing
   first-run empty state (`SetupBanner`).
 - **`user(id, email UNIQUE)` — a surrogate key.** Every owned table references `user.id`;
-  the email is a mutable attribute matched at request time. Nothing outside the converter
-  knows an email exists. Going public later means adding credentials or a second issuer
-  keyed on the *same* row, not re-keying the database.
+  the email is a mutable attribute matched at request time. **Nothing outside the converter
+  *keys off* an email** — nothing scopes, joins, persists or caches on one, so changing an
+  address touches no owned row. It may be *shown*: `GET /api/me` serves it to the Profile's
+  "Signed in as…" byline (#160), which is display and diagnostics only, and is why
+  `TuckerPrincipal` carries it at all. The id stays off the wire — a client given one has
+  something to probe with, and nothing needs it. Going public later means adding credentials
+  or a second issuer keyed on the *same* row, not re-keying the database.
 - **One verification path in every environment.** Non-production points the same decoder
   at a static local JWK set. **No application code can mint a token**: Kotlin tests mint
   in-process, Playwright smokes mint with `jose` and set `extraHTTPHeaders` (so switching

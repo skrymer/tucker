@@ -81,10 +81,12 @@ compose overlay; images are built on the host for now.**
   hit the gate. A client plugin (`app/plugins/auth-gate.client.ts`) sets
   `redirect: 'manual'` on the `api` client so that interception surfaces as an
   inspectable opaque-redirect response instead of a silent cross-origin failure, and
-  switches the whole app to a "You've been logged out" interstitial (DESIGN.md
-  Feedback states) whose action forces a real navigation to `/api/version` — the one
-  path the offline-shell precache always sends to the network — so Access's login
-  challenge actually runs.
+  switches the whole app to a "You've been signed out" interstitial (DESIGN.md
+  Feedback states) whose action forces a real navigation to `/api/version` — a path the
+  offline-shell precache always sends to the network — so Access's login challenge
+  actually runs. The exits and the prefixes that keep them network-only are one rule,
+  kept together and tested in `frontend/app/utils/exits.ts` (#160): `/api/` for this
+  sign-back-in path, `/cdn-cgi/` for the sign-out path Access serves at its own edge.
 - **Backup is not wired by this ADR.** Off-host Litestream replication (and its WAL
   prerequisite) is deferred to issue #89; the first deploy runs without it (accepted for
   a greenfield start, must land before real reliance).

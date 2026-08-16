@@ -5,12 +5,12 @@ export function isAuthRedirectResponse(response: { type?: string }): boolean {
 // Module-scoped, not per-call: every page and the app shell must observe the
 // same "the session ended" signal, set once from wherever the intercepting
 // redirect is first seen (the auth-gate plugin).
-const isLoggedOut = ref(false)
+const isSignedOut = ref(false)
 
 export function useAuthGate() {
-  function markLoggedOut() {
-    isLoggedOut.value = true
+  function markSignedOut() {
+    isSignedOut.value = true
   }
 
-  return { isLoggedOut, markLoggedOut }
+  return { isSignedOut, markSignedOut }
 }

@@ -294,39 +294,69 @@ kcal`) sits beneath its own ring, so no arc is ever colour-alone. Calorie
 - **Progress / meter** — fully rounded track on `--ui-bg-muted`, fill in the
   series colour. Kept for the goal + protein meters; the calorie/protein headline
   is the ring.
+- **Identity byline** — "Signed in as `<email>`" plus a **Sign out** link, muted
+  and 14px, on the line directly under the `/profile` h1. A byline rather than a
+  card, and this is the whole visible surface of multi-user: it attributes the
+  page instead of adding a seventh section to one that already carries six. It
+  answers "whose diet am I looking at?" before any number is read, which is why
+  it leads rather than sitting in the footer with the install prompt and build
+  tag. A long address wraps on a phone and is never truncated — half an address
+  is a worse answer than none — and the mechanism is `wrap-anywhere` on the
+  address itself, **not** the container's `flex-wrap`, which only lets the link
+  drop to a second row. `break-words` is the trap: CSS leaves it out of a flex
+  item's min-content floor, so it reads as the fix and still overflows. It
+  appears on **no other page**;
+  identity is chrome, and repeating it would make multi-user louder than it is.
+  **The one place a read failure gets no load-error state.** If `/api/me` fails the
+  name is dropped and **Sign out stays**, because the link is static and needs no
+  backend — the half that still works survives, exactly when you may most want out.
+  A "Couldn't load your identity / Retry" row would also be disproportionate for
+  chrome, and a session that has genuinely ended is already caught one level up by
+  the shell-level signed-out interstitial. The failure is logged, not swallowed:
+  otherwise the only symptom is a missing name, which reads as a design choice.
 
 ---
 
-## Feedback states — empty / load-error / logged-out
+## Feedback states — empty / load-error / signed-out
 
 Three states share one shape (icon + heading + body + optional button, centred,
 `flex flex-col items-center gap-3 py-12 text-center`) but read differently
 through icon and colour, never through colour alone.
 
-| State      | Icon                                 | Icon colour  | Heading pattern                          | Body                                   | Action                                   |
-| ---------- | ------------------------------------ | ------------ | ---------------------------------------- | -------------------------------------- | ---------------------------------------- |
-| Empty      | subject icon (e.g. `i-lucide-salad`) | `text-muted` | "Build your…" — invites the first action | says what to do next                   | primary CTA (e.g. "Add your first food") |
-| Load error | `i-lucide-cloud-off`                 | `text-error` | "Couldn't load your `<thing>`"           | "Check your connection and try again." | "Retry" — replays the same fetch         |
-| Logged out | `i-lucide-lock`                      | `text-error` | "You've been logged out"                 | "Log back in to keep tracking."        | "Log back in" — forces a real navigation |
+| State      | Icon                                 | Icon colour  | Heading pattern                          | Body                                   | Action                                    |
+| ---------- | ------------------------------------ | ------------ | ---------------------------------------- | -------------------------------------- | ----------------------------------------- |
+| Empty      | subject icon (e.g. `i-lucide-salad`) | `text-muted` | "Build your…" — invites the first action | says what to do next                   | primary CTA (e.g. "Add your first food")  |
+| Load error | `i-lucide-cloud-off`                 | `text-error` | "Couldn't load your `<thing>`"           | "Check your connection and try again." | "Retry" — replays the same fetch          |
+| Signed out | `i-lucide-lock`                      | `text-error` | "You've been signed out"                 | "Sign back in to keep tracking."       | "Sign back in" — forces a real navigation |
 
 - **Empty** means "nothing here yet, and that's expected" — quiet, muted icon,
-  inviting tone. **Load error** and **logged out** both use the Status **error**
+  inviting tone. **Load error** and **signed out** both use the Status **error**
   red (`#E5484D`, see Colour) on the icon only; the surrounding card stays the
   same restrained white/quiet treatment as everywhere else. Colour is always
   paired with a distinct icon and heading per state — never the only signal.
-- **Load error and logged out are deliberately different icons and verbs**
-  (`cloud-off` / "Retry" vs. `lock` / "Log back in"), because they call for
+- **Load error and signed out are deliberately different icons and verbs**
+  (`cloud-off` / "Retry" vs. `lock` / "Sign back in"), because they call for
   different user actions — telling someone to "check your connection" when
-  they're actually logged out is wrong advice.
+  they're actually signed out is wrong advice.
+- **One vocabulary for the session boundary: _sign in / sign out_.** The app says
+  "Signed in as…", "Sign out", "You've been signed out", "Sign back in" — never
+  "log in". An action keeps its name across the whole flow, and the boundary is
+  crossed in both directions, so the two directions have to be the same word.
+  (Cloudflare's own `/cdn-cgi/access/logout` path is theirs, not copy.)
 - **Placement:** a load-error state replaces the specific region that failed to
   load — the full page body for a page's primary data (Today's summary, the
   Foods catalog, a Review), or just the one card for a secondary widget (e.g.
   Today's weight or goal-progress card). It never sits beside a misleading
   empty state.
-- **Logged out is a single, page-level interstitial** — rendered once at the
+- **Signed out is a single, page-level interstitial** — rendered once at the
   shell, not duplicated per-widget. If the session is gone, every fetch fails
   identically; one clear message beats six identical "Retry" cards that would
   all fail the same way.
+- **Signing out deliberately isn't a feedback state at all.** It is the Identity
+  byline on `/profile` (see Component treatments), in muted neutral — never the
+  error red, which on this palette means _over budget, destructive, failed_.
+  Being signed out unexpectedly is a fault; choosing to leave is not, and
+  colouring them alike would say it is.
 - **No toast for read failures.** The persistent-retry toast in
   [ADR 0005](../docs/adr/0005-notifications-persistent-errors-quiet-success.md)
   exists because a mutation's sheet closes and focus moves away from the

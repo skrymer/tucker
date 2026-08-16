@@ -2,12 +2,12 @@
 // A single, shell-level interstitial (DESIGN.md "Feedback states") rather than
 // duplicating it per-widget: once the session is gone every fetch fails
 // identically, so one clear message beats six identical "Retry" cards.
-const { isLoggedOut } = useAuthGate()
+const { isSignedOut } = useAuthGate()
 </script>
 
 <template>
   <div class="app-canvas min-h-dvh">
-    <LoggedOutState v-if="isLoggedOut" />
+    <SignedOutState v-if="isSignedOut" />
     <template v-else>
       <AppNav />
       <div class="lg:pl-60">

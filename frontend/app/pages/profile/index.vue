@@ -151,7 +151,11 @@ await Promise.all([loadProfile(), refreshCurrentTrend()])
 
 <template>
   <section class="flex flex-col gap-8">
-    <h1 class="text-2xl font-bold text-default">Profile</h1>
+    <div class="flex flex-col gap-1">
+      <h1 class="text-2xl font-bold text-default">Profile</h1>
+      <!-- Whose diet this is, and the way out — /profile only (#160). -->
+      <IdentityByline />
+    </div>
 
     <!--
       The at-a-glance state leads: the Goal, then the current Weight (its full

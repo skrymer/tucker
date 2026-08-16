@@ -29,6 +29,13 @@ class CurrentUserTest {
         assertEquals(42L, CurrentUser().id)
     }
 
+    @Test
+    fun `supplies the email of the authenticated User`() {
+        signIn(TuckerPrincipal(userId = 42, email = "owner@tucker.invalid"))
+
+        assertEquals("owner@tucker.invalid", CurrentUser().email)
+    }
+
     /** Why this type rather than [IllegalStateException]: see [NoCurrentUserException]. */
     @Test
     fun `refuses to guess an owner when nobody is authenticated`() {

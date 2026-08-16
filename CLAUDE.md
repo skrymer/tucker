@@ -550,6 +550,59 @@ The frontend is built **test-first (red-green TDD)**. Increments:
     needed anyway, and slice 3 scoped those two with an index swap. Tightening `food` is
     the one rebuild in the schema that really does need the foreign-key dance, since
     `entry` and `recipe_ingredient` reference it ([#232](https://github.com/skrymer/tucker/issues/232)).
+
+  Slice 6 ([#160](https://github.com/skrymer/tucker/issues/160)) — **"Signed in as…" and
+  Sign out** — ✅ done, and it is the *entire* user-visible surface of multi-user: one
+  byline under the `/profile` h1, on no other page. No account screen, no user switcher,
+  no avatar — Access runs the login, so there is nothing for Tucker to offer.
+  - **`GET /api/me` → `{ email }`**, the one piece of identity the client is given.
+    `/api/me` rather than `/api/user` though every other path is a domain noun: a User can
+    only ever ask about themselves (ADR 0021), so the path names the caller instead of
+    inviting the question of *which* User. The id stays off the wire — it is a surrogate
+    key (ADR 0020) and every scoped endpoint already resolves the owner from the assertion,
+    so nothing has one to send. `CurrentUser` gained `email` rather than the controller
+    reading `@AuthenticationPrincipal`, keeping one principal-reading path in main source
+    and its loud `NoCurrentUserException`.
+  - **The byline is a byline, not a seventh section.** `/profile` already carries six, and
+    identity attributes the page rather than being another thing on it (DESIGN.md — "spend
+    boldness in one place"). It leads rather than sitting in the footer with the install
+    prompt and build tag, because "whose diet am I looking at?" is the question the slice
+    exists to answer and six sections of scrolling is a bad way to answer it. Muted
+    neutral, never the error red: being signed out *unexpectedly* is a fault, choosing to
+    leave is not.
+  - **The service worker would have eaten it.** `navigateFallbackDenylist` exempted only
+    `/api/`, so in the installed PWA — Tucker's primary target — a navigation to
+    `/cdn-cgi/access/logout` would have been answered from the precached shell (ADR 0011)
+    and silently re-rendered Tucker as the same person. `/cdn-cgi/` is Cloudflare's edge
+    namespace (not just the one logout path) and is now exempt too. The same trap was
+    already understood in the *sign-in* direction: `SignedOutState` points at
+    `/api/version` precisely because it is denylisted.
+  - **That rule is now executable, which it was not.** It had been prose in three files
+    that never referenced each other, and deleting the prefix left the entire suite green —
+    every test asserts the *href*, which stays correct while the navigation silently stops
+    working. `app/utils/exits.ts` holds the two exits and the prefixes as one thing,
+    `nuxt.config.ts` imports the prefixes rather than restating them, and `exits.test.ts`
+    fails if any exit is not covered. The same move `RunAsCallSitesTest` makes on the backend.
+  - **`wrap-anywhere`, not `break-words`.** As a flex item the address span's floor is its
+    min-content width, and CSS excludes `overflow-wrap: break-word` from that calculation —
+    so the class that *looked* like the wrap fix left a long address overflowing the line.
+    Measured in a real browser at a 320px column: `break-words` renders 354px wide (34px of
+    overflow), `wrap-anywhere` renders 320px and wraps.
+  - **One vocabulary for the session boundary.** The app said "Signed in as…" in
+    `TuckerPrincipal`'s KDoc and the issue, and "You've been logged out" / "Log back in" in
+    `LoggedOutState` and DESIGN.md. An action keeps its name across a flow and this boundary
+    is crossed both ways, so the dissenter was harmonised to **sign in / sign out**. The
+    rename reaches the identifiers too — `SignedOutState`, `isSignedOut`, `markSignedOut` —
+    because a reader arriving from `IdentityByline` would otherwise meet both vocabularies
+    in one hop, which is the thing having a single one is for.
+  - **AC2's "and ends the session" is not covered by any suite here, and that is stated
+    rather than papered over.** `/cdn-cgi/access/logout` is served by Cloudflare's edge, so
+    it exists only on the deployed origin and 404s in `pnpm dev` and every smoke. The tests
+    assert the *destination*; the outcome is verifiable on the real origin alone, which the
+    F10 deploy hold puts out of reach until [#161](https://github.com/skrymer/tucker/issues/161).
+    Everything up to that edge *is* covered: `identity.smoke.spec.ts` drives the real gated
+    backend through the SPA's same-origin proxy, and asserts two real assertions get two
+    different addresses — the one thing a mocked `/api/me` can never prove.
 - **F11** — Check: scan a package *before* buying it (**shipped**, PRD
   [#168](https://github.com/skrymer/tucker/issues/168), see
   [ADR 0022](docs/adr/0022-a-check-states-cost-and-return-and-never-labels-a-food.md)

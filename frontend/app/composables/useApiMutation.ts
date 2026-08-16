@@ -55,9 +55,9 @@ export function useApiMutation<TArgs extends unknown[], TResult>(
       const result = await mutate(...args)
       // A mutation that resolves without throwing — e.g. an intercepted
       // opaque-redirect response the underlying fetch client didn't treat
-      // as an error — must not be celebrated as a real save; the logged-out
+      // as an error — must not be celebrated as a real save; the signed-out
       // interstitial is about to replace the whole app regardless.
-      if (!useAuthGate().isLoggedOut.value) await options.onSuccess?.()
+      if (!useAuthGate().isSignedOut.value) await options.onSuccess?.()
       return result
     },
   )
@@ -72,12 +72,12 @@ export function useApiMutation<TArgs extends unknown[], TResult>(
     try {
       outcome = await run(...args)
     } catch (error) {
-      // An expired session already switches the whole app to the logged-out
+      // An expired session already switches the whole app to the signed-out
       // interstitial (useAuthGate) — the generic "check your connection,
       // Retry" toast would be exactly the wrong advice DESIGN.md's Feedback
       // states section warns against layering on top of it, and Retry would
       // just repeat the same expired-session failure forever.
-      if (useAuthGate().isLoggedOut.value) return
+      if (useAuthGate().isSignedOut.value) return
       const message = validationMessage(error)
       if (message && options.onValidationError) {
         // A wrong input, not a flaky connection: hand it to the form and clear
@@ -118,7 +118,7 @@ export function useApiMutation<TArgs extends unknown[], TResult>(
     // retry toast a previous failure left up, telling the user a subscribe that
     // never happened had succeeded.
     if (outcome.status !== 'ok') return
-    if (useAuthGate().isLoggedOut.value) return
+    if (useAuthGate().isSignedOut.value) return
     // A successful (re)try clears any persistent failure toast for this
     // mutation — the snackbar is dismissed only by success or by the user.
     toast.remove(errorToastId)
