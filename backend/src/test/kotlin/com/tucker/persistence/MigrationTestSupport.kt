@@ -14,8 +14,8 @@ import java.sql.DriverManager
  * and nothing empty will notice). That shape needs the same four things every
  * time: migrate to a chosen version, open a connection with foreign keys enforced
  * the way Hikari enforces them, seed the Users whose ownership is under test, and
- * inspect the schema. Three tests need it now — V9's backfill, V11's rebuilds and
- * V12's — and issue #232 will bring a fourth.
+ * inspect the schema. Four tests need it — V9's backfill, V11's rebuilds, V12's, and
+ * V13's rebuild of `food` and `entry` (issue #232).
  */
 
 /** The owner the migration tests adopt a pre-multi-user database as. */
@@ -43,6 +43,15 @@ fun Connection.seedOwner() {
  */
 fun Connection.seedTwoUsers() {
     seedOwner()
+    seedSecondUser()
+}
+
+/**
+ * Insert somebody else beside an owner who is already there — which is how a database
+ * that V9 adopted acquires its second User, and the state in which an unowned row can no
+ * longer be attributed to anyone.
+ */
+fun Connection.seedSecondUser() {
     execute("INSERT INTO user (id, email) VALUES ($SECOND_USER_ID, '$MIGRATION_TEST_SECOND_USER')")
 }
 
@@ -92,12 +101,40 @@ fun Connection.rows(sql: String): List<String> =
 fun Connection.foreignKeyTargetOf(table: String, column: String): String? =
     foreignKeysOf(table).firstOrNull { (from, _) -> from == column }?.second
 
+/**
+ * What [table] does to its own row when the row `table.column` references is deleted —
+ * `CASCADE`, `NO ACTION`, and so on.
+ *
+ * Worth asking separately from [foreignKeysOf] because a rebuild can preserve every edge
+ * in the graph and still change what the edges *do*: an `ON DELETE CASCADE` dropped from a
+ * hand-written table copy leaves the foreign key looking correct while the delete it
+ * governs starts failing, and one added where there was none turns a refusal into a
+ * silent cascade.
+ */
+fun Connection.onDeleteActionOf(table: String, column: String): String? =
+    foreignKeyList(table).firstOrNull { it.from == column }?.onDelete
+
 /** Every `from column` → `target table` edge declared by [table]. */
 fun Connection.foreignKeysOf(table: String): List<Pair<String, String>> =
+    foreignKeyList(table).map { it.from to it.target }
+
+/** One row of `PRAGMA foreign_key_list` — an edge, and what it does when the parent goes. */
+private data class ForeignKey(val from: String, val target: String, val onDelete: String)
+
+/** Every foreign key [table] declares, read once for whichever facet the caller wants. */
+private fun Connection.foreignKeyList(table: String): List<ForeignKey> =
     createStatement().use { statement ->
         statement.executeQuery("PRAGMA foreign_key_list($table)").use { rows ->
             generateSequence {
-                if (rows.next()) rows.getString("from") to rows.getString("table") else null
+                if (rows.next()) {
+                    ForeignKey(
+                        from = rows.getString("from"),
+                        target = rows.getString("table"),
+                        onDelete = rows.getString("on_delete"),
+                    )
+                } else {
+                    null
+                }
             }.toList()
         }
     }

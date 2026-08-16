@@ -122,7 +122,7 @@ owner. `app_config` (the VAPID keypair) stays global — it is Tucker's, not a u
   User until the second is invited: an unscoped query cannot leak anything before then.
   Inviting the second User is therefore the *last* slice, gated on the isolation suite
   being green.
-- **`user_id` is nullable in the database, though the model says it never is.** SQLite
+- **`user_id` landed nullable in the database, though the model says it never is.** SQLite
   refuses `ADD COLUMN ... NOT NULL ... REFERENCES` against a table **that already holds
   rows**, and only then — so the stricter migration passes every test, every smoke and the
   jOOQ codegen schema, and fails against the single database that matters. The foreign key
@@ -133,9 +133,11 @@ owner. `app_config` (the VAPID keypair) stays global — it is Tucker's, not a u
   dangerous: from the scoping slices on it is invisible to the very User who created it.
 - **A rebuild that finds an unowned row adopts it, and never deletes it.** The
   tempting rule — "an unowned row is invisible to everybody, so dropping it loses
-  nothing" — is true only *after* the slice that scopes its table, and a rebuild runs
-  in exactly the slice that does the scoping. Until then the repositories reading that
-  table have no owner predicate at all, so the row is fully visible and is actively
+  nothing" — is true only *after* the slice that scopes its table, and every rebuild
+  through slice 5 ran in exactly the slice that did the scoping. (V13 did not, three
+  slices later; it keeps the rule for a different reason, given below.) While a table is
+  unscoped the repositories reading it have no owner predicate at all, so the row is
+  fully visible and is actively
   setting somebody's Trend Weight, Calorie Budget or Goal banner; deleting it would
   destroy a reading they recorded, a Weekly Review this project calls irreversible, or an
   active Goal — silently switching them to Maintenance Mode with none of the insistent
@@ -145,7 +147,7 @@ owner. `app_config` (the VAPID keypair) stays global — it is Tucker's, not a u
   all. With none or several, attribution would be a guess, so nothing is adopted and
   the new `NOT NULL` refuses the migration — a boot failure a human resolves, inside a
   transaction that rolls back, rather than a deletion nobody can undo.
-- **What a rebuild actually costs — corrected in slice 4.** This ADR originally priced
+- **What a rebuild actually costs — corrected in slice 4, and again in [#232](https://github.com/skrymer/tucker/issues/232).** This ADR originally priced
   every rebuild at a non-transactional migration plus `PRAGMA foreign_keys = OFF` (which
   the one pooled connection would then carry for the life of the JVM). That is the general
   12-step recipe, and it is **wrong for these tables**. Step 1 turns foreign keys off so
@@ -156,25 +158,42 @@ owner. `app_config` (the VAPID keypair) stays global — it is Tucker's, not a u
   schema point at `food` and at `user`. So foreign keys stay enforced throughout, and
   since that `PRAGMA` (a no-op inside a transaction) was the only thing forcing
   `executeInTransaction=false`, the rebuild runs inside Flyway's transaction like any
-  other migration — Flyway's `SQLiteDatabase.supportsDdlTransactions()` is `true`. **The
-  rule is "does anything reference this table?", not "is this a rebuild?"** V11 rebuilt
-  three tables this way against real production-shaped data, and V12 did the same for
-  `profile`, `reminder_state` and `push_subscription`.
-  `PerUserUniquenessMigrationTest` asserts the reference graph over all six, so the
-  premise fails loudly the day a new table points at one of them rather than being
-  quietly assumed.
-- **`food` and `entry` keep a nullable `user_id`, and that is residue rather than a
-  rule.** `NOT NULL` has only ever been *paid for* by a rebuild — and slice 3 scoped those
-  two by swapping a single index, so neither has been rebuilt. (Where a rebuild is cheap the
-  project does one for `NOT NULL` alone: V11 did it for `goal` and V12 for
-  `push_subscription`, both of which needed no other change.) So there the invariant is held
-  by the repositories alone, as it was everywhere before slice 4. That is
-  tolerable for the reason given above (from the scoping slices on, an unowned row is
-  invisible to the very User who created it), but it is a loose end rather than a decision:
-  tightening it is its own piece of work, and a more expensive one, because `food` is
-  referenced by `entry` and `recipe_ingredient` and is therefore the one table in the schema
-  whose rebuild really does need the foreign-key dance the bullet above exists to say the
-  others do not.
+  other migration — Flyway's `SQLiteDatabase.supportsDdlTransactions()` is `true`. V11
+  rebuilt three tables this way against real production-shaped data, and V12 did the same
+  for `profile`, `reminder_state` and `push_subscription` — six tables nothing references.
+
+  **`food` looked like the one genuine exception, and it is not.** `entry` and
+  `recipe_ingredient` both reference it, so dropping it with foreign keys on either errors
+  or — since `recipe_ingredient.recipe_id` cascades — takes every Recipe's composition with
+  it. Both were measured against this schema, as was the reason the `PRAGMA` cannot rescue
+  it: inside a transaction the statement is a no-op and `foreign_keys` still reads 1. But
+  that is a fact about **order**, not about `food`. V13 parks its two children in
+  constraint-free holding tables, drops them, and only then drops `food` — which by that
+  point is a parent of nothing, so the six-table case above is reached rather than
+  circumvented, and the children are rebuilt against the new table and re-checked against
+  it on the way back in.
+
+  So **the rule is not "does anything reference this table?" but "can everything that
+  references it be rebuilt alongside it?"** — the first was this ADR's wording through
+  slices 4 and 5, and it is the same question wherever the answer is "nothing does", which
+  is why V11's and V12's own comments remain true as written. No rebuild in this schema
+  needs `executeInTransaction=false`. `PerUserUniquenessMigrationTest` asserts the whole
+  reference graph — every rebuilt table against the tables that reference it, `food`'s two
+  included — so the premise fails loudly the day a new table points at one of them rather
+  than being quietly assumed.
+- **`food` and `entry` were the last two to say it in the schema, and V13 closed that**
+  ([#232](https://github.com/skrymer/tucker/issues/232)). `NOT NULL` had only ever been
+  *paid for* by a rebuild a slice needed for another reason, and slice 3 scoped those two by
+  swapping a single index — so neither was ever rewritten, and until V13 their invariant was
+  the repositories' alone. (Where a rebuild is cheap the project does one for `NOT NULL`
+  alone: V11 did it for `goal` and V12 for `push_subscription`, both of which needed no
+  other change.) Two things changed over the delay rather than merely surviving it. The
+  adoption argument above inverted: "an unowned row is invisible to everybody, so dropping
+  it loses nothing" is *true* of these two, which were scoped three slices earlier — and it
+  stopped mattering, because an unowned Food may still be referenced by an Entry or an
+  ingredient line, so deleting one is referentially impossible rather than merely lossy.
+  Adoption stays the rule everywhere, for the blunter reason. Every owned table now says in
+  the schema what the model says.
 - `ReminderScheduler` gains impersonation machinery. It is confined to one helper used
   only by the scheduler, and its misuse elsewhere would be a review failure.
 
