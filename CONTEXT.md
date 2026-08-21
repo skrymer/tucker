@@ -114,7 +114,8 @@ _Avoid_: error, failure, outage, provider down, offline
 
 **Entry**:
 One occurrence of the user eating a Food — a date, a quantity, and the resulting
-calories. Creating an Entry is what "logging" means. A mislogged Entry can be
+calories, with protein where it is known. Creating an Entry is what "logging"
+means. A mislogged Entry can be
 deleted to undo it — in practice only the current day's, so deletion never
 rewrites intake a Weekly Review has already counted (a review is irreversible).
 _Avoid_: log, record
@@ -127,6 +128,12 @@ precise, default case. Calories = grams ÷ 100 × the Food's calories-per-100g.
 An Entry for a meal that can't be weighed or scanned (restaurant, canteen, on the
 go) — a name plus an estimated calorie figure, with no Food and no mass. Always
 flagged as an estimate so the app can report how much of a day was guessed.
+Protein is optional: an Estimated Entry may carry a protein figure or none.
+Unknown protein is not zero — a surface that names an Entry omits it rather than
+stating a figure the user never gave. A figure that is *known* is always shown,
+including one that rounds to `0 g`: that says the food gave almost none, which is
+the opposite of saying nothing. A day's protein total counts unknown protein as
+zero, since there is nothing else to add.
 
 **Budget Projection**:
 A forecast of whether logging a prospective **Entry** would push the day over the
@@ -376,6 +383,8 @@ _Avoid_: device token, push token, registration
 - A **Food** is referenced by zero or more **Weighed Entries**
 - A **Recipe** is a kind of **Food**; its nutrition is the rollup of its ingredient **Foods**
 - A day's calories consumed is the sum of calories across that day's **Entries**
+- A day's protein consumed is the sum of protein across that day's **Entries**,
+  counting an Entry with no protein figure as zero
 - The **Calorie Budget** equals **Maintenance** minus the active **Goal**'s deficit,
   or **Maintenance** itself when no Goal is active (**Maintenance Mode**)
 - The **Protein Floor** scales from the current **Trend Weight** independent of any

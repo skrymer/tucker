@@ -87,6 +87,16 @@ Frontend commands (run in `frontend/`, package manager is pnpm):
   maintenance. Tests still seed what they need, but nothing leaks between
   tests or runs, and a developer's `tucker-data` is never touched.
   One-time setup: `docker compose build backend` from the repo root.
+- `pnpm test:mutation` — StrykerJS mutation testing over the Vitest suite:
+  rewrites the source one mutant at a time and re-runs the related tests, so a
+  surviving mutant is a line no assertion pins. Bare, it mutates the whole
+  frontend (minutes); in practice it is scoped to the files a change touched —
+  `pnpm exec stryker run --mutate "app/utils/entry.ts"` — at roughly 0.7s per
+  mutant. It is a **local pre-PR gate, deliberately not in CI**: it is far
+  slower than the suites CI runs, and every surviving mutant needs a human
+  verdict (real gap vs equivalent mutant) rather than a pass/fail threshold. It
+  reaches the Vitest layer only — Playwright is out of scope. Driven by the
+  `/mutation-test` skill, gate 3 of `/feature-sign-off`.
 - `pnpm lint` / `pnpm lint:fix` — ESLint (`@nuxt/eslint`)
 - `pnpm format` / `pnpm format:check` — Prettier
 - `pnpm typecheck` — `nuxt typecheck` (vue-tsc) over the whole program

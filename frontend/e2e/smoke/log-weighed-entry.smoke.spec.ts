@@ -20,6 +20,10 @@ test('user logs a Weighed entry from Today and the dashboard updates', async ({
   const fatPer100g = 7
   const grams = 100
   const expectedKcal = 383
+  const expectedProtein = 13
+  // How the Entry reads once the backend has derived both figures — the same
+  // string the toast and the Today row must show (ADR 0005).
+  const expectedName = `${foodName} — ${expectedKcal} kcal · ${expectedProtein} g protein`
 
   // Setup: seed a food in the catalog.
   const created = await request.post('http://localhost:8080/api/foods', {
@@ -56,17 +60,13 @@ test('user logs a Weighed entry from Today and the dashboard updates', async ({
     await sheet.getByRole('button', { name: /log weighed entry/i }).click()
 
     await expect(sheet).toBeHidden()
-    // The toast names the Food and the derived calories, so a mis-picked food
-    // or a stale grams value is visible without leaving the point of focus.
-    await expect(toast(page, 'Entry logged')).toContainText(
-      `${foodName} — ${expectedKcal} kcal`,
-    )
+    // The toast names the Food and the figures derived from it, so a mis-picked
+    // food or a stale grams value is visible without leaving the point of focus.
+    await expect(toast(page, 'Entry logged')).toContainText(expectedName)
 
     // Scoped to the page: the toast carries the same words by design, so an
     // unscoped match would be ambiguous while the toast is still up.
-    await expect(
-      page.getByRole('main').getByText(`${foodName} — ${expectedKcal} kcal`),
-    ).toBeVisible()
+    await expect(page.getByRole('main').getByText(expectedName)).toBeVisible()
 
     // Capture the logged entry id for cleanup.
     const today = todayIso()

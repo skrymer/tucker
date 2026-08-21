@@ -297,24 +297,54 @@ const grams = ref(80)
         <p class="text-xs font-semibold uppercase tracking-wider text-muted">
           Logged today
         </p>
+        <!-- One flowing string per entry, not a name/figures column pair: the
+             unit is spelled out, so a right-hand column leaves a phone almost no
+             room for the name (ADR 0005). The middle row shows an Estimated
+             entry logged without a protein figure — the clause is omitted, never
+             rendered as `0 g protein`. -->
         <ul class="mt-2 divide-y divide-default">
           <li class="flex items-center justify-between gap-2 py-2.5">
-            <span class="text-default">Rolled oats · 80 g</span>
-            <span class="tabular-nums text-muted">302 kcal · 11 g</span>
+            <span class="min-w-0 text-default"
+              >Rolled oats — 302 kcal · 11 g protein</span
+            >
+            <UButton
+              icon="i-lucide-trash-2"
+              color="neutral"
+              variant="ghost"
+              square
+              class="size-9 shrink-0 text-muted"
+              aria-label="Delete Rolled oats — 302 kcal · 11 g protein"
+            />
           </li>
           <li class="flex items-center justify-between gap-2 py-2.5">
-            <span class="flex items-center gap-2 text-default">
-              Flat white
+            <span class="min-w-0 text-default">Flat white — 90 kcal</span>
+            <div class="flex shrink-0 items-center gap-1">
               <UBadge color="warning" variant="subtle" size="sm">
                 <UIcon name="i-lucide-triangle-alert" class="size-3" />
                 est.
               </UBadge>
-            </span>
-            <span class="tabular-nums text-muted">90 kcal · 5 g</span>
+              <UButton
+                icon="i-lucide-trash-2"
+                color="neutral"
+                variant="ghost"
+                square
+                class="size-9 text-muted"
+                aria-label="Delete Flat white — 90 kcal"
+              />
+            </div>
           </li>
           <li class="flex items-center justify-between gap-2 py-2.5">
-            <span class="text-default">Kangaroo burger · 150 g</span>
-            <span class="tabular-nums text-muted">219 kcal · 33 g</span>
+            <span class="min-w-0 text-default"
+              >Kangaroo burger — 219 kcal · 33 g protein</span
+            >
+            <UButton
+              icon="i-lucide-trash-2"
+              color="neutral"
+              variant="ghost"
+              square
+              class="size-9 shrink-0 text-muted"
+              aria-label="Delete Kangaroo burger — 219 kcal · 33 g protein"
+            />
           </li>
         </ul>
       </UCard>

@@ -30,9 +30,10 @@ test('user creates a Food from a barcode then logs it now from the same flow', a
   // deterministic (no Open Food Facts dependency).
   const barcode = `9991000${Date.now()}`.slice(0, 13)
   const foodName = `Smoke log-it-now ${Date.now()}`
-  // 4 * 13 + 4 * 67 + 9 * 7 = 383 kcal /100g → 100 g logged is 383 kcal.
+  // 4 * 13 + 4 * 67 + 9 * 7 = 383 kcal /100g, so 100 g logged is 383 kcal.
   const grams = 100
   const expectedKcal = 383
+  const expectedProtein = 13
   await deleteFoodByBarcode(request, barcode)
 
   let foodId: number | undefined
@@ -67,14 +68,19 @@ test('user creates a Food from a barcode then logs it now from the same flow', a
 
     await expect(sheet).toBeHidden()
 
-    // The Weighed Entry shows up on the dashboard with the derived calories.
+    // The Weighed Entry shows up on the dashboard with both figures the backend
+    // derived from the Food (ADR 0005).
     await goto('/', { waitUntil: 'hydration' })
     // Scoped to the page: the success toast names the Entry with this same
     // `formatEntryName` string (ADR 0005). The full navigation above happens to
     // destroy the toast first, but that is the `goto` fixture's business, not
     // this assertion's — say which surface is meant.
     await expect(
-      page.getByRole('main').getByText(`${foodName} — ${expectedKcal} kcal`),
+      page
+        .getByRole('main')
+        .getByText(
+          `${foodName} — ${expectedKcal} kcal · ${expectedProtein} g protein`,
+        ),
     ).toBeVisible()
 
     // Capture ids for cleanup.

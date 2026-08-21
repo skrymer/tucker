@@ -28,3 +28,7 @@ playwright/.cache
 .env
 .env.*
 !.env.example
+
+# StrykerJS mutation-testing sandbox
+.stryker-tmp
+reports/mutation

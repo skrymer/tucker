@@ -1,20 +1,20 @@
 ---
 name: feature-sign-off
-description: The pre-commit/push sign-off gate for a finished feature or fix on the Tucker repo. Runs four quality gates in order — /verify (runtime behaviour), /simplify (apply cleanups), /code-review (hunt correctness bugs), /check-adrs (honour recorded decisions) — fixing what each surfaces before moving on, and only then commits and pushes. Use when a change is functionally complete and the user says "sign off", "ready to commit/push", "wrap up this feature", "run the gates", or before opening a PR.
+description: The pre-commit/push sign-off gate for a finished feature or fix on the Tucker repo. Runs five quality gates in order — /verify (runtime behaviour), /simplify (apply cleanups), /mutation-test (do the tests actually catch bugs), /code-review (hunt correctness bugs), /check-adrs (honour recorded decisions) — fixing what each surfaces before moving on, and only then commits and pushes. Use when a change is functionally complete and the user says "sign off", "ready to commit/push", "wrap up this feature", "run the gates", or before opening a PR.
 ---
 
 # Feature sign-off
 
 The gate a change passes through once it's functionally complete, *before* it's
-committed and pushed. It bundles the four checks this repo relies on into one
-ordered pass so nothing ships unverified, unreviewed, or out of step with the
-project's recorded decisions. Each gate is a real skill — this skill is the
-conductor that runs them in the right order and acts on what they find.
+committed and pushed. It bundles the five checks this repo relies on into one
+ordered pass so nothing ships unverified, untested, unreviewed, or out of step
+with the project's recorded decisions. Each gate is a real skill — this skill is
+the conductor that runs them in the right order and acts on what they find.
 
 Run it from a clean-enough working tree where the feature's behaviour is done.
 It does **not** replace TDD during the build; it's the final sweep after.
 
-## The four gates, in order
+## The five gates, in order
 
 Run them in this sequence — the order is deliberate. Address what each surfaces
 *before* starting the next. If a later gate's fix changes behaviour, loop back
@@ -40,7 +40,26 @@ code path).
    before the bug hunt — the reviewer then reads the code you're actually
    shipping, not a draft. Re-run the relevant tests after it applies fixes.
 
-3. **`/code-review medium` — hunt correctness bugs.** Review the (now-simplified)
+   **Sweep the doc comments in the same pass.** Every JSDoc/KDoc the diff adds or
+   touches must be brief, present-tense, and non-obvious: it says what the thing
+   *is* and any rule a reader would get wrong, and nothing the signature already
+   says. Delete changelog prose ("used to…", "previously…", "changed so…"),
+   issue/PR numbers, and narration of the bug that prompted the code — git
+   history and ADRs hold the why-it-changed. Rationale longer than a sentence or
+   two belongs in an ADR the comment links.
+
+3. **`/mutation-test` — do the tests actually catch bugs?** Run StrykerJS over
+   the Vitest suite, **scoped to the source files this change touched**, and
+   triage every surviving mutant as a real gap (write the missing test) or an
+   equivalent mutant (record why). It runs here, not later, for two reasons: the
+   code is final after gate 2, and it *adds tests* that gate 4 must then review.
+   Vitest layer only — Playwright is out of scope, so keep checking the browser
+   layers by hand (an unanchored aria-snapshot regex and a substring
+   `getByText` both pass a change they should have caught). Roughly 0.7s per
+   mutant, so a typical feature's files are well under a minute. SKIP with a
+   note if the diff touches no mutable source (docs, config, tests only).
+
+4. **`/code-review medium` — hunt correctness bugs.** Review the (now-simplified)
    diff for real bugs. **Run it at `medium` effort**, not the default high: at
    medium, `/code-review` focuses on its correctness angles and drops the reuse /
    simplification / efficiency / altitude angles — which `/simplify` just ran and
@@ -51,14 +70,14 @@ code path).
    unexplained finding through. (Bump to high only if the diff is large or
    security-sensitive and you want the broader net despite the redundancy.)
 
-4. **`/check-adrs` — honour the recorded decisions.** Verify the diff against the
+5. **`/check-adrs` — honour the recorded decisions.** Verify the diff against the
    ADRs in `docs/adr/` and the ubiquitous language in `CONTEXT.md`. A FAIL is
    either a code fix or a same-PR doc fix (per `[[prefer-source-fix-over-adr]]`)
    — the user's call, surfaced. This runs last so it judges the final code.
 
 ## After the gates
 
-Only once all four are green (or every non-green item is fixed or explicitly
+Only once all five are green (or every non-green item is fixed or explicitly
 justified):
 
 1. Run the fast suites once more if any gate changed code — backend
@@ -79,8 +98,9 @@ Emit a short sign-off summary the user (and PR reviewer) can replay:
 
 1. /verify         ✅ PASS — claude-in-chrome walk-through, desktop + phone viewport
 2. /simplify       ✅ applied 1 cleanup (consolidated kg formatter)
-3. /code-review md ⚠️ 2 findings → both fixed (double-render, banner copy); 4 by-design
-4. /check-adrs     ⚠️ 1 FAIL → fixed CONTEXT.md (stale auto-deactivate wording)
+3. /mutation-test  ⚠️ 27/29 killed on 2 files → 1 gap closed (new test), 1 equivalent
+4. /code-review md ⚠️ 2 findings → both fixed (double-render, banner copy); 4 by-design
+5. /check-adrs     ⚠️ 1 FAIL → fixed CONTEXT.md (stale auto-deactivate wording)
 
 Suites green (detekt/build, lint/test). Committed + pushed to <branch>.
 ```
@@ -88,12 +108,17 @@ Suites green (detekt/build, lint/test). Committed + pushed to <branch>.
 ## Notes
 
 - **Order is load-bearing.** verify first (don't review code that doesn't run),
-  simplify before review (review the shipping code), check-adrs last (judge the
-  final diff). Don't reorder for convenience.
+  simplify before mutation-test (mutate the shipping code, not a draft),
+  mutation-test before review (its new tests are part of what gets reviewed),
+  check-adrs last (judge the final diff). Don't reorder for convenience.
+- **A green mutation score is not a green test suite.** `/mutation-test` reaches
+  only the Vitest layer. Fixture defaults that production can't produce,
+  unanchored aria-snapshot regexes, and substring `getByText` matchers all sail
+  through it — check those by hand while reviewing the diff's tests.
 - **`/simplify` + `/code-review medium` are complementary, not redundant.**
   `/simplify` owns cleanup and *applies* it; `/code-review` at medium owns the
   correctness hunt and *reports* it. The overlap only appears if you run
-  `/code-review` high (it re-adds the cleanup angles). Keep gate 3 at medium so
+  `/code-review` high (it re-adds the cleanup angles). Keep gate 4 at medium so
   each kind of work happens exactly once.
 - **Don't rubber-stamp.** A gate that found nothing is a result worth stating;
   a gate skipped is a gap. If you skip one (e.g. `/verify` SKIP for a docs-only

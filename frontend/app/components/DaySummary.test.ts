@@ -187,6 +187,7 @@ describe('DaySummary', () => {
       weighedEntry({
         id: 1,
         calories: 107,
+        protein: 12,
         foodId: 5,
         foodName: 'Banana',
         grams: 120,
@@ -211,11 +212,11 @@ describe('DaySummary', () => {
     ).toBeVisible()
   })
 
-  it('lists each entry with its name and calories', async () => {
+  it('lists each entry with its name, calories and protein', async () => {
     await renderSuspended(DaySummary, { props: { summary: withEntries } })
 
     expect(screen.getAllByRole('listitem')).toHaveLength(2)
-    expect(screen.getByText('Banana — 107 kcal')).toBeVisible()
+    expect(screen.getByText('Banana — 107 kcal · 12 g protein')).toBeVisible()
     expect(screen.getByText('Cafe lunch — 600 kcal')).toBeVisible()
     // At or below the cap, the whole ledger shows — no expander.
     expect(
@@ -227,7 +228,9 @@ describe('DaySummary', () => {
     await renderSuspended(DaySummary, { props: { summary: withEntries } })
 
     expect(
-      screen.getByRole('button', { name: 'Delete Banana — 107 kcal' }),
+      screen.getByRole('button', {
+        name: 'Delete Banana — 107 kcal · 12 g protein',
+      }),
     ).toBeVisible()
     expect(
       screen.getByRole('button', { name: 'Delete Cafe lunch — 600 kcal' }),
@@ -240,9 +243,11 @@ describe('DaySummary', () => {
       props: { summary: withEntries, onDelete },
     })
 
+    // Located by prefix: what the button is *named* is pinned by the test above,
+    // so this one only has to find it.
     await userEvent
       .setup()
-      .click(screen.getByRole('button', { name: 'Delete Banana — 107 kcal' }))
+      .click(screen.getByRole('button', { name: /^Delete Banana/ }))
 
     expect(onDelete).toHaveBeenCalledWith(withEntries.entries[0])
   })
