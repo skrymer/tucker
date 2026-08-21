@@ -4,10 +4,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Tucker is a personal, single-user diet tracker — a deterministic web app. The user
-logs the food they eat, and the app tracks calories and protein against an
-adaptive calorie budget and protein floor, with the goal of losing fat while
-retaining muscle.
+Tucker is a personal diet tracker — a deterministic web app. Each User logs the
+food they eat, and the app tracks calories and protein against an adaptive
+calorie budget and protein floor, with the goal of losing fat while retaining
+muscle. It is **multi-user by invitation but never social**: a User is admitted
+by an operator adding their address to the Cloudflare Access policy, every row
+belongs to exactly one User, and nothing is shared between them (F10,
+[ADR 0020](docs/adr/0020-identity-comes-from-cloudflare-access.md) and
+[ADR 0021](docs/adr/0021-every-row-is-owned-by-one-user.md)). "Personal" is
+about the scale and the shape of the product, not about it holding one person.
 
 The domain language is defined in [`CONTEXT.md`](./CONTEXT.md). Read it before
 working on anything domain-related, and keep it in sync as the model evolves.
@@ -656,6 +661,29 @@ The frontend is built **test-first (red-green TDD)**. Increments:
     'ESTIMATED')` is subsumed by the table-level shape CHECK, whose two branches each pin
     `kind` to one of those values, so no row can violate the first alone. Said in the test
     rather than faked with a row that violates two constraints at once.
+
+  Slice 7 ([#161](https://github.com/skrymer/tucker/issues/161)) — **invite the second
+  User** — **in progress, and the only F10 work left.** It is the one slice that cannot
+  merge on CI: it needs the Cloudflare dashboard, a real deploy, and a second person with
+  a real address. The documentation half has landed —
+  [`deploy/README.md`](deploy/README.md) now carries "Inviting and revoking a User", and
+  the line above no longer calls Tucker single-user — and the remaining five acceptance
+  criteria are all observations against the live origin. **F10 is not done until they are
+  made**; do not mark it so on the strength of the code being merged.
+  - **The deploy hold has become an instruction rather than a warning.** Slices 1–6 and
+    #232 are on `main`, so the next production deploy applies `V9`→`V13` in one go, which
+    is the shape the hold was waiting for, and that deploy is step one of this slice. The
+    `PRAGMA foreign_key_check` pre-step runs before it.
+  - **Revocation is two steps, not one, and the issue's AC says one.** Removing an address
+    from the Access policy does not end a session that already exists — Cloudflare only
+    re-evaluates the policy at login — so a revoked person keeps the origin until their
+    session expires, which Tucker's Access app sets to the maximum **1 month**. Their live
+    session has to be revoked separately (Zero Trust → Team & Resources → Users → Action →
+    Revoke). The reverse order is no better: revoking alone buys about a minute, because a
+    policy that still admits them lets them log straight back in. AC5's "revokes access
+    immediately" holds only for both steps together; `deploy/README.md` documents the pair
+    and why each is insufficient alone. The "without a deploy" half of that AC is
+    unaffected — neither step touches Tucker.
 - **F11** — Check: scan a package *before* buying it (**shipped**, PRD
   [#168](https://github.com/skrymer/tucker/issues/168), see
   [ADR 0022](docs/adr/0022-a-check-states-cost-and-return-and-never-labels-a-food.md)
