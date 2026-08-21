@@ -1,0 +1,18 @@
+{
+  "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
+  "testRunner": "vitest",
+  "plugins": ["@stryker-mutator/vitest-runner"],
+  "vitest": { "configFile": "vitest.config.ts" },
+  "ignorePatterns": ["!.nuxt"],
+  "mutate": [
+    "app/**/*.ts",
+    "app/**/*.vue",
+    "server/**/*.ts",
+    "!**/*.test.ts",
+    "!**/*.spec.ts",
+    "!app/pages/design.vue"
+  ],
+  "reporters": ["clear-text", "progress"],
+  "concurrency": 4,
+  "timeoutMS": 60000
+}

@@ -14,5 +14,5 @@
     - heading "Today's entries" [level=2]
     - list:
         - listitem:
-            - text: /Oats — \d+ kcal/
-            - button /Delete Oats — \d+ kcal/
+            - text: /Oats — \d+ kcal · \d+ g protein/
+            - button /Delete Oats — \d+ kcal · \d+ g protein/

@@ -25,6 +25,7 @@ test('the Today page shows the daily summary from the API', async ({
       weighedEntry({
         id: 1,
         calories: 240,
+        protein: 8,
         foodId: 3,
         foodName: 'Oats',
         grams: 60,

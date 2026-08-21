@@ -70,10 +70,20 @@ product, and a grams field that silently kept a stale value all produce a
 message identical to the correct outcome (issue #206). Since this toast is by
 design the *only* confirmation the user gets, it carries the thing worth
 confirming: the title stays `Entry logged` and the **description** names the
-Entry — `Banana — 107 kcal`, `Cafe lunch — 600 kcal` — which is also the
-title-plus-detail shape the error path already uses.
+Entry — `Banana — 107 kcal · 12 g protein`, `Cafe lunch — 600 kcal` — which is
+also the title-plus-detail shape the error path already uses.
 
-Three properties of that are deliberate:
+The description carries **both** figures wherever both are known, not calories
+alone (the protein clause is dropped when there is no figure — see below).
+Tucker's goal is
+losing fat *while retaining muscle*, so an Entry is two decisions — what it cost
+and what it returned — and a confirmation naming only the cost confirms half of
+one. The separator and the spelled-out unit follow the catalog row
+(`FoodListItem`: `302 kcal · 11 g protein /100g`); "protein" is spelled out
+rather than abbreviated to `12 g` because everything in Tucker is weighed in
+grams, so a bare gram figure beside a Food name reads as a portion weight.
+
+Four properties of that are deliberate:
 
 - **The words are the row's words.** The description is `formatEntryName(response)`,
   the same helper the Today row and the delete confirm use, so the toast cannot
@@ -90,11 +100,36 @@ Three properties of that are deliberate:
   produced. `useApiMutation` threads the mutation's result through to a
   `successDescription(result)` hook for this reason, rather than each call site
   composing a title from state it happens to hold.
+- **Unknown protein is omitted; a known one is always shown.** An Estimated
+  Entry's protein is optional (`EstimatedEntry.protein: Double?`), so the clause
+  appears only when there is a figure: `Cafe lunch — 600 kcal`. Rendering
+  `0 g protein` for an absent one would state something the user never entered —
+  note `Math.round(null)` is `0` in JS, so the wrong version of this is the one
+  that compiles. A *known* figure that rounds to `0 g` is still printed, and that
+  is not the same mistake: it says the food gave almost none, which the user's own
+  Food produced. The day's total *does* count unknown protein as zero
+  (`DailyLog`), so the ledger can't distinguish "no protein in this meal" from "I
+  didn't type one"; that is accepted, and recorded against **Estimated Entry** in
+  `CONTEXT.md` rather than fixed with a "not logged" clause the user who left the
+  field blank already knows.
 - **A long name wraps; it is not truncated.** Nothing in Tucker bounds a Food
   name — not Zod, not the domain, not the column — and provider-sourced ones run
-  long. But the calorie figure sits at the *end* of the string, so clamping the
+  long. But the figures sit at the *end* of the string, so clamping the
   description would drop precisely the part that confirms the log. The Today row
   already wraps a long name, and the toast matches it.
+
+  Measured at a 320px column (the real CSS chain: `main p-4` → 288px, `UCard
+  p-4` → 256px, name span 212px), adding the protein clause takes a *short*
+  weighed row from one line to two; a long name already wrapped to three and
+  absorbs the clause without gaining a line, and a protein-less row is unchanged.
+  The row's 36px delete button already sets its height floor, so the second line
+  costs **+12px**, not a full line — a three-entry ledger card grows 254px →
+  266px. That is why the flowing single string is kept and the ledger's
+  three-row cap stands. A two-column row (name left, figures right) was rejected
+  for the phone: it stays compact only by abbreviating to `11 g`, which is the
+  ambiguity the spelled-out unit exists to avoid. `pages/design.vue` mocked that
+  shape and was brought onto the shipped one, so the gallery and the app can't
+  disagree about the row.
 
 Validation errors (bad input) are **not** toasts and never were — they stay
 inline next to the field via the Zod `UForm` setup ([0003](0003-validate-forms-with-zod.md)).

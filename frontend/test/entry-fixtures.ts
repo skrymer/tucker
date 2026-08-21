@@ -18,11 +18,11 @@ type EntryResponse = components['schemas']['EntryResponse']
  * `EntryController.toResponse` writes them together, so a disagreeing pair is
  * unrepresentable in production — and should be unwritable here.
  *
- * `foodName` is required alongside `foodId` even though the wire types it
- * nullable: nothing renders a weighed Entry without naming it (`formatEntryName`
- * would print the string "null"), and deleting a Food an Entry references is
- * refused, so the null arm belongs to no flow a test currently has. Widen it
- * when one appears.
+ * `foodName` and `protein` are required alongside `foodId` even though the wire
+ * types them nullable: nothing renders a weighed Entry without naming it
+ * (`formatEntryName` would print the string "null"), deleting a Food an Entry
+ * references is refused, and protein is computed from the Food. Neither null arm
+ * belongs to a flow a test currently has. Widen them when one appears.
  *
  * Absent fields default to `null` rather than being left out, because that is
  * what the wire carries — Tucker serializes an absent value as an explicit
@@ -43,6 +43,7 @@ export function weighedEntry(
   partial: Omit<Partial<EntryResponse>, 'kind' | 'isEstimate' | 'label'> & {
     id: number
     calories: number
+    protein: number
     foodId: number
     foodName: string
     grams: number
@@ -50,7 +51,6 @@ export function weighedEntry(
 ): Required<EntryResponse> {
   return {
     loggedOn: '2026-05-22',
-    protein: null,
     ...partial,
     kind: 'WEIGHED',
     isEstimate: false,

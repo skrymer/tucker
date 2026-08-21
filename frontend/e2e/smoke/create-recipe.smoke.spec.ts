@@ -27,6 +27,9 @@ test('user builds a recipe, saves it, and logs a portion onto Today', async ({
   const cookedWeight = 400
   const portionGrams = 250
   const expectedKcal = 500
+  // Protein rides the same re-expression: 25 g /100g × 800 g = 200 g in the
+  // batch, ÷ 400 g cooked = 50 g /100g, so a 250 g portion carries 125 g.
+  const expectedProtein = 125
 
   const created = await request.post('http://localhost:8080/api/foods', {
     data: {
@@ -101,7 +104,11 @@ test('user builds a recipe, saves it, and logs a portion onto Today', async ({
     // Scoped for the same reason as the sibling log smokes: the success toast
     // carries this exact string too (ADR 0005), so name the surface meant.
     await expect(
-      page.getByRole('main').getByText(`${recipeName} — ${expectedKcal} kcal`),
+      page
+        .getByRole('main')
+        .getByText(
+          `${recipeName} — ${expectedKcal} kcal · ${expectedProtein} g protein`,
+        ),
     ).toBeVisible()
 
     // The saved recipe is in the catalog as a Food.

@@ -56,6 +56,28 @@ glue's failing red simply lives in the integrated test, not in a unit test.
 - **Backend integration / Testcontainers e2e** — Spring context + real SQLite, for
   controllers, repositories, and wiring (the glue's home).
 
+### Mutation testing checks the layers, it is not one of them
+
+This ADR answers *which units get a test*; it does not answer *whether those tests
+assert enough*. StrykerJS (`pnpm test:mutation`, driven by the `/mutation-test`
+skill as gate 3 of `/feature-sign-off`) answers the second question by rewriting
+the source one mutant at a time — a mutant no test notices is a line no assertion
+pins.
+
+It is a **local pre-PR gate, not a CI job and not a sixth layer**: it is far
+slower than the suites CI runs, and a surviving mutant needs a human verdict
+rather than a threshold. Two consequences follow directly from rule 3 above:
+
+- **A survivor in thin glue is not a gap.** Stryker drives the Vitest layer only,
+  so a mutant in a page or a route whose red lives in a Playwright e2e or a smoke
+  survives by construction. The verdict there is "killed by an out-of-scope
+  layer — *this* spec kills it", never "write a standalone Vitest test", which
+  would contradict rule 3.
+- **A green score is not a green suite.** Stryker only makes the mutants it knows
+  how to make; it has no operator that rewrites a null check as a truthiness
+  check, so a guard distinguishing *absent* from *zero* can score 100% untested.
+  Rule 5's red-green discipline is what covers that, not the score.
+
 ## Worked example (F6)
 
 `ReminderPolicy`, `VapidKeyStore`, `usePwaInstall`, `useWebPush` are deep modules

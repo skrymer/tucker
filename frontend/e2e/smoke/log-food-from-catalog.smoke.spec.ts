@@ -49,7 +49,7 @@ test('user logs a food from the catalog and stays on the Foods page', async ({
     // on this path the row is never seen at all, so the toast is the only
     // thing that can say *which* Food was logged.
     await expect(toast(page, 'Entry logged')).toContainText(
-      `${foodName} — 383 kcal`,
+      `${foodName} — 383 kcal · 13 g protein`,
     )
     await expect(
       page.getByRole('heading', { name: 'Foods', level: 1 }),

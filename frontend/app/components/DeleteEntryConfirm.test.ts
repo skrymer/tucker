@@ -8,6 +8,7 @@ import DeleteEntryConfirm from './DeleteEntryConfirm.vue'
 const banana = weighedEntry({
   id: 1,
   calories: 107,
+  protein: 12,
   foodId: 5,
   foodName: 'Banana',
   grams: 120,
@@ -20,7 +21,7 @@ describe('DeleteEntryConfirm', () => {
     expect(
       screen.getByRole('dialog', { name: /delete this entry/i }),
     ).toBeVisible()
-    expect(screen.getByText('Banana — 107 kcal')).toBeVisible()
+    expect(screen.getByText('Banana — 107 kcal · 12 g protein')).toBeVisible()
     expect(screen.getByRole('button', { name: /^delete$/i })).toBeVisible()
     expect(screen.getByRole('button', { name: /cancel/i })).toBeVisible()
   })

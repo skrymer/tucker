@@ -33,15 +33,23 @@ test('user logs an Estimated entry from Today and the dashboard updates', async 
   // mis-typed label is caught without hunting for the row (ADR 0005 keeps this
   // one success toast precisely because the delta may be scrolled off-screen).
   await expect(sheet).toBeHidden()
-  await expect(toast(page, 'Entry logged')).toContainText(
-    `${label} — ${calories} kcal`,
-  )
+  // Exact on both surfaces: protein was left blank, so the name ends at the
+  // calories — never `· 0 g protein` (CONTEXT.md, "Estimated Entry"). A
+  // substring match would pass the very output this guards, since the expected
+  // string is a prefix of it.
+  await expect(
+    toast(page, 'Entry logged').getByText(`${label} — ${calories} kcal`, {
+      exact: true,
+    }),
+  ).toBeVisible()
 
   // The entry surfaces in the Today entries list. Scoped to the page, because
-  // the toast now says the same words — `formatEntryName` is deliberately
-  // shared — and an unscoped match would be ambiguous while the toast is up.
+  // the toast says the same words — `formatEntryName` is deliberately shared —
+  // and an unscoped match would be ambiguous while the toast is up.
   await expect(
-    page.getByRole('main').getByText(`${label} — ${calories} kcal`),
+    page
+      .getByRole('main')
+      .getByText(`${label} — ${calories} kcal`, { exact: true }),
   ).toBeVisible()
 
   // Cleanup: find today's entries through the API, delete the one we made.
