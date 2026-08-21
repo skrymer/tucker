@@ -54,13 +54,19 @@ it needs the `LITESTREAM_*` secrets in `.env`).
    your tunnel → **Public Hostname**, route `https://<your-host>` →
    `http://frontend:3000`. One rule, one origin. Add a Cloudflare **Access**
    application over the same hostname so it stays the only auth:
-   - **Policy**: Allow → include only your email.
+   - **Policy**: Allow → include only your email. This list is Tucker's *entire*
+     admission list ([ADR 0020](../docs/adr/0020-identity-comes-from-cloudflare-access.md))
+     — adding a second address to it is the whole of inviting somebody, see
+     [Inviting and revoking a User](#inviting-and-revoking-a-user).
    - **Login methods**: Google as IdP (one-tap on the phone) plus the built-in
      One-time PIN as fallback.
    - **Session duration: 1 month** (the maximum). An expired session inside the
      installed PWA surfaces as failing `/api` calls until a reload re-runs the
-     login redirect — single-user behind a screen-locked device doesn't need a
-     daily re-auth dance.
+     login redirect, and a handful of invited people behind screen-locked devices
+     don't need a daily re-auth dance. It has one cost, and it is paid on the way
+     out: removing somebody from the policy does not end a session they already
+     hold, so revoking is two steps rather than one — see
+     [Revoke](#revoke).
 
    Then copy three values from that application into the host `.env`. Access is
    the authenticator, but the backend **verifies its signed assertion itself**
@@ -160,6 +166,15 @@ Over the real HTTPS origin, with DevTools → Application:
 > repositories reading them disagree about which. The hold lifts with
 > [#161](https://github.com/skrymer/tucker/issues/161) (invite the second User), which is
 > deliberately last and gated on the cross-user isolation suite being green.
+>
+> **That point is reached.** Slices 1–6 and the `NOT NULL` follow-up
+> ([#232](https://github.com/skrymer/tucker/issues/232)) are all on `main` with the
+> cross-user isolation suite green — the condition
+> [ADR 0021](../docs/adr/0021-every-row-is-owned-by-one-user.md) gates the invite on — so
+> the next deploy carries `V9`→`V13` in a single go, which is precisely the shape this hold
+> was holding out for, and that deploy *is* step one of #161. Run the `PRAGMA
+> foreign_key_check` below before it, then
+> [invite the second User](#inviting-and-revoking-a-user).
 
 > **Once, before the first deploy that includes the Access gate:** add the three
 > `TUCKER_ACCESS_*` keys from [step 6](#first-deploy-to-a-vps) to the host `.env`. They have
@@ -211,6 +226,82 @@ commit resets the patch to 0.
 (Building in CI and pulling from GHCR is the recorded next step in
 [ADR 0015](../docs/adr/0015-production-deployment-topology.md), taken when
 reproducible promotion or VPS RAM pressure justifies it.)
+
+## Inviting and revoking a User
+
+Tucker has no signup screen, no admin page and no allowlist of its own. **The
+Cloudflare Access policy is the entire admission list**
+([ADR 0020](../docs/adr/0020-identity-comes-from-cloudflare-access.md)), and a
+verified assertion whose email matches no row provisions a **User** on the spot —
+so inviting somebody is one edit in the dashboard, and Tucker never has to be told
+it happened.
+
+That is also what makes the policy load-bearing. Because provisioning is
+just-in-time, *widening* the policy — a domain rule, a service-token bypass, an
+"everyone in the org" include — silently grants Tucker accounts to whoever it now
+matches. Keep it a hand-listed set of addresses, and revisit that before any move
+toward public signup.
+
+### Invite
+
+1. Zero Trust → **Access controls → Policies** → the Tucker policy → **Configure**
+   → add the address to the `Emails` include rule → **Save**. (If the policy was
+   created inline on the application rather than as a reusable one, it is reached
+   via **Access controls → Applications** → the Tucker app → **Policies**.
+   Cloudflare renames this navigation from time to time; the operation is stable,
+   the menu path is not.)
+2. Send them the URL. They authenticate through Access — Google, or the one-time
+   PIN fallback, per [step 6](#first-deploy-to-a-vps) — and the first request
+   behind that login creates their User.
+
+Nothing else is required: no deploy, no restart, no `.env` change, no row to
+insert. They land on the ordinary first-run empty state — no Foods, no Entries, no
+Goal, no history, the setup prompt on Today — because to Tucker a newcomer is
+simply a User with nothing logged yet. Their Profile, Calorie Budget, Protein
+Floor, Weekly Reviews and reminder schedule are theirs alone from the first
+request ([ADR 0021](../docs/adr/0021-every-row-is-owned-by-one-user.md)).
+
+Case is not a trap: the principal converter lowercases the asserted email and
+`user.email` is `COLLATE NOCASE`, so `You@` and `you@` are one person.
+
+`TUCKER_OWNER_EMAIL` is **not** involved and must not be touched. It answered a
+different, one-off question — who the *pre-F10* history belongs to — and was read
+once, on the deploy that applied `V9` ([step 6](#first-deploy-to-a-vps)).
+
+### Revoke
+
+Two steps, in this order, and **both** are needed:
+
+1. **Remove the address from the Access policy** — same place as the invite. This
+   stops them logging in again.
+2. **Revoke their live session** — Zero Trust → **Team & Resources → Users** →
+   select the user → **Action → Revoke → Revoke sessions**. Access clears the
+   authorization cookie and every previously issued token stops being accepted
+   within 20–30 seconds.
+
+Neither step needs a Tucker deploy, restart or config change.
+
+The order is not cosmetic, and neither step is sufficient on its own:
+
+- **Step 1 without step 2 is not immediate.** Removing somebody from a policy does
+  not terminate a session that already exists — they keep the origin until that
+  session expires, and Tucker's Access app is deliberately set to the maximum
+  **1 month** ([step 6](#first-deploy-to-a-vps)). The backend cannot shorten this
+  and should not try: it verifies the assertion Cloudflare mints from that session,
+  and an unexpired signature is valid by construction.
+- **Step 2 without step 1 buys about a minute.** A revoked User can log straight
+  back in while the policy still admits them, and the new login re-provisions
+  nothing — their data was never deleted, so they resume exactly where they were.
+
+**Revoking does not delete their data**, and that is the intended behaviour: the
+`user` row and everything hanging off it stay put, so re-adding the address returns
+that person to their own catalog and history rather than to an empty one. There
+is no in-app path to delete a User. If one is ever genuinely needed, note that the
+throwaway-Python route used elsewhere in this file defaults foreign keys **off** —
+so a bare `DELETE FROM user` there will not be refused, it will quietly orphan
+every Food, Entry, Weight Measurement, Goal, Weekly Review, Profile and Push
+Subscription that pointed at it. The running app enforces those keys
+(`connection-init-sql: PRAGMA foreign_keys = ON`); the recovery shell does not.
 
 ## Off-host backup
 
