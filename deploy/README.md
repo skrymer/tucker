@@ -158,23 +158,13 @@ Over the real HTTPS origin, with DevTools → Application:
 
 ## Updating a running deployment
 
-> ⚠️ **Do not deploy part-way through F10 (multi-user, issues #155–#161).** Merging each
-> slice to `main` is expected; deploying one is not, until all seven are done. Ownership is
-> migrated incrementally by design — each slice scopes a few more tables and tightens their
-> `user_id` — so a production database stopped between two slices is genuinely
-> half-migrated: some of its rows are owned and enforced, others are still global, and the
-> repositories reading them disagree about which. The hold lifts with
-> [#161](https://github.com/skrymer/tucker/issues/161) (invite the second User), which is
-> deliberately last and gated on the cross-user isolation suite being green.
->
-> **That point is reached.** Slices 1–6 and the `NOT NULL` follow-up
-> ([#232](https://github.com/skrymer/tucker/issues/232)) are all on `main` with the
-> cross-user isolation suite green — the condition
-> [ADR 0021](../docs/adr/0021-every-row-is-owned-by-one-user.md) gates the invite on — so
-> the next deploy carries `V9`→`V13` in a single go, which is precisely the shape this hold
-> was holding out for, and that deploy *is* step one of #161. Run the `PRAGMA
-> foreign_key_check` below before it, then
-> [invite the second User](#inviting-and-revoking-a-user).
+> **The F10 deploy hold is lifted.** It asked that no deploy land part-way through
+> multi-user (issues #155–#161), because ownership is migrated incrementally — each slice
+> scopes a few more tables and tightens their `user_id` — so a production database stopped
+> between two slices would be genuinely half-migrated. All seven slices and the `NOT NULL`
+> follow-up ([#232](https://github.com/skrymer/tucker/issues/232)) are on `main`, and
+> `V9`→`V13` applied to production in a single go as the hold intended. Ordinary deploys
+> from here.
 
 > **Once, before the first deploy that includes the Access gate:** add the three
 > `TUCKER_ACCESS_*` keys from [step 6](#first-deploy-to-a-vps) to the host `.env`. They have
@@ -343,12 +333,18 @@ a host directory (this never touches the live `tucker-data` volume):
 rm -rf restore-check && mkdir -p restore-check
 # Pull the latest replica from R2 into ./restore-check/tucker.db. The trailing
 # /data/tucker.db is the db key in litestream.yml, NOT a local path it reads.
-docker run --rm --env-file .env \
+docker run --rm --user 0:0 --env-file .env \
   -v "$PWD/deploy/litestream.yml:/etc/litestream.yml:ro" \
   -v "$PWD/restore-check:/out" \
   litestream/litestream:latest \
   restore -config /etc/litestream.yml -o /out/tucker.db /data/tucker.db
 ```
+
+`--user 0:0` is load-bearing: the image runs as a non-root user that cannot write to
+a bind mount owned by root, and without it the restore dies with `create temp
+database path: open /out/tucker.db.tmp: permission denied`. It has to be the numeric
+uid — the image is distroless and has no `passwd` file, so `--user root` fails
+differently (`unable to find user root`).
 
 Then confirm the user's rows are present. `sqlite3` ships in the Python stdlib, so
 a throwaway `python` container needs no host tooling:
