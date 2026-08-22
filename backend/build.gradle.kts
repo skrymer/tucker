@@ -37,6 +37,9 @@ repositories {
 // Classpath for the jOOQ code generator, run as a JavaExec task (no third-party plugin).
 val jooqCodegen: Configuration by configurations.creating
 
+// Classpath for the pitest mutation-testing runner, likewise run as a JavaExec task.
+val pitest: Configuration by configurations.creating
+
 dependencies {
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-jooq")
@@ -56,6 +59,9 @@ dependencies {
 
     "jooqCodegen"("org.jooq:jooq-codegen:3.19.16")
     "jooqCodegen"("org.xerial:sqlite-jdbc:3.47.1.0")
+
+    "pitest"("org.pitest:pitest-command-line:1.25.9")
+    "pitest"("org.pitest:pitest-junit5-plugin:1.2.3")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     // `springSecurity()` for the MockMvc the gate test builds by hand — it needs the
@@ -233,6 +239,73 @@ tasks.named<Test>("test") {
     inputs.file(openApiSnapshot)
         .withPropertyName("committedOpenApiSpec")
         .withPathSensitivity(PathSensitivity.NONE)
+}
+
+// --- Mutation testing -----------------------------------------------------
+// pitest rewrites the compiled bytecode one mutant at a time and re-runs the
+// tests that cover it; a mutant no test notices is a line no assertion pins.
+// A local pre-PR gate driven by the /mutation-test skill, never a CI job — a
+// surviving mutant needs a human verdict, not a threshold (ADR 0013).
+//
+// Run as a JavaExec against pitest's own CLI entry point, the way jOOQ codegen
+// above is: the Gradle plugin's last release predates Gradle 9, while pitest
+// itself is current. Scope it to the classes a change touched, or it sweeps the
+// whole backend. Name each class and its nested types — a bare `Foo*` also
+// matches every sibling whose name it prefixes:
+//   ./gradlew mutationTest -PmutationTargets='com.tucker.domain.Goal,com.tucker.domain.Goal$*'
+tasks.register<JavaExec>("mutationTest") {
+    description = "Mutation testing (pitest) over the fast suite. Scope with -PmutationTargets."
+    group = "verification"
+    dependsOn("testClasses")
+    classpath = pitest
+    mainClass.set("org.pitest.mutationtest.commandline.MutationCoverageReport")
+
+    val reportDir = layout.buildDirectory.dir("reports/pitest").get().asFile
+    // jOOQ generates Java and everything hand-written here is Kotlin, so the two
+    // land in different output directories. Offering pitest only the Kotlin one
+    // makes "never mutate generated code" structural, rather than a package name
+    // that has to be kept in step with jooq-codegen.xml.
+    val generatedJava = sourceSets["main"].java.destinationDirectory.get().asFile
+    val handWritten = sourceSets["main"].output.classesDirs.filter { it != generatedJava }
+
+    args(
+        "--reportDir", reportDir.absolutePath,
+        "--targetClasses", providers.gradleProperty("mutationTargets").getOrElse("com.tucker.*"),
+        "--targetTests", "com.tucker.*",
+        // The Testcontainers suite needs the Docker image built and takes minutes;
+        // pitest would re-run it per mutant. Dropped by the same @Tag the `test`
+        // task filters on, so the two cannot drift.
+        "--excludedGroups", "e2e",
+        // The classes the Kotlin compiler emits for an inlined lambda — the
+        // comparator behind `sortedBy`, for one. pitest's own Kotlin filter
+        // (feature FKOTLIN, on by default) catches most compiler constructs but
+        // not these.
+        "--excludedClasses", "com.tucker.*\$\$inlined\$*",
+        // Kotlin compiles a null assertion into every platform-type access.
+        // Deleting one is a mutant of the compiler's work, not of Tucker's.
+        // The flag *replaces* pitest's default list rather than adding to it,
+        // so the logging frameworks it ships with are restated — a deleted log
+        // line is not a behaviour change any test should be asked to notice.
+        "--avoidCallsTo",
+        "kotlin.jvm.internal.Intrinsics," +
+            "java.util.logging,org.apache.log4j,org.slf4j,org.apache.commons.logging",
+        "--sourceDirs", file("src/main/kotlin").absolutePath,
+        "--classPath", sourceSets["test"].runtimeClasspath.joinToString(","),
+        "--mutableCodePaths", handWritten.joinToString(","),
+        "--outputFormats", "HTML,XML",
+        "--timestampedReports", "false",
+        // pitest's default, restated because raising it is the obvious way to
+        // speed a sweep up and it would corrupt the result: every test shares one
+        // SQLite file (src/test/resources/application.yml), so parallel minions
+        // contend for it and report mutants killed by lock timeouts, not by
+        // assertions.
+        "--threads", "1",
+    )
+
+    // Nothing else clears the report, and the skill's triage step parses
+    // mutations.xml — so a run that dies leaves the previous run's verdict on
+    // disk looking exactly like a fresh one.
+    doFirst { reportDir.deleteRecursively() }
 }
 
 // End-to-end tests run the real tucker-backend Docker image via Testcontainers.

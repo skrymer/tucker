@@ -56,6 +56,16 @@ Backend commands (run in `backend/`):
   a `--rerun-tasks` regeneration swaps `400` against `404` under `responses` on
   most paths — ~700 lines of textual churn that a structural comparison of the two
   documents reports as identical. Discard such a diff rather than committing it.
+- `./gradlew mutationTest` — pitest mutation testing over the fast suite, and the
+  backend counterpart to the frontend's `pnpm test:mutation` below: same gate,
+  same rules, same **local pre-PR only, deliberately not in CI**. Bare it sweeps
+  the whole backend (~17 minutes); scope it to what a change touched —
+  `-PmutationTargets='com.tucker.domain.Entry,com.tucker.domain.Entry$*'` — at
+  ~0.8s per mutant for domain code and ~1.6s for anything a controller test
+  covers, on top of a fixed ~13s coverage pass. Driven by the `/mutation-test`
+  skill, gate 3 of `/feature-sign-off`. Why pitest, and what accepting it costs:
+  [ADR 0013](docs/adr/0013-test-coverage-policy.md); the noise filters it needs
+  and why each is there: `backend/build.gradle.kts`.
 
 The **Nuxt frontend** (`frontend/`) is scaffolded — **F1 is done**: a SPA
 (`ssr: false`) Nuxt 4 + Nuxt UI + `@vite-pwa/nuxt` project, UI testing wired up,
