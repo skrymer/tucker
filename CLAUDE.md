@@ -351,7 +351,7 @@ The frontend is built **test-first (red-green TDD)**. Increments:
   not-yet-saved input, which the backend re-derives authoritatively on save —
   the carve-out is recorded in
   [ADR 0002](docs/adr/0002-business-logic-belongs-in-the-backend.md).
-- **F10** — multiple users (design pass **done**, see
+- **F10** — multiple users (**shipped and live**, all seven slices; see
   [ADR 0020](docs/adr/0020-identity-comes-from-cloudflare-access.md),
   [ADR 0021](docs/adr/0021-every-row-is-owned-by-one-user.md), and the `User` term
   in `CONTEXT.md`). Invite-only: Cloudflare Access stays the authenticator and its
@@ -683,17 +683,37 @@ The frontend is built **test-first (red-green TDD)**. Increments:
     rather than faked with a row that violates two constraints at once.
 
   Slice 7 ([#161](https://github.com/skrymer/tucker/issues/161)) — **invite the second
-  User** — **in progress, and the only F10 work left.** It is the one slice that cannot
-  merge on CI: it needs the Cloudflare dashboard, a real deploy, and a second person with
-  a real address. The documentation half has landed —
-  [`deploy/README.md`](deploy/README.md) now carries "Inviting and revoking a User", and
-  the line above no longer calls Tucker single-user — and the remaining five acceptance
-  criteria are all observations against the live origin. **F10 is not done until they are
-  made**; do not mark it so on the strength of the code being merged.
-  - **The deploy hold has become an instruction rather than a warning.** Slices 1–6 and
-    #232 are on `main`, so the next production deploy applies `V9`→`V13` in one go, which
-    is the shape the hold was waiting for, and that deploy is step one of this slice. The
-    `PRAGMA foreign_key_check` pre-step runs before it.
+  User** — ✅ done, **and with it F10**. It is the one slice that could not merge on CI:
+  it needed the Cloudflare dashboard, a real deploy, and a second person with a real
+  address, so its acceptance criteria are observations against the live origin rather
+  than tests. `V9`→`V13` applied to production in a single go, preceded by the
+  `PRAGMA foreign_key_check` pre-step (clean) and a Litestream restore drill whose
+  restored row counts matched production exactly.
+  - **The second User was provisioned just-in-time and owns nothing of the first's.**
+    Adding their address to the Access policy was the whole of inviting them; their first
+    open created the `user` row. Confirmed on the live origin: an empty Foods catalog, no
+    Entries, no history.
+  - **The evidence worth keeping is the same-day weight row.** Both Users now hold a
+    Weight Measurement on the *same date*, both intact. That is precisely the hole slice 4
+    closed — `WeightMeasurementRepository.save` used to resolve the date unscoped, so the
+    second person weighing in on a day would silently overwrite the first's reading — and
+    `idx_weight_measurement_user_day` on `(user_id, measured_on)` is what lets both exist.
+    A production database is the only place that collision was ever going to be real.
+  - **Each Calorie Budget derives from one body.** The two Users' Maintenance, Budget and
+    Protein Floor were re-derived by hand from their own profiles and trend weights and
+    match what the engine stored, against a formula seed of Mifflin-St Jeor × 1.4 and a
+    floor of 2.0 g/kg. Before slice 4 one engine averaged both people's scale readings and
+    logged intake into a single Maintenance, which was wrong for both.
+  - **Reminders reach one person's devices.** The two Push Subscriptions sit on different
+    push services (FCM and Apple), the timezone is captured onto the enabling User's
+    Profile alone, and `reminder_state` keeps a separate absent-today stamp and dedupe per
+    User. **A live send was not observed**: `ReminderPolicy` requires a review ≥7 days
+    overdue *and* the User absent that day, so with both Users active and freshly reviewed
+    every gate is correctly shut. The send-and-dedupe path is covered by the
+    `reminder-send` real-stack smoke instead.
+  - **AC5 (revoke) was not exercised**, by choice — it locks the second User out of a
+    live account to prove a Cloudflare behaviour rather than a Tucker one. The procedure
+    and why it takes two steps are documented; see below.
   - **Revocation is two steps, not one, and the issue's AC says one.** Removing an address
     from the Access policy does not end a session that already exists — Cloudflare only
     re-evaluates the policy at login — so a revoked person keeps the origin until their
