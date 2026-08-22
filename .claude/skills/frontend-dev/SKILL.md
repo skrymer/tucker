@@ -82,14 +82,14 @@ assertion with the dev token), and no browser-level layer can reach it.
 
 When the change works and is tested, run **`feature-sign-off`** (verify → simplify →
 mutation-test → code-review → check-adrs) before committing. Gate 3 is where the tests
-themselves get tested: `mutation-test` runs StrykerJS over the Vitest layer, scoped to the
-files the change touched, and every surviving mutant is either a missing test or a
-recorded equivalent.
+themselves get tested: `mutation-test` scopes StrykerJS to the files the change touched,
+and every survivor gets one of its four verdicts. A slice that also moved the backend
+runs `backend-dev`'s half of that gate in the same pass.
 
 ## Related
 
 `tdd` · `component-testing-best-practices` · `playwright-best-practices` · `mutation-test` ·
-`feature-sign-off` ·
+`feature-sign-off` · `backend-dev` (the other half of a vertical slice) ·
 `frontend-design` (visuals only) + `frontend/DESIGN.md`. ADRs:
 [0002](../../../docs/adr/0002-business-logic-belongs-in-the-backend.md) ·
 [0003](../../../docs/adr/0003-validate-forms-with-zod.md) ·

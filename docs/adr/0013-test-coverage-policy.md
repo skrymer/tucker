@@ -59,24 +59,39 @@ glue's failing red simply lives in the integrated test, not in a unit test.
 ### Mutation testing checks the layers, it is not one of them
 
 This ADR answers *which units get a test*; it does not answer *whether those tests
-assert enough*. StrykerJS (`pnpm test:mutation`, driven by the `/mutation-test`
-skill as gate 3 of `/feature-sign-off`) answers the second question by rewriting
-the source one mutant at a time — a mutant no test notices is a line no assertion
-pins.
+assert enough*. Mutation testing answers the second question by rewriting the
+source one mutant at a time — a mutant no test notices is a line no assertion
+pins. Both stacks run it, driven by the `/mutation-test` skill as gate 3 of
+`/feature-sign-off`: **StrykerJS** over the Vitest suite (`pnpm test:mutation`)
+and **pitest** over the fast JUnit suite (`./gradlew mutationTest`).
 
 It is a **local pre-PR gate, not a CI job and not a sixth layer**: it is far
 slower than the suites CI runs, and a surviving mutant needs a human verdict
 rather than a threshold. Two consequences follow directly from rule 3 above:
 
-- **A survivor in thin glue is not a gap.** Stryker drives the Vitest layer only,
-  so a mutant in a page or a route whose red lives in a Playwright e2e or a smoke
+- **A survivor in thin glue is not a gap.** Each engine drives one layer only —
+  Stryker the Vitest suite, pitest the fast JUnit suite — so a mutant whose red
+  lives in a Playwright e2e, a real-stack smoke, or the Testcontainers e2e
   survives by construction. The verdict there is "killed by an out-of-scope
-  layer — *this* spec kills it", never "write a standalone Vitest test", which
+  layer — *this* spec kills it", never "write a standalone unit test", which
   would contradict rule 3.
-- **A green score is not a green suite.** Stryker only makes the mutants it knows
-  how to make; it has no operator that rewrites a null check as a truthiness
-  check, so a guard distinguishing *absent* from *zero* can score 100% untested.
-  Rule 5's red-green discipline is what covers that, not the score.
+- **A green score is not a green suite.** An engine only makes the mutants it
+  knows how to make, and each has a blind spot big enough to hide a real bug.
+  Stryker has no operator that rewrites a null check as a truthiness check, so a
+  guard distinguishing *absent* from *zero* can score 100% untested. pitest's
+  default operators never touch a **constant**, so the Atwater factors, the EWMA
+  smoothing factor and every window length are invisible to it — the layer of
+  Tucker most obviously made of numbers is the layer its score says least about.
+  Rule 5's red-green discipline is what covers both, not the score.
+
+**pitest works on bytecode, and that is what makes it affordable.** It needs no
+Kotlin parser, and it re-runs only the tests that cover the mutated line — which
+is what lets the gate be scoped to a change instead of the whole backend. It also
+means Tucker accepts a **hand-maintained noise denylist**: pitest's built-in
+Kotlin filter catches most compiler constructs but not all, and the plugin that
+covers the rest is commercial. The alternative to maintaining that list is buying
+a licence or writing a Kotlin mutator, and neither is worth it at this size. The
+list itself lives in `backend/build.gradle.kts`, beside the flags that carry it.
 
 ## Worked example (F6)
 
@@ -93,6 +108,11 @@ integration test.
   anti-pattern `/tdd` calls out.
 - **Only end-to-end / smoke tests** — slow, and they pin deep logic (adaptive math,
   the reminder decision) too coarsely to drive it test-first or localise a failure.
+- **mutant-kraken for the backend** — a Kotlin *source*-level mutator, so it emits
+  no bytecode junk and would need no denylist. Rejected because it re-runs the
+  whole test command per mutant: with no coverage-based test selection there is no
+  way to scope a run to the classes a change touched, which is the property that
+  makes mutation testing cheap enough to be a gate at all.
 
 ## Consequences
 

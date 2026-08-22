@@ -48,16 +48,20 @@ code path).
    history and ADRs hold the why-it-changed. Rationale longer than a sentence or
    two belongs in an ADR the comment links.
 
-3. **`/mutation-test` — do the tests actually catch bugs?** Run StrykerJS over
-   the Vitest suite, **scoped to the source files this change touched**, and
-   triage every surviving mutant as a real gap (write the missing test) or an
-   equivalent mutant (record why). It runs here, not later, for two reasons: the
-   code is final after gate 2, and it *adds tests* that gate 4 must then review.
-   Vitest layer only — Playwright is out of scope, so keep checking the browser
-   layers by hand (an unanchored aria-snapshot regex and a substring
-   `getByText` both pass a change they should have caught). Roughly 0.7s per
-   mutant, so a typical feature's files are well under a minute. SKIP with a
-   note if the diff touches no mutable source (docs, config, tests only).
+3. **`/mutation-test` — do the tests actually catch bugs?** Run the engine for
+   **each stack the diff touches** — StrykerJS over Vitest in `frontend/`, pitest
+   over the fast JUnit suite in `backend/` — **scoped to the source this change
+   touched**, and give every surviving mutant one of that skill's four verdicts —
+   a real gap (write the missing test), a kill by an out-of-scope layer (name the
+   spec), an equivalent mutant (record why), or a false survivor the engine never
+   ran a test against (settle it by hand-mutating). It runs here, not later, for
+   two reasons: the code is final after
+   gate 2, and it *adds tests* that gate 4 must then review. The browser and
+   container layers are out of scope in both, so keep checking those by hand (an
+   unanchored aria-snapshot regex and a substring `getByText` both pass a change
+   they should have caught). Budget roughly a minute for a frontend scope and a
+   few for a backend one. SKIP the stack with a note if the diff touches no
+   mutable source there (docs, config, tests only).
 
 4. **`/code-review medium` — hunt correctness bugs.** Review the (now-simplified)
    diff for real bugs. **Run it at `medium` effort**, not the default high: at
@@ -112,9 +116,10 @@ Suites green (detekt/build, lint/test). Committed + pushed to <branch>.
   mutation-test before review (its new tests are part of what gets reviewed),
   check-adrs last (judge the final diff). Don't reorder for convenience.
 - **A green mutation score is not a green test suite.** `/mutation-test` reaches
-  only the Vitest layer. Fixture defaults that production can't produce,
-  unanchored aria-snapshot regexes, and substring `getByText` matchers all sail
-  through it — check those by hand while reviewing the diff's tests.
+  the Vitest and fast-JUnit layers only. Fixture defaults that production can't
+  produce, unanchored aria-snapshot regexes, and substring `getByText` matchers
+  all sail through it — as does a wrong tuning constant, which pitest's operators
+  never touch. Check those by hand while reviewing the diff's tests.
 - **`/simplify` + `/code-review medium` are complementary, not redundant.**
   `/simplify` owns cleanup and *applies* it; `/code-review` at medium owns the
   correctness hunt and *reports* it. The overlap only appears if you run
