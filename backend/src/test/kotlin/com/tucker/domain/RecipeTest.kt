@@ -87,6 +87,24 @@ class RecipeTest {
     }
 
     @Test
+    fun `the Food row behind a Recipe rejects a cooked weight of zero on its own`() {
+        // The test above never reaches this: Recipe refuses the zero first. The
+        // Food row is what a repository maps back out of the database, with no
+        // Recipe in front of it to have refused anything — and its per-100 g
+        // nutrition is the cooked weight divided into the batch.
+        assertThrows<IllegalArgumentException> {
+            Food(
+                id = 1L,
+                name = "Stew",
+                kind = FoodKind.RECIPE,
+                barcode = null,
+                nutrition = Nutrition(200.0, 20.0, null, null),
+                cookedWeightG = 0.0,
+            )
+        }
+    }
+
+    @Test
     fun `a non-positive ingredient weight is rejected`() {
         assertThrows<IllegalArgumentException> {
             RecipeIngredient(food("Beef", 200.0, 20.0), grams = 0.0)

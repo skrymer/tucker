@@ -111,7 +111,7 @@ class SummaryApiTest {
     }
 
     @Test
-    fun `the summary reports protein remaining as the signed floor minus consumed`() {
+    fun `the summary reports what remains as the signed targets minus consumed`() {
         val day = LocalDate.of(2026, 6, 10)
         seedReview(day, budgetKcal = 2000.0, floorG = 140.0)
         mockMvc.post("/api/entries/estimated") {
@@ -124,7 +124,9 @@ class SummaryApiTest {
             param("date", "$day")
         }.andExpect {
             status { isOk() }
-            // Floor 140 g, 90 g consumed → 50 g still to go (signed, like caloriesRemaining).
+            // Both are signed, and both count *down*: 2000 − 500 kcal, 140 − 90 g.
+            // Either sign flipped would read as a day with room to spare.
+            jsonPath("$.caloriesRemaining") { value(1500.0) }
             jsonPath("$.proteinRemaining") { value(50.0) }
         }
     }

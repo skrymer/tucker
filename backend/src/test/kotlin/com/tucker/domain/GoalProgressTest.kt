@@ -104,6 +104,22 @@ class GoalProgressTest {
     }
 
     @Test
+    fun `a rate sitting exactly on a band edge is on pace, not outside it`() {
+        // The band is inclusive at both edges — falling *at* the edge is still
+        // keeping pace. The trend falls 2 kg over 28 days, an observed 0.5 kg/week,
+        // and the two goal rates put that 0.5 exactly on one edge and then the other:
+        // 0.625 x 0.8 = 0.5, and (0.5 / 1.2) x 1.2 = 0.5.
+        assertEquals(
+            PaceStatus.ON_PACE,
+            GoalProgress.forGoal(goal(rateKgPerWeek = 0.625), trendAtRate(0.5), today).paceStatus,
+        )
+        assertEquals(
+            PaceStatus.ON_PACE,
+            GoalProgress.forGoal(goal(rateKgPerWeek = 0.5 / 1.2), trendAtRate(0.5), today).paceStatus,
+        )
+    }
+
+    @Test
     fun `the observed finish date projects the remaining loss at the observed rate`() {
         // 6 kg to go at an observed 0.5 kg/week is 12 weeks — 84 days past today.
         val progress = GoalProgress.forGoal(goal(), trendAtRate(0.5), today)
@@ -122,6 +138,17 @@ class GoalProgressTest {
         assertNull(progress.observedFinishDate)
         // The (non-positive) rate itself is still reported.
         assertEquals(-0.25, progress.observedRateKgPerWeek!!, 1e-9)
+    }
+
+    @Test
+    fun `a perfectly flat trend is stalled, not merely slow`() {
+        // Zero belongs to stalled, and has to: it is the divisor the finish-date
+        // projection would otherwise use, which makes the finish infinitely far off.
+        val progress = GoalProgress.forGoal(goal(), trendFalling(86.0, 86.0, 28), today)
+
+        assertEquals(PaceStatus.STALLED, progress.paceStatus)
+        assertNull(progress.observedFinishDate)
+        assertEquals(0.0, progress.observedRateKgPerWeek!!, 1e-9)
     }
 
     @Test

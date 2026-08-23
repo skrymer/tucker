@@ -83,7 +83,13 @@ class SetupApiTest {
     }
 
     @Test
-    fun `running a weekly review with no Goal set is a 409`() {
-        mockMvc.post("/api/weekly-review").andExpect { status { isConflict() } }
+    fun `running a weekly review with no Goal set is a 409 saying what is missing`() {
+        // The frontend puts this straight into a persistent error toast (ADR 0005),
+        // so a generic "conflict" would tell the user only that something went
+        // wrong, not that they have not finished setting up.
+        mockMvc.post("/api/weekly-review").andExpect {
+            status { isConflict() }
+            jsonPath("$.message") { value("no Profile — cannot run a weekly review") }
+        }
     }
 }

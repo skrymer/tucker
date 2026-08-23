@@ -2,6 +2,7 @@ package com.tucker.domain
 
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
 
 /**
@@ -75,5 +76,23 @@ class CheckTest {
         assertNull(check.proteinPer100Kcal, "no calories, so no protein-per-100-kcal ratio")
         assertNull(check.gramsInBudget, "no calories, so no amount of it exhausts the Budget")
         assertNull(check.wholeDayProteinShortfallG, "a whole day of only this Food is undefined")
+    }
+
+    @Test
+    fun `a Check refuses a Calorie Budget of zero`() {
+        // Every figure a Check states is a share of the Budget or the Floor, so a
+        // zero for either is a divisor of zero. WeeklyReview permits it and the
+        // adaptive engine never produces it, which leaves this the guard that
+        // stops a hand-written row reaching the wire as an Infinity.
+        assertFailsWith<IllegalArgumentException> {
+            Check.of(nutella, calorieBudgetKcal = 0.0, proteinFloorG = floorG)
+        }
+    }
+
+    @Test
+    fun `a Check refuses a Protein Floor of zero`() {
+        assertFailsWith<IllegalArgumentException> {
+            Check.of(nutella, calorieBudgetKcal = budgetKcal, proteinFloorG = 0.0)
+        }
     }
 }

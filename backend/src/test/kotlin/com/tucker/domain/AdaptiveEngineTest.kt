@@ -2,7 +2,9 @@ package com.tucker.domain
 
 import org.junit.jupiter.api.Test
 import java.time.LocalDate
+import kotlin.math.round
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 /** Pure-domain tests for the adaptive engine's arithmetic. */
@@ -20,8 +22,14 @@ class AdaptiveEngineTest {
                 WeightMeasurement(null, day(4), 81.0),
             ),
         )
-        // EWMA (alpha 0.1): 80 -> 80.2 -> 80.18 -> 80.262
-        assertEquals(80.262, trend.latest()!!.trendKg, 1e-6)
+        // EWMA (alpha 0.1): the first reading seeds the trend outright, and each
+        // one after it moves the trend a tenth of the way towards itself. One
+        // point per measurement, in measurement order.
+        assertEquals(listOf(day(1), day(2), day(3), day(4)), trend.points.map { it.date })
+        assertEquals(
+            listOf(80.0, 80.2, 80.18, 80.262),
+            trend.points.map { round(it.trendKg * 1e6) / 1e6 },
+        )
         // The trend barely moves while the raw readings bounce by 2 kg.
         assertTrue(trend.latest()!!.trendKg < 81.0)
     }
@@ -52,6 +60,40 @@ class AdaptiveEngineTest {
     }
 
     @Test
+    fun `a Maintenance of zero calories is refused`() {
+        // The Calorie Budget is Maintenance less the Goal's deficit, so a zero
+        // here is a negative Budget — and `held` carries whatever it is given
+        // forward week after week without re-deriving it.
+        assertFailsWith<IllegalArgumentException> { Maintenance.held(0.0) }
+    }
+
+    @Test
+    fun `the adaptive estimate refuses a window with no logged days`() {
+        // Both figures are divisors. Zero would make the estimate an Infinity that
+        // Maintenance's own kcal > 0 check waves through, so it is refused here.
+        assertFailsWith<IllegalArgumentException> {
+            Maintenance.adaptive(
+                totalIntakeKcal = 20000.0,
+                loggedDays = 0,
+                trendWeightChangeKg = -0.5,
+                windowDays = 14,
+            )
+        }
+    }
+
+    @Test
+    fun `the adaptive estimate refuses a window of no days`() {
+        assertFailsWith<IllegalArgumentException> {
+            Maintenance.adaptive(
+                totalIntakeKcal = 20000.0,
+                loggedDays = 10,
+                trendWeightChangeKg = -0.5,
+                windowDays = 0,
+            )
+        }
+    }
+
+    @Test
     fun `DailyLog rolls up calories and the estimated share`() {
         val log = DailyLog(
             day(1),
@@ -63,6 +105,14 @@ class AdaptiveEngineTest {
         assertEquals(1000.0, log.caloriesConsumed(), 0.01)
         assertEquals(20.0, log.proteinConsumed(), 0.01)
         assertEquals(0.6, log.estimatedCalorieShare(), 0.01)
+    }
+
+    @Test
+    fun `a day with nothing logged has no estimated share rather than a NaN one`() {
+        // The share is a division by the day's own calories, so an empty day is
+        // 0/0. It reaches the wire as `estimatedCalorieShare` on every daily
+        // summary, and a NaN there serializes to something no client can read.
+        assertEquals(0.0, DailyLog(day(1), emptyList()).estimatedCalorieShare(), 0.01)
     }
 
     @Test
@@ -97,6 +147,16 @@ class AdaptiveEngineTest {
         val log = DailyLog(day(1), listOf(EstimatedEntry(null, day(1), "Lunch", 1500.0, 90.0)))
         assertEquals(
             DayStatus.IN_PROGRESS,
+            log.dayStatus(calorieBudgetKcal = 2000.0, proteinFloorG = 140.0),
+        )
+    }
+
+    @Test
+    fun `DailyLog is on target at exactly the protein floor`() {
+        // A Floor is a floor: reaching it is meeting it, not falling short of it.
+        val log = DailyLog(day(1), listOf(EstimatedEntry(null, day(1), "Lunch", 1500.0, 140.0)))
+        assertEquals(
+            DayStatus.ON_TARGET,
             log.dayStatus(calorieBudgetKcal = 2000.0, proteinFloorG = 140.0),
         )
     }

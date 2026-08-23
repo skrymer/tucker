@@ -20,6 +20,28 @@ class ProfileTest {
     )
 
     @Test
+    fun `rejects a height of zero`() {
+        // Height is a multiplier in Mifflin-St Jeor, so a zero silently produces a
+        // BMR — and therefore a Maintenance and a Calorie Budget — rather than failing.
+        val ex = assertThrows<IllegalArgumentException> {
+            Profile(sex = Sex.MALE, birthDate = LocalDate.of(1986, 5, 22), heightCm = 0.0)
+        }
+        assert(ex.message!!.contains("heightCm", ignoreCase = true)) {
+            "expected message to mention heightCm, was '${ex.message}'"
+        }
+    }
+
+    @Test
+    fun `rejects a body weight of zero when computing BMR`() {
+        val ex = assertThrows<IllegalArgumentException> {
+            profileWith().basalMetabolicRateKcal(weightKg = 0.0, on = LocalDate.of(2026, 5, 22))
+        }
+        assert(ex.message!!.contains("weightKg", ignoreCase = true)) {
+            "expected message to mention weightKg, was '${ex.message}'"
+        }
+    }
+
+    @Test
     fun `rejects a reminder hour outside the 0 to 23 day`() {
         val ex = assertThrows<IllegalArgumentException> { profileWith(reminderHour = 24) }
         assert(ex.message!!.contains("reminderHour", ignoreCase = true)) {
