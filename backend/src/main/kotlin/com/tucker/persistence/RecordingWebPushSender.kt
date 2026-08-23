@@ -24,6 +24,6 @@ class RecordingWebPushSender : WebPushSender {
     }
 
     private companion object {
-        val log = LoggerFactory.getLogger(RecordingWebPushSender::class.java)
+        private val log = LoggerFactory.getLogger(RecordingWebPushSender::class.java)
     }
 }

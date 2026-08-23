@@ -27,10 +27,13 @@ export const navDestinations: NavDestination[] = [
  * path.
  */
 export function isDestinationActive(to: string, path: string): boolean {
-  // The Today root would prefix-match every route, so it's active only on an
-  // exact '/'. Every other destination is active on its own route and on any
-  // nested child (e.g. Profile stays active on /profile/weight), matched on a
-  // path-segment boundary so a string-prefix sibling can't light it up.
+  // A destination is active on its own route and on any nested child (e.g.
+  // Profile stays active on /profile/weight), matched on a path-segment
+  // boundary so a string-prefix sibling can't light it up.
+  //
+  // The Today root is exact-only. That boundary match spells out to
+  // `path.startsWith('//')` for it, which no ordinary route satisfies — but a
+  // stray doubled slash does, and would light Today up on somebody else's page.
   if (to === '/') return path === '/'
   return path === to || path.startsWith(`${to}/`)
 }

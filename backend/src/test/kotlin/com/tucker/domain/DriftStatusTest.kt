@@ -51,6 +51,15 @@ class DriftStatusTest {
     }
 
     @Test
+    fun `the band edge itself, either direction, still holds`() {
+        // The rate goes in directly: the band is ±0.1 kg/week, and no trend built
+        // from whole kilograms lands a division on exactly that. The edge belongs
+        // to holding — drift starts past the band, not at it.
+        assertEquals(DriftStatus.HOLDING, DriftStatus.forRate(0.1))
+        assertEquals(DriftStatus.HOLDING, DriftStatus.forRate(-0.1))
+    }
+
+    @Test
     fun `drift reads as gathering data until 14 days of measurements exist`() {
         // Only 10 days of trend history — too little to read drift from yet.
         val trend = WeightTrend(

@@ -4,6 +4,14 @@ import { toLedgerRows } from './reviewLedger'
 
 type WeeklyReview = components['schemas']['WeeklyReviewResponse']
 
+// REVIEW_BASIS_BADGE's labels and colours are deliberately unasserted here.
+// They are lookup data: a test naming 'Adaptive' or 'primary' pins the token a
+// designer is entitled to change, not a rule. What matters — that all three
+// bases are distinguishable, and that one map serves both the phone cards and
+// the desktop table — is structural, and is what the Record's key type enforces
+// at compile time. Mutation testing reports the three colours as survivors for
+// this reason; that is the intended verdict, not a gap.
+
 // The history endpoint returns reviews oldest-first; the ledger shows them
 // newest-first with each row's delta measured against the older one beneath it.
 function review(overrides: Partial<WeeklyReview> = {}): WeeklyReview {

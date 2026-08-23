@@ -167,6 +167,28 @@ class RecipeApiTest {
     }
 
     @Test
+    fun `fetching one Food carries the ingredient count for a recipe and null for a plain food`() {
+        // The same rule as the catalog above, on the endpoint that serves a single
+        // Food — where a Recipe reached by id would otherwise read as a plain one.
+        val minceId = createFood("Mince", 20.0, 0.0, 10.0)
+        val onionId = createFood("Onion", 1.0, 9.0, 0.0)
+        val recipeJson = mockMvc.post("/api/recipes") {
+            contentType = MediaType.APPLICATION_JSON
+            content = recipeBody("Cottage Pie", 250.0, minceId to 300.0, onionId to 100.0)
+        }.andExpect { status { isCreated() } }.andReturn().response.contentAsString
+        val recipeId = objectMapper.readTree(recipeJson).get("id").asLong()
+
+        mockMvc.get("/api/foods/$recipeId").andExpect {
+            status { isOk() }
+            jsonPath("$.ingredientCount") { value(2) }
+        }
+        mockMvc.get("/api/foods/$minceId").andExpect {
+            status { isOk() }
+            jsonPath("$.ingredientCount") { isEmpty() }
+        }
+    }
+
+    @Test
     fun `getting a recipe by id returns its ingredient lines and cooked weight`() {
         val minceId = createFood("Mince", protein = 20.0, carbs = 0.0, fat = 10.0)
         val onionId = createFood("Onion", protein = 1.0, carbs = 9.0, fat = 0.0)

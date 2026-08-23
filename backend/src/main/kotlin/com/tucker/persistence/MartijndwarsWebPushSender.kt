@@ -188,7 +188,7 @@ class MartijndwarsWebPushSender(private val vapidKeys: VapidKeyStore) : WebPushS
     }
 
     private companion object {
-        val log = LoggerFactory.getLogger(MartijndwarsWebPushSender::class.java)
+        private val log = LoggerFactory.getLogger(MartijndwarsWebPushSender::class.java)
 
         /** VAPID contact, required by the spec so a push service can reach the operator. */
         const val SUBJECT = "mailto:tucker@tucker.app"

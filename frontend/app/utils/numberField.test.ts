@@ -32,4 +32,13 @@ describe('isSameToDisplayedPrecision', () => {
     expect(isSameToDisplayedPrecision(undefined, 0)).toBe(false)
     expect(isSameToDisplayedPrecision(0, undefined)).toBe(false)
   })
+
+  it('tells a blank field from one holding a figure that cannot be shown', () => {
+    // The guard above the formatter is what makes this hold, and this is the
+    // only pairing that needs it: Intl renders a blank and a NaN as the same
+    // "NaN", so compared through the display alone the two would read as one
+    // figure and a real edit between them would be dropped as a tab-through.
+    expect(isSameToDisplayedPrecision(undefined, NaN)).toBe(false)
+    expect(isSameToDisplayedPrecision(NaN, undefined)).toBe(false)
+  })
 })

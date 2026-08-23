@@ -55,6 +55,11 @@ Identical for both stacks; only step 1 and 2's commands differ.
      "the tool can't see it" and no test is owed. Backend gotchas carry the
      mechanism and a worked example.
 
+   **Check [`references/known-survivors.md`](references/known-survivors.md) first.**
+   Every mutant a full sweep leaves alive already has a verdict there, with the
+   evidence. Triage what your *change* introduced; only re-litigate an entry if the
+   code under it moved.
+
    Never raise a threshold or narrow the scope to make a survivor go away.
 
 4. **Report** score, survivors, and the verdict on each, per stack. State
@@ -205,6 +210,21 @@ domain code and **~1.6s for anything a controller test covers**.
   can't see it", not "the tests don't". (Class names and counts here are a worked
   example, not a spec — which test builds the context first is emergent, so
   re-derive rather than trusting these numbers.)
+- **The caching wall is not only Spring's, and not only configuration's.** springdoc
+  caches the built OpenAPI spec, so every mutant in a `ModelConverter` is invisible to
+  a test that reads `/v3/api-docs` — and the same reaches ordinary domain code: the
+  `@JsonValue` accessor on `DayStatus`, `PaceStatus` and `DriftStatus` reports
+  NO_COVERAGE while blanking one by hand fails four tests. Suspect *anything*
+  read only during serialization or context startup, whatever it looks like.
+  Where the class holds real logic, the fix is to specify it directly — a test that
+  drives it without Spring makes it killable for real, which is what
+  `KotlinNullableModelConverterTest` and `AccessAssertionValidatorTest` do (0/23 → 20/23
+  and 3 survivors → none).
+- **Excluding a class is a last resort, and only when nothing in it is visible.**
+  `--excludedClasses` currently drops three (`AccessSecurityConfig`, `AccessProperties`,
+  `TuckerApplicationKt`), each verified by hand-mutation and each 100% unkilled before
+  exclusion. A class where *some* mutants die stays in: hiding its 3 survivors would
+  hide its 11 working ones too.
 - **pitest never mutates a constant.** Its default mutator set has no
   `INLINE_CONSTS`, so `SMOOTHING`, `OBSERVED_WINDOW_DAYS` and the Atwater factors
   are invisible to it: 100% on `Nutrition` says nothing about whether a test would

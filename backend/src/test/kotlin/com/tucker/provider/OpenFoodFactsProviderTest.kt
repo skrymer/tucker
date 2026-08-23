@@ -2,6 +2,7 @@ package com.tucker.provider
 
 import com.sun.net.httpserver.HttpExchange
 import com.sun.net.httpserver.HttpServer
+import com.tucker.domain.ProviderCapability
 import com.tucker.domain.ProviderLookup
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
@@ -166,6 +167,29 @@ class OpenFoodFactsProviderTest {
     }
 
     @Test
+    fun `a retry that could not even finish its own backoff is not attempted`() {
+        // The budget has to cover the *whole* retry — its backoff as well as the
+        // attempt after it — so the room left is compared against elapsed time
+        // plus a backoff, not minus one. Timeouts of 2s + 4.9s leave a 100 ms
+        // retry window inside the 7s budget: positive, but under one 250 ms
+        // backoff, so the sleep alone would overrun it before OFF was re-asked.
+        val deadPort = server.address.port
+        server.stop(0)
+
+        val startedAt = System.nanoTime()
+        val result = provider(readTimeout = Duration.ofMillis(4900), port = deadPort)
+            .lookupByBarcode("3017620422003")
+        val elapsed = Duration.ofNanos(System.nanoTime() - startedAt)
+
+        assertEquals(ProviderLookup.Inconclusive, result)
+        assertTrue(
+            elapsed < minimumRetryDelay,
+            "expected a window narrower than one backoff to stop the retries, " +
+                "but it kept going for $elapsed",
+        )
+    }
+
+    @Test
     fun `a record Tucker cannot use is a miss, not a reason to try again`() {
         // Open Food Facts is crowd-sourced, so a product can carry values the
         // domain refuses outright — a negative macro, say. The Provider *answered*;
@@ -180,6 +204,26 @@ class OpenFoodFactsProviderTest {
         """.trimIndent()
 
         assertEquals(ProviderLookup.Missing, provider().lookupByBarcode("3017620422003"))
+    }
+
+    @Test
+    fun `an empty body is OFF saying nothing, not OFF saying no`() {
+        // A 204 carries no product and no verdict. Read as a miss it would send
+        // the user to manual entry for a barcode OFF may well know — the
+        // inverted advice issue #164 exists to prevent.
+        response = 204 to ""
+
+        assertEquals(ProviderLookup.Inconclusive, provider().lookupByBarcode("3017620422003"))
+        // Settled, though — OFF answered. Re-asking would not fill an empty body
+        // in, and OFF IP-bans callers that hammer it.
+        assertEquals(1, received.size, "an answered request must not be retried")
+    }
+
+    @Test
+    fun `declares the barcode lookup the Check and Add-Food flows select it for`() {
+        // The chain picks Providers by capability, so an empty set here takes OFF
+        // out of every lookup without any of them failing.
+        assertEquals(setOf(ProviderCapability.BARCODE_LOOKUP), provider().capabilities)
     }
 
     @Test

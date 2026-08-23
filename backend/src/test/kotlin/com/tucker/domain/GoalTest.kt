@@ -93,4 +93,60 @@ class GoalTest {
             "expected message to mention the target-below-start rule, was '${ex.message}'"
         }
     }
+
+    @Test
+    fun `rejects a start weight of zero, naming the start weight`() {
+        // Zero is refused as a *start* weight rather than falling through to
+        // whichever later rule happens to trip on it — the message is what says
+        // which figure the caller got wrong.
+        val ex = assertThrows<IllegalArgumentException> {
+            Goal(
+                id = null,
+                startedOn = startedOn,
+                startWeightKg = 0.0,
+                targetWeightKg = 0.0,
+                rateKgPerWeek = 0.5,
+                active = true,
+            )
+        }
+        assert(ex.message!!.contains("startWeightKg", ignoreCase = true)) {
+            "expected message to mention startWeightKg, was '${ex.message}'"
+        }
+    }
+
+    @Test
+    fun `rejects a target weight of zero`() {
+        val ex = assertThrows<IllegalArgumentException> {
+            Goal(
+                id = null,
+                startedOn = startedOn,
+                startWeightKg = 90.0,
+                targetWeightKg = 0.0,
+                rateKgPerWeek = 0.5,
+                active = true,
+            )
+        }
+        assert(ex.message!!.contains("targetWeightKg", ignoreCase = true)) {
+            "expected message to mention targetWeightKg, was '${ex.message}'"
+        }
+    }
+
+    @Test
+    fun `rejects a target weight equal to the start weight`() {
+        // Nothing to lose is not a weight-loss Goal — the target has to be below
+        // the start, not merely not above it.
+        val ex = assertThrows<IllegalArgumentException> {
+            Goal(
+                id = null,
+                startedOn = startedOn,
+                startWeightKg = 80.0,
+                targetWeightKg = 80.0,
+                rateKgPerWeek = 0.5,
+                active = true,
+            )
+        }
+        assert(ex.message!!.contains("below the start weight", ignoreCase = true)) {
+            "expected message to mention the target-below-start rule, was '${ex.message}'"
+        }
+    }
 }
