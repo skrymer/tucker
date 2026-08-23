@@ -83,6 +83,23 @@ rather than a threshold. Two consequences follow directly from rule 3 above:
   smoothing factor and every window length are invisible to it — the layer of
   Tucker most obviously made of numbers is the layer its score says least about.
   Rule 5's red-green discipline is what covers both, not the score.
+- **A survivor can be invisible rather than untested.** pitest picks which tests to
+  re-run from *line* coverage, so anything executed once and then cached — a `@Bean`
+  built when the first test class raises the context, a springdoc spec, a
+  `@JsonValue` accessor read during serialization — is attributed to whichever test
+  happened to trigger it, never to the tests that observe the result. The verdict is
+  settled by **hand-mutating and running the suite**, never by writing a test to
+  chase the score: `AccessSecurityConfig` scored 0/22 while deleting one line failed
+  142 tests. Two remedies, in this order. Where the class holds real logic, **specify
+  it directly** — a test that drives it without Spring makes it killable for real,
+  and is owed under rule 1 anyway. Only where a class is *entirely* assembly, with
+  nothing the tool can see, does it leave `--targetClasses`; a class where some
+  mutants die stays in, because hiding its survivors would hide its working ones too.
+  Every exclusion carries its hand-mutation evidence in `backend/build.gradle.kts`.
+
+Each survivor's verdict is written down once, in
+`.claude/skills/mutation-test/references/known-survivors.md`, so a sweep re-reaches
+last time's conclusions instead of re-arguing them.
 
 **pitest works on bytecode, and that is what makes it affordable.** It needs no
 Kotlin parser, and it re-runs only the tests that cover the mutated line — which

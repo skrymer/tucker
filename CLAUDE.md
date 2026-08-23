@@ -65,7 +65,10 @@ Backend commands (run in `backend/`):
   covers, on top of a fixed ~13s coverage pass. Driven by the `/mutation-test`
   skill, gate 3 of `/feature-sign-off`. Why pitest, and what accepting it costs:
   [ADR 0013](docs/adr/0013-test-coverage-policy.md); the noise filters it needs
-  and why each is there: `backend/build.gradle.kts`.
+  and why each is there: `backend/build.gradle.kts`. The sweep scores **92%
+  (81/1011 unkilled)**, and each of those 81 already has a verdict in
+  `.claude/skills/mutation-test/references/known-survivors.md` — read it before
+  triaging, and re-litigate an entry only if the code under it moved.
 
 The **Nuxt frontend** (`frontend/`) is scaffolded — **F1 is done**: a SPA
 (`ssr: false`) Nuxt 4 + Nuxt UI + `@vite-pwa/nuxt` project, UI testing wired up,
@@ -106,7 +109,9 @@ Frontend commands (run in `frontend/`, package manager is pnpm):
   slower than the suites CI runs, and every surviving mutant needs a human
   verdict (real gap vs equivalent mutant) rather than a pass/fail threshold. It
   reaches the Vitest layer only — Playwright is out of scope. Driven by the
-  `/mutation-test` skill, gate 3 of `/feature-sign-off`.
+  `/mutation-test` skill, gate 3 of `/feature-sign-off`; standing verdicts live
+  alongside the backend's in
+  `.claude/skills/mutation-test/references/known-survivors.md`.
 - `pnpm lint` / `pnpm lint:fix` — ESLint (`@nuxt/eslint`)
 - `pnpm format` / `pnpm format:check` — Prettier
 - `pnpm typecheck` — `nuxt typecheck` (vue-tsc) over the whole program
