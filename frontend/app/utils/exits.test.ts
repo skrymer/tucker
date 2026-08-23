@@ -17,4 +17,20 @@ describe('exits', () => {
         `the SPA`,
     ).toBe(true)
   })
+
+  // The entries are anchored, so they are prefixes rather than substrings. An
+  // unanchored one also matches an ordinary in-app route that happens to
+  // contain it, which drops that route out of the navigation fallback: offline,
+  // it stops falling back to the precached shell and fails to open at all.
+  it.each([['/foods/api/apple'], ['/profile/cdn-cgi/trace']])(
+    'leaves %s to the cache — a prefix has to match at the start',
+    (path) => {
+      expect(
+        NETWORK_ONLY_PREFIXES.some((prefix) => prefix.test(path)),
+        `${path} is an in-app route, but a NETWORK_ONLY_PREFIXES entry matched ` +
+          `it mid-path — so the service worker would stop serving the app shell ` +
+          `for it and the route would not open offline`,
+      ).toBe(false)
+    },
+  )
 })
