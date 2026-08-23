@@ -93,7 +93,7 @@ class UserReminder(
         }
 
     private companion object {
-        val log = LoggerFactory.getLogger(UserReminder::class.java)
+        private val log = LoggerFactory.getLogger(UserReminder::class.java)
 
         /**
          * The fixed nudge, as the JSON the service worker's push handler parses to

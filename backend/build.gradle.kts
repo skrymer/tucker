@@ -280,7 +280,30 @@ tasks.register<JavaExec>("mutationTest") {
         // comparator behind `sortedBy`, for one. pitest's own Kotlin filter
         // (feature FKOTLIN, on by default) catches most compiler constructs but
         // not these.
-        "--excludedClasses", "com.tucker.*\$\$inlined\$*",
+        //
+        // Alongside them, three classes pitest structurally cannot score. It picks
+        // which tests to re-run from *line* coverage, and a line that executes once
+        // — while the first test class builds the application context — is
+        // attributed to whichever test happened to trigger it, never to the tests
+        // that observe the result. Each was settled by hand-mutating rather than by
+        // reading the score:
+        //
+        //   AccessSecurityConfig  22/22 unkilled; deleting the authorize rule fails 142 tests
+        //   AccessProperties      3/3 unkilled; blanking the audience fails 150 tests
+        //   TuckerApplicationKt   3/3 uncovered; main() and a JVM-wide DNS property,
+        //                         which only `./gradlew e2eTest` boots
+        //
+        // The line is "nothing here is visible to this tool", not "configuration is
+        // exempt": the Access gate and the boot-refusal guarantee are pinned by
+        // AccessGateTest and AccessPropertiesTest, so what is dropped is a score
+        // that reads as 0% coverage of them. Config that holds *logic* stays in and
+        // is specified directly instead — see KotlinNullableModelConverterTest and
+        // AccessAssertionValidatorTest, both written for exactly this reason.
+        "--excludedClasses",
+        "com.tucker.*\$\$inlined\$*," +
+            "com.tucker.security.AccessSecurityConfig,com.tucker.security.AccessSecurityConfig\$*," +
+            "com.tucker.security.AccessProperties," +
+            "com.tucker.TuckerApplicationKt",
         // Kotlin compiles a null assertion into every platform-type access.
         // Deleting one is a mutant of the compiler's work, not of Tucker's.
         // The flag *replaces* pitest's default list rather than adding to it,

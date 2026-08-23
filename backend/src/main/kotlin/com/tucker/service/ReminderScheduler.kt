@@ -64,6 +64,6 @@ class ReminderScheduler(
         }
 
     private companion object {
-        val log = LoggerFactory.getLogger(ReminderScheduler::class.java)
+        private val log = LoggerFactory.getLogger(ReminderScheduler::class.java)
     }
 }

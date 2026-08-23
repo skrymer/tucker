@@ -36,7 +36,7 @@ class OpenApiNullabilityConfig {
         KotlinNullableModelConverter(objectMapper)
 }
 
-private class KotlinNullableModelConverter(private val objectMapper: ObjectMapper) : ModelConverter {
+internal class KotlinNullableModelConverter(private val objectMapper: ObjectMapper) : ModelConverter {
 
     override fun resolve(
         type: AnnotatedType,
