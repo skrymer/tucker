@@ -1,6 +1,6 @@
 import type { APIRequestContext, APIResponse } from '@playwright/test'
 import { test, expect } from './support/smoke-test'
-import { todayIso, isoShiftDays } from '../support/date'
+import { todayIso, isoShiftDays, formatDmy } from '../support/date'
 import { tickAt } from './support/reminder-tick'
 
 const API = 'http://localhost:8080/api'
@@ -194,7 +194,9 @@ test("a User's Profile is their own body, not the app's settings", async ({
   await goto('/profile', { waitUntil: 'hydration' })
 
   await expect(page.getByRole('radio', { name: /^male$/i })).toBeChecked()
-  await expect(page.getByLabel(/birth date/i)).toHaveValue('1986-05-22')
+  await expect(page.getByLabel(/birth date/i)).toHaveText(
+    formatDmy('1986-05-22'),
+  )
   await expect(page.getByLabel(/height/i)).toHaveValue('180')
 })
 

@@ -20,7 +20,12 @@ const schema = z.object({
   weightKg: z
     .number({ error: 'Enter your weight in kg' })
     .positive('Weight must be greater than 0'),
-  measuredOn: z.string().min(1, 'Pick a date'),
+  // Deliberately unconstrained, unlike ProfileForm's birth date: this field has
+  // no API-supplied path into it. It is seeded from `date`/`today` and can only
+  // be changed by the picker, which is bounded to `today` and cannot clear
+  // itself — so a required-ness or range rule here is a message nothing can
+  // ever show.
+  measuredOn: z.string(),
 })
 
 const state = reactive({
@@ -58,12 +63,9 @@ function onSubmit() {
       @submit="onSubmit"
     >
       <UFormField v-if="!date" label="Date" name="measuredOn" required>
-        <UInput
-          v-model="state.measuredOn"
-          type="date"
-          :max="today"
-          class="w-full"
-        />
+        <!-- Lazy: WeightTile on `/` always locks the date, so the landing
+           route must not carry the calendar it can never render. -->
+        <LazyDateField v-model="state.measuredOn" :max="today" />
       </UFormField>
 
       <UFormField label="Weight (kg)" name="weightKg" required>

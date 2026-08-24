@@ -51,8 +51,16 @@ entry; it is now a no-op rather than a freeze).
 
 ## Consequences
 
-- One overlay mechanism (Reka Dialog) for phone and desktop; the bottom-sheet
+- One **sheet** mechanism (Reka Dialog) for phone and desktop; the bottom-sheet
   styling lives in one place (`ResponsiveOverlay`), so call sites are unchanged.
+  An anchored, **non-modal** Reka Popover is a sanctioned second mechanism for a
+  control that hangs off a field rather than hosting a form — today `DateField`'s
+  calendar, which opens inside the Log-weight sheet as well as on `/profile`. The
+  freeze this ADR exists to prevent does not reach it: the mechanism was Vaul's
+  `position: fixed` content plus a body `pointer-events: none` scroll lock, and a
+  non-modal Popover installs no such lock; the repro also needs a soft keyboard
+  raised and dismissed, and a calendar contains only buttons. Use a Dialog for
+  anything that hosts input.
 - Sheets close via the corner close button or their own Cancel; do not rely on
   outside-tap or swipe to dismiss a `ResponsiveOverlay`.
 - The phone sheet now has a corner close button (the Vaul drawer had none) — the

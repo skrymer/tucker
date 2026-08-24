@@ -1,5 +1,6 @@
 import { test, expect } from './support/smoke-test'
 import { formatDmy } from '../support/date'
+import { pickDate } from '../support/date-field'
 
 // Issue #105: backfilling a past weight on /profile writes through the real
 // backend and updates the at-a-glance current-weight summary (the inline log
@@ -31,7 +32,7 @@ test('user backfills a past weight on /profile and it shows as the current weigh
 
   const sheet = page.getByRole('dialog', { name: /log weight/i })
   await expect(sheet).toBeVisible()
-  await sheet.getByLabel(/date/i).fill(backfillDate)
+  await pickDate(sheet.getByLabel(/date/i), backfillDate)
   await sheet.getByLabel(/weight \(kg\)/i).fill(String(weightKg))
   await sheet.getByRole('button', { name: /save weight/i }).click()
 

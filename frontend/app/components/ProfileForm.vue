@@ -6,14 +6,16 @@ const sexItems = [
   { label: 'Female', value: 'FEMALE' },
 ]
 
-const today = () => localToday()
+// The one statement of "a birth date is strictly in the past": the schema's
+// backstop for an API-supplied value and the picker's bound are the same day.
+const latestBirthDate = () => localYesterday()
 
 const schema = z.object({
   sex: z.enum(['MALE', 'FEMALE'], { error: 'Choose your sex' }),
   birthDate: z
     .string()
     .min(1, 'Enter your birth date')
-    .refine((d) => d < today(), 'Birth date must be in the past'),
+    .refine((d) => d <= latestBirthDate(), 'Birth date must be in the past'),
   heightCm: z
     .number({ error: 'Enter your height in cm' })
     .positive('Height must be greater than 0')
@@ -60,7 +62,7 @@ function onSubmit() {
     </UFormField>
 
     <UFormField label="Birth date" name="birthDate" required>
-      <UInput v-model="state.birthDate" type="date" class="w-full" />
+      <DateField v-model="state.birthDate" :max="latestBirthDate()" />
     </UFormField>
 
     <UFormField label="Height (cm)" name="heightCm" required>

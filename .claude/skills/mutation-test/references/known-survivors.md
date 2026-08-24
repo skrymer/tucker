@@ -64,7 +64,50 @@ key type requires an entry for every basis, so no basis can go unlabelled. The
 notes live at the top of `navigation.test.ts` and `reviewLedger.test.ts`.
 
 Everything else in `app/utils/` is at 100%: `exits.ts` and `numberField.ts` outright,
-`navigation.ts` and `reviewLedger.ts` apart from the tokens above.
+`navigation.ts` and `reviewLedger.ts` apart from the tokens above. `date.ts` is at
+100% including `localYesterday`'s month/year rollback.
+
+### `components/DateField.vue` — 3 of 30
+
+| Where | Mutant | Verdict |
+| --- | --- | --- |
+| the model setter's `if (!value) return` | `if (false) return` | **Equivalent** |
+| `valueId`'s `id.value ?? fallbackId` | `??` → `&&` | **Equivalent** |
+| the malformed-date `console.warn` text | text → `""` | **Accepted** |
+
+A single-date `UCalendar` has no gesture that clears its own value — re-tapping the
+selected day is inert — so the setter is never called with `undefined` and the arm
+is unreachable. It exists because the writable computed's type is
+`CalendarDate | undefined`, not because a deselect is expected. Confirmed by hand:
+deleting the guard outright leaves the whole suite green. `prevent-deselect` was
+tried here and dropped for the same reason — it changed nothing observable.
+
+`valueId` is the only producer of that id, and both consumers — the `sr-only` span's
+`:id` and the `aria-describedby` — read the same computed. Whatever string it yields
+the two agree, so the link holds and no mutant of the fallback is observable.
+
+*That* the malformed branch warns is pinned; *what it says* is not, because asserting
+log prose makes the test fail on a reworded message rather than on a defect.
+
+### `components/ProfileForm.vue` — 2 of 46
+
+| Where | Mutant | Verdict |
+| --- | --- | --- |
+| `sexItems` — each radio's `label` → `""` | 2 | **Accepted, as above** |
+
+Same class as the presentation tokens: with a blank `label` the radio's accessible
+name falls back to its `value` (`MALE`), so it stays findable and operable and the
+only loss is the display casing. The two `value`s — the figures that actually reach
+`PUT /api/profile` — *are* pinned, one test per sex.
+
+`components/LogWeightSheet.vue`'s remaining survivors are all in the re-seed
+`watch(() => props.open)`. **Pre-existing and untriaged** — #241 only swapped its
+date control. Its `'Pick a date'` survivor was **removed at the source** instead:
+`measuredOn` is seeded from `date`/`today` and can only be changed by a picker
+that is bounded to today and cannot clear itself, so a required-ness or range
+rule there is a message nothing can ever show. The field is deliberately
+unconstrained, and says so — unlike `ProfileForm`'s birth date, whose Zod rule
+stays reachable on an API-supplied value.
 
 ---
 

@@ -42,3 +42,14 @@ export function formatDmy(iso: string): string {
     year: 'numeric',
   })
 }
+
+/**
+ * The full month name of an ISO `yyyy-mm-dd` date, e.g. `March` — the form the
+ * calendar's own month cells and day labels use. Built from the parts like
+ * [formatDmy], so only the localized name is locale-driven (pinned to `en-US`,
+ * which is what the picker renders).
+ */
+export function monthNameOf(iso: string): string {
+  const [y, m, d] = iso.split('-').map(Number)
+  return new Date(y!, m! - 1, d!).toLocaleDateString('en-US', { month: 'long' })
+}

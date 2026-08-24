@@ -1,5 +1,6 @@
 import { expect, test } from './support/test'
 import { mockProfile, mockWeightList } from './support/mock-api'
+import { pickDate } from './support/date-field'
 
 test('a backfilled weight becomes the current weight and is reachable in history', async ({
   page,
@@ -20,7 +21,7 @@ test('a backfilled weight becomes the current weight and is reachable in history
   await weight.getByRole('button', { name: /add weight/i }).click()
 
   const sheet = page.getByRole('dialog', { name: /log weight/i })
-  await sheet.getByLabel(/date/i).fill('2024-03-15')
+  await pickDate(sheet.getByLabel(/date/i), '2024-03-15')
   await sheet.getByLabel(/weight \(kg\)/i).fill('84.2')
   await sheet.getByRole('button', { name: /save weight/i }).click()
 

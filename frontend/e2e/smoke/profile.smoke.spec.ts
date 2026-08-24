@@ -1,4 +1,6 @@
 import { test, expect } from './support/smoke-test'
+import { pickDate } from '../support/date-field'
+import { formatDmy } from '../support/date'
 
 // F4 Slice 1 smoke: the Profile section round-trips through the real
 // backend. Snapshot any existing profile via the API, fill the form,
@@ -28,7 +30,7 @@ test('user saves a profile and the saved values persist across a reload', async 
     await goto('/profile', { waitUntil: 'hydration' })
 
     await page.getByRole('radio', { name: /^male$/i }).click()
-    await page.getByLabel(/birth date/i).fill(birthDate)
+    await pickDate(page.getByLabel(/birth date/i), birthDate)
     await page.getByLabel(/height/i).fill(String(heightCm))
     await page.getByRole('button', { name: /save profile/i }).click()
 
@@ -47,7 +49,9 @@ test('user saves a profile and the saved values persist across a reload', async 
     await page.reload({ waitUntil: 'load' })
 
     await expect(page.getByRole('radio', { name: /^male$/i })).toBeChecked()
-    await expect(page.getByLabel(/birth date/i)).toHaveValue(birthDate)
+    await expect(page.getByLabel(/birth date/i)).toHaveText(
+      formatDmy(birthDate),
+    )
     await expect(page.getByLabel(/height/i)).toHaveValue(String(heightCm))
 
     // The API itself agrees.

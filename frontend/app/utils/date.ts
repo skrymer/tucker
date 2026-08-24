@@ -24,3 +24,16 @@ export function formatDateFromISO(iso: string): string {
     year: 'numeric',
   })
 }
+
+/**
+ * The day before the user's local today, as an ISO `yyyy-mm-dd` string.
+ *
+ * The latest day a birth date may fall on, since a `Profile` requires one
+ * strictly in the past. Built from the parts like [formatDateFromISO], so a
+ * day of `0` rolls back into the previous month and year rather than needing
+ * arithmetic of its own.
+ */
+export function localYesterday(): string {
+  const [y, m, d] = localToday().split('-').map(Number)
+  return new Date(y!, m! - 1, d! - 1).toLocaleDateString('en-CA')
+}

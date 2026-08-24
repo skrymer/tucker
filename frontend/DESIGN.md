@@ -179,12 +179,13 @@ Headings get `text-wrap: balance`; body copy stays near a 65-character measure.
 
 Rounded and soft — the friendly pole. Radius is generous; buttons are pills.
 
-| Token                | Value                      | Applies to                              |
-| -------------------- | -------------------------- | --------------------------------------- |
-| `--ui-radius` (base) | `0.5rem` (8px)             | Nuxt UI derives inputs/badges from this |
-| Card radius          | 20px (`rounded-[1.25rem]`) | `UCard`, tiles, the ring card           |
-| Chip / mark radius   | 12px                       | entry marks, icon chips                 |
-| Button radius        | `9999px` (pill)            | all buttons + the FAB                   |
+| Token                | Value                           | Applies to                                             |
+| -------------------- | ------------------------------- | ------------------------------------------------------ |
+| `--ui-radius` (base) | `0.5rem` (8px)                  | Nuxt UI derives inputs/badges/menus from this          |
+| Input radius         | `rounded-md` = 1.5x base (12px) | `UInput`, `USelect`, popover content, `DateField`      |
+| Card radius          | 20px (`rounded-[1.25rem]`)      | `UCard`, tiles, the ring card                          |
+| Chip / mark radius   | 12px                            | entry marks, icon chips                                |
+| Button radius        | `9999px` (pill)                 | all buttons except the form-control trigger, + the FAB |
 
 | Elevation | Shadow                                                                 | Use                                                           |
 | --------- | ---------------------------------------------------------------------- | ------------------------------------------------------------- |
@@ -284,6 +285,15 @@ kcal`) sits beneath its own ring, so no arc is ever colour-alone. Calorie
   shadow, `p-5`/`p-4`. The default container for every Today block.
 - **Button** — pill. Primary = solid green; secondary = coral; low-emphasis =
   ghost/neutral. Icon buttons are circular.
+- **Form-control trigger** — a control that opens an overlay (today only
+  `DateField`, which opens a calendar) is a button by markup but a _field_ by
+  role, so it wears the input treatment, not the pill: `rounded-md` and the
+  `md` input padding, full width, value left / affordance icon right, and
+  **dimmed** until it holds a value — `text-dimmed` is the placeholder token the
+  input theme itself uses, not the `text-muted` of a label. It sits beside real inputs in a form and a pill
+  there reads as an action. The classes are Nuxt UI's own input theme copied
+  onto `UButton` — the one place the app-wide pill in `app.config.ts` is
+  overridden per-component rather than in the theme.
 - **FAB** (phone) — solid green pill-circle, floating shadow, bottom-right above
   the tab bar (respects `env(safe-area-inset-bottom)`).
 - **Nav** — side rail on desktop (`lg:`), bottom tab bar on phone. Active item =
