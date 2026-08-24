@@ -1,0 +1,7 @@
+- navigation "Primary":
+    - link "Today":
+        - /url: /
+    - link "Review":
+        - /url: /review
+    - link "Profile":
+        - /url: /profile

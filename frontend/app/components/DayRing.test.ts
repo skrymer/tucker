@@ -46,4 +46,51 @@ describe('DayRing', () => {
 
     expect(screen.getByText('86 / 186 g')).toBeVisible()
   })
+
+  it('reads a day landing exactly on budget as none left, not as over', async () => {
+    await renderSuspended(DayRing, {
+      props: { ...underBudget, caloriesConsumed: 2140, caloriesRemaining: 0 },
+    })
+
+    expect(screen.getByText('kcal left')).toBeVisible()
+    expect(screen.queryByText('kcal over')).toBeNull()
+  })
+
+  // The arcs are decorative (aria-hidden), so they are read off the SVG — see
+  // RingGauge.test.ts. What is pinned here is which arcs the Day Ring asks for:
+  // two, calories outside protein, the calorie one turning to the error role
+  // once the day is over budget.
+  const arcs = (container: Element) =>
+    Array.from(container.querySelectorAll('circle')).filter((c) =>
+      c.hasAttribute('stroke-dashoffset'),
+    )
+
+  it('draws calories outside protein, one arc each', async () => {
+    const { container } = await renderSuspended(DayRing, { props: underBudget })
+
+    expect(
+      arcs(container).map((c) => [
+        c.getAttribute('r'),
+        c.getAttribute('stroke'),
+      ]),
+    ).toEqual([
+      ['72', 'var(--ui-primary)'],
+      ['52', 'var(--ui-secondary)'],
+    ])
+  })
+
+  it('turns the calorie arc to the error role once the day is over budget', async () => {
+    const { container } = await renderSuspended(DayRing, {
+      props: {
+        ...underBudget,
+        caloriesConsumed: 2500,
+        caloriesRemaining: -360,
+      },
+    })
+
+    expect(arcs(container)[0]!.getAttribute('stroke')).toBe('var(--ui-error)')
+    expect(arcs(container)[1]!.getAttribute('stroke')).toBe(
+      'var(--ui-secondary)',
+    )
+  })
 })

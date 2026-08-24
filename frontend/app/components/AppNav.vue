@@ -1,5 +1,15 @@
 <script setup lang="ts">
-import { navDestinations } from '~/utils/navigation'
+import { visibleDestinations } from '~/utils/navigation'
+
+// Awaited here rather than in the layout: the nav and the page are siblings in
+// one Suspense boundary, so this read overlaps the page's own fetches instead of
+// being serialized ahead of them, and the tab bar still paints in its final
+// shape. It follows that `tracksCalories` is settled for any *template*, but a
+// page reading it in `setup` would race.
+const { tracksCalories, load } = useCalorieTracking()
+await load()
+
+const destinations = computed(() => visibleDestinations(tracksCalories.value))
 </script>
 
 <template>
@@ -15,7 +25,7 @@ import { navDestinations } from '~/utils/navigation'
     </div>
     <div class="flex flex-col gap-1 p-3">
       <NavLink
-        v-for="destination in navDestinations"
+        v-for="destination in destinations"
         :key="destination.to"
         :destination="destination"
         anchor-class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted transition-colors hover:bg-elevated hover:text-default aria-[current=page]:bg-primary/10 aria-[current=page]:text-primary"
@@ -31,7 +41,7 @@ import { navDestinations } from '~/utils/navigation'
     class="fixed inset-x-0 bottom-0 z-40 flex lg:hidden border-t border-default bg-default pb-[env(safe-area-inset-bottom)]"
   >
     <NavLink
-      v-for="destination in navDestinations"
+      v-for="destination in destinations"
       :key="destination.to"
       :destination="destination"
       anchor-class="flex flex-1 flex-col items-center gap-1 py-2 text-xs font-medium text-muted transition-colors aria-[current=page]:text-primary"

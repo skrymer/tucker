@@ -15,14 +15,24 @@ as a ring you're closing.
 
 ## Thesis
 
-The day is a **ring you close**. One bold signature — the calorie ring with a
-protein arc — carries the personality; everything around it stays quiet,
-rounded, and calm. Warm-leaning greens keep it healthy without shouting; a
-single coral accent gives protein its own identity and keeps the page from being
-monochrome-green.
+Tucker tracks two things, and each is a **ring you close**: the **day** — the
+calorie ring with its protein arc — and the **goal** — one green arc closing on
+a target weight. Everything around them stays quiet, rounded, and calm.
+Warm-leaning greens keep it healthy without shouting; a single coral accent
+gives protein its own identity and keeps the page from being monochrome-green.
 
-> **Spend boldness in one place.** The ring is the one loud thing. Cards, nav,
-> and type are deliberately restrained so it lands.
+The two rings are **peers, drawn at the same geometry**. Sizing one down would
+rank weight against calories, and Tucker doesn't — they are the two things it
+measures. They stay apart by arc count, not by size: the day is a double arc,
+the goal a single one.
+
+> **Spend boldness only on a ring.** One loud thing per thing tracked, and no
+> more. Cards, nav, and type stay deliberately restrained so both rings land — a
+> third would make it a pattern instead of a signature.
+
+The rule scales down, never up. With **Calorie Tracking** off there is no day to
+close, so the Goal ring is the only ring on the page and that User is back to
+exactly one loud thing.
 
 ---
 
@@ -197,10 +207,10 @@ on desktop, `p-4` on phone.
 
 ---
 
-## Signature — the Ring
+## Signature — the Day Ring
 
-The one memorable element. Replaces the twin progress-bar block on Today when a
-budget exists.
+The first of the two rings, on Today while the User is counting calories and a
+Calorie Budget exists. Replaces the twin progress-bar block it grew out of.
 
 - **Two concentric arcs.** Outer = **calories** (primary green), inner =
   **protein** (coral). Each arc's sweep = `consumed / target`, **capped at 100%**
@@ -211,12 +221,40 @@ budget exists.
 - **Legend** beside (desktop) / below (phone): two rows — Calories `1,004 / 2,140`
   and Protein `86 / 186 g` — each with its keyed colour swatch and a slim
   rounded meter echoing the arc.
-- **Geometry:** 168px viz, 14px stroke, `stroke-linecap: round`, outer r 72 /
-  inner r 52, rotated −90° so both start at 12 o'clock.
+- **Geometry:** 160px viz, 15px stroke, `stroke-linecap: round`, outer r 72 /
+  inner r 52 in a 176 viewBox, rotated −90° so both start at 12 o'clock. Owned by
+  `RingGauge.vue`, which both rings draw through.
 - **Accessibility:** the ring is decorative SVG (`aria-hidden`); the legend rows
   are the accessible text equivalent (real numbers, labelled). Never colour-alone
   — every arc has its number beside it. Honour `prefers-reduced-motion` (no
   sweep animation when set).
+
+---
+
+## Signature — the Goal Ring
+
+The second ring, on Today wherever there is an active **Goal** still to close.
+Same geometry as the Day Ring, one arc instead of two.
+
+- **One arc**, primary green, sweeping `percentComplete / 100` — capped like the
+  Day Ring's, so a goal past its target reads as a closed ring.
+- **Centre** = kilograms still to go as the big Nunito-800 figure + a quiet
+  `kg to go` label. No red state: being short of a goal is not a fault, and red
+  on the Day Ring means something that has happened.
+- **Legend** beside (desktop) / below (phone): the swatch and an `h2` reading
+  **Goal progress**, the **pace badge** beside it, `NN% complete` under it, and
+  the **Trend Weight** and **Target** below a rule — the denominator the
+  percentage is a share of. The pace badge is **omitted** while the backend
+  withholds `paceStatus`; an empty badge would claim a verdict there isn't one.
+- **Geometry:** identical to the Day Ring, deliberately (see Thesis).
+- **Whole card is a link** to `/review`, carrying its own `aria-label` so the
+  link announces as one rather than as every figure on the card read aloud.
+- **No ring in Maintenance Mode.** Maintenance Mode _is_ the absence of a Goal
+  (ADR 0008), so there is nothing to close; the Maintaining card stays the shape
+  for it.
+- **No ring on a reached Goal either.** A reached Goal stays active until the User
+  resolves the fork (ADR 0008), and `ReachedGoalBanner` carries that moment; a
+  100% ring beside it would say the same thing twice.
 
 ---
 
@@ -302,8 +340,10 @@ kcal`) sits beneath its own ring, so no arc is ever colour-alone. Calorie
   `warning/15`). The estimate flag is icon **+** text in warning, never colour
   alone.
 - **Progress / meter** — fully rounded track on `--ui-bg-muted`, fill in the
-  series colour. Kept for the goal + protein meters; the calorie/protein headline
-  is the ring.
+  series colour. Kept where it echoes an arc a reader cannot compare by eye — the
+  Day Ring's two nested arcs — and for the goal hero on `/review`, which has no
+  ring. The Goal ring has one arc and no meter: a second drawing of the same
+  number is what a ring replaces.
 - **Identity byline** — "Signed in as `<email>`" plus a **Sign out** link, muted
   and 14px, on the line directly under the `/profile` h1. A byline rather than a
   card, and this is the whole visible surface of multi-user: it attributes the

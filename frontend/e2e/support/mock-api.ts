@@ -117,6 +117,17 @@ export async function mockNoActiveGoal(page: Page) {
   }
 }
 
+/**
+ * Stub `GET /api/goal/progress` with an active Goal's progress — the figures the
+ * Goal ring renders. Pair with [mockGoals] when the page also reads the Goal.
+ */
+export async function mockGoalProgress(page: Page, progress: Json) {
+  await page.route('**/api/goal/progress', (route) => {
+    if (route.request().method() !== 'GET') return route.fallback()
+    return route.fulfill({ json: progress })
+  })
+}
+
 type GoalSeed = {
   id: number
   startedOn: string

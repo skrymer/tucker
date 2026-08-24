@@ -15,3 +15,9 @@ describe('paceBadge', () => {
     expect(paceBadge('stalled')).toEqual({ label: 'Stalled', color: 'neutral' })
   })
 })
+
+describe('paceBadge with no classification', () => {
+  it('has no badge while the backend withholds the pace', () => {
+    expect(paceBadge(null)).toBeNull()
+  })
+})

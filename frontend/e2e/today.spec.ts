@@ -1,6 +1,8 @@
 import { weighedEntry } from '../test/entry-fixtures'
+import { goalProgress } from '../test/goal-fixtures'
 import { expect, test } from './support/test'
 import {
+  mockGoalProgress,
   mockNoActiveGoal,
   mockSummary,
   mockSummaryError,
@@ -100,4 +102,43 @@ test("shows a retryable error instead of an empty dashboard when today's summary
     page.getByRole('heading', { name: "Couldn't load today's summary" }),
   ).toBeVisible()
   await expect(page.getByRole('button', { name: 'Retry' })).toBeVisible()
+})
+
+test('the day ring and the goal ring are peers at the same size', async ({
+  page,
+  goto,
+}) => {
+  await mockWeightApi(page)
+  await mockSummary(page, {
+    date: '2026-05-22',
+    caloriesConsumed: 1500,
+    proteinConsumed: 140,
+    estimatedCalorieShare: 0,
+    calorieBudget: 2000,
+    proteinFloor: 140,
+    caloriesRemaining: 500,
+    dayStatus: 'on-target',
+    trendWeightKg: 86,
+    entries: [],
+  })
+  await mockGoalProgress(page, goalProgress())
+
+  await goto('/', { waitUntil: 'hydration' })
+
+  // Both centres render — the day's remaining calories and the goal's kg to go.
+  await expect(page.getByText('500', { exact: true })).toBeVisible()
+  await expect(page.getByText('6.0', { exact: true })).toBeVisible()
+
+  // DESIGN.md's two-ring rule is a rule about size, so it is checked as one:
+  // sizing either down would rank weight against calories. The rings are
+  // decorative SVG with no role of their own, hence the geometry locator.
+  const rings = page.getByRole('main').locator('svg[viewBox="0 0 176 176"]')
+  await expect(rings).toHaveCount(2)
+  const day = (await rings.nth(0).boundingBox())!
+  const goal = (await rings.nth(1).boundingBox())!
+  expect(goal.width).toBe(day.width)
+  expect(goal.height).toBe(day.height)
+
+  // And they stack rather than collide, at whichever viewport this project runs.
+  expect(goal.y).toBeGreaterThanOrEqual(day.y + day.height)
 })

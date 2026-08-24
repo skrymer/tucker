@@ -16,8 +16,21 @@ function useProfileForm() {
   const {
     data: profile,
     error,
-    load,
+    load: fetchProfile,
   } = useOptionalFetch(() => $api('/api/profile'))
+
+  // The app shell shapes itself to Calorie Tracking, so the setting this form
+  // just saved has to reach it — otherwise the navigation and Today only catch
+  // up on the next reload. Only on a read that worked: a failed one leaves
+  // `profile` null, which is indistinguishable from having none, so pushing it
+  // would state a setting nobody chose. The shell then holds whatever it last
+  // read until the Retry beside this form succeeds — stale in either direction,
+  // but visibly so, rather than confidently wrong.
+  const { readFrom } = useCalorieTracking()
+  async function load() {
+    await fetchProfile()
+    if (!error.value) readFrom(profile.value)
+  }
 
   const { execute: save } = useApiMutation(
     (payload: ProfileDetails) =>

@@ -12,6 +12,11 @@ const today = localToday()
 const isDesktop = useIsDesktop()
 const logEntryOpen = ref(false)
 
+// With Calorie Tracking off the log half of Today is not hidden decoration —
+// there is nothing to log against, so the day summary, the budget banner and
+// the Log-entry action all go (CONTEXT.md — Calorie Tracking).
+const { tracksCalories } = useCalorieTracking()
+
 const { $api } = useNuxtApp()
 
 const {
@@ -116,7 +121,7 @@ const { logWeight } = useWeightLogging({ today, onSaved: onWeightSaved })
     <header class="flex items-center justify-between">
       <h1 class="text-2xl font-bold text-default">Today</h1>
       <UButton
-        v-if="isDesktop"
+        v-if="isDesktop && tracksCalories"
         icon="i-lucide-plus"
         color="primary"
         @click="
@@ -133,8 +138,16 @@ const { logWeight } = useWeightLogging({ today, onSaved: onWeightSaved })
       title="Couldn't load today's summary"
       @retry="refresh"
     >
+      <!-- Still keyed on the Budget, so a User who is not counting calories and
+           has no Weight Measurement yet is told to finish setup "to see your
+           calorie budget". Correcting the sentence needs the summary's
+           `setupComplete`, which lands with #249 — as does the Maintaining
+           card's drift copy, which likewise still names a budget. -->
       <SetupBanner :calorie-budget="summary?.calorieBudget" />
-      <BudgetChangeBanner :budget-change="summary?.budgetChange" />
+      <BudgetChangeBanner
+        v-if="tracksCalories"
+        :budget-change="summary?.budgetChange"
+      />
       <LoadErrorState
         :error="latestWeightError"
         title="Couldn't load your weight"
@@ -143,7 +156,7 @@ const { logWeight } = useWeightLogging({ today, onSaved: onWeightSaved })
         <WeightTile :today="today" :latest="latestWeight" @logged="logWeight" />
       </LoadErrorState>
       <DaySummary
-        v-if="summary"
+        v-if="summary && tracksCalories"
         :summary="summary"
         @delete="selectedEntry = $event"
       />
@@ -165,14 +178,14 @@ const { logWeight } = useWeightLogging({ today, onSaved: onWeightSaved })
         <!-- The reached banner already carries the milestone; a 100%
              Goal-Progress tile beside it would be redundant, so it's
              suppressed while reached. -->
-        <GoalGlanceTile
+        <GoalRingTile
           v-else-if="goalProgress && !goalProgress.reachedOn"
           :progress="goalProgress"
         />
       </LoadErrorState>
     </LoadErrorState>
     <UButton
-      v-if="!isDesktop"
+      v-if="!isDesktop && tracksCalories"
       icon="i-lucide-plus"
       color="primary"
       size="xl"
@@ -186,7 +199,10 @@ const { logWeight } = useWeightLogging({ today, onSaved: onWeightSaved })
       "
     />
 
+    <!-- Mounted only while there is something to log: the sheet fetches the
+         Foods catalog on setup, which a weight-only User never opens. -->
     <LogEntrySheet
+      v-if="tracksCalories"
       v-model:open="logEntryOpen"
       :date="today"
       @logged="onEntryLogged"

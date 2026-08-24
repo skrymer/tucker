@@ -1,10 +1,10 @@
 import { test, expect } from './support/smoke-test'
 import { todayIso } from '../support/date'
 
-// F5 slice C smoke: the goal-glance tile on /today, end-to-end against the real
-// backend. No /api mocks. The tile shows percent complete and kg-to-go computed
-// by the backend from the active Goal and the live Trend Weight, and the whole
-// card taps through to /review.
+// The Goal ring card on /, end-to-end against the real backend. No /api mocks.
+// The card shows kg-to-go, percent complete and the Trend Weight, all computed
+// by the backend from the active Goal, and the whole card taps through to
+// /review.
 //
 // The backend is the source of truth for the figures: we read
 // GET /api/goal/progress and assert the tile renders exactly those, so the test
@@ -18,7 +18,7 @@ const API = 'http://localhost:8080/api'
 
 type WeightRecord = { id: number; measuredOn: string; weightKg: number }
 
-test('the goal-glance tile shows progress and taps through to the review', async ({
+test('the goal ring shows progress and taps through to the review', async ({
   page,
   goto,
   request,
@@ -55,8 +55,12 @@ test('the goal-glance tile shows progress and taps through to the review', async
 
   // What the backend computes is what the tile must render.
   const progress = await (await request.get(`${API}/goal/progress`)).json()
-  const percent = `${Math.round(progress.percentComplete)}%`
-  const kgToGo = `${progress.kgToGo.toFixed(1)} kg to go`
+  const percent = `${Math.round(progress.percentComplete)}% complete`
+  // The centre's figure and its caption are separate elements with no
+  // whitespace between them, so they are asserted separately rather than as
+  // the sentence they read as.
+  const kgToGo = progress.kgToGo.toFixed(1)
+  const trend = `Trend weight ${progress.currentTrendKg.toFixed(1)} kg`
 
   await goto('/', { waitUntil: 'hydration' })
 
@@ -64,6 +68,8 @@ test('the goal-glance tile shows progress and taps through to the review', async
   await expect(tile).toBeVisible()
   await expect(tile).toContainText(percent)
   await expect(tile).toContainText(kgToGo)
+  await expect(tile).toContainText('kg to go')
+  await expect(tile).toContainText(trend)
 
   // The whole card is the link: tapping it lands on the weekly review.
   await tile.click()
