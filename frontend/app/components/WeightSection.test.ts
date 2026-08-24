@@ -72,7 +72,7 @@ describe('WeightSection', () => {
     await user.click(screen.getByRole('button', { name: /add weight/i }))
 
     expect(screen.getByRole('dialog', { name: /log weight/i })).toBeVisible()
-    expect(screen.getByLabelText(/date/i)).toBeVisible()
+    expect(await screen.findByLabelText(/date/i)).toBeVisible()
   })
 
   it('is non-interactive and explains the prerequisite when disabled', async () => {

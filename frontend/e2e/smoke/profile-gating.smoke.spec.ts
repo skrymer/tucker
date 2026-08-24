@@ -1,4 +1,5 @@
 import { test, expect } from './support/smoke-test'
+import { pickDate } from '../support/date-field'
 
 // F4 slice 6 smoke: progressive disclosure on /profile against the real backend.
 // No mocks.
@@ -29,7 +30,7 @@ test('progressive disclosure unlocks Weight after Profile and Goal after a weigh
 
   // Save the Profile → Weight unlocks without a reload, Goal stays gated.
   await page.getByRole('radio', { name: /^male$/i }).click()
-  await page.getByLabel(/birth date/i).fill('1990-06-15')
+  await pickDate(page.getByLabel(/birth date/i), '1990-06-15')
   await page.getByLabel(/height/i).fill('180')
   await page.getByRole('button', { name: /save profile/i }).click()
 
@@ -44,7 +45,7 @@ test('progressive disclosure unlocks Weight after Profile and Goal after a weigh
   // the creation form.
   await weight.getByRole('button', { name: /add weight/i }).click()
   const sheet = page.getByRole('dialog', { name: /log weight/i })
-  await sheet.getByLabel(/date/i).fill(backfillDate)
+  await pickDate(sheet.getByLabel(/date/i), backfillDate)
   await sheet.getByLabel(/weight \(kg\)/i).fill(String(backfillKg))
   await sheet.getByRole('button', { name: /save weight/i }).click()
   await expect(sheet).toBeHidden()

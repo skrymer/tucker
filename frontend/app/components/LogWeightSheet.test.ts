@@ -85,15 +85,22 @@ describe('LogWeightSheet', () => {
       props: { open: true, today: '2026-05-29' },
     })
 
-    expect(screen.getByLabelText(/date/i)).toHaveValue('2026-05-29')
+    expect(await screen.findByLabelText(/date/i)).toHaveTextContent(
+      '29 May 2026',
+    )
   })
 
-  it('constrains the date input to today as the latest selectable date', async () => {
+  it('refuses a measurement date later than today', async () => {
     await renderSuspended(LogWeightSheet, {
       props: { open: true, today: '2026-05-29' },
     })
+    const user = userEvent.setup()
 
-    expect(screen.getByLabelText(/date/i)).toHaveAttribute('max', '2026-05-29')
+    await user.click(await screen.findByLabelText(/date/i))
+
+    expect(
+      await screen.findByRole('button', { name: /May 30, 2026/ }),
+    ).toHaveAttribute('aria-disabled', 'true')
   })
 
   it('emits a submit payload with the selected backfill date and weight', async () => {
@@ -103,8 +110,10 @@ describe('LogWeightSheet', () => {
     })
     const user = userEvent.setup()
 
-    await user.clear(screen.getByLabelText(/date/i))
-    await user.type(screen.getByLabelText(/date/i), '2026-05-24')
+    await user.click(await screen.findByLabelText(/date/i))
+    await user.click(
+      await screen.findByRole('button', { name: /May 24, 2026/ }),
+    )
     await user.type(screen.getByLabelText(/weight \(kg\)/i), '84.6')
     await user.click(screen.getByRole('button', { name: /save weight/i }))
 

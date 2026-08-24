@@ -21,7 +21,8 @@
     "format:check": "prettier --check ."
   },
   "dependencies": {
-    "@nuxt/ui": "^4.8.0",
+    "@internationalized/date": "^3.12.1",
+    "@nuxt/ui": "^4.11.0",
     "@vite-pwa/nuxt": "^1.1.1",
     "nuxt": "^4.4.6",
     "nuxt-open-fetch": "^0.13.9",

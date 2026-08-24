@@ -1,5 +1,7 @@
 import { expect, test } from './support/test'
 import { mockProfile, mockNoProfile } from './support/mock-api'
+import { pickDate } from './support/date-field'
+import { formatDmy } from './support/date'
 
 test('the Profile page prefills the form from the saved profile', async ({
   page,
@@ -14,7 +16,9 @@ test('the Profile page prefills the form from the saved profile', async ({
   await goto('/profile', { waitUntil: 'hydration' })
 
   await expect(page.getByRole('radio', { name: /^female$/i })).toBeChecked()
-  await expect(page.getByLabel(/birth date/i)).toHaveValue('1985-03-22')
+  await expect(page.getByLabel(/birth date/i)).toHaveText(
+    formatDmy('1985-03-22'),
+  )
   await expect(page.getByLabel(/height/i)).toHaveValue('168')
 })
 
@@ -28,7 +32,7 @@ test('the Profile page renders an empty form when no profile exists yet', async 
 
   await expect(page.getByRole('radio', { name: /^male$/i })).not.toBeChecked()
   await expect(page.getByRole('radio', { name: /^female$/i })).not.toBeChecked()
-  await expect(page.getByLabel(/birth date/i)).toHaveValue('')
+  await expect(page.getByLabel(/birth date/i)).toHaveText(/choose a date/i)
   await expect(page.getByLabel(/height/i)).toHaveValue('')
 })
 
@@ -54,11 +58,13 @@ test('the Profile page saves the profile and reflects the new values', async ({
   await goto('/profile', { waitUntil: 'hydration' })
 
   await page.getByRole('radio', { name: /^male$/i }).click()
-  await page.getByLabel(/birth date/i).fill('1990-06-15')
+  await pickDate(page.getByLabel(/birth date/i), '1990-06-15')
   await page.getByLabel(/height/i).fill('180')
   await page.getByRole('button', { name: /save profile/i }).click()
 
   await expect(page.getByRole('radio', { name: /^male$/i })).toBeChecked()
-  await expect(page.getByLabel(/birth date/i)).toHaveValue('1990-06-15')
+  await expect(page.getByLabel(/birth date/i)).toHaveText(
+    formatDmy('1990-06-15'),
+  )
   await expect(page.getByLabel(/height/i)).toHaveValue('180')
 })
