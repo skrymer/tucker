@@ -2,6 +2,10 @@
 import type { components } from '#open-fetch-schemas/api'
 
 type ProfileDto = components['schemas']['ProfileDto']
+type ProfileDetails = Pick<
+  ProfileDto,
+  'sex' | 'birthDate' | 'heightCm' | 'tracksCalories'
+>
 
 // Loading and saving the Profile, grouped as one named concern. A 404 (no
 // profile yet) is an expected empty state; any other failure is a real error
@@ -16,7 +20,7 @@ function useProfileForm() {
   } = useOptionalFetch(() => $api('/api/profile'))
 
   const { execute: save } = useApiMutation(
-    (payload: { sex: string; birthDate: string; heightCm: number }) =>
+    (payload: ProfileDetails) =>
       // Merge the body stats onto the loaded profile so saving them never
       // clobbers the user's reminder preferences (and vice-versa).
       $api('/api/profile', {

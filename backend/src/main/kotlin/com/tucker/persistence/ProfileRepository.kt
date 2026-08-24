@@ -49,6 +49,7 @@ class ProfileRepository(
             timezone = profile.timezone
             reminderHour = profile.reminderHour
             remindersEnabled = profile.remindersEnabled.toFlag()
+            tracksCalories = profile.tracksCalories.toFlag()
         }
         dsl.insertInto(PROFILE).set(row)
             .onConflict(PROFILE.USER_ID).doUpdate().set(row)
@@ -62,6 +63,7 @@ class ProfileRepository(
         timezone = timezone,
         reminderHour = reminderHour,
         remindersEnabled = remindersEnabled != 0,
+        tracksCalories = tracksCalories != 0,
     )
 
     private fun Boolean.toFlag(): Int = if (this) 1 else 0

@@ -15,12 +15,22 @@ data class ProfileDto(
     val sex: String,
     val birthDate: LocalDate,
     val heightCm: Double,
-    // Locale + Weekly-Review Reminder preferences. Optional on the wire: a PUT
-    // that omits them (e.g. the body-stats form on first save) falls back to the
-    // safe defaults rather than failing.
+    // Locale, Weekly-Review Reminder preferences, and Calorie Tracking. Optional
+    // on the wire so a PUT that omits them (the body-stats form on a first save)
+    // falls back to the domain's default rather than failing.
+    //
+    // A PUT is a whole-Profile replace, so an omitted field is *overwritten* with
+    // that default, not left alone — and for Calorie Tracking the default is on,
+    // which is the one here that is not also the conservative answer. What keeps
+    // that safe is the clients, not this line: both writers PUT the Profile they
+    // loaded with their own fields merged over it, and the loaded object carries
+    // every field the backend serves whatever the client's types say. A caller
+    // that sends bare body stats is therefore setting up a Profile, not editing
+    // one, which is exactly when the default is the right answer.
     val timezone: String = Profile.DEFAULT_TIMEZONE,
     val reminderHour: Int = Profile.DEFAULT_REMINDER_HOUR,
     val remindersEnabled: Boolean = false,
+    val tracksCalories: Boolean = Profile.DEFAULT_TRACKS_CALORIES,
 )
 
 private fun Profile.toDto() = ProfileDto(
@@ -30,6 +40,7 @@ private fun Profile.toDto() = ProfileDto(
     timezone = timezone,
     reminderHour = reminderHour,
     remindersEnabled = remindersEnabled,
+    tracksCalories = tracksCalories,
 )
 
 @RestController
@@ -49,6 +60,7 @@ class ProfileController(private val profiles: ProfileRepository) {
             timezone = request.timezone,
             reminderHour = request.reminderHour,
             remindersEnabled = request.remindersEnabled,
+            tracksCalories = request.tracksCalories,
         )
         profiles.save(profile)
         return profile.toDto()

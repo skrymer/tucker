@@ -27,6 +27,22 @@ _Avoid_: account, member, profile (a **Profile** is a User's settings, not the U
 
 ### Logging
 
+**Calorie Tracking**:
+Whether a **User** logs what they eat. On, Tucker is the full diet tracker:
+**Entries** counted against a **Calorie Budget** and a **Protein Floor**. Off, it
+is a goal and weight tracker — **Weight Measurements**, the **Trend Weight**, a
+**Goal** and its progress — and nothing asks the user what they ate. It is a
+deliberate setting on the **Profile**, never inferred from a quiet fortnight: a
+User who has logged nothing has *lapsed*, which is not the same as having chosen
+not to log, and a User who has chosen not to log would have no way back in if the
+choice were read off their silence. Weight is not the symmetric half of a pair —
+it is the spine. Calorie Tracking may be off, but a User with no Weight
+Measurements has no Trend Weight, and therefore no **Maintenance**, no Floor and
+no Goal Progress, so there is no "calories but no weight" User to be.
+Switching it on and off is ordinary, not a one-time decision at setup.
+_Avoid_: food logging (a Weight Measurement is logged too), tracking mode,
+weight-only mode
+
 **Food**:
 A reusable definition of something edible — a name plus nutrition per 100g
 (protein, carbs, fat). Calories per 100g are **derived**, not entered: a
@@ -266,9 +282,10 @@ _Avoid_: recalculation, recompute (as a noun)
 A **User**'s personal settings — both the body inputs to the BMR seed (sex, birth
 date, height) and the user's locale: their **timezone** (an IANA zone, e.g.
 `Europe/Copenhagen`) and weekly-**Reminder** preferences (the local hour to nudge
-at, and whether reminders are on). The body inputs are set once and rarely
-changed; combined with the latest Weight Measurement they seed the initial
-Maintenance estimate. The timezone is user-level state (one human, one local day),
+at, and whether reminders are on) — and whether they are doing **Calorie
+Tracking** at all. The body inputs are set once and rarely changed; combined
+with the latest Weight Measurement they seed the initial Maintenance estimate.
+The timezone is user-level state (one human, one local day),
 defaulted from the browser when first captured — it is the proper home for "the
 user's local today," which weight-dating approximates client-side today. The
 Weekly-**Reminder** engine iterates **Users** and reads each one's Profile to

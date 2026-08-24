@@ -44,6 +44,7 @@ describe('ProfileForm', () => {
       sex: 'MALE',
       birthDate: '1990-06-20',
       heightCm: 180,
+      tracksCalories: true,
     })
   })
 
@@ -61,6 +62,7 @@ describe('ProfileForm', () => {
       sex: 'FEMALE',
       birthDate: SAVED.birthDate,
       heightCm: SAVED.heightCm,
+      tracksCalories: true,
     })
   })
 
@@ -89,6 +91,7 @@ describe('ProfileForm', () => {
       sex: 'MALE',
       birthDate: SAVED.birthDate,
       heightCm: SAVED.heightCm,
+      tracksCalories: true,
     })
   })
 
@@ -184,6 +187,7 @@ describe('ProfileForm', () => {
       sex: SAVED.sex,
       birthDate: localYesterday(),
       heightCm: SAVED.heightCm,
+      tracksCalories: true,
     })
   })
 
@@ -317,6 +321,53 @@ describe('ProfileForm', () => {
       sex: 'FEMALE',
       birthDate: '1985-03-22',
       heightCm: 168,
+      tracksCalories: true,
     })
+  })
+  it('pre-selects Calories and weight for a User who has never chosen', async () => {
+    // Rendered with no `initial` at all — the first-run case, and the one the
+    // default is *for*: Tucker is the full diet tracker unless told otherwise.
+    await renderSuspended(ProfileForm)
+
+    expect(
+      screen.getByRole('radio', { name: /calories and weight/i }),
+    ).toBeChecked()
+    expect(
+      screen.getByRole('radio', { name: /weight only/i }),
+    ).not.toBeChecked()
+  })
+  it('emits Calorie Tracking off when the user chooses Weight only', async () => {
+    const onSubmit = vi.fn()
+    await renderSuspended(ProfileForm, { props: { initial: SAVED, onSubmit } })
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole('radio', { name: /weight only/i }))
+    await user.click(screen.getByRole('button', { name: /save profile/i }))
+
+    expect(onSubmit).toHaveBeenCalledWith({
+      ...SAVED,
+      tracksCalories: false,
+    })
+  })
+  it('pre-selects Weight only for a User who has turned Calorie Tracking off', async () => {
+    await renderSuspended(ProfileForm, {
+      props: { initial: { ...SAVED, tracksCalories: false } },
+    })
+
+    expect(screen.getByRole('radio', { name: /weight only/i })).toBeChecked()
+    expect(
+      screen.getByRole('radio', { name: /calories and weight/i }),
+    ).not.toBeChecked()
+  })
+  it('says what each tracking option means, not just what it is called', async () => {
+    // The descriptions are why this is two named options and not a switch:
+    // without them "Weight only" reads as a feature being taken away rather
+    // than as a coherent way to use Tucker.
+    await renderSuspended(ProfileForm)
+
+    expect(
+      screen.getByText(/against a calorie budget and a protein floor/i),
+    ).toBeVisible()
+    expect(screen.getByText(/tucker never asks what you ate/i)).toBeVisible()
   })
 })

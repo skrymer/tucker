@@ -13,6 +13,7 @@ const profile: ProfileDto = {
   timezone: 'Australia/Brisbane',
   reminderHour: 9,
   remindersEnabled: false,
+  tracksCalories: true,
 }
 const weight: WeightMeasurement = {
   id: 1,

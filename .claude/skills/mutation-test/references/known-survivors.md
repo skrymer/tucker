@@ -89,7 +89,7 @@ the two agree, so the link holds and no mutant of the fallback is observable.
 *That* the malformed branch warns is pinned; *what it says* is not, because asserting
 log prose makes the test fail on a reworded message rather than on a defect.
 
-### `components/ProfileForm.vue` — 2 of 46
+### `components/ProfileForm.vue` — 2 of 58
 
 | Where | Mutant | Verdict |
 | --- | --- | --- |
@@ -99,6 +99,9 @@ Same class as the presentation tokens: with a blank `label` the radio's accessib
 name falls back to its `value` (`MALE`), so it stays findable and operable and the
 only loss is the display casing. The two `value`s — the figures that actually reach
 `PUT /api/profile` — *are* pinned, one test per sex.
+
+`pages/profile/index.vue` scores 21/42 with 10 uncovered. **Pre-existing and
+untriaged** — the page has never been swept, and #247 changed only types in it.
 
 `components/LogWeightSheet.vue`'s remaining survivors are all in the re-seed
 `watch(() => props.open)`. **Pre-existing and untriaged** — #241 only swapped its

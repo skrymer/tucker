@@ -71,7 +71,7 @@ class ProfileApiTest {
     }
 
     @Test
-    fun `a profile saved without reminder preferences reads back the safe defaults`() {
+    fun `a profile saved with only body stats reads back the safe defaults`() {
         mockMvc.put("/api/profile") {
             contentType = MediaType.APPLICATION_JSON
             content = """{"sex":"FEMALE","birthDate":"1990-01-01","heightCm":165.0}"""
@@ -82,6 +82,31 @@ class ProfileApiTest {
             jsonPath("$.timezone") { value("UTC") }
             jsonPath("$.reminderHour") { value(9) }
             jsonPath("$.remindersEnabled") { value(false) }
+            // Calorie Tracking defaults *on*: an omitted field is a client that
+            // predates the setting, not a User giving up half the app.
+            jsonPath("$.tracksCalories") { value(true) }
+        }
+    }
+
+    /**
+     * Calorie Tracking is a deliberate setting the User owns, never inferred from a
+     * quiet fortnight (CONTEXT.md), so it has to survive the round trip like any other
+     * Profile field rather than being re-derived on read.
+     */
+    @Test
+    fun `PUT then GET round-trips Calorie Tracking turned off`() {
+        mockMvc.put("/api/profile") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"sex":"MALE","birthDate":"1986-05-22","heightCm":180.0,
+                          "tracksCalories":false}"""
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.tracksCalories") { value(false) }
+        }
+
+        mockMvc.get("/api/profile").andExpect {
+            status { isOk() }
+            jsonPath("$.tracksCalories") { value(false) }
         }
     }
 }

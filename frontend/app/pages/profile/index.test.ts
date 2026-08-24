@@ -1,10 +1,19 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { renderSuspended, registerEndpoint } from '@nuxt/test-utils/runtime'
 import { screen, within } from '@testing-library/vue'
-import { createError } from 'h3'
+import userEvent from '@testing-library/user-event'
+import { createError, readBody } from 'h3'
 import Profile from './index.vue'
 
-type ProfileBody = { sex: string; birthDate: string; heightCm: number }
+type ProfileBody = {
+  sex: string
+  birthDate: string
+  heightCm: number
+  timezone?: string
+  reminderHour?: number
+  remindersEnabled?: boolean
+  tracksCalories?: boolean
+}
 type Weight = { id: number; measuredOn: string; weightKg: number }
 type Goal = unknown
 
@@ -181,5 +190,45 @@ describe('/profile when a section fails to load', () => {
     expect(
       screen.queryByRole('button', { name: /save profile/i }),
     ).not.toBeInTheDocument()
+  })
+})
+
+describe('/profile saving the details form', () => {
+  it('keeps the reminder preferences when the details form is saved', async () => {
+    // The details form knows nothing about reminders, so it can only preserve
+    // them by saving onto the Profile it loaded rather than over it.
+    let saved: Record<string, unknown> | undefined
+    mockApi({
+      profile: {
+        sex: 'MALE',
+        birthDate: '1990-06-15',
+        heightCm: 180,
+        timezone: 'Australia/Brisbane',
+        reminderHour: 21,
+        remindersEnabled: true,
+        tracksCalories: false,
+      },
+      weights: [],
+      goals: [],
+    })
+    registerEndpoint('/api/profile', {
+      method: 'PUT',
+      handler: async (event) => {
+        saved = await readBody(event)
+        return saved
+      },
+    })
+    await renderSuspended(Profile)
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole('button', { name: /save profile/i }))
+
+    await vi.waitFor(() => expect(saved).toBeDefined())
+    expect(saved).toMatchObject({
+      timezone: 'Australia/Brisbane',
+      reminderHour: 21,
+      remindersEnabled: true,
+      tracksCalories: false,
+    })
   })
 })

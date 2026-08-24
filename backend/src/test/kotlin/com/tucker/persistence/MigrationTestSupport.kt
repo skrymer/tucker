@@ -14,8 +14,7 @@ import java.sql.DriverManager
  * and nothing empty will notice). That shape needs the same four things every
  * time: migrate to a chosen version, open a connection with foreign keys enforced
  * the way Hikari enforces them, seed the Users whose ownership is under test, and
- * inspect the schema. Four tests need it — V9's backfill, V11's rebuilds, V12's, and
- * V13's rebuild of `food` and `entry` (issue #232).
+ * inspect the schema. Every migration test in this package needs it.
  */
 
 /** The owner the migration tests adopt a pre-multi-user database as. */
