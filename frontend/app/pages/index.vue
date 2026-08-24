@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import type { components } from '#open-fetch-schemas/api'
+// SPIKE (F12 throwaway) — the prototype variant switcher's state.
+const { tracksCalories: spikeTracks, signature: spikeSignature } = useSpike()
 
 type EntryResponse = components['schemas']['EntryResponse']
 
@@ -74,6 +76,9 @@ const { execute: switchToMaintenance } = useApiMutation(
   },
 )
 
+// SPIKE — the weight series behind variant C's sparkline.
+const { data: allWeights } = await useApi('/api/weight')
+
 async function onEntryLogged() {
   await refresh()
 }
@@ -116,7 +121,7 @@ const { logWeight } = useWeightLogging({ today, onSaved: onWeightSaved })
     <header class="flex items-center justify-between">
       <h1 class="text-2xl font-bold text-default">Today</h1>
       <UButton
-        v-if="isDesktop"
+        v-if="isDesktop && spikeTracks"
         icon="i-lucide-plus"
         color="primary"
         @click="
@@ -133,8 +138,14 @@ const { logWeight } = useWeightLogging({ today, onSaved: onWeightSaved })
       title="Couldn't load today's summary"
       @retry="refresh"
     >
-      <SetupBanner :calorie-budget="summary?.calorieBudget" />
-      <BudgetChangeBanner :budget-change="summary?.budgetChange" />
+      <SetupBanner
+        v-if="spikeTracks"
+        :calorie-budget="summary?.calorieBudget"
+      />
+      <BudgetChangeBanner
+        v-if="spikeTracks"
+        :budget-change="summary?.budgetChange"
+      />
       <LoadErrorState
         :error="latestWeightError"
         title="Couldn't load your weight"
@@ -143,7 +154,7 @@ const { logWeight } = useWeightLogging({ today, onSaved: onWeightSaved })
         <WeightTile :today="today" :latest="latestWeight" @logged="logWeight" />
       </LoadErrorState>
       <DaySummary
-        v-if="summary"
+        v-if="summary && spikeTracks"
         :summary="summary"
         @delete="selectedEntry = $event"
       />
@@ -158,13 +169,30 @@ const { logWeight } = useWeightLogging({ today, onSaved: onWeightSaved })
           @switch-to-maintenance="switchToMaintenance"
         />
         <MaintainingTile
-          v-if="maintainingTrendWeightKg != null"
+          v-if="
+            maintainingTrendWeightKg != null &&
+            !(!spikeTracks && spikeSignature === 'trend')
+          "
           :trend-weight-kg="maintainingTrendWeightKg"
           :drift-status="maintainingDriftStatus"
         />
         <!-- The reached banner already carries the milestone; a 100%
              Goal-Progress tile beside it would be redundant, so it's
              suppressed while reached. -->
+        <TrendSignatureSpike
+          v-if="!spikeTracks && spikeSignature === 'trend'"
+          :measurements="allWeights ?? []"
+          :trend-weight-kg="summary?.trendWeightKg"
+          :progress="goalProgress"
+          :drift-status="maintainingDriftStatus"
+        />
+        <GoalRingSpike
+          v-else-if="
+            goalProgress && !goalProgress.reachedOn && spikeSignature === 'ring'
+          "
+          :progress="goalProgress"
+          :trend-weight-kg="summary?.trendWeightKg"
+        />
         <GoalGlanceTile
           v-else-if="goalProgress && !goalProgress.reachedOn"
           :progress="goalProgress"
@@ -172,7 +200,7 @@ const { logWeight } = useWeightLogging({ today, onSaved: onWeightSaved })
       </LoadErrorState>
     </LoadErrorState>
     <UButton
-      v-if="!isDesktop"
+      v-if="!isDesktop && spikeTracks"
       icon="i-lucide-plus"
       color="primary"
       size="xl"

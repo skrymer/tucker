@@ -1,5 +1,9 @@
 <script setup lang="ts">
-import { navDestinations } from '~/utils/navigation'
+// SPIKE (F12 throwaway) — the nav shape follows the prototype switcher.
+import { visibleDestinations } from '~/utils/navigation'
+
+const { tracksCalories } = useSpike()
+const destinations = computed(() => visibleDestinations(tracksCalories.value))
 </script>
 
 <template>
@@ -15,7 +19,7 @@ import { navDestinations } from '~/utils/navigation'
     </div>
     <div class="flex flex-col gap-1 p-3">
       <NavLink
-        v-for="destination in navDestinations"
+        v-for="destination in destinations"
         :key="destination.to"
         :destination="destination"
         anchor-class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted transition-colors hover:bg-elevated hover:text-default aria-[current=page]:bg-primary/10 aria-[current=page]:text-primary"
@@ -31,7 +35,7 @@ import { navDestinations } from '~/utils/navigation'
     class="fixed inset-x-0 bottom-0 z-40 flex lg:hidden border-t border-default bg-default pb-[env(safe-area-inset-bottom)]"
   >
     <NavLink
-      v-for="destination in navDestinations"
+      v-for="destination in destinations"
       :key="destination.to"
       :destination="destination"
       anchor-class="flex flex-1 flex-col items-center gap-1 py-2 text-xs font-medium text-muted transition-colors aria-[current=page]:text-primary"

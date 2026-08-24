@@ -22,6 +22,14 @@ export const navDestinations: NavDestination[] = [
   { label: 'Profile', to: '/profile', icon: 'i-lucide-user' },
 ]
 
+// SPIKE (F12 throwaway) — with Calorie Tracking off, Foods and Check are dead
+// ends: the catalog is never logged against, and a Check has no Calorie Budget
+// to be a share of (ADR 0022). The routes stay reachable; only the tabs go.
+export function visibleDestinations(tracksCalories: boolean): NavDestination[] {
+  if (tracksCalories) return navDestinations
+  return navDestinations.filter((d) => d.to !== '/foods' && d.to !== '/check')
+}
+
 /**
  * Whether a nav destination should read as the active route for the current
  * path.
