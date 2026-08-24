@@ -27,6 +27,22 @@ _Avoid_: account, member, profile (a **Profile** is a User's settings, not the U
 
 ### Logging
 
+**Calorie Tracking**:
+Whether a **User** logs what they eat. On, Tucker is the full diet tracker:
+**Entries** counted against a **Calorie Budget** and a **Protein Floor**. Off, it
+is a goal and weight tracker — **Weight Measurements**, the **Trend Weight**, a
+**Goal** and its progress — and nothing asks the user what they ate. It is a
+deliberate setting on the **Profile**, never inferred from a quiet fortnight: a
+User who has logged nothing has *lapsed*, which is not the same as having chosen
+not to log, and a User who has chosen not to log would have no way back in if the
+choice were read off their silence. Weight is not the symmetric half of a pair —
+it is the spine. Calorie Tracking may be off, but a User with no Weight
+Measurements has no Trend Weight, and therefore no **Maintenance**, no Floor and
+no Goal Progress, so there is no "calories but no weight" User to be.
+Switching it on and off is ordinary, not a one-time decision at setup.
+_Avoid_: food logging (a Weight Measurement is logged too), tracking mode,
+weight-only mode
+
 **Food**:
 A reusable definition of something edible — a name plus nutrition per 100g
 (protein, carbs, fat). Calories per 100g are **derived**, not entered: a
@@ -242,8 +258,11 @@ switching out of a reached one — drops back to Maintenance Mode.
 _Avoid_: maintenance goal, rate-zero goal, rest mode
 
 **Weekly Review**:
-The adaptive engine's recompute event — and the dated historical record it
-leaves behind. Each review re-derives Maintenance from the Trend Weight and
+The weekly cadence event — and the dated historical record it leaves behind.
+Every review records the **Trend Weight**, and for a User with **Calorie
+Tracking** off that is the whole of it: a weekly reading of where the body is
+and, against a **Goal**, how it is tracking. With Calorie Tracking on the review
+*also* runs the adaptive engine, re-deriving Maintenance from the Trend Weight and
 logged intake, then the Calorie Budget and Protein Floor for the coming week.
 Clock-driven reviews are held steady — never changed once written — but a
 deliberate **Goal** change (creating or replacing one) force-recomputes today's
