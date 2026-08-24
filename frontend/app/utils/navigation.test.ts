@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isDestinationActive } from './navigation'
+import { isDestinationActive, visibleDestinations } from './navigation'
 
 // navDestinations' icon names are deliberately unasserted. They are lookup
 // data: a test naming 'i-lucide-house' pins the token a designer is entitled to
@@ -35,5 +35,25 @@ describe('isDestinationActive', () => {
 
   it('matches on a path segment boundary, not a bare string prefix', () => {
     expect(isDestinationActive('/foods', '/foodstuff')).toBe(false)
+  })
+})
+
+describe('visibleDestinations', () => {
+  it('shows all five destinations while the User counts calories', () => {
+    expect(visibleDestinations(true).map((d) => d.label)).toEqual([
+      'Today',
+      'Foods',
+      'Check',
+      'Review',
+      'Profile',
+    ])
+  })
+
+  it('drops Foods and Check when the User is not counting calories', () => {
+    expect(visibleDestinations(false).map((d) => d.label)).toEqual([
+      'Today',
+      'Review',
+      'Profile',
+    ])
   })
 })

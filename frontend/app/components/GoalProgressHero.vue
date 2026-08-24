@@ -28,10 +28,7 @@ const usePaceColumns = () => {
 
   // Withheld under two weeks of weigh-ins; otherwise the classified badge plus,
   // unless stalled, a projected finish date.
-  const pace = computed(() => {
-    const status = props.progress.paceStatus
-    return status ? paceBadge(status) : null
-  })
+  const pace = computed(() => paceBadge(props.progress.paceStatus))
   const observedFinish = computed(() =>
     props.progress.observedFinishDate
       ? formatDateFromISO(props.progress.observedFinishDate)

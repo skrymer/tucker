@@ -17,11 +17,16 @@ export type PaceColor = 'success' | 'warning' | 'neutral'
  * On-pace and ahead read as success, behind as a warning, and a stalled trend
  * (no loss) as neutral. The classification itself is the backend's; this maps it
  * to how it looks (ADR 0002).
+ *
+ * A withheld status — the backend has too few Weight Measurements to classify
+ * one — has no badge rather than an empty one, so every caller gets that answer
+ * from here instead of restating it.
  */
-export function paceBadge(status: PaceStatus): {
+export function paceBadge(status: PaceStatus | null | undefined): {
   label: string
   color: PaceColor
-} {
+} | null {
+  if (!status) return null
   switch (status) {
     case 'ahead':
       return { label: 'Ahead', color: 'success' }

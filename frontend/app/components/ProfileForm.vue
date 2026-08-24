@@ -65,7 +65,7 @@ const state = reactive({
   sex: initialSex as 'MALE' | 'FEMALE' | undefined,
   birthDate: props.initial?.birthDate ?? '',
   heightCm: props.initial?.heightCm,
-  tracksCalories: props.initial?.tracksCalories ?? true,
+  tracksCalories: props.initial?.tracksCalories ?? DEFAULT_TRACKS_CALORIES,
 })
 
 function onSubmit() {

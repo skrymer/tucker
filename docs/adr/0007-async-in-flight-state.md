@@ -277,8 +277,17 @@ fixture that fails the *first* call and succeeds after was silently answered by
 the client's own retry, so the failure never reached the screen. Model an outage
 as a state the test switches off ("the source came back"), never as an attempt
 count — an attempt count measures the HTTP client, not Tucker. That trap is
-disarmed on the two look-ups above and still live on every other `$api` GET,
-which keeps ofetch's default. Counting requests is fine where the *count itself*
+disarmed on the two look-ups above and on one read more — and still live on
+every other `$api` GET, which keeps ofetch's default.
+
+The third is `GET /api/profile` as the app shell reads it (`useCalorieTracking`,
+F12 #248), and it is here for a different reason from the look-ups: no provider
+is behind it and nothing multiplies. The shell *awaits* it, so nothing paints
+until it settles, and a retry would double the blank screen a failure costs to
+re-ask a question whose answer already falls back to a default. Retry belongs to
+work a user is waiting on and can see; this is work they are waiting on and
+cannot. Extend the rule to a further call site only on one of those two grounds,
+and say which. Counting requests is fine where the *count itself*
 is the behaviour under test rather than a proxy for an outcome. Both look-ups'
 smokes now do it: each pins its own first ask at exactly one, and the Check's
 additionally compares counts before and after a tap to prove "Try again" re-asks.

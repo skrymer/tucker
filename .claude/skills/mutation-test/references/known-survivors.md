@@ -100,8 +100,49 @@ name falls back to its `value` (`MALE`), so it stays findable and operable and t
 only loss is the display casing. The two `value`s — the figures that actually reach
 `PUT /api/profile` — *are* pinned, one test per sex.
 
-`pages/profile/index.vue` scores 21/42 with 10 uncovered. **Pre-existing and
-untriaged** — the page has never been swept, and #247 changed only types in it.
+### `composables/useCalorieTracking.ts` — 1 of 17
+
+| Where | Mutant | Verdict |
+| --- | --- | --- |
+| the fall-back `console.warn` text | text → `""` | **Accepted** |
+
+*That* a failed read warns is pinned; *what it says* is not, as with `DateField`'s
+malformed-date warning above.
+
+Two neighbours are **not** survivors, and both stopped being ones by a change to the
+code rather than to the tests. The `useState` initializer is killable because a failed
+read now *holds* the setting instead of restating the default — which makes the boot
+value the only thing standing between a failed read and a nav that drops two tabs, and
+`counts calories for a User whose Profile has never been read` pins it. And the
+`retry: 0` on that read is pinned by `asks once, so a failure does not double the wait
+the shell holds paint for`, which counts the requests: it is the third and last call
+site ADR 0007 takes ofetch's stock GET retry off, and the only one where a retry would
+block first paint rather than double a provider's load — which is what makes a
+request-count test worth its weight here and not on the barcode look-ups.
+
+### The two rings — 40 of 40
+
+`RingGauge.vue`, `DayRing.vue` and `GoalRingTile.vue` are at 100%. Worth recording
+because they got there by moving *up* a layer, not by adding assertions to the old
+one: the arcs used to be static template markup, which Stryker does not mutate at
+all, and folding them into a shared `RingGauge` turned them into script — a real
+mutable surface that nothing asserted. `RingGauge.test.ts` reads the circles off
+the SVG, with the reason in the file: the gauge is `aria-hidden` by design, so
+there is no accessible surface to query and the alternative is a ring that draws
+nothing shipping green.
+
+**Stryker gotcha found here:** a bare `defineProps<…>()` statement in
+`<script setup>` breaks under instrumentation — the macro is left uncompiled and
+every test rendering the component dies with `defineProps is not defined`, in the
+dry run, before a single mutant. Binding it (`const props = defineProps<…>()`)
+fixes it. The failure names the *consumer's* test, not the instrumented file, so it
+reads like an unrelated regression.
+
+`pages/profile/index.vue` scores 22/47 with 10 uncovered, and `pages/index.vue`
+14/26 with 18 uncovered. **Pre-existing and untriaged** — neither page has been
+swept; #248 added `index.test.ts` (the page had none) but scoped it to the Calorie
+Tracking branches, so the fetch and mutation wiring around them is still unasserted
+at this layer. `components/GoalProgressHero.vue` is 18/25, likewise pre-existing.
 
 `components/LogWeightSheet.vue`'s remaining survivors are all in the re-seed
 `watch(() => props.open)`. **Pre-existing and untriaged** — #241 only swapped its

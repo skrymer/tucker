@@ -5,6 +5,8 @@
 // only the arc sweep and colours are presentation. The SVG is decorative
 // (aria-hidden) — the legend rows are the accessible equivalent, and no arc is
 // ever colour-alone (its number sits beside it).
+import type { RingArc } from '~/utils/ring'
+
 const props = defineProps<{
   caloriesConsumed: number
   calorieBudget: number
@@ -13,17 +15,30 @@ const props = defineProps<{
   proteinFloor: number
 }>()
 
-// The two radii (72 outer, 52 inner) and their circumferences. A capped
-// ringFraction sets each sweep, so an over-target day fills the ring, never past.
+// The two arcs, outer calories over inner protein, each drawn over a faint tint
+// of its own role. RingGauge owns the geometry the Goal ring shares.
 const R_OUTER = 72
 const R_INNER = 52
-const CIRC_OUTER = 2 * Math.PI * R_OUTER
-const CIRC_INNER = 2 * Math.PI * R_INNER
 
 // Over budget once the *rounded* remaining goes negative — deciding on the same
-// rounded figure the centre shows means a −0.3 kcal overage never flips the ring
-// to a red "0 kcal over". Drives the calorie arc + centre colour and its track.
+// rounded figure the centre shows means a -0.3 kcal overage never flips the ring
+// to a red "0 kcal over". Drives the calorie arc + centre colour.
 const isOver = computed(() => Math.round(props.caloriesRemaining) < 0)
+
+const arcs = computed<RingArc[]>(() => [
+  {
+    radius: R_OUTER,
+    stroke: isOver.value ? 'var(--ui-error)' : 'var(--ui-primary)',
+    consumed: props.caloriesConsumed,
+    target: props.calorieBudget,
+  },
+  {
+    radius: R_INNER,
+    stroke: 'var(--ui-secondary)',
+    consumed: props.proteinConsumed,
+    target: props.proteinFloor,
+  },
+])
 
 // The ring's centre: the signed remaining figure as an absolute value with a
 // left/over label.
@@ -35,28 +50,6 @@ function useCentre() {
   return { centreValue, centreLabel }
 }
 const { centreValue, centreLabel } = useCentre()
-
-// The two arc sweeps as SVG dash offsets (a full arc is offset 0, an empty arc
-// the whole circumference), each over a faint tint of its *own* role so
-// re-skinning a role — or the calorie arc flipping to error — never leaves the
-// track on a stale hue (e.g. a red arc over a green track).
-function useArcs() {
-  const caloriesOffset = computed(() =>
-    ringDashOffset(props.caloriesConsumed, props.calorieBudget, R_OUTER),
-  )
-  const proteinOffset = computed(() =>
-    ringDashOffset(props.proteinConsumed, props.proteinFloor, R_INNER),
-  )
-  const caloriesTrack = computed(() =>
-    isOver.value
-      ? 'color-mix(in srgb, var(--ui-error) 15%, transparent)'
-      : 'color-mix(in srgb, var(--ui-primary) 15%, transparent)',
-  )
-  const proteinTrack =
-    'color-mix(in srgb, var(--ui-secondary) 15%, transparent)'
-  return { caloriesOffset, proteinOffset, caloriesTrack, proteinTrack }
-}
-const { caloriesOffset, proteinOffset, caloriesTrack, proteinTrack } = useArcs()
 
 // The accessible legend beside the ring: the figures as text plus meters capped
 // at their target so an over-target day shows a full bar, not an overflow.
@@ -82,63 +75,15 @@ const { caloriesLegend, proteinLegend, caloriesBar, proteinBar } = useLegend()
 
 <template>
   <div class="flex flex-col items-center gap-6 sm:flex-row">
-    <div class="relative size-40 shrink-0">
-      <svg
-        class="-rotate-90"
-        width="160"
-        height="160"
-        viewBox="0 0 176 176"
-        aria-hidden="true"
+    <RingGauge :arcs="arcs">
+      <span
+        class="font-display text-4xl font-extrabold tabular-nums"
+        :class="isOver ? 'text-error' : 'text-highlighted'"
       >
-        <circle
-          cx="88"
-          cy="88"
-          r="72"
-          fill="none"
-          :stroke="caloriesTrack"
-          stroke-width="15"
-        />
-        <circle
-          cx="88"
-          cy="88"
-          r="72"
-          fill="none"
-          :stroke="isOver ? 'var(--ui-error)' : 'var(--ui-primary)'"
-          stroke-width="15"
-          stroke-linecap="round"
-          :stroke-dasharray="CIRC_OUTER"
-          :stroke-dashoffset="caloriesOffset"
-        />
-        <circle
-          cx="88"
-          cy="88"
-          r="52"
-          fill="none"
-          :stroke="proteinTrack"
-          stroke-width="15"
-        />
-        <circle
-          cx="88"
-          cy="88"
-          r="52"
-          fill="none"
-          stroke="var(--ui-secondary)"
-          stroke-width="15"
-          stroke-linecap="round"
-          :stroke-dasharray="CIRC_INNER"
-          :stroke-dashoffset="proteinOffset"
-        />
-      </svg>
-      <div class="absolute inset-0 grid place-content-center text-center">
-        <span
-          class="font-display text-4xl font-extrabold tabular-nums"
-          :class="isOver ? 'text-error' : 'text-highlighted'"
-        >
-          {{ centreValue }}
-        </span>
-        <span class="text-xs font-semibold text-muted">{{ centreLabel }}</span>
-      </div>
-    </div>
+        {{ centreValue }}
+      </span>
+      <span class="text-xs font-semibold text-muted">{{ centreLabel }}</span>
+    </RingGauge>
 
     <div class="flex w-full flex-col gap-4">
       <div>

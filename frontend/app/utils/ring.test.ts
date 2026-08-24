@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { ringDashOffset, ringFraction } from './ring'
+import {
+  ringCircumference,
+  ringDashOffset,
+  ringFraction,
+  ringTrack,
+} from './ring'
 
 // The Day Ring's arc sweep (frontend/DESIGN.md): the filled fraction of the ring
 // is `consumed / target`, clamped to 0..1 so the ring never overshoots.
@@ -31,5 +36,21 @@ describe('ringDashOffset', () => {
   it('offsets by the unfilled remainder in between', () => {
     // Half filled leaves half the circumference as offset.
     expect(ringDashOffset(1070, 2140, 52)).toBeCloseTo(Math.PI * 52, 6)
+  })
+})
+
+describe('ringCircumference', () => {
+  it('is the circumference of a circle of that radius', () => {
+    expect(ringCircumference(72)).toBeCloseTo(452.389, 3)
+  })
+})
+
+// Every arc's track is a tint of its own colour, never a fixed hue — so a red
+// calorie arc is never drawn over a green track.
+describe('ringTrack', () => {
+  it('tints the colour it is given', () => {
+    expect(ringTrack('var(--ui-error)')).toBe(
+      'color-mix(in srgb, var(--ui-error) 15%, transparent)',
+    )
   })
 })

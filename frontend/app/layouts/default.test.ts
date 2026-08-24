@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
-import { mockNuxtImport, renderSuspended } from '@nuxt/test-utils/runtime'
-import { screen } from '@testing-library/vue'
+import {
+  mockNuxtImport,
+  registerEndpoint,
+  renderSuspended,
+} from '@nuxt/test-utils/runtime'
+import { screen, within } from '@testing-library/vue'
 import { ref } from 'vue'
 import DefaultLayout from './default.vue'
 
@@ -10,6 +14,13 @@ mockNuxtImport('useAuthGate', () => () => ({
   markSignedOut: () => {
     state.isSignedOut = true
   },
+}))
+
+registerEndpoint('/api/profile', () => ({
+  sex: 'MALE',
+  birthDate: '1990-06-15',
+  heightCm: 180,
+  tracksCalories: false,
 }))
 
 describe('default layout', () => {
@@ -37,5 +48,19 @@ describe('default layout', () => {
     expect(
       screen.queryByRole('heading', { name: "You've been signed out" }),
     ).not.toBeInTheDocument()
+  })
+
+  it('shapes the navigation to the signed-in User’s Profile', async () => {
+    state.isSignedOut = false
+
+    await renderSuspended(DefaultLayout, {
+      slots: { default: () => 'Page content' },
+    })
+
+    for (const nav of screen.getAllByRole('navigation', { name: 'Primary' })) {
+      expect(within(nav).queryByRole('link', { name: 'Foods' })).toBeNull()
+      expect(within(nav).queryByRole('link', { name: 'Check' })).toBeNull()
+      expect(within(nav).getByRole('link', { name: 'Today' })).toBeVisible()
+    }
   })
 })
