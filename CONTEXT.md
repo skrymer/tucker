@@ -258,11 +258,8 @@ switching out of a reached one — drops back to Maintenance Mode.
 _Avoid_: maintenance goal, rate-zero goal, rest mode
 
 **Weekly Review**:
-The weekly cadence event — and the dated historical record it leaves behind.
-Every review records the **Trend Weight**, and for a User with **Calorie
-Tracking** off that is the whole of it: a weekly reading of where the body is
-and, against a **Goal**, how it is tracking. With Calorie Tracking on the review
-*also* runs the adaptive engine, re-deriving Maintenance from the Trend Weight and
+The adaptive engine's recompute event — and the dated historical record it
+leaves behind. Each review re-derives Maintenance from the Trend Weight and
 logged intake, then the Calorie Budget and Protein Floor for the coming week.
 Clock-driven reviews are held steady — never changed once written — but a
 deliberate **Goal** change (creating or replacing one) force-recomputes today's
@@ -285,9 +282,10 @@ _Avoid_: recalculation, recompute (as a noun)
 A **User**'s personal settings — both the body inputs to the BMR seed (sex, birth
 date, height) and the user's locale: their **timezone** (an IANA zone, e.g.
 `Europe/Copenhagen`) and weekly-**Reminder** preferences (the local hour to nudge
-at, and whether reminders are on). The body inputs are set once and rarely
-changed; combined with the latest Weight Measurement they seed the initial
-Maintenance estimate. The timezone is user-level state (one human, one local day),
+at, and whether reminders are on) — and whether they are doing **Calorie
+Tracking** at all. The body inputs are set once and rarely changed; combined
+with the latest Weight Measurement they seed the initial Maintenance estimate.
+The timezone is user-level state (one human, one local day),
 defaulted from the browser when first captured — it is the proper home for "the
 user's local today," which weight-dating approximates client-side today. The
 Weekly-**Reminder** engine iterates **Users** and reads each one's Profile to
