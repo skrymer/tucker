@@ -1,0 +1,14 @@
+-- F12 slice 1 (issue #247): Calorie Tracking becomes a deliberate setting a User
+-- owns, rather than something Tucker infers. See CONTEXT.md, "Calorie Tracking".
+--
+-- No table rebuild, unlike V12 which last touched this table: SQLite does allow
+-- ADD COLUMN ... NOT NULL on a populated table so long as the default is a
+-- constant, which is exactly this case. It refuses only NOT NULL together with a
+-- REFERENCES clause -- what forced V9's nullable user_id -- and a CHECK inside an
+-- ADD COLUMN, which is why the boolean is left as the plain 0/1 INTEGER every
+-- other flag in this schema already is.
+--
+-- The default backfills every existing row to on, which is the whole migration:
+-- off would take Tucker's headline half away from the two live Users on deploy,
+-- and neither of them decided anything.
+ALTER TABLE profile ADD COLUMN tracks_calories INTEGER NOT NULL DEFAULT 1;

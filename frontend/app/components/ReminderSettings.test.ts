@@ -53,6 +53,7 @@ const profile: components['schemas']['ProfileDto'] = {
   timezone: 'UTC',
   reminderHour: 9,
   remindersEnabled: false,
+  tracksCalories: true,
 }
 
 const render = (over: Partial<typeof profile> = {}) =>
@@ -165,9 +166,9 @@ describe('ReminderSettings', () => {
     expect(savedProfile).toBeUndefined()
   })
 
-  it('saves a valid reminder hour onto the profile', async () => {
+  it('saves a valid reminder hour onto the profile without clobbering the rest', async () => {
     setupWebPush({ supported: true })
-    await render({ reminderHour: 9 })
+    await render({ reminderHour: 9, tracksCalories: false })
 
     const hour = screen.getByLabelText(/reminder hour/i)
     await userEvent.clear(hour)
@@ -177,7 +178,11 @@ describe('ReminderSettings', () => {
     )
 
     await vi.waitFor(() => expect(savedProfile).toBeDefined())
-    expect(savedProfile).toMatchObject({ reminderHour: 7, sex: 'MALE' })
+    expect(savedProfile).toMatchObject({
+      reminderHour: 7,
+      sex: 'MALE',
+      tracksCalories: false,
+    })
   })
 
   it('never asks for notification permission on load — only from a gesture', async () => {

@@ -8,11 +8,10 @@ import java.time.ZoneId
 enum class Sex { MALE, FEMALE }
 
 /**
- * The user's profile: the body inputs to the Mifflin-St Jeor Maintenance seed
- * (sex, birth date, height) plus the user's locale and Weekly-Review Reminder
- * preferences — the IANA [timezone] that defines the user's local day, the local
- * [reminderHour] to nudge at, and whether reminders are on. A single-instance
- * entity (Tucker is single-user).
+ * One User's personal settings: the body inputs to the Mifflin-St Jeor Maintenance
+ * seed, their locale — [timezone] is the IANA zone that defines their local day —
+ * their Weekly-Review Reminder preferences, and whether they are doing Calorie
+ * Tracking. One per User (ADR 0021).
  */
 data class Profile(
     val sex: Sex,
@@ -21,6 +20,7 @@ data class Profile(
     val timezone: String = DEFAULT_TIMEZONE,
     val reminderHour: Int = DEFAULT_REMINDER_HOUR,
     val remindersEnabled: Boolean = false,
+    val tracksCalories: Boolean = DEFAULT_TRACKS_CALORIES,
 ) {
     init {
         require(heightCm > 0) { "heightCm must be > 0, was $heightCm" }
@@ -52,6 +52,7 @@ data class Profile(
         /** Sensible defaults until the user captures their own locale/prefs. */
         const val DEFAULT_TIMEZONE = "UTC"
         const val DEFAULT_REMINDER_HOUR = 9
+        const val DEFAULT_TRACKS_CALORIES = true
         private const val LAST_HOUR_OF_DAY = 23
 
         // Mifflin-St Jeor equation coefficients.

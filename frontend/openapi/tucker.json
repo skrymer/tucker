@@ -2855,7 +2855,8 @@
           "reminderHour",
           "remindersEnabled",
           "sex",
-          "timezone"
+          "timezone",
+          "tracksCalories"
         ],
         "type": "object",
         "properties": {
@@ -2878,6 +2879,9 @@
             "format": "int32"
           },
           "remindersEnabled": {
+            "type": "boolean"
+          },
+          "tracksCalories": {
             "type": "boolean"
           }
         }
