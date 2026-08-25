@@ -6,6 +6,8 @@ const props = defineProps<{
   date?: string
   today?: string
   initialWeightKg?: number
+  /** The save mutation's in-flight flag — shows on the submit (ADR 0007). */
+  pending?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -72,7 +74,7 @@ function onSubmit() {
         <NumberField v-model="state.weightKg" :step="0.1" class="w-full" />
       </UFormField>
 
-      <UButton type="submit" color="primary" class="w-full">
+      <UButton type="submit" color="primary" class="w-full" :loading="pending">
         Save weight
       </UButton>
     </UForm>

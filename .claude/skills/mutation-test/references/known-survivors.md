@@ -155,6 +155,40 @@ swept; #248 added `index.test.ts` (the page had none) but scoped it to the Calor
 Tracking branches, so the fetch and mutation wiring around them is still unasserted
 at this layer. `components/GoalProgressHero.vue` is 18/25, likewise pre-existing.
 
+### `composables/useWeightLogging.ts` — 0 of 12
+
+At 100%, and recorded because the last survivor was its `errorTitle` literal, killed
+by asserting the toast title rather than only that a toast is raised. That is the
+opposite verdict to `DateField`'s and `useCalorieTracking`'s warning text above, and
+the line between them is who reads it: log prose is for a developer and rewording it
+is not a defect, whereas the failure toast is the *whole* of what a user gets when a
+save is lost, and it competes with every other mutation's. `useApiMutation.test.ts`
+pins that a passed `errorTitle` becomes the title; only the per-call-site literal is
+left, and `toast.spec.ts` already pins `'Could not save profile'` at the Playwright
+layer.
+
+### `WeightSection.vue` and `WeightTile.vue` — hand-check only
+
+Neither can be instrumented: `defineModel<boolean>('open', { default: false })` dies
+in the dry run with `stryMutAct_9fa48 is not defined`, naming a *consumer's* test.
+Same mechanism as `withDefaults(defineProps<…>(), { … })` above — Stryker wraps the
+options object in a coverage call and a compiler macro may not reference locally
+declared variables. Confirmed by removing the options object, which instruments
+cleanly. `ResponsiveOverlay.vue` carries the same shape and has no test of its own,
+so it has never surfaced.
+
+Hand-checked instead, both mutants killed: `{ default: false }` → `true` fails 8
+tests; replacing the model with a local `ref(false)` — so the parent's
+`v-model:open` is ignored and the sheet can never close — fails
+`/profile logging a weight keeps the weight sheet up…` for `WeightSection`, and
+`today.spec.ts`'s `the weight sheet stays put, reporting busy, until the save lands`
+on both Playwright projects for `WeightTile`.
+
+`components/GoalForm.vue` (14/16) and `components/GoalSection.vue` (19/33) are
+**pre-existing and untriaged**; their survivors sit on the Zod messages, the
+`reachedSince` reduce and the form-closing `watch`, none of which any change has
+swept.
+
 `components/LogWeightSheet.vue`'s remaining survivors are all in the re-seed
 `watch(() => props.open)`. **Pre-existing and untriaged** — #241 only swapped its
 date control. Its `'Pick a date'` survivor was **removed at the source** instead:

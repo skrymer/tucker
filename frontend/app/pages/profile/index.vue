@@ -32,7 +32,7 @@ function useProfileForm() {
     if (!error.value) readFrom(profile.value)
   }
 
-  const { execute: save } = useApiMutation(
+  const { pending: saving, execute: save } = useApiMutation(
     (payload: ProfileDetails) =>
       // Merge the body stats onto the loaded profile so saving them never
       // clobbers the user's reminder preferences (and vice-versa).
@@ -51,7 +51,7 @@ function useProfileForm() {
     },
   )
 
-  return { profile, error, load, save }
+  return { profile, error, load, save, saving }
 }
 
 // Setting a Goal — the backend replaces the active one and preserves history.
@@ -63,7 +63,7 @@ function useGoalSubmission(onSubmitted: () => void | Promise<void>) {
   // and feeds the form.
   const targetError = ref<string | undefined>(undefined)
 
-  const { execute } = useApiMutation(
+  const { pending, execute } = useApiMutation(
     (payload: {
       startedOn: string
       targetWeightKg: number
@@ -96,7 +96,7 @@ function useGoalSubmission(onSubmitted: () => void | Promise<void>) {
     await execute(payload)
   }
 
-  return { submit, targetError }
+  return { submit, targetError, pending }
 }
 
 const {
@@ -104,6 +104,7 @@ const {
   error: profileError,
   load: loadProfile,
   save: saveProfile,
+  saving: savingProfile,
 } = useProfileForm()
 
 const {
@@ -154,7 +155,11 @@ const gating = computed(() =>
   useProfileGating(profile.value, latestWeight.value, activeGoal.value),
 )
 
-const { logWeight } = useWeightLogging({
+const {
+  sheetOpen: weightSheetOpen,
+  saving: savingWeight,
+  logWeight,
+} = useWeightLogging({
   today,
   // No success toast: the new reading appears in the weight trend below. A new
   // reading also moves the Trend Weight, so refresh it for the Goal form.
@@ -162,8 +167,11 @@ const { logWeight } = useWeightLogging({
     await Promise.all([refreshWeights(), refreshCurrentTrend()])
   },
 })
-const { submit: submitGoal, targetError: goalTargetError } =
-  useGoalSubmission(refreshGoals)
+const {
+  submit: submitGoal,
+  targetError: goalTargetError,
+  pending: savingGoal,
+} = useGoalSubmission(refreshGoals)
 
 // Profile and the trend are independent reads — load them concurrently so the
 // gated page paints after one round-trip, not two.
@@ -192,6 +200,7 @@ await Promise.all([loadProfile(), refreshCurrentTrend()])
         :goals="goals ?? []"
         :current-trend="currentTrend"
         :target-error="goalTargetError"
+        :pending="savingGoal"
         :disabled="!gating.goalEnabled"
         @submit="submitGoal"
       />
@@ -203,8 +212,10 @@ await Promise.all([loadProfile(), refreshCurrentTrend()])
       @retry="refreshWeights"
     >
       <WeightSection
+        v-model:open="weightSheetOpen"
         :today="today"
         :measurements="weights ?? []"
+        :pending="savingWeight"
         :disabled="!gating.weightEnabled"
         @logged="logWeight"
       />
@@ -226,7 +237,11 @@ await Promise.all([loadProfile(), refreshCurrentTrend()])
         @retry="loadProfile"
       >
         <UCard>
-          <ProfileForm :initial="profile ?? undefined" @submit="saveProfile" />
+          <ProfileForm
+            :initial="profile ?? undefined"
+            :pending="savingProfile"
+            @submit="saveProfile"
+          />
         </UCard>
       </LoadErrorState>
     </section>

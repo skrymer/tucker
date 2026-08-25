@@ -89,6 +89,50 @@ test("logging a weight from the tile shows it as today's weight", async ({
   await expect(page.getByRole('button', { name: 'Log weight' })).toHaveCount(0)
 })
 
+test('the weight sheet stays put, reporting busy, until the save lands', async ({
+  page,
+  goto,
+}) => {
+  await mockWeightApi(page)
+  await mockSummary(page)
+
+  // Hold the POST open so the in-flight window is observable. Registered after
+  // mockWeightApi so it runs first, then hands the request back to it.
+  let release!: () => void
+  const held = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  await page.route('**/api/weight', async (route) => {
+    if (route.request().method() !== 'POST') return route.fallback()
+    await held
+    return route.fallback()
+  })
+
+  await goto('/', { waitUntil: 'hydration' })
+
+  await page.getByRole('button', { name: 'Log weight' }).click()
+  await page.getByLabel(/weight \(kg\)/i).fill('84.2')
+  const sheet = page.getByRole('dialog', { name: /log weight/i })
+  const save = sheet.getByRole('button', { name: /save weight/i })
+  await save.click()
+
+  await expect(save).toBeDisabled()
+
+  // The sheet is the confirmation, so nothing may take it away mid-save: losing
+  // it here would leave no sheet, no spinner and no way to tell whether the
+  // reading landed. ResponsiveOverlay is non-dismissible unless a sheet asks
+  // for it (UModal's `dismissible` is Boolean-cast, so absent reads as false),
+  // and this pins that the weight sheet never does. Read `data-state`, not
+  // visibility: a dismissed Reka dialog stays mounted and visible for its exit
+  // animation, so `toBeVisible()` would pass on the first poll either way.
+  await page.keyboard.press('Escape')
+  await expect(sheet).toHaveAttribute('data-state', 'open')
+
+  release()
+  await expect(sheet).toBeHidden()
+  await expect(page.getByText('84.2 kg')).toBeVisible()
+})
+
 test("shows a retryable error instead of an empty dashboard when today's summary fails to load", async ({
   page,
   goto,

@@ -4,22 +4,18 @@ import type { components } from '#open-fetch-schemas/api'
 const props = defineProps<{
   today: string
   latest: components['schemas']['WeightMeasurementResponse'] | null
+  pending?: boolean
 }>()
 
 const emit = defineEmits<{
   logged: [{ date: string; weightKg: number }]
 }>()
 
-const open = ref(false)
+const open = defineModel<boolean>('open', { default: false })
 
 const loggedToday = computed(
   () => props.latest != null && props.latest.measuredOn === props.today,
 )
-
-function handleSubmit(payload: { date: string; weightKg: number }) {
-  open.value = false
-  emit('logged', payload)
-}
 </script>
 
 <template>
@@ -65,7 +61,8 @@ function handleSubmit(payload: { date: string; weightKg: number }) {
       v-model:open="open"
       :date="today"
       :initial-weight-kg="latest?.weightKg"
-      @submit="handleSubmit"
+      :pending="pending"
+      @submit="emit('logged', $event)"
     />
   </UCard>
 </template>

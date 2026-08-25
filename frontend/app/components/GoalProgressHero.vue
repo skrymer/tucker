@@ -26,7 +26,7 @@ const usePaceColumns = () => {
     rate: rate(props.progress.plannedRateKgPerWeek),
   }))
 
-  // Withheld under two weeks of weigh-ins; otherwise the classified badge plus,
+  // Withheld under two weeks of readings; otherwise the classified badge plus,
   // unless stalled, a projected finish date.
   const pace = computed(() => paceBadge(props.progress.paceStatus))
   const observedFinish = computed(() =>
@@ -103,7 +103,7 @@ const { planned, pace, observedFinish, observedRate } = usePaceColumns()
           </p>
         </template>
         <p v-else class="mt-1 text-sm text-muted">
-          Pace available after 2 weeks of weigh-ins
+          Pace available after 2 weeks of readings
         </p>
       </div>
     </div>

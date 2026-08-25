@@ -177,6 +177,23 @@ describe('GoalSection', () => {
     ).not.toBeInTheDocument()
   })
 
+  it('offers no history affordance while maintaining, past goals or not', async () => {
+    // Maintenance is the absence of an active Goal (ADR 0008), so past goals are
+    // ordinary there — the section is the durable status and its re-entry, not a
+    // place to browse what came before.
+    await renderSuspended(GoalSection, {
+      props: {
+        goals: [pastGoal, { ...activeGoal, active: false }],
+        currentTrend,
+      },
+    })
+
+    expect(screen.getByText(/maintaining/i)).toBeVisible()
+    expect(
+      screen.queryByRole('button', { name: /past goals/i }),
+    ).not.toBeInTheDocument()
+  })
+
   it('shows no history affordance when there are no past goals', async () => {
     await renderSuspended(GoalSection, {
       props: { goals: [activeGoal], currentTrend },

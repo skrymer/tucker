@@ -4,6 +4,7 @@ import type { components } from '#open-fetch-schemas/api'
 const props = defineProps<{
   today: string
   measurements: components['schemas']['WeightMeasurementResponse'][]
+  pending?: boolean
   disabled?: boolean
 }>()
 
@@ -11,12 +12,7 @@ const emit = defineEmits<{
   logged: [{ date: string; weightKg: number }]
 }>()
 
-const open = ref(false)
-
-function handleSubmit(payload: { date: string; weightKg: number }) {
-  open.value = false
-  emit('logged', payload)
-}
+const open = defineModel<boolean>('open', { default: false })
 
 // The current weight at a glance: the latest reading and its neutral delta
 // against the one before it. The full chronological log is reference material,
@@ -82,7 +78,8 @@ const { latest, previous } = useLatestReading()
       <LogWeightSheet
         v-model:open="open"
         :today="props.today"
-        @submit="handleSubmit"
+        :pending="props.pending"
+        @submit="emit('logged', $event)"
       />
     </template>
   </section>

@@ -55,7 +55,7 @@ test('reaching a goal surfaces the fork banner and switching to maintenance lift
     expect(create.status()).toBe(201)
     expect((await progress(request)).reachedOn).toBeFalsy()
 
-    // A 75.0 weigh-in today pulls the EWMA to ~79.95 — across the target. The
+    // A 75.0 reading today pulls the EWMA to ~79.95 — across the target. The
     // backend stamps reachedOn on this measurement write.
     await postWeight(request, today, 75.0, today)
     expect((await progress(request)).reachedOn).toBeTruthy()

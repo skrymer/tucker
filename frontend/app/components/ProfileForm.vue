@@ -52,6 +52,8 @@ const props = defineProps<{
   // Partial, because a profile that predates a field is what the field's
   // default is for — an absent `tracksCalories` is a user who has never chosen.
   initial?: Partial<ProfileDetails>
+  /** The save mutation's in-flight flag — shows on the submit (ADR 0007). */
+  pending?: boolean
 }>()
 
 const emit = defineEmits<{ submit: [ProfileDetails] }>()
@@ -101,6 +103,8 @@ function onSubmit() {
       <URadioGroup v-model="state.tracksCalories" :items="trackingItems" />
     </UFormField>
 
-    <UButton type="submit" color="primary" class="w-full">Save profile</UButton>
+    <UButton type="submit" color="primary" class="w-full" :loading="pending">
+      Save profile
+    </UButton>
   </UForm>
 </template>

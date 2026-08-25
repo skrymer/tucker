@@ -3,6 +3,7 @@ import { renderSuspended, registerEndpoint } from '@nuxt/test-utils/runtime'
 import { screen, within } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import { createError, getQuery, readBody } from 'h3'
+import { openGate } from '~~/test/async-gate'
 import Profile from './index.vue'
 
 type ProfileBody = {
@@ -232,6 +233,37 @@ describe('/profile saving the details form', () => {
     })
   })
 
+  it('reports the details save as busy while it is in flight', async () => {
+    // The slowest mutation in the app: a Calorie Tracking change makes PUT
+    // /api/profile re-run the adaptive engine over the whole weight history, so
+    // this is the control that most needs to say it is working (ADR 0007).
+    const { gate, release } = openGate()
+    mockApi({
+      profile: { sex: 'MALE', birthDate: '1990-06-15', heightCm: 180 },
+      weights: [],
+      goals: [],
+    })
+    registerEndpoint('/api/profile', {
+      method: 'PUT',
+      handler: async () => {
+        await gate
+        return {}
+      },
+    })
+    await renderSuspended(Profile)
+    const user = userEvent.setup()
+    const save = () => screen.getByRole('button', { name: /save profile/i })
+
+    expect(save()).toBeEnabled()
+    await user.click(save())
+
+    await vi.waitFor(() => expect(save()).toBeDisabled())
+
+    // And it hands the control back rather than leaving a dead button behind.
+    release()
+    await vi.waitFor(() => expect(save()).toBeEnabled())
+  })
+
   it("stamps the save on the user's local day so a Calorie Tracking change lands today", async () => {
     // Toggling Calorie Tracking force-recomputes today's review (ADR 0008's
     // trigger). The client owns "today" (ADR 0014), so the Budget leaves or
@@ -256,5 +288,96 @@ describe('/profile saving the details form', () => {
 
     await vi.waitFor(() => expect(query).toBeDefined())
     expect(query?.clientToday).toBe(localToday())
+  })
+})
+
+describe('/profile setting a goal', () => {
+  it('reports the goal save as busy while it is in flight', async () => {
+    // POST /api/goal force-recomputes today's review (ADR 0008), so the form
+    // waits on the adaptive engine and has to say so. It also stays on screen
+    // afterwards — it closes only once a new active Goal comes back.
+    const { gate, release } = openGate()
+    mockApi({
+      profile: { sex: 'MALE', birthDate: '1990-06-15', heightCm: 180 },
+      weights: [{ id: 1, measuredOn: '2026-05-29', weightKg: 86 }],
+      goals: [],
+    })
+    registerEndpoint('/api/weight/trend', () => ({
+      trendKg: 86,
+      asOf: '2026-05-29',
+    }))
+    registerEndpoint('/api/goal', {
+      method: 'POST',
+      handler: async () => {
+        await gate
+        return {}
+      },
+    })
+    await renderSuspended(Profile)
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole('button', { name: /start a goal/i }))
+    await user.type(screen.getByLabelText(/target weight/i), '80')
+    await user.type(screen.getByLabelText(/rate/i), '0.5')
+    // A number field commits its model on blur, so leave it before submitting.
+    await user.tab()
+
+    const setGoal = () => screen.getByRole('button', { name: /set.*goal/i })
+    expect(setGoal()).toBeEnabled()
+    await user.click(setGoal())
+
+    await vi.waitFor(() => expect(setGoal()).toBeDisabled())
+
+    // And it hands the control back rather than leaving a dead button behind.
+    release()
+    await vi.waitFor(() => expect(setGoal()).toBeEnabled())
+  })
+})
+
+describe('/profile logging a weight', () => {
+  it('keeps the weight sheet up, reporting busy, until the save lands', async () => {
+    // The sheet is the confirmation: dismissing it optimistically claims a
+    // reading is stored before the server has said so (ADR 0007).
+    const { gate, release } = openGate()
+    mockApi({
+      profile: { sex: 'MALE', birthDate: '1990-06-15', heightCm: 180 },
+      weights: [],
+      goals: [],
+    })
+    // Stated rather than inherited: an earlier test's handler would otherwise
+    // be what this one resolves the trend against.
+    registerEndpoint('/api/weight/trend', () => ({
+      trendKg: 84,
+      asOf: '2026-05-29',
+    }))
+    registerEndpoint('/api/weight', {
+      method: 'POST',
+      handler: async () => {
+        await gate
+        return {}
+      },
+    })
+    await renderSuspended(Profile)
+    const user = userEvent.setup()
+
+    const weight = screen.getByRole('region', { name: /^weight$/i })
+    await user.click(
+      within(weight).getByRole('button', { name: /add weight/i }),
+    )
+    await user.type(screen.getByLabelText(/weight \(kg\)/i), '84.2')
+    // A number field commits its model on blur, so leave it before submitting.
+    await user.tab()
+
+    const saveWeight = () =>
+      screen.getByRole('button', { name: /save weight/i })
+    expect(saveWeight()).toBeEnabled()
+    await user.click(saveWeight())
+
+    await vi.waitFor(() => expect(saveWeight()).toBeDisabled())
+
+    release()
+    await vi.waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: /log weight/i })).toBeNull(),
+    )
   })
 })

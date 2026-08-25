@@ -16,6 +16,8 @@ const props = defineProps<{
   // re-derives the live trend at creation and is authoritative (ADR 0016); a 400
   // is fed back here as a field error.
   targetError?: string
+  /** The create mutation's in-flight flag — shows on the submit (ADR 0007). */
+  pending?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -83,6 +85,8 @@ function onSubmit() {
       />
     </UFormField>
 
-    <UButton type="submit" color="primary" class="w-full">Set goal</UButton>
+    <UButton type="submit" color="primary" class="w-full" :loading="pending">
+      Set goal
+    </UButton>
   </UForm>
 </template>
