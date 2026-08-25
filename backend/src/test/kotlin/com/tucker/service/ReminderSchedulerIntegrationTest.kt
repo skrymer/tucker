@@ -138,9 +138,13 @@ class ReminderSchedulerIntegrationTest {
         endpoint: String = deviceA,
         timezone: String = "UTC",
         reminderHour: Int = 9,
+        tracksCalories: Boolean = true,
     ) = runAs(user) {
         profiles.save(
-            Profile(Sex.MALE, LocalDate.of(1986, 5, 22), 180.0, timezone, reminderHour, remindersEnabled = true),
+            Profile(
+                Sex.MALE, LocalDate.of(1986, 5, 22), 180.0, timezone, reminderHour,
+                remindersEnabled = true, tracksCalories = tracksCalories,
+            ),
         )
         subscriptions.claim(PushSubscription(null, endpoint, "BKey", "Auth", null))
         weights.save(WeightMeasurement(null, today.minusDays(1), 86.0))
@@ -155,6 +159,21 @@ class ReminderSchedulerIntegrationTest {
     /** Somebody else, provisioned so the tick has more than one turn to take. */
     private fun somebodyElse(): User =
         users.insertIfAbsent(User(id = null, email = "second@tucker.invalid"))
+
+    /**
+     * The nudges sent so far, parsed the way the service worker reads them
+     * (`event.data.json()`) — the payloads are hand-concatenated JSON.
+     */
+    private fun sentNudges() = sender.sentPayloads.map { objectMapper.readTree(it) }
+
+    /** The body of each nudge sent so far, in order. */
+    private fun sentBodies() = sentNudges().map { it.path("body").asText() }
+
+    /** One User of each kind, both owed a nudge: [deviceA] tracks calories, [deviceB] does not. */
+    private fun seedOneOfEachKind() {
+        seedEligible()
+        seedEligible(user = somebodyElse(), endpoint = deviceB, tracksCalories = false)
+    }
 
     /** Read the dashboard as the subscriber — the app-open the weekly catch-up rides on. */
     private fun openTucker() {
@@ -176,21 +195,97 @@ class ReminderSchedulerIntegrationTest {
         assertEquals(today, runAs(subscriber) { reminderState.lastReminderSentOn() })
     }
 
+    /**
+     * Both nudges, whatever they say, are text alone — which is what leaves the
+     * service worker in sole charge of where a tap lands, for either setting.
+     */
     @Test
     fun `sends the nudge text alone, naming no screen for a tap to land on`() {
-        seedEligible()
+        seedOneOfEachKind()
 
         scheduler.runTick(now)
 
-        // Parsed rather than pattern-matched because that is how the service worker
-        // reads it (`event.data.json()`), and PAYLOAD is hand-concatenated JSON.
-        val payload = objectMapper.readTree(sender.sentPayloads.single())
-        // Exactly what the worker renders, and nothing more: a route belongs to the
-        // frontend's table beside the nav, and the backend's copy of one is what went
-        // stale for months until a tap 404'd (issue #178).
-        assertEquals(setOf("title", "body"), payload.fieldNames().asSequence().toSet())
-        assertTrue(payload.path("title").asText().isNotBlank())
-        assertTrue(payload.path("body").asText().isNotBlank())
+        val payloads = sentNudges()
+        assertEquals(2, payloads.size)
+        payloads.forEach { payload ->
+            // Exactly what the worker renders, and nothing more: a route belongs to the
+            // frontend's table beside the nav, and the backend's copy of one is what went
+            // stale for months until a tap 404'd (issue #178).
+            assertEquals(setOf("title", "body"), payload.fieldNames().asSequence().toSet())
+            assertTrue(payload.path("title").asText().isNotBlank())
+            assertTrue(payload.path("body").asText().isNotBlank())
+        }
+    }
+
+    /**
+     * Pinned rather than paraphrased: splitting the copy per setting must leave the
+     * nudge that already shipped exactly as it was, and a paraphrase here would let it
+     * drift a word at a time.
+     */
+    @Test
+    fun `nudges a User who tracks calories about logging today and their calorie budget`() {
+        seedEligible(tracksCalories = true)
+
+        scheduler.runTick(now)
+
+        assertEquals(listOf("Open Tucker to log today and refresh your calorie budget."), sentBodies())
+    }
+
+    /**
+     * A weight-only User is nudged about the half of Tucker they use. They log no food,
+     * and since ADR 0024 their review carries no Calorie Budget to refresh, so the copy
+     * a diet tracker's nudge would name is wrong on both halves for them.
+     */
+    @Test
+    fun `nudges a weight-only User about their weight and their trend`() {
+        seedEligible(tracksCalories = false)
+
+        scheduler.runTick(now)
+
+        assertEquals(listOf("Open Tucker to log your weight and refresh your trend."), sentBodies())
+    }
+
+    /**
+     * Two Users in one tick, each nudged about their own Tucker.
+     *
+     * The copy is chosen inside a turn, from the Profile that turn already read — so
+     * both are right at once. Resolved once for the tick instead, whichever User sorted
+     * first would decide what the other one's phone said.
+     */
+    @Test
+    fun `two Users tracking different things each get their own copy in one tick`() {
+        seedOneOfEachKind()
+
+        val result = scheduler.runTick(now)
+
+        assertEquals(2, result.sent)
+        assertEquals(
+            listOf(
+                "Open Tucker to log today and refresh your calorie budget.",
+                "Open Tucker to log your weight and refresh your trend.",
+            ),
+            sentBodies(),
+        )
+    }
+
+    /**
+     * Calorie Tracking chooses the words and nothing else. Asserted rather than left to
+     * the reader, because a `tracksCalories &&` added to
+     * [com.tucker.domain.ReminderPolicy] would look reasonable and would abandon every
+     * weight-only User to a stale trend — so the two, differing in that one field alone,
+     * must be gated in and out together.
+     */
+    @Test
+    fun `owes a weight-only User a reminder on exactly the terms it owes a tracking one`() {
+        seedOneOfEachKind()
+
+        // 08:00 UTC is an hour short of the reminder hour both of them chose.
+        val beforeTheHour = scheduler.runTick(Instant.parse("2026-06-10T08:00:00Z"))
+        val atTheHour = scheduler.runTick(now)
+
+        assertEquals(0, beforeTheHour.sent, "the hour gate shuts on both, or neither")
+        assertEquals(2, atTheHour.sent)
+        assertEquals(listOf(deviceA, deviceB), sender.sentEndpoints)
     }
 
     @Test

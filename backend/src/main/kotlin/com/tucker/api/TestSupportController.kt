@@ -10,6 +10,7 @@ import com.tucker.jooq.Tables.REMINDER_STATE
 import com.tucker.jooq.Tables.USER
 import com.tucker.jooq.Tables.WEEKLY_REVIEW
 import com.tucker.jooq.Tables.WEIGHT_MEASUREMENT
+import com.tucker.persistence.RecordingWebPushSender
 import com.tucker.service.ReminderScheduler
 import com.tucker.service.TickResult
 import org.jooq.DSLContext
@@ -40,9 +41,14 @@ import java.time.Instant
 class TestSupportController(
     private val dsl: DSLContext,
     private val reminderScheduler: ReminderScheduler,
+    private val pushSender: RecordingWebPushSender,
 ) {
 
-    /** Empty every table, restoring the freshly-migrated blank-slate state. */
+    /**
+     * Empty every table and the push recorder, restoring the blank-slate state — the
+     * recorder included because it is a singleton bean, so it outlives the database it
+     * describes and one smoke would otherwise read what an earlier one sent.
+     */
     @PostMapping("/reset")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     fun reset() {
@@ -63,6 +69,7 @@ class TestSupportController(
         // are simply provisioned again by their next one, which is the point: a
         // smoke about a brand-new User needs a database that has never seen them.
         dsl.deleteFrom(USER).execute()
+        pushSender.forget()
     }
 
     /**
@@ -89,4 +96,12 @@ class TestSupportController(
     @PostMapping("/reminder-tick")
     fun reminderTick(@RequestParam at: String): TickResult =
         reminderScheduler.runTick(Instant.parse(at))
+
+    /**
+     * The raw push payloads this test's ticks have sent, oldest first — the JSON the
+     * service worker would parse. Installation-wide, like `/push-subscriptions` above,
+     * and for the same reason.
+     */
+    @GetMapping("/push-payloads")
+    fun pushPayloads(): List<String> = pushSender.sentPayloads()
 }

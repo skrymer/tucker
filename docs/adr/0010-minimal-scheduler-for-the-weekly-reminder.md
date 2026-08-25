@@ -192,6 +192,41 @@ load-bearing condition. It costs one column and one predicate, and it is the onl
 thing standing between a future screen that reads targets without advancing the
 cadence and a push telling someone to open an app they are already holding.
 
+## What the nudge says (amended — issue #250)
+
+The nudge shipped as one sentence — *"Open Tucker to log today and refresh your
+calorie budget"* — because there was one shape of Tucker user. F12 made **Calorie
+Tracking** optional, and that sentence names two things a weight-only user does not
+have: food they log, and a Calorie Budget to refresh, which since
+[ADR 0024](0024-a-weekly-review-carries-intake-targets-only-when-they-can-be-corrected.md)
+their review genuinely does not carry. So the copy varies with the setting, and a
+weight-only user is asked instead to log their weight and refresh their trend.
+
+**Only the copy.** Every gate above is untouched, and that is the decision rather
+than an omission: a `Weekly Review` comes due on the same seven-day cadence whatever
+a user tracks, because its first job — recording the `Trend Weight` — is the job
+neither setting removes. The nudge is about the review, so the review's cadence is
+still what earns it. A test says so out loud, because a copy split is exactly the
+kind of change a later reader assumes implied a gate split.
+
+**It is chosen inside a user's turn**, from the `Profile` that turn already read to
+resolve the timezone and the hour — so a tick serving several people says the right
+thing to each. Resolved once for the tick, whoever sorted first would decide what
+everybody else's phone said.
+
+**It stays two constants, not a template.** The nudge is still never personalised and
+never a guilt-trip (`CONTEXT.md`), and it is still *text only* — the service worker
+supplies the icon, the badge, the collapse tag and the destination, for the same
+reason as before (issues #178, #189). A second payload changes what is said, not who
+says where it lands.
+
+**What it does not fix** is the trigger, and the gap is worth naming because the new
+copy makes it easier to misread. The reminder fires on absence from the *app*, not
+from the scale, so a weight-only user who opens Tucker daily and never steps on it is
+never nudged while their Trend Weight goes stale — the same shape of limit ADR 0010
+already records for a Check-only user, and the same answer: that is a **Weigh-in
+Reminder**, a different trigger and a different feature (F13).
+
 ## Alternatives rejected
 
 - **Piggyback on existing traffic only** — send a push only during a request the
@@ -255,4 +290,6 @@ cadence and a push telling someone to open an app they are already holding.
   always-on assumption the scheduler relies on.
 - [0022 — a Check states cost and return](0022-a-check-states-cost-and-return-and-never-labels-a-food.md)
   — the shopping surface that forced "showing up" to be defined.
+- [0024 — a Weekly Review carries Intake Targets only when they can be corrected](0024-a-weekly-review-carries-intake-targets-only-when-they-can-be-corrected.md)
+  — why a weight-only user has no Calorie Budget for the shipped copy to name.
 

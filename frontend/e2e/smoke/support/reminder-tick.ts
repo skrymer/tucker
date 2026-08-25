@@ -21,6 +21,12 @@ export interface TickResult {
   sent: number
 }
 
+/** A nudge as the service worker parses it off the wire. */
+export interface PushPayload {
+  title: string
+  body: string
+}
+
 /**
  * Run one reminder tick as of [atInstant] (ISO-8601), as whoever [api] authenticates as.
  *
@@ -36,4 +42,20 @@ export async function tickAt(
   })
   expect(res.ok(), await res.text()).toBe(true)
   return (await res.json()) as TickResult
+}
+
+/**
+ * Every nudge sent since this test's reset, oldest first — what a smoke can see of the
+ * words, which leave no trace in the database.
+ *
+ * Installation-wide, like `/api/test/push-subscriptions`; whose nudge said what is
+ * asserted in `ReminderSchedulerIntegrationTest`.
+ */
+export async function sentPayloads(
+  api: APIRequestContext,
+): Promise<PushPayload[]> {
+  const res = await api.get(`${API}/test/push-payloads`)
+  expect(res.ok(), await res.text()).toBe(true)
+  const raw = (await res.json()) as string[]
+  return raw.map((json) => JSON.parse(json) as PushPayload)
 }

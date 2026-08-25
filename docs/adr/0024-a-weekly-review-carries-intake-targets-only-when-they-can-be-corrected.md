@@ -190,10 +190,11 @@ place the two halves of the app can disagree.
   *moved*; the first review after a weight-only stretch has nothing to have moved
   from, so it announces nothing rather than a jump out of nowhere.
 - **The Weekly-Review Reminder's copy is now wrong for half its audience** — it
-  says "log today and refresh your calorie budget" to a User with neither.
-  Deliberately out of scope here and owned by
-  [#250](https://github.com/skrymer/tucker/issues/250); the firing *rule* needs
-  no change, because a review still comes due either way.
+  says "log today and refresh your calorie budget" to a User with neither. Fixed
+  by [#250](https://github.com/skrymer/tucker/issues/250) and recorded in
+  [ADR 0010](0010-minimal-scheduler-for-the-weekly-reminder.md), "What the nudge
+  says": the copy varies with the setting and the firing *rule* does not, because
+  a review still comes due either way.
 - `MaintainingTile`'s drift copy stops promising a budget adjustment to a User
   who has no budget, for the same reason: the two drifting states closed on the
   Budget self-correcting, which is a promise only a tracking User's app can keep.
