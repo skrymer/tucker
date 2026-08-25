@@ -24,6 +24,13 @@ const {
 // Every figure a Check states is a share of the Budget or the Floor. Without one
 // there is no denominator, and inventing it would state confident nonsense about
 // a product the user is deciding to buy (ADR 0022).
+//
+// A missing Budget means two different things that earn opposite messages, and
+// `setupComplete` is what tells them apart — both off the same response, so the
+// three states partition rather than being re-joined from two endpoints. Setup
+// finished with no Budget *is* Calorie Tracking off: the engine derives one for
+// everybody else, and this page's own summary read is what runs a due review
+// (ADR 0010), so there is no window where a tracking User arrives without one.
 const hasBudget = computed(() => summary.value?.calorieBudget != null)
 
 /**
@@ -282,7 +289,17 @@ const {
       title="Couldn't load your targets"
       @retry="refresh"
     >
-      <SetupBanner :calorie-budget="summary?.calorieBudget" />
+      <SetupBanner :setup-complete="summary?.setupComplete" />
+
+      <UAlert
+        v-if="summary?.setupComplete && !hasBudget"
+        icon="i-lucide-calculator"
+        color="neutral"
+        variant="subtle"
+        title="Calorie tracking is off"
+        description="A Check states what a product costs against your Calorie Budget and returns against your Protein Floor, and you have chosen not to have either. Turn calorie tracking on to use it."
+        :actions="[{ label: 'Go to profile', to: '/profile' }]"
+      />
 
       <template v-if="hasBudget">
         <!-- A camera Tucker can't open ends this tab: a Check has no manual

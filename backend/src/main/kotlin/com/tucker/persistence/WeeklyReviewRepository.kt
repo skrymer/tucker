@@ -1,5 +1,6 @@
 package com.tucker.persistence
 
+import com.tucker.domain.IntakeTargets
 import com.tucker.domain.Maintenance
 import com.tucker.domain.WeeklyReview
 import com.tucker.jooq.Tables.WEEKLY_REVIEW
@@ -47,6 +48,20 @@ class WeeklyReviewRepository(
             .limit(1)
             .fetchOne()?.toDomain()
 
+    /**
+     * The most recent review dated strictly before [date] that carries Intake
+     * Targets. Distinct from [latestBefore] only across a Calorie-Tracking gap,
+     * which is exactly where the engine has to tell a toggle from a stretch.
+     */
+    fun latestWithTargetsBefore(date: LocalDate): WeeklyReview? =
+        dsl.selectFrom(WEEKLY_REVIEW)
+            .where(WEEKLY_REVIEW.REVIEWED_ON.lt(date.toString()))
+            .and(WEEKLY_REVIEW.USER_ID.eq(currentUser.ownerId))
+            .and(WEEKLY_REVIEW.MAINTENANCE_KCAL.isNotNull)
+            .orderBy(WEEKLY_REVIEW.REVIEWED_ON.desc())
+            .limit(1)
+            .fetchOne()?.toDomain()
+
     /** The caller's review recorded on [reviewedOn], if one exists — unique per User. */
     fun findByReviewedOn(reviewedOn: LocalDate): WeeklyReview? =
         dsl.selectFrom(WEEKLY_REVIEW)
@@ -81,22 +96,39 @@ class WeeklyReviewRepository(
         rec.userId = currentUser.ownerId
         rec.reviewedOn = review.reviewedOn.toString()
         rec.trendWeightKg = review.trendWeightKg
-        rec.maintenanceKcal = review.maintenance.kcal
-        rec.maintenanceBasis = review.maintenance.basis.name
-        rec.calorieBudgetKcal = review.calorieBudgetKcal
-        rec.proteinFloorG = review.proteinFloorG
+        rec.writeTargets(review.intakeTargets)
         rec.store()
         return review.copy(id = rec.id!!.toLong())
     }
+}
 
-    private fun WeeklyReviewRecord.toDomain(): WeeklyReview = WeeklyReview(
-        id = id!!.toLong(),
-        reviewedOn = LocalDate.parse(reviewedOn),
-        trendWeightKg = trendWeightKg,
-        maintenance = Maintenance(
-            kcal = maintenanceKcal,
-            basis = Maintenance.Basis.valueOf(maintenanceBasis),
-        ),
+/**
+ * Write the four target columns from one branch. They are one value object,
+ * and V15's CHECK holds them to it, so a row is never assembled by asking
+ * four times whether there are targets.
+ */
+private fun WeeklyReviewRecord.writeTargets(targets: IntakeTargets?) {
+    maintenanceKcal = targets?.maintenance?.kcal
+    maintenanceBasis = targets?.maintenance?.basis?.name
+    calorieBudgetKcal = targets?.calorieBudgetKcal
+    proteinFloorG = targets?.proteinFloorG
+}
+
+private fun WeeklyReviewRecord.toDomain(): WeeklyReview = WeeklyReview(
+    id = id!!.toLong(),
+    reviewedOn = LocalDate.parse(reviewedOn),
+    trendWeightKg = trendWeightKg,
+    intakeTargets = readTargets(),
+)
+
+/**
+ * The mirror of [writeTargets]: one column answers for all four, because the
+ * CHECK makes "some present, some not" a row the database will not hold.
+ */
+private fun WeeklyReviewRecord.readTargets(): IntakeTargets? {
+    val kcal = maintenanceKcal ?: return null
+    return IntakeTargets(
+        maintenance = Maintenance(kcal = kcal, basis = Maintenance.Basis.valueOf(maintenanceBasis)),
         calorieBudgetKcal = calorieBudgetKcal,
         proteinFloorG = proteinFloorG,
     )

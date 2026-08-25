@@ -71,6 +71,8 @@ test('loading Today a week on fires a catch-up review and the budget reflects it
   // match would be ambiguous. The tile's leading "/" disambiguates.
   const after = await (await request.get(`${API}/weekly-review`)).json()
   await expect(
-    page.getByText(`/ ${Math.round(after.calorieBudgetKcal)} kcal`),
+    page.getByText(
+      `/ ${Math.round(after.intakeTargets.calorieBudgetKcal)} kcal`,
+    ),
   ).toBeVisible()
 })

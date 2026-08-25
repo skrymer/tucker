@@ -1,0 +1,36 @@
+- main:
+    - heading "Review" [level=1]
+    - button "Run review now"
+    - table "Weekly reviews, newest first. Deltas compare each review with the previous one.":
+        - caption: Weekly reviews, newest first. Deltas compare each review with the previous one.
+        - rowgroup:
+            - row "Reviewed Basis Budget Trend wt. Maintenance Protein floor":
+                - columnheader "Reviewed"
+                - columnheader "Basis"
+                - columnheader "Budget"
+                - columnheader "Trend wt."
+                - columnheader "Maintenance"
+                - columnheader "Protein floor"
+            - row
+        - rowgroup:
+            - row "15 Jun 2026 Adaptive 1900 85.0 down by 0.4 versus the previous review 2400 170":
+                - cell "15 Jun 2026"
+                - cell "Adaptive"
+                - cell "1900"
+                - cell "85.0 down by 0.4 versus the previous review"
+                - cell "2400"
+                - cell "170"
+            - row "8 Jun 2026 85.4 down by 0.6 versus the previous review":
+                - cell "8 Jun 2026"
+                - cell
+                - cell
+                - cell "85.4 down by 0.6 versus the previous review"
+                - cell
+                - cell
+            - row "1 Jun 2026 Adaptive 1900 86.0 2400 170":
+                - cell "1 Jun 2026"
+                - cell "Adaptive"
+                - cell "1900"
+                - cell "86.0"
+                - cell "2400"
+                - cell "170"

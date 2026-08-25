@@ -23,19 +23,37 @@ const scanner = {
 }
 mockNuxtImport('useBarcodeScanner', () => () => scanner)
 
-const budget = { calorieBudget: 2492, proteinFloor: 170 }
+const budget = { setupComplete: true, calorieBudget: 2492, proteinFloor: 170 }
 let summary: Record<string, unknown> = budget
 registerEndpoint('/api/summary', () => summary)
 
 describe('/check before setup is finished', () => {
   it('prompts to finish setup instead of offering a scan', async () => {
-    summary = { calorieBudget: null, proteinFloor: null }
+    summary = { setupComplete: false, calorieBudget: null, proteinFloor: null }
+    vi.clearAllMocks()
 
     await renderSuspended(Check)
 
     expect(
       screen.getByText('Finish setup to see your calorie budget'),
     ).toBeVisible()
+    expect(scanner.start).not.toHaveBeenCalled()
+  })
+})
+
+describe('/check with Calorie Tracking off', () => {
+  it('says calorie tracking is off rather than that setup is unfinished', async () => {
+    // Setup *is* finished — this User has a Profile and a Trend Weight — and the
+    // Budget is still absent, which the engine only does for a User who turned
+    // Calorie Tracking off. One response answers both, so the page never joins
+    // two endpoints to decide what to say.
+    summary = { setupComplete: true, calorieBudget: null, proteinFloor: null }
+    vi.clearAllMocks()
+
+    await renderSuspended(Check)
+
+    expect(screen.getByText(/calorie tracking is off/i)).toBeVisible()
+    expect(screen.queryByText(/finish setup/i)).not.toBeInTheDocument()
     expect(scanner.start).not.toHaveBeenCalled()
   })
 })

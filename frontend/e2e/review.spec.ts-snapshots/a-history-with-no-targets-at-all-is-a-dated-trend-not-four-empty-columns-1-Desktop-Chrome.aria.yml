@@ -1,0 +1,17 @@
+- main:
+    - heading "Review" [level=1]
+    - button "Run review now"
+    - table "Weekly reviews, newest first. Deltas compare each review with the previous one.":
+        - caption: Weekly reviews, newest first. Deltas compare each review with the previous one.
+        - rowgroup:
+            - row "Reviewed Trend wt.":
+                - columnheader "Reviewed"
+                - columnheader "Trend wt."
+            - row
+        - rowgroup:
+            - row "8 Jun 2026 85.4 down by 0.6 versus the previous review":
+                - cell "8 Jun 2026"
+                - cell "85.4 down by 0.6 versus the previous review"
+            - row "1 Jun 2026 86.0":
+                - cell "1 Jun 2026"
+                - cell "86.0"

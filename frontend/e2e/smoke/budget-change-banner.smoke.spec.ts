@@ -67,18 +67,20 @@ test('a changed weekly review raises a dismissible budget-change banner', async 
     )
     .toBe(dueDay)
   const after = await (await request.get(`${API}/weekly-review`)).json()
-  expect(after.proteinFloorG).not.toBe(before.proteinFloorG)
+  expect(after.intakeTargets.proteinFloorG).not.toBe(
+    before.intakeTargets.proteinFloorG,
+  )
 
   // The banner names old → new figures and links through to the weekly review.
   const r = (n: number) => Math.round(n)
   await expect(
     page.getByText(
-      `Calorie Budget: ${r(before.calorieBudgetKcal)} → ${r(after.calorieBudgetKcal)} kcal`,
+      `Calorie Budget: ${r(before.intakeTargets.calorieBudgetKcal)} → ${r(after.intakeTargets.calorieBudgetKcal)} kcal`,
     ),
   ).toBeVisible()
   await expect(
     page.getByText(
-      `Protein Floor: ${r(before.proteinFloorG)} → ${r(after.proteinFloorG)} g`,
+      `Protein Floor: ${r(before.intakeTargets.proteinFloorG)} → ${r(after.intakeTargets.proteinFloorG)} g`,
     ),
   ).toBeVisible()
   await expect(

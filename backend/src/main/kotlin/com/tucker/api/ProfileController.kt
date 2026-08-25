@@ -3,10 +3,13 @@ package com.tucker.api
 import com.tucker.domain.Profile
 import com.tucker.domain.Sex
 import com.tucker.persistence.ProfileRepository
+import com.tucker.service.ProfileService
+import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import java.time.LocalDate
 
@@ -26,7 +29,9 @@ data class ProfileDto(
     // loaded with their own fields merged over it, and the loaded object carries
     // every field the backend serves whatever the client's types say. A caller
     // that sends bare body stats is therefore setting up a Profile, not editing
-    // one, which is exactly when the default is the right answer.
+    // one, which is exactly when the default is the right answer — and it matters
+    // more since ADR 0024, because flipping this field also recomputes today's
+    // Weekly Review rather than only reshaping the navigation.
     val timezone: String = Profile.DEFAULT_TIMEZONE,
     val reminderHour: Int = Profile.DEFAULT_REMINDER_HOUR,
     val remindersEnabled: Boolean = false,
@@ -45,15 +50,29 @@ private fun Profile.toDto() = ProfileDto(
 
 @RestController
 @RequestMapping("/api/profile")
-class ProfileController(private val profiles: ProfileRepository) {
+class ProfileController(
+    private val profiles: ProfileRepository,
+    private val profileService: ProfileService,
+    private val userToday: UserToday,
+) {
 
     @GetMapping
     fun get(): ProfileDto =
         profiles.get()?.toDto() ?: throw NotFoundException("profile not set")
 
+    /**
+     * Replace the caller's Profile. [clientToday] is the user's local date (ADR 0014),
+     * the day a Calorie-Tracking change stamps its review recompute on; it falls back
+     * to the server date when omitted, as `POST`/`DELETE /api/goal` do.
+     */
     @PutMapping
-    fun save(@RequestBody request: ProfileDto): ProfileDto {
-        val profile = Profile(
+    fun save(
+        @RequestBody request: ProfileDto,
+        @RequestParam(required = false)
+        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+        clientToday: LocalDate?,
+    ): ProfileDto = profileService.save(
+        Profile(
             sex = Sex.valueOf(request.sex),
             birthDate = request.birthDate,
             heightCm = request.heightCm,
@@ -61,8 +80,7 @@ class ProfileController(private val profiles: ProfileRepository) {
             reminderHour = request.reminderHour,
             remindersEnabled = request.remindersEnabled,
             tracksCalories = request.tracksCalories,
-        )
-        profiles.save(profile)
-        return profile.toDto()
-    }
+        ),
+        userToday.resolve(clientToday),
+    ).toDto()
 }

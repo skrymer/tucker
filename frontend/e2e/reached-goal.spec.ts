@@ -51,6 +51,7 @@ async function mockReachedThenMaintenance(page: Page) {
         caloriesConsumed: 1200,
         proteinConsumed: 90,
         estimatedCalorieShare: 0,
+        setupComplete: true,
         calorieBudget: maintaining ? 2400 : 2000,
         proteinFloor: 160,
         caloriesRemaining: maintaining ? 1200 : 800,

@@ -21,18 +21,30 @@ const WEIGHT_ONLY = {
   tracksCalories: false,
 }
 
-/** A day whose Budget the backend still derives; the client is what hides it. */
-const DAY = {
+/** A finished setup with no targets: the review ran and recorded only a trend. */
+const WEIGHT_ONLY_DAY = {
   date: '2026-08-24',
+  setupComplete: true,
   caloriesConsumed: 0,
   proteinConsumed: 0,
   estimatedCalorieShare: 0,
-  calorieBudget: 2400,
-  proteinFloor: 170,
-  caloriesRemaining: 2400,
+  calorieBudget: null,
+  proteinFloor: null,
+  caloriesRemaining: null,
+  proteinRemaining: null,
   dayStatus: null,
   trendWeightKg: 86,
   entries: [],
+  budgetChange: null,
+}
+
+/** The same day once Calorie Tracking is on and today's review has been recomputed. */
+const TRACKING_DAY = {
+  ...WEIGHT_ONLY_DAY,
+  calorieBudget: 2400,
+  proteinFloor: 170,
+  caloriesRemaining: 2400,
+  proteinRemaining: 170,
   budgetChange: {
     reviewId: 4,
     previousBudgetKcal: 2200,
@@ -47,7 +59,7 @@ const PROGRESS = goalProgress({ paceStatus: 'on-pace' })
 test.describe('with Calorie Tracking off', () => {
   test.beforeEach(async ({ page }) => {
     await mockProfile(page, WEIGHT_ONLY)
-    await mockSummary(page, DAY)
+    await mockSummary(page, WEIGHT_ONLY_DAY)
     // No reading for *today*, whatever today is where this runs: the tile then
     // has one resting shape rather than two, and the snapshot keeps meaning what
     // it meant when it was taken. `todayIso()` is deliberately UTC (see
@@ -127,6 +139,11 @@ test.describe('with Calorie Tracking off', () => {
     await expect(
       page.getByRole('heading', { level: 1, name: 'Check' }),
     ).toBeVisible()
+    // And it says why there is nothing to scan against: every figure a Check
+    // states is a share of a Budget this User has chosen not to have. Telling
+    // them to finish setup would send them looking for something finished.
+    await expect(page.getByText(/calorie tracking is off/i)).toBeVisible()
+    await expect(page.getByText(/finish setup/i)).toHaveCount(0)
   })
 })
 
@@ -134,10 +151,9 @@ test('turning Calorie Tracking back on restores the log half without a reload', 
   page,
   goto,
 }) => {
-  await mockSummary(page, DAY)
   await mockWeightApi(page, { id: 1, measuredOn: '2020-01-01', weightKg: 86.2 })
   let profile: Record<string, unknown> = { ...WEIGHT_ONLY }
-  await page.route('**/api/profile', (route) => {
+  await page.route('**/api/profile*', (route) => {
     const method = route.request().method()
     if (method === 'GET') return route.fulfill({ json: profile })
     if (method === 'PUT') {
@@ -146,6 +162,13 @@ test('turning Calorie Tracking back on restores the log half without a reload', 
     }
     return route.fallback()
   })
+  // The save force-recomputes today's review, so the very next summary read
+  // carries the Budget back — that same-day return is the point (ADR 0024).
+  await page.route('**/api/summary**', (route) =>
+    route.fulfill({
+      json: profile.tracksCalories ? TRACKING_DAY : WEIGHT_ONLY_DAY,
+    }),
+  )
 
   await goto('/profile', { waitUntil: 'hydration' })
 

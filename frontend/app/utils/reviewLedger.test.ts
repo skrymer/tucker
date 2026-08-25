@@ -1,8 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import type { components } from '#open-fetch-schemas/api'
 import { toLedgerRows } from './reviewLedger'
-
-type WeeklyReview = components['schemas']['WeeklyReviewResponse']
+import { intakeTargets, weeklyReview } from '~~/test/review-fixtures'
 
 // REVIEW_BASIS_BADGE's labels and colours are deliberately unasserted here.
 // They are lookup data: a test naming 'Adaptive' or 'primary' pins the token a
@@ -14,25 +12,13 @@ type WeeklyReview = components['schemas']['WeeklyReviewResponse']
 
 // The history endpoint returns reviews oldest-first; the ledger shows them
 // newest-first with each row's delta measured against the older one beneath it.
-function review(overrides: Partial<WeeklyReview> = {}): WeeklyReview {
-  return {
-    id: 1,
-    reviewedOn: '2026-06-01',
-    trendWeightKg: 85,
-    maintenanceKcal: 2400,
-    maintenanceBasis: 'ADAPTIVE',
-    calorieBudgetKcal: 1900,
-    proteinFloorG: 170,
-    ...overrides,
-  }
-}
 
 describe('toLedgerRows', () => {
   it('orders reviews newest-first from an oldest-first history', () => {
     const rows = toLedgerRows([
-      review({ id: 1, reviewedOn: '2026-06-01' }),
-      review({ id: 2, reviewedOn: '2026-06-08' }),
-      review({ id: 3, reviewedOn: '2026-06-15' }),
+      weeklyReview({ id: 1, reviewedOn: '2026-06-01' }),
+      weeklyReview({ id: 2, reviewedOn: '2026-06-08' }),
+      weeklyReview({ id: 3, reviewedOn: '2026-06-15' }),
     ])
 
     expect(rows.map((r) => r.review.reviewedOn)).toEqual([
@@ -44,25 +30,29 @@ describe('toLedgerRows', () => {
 
   it('measures each delta against the chronologically previous review', () => {
     const rows = toLedgerRows([
-      review({
+      weeklyReview({
         id: 1,
         trendWeightKg: 85,
-        maintenanceKcal: 2400,
-        calorieBudgetKcal: 1900,
-        proteinFloorG: 170,
+        intakeTargets: intakeTargets({
+          maintenanceKcal: 2400,
+          calorieBudgetKcal: 1900,
+          proteinFloorG: 170,
+        }),
       }),
-      review({
+      weeklyReview({
         id: 2,
         trendWeightKg: 84,
-        maintenanceKcal: 2350,
-        calorieBudgetKcal: 1850,
-        proteinFloorG: 168,
+        intakeTargets: intakeTargets({
+          maintenanceKcal: 2350,
+          calorieBudgetKcal: 1850,
+          proteinFloorG: 168,
+        }),
       }),
     ])
 
     const latest = rows.find((r) => r.review.id === 2)
-    expect(latest?.delta).toEqual({
-      trendWeightKg: -1,
+    expect(latest?.trendDelta).toBe(-1)
+    expect(latest?.targetsDelta).toEqual({
       maintenanceKcal: -50,
       calorieBudgetKcal: -50,
       proteinFloorG: -2,
@@ -71,10 +61,25 @@ describe('toLedgerRows', () => {
 
   it('gives the first (seed) review no delta', () => {
     const rows = toLedgerRows([
-      review({ id: 1, reviewedOn: '2026-06-01' }),
-      review({ id: 2, reviewedOn: '2026-06-08' }),
+      weeklyReview({ id: 1, reviewedOn: '2026-06-01' }),
+      weeklyReview({ id: 2, reviewedOn: '2026-06-08' }),
     ])
 
-    expect(rows.find((r) => r.review.id === 1)?.delta).toBeNull()
+    const first = rows.find((r) => r.review.id === 1)
+    expect(first?.trendDelta).toBeNull()
+    expect(first?.targetsDelta).toBeNull()
+  })
+
+  it('keeps the Trend Weight delta across a Calorie Tracking gap and invents no targets delta', () => {
+    const rows = toLedgerRows([
+      weeklyReview({ id: 1, trendWeightKg: 85, intakeTargets: null }),
+      weeklyReview({ id: 2, trendWeightKg: 84 }),
+    ])
+
+    // The trend is continuous — a weight-only week still weighs in — but the
+    // Budget was never published that week, so it cannot have moved.
+    const resumed = rows.find((r) => r.review.id === 2)
+    expect(resumed?.trendDelta).toBe(-1)
+    expect(resumed?.targetsDelta).toBeNull()
   })
 })

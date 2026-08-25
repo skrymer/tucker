@@ -1,5 +1,6 @@
 package com.tucker.api
 
+import com.tucker.domain.IntakeTargets
 import com.tucker.domain.Maintenance
 import com.tucker.domain.WeeklyReview
 import com.tucker.persistence.ReminderStateRepository
@@ -17,6 +18,7 @@ import org.springframework.test.web.servlet.put
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -39,9 +41,11 @@ class SummaryApiTest {
                 id = null,
                 reviewedOn = on,
                 trendWeightKg = 86.0,
-                maintenance = Maintenance(2400.0, Maintenance.Basis.FORMULA_SEED),
-                calorieBudgetKcal = budgetKcal,
-                proteinFloorG = floorG,
+                intakeTargets = IntakeTargets(
+                    maintenance = Maintenance(2400.0, Maintenance.Basis.FORMULA_SEED),
+                    calorieBudgetKcal = budgetKcal,
+                    proteinFloorG = floorG,
+                ),
             ),
         )
 
@@ -64,16 +68,78 @@ class SummaryApiTest {
     }
 
     /** Maintenance Mode setup: profile + a weight reading, but no Goal. */
-    private fun maintenanceSetup(on: LocalDate) {
-        mockMvc.put("/api/profile") {
-            contentType = MediaType.APPLICATION_JSON
-            content = """{"sex":"MALE","birthDate":"1986-05-22","heightCm":180.0}"""
-        }.andExpect { status { isOk() } }
+    private fun maintenanceSetup(on: LocalDate, tracksCalories: Boolean = true) {
+        savedProfile(tracksCalories)
 
         mockMvc.post("/api/weight") {
             contentType = MediaType.APPLICATION_JSON
             content = """{"date":"$on","weightKg":86.0}"""
         }.andExpect { status { isOk() } }
+    }
+
+    /** The body stats, with the Calorie Tracking choice under test. */
+    private fun savedProfile(tracksCalories: Boolean = true) {
+        mockMvc.put("/api/profile") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"sex":"MALE","birthDate":"1986-05-22","heightCm":180.0,
+                          "tracksCalories":$tracksCalories}"""
+        }.andExpect { status { isOk() } }
+    }
+
+    @Test
+    fun `the summary reports setup incomplete while no Weight Measurement exists`() {
+        val day = LocalDate.now()
+        savedProfile()
+
+        mockMvc.get("/api/summary") {
+            param("date", "$day")
+        }.andExpect {
+            status { isOk() }
+            // Weight is the spine (CONTEXT.md — Calorie Tracking): with no reading
+            // there is no Trend Weight, so no review can run whatever the User counts.
+            jsonPath("$.setupComplete") { value(false) }
+        }
+    }
+
+    @Test
+    fun `the summary reports setup complete once a Profile and a Weight Measurement exist`() {
+        val day = LocalDate.now()
+        maintenanceSetup(day)
+
+        mockMvc.get("/api/summary") {
+            param("date", "$day")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.setupComplete") { value(true) }
+        }
+    }
+
+    @Test
+    fun `with Calorie Tracking off the summary carries no Budget, Floor or day verdict, and setup is still complete`() {
+        val day = LocalDate.now()
+        maintenanceSetup(day, tracksCalories = false)
+
+        val body = mockMvc.get("/api/summary") {
+            param("date", "$day")
+        }.andExpect {
+            status { isOk() }
+            // Finished setup, and nothing left to finish — the banner must not offer
+            // to explain a calorie budget this User has chosen not to have.
+            jsonPath("$.setupComplete") { value(true) }
+            // The review still ran, so its other job is on the wire.
+            jsonPath("$.trendWeightKg") { value(86.0) }
+        }.andReturn().response.contentAsString
+
+        // Explicitly null, not omitted (ADR 0023): the generated client reads the
+        // `null` arm the wire actually carries, and `exists()` cannot tell the two
+        // apart because a JSON null does not "exist" to JsonPath.
+        listOf("calorieBudget", "proteinFloor", "caloriesRemaining", "proteinRemaining", "dayStatus")
+            .forEach { field ->
+                assertTrue(
+                    body.contains(""""$field":null"""),
+                    "expected $field to be an explicit null, body was $body",
+                )
+            }
     }
 
     @Test
@@ -226,6 +292,24 @@ class SummaryApiTest {
             jsonPath("$.budgetChange.newBudgetKcal") { value(1800.0) }
             jsonPath("$.budgetChange.previousFloorG") { value(172.0) }
             jsonPath("$.budgetChange.newFloorG") { value(168.0) }
+        }
+    }
+
+    @Test
+    fun `the summary reports no budget change across a Calorie Tracking gap`() {
+        val gap = LocalDate.of(2026, 5, 15)
+        val resumed = gap.plusWeeks(1)
+        // Last week's review was run with Calorie Tracking off, so it has no Budget
+        // to have moved from. A figure invented here would claim the Budget jumped
+        // from nothing the moment the User came back.
+        reviews.insert(WeeklyReview(id = null, reviewedOn = gap, trendWeightKg = 86.0, intakeTargets = null))
+        seedReview(resumed, budgetKcal = 1800.0, floorG = 168.0)
+
+        mockMvc.get("/api/summary") {
+            param("date", "$resumed")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.budgetChange") { value(null) }
         }
     }
 

@@ -199,13 +199,17 @@ _Avoid_: target
 The app-derived daily calorie target the user logs against. Equals Maintenance
 minus the deficit implied by the active Goal's rate — or Maintenance itself when
 no Goal is active (see **Maintenance Mode**). Recomputed once a week and held
-steady in between, so it stays a stable habit.
+steady in between, so it stays a stable habit. A User with **Calorie Tracking**
+off has none at all — see **Intake Targets**.
 _Avoid_: limit, allowance
 
 **Protein Floor**:
 The minimum daily protein intake: 2 g per kg of current Trend Weight, recomputed
 at the weekly review. A floor to stay above — the counterpart to the Calorie
-Budget's ceiling. Together they protect muscle while losing fat.
+Budget's ceiling. Together they protect muscle while losing fat, and together
+they are absent for a User with **Calorie Tracking** off (see **Intake
+Targets**): a daily minimum is no use to somebody who is not weighing what they
+eat.
 _Avoid_: protein target, protein goal
 
 **Pace**:
@@ -234,15 +238,22 @@ the user didn't log from reading as a zero-calorie day and dragging Maintenance
 (and the Calorie Budget) down. The correction is only trusted with enough
 coverage: at least 10 of the trailing 14 days must carry an Entry, otherwise the
 previous review's Maintenance is held steady — the Budget moves with the trend,
-not with logging diligence. The BMR seed applies only at cold start, before any
-review exists. See [ADR 0018](docs/adr/0018-adaptive-maintenance-averages-over-logged-days.md).
+not with logging diligence. The BMR seed applies only when there is no figure to
+hold: at cold start, before any review exists, and again on the far side of a
+**Calorie Tracking** stretch — where the review before this one carries no
+**Intake Targets** and tracking has been off for a week or more. A shorter gap
+holds: flipping the setting for a day never moves the Budget. See
+[ADR 0018](docs/adr/0018-adaptive-maintenance-averages-over-logged-days.md) and
+[ADR 0024](docs/adr/0024-a-weekly-review-carries-intake-targets-only-when-they-can-be-corrected.md).
 _Avoid_: TDEE, baseline
 
 **Maintenance Basis**:
 How a **Weekly Review**'s **Maintenance** was derived — `FORMULA_SEED` at cold
 start, `ADAPTIVE` when corrected from logged intake, or `HELD` when carried
-forward below the coverage floor. A structured field on each review (not prose),
-surfaced to the user as the review's basis badge.
+forward below the coverage floor. A structured field (not prose), surfaced to the
+user as the review's basis badge — carried inside a review's **Intake Targets**,
+so a review run with **Calorie Tracking** off has no basis, because it has no
+Maintenance to be the basis of.
 _Avoid_: maintenance source, derivation note
 
 **Maintenance Mode**:
@@ -257,21 +268,42 @@ temporary weight-change campaign layered over this baseline; ending one — or
 switching out of a reached one — drops back to Maintenance Mode.
 _Avoid_: maintenance goal, rate-zero goal, rest mode
 
+**Intake Targets**:
+The intake half of a **Weekly Review**: the **Maintenance** it was derived from
+(with its **Maintenance Basis**), the **Calorie Budget** and the **Protein
+Floor**. They arrive and depart as one thing, never in parts — a Floor with no
+Budget, or a Budget with no Maintenance behind it, is not a state the domain has.
+A review run with **Calorie Tracking** off carries none: the adaptive correction
+needs logged intake to correct against, so a Budget derived from an empty log is
+one that can never be brought back to the truth. It is therefore *absent* rather
+than zero or held. Coming back after a weight-only *stretch* is a cold start —
+Maintenance is re-seeded from the formula against the current Trend Weight rather
+than carried across the gap, because the body on the far side is not the one the
+old figure was computed for. A **toggle** is not a stretch: tracking that returns
+within a week of going off carries its old Maintenance forward untouched, so
+flipping the setting for a day cannot move the Budget. See
+[ADR 0024](docs/adr/0024-a-weekly-review-carries-intake-targets-only-when-they-can-be-corrected.md).
+_Avoid_: the budget bundle, calorie settings (a setting is chosen, these are derived)
+
 **Weekly Review**:
-The adaptive engine's recompute event — and the dated historical record it
-leaves behind. Each review re-derives Maintenance from the Trend Weight and
-logged intake, then the Calorie Budget and Protein Floor for the coming week.
+The weekly cadence event — and the dated historical record it leaves behind.
+Every review records the **Trend Weight**, and for a User with **Calorie
+Tracking** off that is the whole of it: a weekly reading of where the body is
+and, against a **Goal**, how it is tracking. With Calorie Tracking on the review
+*also* runs the adaptive engine, re-deriving Maintenance from the Trend Weight
+and logged intake and then the Calorie Budget and Protein Floor for the coming
+week — its **Intake Targets**.
 Clock-driven reviews are held steady — never changed once written — but a
-deliberate **Goal** change (creating or replacing one) force-recomputes today's
-review, overwriting any same-day record so the new Budget and Floor take effect
-immediately rather than at the next cadence. It is the _only_ place Maintenance,
-the Budget, and the Floor are (re)computed; the Today screen (`/`) shows the
-latest review's figures. Reviews fire by **lazy catch-up**: on the daily-summary
+deliberate **Goal** change (creating or replacing one) and a change of **Calorie
+Tracking** each force-recompute today's review, overwriting any same-day record
+so the new figures take effect immediately rather than at the next cadence. It is
+the _only_ place Maintenance, the Budget, and the Floor are (re)computed; the
+Today screen (`/`) shows the latest review's figures. Reviews fire by **lazy catch-up**: on the daily-summary
 read that opening Tucker performs — today `/` and a **Check**, not every screen — if
 the latest review is a week or more old, the engine runs one review snapping to
 today (it does not replay each missed week — the adaptive window already looks
-back two weeks). A manual "run now" trigger and a **Goal**-change recompute also
-exist.
+back two weeks). A manual "run now" trigger, a **Goal**-change recompute and a
+**Calorie Tracking**-change recompute also exist.
 There is no scheduler. Every recompute is stamped on the user's _local_ today —
 the client supplies it, the server never substitutes its own wall-clock day (the
 "client owns today" boundary rule; see [ADR 0014](docs/adr/0014-client-owns-today.md)
@@ -354,8 +386,10 @@ morning never arrives at bedtime. Opening Tucker is what ends a Reminder's claim
 on the day: a screen that reads the day's summary runs the due review, so a
 Reminder is never owed to someone who has opened one — including a **Check**. A
 Check computes nothing itself, but *opening* one runs the due review just as the
-Today screen does, refreshing the very Budget the nudge would have asked them to
-come and refresh. A **last-seen day**
+Today screen does, refreshing the very figures the nudge would have asked them to
+come and refresh. Which figures those are depends on the User: a fresh reading of
+the **Trend Weight** either way, and the **Intake Targets** as well when
+**Calorie Tracking** is on. A **last-seen day**
 (the user's local day, never the server clock) is stamped alongside as a second,
 redundant guard. At most one Reminder per overdue episode: it is deduped against
 the **last Reminder day** — the user's local day the last one went out on,
@@ -406,6 +440,10 @@ _Avoid_: device token, push token, registration
   or **Maintenance** itself when no Goal is active (**Maintenance Mode**)
 - The **Protein Floor** scales from the current **Trend Weight** independent of any
   **Goal**, so it still applies in **Maintenance Mode**
+- A **Weekly Review** carries **Intake Targets** only when the **User** has
+  **Calorie Tracking** on, and carries all four figures or none: there is no review
+  with a **Protein Floor** and no **Calorie Budget**, and none with a **Calorie
+  Budget** and no **Maintenance** behind it
 - Tucker is **diet-agnostic**: protein is the only macro with a target, because it
   is the lever for retaining muscle while losing fat. Carbs and fat are recorded
   (they are needed to derive calories) but never judged, so keto, low-fat, and

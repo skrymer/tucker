@@ -10,6 +10,7 @@ type DailySummary = components['schemas']['DailySummaryResponse']
 
 const summary: DailySummary = {
   date: '2026-05-22',
+  setupComplete: true,
   caloriesConsumed: 1500,
   proteinConsumed: 90,
   estimatedCalorieShare: 0,

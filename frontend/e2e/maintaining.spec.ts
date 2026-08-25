@@ -20,6 +20,7 @@ test('the Today page shows the Maintaining card in place of Goal-Progress when t
     caloriesConsumed: 1200,
     proteinConsumed: 90,
     estimatedCalorieShare: 0,
+    setupComplete: true,
     calorieBudget: 2400,
     proteinFloor: 172,
     caloriesRemaining: 1200,

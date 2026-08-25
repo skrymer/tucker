@@ -2,8 +2,9 @@ package com.tucker.service
 
 import com.tucker.domain.BarcodeLookup
 import com.tucker.domain.Check
+import com.tucker.domain.IntakeTargets
 import com.tucker.domain.Nutrition
-import com.tucker.domain.WeeklyReview
+import com.tucker.persistence.ProfileRepository
 import org.springframework.stereotype.Service
 
 /** A Check together with the product it is about. */
@@ -59,22 +60,34 @@ sealed interface CheckOutcome {
 class CheckService(
     private val barcodeLookup: BarcodeLookupService,
     private val weeklyReview: WeeklyReviewService,
+    private val profiles: ProfileRepository,
 ) {
 
     /** Check [barcode] against the day's targets; see [CheckOutcome] for the cases. */
     fun check(barcode: String): CheckOutcome {
-        val review = weeklyReview.recentReviews().firstOrNull()
-            ?: error("a Check needs a Calorie Budget; finish setup first")
+        // Two ways to have no Budget, and they earn opposite advice (ADR 0024), so
+        // the reason says which. Asked of the Profile rather than of setup: setup
+        // being complete would also cover a tracking User whose first review has
+        // simply not run yet, and telling them to turn on what is already on is the
+        // trap this distinction exists to avoid.
+        val targets = weeklyReview.recentReviews().firstOrNull()?.intakeTargets
+            ?: error(
+                if (profiles.get()?.tracksCalories == false) {
+                    "a Check needs a Calorie Budget; turn calorie tracking on"
+                } else {
+                    "a Check needs a Calorie Budget; finish setup first"
+                },
+            )
         // A saved Food always has calories; only a Provider candidate can arrive
         // with a macro missing, and then there is nothing to derive them from.
         return when (val found = barcodeLookup.lookup(barcode)) {
             BarcodeLookup.Missing -> CheckOutcome.Unknown
             BarcodeLookup.Inconclusive -> CheckOutcome.Inconclusive
             is BarcodeLookup.Existing ->
-                state(barcode, found.food.name, source = null, found.food.nutrition, review)
+                state(barcode, found.food.name, source = null, found.food.nutrition, targets)
             is BarcodeLookup.Candidate ->
                 found.candidate.atwaterNutrition()
-                    ?.let { state(barcode, found.candidate.name, found.candidate.source, it, review) }
+                    ?.let { state(barcode, found.candidate.name, found.candidate.source, it, targets) }
                     ?: CheckOutcome.Incomplete(found.candidate.name, found.candidate.source)
         }
     }
@@ -84,7 +97,7 @@ class CheckService(
         name: String,
         source: String?,
         nutrition: Nutrition,
-        review: WeeklyReview,
+        targets: IntakeTargets,
     ) = CheckOutcome.Stated(
         CheckedProduct(
             name = name,
@@ -93,8 +106,8 @@ class CheckService(
             nutrition = nutrition,
             check = Check.of(
                 nutrition,
-                calorieBudgetKcal = review.calorieBudgetKcal,
-                proteinFloorG = review.proteinFloorG,
+                calorieBudgetKcal = targets.calorieBudgetKcal,
+                proteinFloorG = targets.proteinFloorG,
             ),
         ),
     )

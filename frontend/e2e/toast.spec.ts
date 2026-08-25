@@ -13,7 +13,7 @@ test('at phone width a failed save anchors the error toast to the top, clear of 
 }) => {
   // GET returns the saved profile; PUT fails so the save surfaces the
   // persistent error toast instead of dismissing silently.
-  await page.route('**/api/profile', async (route) => {
+  await page.route('**/api/profile*', async (route) => {
     const req = route.request()
     if (req.method() === 'GET') return route.fulfill({ json: SAVED })
     if (req.method() === 'PUT')
@@ -49,7 +49,7 @@ test('at desktop width the error toast stays at the bottom, where nothing compet
   page,
   goto,
 }) => {
-  await page.route('**/api/profile', async (route) => {
+  await page.route('**/api/profile*', async (route) => {
     const req = route.request()
     if (req.method() === 'GET') return route.fulfill({ json: SAVED })
     if (req.method() === 'PUT')
@@ -88,7 +88,7 @@ test('the error toast Retry re-submits the save and dismisses once it succeeds',
 }) => {
   // First PUT fails, the next succeeds — so Retry drives failure → success.
   let putAttempts = 0
-  await page.route('**/api/profile', async (route) => {
+  await page.route('**/api/profile*', async (route) => {
     const req = route.request()
     if (req.method() === 'GET') return route.fulfill({ json: SAVED })
     if (req.method() === 'PUT') {

@@ -97,6 +97,26 @@ class GoalClientTodayApiTest {
         }
     }
 
+    @Test
+    fun `toggling Calorie Tracking recomputes the review on the client's day`() {
+        seedProfileAndWeight(CLIENT_TODAY)
+        mockMvc.post("/api/weekly-review?clientToday=$CLIENT_TODAY").andExpect { status { isOk() } }
+
+        mockMvc.put("/api/profile?clientToday=$CLIENT_TODAY") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"sex":"MALE","birthDate":"1986-05-22","heightCm":180.0,
+                          "tracksCalories":false}"""
+        }.andExpect { status { isOk() } }
+
+        // Stamped on the client's day: a recompute on the server's would leave the
+        // client's own review untouched, so the Budget would not leave the screen.
+        mockMvc.get("/api/weekly-review").andExpect {
+            status { isOk() }
+            jsonPath("$.reviewedOn") { value("$CLIENT_TODAY") }
+            jsonPath("$.intakeTargets") { value(null) }
+        }
+    }
+
     companion object {
         private val SERVER_TODAY = LocalDate.of(2026, 6, 6)
         private val CLIENT_TODAY = SERVER_TODAY.minusDays(1) // the client's local "yesterday"

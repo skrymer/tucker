@@ -369,8 +369,8 @@ class PerUserUniquenessMigrationTest {
             },
             "a review dated 2026-01-14" to { user ->
                 "INSERT INTO weekly_review (reviewed_on, trend_weight_kg, maintenance_kcal, " +
-                    "calorie_budget_kcal, protein_floor_g, user_id) " +
-                    "VALUES ('2026-01-14', 92.6, 2545, 2045, 150, $user)"
+                    "maintenance_basis, calorie_budget_kcal, protein_floor_g, user_id) " +
+                    "VALUES ('2026-01-14', 92.6, 2545, 'ADAPTIVE', 2045, 150, $user)"
             },
             "an active Goal" to { user ->
                 "INSERT INTO goal (started_on, start_weight_kg, target_weight_kg, " +

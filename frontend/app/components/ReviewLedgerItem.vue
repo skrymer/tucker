@@ -1,10 +1,29 @@
 <script setup lang="ts">
-import { REVIEW_BASIS_BADGE, type LedgerRow } from '~/utils/reviewLedger'
+import type { LedgerRow } from '~/utils/reviewLedger'
 
 const props = defineProps<{ row: LedgerRow }>()
 
-const badge = computed(
-  () => REVIEW_BASIS_BADGE[props.row.review.maintenanceBasis],
+const targets = computed(() => props.row.review.intakeTargets)
+
+/**
+ * The card's hero figure. A review run with Calorie Tracking off has no Budget,
+ * so its own remaining job leads: the Trend Weight, with its week-over-week
+ * change, rather than an em-dash where a Budget was.
+ */
+const headline = computed(() =>
+  targets.value
+    ? {
+        value: Math.round(targets.value.calorieBudgetKcal).toString(),
+        label: 'kcal budget',
+        delta: props.row.targetsDelta?.calorieBudgetKcal ?? null,
+        decimals: 0,
+      }
+    : {
+        value: props.row.review.trendWeightKg.toFixed(1),
+        label: 'kg trend',
+        delta: props.row.trendDelta,
+        decimals: 1,
+      },
 )
 </script>
 
@@ -14,26 +33,25 @@ const badge = computed(
       <p class="text-sm font-medium text-muted">
         {{ formatDateFromISO(row.review.reviewedOn) }}
       </p>
-      <UBadge :color="badge.color" variant="subtle" size="sm">
-        {{ badge.label }}
-      </UBadge>
+      <LedgerBasisBadge :basis="targets?.maintenanceBasis" />
     </div>
 
     <div class="mt-1 flex items-baseline gap-2">
       <p class="text-4xl font-bold text-default tabular-nums">
-        {{ Math.round(row.review.calorieBudgetKcal) }}
+        {{ headline.value }}
       </p>
-      <p class="text-sm text-muted">kcal budget</p>
+      <p class="text-sm text-muted">{{ headline.label }}</p>
       <ReviewDelta
-        :value="row.delta?.calorieBudgetKcal ?? null"
+        :value="headline.delta"
+        :decimals="headline.decimals"
         class="ml-auto self-center"
       />
     </div>
 
-    <p class="mt-2 text-sm text-muted tabular-nums">
+    <p v-if="targets" class="mt-2 text-sm text-muted tabular-nums">
       {{ row.review.trendWeightKg.toFixed(1) }} kg trend ·
-      {{ Math.round(row.review.maintenanceKcal) }} kcal maint ·
-      {{ Math.round(row.review.proteinFloorG) }} g protein
+      {{ Math.round(targets.maintenanceKcal) }} kcal maint ·
+      {{ Math.round(targets.proteinFloorG) }} g protein
     </p>
   </UCard>
 </template>

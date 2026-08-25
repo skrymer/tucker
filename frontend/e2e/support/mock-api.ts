@@ -5,6 +5,7 @@ type Json = Record<string, unknown>
 /** A daily summary with no entries and no budget — the pre-first-review state. */
 const emptySummary: Json = {
   date: '2026-05-22',
+  setupComplete: false,
   caloriesConsumed: 0,
   proteinConsumed: 0,
   estimatedCalorieShare: 0,
@@ -32,6 +33,13 @@ export async function mockSummaryError(page: Page) {
   )
 }
 
+/** Stub `GET /api/weekly-review/history` with a history the ledger renders. */
+export async function mockReviewHistory(page: Page, reviews: Json[]) {
+  await page.route('**/api/weekly-review/history', (route) =>
+    route.fulfill({ json: reviews }),
+  )
+}
+
 /** Stub `GET /api/weekly-review/history` failing with a real server error. */
 export async function mockReviewHistoryError(page: Page) {
   await page.route('**/api/weekly-review/history', (route) =>
@@ -56,7 +64,7 @@ export async function mockMe(page: Page, email: string) {
 
 /** Stub `GET /api/profile` returning a saved profile. */
 export async function mockProfile(page: Page, profile: Json) {
-  await page.route('**/api/profile', (route) => {
+  await page.route('**/api/profile*', (route) => {
     if (route.request().method() === 'GET')
       return route.fulfill({ json: profile })
     return route.fallback()
@@ -65,7 +73,7 @@ export async function mockProfile(page: Page, profile: Json) {
 
 /** Stub `GET /api/profile` returning 404 — no profile yet. */
 export async function mockNoProfile(page: Page) {
-  await page.route('**/api/profile', (route) => {
+  await page.route('**/api/profile*', (route) => {
     if (route.request().method() === 'GET') {
       return route.fulfill({ status: 404, json: { message: 'Not found' } })
     }

@@ -12,6 +12,7 @@ const withBudget = {
   caloriesConsumed: 0,
   proteinConsumed: 0,
   estimatedCalorieShare: 0,
+  setupComplete: true,
   calorieBudget: 2492,
   proteinFloor: 170,
   caloriesRemaining: 2492,

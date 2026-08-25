@@ -55,7 +55,7 @@ class OpenApiDiscriminatorTest {
         )
         assertEquals(
             setOf("FORMULA_SEED", "ADAPTIVE", "HELD"),
-            enumOf("WeeklyReviewResponse", "maintenanceBasis"),
+            enumOf("IntakeTargetsResponse", "maintenanceBasis"),
             "The Maintenance Basis the ledger keys REVIEW_BASIS_BADGE by.",
         )
     }

@@ -27,7 +27,7 @@ const API = 'http://localhost:8080/api'
 
 interface ReviewRow {
   reviewedOn: string
-  calorieBudgetKcal: number
+  intakeTargets: { calorieBudgetKcal: number } | null
 }
 
 /** The Calorie Budget of the most recent Weekly Review, or null if none exists. */
@@ -39,7 +39,7 @@ async function latestReviewBudget(
   const all = (await res.json()) as ReviewRow[]
   if (all.length === 0) return null
   const latest = all.reduce((a, b) => (a.reviewedOn >= b.reviewedOn ? a : b))
-  return latest.calorieBudgetKcal ?? null
+  return latest.intakeTargets?.calorieBudgetKcal ?? null
 }
 
 test("replacing a goal recomputes today's budget immediately for the new deficit", async ({

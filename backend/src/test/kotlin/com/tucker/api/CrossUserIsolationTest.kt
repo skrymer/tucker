@@ -60,6 +60,13 @@ class CrossUserIsolationTest {
     /** Comfortably before [day], for the review an engine fallback would reach back to. */
     private val earlier = day.minusDays(10)
 
+    // Both inside the review cadence, relative to the server day a review runs on, so
+    // the gap bound cannot discard the earlier one (ADR 0024). Bob's is the later of
+    // the two, so `latestBefore` reaches his own — and only the second lookup, the one
+    // that skips past it for a review carrying targets, can reach Alice's.
+    private val aliceLastTracked = LocalDate.now().minusDays(4)
+    private val bobTurnedOff = LocalDate.now().minusDays(2)
+
     // Two very different bodies, so a mixed trend or a borrowed Maintenance lands on
     // a figure neither of them could have produced. Named because every fixture
     // weight below has an assertion that has to keep agreeing with it.
@@ -307,7 +314,7 @@ class CrossUserIsolationTest {
             // Seeded from the formula, because Bob has logged nothing. Adapting here
             // would set his Calorie Budget from Alice's eating — a leak that never
             // shows a wrong name, only a wrong number.
-            jsonPath("$.maintenanceBasis") { value("FORMULA_SEED") }
+            jsonPath("$.intakeTargets.maintenanceBasis") { value("FORMULA_SEED") }
         }
     }
 
@@ -334,7 +341,7 @@ class CrossUserIsolationTest {
 
         mockMvc.post("/api/weekly-review") { header(ACCESS_ASSERTION_HEADER, bob) }.andExpect {
             status { isOk() }
-            jsonPath("$.maintenanceBasis") { value("ADAPTIVE") }
+            jsonPath("$.intakeTargets.maintenanceBasis") { value("ADAPTIVE") }
         }
     }
 
@@ -651,7 +658,35 @@ class CrossUserIsolationTest {
 
         mockMvc.post("/api/weekly-review") { header(ACCESS_ASSERTION_HEADER, bob) }.andExpect {
             status { isOk() }
-            jsonPath("$.maintenanceBasis") { value("FORMULA_SEED") }
+            jsonPath("$.intakeTargets.maintenanceBasis") { value("FORMULA_SEED") }
+            jsonPath("$.trendWeightKg") { value(bobKg) }
+        }
+    }
+
+    @Test
+    fun `a User re-entering Calorie Tracking is not handed another User's Maintenance`() {
+        // The other fallback, and the one no other test can reach. Bob turned tracking
+        // off, so his own most recent review carries no Intake Targets and the engine
+        // looks further back for one that does — the single query in the engine that
+        // asks for somebody else's shape of row. Asked globally it finds Alice's,
+        // dated inside the cadence so the gap bound cannot quietly discard it, and
+        // Bob's Budget is then built on a 71 kg person's metabolism under his name.
+        completeSetup(alice, aliceKg, on = aliceLastTracked)
+        openTucker(alice, on = aliceLastTracked)
+
+        saveProfile(bob, tracksCalories = false)
+        weighIn(bob, bobTurnedOff, weightKg = bobKg)
+        openTucker(bob, on = bobTurnedOff)
+
+        // Back on, with no logging of his own to adapt from and no earlier review of
+        // his own carrying targets — so the seed is the only honest figure.
+        saveProfile(bob, tracksCalories = true)
+
+        mockMvc.post("/api/weekly-review") {
+            header(ACCESS_ASSERTION_HEADER, bob)
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.intakeTargets.maintenanceBasis") { value("FORMULA_SEED") }
             jsonPath("$.trendWeightKg") { value(bobKg) }
         }
     }
@@ -670,14 +705,14 @@ class CrossUserIsolationTest {
 
         val heldKcal = mockMvc.get("/api/weekly-review") { header(ACCESS_ASSERTION_HEADER, bob) }
             .andExpect { status { isOk() } }.andReturn().response.contentAsString
-            .let { objectMapper.readTree(it).get("maintenanceKcal").asDouble() }
+            .let { objectMapper.readTree(it).get("intakeTargets").get("maintenanceKcal").asDouble() }
 
         weighIn(bob, day, weightKg = bobKg)
 
         mockMvc.post("/api/weekly-review") { header(ACCESS_ASSERTION_HEADER, bob) }.andExpect {
             status { isOk() }
-            jsonPath("$.maintenanceBasis") { value("HELD") }
-            jsonPath("$.maintenanceKcal") { value(heldKcal) }
+            jsonPath("$.intakeTargets.maintenanceBasis") { value("HELD") }
+            jsonPath("$.intakeTargets.maintenanceKcal") { value(heldKcal) }
         }
     }
 
@@ -760,14 +795,17 @@ class CrossUserIsolationTest {
         timezone: String = "UTC",
         reminderHour: Int = 9,
         remindersEnabled: Boolean = false,
+        tracksCalories: Boolean = true,
+        clientToday: LocalDate? = null,
     ) {
-        mockMvc.put("/api/profile") {
+        val query = clientToday?.let { "?clientToday=$it" } ?: ""
+        mockMvc.put("/api/profile$query") {
             header(ACCESS_ASSERTION_HEADER, token)
             contentType = MediaType.APPLICATION_JSON
             content = """
                 {"sex":"$sex","birthDate":"$birthDate","heightCm":$heightCm,
                  "timezone":"$timezone","reminderHour":$reminderHour,
-                 "remindersEnabled":$remindersEnabled}
+                 "remindersEnabled":$remindersEnabled,"tracksCalories":$tracksCalories}
             """.trimIndent()
         }.andExpect { status { isOk() } }
     }
@@ -777,7 +815,7 @@ class CrossUserIsolationTest {
         mockMvc.post("/api/weekly-review") { header(ACCESS_ASSERTION_HEADER, token) }
             .andExpect { status { isOk() } }
             .andReturn().response.contentAsString
-            .let { objectMapper.readTree(it).get("maintenanceKcal").asDouble() }
+            .let { objectMapper.readTree(it).get("intakeTargets").get("maintenanceKcal").asDouble() }
 
     /** Register [endpoint] as a device of whoever [token] names. */
     private fun subscribe(token: String, endpoint: String) {

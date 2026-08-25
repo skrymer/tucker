@@ -788,6 +788,100 @@ The frontend is built **test-first (red-green TDD)**. Increments:
   run that inherits a *visible* spinner tears it down with no hold, because
   `shownAt` is scoped to a run while `busy` is scoped to the episode (pre-existing,
   unchanged by #183, most reachable on `/check`).
+- **F12** — Calorie Tracking is optional: use Tucker as a goal and weight tracker
+  (PRD [#246](https://github.com/skrymer/tucker/issues/246)). Some people want the
+  other half of the app and not the log half — they weigh in, they set a **Goal**,
+  and they manage their eating themselves — and Tucker had no way to say so, so it
+  was permanently wrong at them: a perpetual `0 / 1800 kcal`, two dead nav tabs, a
+  setup banner nagging about a screen with nothing left to finish, and a **Calorie
+  Budget** that could never become true. **Calorie Tracking** becomes a deliberate
+  setting on the **Profile** — on by default, changeable whenever, never inferred
+  from a quiet fortnight, because a lapsed logger is not the same person as one who
+  has chosen not to log. Weight is not the symmetric half of a pair but the spine:
+  there is no "calories but no weight" User to be. Three slices:
+  - Slice 1 ([#247](https://github.com/skrymer/tucker/issues/247), shipped
+    [#251](https://github.com/skrymer/tucker/pull/251)) — **the setting, read by
+    nothing.** `Profile.tracksCalories`, V14 (`ADD COLUMN ... NOT NULL DEFAULT 1`,
+    no rebuild — SQLite refuses `NOT NULL` only together with `REFERENCES`), and a
+    two-option choice in the details form ("Calories and weight" / "Weight only")
+    rather than a bare switch: at setup, a toggle labelled "Calorie tracking" does
+    not tell a new User that the second option is a coherent product.
+  - Slice 2 ([#248](https://github.com/skrymer/tucker/issues/248), shipped
+    [#252](https://github.com/skrymer/tucker/pull/252)) — **Tucker takes the shape
+    of the choice.** Foods and Check leave the navigation; `/` drops `DaySummary`,
+    the budget banner and every Log-entry affordance. Routes stay reachable —
+    hiding a tab is navigation, not access control. `GoalGlanceTile` became a Goal
+    ring drawn through a shared `RingGauge`, so the two rings are peers by
+    construction. The backend was untouched, which is why two surfaces were
+    knowingly left wrong for slice 3 and said so in place.
+  - Slice 3 ([#249](https://github.com/skrymer/tucker/issues/249)) — **the numbers
+    stop being invented**, see
+    [ADR 0024](docs/adr/0024-a-weekly-review-carries-intake-targets-only-when-they-can-be-corrected.md)
+    and the `Intake Targets` term in `CONTEXT.md`.
+    - **A Weekly Review has two jobs, and only the second is gated.** Every review
+      records the **Trend Weight**; with Calorie Tracking on it *also* derives that
+      week's **Intake Targets** — one nullable value object holding the Maintenance
+      (with its basis), the Budget and the Floor. Not four nullable fields: those
+      admit states the domain does not have (a Floor with no Budget, a Budget with
+      no basis) and force every consumer to re-establish that they agree. The
+      `require(> 0)` invariants moved *inside* it intact rather than being relaxed
+      for every tracking User.
+    - **Why absent rather than derived-and-hidden.** The Budget a non-tracking User
+      was shown is uncorrectable by construction: the adaptive correction needs 10
+      logged days in 14 (ADR 0018), so every review after the first is `HELD` at
+      the Mifflin-St Jeor seed forever, presented as a target. Don't publish a
+      target you can never correct.
+    - **Toggling is the fourth review trigger**, in both directions, reusing
+      ADR 0008's `recomputeFor(today)` for ADR 0008's reason — reviews are held
+      steady between ticks, so without it turning tracking on leaves a Log-entry
+      button and no Budget for up to a week, and turning it off leaves a stale
+      Budget on `/`. `PUT /api/profile` therefore carries `clientToday` (ADR 0014),
+      and the recompute fires only on an actual change, once setup is complete.
+    - **Coming back after a weight-only *stretch* is a cold start**, a narrow
+      deviation from ADR 0018: seed against the current Trend Weight rather than
+      hold. ADR 0018 rejected seeding for the *lapsed logger*, where reverting makes
+      the Budget yo-yo with logging diligence; a stretch is a declared absence, and
+      the held figure was computed for a body that may be many kilos away. **A
+      toggle is not a stretch** — and the two need telling apart precisely because
+      the recompute trigger above makes reviews neither weekly nor contiguous, so
+      "the preceding review has no targets" would also catch a setting flipped off
+      on Tuesday and back on Wednesday. Hold the most recent review that carries
+      targets when the *gap* is under one cadence — measured from the preceding
+      review's date, which is when tracking went off, not from the held figure's own
+      age, or a fortnight's **absence** followed by a one-day toggle would re-seed
+      somebody ADR 0018 says to hold. Seed beyond that.
+    - **The Protein Floor goes with the Budget**, narrowing ADR 0008's "the Protein
+      Floor still applies" — its decoupling from the Goal is untouched, but a daily
+      protein minimum is no use to somebody not weighing what they eat, and
+      splitting it out would reintroduce the Floor-without-a-Budget state the value
+      object exists to forbid.
+    - **`setupComplete` is promoted onto the summary**, because `calorieBudget ==
+      null` now means two things that earn opposite messages — the same trap
+      **Inconclusive Lookup** exists to name. It is orthogonal to tracking, so
+      `SetupBanner` keys on it and tracking only picks the sentence, and `/check`'s
+      no-budget state says calorie tracking is off rather than that setup is
+      unfinished.
+    - **The ledger picks its columns from the data, not the setting** — the calorie
+      four render whenever *any* review carries targets, em-dashed per row where
+      they don't. Choosing from the setting is wrong both ways. The Trend Weight
+      delta spans a gap (the trend is continuous); a targets delta needs both
+      neighbours, so no delta is invented across one — and `BudgetChange` is null
+      there for the same reason.
+    - **V15 rebuilds `weekly_review`** to relax the four columns, under a
+      table-level CHECK holding them to all-or-none, so the value object's
+      atomicity is a database fact. Nothing references the table, so it is
+      ADR 0021's ordinary in-transaction rebuild — no `executeInTransaction=false`,
+      no `PRAGMA foreign_keys = OFF`. `maintenance_basis` loses V7's
+      `DEFAULT 'FORMULA_SEED'`, which would otherwise give an omitting INSERT a
+      basis and nothing to be the basis of.
+    - `MaintainingTile`'s drift copy stops promising a budget adjustment to a User
+      with no budget — folded in because it is the same fix on the same screen.
+  - Later slice: [#250](https://github.com/skrymer/tucker/issues/250) — the
+    Weekly-Review Reminder's copy still says "log today and refresh your calorie
+    budget" to a User with neither. The firing *rule* needs no change: a review
+    still comes due either way.
+  **Out of scope:** self-service anything beyond the setting itself, and a
+  surplus/gaining shape of the same idea ([#62](https://github.com/skrymer/tucker/issues/62)).
 
 ## Architecture
 
@@ -858,7 +952,10 @@ The frontend is built **test-first (red-green TDD)**. Increments:
 - **Adaptive maintenance.** Maintenance calories are seeded from the Mifflin-St
   Jeor formula, then recomputed weekly from the smoothed weight trend and logged
   intake. The Calorie Budget and Protein Floor are recomputed on that weekly
-  cadence and held steady in between.
+  cadence and held steady in between — and a review run with **Calorie Tracking**
+  off derives none of the three, because a Budget the adaptive correction can
+  never reach is a target that can never become true
+  ([ADR 0024](docs/adr/0024-a-weekly-review-carries-intake-targets-only-when-they-can-be-corrected.md)).
 - **Everything is weighed in grams**, liquids included; Food nutrition is stored
   per 100 g. Meals that can't be weighed are logged as flagged estimates.
 

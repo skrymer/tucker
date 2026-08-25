@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { renderSuspended, registerEndpoint } from '@nuxt/test-utils/runtime'
 import { screen, within } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
-import { createError, readBody } from 'h3'
+import { createError, getQuery, readBody } from 'h3'
 import Profile from './index.vue'
 
 type ProfileBody = {
@@ -230,5 +230,31 @@ describe('/profile saving the details form', () => {
       remindersEnabled: true,
       tracksCalories: false,
     })
+  })
+
+  it("stamps the save on the user's local day so a Calorie Tracking change lands today", async () => {
+    // Toggling Calorie Tracking force-recomputes today's review (ADR 0008's
+    // trigger). The client owns "today" (ADR 0014), so the Budget leaves or
+    // returns on the user's day rather than the server's wall-clock one.
+    let query: Record<string, unknown> | undefined
+    mockApi({
+      profile: { sex: 'MALE', birthDate: '1990-06-15', heightCm: 180 },
+      weights: [],
+      goals: [],
+    })
+    registerEndpoint('/api/profile', {
+      method: 'PUT',
+      handler: (event) => {
+        query = getQuery(event)
+        return {}
+      },
+    })
+    await renderSuspended(Profile)
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole('button', { name: /save profile/i }))
+
+    await vi.waitFor(() => expect(query).toBeDefined())
+    expect(query?.clientToday).toBe(localToday())
   })
 })

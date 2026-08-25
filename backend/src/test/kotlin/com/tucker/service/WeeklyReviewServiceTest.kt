@@ -2,11 +2,13 @@ package com.tucker.service
 
 import com.tucker.domain.EstimatedEntry
 import com.tucker.domain.Goal
+import com.tucker.domain.IntakeTargets
 import com.tucker.domain.Maintenance
 import com.tucker.domain.Profile
 import com.tucker.domain.Sex
 import com.tucker.domain.WeightMeasurement
 import com.tucker.domain.WeeklyReview
+import com.tucker.domain.targets
 import com.tucker.persistence.EntryRepository
 import com.tucker.persistence.GoalRepository
 import com.tucker.persistence.ProfileRepository
@@ -19,6 +21,7 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 @SpringBootTest
@@ -47,8 +50,8 @@ class WeeklyReviewServiceTest {
     }
 
     /** Maintenance Mode setup: a profile and weights, but deliberately no Goal. */
-    private fun seedProfileAndWeightsNoGoal() {
-        profiles.save(Profile(Sex.MALE, LocalDate.of(1986, 5, 22), 180.0))
+    private fun seedProfileAndWeightsNoGoal(tracksCalories: Boolean = true) {
+        profiles.save(Profile(Sex.MALE, LocalDate.of(1986, 5, 22), 180.0, tracksCalories = tracksCalories))
         weights.save(WeightMeasurement(null, today.minusDays(1), 86.0))
         weights.save(WeightMeasurement(null, today, 85.8))
     }
@@ -73,11 +76,41 @@ class WeeklyReviewServiceTest {
                 id = null,
                 reviewedOn = reviewedOn,
                 trendWeightKg = 86.0,
-                maintenance = Maintenance(2400.0, Maintenance.Basis.FORMULA_SEED),
-                calorieBudgetKcal = 1850.0,
-                proteinFloorG = 172.0,
+                intakeTargets = IntakeTargets(
+                    maintenance = Maintenance(2400.0, Maintenance.Basis.FORMULA_SEED),
+                    calorieBudgetKcal = 1850.0,
+                    proteinFloorG = 172.0,
+                ),
             ),
         )
+
+    @Test
+    fun `with Calorie Tracking off the review records the Trend Weight and no Intake Targets`() {
+        seedProfileAndWeightsNoGoal(tracksCalories = false)
+
+        val review = service.runReview(today)
+
+        // The review's other job still runs: a weekly dated reading of where the
+        // trend is going. The Budget is absent rather than zero, because a Budget
+        // this User can never correct is one they should never be shown (ADR 0024).
+        assertNull(review.intakeTargets)
+        assertEquals(85.9, review.trendWeightKg, 0.2)
+    }
+
+    @Test
+    fun `catch-up keeps the weekly cadence with Calorie Tracking off`() {
+        seedProfileAndWeightsNoGoal(tracksCalories = false)
+        reviews.insert(WeeklyReview(null, today.minusDays(7), 86.0, intakeTargets = null))
+
+        service.catchUpIfDue(today)
+
+        // One engine, one cadence, whatever the User counts (CONTEXT.md — Weekly
+        // Review). Only the adaptive half is gated, so the overdue week still
+        // produces its dated reading.
+        val latest = reviews.latest()!!
+        assertEquals(today, latest.reviewedOn)
+        assertNull(latest.intakeTargets)
+    }
 
     @Test
     fun `with little history the review uses the formula seed`() {
@@ -87,12 +120,12 @@ class WeeklyReviewServiceTest {
 
         val review = service.runReview(today)
 
-        assertEquals(Maintenance.Basis.FORMULA_SEED, review.maintenance.basis)
-        assertTrue(review.maintenance.kcal > 0)
+        assertEquals(Maintenance.Basis.FORMULA_SEED, review.targets.maintenance.basis)
+        assertTrue(review.targets.maintenance.kcal > 0)
         // Budget = maintenance - the deficit implied by 0.5 kg/week (~550 kcal).
-        assertEquals(review.maintenance.kcal - 0.5 * 7700.0 / 7.0, review.calorieBudgetKcal, 0.5)
+        assertEquals(review.targets.maintenance.kcal - 0.5 * 7700.0 / 7.0, review.targets.calorieBudgetKcal, 0.5)
         // Protein floor = 2 g per kg of trend weight.
-        assertEquals(2.0 * review.trendWeightKg, review.proteinFloorG)
+        assertEquals(2.0 * review.trendWeightKg, review.targets.proteinFloorG)
     }
 
     @Test
@@ -102,9 +135,9 @@ class WeeklyReviewServiceTest {
         val review = service.runReview(today)
 
         // Maintenance Mode: no deficit is subtracted, so the Budget is Maintenance.
-        assertEquals(review.maintenance.kcal, review.calorieBudgetKcal, 1e-9)
+        assertEquals(review.targets.maintenance.kcal, review.targets.calorieBudgetKcal, 1e-9)
         // The Protein Floor still applies, derived from the trend (2 g/kg).
-        assertEquals(2.0 * review.trendWeightKg, review.proteinFloorG, 1e-9)
+        assertEquals(2.0 * review.trendWeightKg, review.targets.proteinFloorG, 1e-9)
     }
 
     @Test
@@ -117,8 +150,8 @@ class WeeklyReviewServiceTest {
 
         val review = service.runReview(today)
 
-        assertEquals(Maintenance.Basis.FORMULA_SEED, review.maintenance.basis)
-        assertTrue(review.maintenance.kcal > 0)
+        assertEquals(Maintenance.Basis.FORMULA_SEED, review.targets.maintenance.basis)
+        assertTrue(review.targets.maintenance.kcal > 0)
     }
 
     @Test
@@ -133,9 +166,9 @@ class WeeklyReviewServiceTest {
 
         val review = service.runReview(today)
 
-        assertEquals(Maintenance.Basis.ADAPTIVE, review.maintenance.basis)
-        assertTrue(review.maintenance.kcal > 0)
-        assertTrue(review.calorieBudgetKcal > 0)
+        assertEquals(Maintenance.Basis.ADAPTIVE, review.targets.maintenance.basis)
+        assertTrue(review.targets.maintenance.kcal > 0)
+        assertTrue(review.targets.calorieBudgetKcal > 0)
     }
 
     @Test
@@ -149,8 +182,8 @@ class WeeklyReviewServiceTest {
 
         val review = service.runReview(today)
 
-        assertEquals(Maintenance.Basis.ADAPTIVE, review.maintenance.basis)
-        assertEquals(2000.0, review.maintenance.kcal, 0.5)
+        assertEquals(Maintenance.Basis.ADAPTIVE, review.targets.maintenance.basis)
+        assertEquals(2000.0, review.targets.maintenance.kcal, 0.5)
     }
 
     @Test
@@ -166,8 +199,8 @@ class WeeklyReviewServiceTest {
 
         val review = service.runReview(today) // must not throw
 
-        assertTrue(review.maintenance.kcal > 0)
-        assertEquals(Maintenance.Basis.FORMULA_SEED, review.maintenance.basis) // no prior → seed
+        assertTrue(review.targets.maintenance.kcal > 0)
+        assertEquals(Maintenance.Basis.FORMULA_SEED, review.targets.maintenance.basis) // no prior → seed
     }
 
     @Test
@@ -181,8 +214,8 @@ class WeeklyReviewServiceTest {
 
         val review = service.runReview(today)
 
-        assertEquals(Maintenance.Basis.HELD, review.maintenance.basis)
-        assertEquals(prior.maintenance.kcal, review.maintenance.kcal, 1e-9)
+        assertEquals(Maintenance.Basis.HELD, review.targets.maintenance.basis)
+        assertEquals(prior.targets.maintenance.kcal, review.targets.maintenance.kcal, 1e-9)
     }
 
     @Test
@@ -195,15 +228,68 @@ class WeeklyReviewServiceTest {
         reviews.insert(
             WeeklyReview(
                 null, today.plusDays(7), 86.0,
-                Maintenance(9999.0, Maintenance.Basis.FORMULA_SEED), 9000.0, 172.0,
+                IntakeTargets(Maintenance(9999.0, Maintenance.Basis.FORMULA_SEED), 9000.0, 172.0),
             ),
         )
         logIntakeDays(14 downTo 6) // 9 days, below the floor
 
         val review = service.runReview(today)
 
-        assertEquals(Maintenance.Basis.HELD, review.maintenance.basis)
-        assertEquals(earlier.maintenance.kcal, review.maintenance.kcal, 1e-9)
+        assertEquals(Maintenance.Basis.HELD, review.targets.maintenance.basis)
+        assertEquals(earlier.targets.maintenance.kcal, review.targets.maintenance.kcal, 1e-9)
+    }
+
+    @Test
+    fun `turning Calorie Tracking on after a weight-only stretch seeds rather than holding`() {
+        seedProfileAndGoal()
+        seedFlatTrend()
+        // Last week's review was run with Calorie Tracking off, so it carries a Trend
+        // Weight and nothing to hold. Reviews are weekly and contiguous, so "the
+        // immediately preceding review has no targets" is exactly "tracking was off
+        // last week" — a cold start, not a lapsed logger (ADR 0024 vs ADR 0018).
+        seedReviewOn(today.minusDays(30)) // the last week tracking was on, long past
+        reviews.insert(WeeklyReview(null, today.minusDays(7), 86.0, intakeTargets = null))
+        logIntakeDays(14 downTo 6) // 9 days, below the coverage floor: it cannot adapt either
+
+        val review = service.runReview(today)
+
+        assertEquals(Maintenance.Basis.FORMULA_SEED, review.targets.maintenance.basis)
+    }
+
+    @Test
+    fun `a Calorie Tracking toggle a day old holds Maintenance rather than re-seeding`() {
+        seedProfileAndGoal()
+        seedFlatTrend()
+        // Tracking was on last week and its review holds 2400. It went off yesterday
+        // — the toggle recomputed that day with no targets — and back on today. A
+        // setting flipped for one day is not a weight-only stretch, so the figure it
+        // was holding is still about this body and must survive (ADR 0024).
+        val prior = seedReviewOn(today.minusDays(6))
+        reviews.insert(WeeklyReview(null, today.minusDays(1), 86.0, intakeTargets = null))
+        logIntakeDays(14 downTo 6) // 9 days, below the coverage floor: it cannot adapt
+
+        val review = service.runReview(today)
+
+        assertEquals(Maintenance.Basis.HELD, review.targets.maintenance.basis)
+        assertEquals(prior.targets.maintenance.kcal, review.targets.maintenance.kcal, 1e-9)
+    }
+
+    @Test
+    fun `a toggle after a long absence holds, because absence is not a stretch`() {
+        seedProfileAndGoal()
+        seedFlatTrend()
+        // Away for a fortnight, so the only figure to hold is a fortnight old — and
+        // ADR 0018 holds through absence however long it lasts. Opening Tucker minted
+        // a review yesterday, the toggle-off overwrote it with a target-less one, and
+        // tracking is back today. The gap is one day, so the old figure carries.
+        val prior = seedReviewOn(today.minusDays(14))
+        reviews.insert(WeeklyReview(null, today.minusDays(1), 86.0, intakeTargets = null))
+        logIntakeDays(14 downTo 6) // 9 days, below the coverage floor: it cannot adapt
+
+        val review = service.runReview(today)
+
+        assertEquals(Maintenance.Basis.HELD, review.targets.maintenance.basis)
+        assertEquals(prior.targets.maintenance.kcal, review.targets.maintenance.kcal, 1e-9)
     }
 
     @Test
@@ -217,7 +303,7 @@ class WeeklyReviewServiceTest {
 
         val review = service.runReview(today)
 
-        assertEquals(Maintenance.Basis.FORMULA_SEED, review.maintenance.basis)
+        assertEquals(Maintenance.Basis.FORMULA_SEED, review.targets.maintenance.basis)
     }
 
     @Test
@@ -257,8 +343,8 @@ class WeeklyReviewServiceTest {
         assertEquals(1, reviews.findAll().size)
         assertEquals(today, recomputed.reviewedOn)
         val reloaded = reviews.findByReviewedOn(today)!!
-        assertTrue(reloaded.calorieBudgetKcal != stale.calorieBudgetKcal)
-        assertEquals(recomputed.calorieBudgetKcal, reloaded.calorieBudgetKcal)
+        assertTrue(reloaded.targets.calorieBudgetKcal != stale.targets.calorieBudgetKcal)
+        assertEquals(recomputed.targets.calorieBudgetKcal, reloaded.targets.calorieBudgetKcal)
     }
 
     @Test
@@ -307,7 +393,7 @@ class WeeklyReviewServiceTest {
         val review = reviews.latest()!!
         assertEquals(today, review.reviewedOn)
         // It is a Maintenance review: Budget = Maintenance, no deficit.
-        assertEquals(review.maintenance.kcal, review.calorieBudgetKcal, 1e-9)
+        assertEquals(review.targets.maintenance.kcal, review.targets.calorieBudgetKcal, 1e-9)
     }
 
     @Test

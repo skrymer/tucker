@@ -2,6 +2,7 @@ package com.tucker.api
 
 import com.tucker.domain.Food
 import com.tucker.domain.FoodCandidate
+import com.tucker.domain.IntakeTargets
 import com.tucker.domain.Maintenance
 import com.tucker.domain.Nutrition
 import com.tucker.domain.ProviderCapability
@@ -77,18 +78,21 @@ class CheckApiTest {
                 id = null,
                 reviewedOn = on,
                 trendWeightKg = 86.0,
-                maintenance = Maintenance(2400.0, Maintenance.Basis.FORMULA_SEED),
-                calorieBudgetKcal = budgetKcal,
-                proteinFloorG = floorG,
+                intakeTargets = IntakeTargets(
+                    maintenance = Maintenance(2400.0, Maintenance.Basis.FORMULA_SEED),
+                    calorieBudgetKcal = budgetKcal,
+                    proteinFloorG = floorG,
+                ),
             ),
         )
     }
 
     /** Everything the adaptive engine needs before it will run a review of its own. */
-    private fun completeSetup(on: LocalDate) {
+    private fun completeSetup(on: LocalDate, tracksCalories: Boolean = true) {
         mockMvc.put("/api/profile") {
             contentType = MediaType.APPLICATION_JSON
-            content = """{"sex":"MALE","birthDate":"1986-05-22","heightCm":180.0}"""
+            content = """{"sex":"MALE","birthDate":"1986-05-22","heightCm":180.0,
+                          "tracksCalories":$tracksCalories}"""
         }.andExpect { status { isOk() } }
 
         // The 86 kg the Protein Floor assertions are derived from, at 2 g/kg.
@@ -218,7 +222,30 @@ class CheckApiTest {
         // the Floor, so with neither there is nothing honest to say (ADR 0022).
         providerKnows(nutellaBarcode, nutella(nutellaBarcode))
 
-        mockMvc.get("/api/check/$nutellaBarcode").andExpect { status { isConflict() } }
+        mockMvc.get("/api/check/$nutellaBarcode").andExpect {
+            status { isConflict() }
+            jsonPath("$.message") { value(containsString("finish setup")) }
+        }
+    }
+
+    @Test
+    fun `a Check is refused when the latest review carries no Intake Targets`() {
+        // A review ran — the cadence does not stop for Calorie Tracking — but it has
+        // no Budget and no Floor to be a share of, so a Check is as undefined here as
+        // it is before setup (ADR 0022). The client keeps this tab out of reach; the
+        // endpoint refuses rather than dividing by an absent denominator.
+        providerKnows(nutellaBarcode, nutella(nutellaBarcode))
+        completeSetup(LocalDate.now(), tracksCalories = false)
+        reviews.insert(
+            WeeklyReview(id = null, reviewedOn = LocalDate.now(), trendWeightKg = 86.0, intakeTargets = null),
+        )
+
+        // Same status, opposite advice: this User has nothing left to finish, so the
+        // reason names the setting rather than sending them looking (ADR 0024).
+        mockMvc.get("/api/check/$nutellaBarcode").andExpect {
+            status { isConflict() }
+            jsonPath("$.message") { value(containsString("calorie tracking")) }
+        }
     }
 
     @Test

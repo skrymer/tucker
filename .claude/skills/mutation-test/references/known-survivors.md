@@ -138,6 +138,17 @@ dry run, before a single mutant. Binding it (`const props = defineProps<…>()`)
 fixes it. The failure names the *consumer's* test, not the instrumented file, so it
 reads like an unrelated regression.
 
+**Its sibling, which has no fix: `withDefaults(defineProps<…>(), { … })` cannot be
+instrumented at all.** Stryker wraps the defaults object in its own coverage call,
+and `defineProps` may not reference locally declared variables — so the SFC
+compiler rejects it and the dry run dies before a single mutant, again naming a
+consumer's test. Scoping around it is the only option, which makes
+`ReviewDelta.vue`, `LedgerFigure.vue`, `LedgerBasisBadge.vue` and
+`RecipeCompositionSheet.vue` **hand-check only**: mutate the line, run
+`pnpm vitest run app/components`, restore. That is how `LedgerBasisBadge`'s
+`placeholder: false` default was found unasserted (#249) — nothing failed when it
+was flipped to `true`, and `ReviewLedgerItem.test.ts` now pins it.
+
 `pages/profile/index.vue` scores 22/47 with 10 uncovered, and `pages/index.vue`
 14/26 with 18 uncovered. **Pre-existing and untriaged** — neither page has been
 swept; #248 added `index.test.ts` (the page had none) but scoped it to the Calorie

@@ -77,7 +77,7 @@ test('the ledger lists each review newest-first with its delta and basis badge',
   // responsive split is honoured. (A heavily-smoothed volume can occasionally
   // mint a review equal to its predecessor, so the new row's own delta isn't a
   // reliable assertion — but the accumulated history always carries deltas.)
-  const newBudget = String(Math.round(after.calorieBudgetKcal))
+  const newBudget = String(Math.round(after.intakeTargets.calorieBudgetKcal))
   // The basis is a structured field on the response (#130); the badge mirrors it.
   // With no logged entries the catch-up holds the prior maintenance (basis HELD)
   // rather than re-seeding (ADR 0018), so the mapping is tri-state.
@@ -86,7 +86,7 @@ test('the ledger lists each review newest-first with its delta and basis badge',
     HELD: 'Held',
     FORMULA_SEED: 'Seed',
   }
-  const expectedBadge = badgeByBasis[after.maintenanceBasis]
+  const expectedBadge = badgeByBasis[after.intakeTargets.maintenanceBasis]
 
   await goto('/review', { waitUntil: 'hydration' })
 

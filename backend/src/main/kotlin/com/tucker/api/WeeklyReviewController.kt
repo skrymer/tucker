@@ -14,11 +14,23 @@ import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 import java.time.LocalDate
 
-/** API representation of a WeeklyReview. */
+/**
+ * API representation of a WeeklyReview. Every review carries a Trend Weight;
+ * [intakeTargets] is null for one run with Calorie Tracking off.
+ */
 data class WeeklyReviewResponse(
     val id: Long,
     val reviewedOn: LocalDate,
     val trendWeightKg: Double,
+    val intakeTargets: IntakeTargetsResponse?,
+)
+
+/**
+ * The intake half of a review, nested rather than flattened into four nullable
+ * siblings — one branch unlocks all four ledger columns, and there is no shape in
+ * which a Protein Floor arrives without the Calorie Budget it belongs to.
+ */
+data class IntakeTargetsResponse(
     val maintenanceKcal: Double,
     val maintenanceBasis: Maintenance.Basis,
     val calorieBudgetKcal: Double,
@@ -29,10 +41,14 @@ private fun WeeklyReview.toResponse() = WeeklyReviewResponse(
     id = persistedId(id),
     reviewedOn = reviewedOn,
     trendWeightKg = trendWeightKg,
-    maintenanceKcal = maintenance.kcal,
-    maintenanceBasis = maintenance.basis,
-    calorieBudgetKcal = calorieBudgetKcal,
-    proteinFloorG = proteinFloorG,
+    intakeTargets = intakeTargets?.let {
+        IntakeTargetsResponse(
+            maintenanceKcal = it.maintenance.kcal,
+            maintenanceBasis = it.maintenance.basis,
+            calorieBudgetKcal = it.calorieBudgetKcal,
+            proteinFloorG = it.proteinFloorG,
+        )
+    },
 )
 
 @RestController
