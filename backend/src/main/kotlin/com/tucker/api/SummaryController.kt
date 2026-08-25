@@ -24,6 +24,13 @@ import java.time.LocalDate
  */
 data class DailySummaryResponse(
     val date: LocalDate,
+    /**
+     * Whether this User has a Profile and at least one Weight Measurement — the
+     * inputs a Weekly Review needs. Orthogonal to Calorie Tracking: a weight-only
+     * User with no reading is genuinely not set up, while one who has weighed in is
+     * finished and should never be told otherwise, even though they have no Budget.
+     */
+    val setupComplete: Boolean,
     val caloriesConsumed: Double,
     val proteinConsumed: Double,
     val estimatedCalorieShare: Double,
@@ -55,7 +62,8 @@ data class DailySummaryResponse(
  * A weekly review moved the Calorie Budget or Protein Floor — so the daily
  * number never changes silently. Present only when the latest review is the
  * second or later and its budget or floor differs from the one before it; the
- * first-ever review has no prior figure to have changed from.
+ * first-ever review has no prior figure to have changed from, and neither does
+ * one on the far side of a stretch with Calorie Tracking off.
  */
 data class BudgetChange(
     val reviewId: Long,
@@ -65,18 +73,28 @@ data class BudgetChange(
     val newFloorG: Double,
 ) {
     companion object {
-        /** The change from [previous] to [latest], or null if neither figure moved. */
+        /**
+         * The change from [previous] to [latest] — null if neither figure moved, and
+         * null if either review carries no targets: a Budget that was never published
+         * cannot have moved, and stating a jump across the gap would invent one.
+         */
         fun between(previous: WeeklyReview, latest: WeeklyReview): BudgetChange? {
-            val moved = latest.calorieBudgetKcal != previous.calorieBudgetKcal ||
-                latest.proteinFloorG != previous.proteinFloorG
-            if (!moved) return null
-            return BudgetChange(
-                reviewId = latest.id!!,
-                previousBudgetKcal = previous.calorieBudgetKcal,
-                newBudgetKcal = latest.calorieBudgetKcal,
-                previousFloorG = previous.proteinFloorG,
-                newFloorG = latest.proteinFloorG,
-            )
+            val before = previous.intakeTargets
+            val after = latest.intakeTargets
+            if (before == null || after == null) return null
+            val moved = after.calorieBudgetKcal != before.calorieBudgetKcal ||
+                after.proteinFloorG != before.proteinFloorG
+            return if (moved) {
+                BudgetChange(
+                    reviewId = latest.id!!,
+                    previousBudgetKcal = before.calorieBudgetKcal,
+                    newBudgetKcal = after.calorieBudgetKcal,
+                    previousFloorG = before.proteinFloorG,
+                    newFloorG = after.proteinFloorG,
+                )
+            } else {
+                null
+            }
         }
     }
 }
@@ -106,11 +124,12 @@ class SummaryController(
         // one review, snapped to the client's local today, when due. This is what
         // stands down the day's reminder, and what lets a Check state its figures
         // against a current Budget.
-        weeklyReview.catchUpIfDue(date)
+        val setupComplete = weeklyReview.catchUpIfDue(date)
 
         val log = DailyLog(date, entries.findByDate(date))
         val recent = weeklyReview.recentReviews()
         val review = recent.firstOrNull()
+        val targets = review?.intakeTargets
         val budgetChange = recent.takeIf { it.size == 2 }
             ?.let { BudgetChange.between(previous = it[1], latest = it[0]) }
 
@@ -145,14 +164,15 @@ class SummaryController(
 
         return DailySummaryResponse(
             date = date,
+            setupComplete = setupComplete,
             caloriesConsumed = caloriesConsumed,
             proteinConsumed = proteinConsumed,
             estimatedCalorieShare = log.estimatedCalorieShare(),
-            calorieBudget = review?.calorieBudgetKcal,
-            proteinFloor = review?.proteinFloorG,
-            caloriesRemaining = review?.let { it.calorieBudgetKcal - caloriesConsumed },
-            proteinRemaining = review?.let { it.proteinFloorG - proteinConsumed },
-            dayStatus = review?.let { log.dayStatus(it.calorieBudgetKcal, it.proteinFloorG) },
+            calorieBudget = targets?.calorieBudgetKcal,
+            proteinFloor = targets?.proteinFloorG,
+            caloriesRemaining = targets?.let { it.calorieBudgetKcal - caloriesConsumed },
+            proteinRemaining = targets?.let { it.proteinFloorG - proteinConsumed },
+            dayStatus = targets?.let { log.dayStatus(it.calorieBudgetKcal, it.proteinFloorG) },
             trendWeightKg = review?.trendWeightKg,
             entries = log.entries.toResponses(foods),
             budgetChange = budgetChange,

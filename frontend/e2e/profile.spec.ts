@@ -42,7 +42,7 @@ test('the Profile page saves the profile and reflects the new values', async ({
 }) => {
   // Start with no profile; after PUT, GET returns the new values.
   let saved: unknown = null
-  await page.route('**/api/profile', async (route) => {
+  await page.route('**/api/profile*', async (route) => {
     const req = route.request()
     if (req.method() === 'GET') {
       if (saved) return route.fulfill({ json: saved })

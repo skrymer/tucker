@@ -129,7 +129,7 @@ test("another User's logging cannot move this User's Calorie Budget", async ({
   // assertion below would pass just as well against a fixture in which nothing
   // could have leaked because nothing was adaptive in the first place.
   const theirs = await (await otherUser.post(`${API}/weekly-review`)).json()
-  expect(theirs.maintenanceBasis).toBe('ADAPTIVE')
+  expect(theirs.intakeTargets.maintenanceBasis).toBe('ADAPTIVE')
 
   // The signed-in User has stepped on the scale across the same window and
   // logged nothing at all.
@@ -149,10 +149,12 @@ test("another User's logging cannot move this User's Calorie Budget", async ({
   expect(mine.reviewedOn, 'the run crossed UTC midnight').toBe(today)
   // Seeded from the formula, because *they* have logged nothing. Adapting here
   // would set their Calorie Budget from somebody else's eating.
-  expect(mine.maintenanceBasis).toBe('FORMULA_SEED')
+  expect(mine.intakeTargets.maintenanceBasis).toBe('FORMULA_SEED')
   // Stated against the fixture rather than a magic number: a leaked Maintenance
   // would land on the other User's 4000 kcal days, not a kilogram away from it.
-  expect(mine.maintenanceKcal).toBeLessThan(theirs.maintenanceKcal - 1000)
+  expect(mine.intakeTargets.maintenanceKcal).toBeLessThan(
+    theirs.intakeTargets.maintenanceKcal - 1000,
+  )
   // Exactly their own weight, because two identical readings smooth to
   // themselves. A trend averaged over both people would sit between 85 and 110,
   // dragging the Protein Floor with it.
@@ -161,7 +163,9 @@ test("another User's logging cannot move this User's Calorie Budget", async ({
   // And the dashboard states that Budget — the one figure the whole app is a
   // presentation of.
   await expect(
-    page.getByText(`/ ${Math.round(mine.calorieBudgetKcal)} kcal`),
+    page.getByText(
+      `/ ${Math.round(mine.intakeTargets.calorieBudgetKcal)} kcal`,
+    ),
   ).toBeVisible()
 })
 

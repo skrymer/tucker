@@ -48,8 +48,8 @@ class SetupApiTest {
         // now expose a real Calorie Budget and Protein Floor.
         mockMvc.get("/api/weekly-review").andExpect {
             status { isOk() }
-            jsonPath("$.calorieBudgetKcal") { exists() }
-            jsonPath("$.proteinFloorG") { exists() }
+            jsonPath("$.intakeTargets.calorieBudgetKcal") { exists() }
+            jsonPath("$.intakeTargets.proteinFloorG") { exists() }
         }
 
         mockMvc.get("/api/summary") {

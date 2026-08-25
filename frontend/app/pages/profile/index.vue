@@ -39,6 +39,10 @@ function useProfileForm() {
       $api('/api/profile', {
         method: 'PUT',
         body: { ...profile.value, ...payload } as ProfileDto,
+        // The client owns "today" (ADR 0014): a change of Calorie Tracking
+        // force-recomputes today's review, and this is the day it lands on, so
+        // the Budget leaves or returns on the user's own day.
+        query: { clientToday: localToday() },
       }),
     {
       // No success toast: the profile card below the form updates in place.

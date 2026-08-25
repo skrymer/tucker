@@ -4,6 +4,7 @@ import com.tucker.domain.Goal
 import com.tucker.domain.Profile
 import com.tucker.domain.Sex
 import com.tucker.domain.WeightMeasurement
+import com.tucker.domain.targets
 import com.tucker.persistence.GoalRepository
 import com.tucker.persistence.ProfileRepository
 import com.tucker.persistence.WeeklyReviewRepository
@@ -92,14 +93,14 @@ class GoalServiceTest {
         seedProfileAndWeight()
         // An existing plan, with today's review already reflecting its slower rate.
         service.createGoal(today, 80.0, 0.5, today)
-        val before = reviews.findByReviewedOn(today)!!.calorieBudgetKcal
+        val before = reviews.findByReviewedOn(today)!!.targets.calorieBudgetKcal
 
         // Replace it with a steeper rate — a deliberate Goal change.
         service.createGoal(today, 80.0, 0.75, today)
 
         // Today's review is recomputed in place: same maintenance, larger deficit, so
         // the Budget drops immediately rather than waiting for the weekly cadence.
-        val after = reviews.findByReviewedOn(today)!!.calorieBudgetKcal
+        val after = reviews.findByReviewedOn(today)!!.targets.calorieBudgetKcal
         val extraDeficit = (0.75 - 0.5) * Goal.KCAL_PER_KG_FAT / Goal.DAYS_PER_WEEK
         assertEquals(before - extraDeficit, after, 0.5)
         assertEquals(1, reviews.findAll().size)
@@ -109,7 +110,7 @@ class GoalServiceTest {
     fun `deactivating the active goal switches to maintenance and recomputes today's review`() {
         seedProfileAndWeight()
         service.createGoal(today, 80.0, 0.5, today)
-        val cutBudget = reviews.findByReviewedOn(today)!!.calorieBudgetKcal
+        val cutBudget = reviews.findByReviewedOn(today)!!.targets.calorieBudgetKcal
 
         service.deactivateActiveGoal(today)
 
@@ -118,8 +119,8 @@ class GoalServiceTest {
         // Today's review is recomputed in place to the Maintenance budget (no deficit),
         // so it lifts above the cut budget rather than waiting for the weekly cadence.
         val review = reviews.findByReviewedOn(today)!!
-        assertEquals(review.maintenance.kcal, review.calorieBudgetKcal, 1e-9)
-        assertEquals(cutBudget + newGoal(rate = 0.5).dailyDeficitKcal(), review.calorieBudgetKcal, 0.5)
+        assertEquals(review.targets.maintenance.kcal, review.targets.calorieBudgetKcal, 1e-9)
+        assertEquals(cutBudget + newGoal(rate = 0.5).dailyDeficitKcal(), review.targets.calorieBudgetKcal, 0.5)
         assertEquals(1, reviews.findAll().size)
     }
 

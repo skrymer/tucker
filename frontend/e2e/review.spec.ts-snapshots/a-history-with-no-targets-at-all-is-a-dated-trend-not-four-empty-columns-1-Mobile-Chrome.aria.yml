@@ -1,0 +1,13 @@
+- main:
+    - heading "Review" [level=1]
+    - list:
+        - listitem:
+            - paragraph: 8 Jun 2026
+            - paragraph: '85.4'
+            - paragraph: kg trend
+            - text: down by 0.6 versus the previous review
+        - listitem:
+            - paragraph: 1 Jun 2026
+            - paragraph: '86.0'
+            - paragraph: kg trend
+    - button "Run review now"

@@ -1,8 +1,9 @@
 package com.tucker.service
 
+import com.tucker.domain.Goal
+import com.tucker.domain.IntakeTargets
 import com.tucker.domain.Maintenance
 import com.tucker.domain.Profile
-import com.tucker.domain.ProteinFloor
 import com.tucker.domain.ReviewCadence
 import com.tucker.domain.WeeklyReview
 import com.tucker.domain.WeightTrend
@@ -38,13 +39,18 @@ class WeeklyReviewService(
      * (in Maintenance Mode no Goal creation has fired one), then runs a fresh review
      * snapped to [today] whenever the latest has aged past the weekly cadence. A
      * no-op while a recent review exists or setup is incomplete.
+     *
+     * Returns [setupComplete], which it has to establish anyway — the daily summary
+     * needs the same answer, and asking twice re-reads the Profile and a weight on
+     * Tucker's hottest endpoint.
      */
     @Transactional
-    fun catchUpIfDue(today: LocalDate) {
-        if (!setupComplete()) return
+    fun catchUpIfDue(today: LocalDate): Boolean {
+        if (!setupComplete()) return false
         // The same overdue predicate the Weekly-Review Reminder asks (ADR 0010) —
         // a missing review is itself overdue, so the very first one bootstraps here.
         if (ReviewCadence.isOverdue(reviews.latest()?.reviewedOn, today)) runReview(today)
+        return true
     }
 
     /**
@@ -58,10 +64,12 @@ class WeeklyReviewService(
      * The inputs a review needs; absent any of them, catch-up stays a no-op. A Goal
      * is *not* required — its absence is Maintenance Mode (ADR 0008), which still
      * reviews — only a Profile (for the formula seed) and at least one weight.
+     *
+     * Orthogonal to Calorie Tracking, and surfaced on the daily summary because of
+     * it: with tracking off a Calorie Budget is absent by choice, so absence alone
+     * can no longer tell the client whether the User still has setup to finish.
      */
-    private fun setupComplete(): Boolean =
-        profiles.get() != null &&
-            WeightTrend.from(weights.findAll()).latest() != null
+    fun setupComplete(): Boolean = profiles.get() != null && weights.latest() != null
 
     /**
      * Force-recompute the review for [on], overwriting any existing same-day record.
@@ -96,18 +104,23 @@ class WeeklyReviewService(
         val trendWeightKg = trend.latest()?.trendKg
             ?: error("no weight measurements — cannot run a weekly review")
 
-        val maintenance = estimateMaintenance(on, profile, trend, trendWeightKg)
-        val calorieBudget = maintenance.kcal - (goal?.dailyDeficitKcal() ?: 0.0)
-        val proteinFloor = ProteinFloor.forTrendWeight(trendWeightKg)
-
         return reviews.insert(
             WeeklyReview(
                 id = null,
                 reviewedOn = on,
                 trendWeightKg = trendWeightKg,
-                maintenance = maintenance,
-                calorieBudgetKcal = calorieBudget,
-                proteinFloorG = proteinFloor,
+                // The review's second job, and the only optional one: with Calorie
+                // Tracking off there is no intake to correct against, so a Budget
+                // would be a target that can never become true (ADR 0024).
+                intakeTargets = if (profile.tracksCalories) {
+                    IntakeTargets.from(
+                        estimateMaintenance(on, profile, trend, trendWeightKg),
+                        goal,
+                        trendWeightKg,
+                    )
+                } else {
+                    null
+                },
             ),
         )
     }
@@ -149,14 +162,35 @@ class WeeklyReviewService(
         // Can't adapt — no trend anchor yet, too few logged days, or no real intake.
         // Hold the most recent earlier review's maintenance steady rather than
         // recompute from thin data: the Budget moves with the trend, not with logging
-        // diligence (ADR 0018). The BMR seed is only for cold start, when there is no
-        // prior review to hold.
-        val prior = reviews.latestBefore(on)
-        return if (prior != null) {
-            Maintenance.held(prior.maintenance.kcal)
+        // diligence (ADR 0018). The seed is the cold-start value, for when there is
+        // nothing to hold.
+        val heldKcal = heldMaintenanceKcal(on)
+        return if (heldKcal != null) {
+            Maintenance.held(heldKcal)
         } else {
             Maintenance.seed(profile, currentTrendKg, on)
         }
+    }
+
+    /**
+     * The Maintenance to carry into the review for [on], or null to seed instead.
+     *
+     * Normally the preceding review's (ADR 0018). After a weight-only stretch that
+     * review carries no targets and there is nothing to hold, so the seed re-anchors
+     * on the body the User has now (ADR 0024) — but a *toggle* is not a stretch, so
+     * an earlier figure is carried across a gap shorter than one cadence.
+     *
+     * The gap is measured from the preceding review, which is when tracking went
+     * off — not from the held figure's own age. Otherwise a fortnight away, one app
+     * open, and a setting flipped for a day would re-seed a User that ADR 0018 says
+     * to hold: absence is its case, and holds however long it lasts.
+     */
+    private fun heldMaintenanceKcal(on: LocalDate): Double? {
+        val previous = reviews.latestBefore(on) ?: return null
+        return previous.intakeTargets?.maintenance?.kcal
+            ?: reviews.latestWithTargetsBefore(on)
+                ?.takeIf { !ReviewCadence.isOverdue(previous.reviewedOn, on) }
+                ?.intakeTargets?.maintenance?.kcal
     }
 
     private companion object {

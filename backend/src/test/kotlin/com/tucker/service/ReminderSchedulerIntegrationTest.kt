@@ -1,6 +1,7 @@
 package com.tucker.service
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.tucker.domain.IntakeTargets
 import com.tucker.domain.Maintenance
 import com.tucker.domain.PushSubscription
 import com.tucker.domain.SendResult
@@ -146,7 +147,7 @@ class ReminderSchedulerIntegrationTest {
         reviews.insert(
             WeeklyReview(
                 null, today.minusDays(OVERDUE_BY_DAYS), 86.0,
-                Maintenance(2400.0, Maintenance.Basis.FORMULA_SEED), 1850.0, 172.0,
+                IntakeTargets(Maintenance(2400.0, Maintenance.Basis.FORMULA_SEED), 1850.0, 172.0),
             ),
         )
     }

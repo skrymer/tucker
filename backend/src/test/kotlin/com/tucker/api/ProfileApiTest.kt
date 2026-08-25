@@ -7,8 +7,10 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
+import org.springframework.test.web.servlet.post
 import org.springframework.test.web.servlet.put
 import org.springframework.transaction.annotation.Transactional
+import java.time.LocalDate
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -107,6 +109,67 @@ class ProfileApiTest {
         mockMvc.get("/api/profile").andExpect {
             status { isOk() }
             jsonPath("$.tracksCalories") { value(false) }
+        }
+    }
+
+    /**
+     * A set-up User with today's review already run — the state a toggle has to act
+     * on, because the Budget on `/` comes from that review and the cadence would
+     * otherwise hold it for up to a week.
+     */
+    private fun userReviewedOn(today: LocalDate, tracksCalories: Boolean = true) {
+        savedTrackingChoice(today, tracksCalories)
+
+        mockMvc.post("/api/weight") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"date":"$today","weightKg":86.0,"clientToday":"$today"}"""
+        }.andExpect { status { isOk() } }
+
+        mockMvc.post("/api/weekly-review?clientToday=$today").andExpect {
+            status { isOk() }
+            jsonPath("$.intakeTargets") { if (tracksCalories) isNotEmpty() else value(null) }
+        }
+    }
+
+    /** Save the body stats with a Calorie Tracking choice, stamped on the user's day. */
+    private fun savedTrackingChoice(today: LocalDate, tracksCalories: Boolean) {
+        mockMvc.put("/api/profile?clientToday=$today") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"sex":"MALE","birthDate":"1986-05-22","heightCm":180.0,
+                          "tracksCalories":$tracksCalories}"""
+        }.andExpect { status { isOk() } }
+    }
+
+    @Test
+    fun `turning Calorie Tracking off drops today's targets the same day`() {
+        val today = LocalDate.now()
+        userReviewedOn(today)
+
+        savedTrackingChoice(today, tracksCalories = false)
+
+        // Today's review is recomputed in place (ADR 0008's trigger, for the same
+        // reason): without it a stale Budget lingers on `/` for up to a week.
+        mockMvc.get("/api/weekly-review").andExpect {
+            status { isOk() }
+            jsonPath("$.reviewedOn") { value("$today") }
+            jsonPath("$.intakeTargets") { value(null) }
+        }
+    }
+
+    @Test
+    fun `turning Calorie Tracking on brings today's targets back the same day`() {
+        val today = LocalDate.now()
+        userReviewedOn(today, tracksCalories = false)
+
+        savedTrackingChoice(today, tracksCalories = true)
+
+        // Turning it on is a real re-entry, not a promise for next week: the Budget
+        // appears today, seeded from the current Trend Weight (ADR 0024).
+        mockMvc.get("/api/weekly-review").andExpect {
+            status { isOk() }
+            jsonPath("$.reviewedOn") { value("$today") }
+            jsonPath("$.intakeTargets.maintenanceBasis") { value("FORMULA_SEED") }
+            jsonPath("$.intakeTargets.calorieBudgetKcal") { isNumber() }
         }
     }
 }

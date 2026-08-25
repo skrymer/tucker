@@ -138,12 +138,7 @@ const { logWeight } = useWeightLogging({ today, onSaved: onWeightSaved })
       title="Couldn't load today's summary"
       @retry="refresh"
     >
-      <!-- Still keyed on the Budget, so a User who is not counting calories and
-           has no Weight Measurement yet is told to finish setup "to see your
-           calorie budget". Correcting the sentence needs the summary's
-           `setupComplete`, which lands with #249 — as does the Maintaining
-           card's drift copy, which likewise still names a budget. -->
-      <SetupBanner :calorie-budget="summary?.calorieBudget" />
+      <SetupBanner :setup-complete="summary?.setupComplete" />
       <BudgetChangeBanner
         v-if="tracksCalories"
         :budget-change="summary?.budgetChange"

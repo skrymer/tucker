@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { TableColumn } from '@nuxt/ui'
 import type { components } from '#open-fetch-schemas/api'
-import { REVIEW_BASIS_BADGE, type LedgerRow } from '~/utils/reviewLedger'
+import type { LedgerRow } from '~/utils/reviewLedger'
 
 const props = defineProps<{
   reviews: components['schemas']['WeeklyReviewResponse'][]
@@ -10,19 +10,44 @@ const props = defineProps<{
 const isDesktop = useIsDesktop()
 
 // The history arrives oldest-first; toLedgerRows reverses it to newest-first and
-// attaches each row's delta and basis. Both the table and the cards read it.
+// attaches each row's deltas. Both the table and the cards read it.
 const rows = computed(() => toLedgerRows(props.reviews))
 
 // Numeric columns are right-aligned so the stacked value + delta line up.
 const numeric = { class: { th: 'text-right', td: 'text-right' } }
-const columns: TableColumn<LedgerRow>[] = [
-  { id: 'reviewedOn', header: 'Reviewed' },
+
+const REVIEWED: TableColumn<LedgerRow> = {
+  id: 'reviewedOn',
+  header: 'Reviewed',
+}
+const TREND: TableColumn<LedgerRow> = {
+  id: 'trendWeightKg',
+  header: 'Trend wt.',
+  meta: numeric,
+}
+
+/** The Budget leads the calorie four: it is the figure the week is read for. */
+const WITH_TARGETS: TableColumn<LedgerRow>[] = [
+  REVIEWED,
   { id: 'basis', header: 'Basis' },
   { id: 'calorieBudgetKcal', header: 'Budget', meta: numeric },
-  { id: 'trendWeightKg', header: 'Trend wt.', meta: numeric },
+  TREND,
   { id: 'maintenanceKcal', header: 'Maintenance', meta: numeric },
   { id: 'proteinFloorG', header: 'Protein floor', meta: numeric },
 ]
+
+/**
+ * The columns this history earns. The calorie four appear whenever *any* review
+ * carries Intake Targets — read off the data, never off the current setting,
+ * which would be wrong both ways: it would erase a currently-off User's real
+ * history, and give a currently-on User columns of em-dashes over the weeks they
+ * were not tracking.
+ */
+const columns = computed(() =>
+  props.reviews.some((review) => review.intakeTargets != null)
+    ? WITH_TARGETS
+    : [REVIEWED, TREND],
+)
 </script>
 
 <template>
@@ -40,62 +65,40 @@ const columns: TableColumn<LedgerRow>[] = [
     </template>
 
     <template #basis-cell="{ row }">
-      <UBadge
-        :color="REVIEW_BASIS_BADGE[row.original.review.maintenanceBasis].color"
-        variant="subtle"
-        size="sm"
-      >
-        {{ REVIEW_BASIS_BADGE[row.original.review.maintenanceBasis].label }}
-      </UBadge>
+      <LedgerBasisBadge
+        placeholder
+        :basis="row.original.review.intakeTargets?.maintenanceBasis"
+      />
     </template>
 
     <template #calorieBudgetKcal-cell="{ row }">
-      <div class="flex flex-col items-end tabular-nums">
-        <span class="font-semibold text-default">
-          {{ Math.round(row.original.review.calorieBudgetKcal) }}
-        </span>
-        <ReviewDelta
-          :value="row.original.delta?.calorieBudgetKcal ?? null"
-          placeholder
-        />
-      </div>
+      <LedgerFigure
+        lead
+        :value="row.original.review.intakeTargets?.calorieBudgetKcal"
+        :delta="row.original.targetsDelta?.calorieBudgetKcal"
+      />
     </template>
 
     <template #trendWeightKg-cell="{ row }">
-      <div class="flex flex-col items-end tabular-nums">
-        <span class="text-default">
-          {{ row.original.review.trendWeightKg.toFixed(1) }}
-        </span>
-        <ReviewDelta
-          :value="row.original.delta?.trendWeightKg ?? null"
-          :decimals="1"
-          placeholder
-        />
-      </div>
+      <LedgerFigure
+        :value="row.original.review.trendWeightKg"
+        :delta="row.original.trendDelta"
+        :decimals="1"
+      />
     </template>
 
     <template #maintenanceKcal-cell="{ row }">
-      <div class="flex flex-col items-end tabular-nums">
-        <span class="text-default">
-          {{ Math.round(row.original.review.maintenanceKcal) }}
-        </span>
-        <ReviewDelta
-          :value="row.original.delta?.maintenanceKcal ?? null"
-          placeholder
-        />
-      </div>
+      <LedgerFigure
+        :value="row.original.review.intakeTargets?.maintenanceKcal"
+        :delta="row.original.targetsDelta?.maintenanceKcal"
+      />
     </template>
 
     <template #proteinFloorG-cell="{ row }">
-      <div class="flex flex-col items-end tabular-nums">
-        <span class="text-default">
-          {{ Math.round(row.original.review.proteinFloorG) }}
-        </span>
-        <ReviewDelta
-          :value="row.original.delta?.proteinFloorG ?? null"
-          placeholder
-        />
-      </div>
+      <LedgerFigure
+        :value="row.original.review.intakeTargets?.proteinFloorG"
+        :delta="row.original.targetsDelta?.proteinFloorG"
+      />
     </template>
   </UTable>
 

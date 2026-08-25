@@ -7,26 +7,21 @@ import {
 import { createError } from 'h3'
 import { screen } from '@testing-library/vue'
 import { goalProgress } from '~~/test/goal-fixtures'
-import { defineComponent, h, ref } from 'vue'
+import { withCalorieTracking } from '~~/test/calorie-tracking-helpers'
+import { ref } from 'vue'
 import Today from './index.vue'
 
 // jsdom reports the desktop breakpoint, so a phone-only branch needs saying.
 const viewport = vi.hoisted(() => ({ desktop: true }))
 mockNuxtImport('useIsDesktop', () => () => ref(viewport.desktop))
 
-// The real composable, seeded through its own public `readFrom` from a host —
-// ADR 0013 mocks only the true external boundary, and this one is Tucker's.
-// `/` never loads the setting itself; the app shell does, before the page paints.
 const tracking = { tracksCalories: true }
-const todayFor = (tracksCalories: boolean) =>
-  defineComponent({
-    setup: () => useCalorieTracking().readFrom({ tracksCalories }),
-    render: () => h(Today),
-  })
-const renderToday = () => renderSuspended(todayFor(tracking.tracksCalories))
+const renderToday = () =>
+  renderSuspended(withCalorieTracking(Today, tracking.tracksCalories))
 
 const DAY = {
   date: '2026-08-24',
+  setupComplete: true,
   caloriesConsumed: 1500,
   proteinConsumed: 140,
   estimatedCalorieShare: 0,
@@ -153,7 +148,7 @@ describe('/ in Maintenance Mode', () => {
       // to close, so there is no ring to close it with.
       expect(screen.getByRole('heading', { name: 'Maintaining' })).toBeVisible()
       expect(screen.getByText('86.0 kg')).toBeVisible()
-      expect(screen.getByText(/a couple more weigh-ins/i)).toBeVisible()
+      expect(screen.getByText(/a couple more readings/i)).toBeVisible()
       expect(screen.queryByText('kg to go')).toBeNull()
     },
   )

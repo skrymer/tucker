@@ -1,0 +1,21 @@
+- main:
+    - heading "Review" [level=1]
+    - list:
+        - listitem:
+            - paragraph: 15 Jun 2026
+            - text: Adaptive
+            - paragraph: '1900'
+            - paragraph: kcal budget
+            - paragraph: 85.0 kg trend · 2400 kcal maint · 170 g protein
+        - listitem:
+            - paragraph: 8 Jun 2026
+            - paragraph: '85.4'
+            - paragraph: kg trend
+            - text: down by 0.6 versus the previous review
+        - listitem:
+            - paragraph: 1 Jun 2026
+            - text: Adaptive
+            - paragraph: '1900'
+            - paragraph: kcal budget
+            - paragraph: 86.0 kg trend · 2400 kcal maint · 170 g protein
+    - button "Run review now"

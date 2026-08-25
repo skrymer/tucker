@@ -37,6 +37,34 @@ class WeeklyReviewApiTest {
         }.andExpect { status { isCreated() } }
     }
 
+    /** A User who has said they are not counting calories, with a reading to their name. */
+    private fun weightOnlySetup(on: LocalDate) {
+        mockMvc.put("/api/profile") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"sex":"MALE","birthDate":"1986-05-22","heightCm":180.0,"tracksCalories":false}"""
+        }.andExpect { status { isOk() } }
+
+        mockMvc.post("/api/weight") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"date":"$on","weightKg":86.0}"""
+        }.andExpect { status { isOk() } }
+    }
+
+    @Test
+    fun `a review run with Calorie Tracking off carries a Trend Weight and no Intake Targets`() {
+        val today = LocalDate.now()
+        weightOnlySetup(today)
+        mockMvc.post("/api/weekly-review").andExpect { status { isOk() } }
+
+        // One nullable object, not four nullable fields: one branch in the ledger
+        // unlocks all four columns, and no row can carry a Floor without a Budget.
+        mockMvc.get("/api/weekly-review/history").andExpect {
+            status { isOk() }
+            jsonPath("$[0].trendWeightKg") { value(86.0) }
+            jsonPath("$[0].intakeTargets") { value(null) }
+        }
+    }
+
     @Test
     fun `the review response carries the maintenance basis as a field and omits the note`() {
         val today = LocalDate.now()
@@ -47,8 +75,8 @@ class WeeklyReviewApiTest {
         // prose; with little history the cold-start seed is what the engine picks.
         mockMvc.get("/api/weekly-review").andExpect {
             status { isOk() }
-            jsonPath("$.maintenanceBasis") { value("FORMULA_SEED") }
-            jsonPath("$.note") { doesNotExist() }
+            jsonPath("$.intakeTargets.maintenanceBasis") { value("FORMULA_SEED") }
+            jsonPath("$.intakeTargets.note") { doesNotExist() }
         }
     }
 
