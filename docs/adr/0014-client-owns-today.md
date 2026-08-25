@@ -29,7 +29,10 @@ local date and acts on it:
   client's day.
 
 The client date is carried as `clientToday` (request body for the POSTs, query param
-for the DELETE), exactly as `/weight` already does, and resolved by one shared
+for the DELETE — and for `PUT /api/profile`, added by
+[0024](0024-a-weekly-review-carries-intake-targets-only-when-they-can-be-corrected.md),
+whose body is a whole-Profile replace with no room for a field that is not part of
+one), exactly as `/weight` already does, and resolved by one shared
 `UserToday` component. It trusts the client's date but only within **±1 day** of the
 server's — a real timezone shifts the local date by at most a day, so anything beyond
 that is a misconfigured (or untrustworthy) client clock and is rejected. When the
@@ -82,8 +85,10 @@ the user's own zone is a move toward this ADR's model rather than away from it.
 - A Goal change or manual review recompute lands on the user's local day regardless
   of the server's zone — proven by a frozen-clock integration test
   (`GoalClientTodayApiTest`) and a real-stack smoke.
-- The `clientToday` contract is now uniform across `/weight`, `/goal`, and
-  `/weekly-review`; the frontend sends its `localToday()` on each.
+- The `clientToday` contract is now uniform across `/weight`, `/goal`,
+  `/weekly-review` and — since [0024](0024-a-weekly-review-carries-intake-targets-only-when-they-can-be-corrected.md)
+  made a Calorie-Tracking change recompute today's review — `/profile`; the
+  frontend sends its `localToday()` on each.
 - The #84 UTC pin is retained as a safety net, not a crutch.
 
 ## References
