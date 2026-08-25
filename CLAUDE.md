@@ -789,16 +789,17 @@ The frontend is built **test-first (red-green TDD)**. Increments:
   `shownAt` is scoped to a run while `busy` is scoped to the episode (pre-existing,
   unchanged by #183, most reachable on `/check`).
 - **F12** — Calorie Tracking is optional: use Tucker as a goal and weight tracker
-  (PRD [#246](https://github.com/skrymer/tucker/issues/246)). Some people want the
-  other half of the app and not the log half — they weigh in, they set a **Goal**,
-  and they manage their eating themselves — and Tucker had no way to say so, so it
-  was permanently wrong at them: a perpetual `0 / 1800 kcal`, two dead nav tabs, a
-  setup banner nagging about a screen with nothing left to finish, and a **Calorie
-  Budget** that could never become true. **Calorie Tracking** becomes a deliberate
-  setting on the **Profile** — on by default, changeable whenever, never inferred
-  from a quiet fortnight, because a lapsed logger is not the same person as one who
-  has chosen not to log. Weight is not the symmetric half of a pair but the spine:
-  there is no "calories but no weight" User to be. Three slices:
+  (**shipped**, PRD [#246](https://github.com/skrymer/tucker/issues/246)). Some
+  people want the other half of the app and not the log half — they weigh in, they
+  set a **Goal**, and they manage their eating themselves — and Tucker had no way
+  to say so, so it was permanently wrong at them: a perpetual `0 / 1800 kcal`, two
+  dead nav tabs, a setup banner nagging about a screen with nothing left to finish,
+  and a **Calorie Budget** that could never become true. **Calorie Tracking**
+  becomes a deliberate setting on the **Profile** — on by default, changeable
+  whenever, never inferred from a quiet fortnight, because a lapsed logger is not
+  the same person as one who has chosen not to log. Weight is not the symmetric
+  half of a pair but the spine: there is no "calories but no weight" User to be.
+  Four slices:
   - Slice 1 ([#247](https://github.com/skrymer/tucker/issues/247), shipped
     [#251](https://github.com/skrymer/tucker/pull/251)) — **the setting, read by
     nothing.** `Profile.tracksCalories`, V14 (`ADD COLUMN ... NOT NULL DEFAULT 1`,
@@ -876,12 +877,41 @@ The frontend is built **test-first (red-green TDD)**. Increments:
       basis and nothing to be the basis of.
     - `MaintainingTile`'s drift copy stops promising a budget adjustment to a User
       with no budget — folded in because it is the same fix on the same screen.
-  - Later slice: [#250](https://github.com/skrymer/tucker/issues/250) — the
-    Weekly-Review Reminder's copy still says "log today and refresh your calorie
-    budget" to a User with neither. The firing *rule* needs no change: a review
-    still comes due either way.
+  - Slice 4 ([#250](https://github.com/skrymer/tucker/issues/250)) — **the weekly
+    reminder speaks to the right User**, and with it **F12 is complete**. The nudge
+    shipped as one sentence naming two things a weight-only User does not have —
+    food they log, and a Calorie Budget to refresh, which since ADR 0024 their
+    review genuinely does not carry — so the copy is now chosen from
+    `Profile.tracksCalories` at send time. Recorded in ADR 0010, "What the nudge
+    says".
+    - **Only the copy, and a test says so.** Every `ReminderPolicy` gate is
+      untouched: a review comes due on the same seven-day cadence whatever a User
+      tracks, because its first job — recording the Trend Weight — is the one
+      neither setting removes. A copy split is exactly the change a later reader
+      assumes implied a gate split, so two Users differing in that one field alone
+      are asserted to be gated in and out *together*.
+    - **Chosen inside a User's turn**, from the Profile that turn already read to
+      resolve the timezone and the hour — so one tick says the right thing to each
+      of several people. Resolved once for the tick, whoever sorted first would
+      decide what everybody else's phone said.
+    - **The smoke had to be able to see the words.** A payload leaves no trace in
+      the database, so a real-stack smoke asserting a `sent` count reads the same
+      whatever the nudge says — it would have passed with the whole slice reverted.
+      `RecordingWebPushSender` now keeps what it was asked to send and a
+      smoke-profile `GET /api/test/push-payloads` reads it back, alongside the
+      `/api/test/push-subscriptions` that exists for the same reason.
+    - `push-sw.js` is untouched, and structurally so: both payloads carry exactly
+      `title` and `body`, which is what leaves the worker in sole charge of the
+      icon, the badge, the collapse tag and where a tap lands (issues #178, #189).
   **Out of scope:** self-service anything beyond the setting itself, and a
   surplus/gaining shape of the same idea ([#62](https://github.com/skrymer/tucker/issues/62)).
+- **F13** — a **Weigh-in Reminder**: nudge a User who has not weighed in, rather
+  than one who has not opened Tucker. Deferred out of F12 slice 4 rather than
+  smuggled into it, because it is a different *trigger* and not a different
+  sentence — the Weekly-Review Reminder fires on absence from the **app**, so a
+  weight-only User who opens Tucker daily and never steps on the scale is never
+  nudged while their Trend Weight goes stale. The same shape of limit ADR 0010
+  already records for a Check-only User. Not designed, not sliced, no issue yet.
 
 ## Architecture
 

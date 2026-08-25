@@ -1,5 +1,6 @@
 package com.tucker.service
 
+import com.tucker.domain.Profile
 import com.tucker.domain.PushSubscription
 import com.tucker.domain.ReminderPolicy
 import com.tucker.domain.ReminderState
@@ -47,24 +48,31 @@ class UserReminder(
     /** Nudge the current User if one is due as of [now]; returns devices delivered to. */
     fun nudgeIfDue(now: Instant): Int {
         val subs = subscriptions.findAll()
-        val state = stateFor(now, subs)
-        if (state == null || !ReminderPolicy.shouldSend(state)) return 0
+        val nudge = dueNudge(now, subs) ?: return 0
 
-        val delivered = subs.count { deliver(it, PAYLOAD) }
+        val delivered = subs.count { deliver(it, nudge.payload) }
         // Stamp only on a real delivery so a transport blip retries next tick rather
         // than silently consuming the whole overdue episode (ADR 0010 dedupe).
-        if (delivered > 0) reminderState.stampReminderSent(state.today)
+        if (delivered > 0) reminderState.stampReminderSent(nudge.state.today)
         return delivered
     }
 
     /**
-     * Everything the [ReminderPolicy] decision reads, as of [now] — or null when
-     * this User has no Profile, since without one there is no timezone to resolve a
-     * local hour in and so nothing the policy could decide.
+     * The nudge this User is owed as of [now], or null if none is: the pure
+     * [ReminderPolicy] decision, and — since only the Profile that answered it knows
+     * what half of Tucker this User uses — the words that go with the answer.
      */
-    private fun stateFor(now: Instant, subs: List<PushSubscription>): ReminderState? {
+    private fun dueNudge(now: Instant, subs: List<PushSubscription>): DueNudge? {
+        // No Profile means no timezone to resolve a local hour in, so there is nothing
+        // the policy could decide and no copy to choose.
         val profile = profiles.get() ?: return null
-        return ReminderState(
+        val state = stateFor(now, profile, subs)
+        return if (ReminderPolicy.shouldSend(state)) DueNudge(payloadFor(profile), state) else null
+    }
+
+    /** Everything the [ReminderPolicy] decision reads, as of [now]. */
+    private fun stateFor(now: Instant, profile: Profile, subs: List<PushSubscription>): ReminderState =
+        ReminderState(
             now = now,
             zone = ZoneId.of(profile.timezone),
             reminderHour = profile.reminderHour,
@@ -75,7 +83,19 @@ class UserReminder(
             lastSeenOn = reminderState.lastSeenOn(),
             lastReminderSentOn = reminderState.lastReminderSentOn(),
         )
-    }
+
+    /** What the nudge says — Calorie Tracking is the only thing it varies with. */
+    private fun payloadFor(profile: Profile): String =
+        if (profile.tracksCalories) TRACKING_PAYLOAD else WEIGHT_ONLY_PAYLOAD
+
+    /**
+     * A nudge that is owed: what to say, and the state that decided it — which is also
+     * where the local day the send is stamped on comes from.
+     *
+     * A holder rather than two returns from [nudgeIfDue], because the copy and the
+     * decision are read from one Profile and the alternative is reading it twice.
+     */
+    private data class DueNudge(val payload: String, val state: ReminderState)
 
     /** Push to one device; prune it on GONE. Returns whether it was delivered. */
     private fun deliver(subscription: PushSubscription, payload: String): Boolean =
@@ -96,17 +116,28 @@ class UserReminder(
         private val log = LoggerFactory.getLogger(UserReminder::class.java)
 
         /**
-         * The fixed nudge, as the JSON the service worker's push handler parses to
-         * render the notification. Text only: the worker supplies the icon/badge/tag
-         * and decides where a tap lands, because a frontend route is not the backend's
-         * to name — the copy that used to live here disagreed with the route table for
-         * months, uncaught, until a tap 404'd (issues #178, #189).
+         * The title both nudges carry: a Weekly Review comes due on the same cadence
+         * whatever a User tracks, and it is the review the nudge is about.
          *
-         * A constant because the nudge is the same every time — never a guilt-trip,
-         * never personalised (CONTEXT.md Weekly-Review Reminder).
+         * Both payloads are the JSON the service worker's push handler parses, and both
+         * are text alone: the worker supplies the icon/badge/tag and decides where a tap
+         * lands, because a frontend route is not the backend's to name (issues #178, #189).
          */
-        const val PAYLOAD =
-            """{"title":"Time for your weekly review",""" +
+        private const val TITLE = "Time for your weekly review"
+
+        /** The nudge for a User doing Calorie Tracking. */
+        private const val TRACKING_PAYLOAD =
+            """{"title":"$TITLE",""" +
                 """"body":"Open Tucker to log today and refresh your calorie budget."}"""
+
+        /**
+         * The nudge for a User with Calorie Tracking off, who logs no food and whose
+         * review carries no Calorie Budget to refresh (ADR 0024) — so it names the half
+         * of Tucker they do use. Constant per setting rather than per person: still never
+         * a guilt-trip, still never personalised (CONTEXT.md Weekly-Review Reminder).
+         */
+        private const val WEIGHT_ONLY_PAYLOAD =
+            """{"title":"$TITLE",""" +
+                """"body":"Open Tucker to log your weight and refresh your trend."}"""
     }
 }

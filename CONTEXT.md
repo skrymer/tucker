@@ -398,7 +398,12 @@ run, while any Reminder has gone out at all), and re-armed when opening the app
 writes a fresh review whose date moves past it. Both sides of that
 comparison are stored days rather than instants, so a later timezone change cannot
 move either of them, and "after" allows a day of slack because the two days are read
-off different clocks. A displayed nudge, never a guilt-trip.
+off different clocks. A displayed nudge, never a guilt-trip. Its *words* follow
+**Calorie Tracking** — a tracking user is asked to log today and refresh their
+**Calorie Budget**, a weight-only user to log their weight and refresh their trend
+— while its firing rule does not: a review comes due on the same cadence either
+way. The trigger is absence from the *app*, never from the scale, so a user who
+opens Tucker without weighing in is not nudged about the reading they are missing.
 _Avoid_: alert, notification, push (as the noun for the user-facing nudge)
 
 **Push Subscription**:
