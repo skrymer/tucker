@@ -18,6 +18,7 @@ const props = defineProps<{
   // A backend rejection of the target (the trend-weight rule, ADR 0016), shown
   // on the form's target field.
   targetError?: string
+  pending?: boolean
   disabled?: boolean
 }>()
 
@@ -51,10 +52,6 @@ watch(
     if (id !== undefined && id !== previous) formOpen.value = false
   },
 )
-
-function handleSubmit(payload: GoalPayload) {
-  emit('submit', payload)
-}
 </script>
 
 <template>
@@ -85,30 +82,29 @@ function handleSubmit(payload: GoalPayload) {
       Log your weight first to set a goal.
     </p>
 
-    <template v-else-if="!activeGoal">
+    <template v-else>
       <!-- Maintenance Mode (ADR 0008): the durable status + re-entry. The Goal
            form is the same creation flow the reached banner's "Set a lower goal"
            lands on; it stays behind the CTA until the user chooses to re-enter. -->
-      <MaintenanceStatus :since="reachedSince" @start-goal="formOpen = true" />
-      <GoalForm
-        v-if="formOpen && props.currentTrend"
-        :current-trend="props.currentTrend"
-        :target-error="props.targetError"
-        @submit="handleSubmit"
+      <MaintenanceStatus
+        v-if="!activeGoal"
+        :since="reachedSince"
+        @start-goal="formOpen = true"
       />
-    </template>
-
-    <template v-else>
-      <GoalCard :goal="activeGoal" />
+      <GoalCard v-else :goal="activeGoal" />
 
       <GoalForm
         v-if="formOpen && props.currentTrend"
         :current-trend="props.currentTrend"
         :target-error="props.targetError"
-        @submit="handleSubmit"
+        :pending="props.pending"
+        @submit="emit('submit', $event)"
       />
 
-      <UCollapsible v-if="pastGoals.length > 0" class="flex flex-col gap-2">
+      <UCollapsible
+        v-if="activeGoal && pastGoals.length > 0"
+        class="flex flex-col gap-2"
+      >
         <UButton
           color="neutral"
           variant="ghost"

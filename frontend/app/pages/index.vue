@@ -113,7 +113,11 @@ function confirmDeleteEntry() {
 async function onWeightSaved() {
   await Promise.all([refreshLatestWeight(), refreshGoalProgress()])
 }
-const { logWeight } = useWeightLogging({ today, onSaved: onWeightSaved })
+const {
+  sheetOpen: weightSheetOpen,
+  saving: savingWeight,
+  logWeight,
+} = useWeightLogging({ today, onSaved: onWeightSaved })
 </script>
 
 <template>
@@ -148,7 +152,13 @@ const { logWeight } = useWeightLogging({ today, onSaved: onWeightSaved })
         title="Couldn't load your weight"
         @retry="refreshLatestWeight"
       >
-        <WeightTile :today="today" :latest="latestWeight" @logged="logWeight" />
+        <WeightTile
+          v-model:open="weightSheetOpen"
+          :today="today"
+          :latest="latestWeight"
+          :pending="savingWeight"
+          @logged="logWeight"
+        />
       </LoadErrorState>
       <DaySummary
         v-if="summary && tracksCalories"
