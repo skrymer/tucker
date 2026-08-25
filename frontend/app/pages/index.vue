@@ -34,7 +34,7 @@ const {
   load: refreshLatestWeight,
 } = useOptionalFetch(() => $api('/api/weight/latest'))
 
-// Goal progress runs off the smoothed Trend Weight, so a fresh weigh-in moves
+// Goal progress runs off the smoothed Trend Weight, so a fresh reading moves
 // it; 404 (no active Goal) is an expected state, surfaced as the tile's CTA.
 const {
   data: goalProgress,
@@ -107,8 +107,8 @@ function confirmDeleteEntry() {
   if (entry) deleteEntry(entry)
 }
 
-// The dashboard weigh-in is silent (no success toast) — the tile updating to
-// the new reading is feedback enough. A new reading also nudges the trend, so
+// Saving a reading from the dashboard is silent (no success toast) — the tile
+// updating to it is feedback enough. A new reading also nudges the trend, so
 // goal progress is refreshed alongside it.
 async function onWeightSaved() {
   await Promise.all([refreshLatestWeight(), refreshGoalProgress()])

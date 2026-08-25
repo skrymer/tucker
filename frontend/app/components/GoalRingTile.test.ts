@@ -39,7 +39,7 @@ describe('GoalRingTile', () => {
   })
 
   it('omits the pace badge while the pace is still withheld', async () => {
-    // The default fixture has paceStatus null (under two weeks of weigh-ins).
+    // The default fixture has paceStatus null (under two weeks of readings).
     await renderSuspended(GoalRingTile, { props: { progress } })
 
     expect(screen.queryByText(/on pace|behind|ahead|stalled/i)).toBeNull()

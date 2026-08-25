@@ -6,7 +6,7 @@ import GoalProgressHero from './GoalProgressHero.vue'
 
 type GoalProgress = components['schemas']['GoalProgressResponse']
 
-// Under two weeks of weigh-ins: the planned projection is known, the observed
+// Under two weeks of readings: the planned projection is known, the observed
 // pace is still withheld.
 const withheld: GoalProgress = {
   startWeightKg: 90,
@@ -82,11 +82,11 @@ describe('GoalProgressHero', () => {
     expect(screen.getByText('26 Aug 2026')).toBeVisible()
   })
 
-  it('shows a placeholder for the observed pace until two weeks of weigh-ins', async () => {
+  it('shows a placeholder for the observed pace until two weeks of readings', async () => {
     await renderSuspended(GoalProgressHero, { props: { progress: withheld } })
 
     expect(
-      screen.getByText(/pace available after 2 weeks of weigh-ins/i),
+      screen.getByText(/pace available after 2 weeks of readings/i),
     ).toBeVisible()
     // The planned column stays populated while the observed one waits.
     expect(screen.getByText('26 Aug 2026')).toBeVisible()
