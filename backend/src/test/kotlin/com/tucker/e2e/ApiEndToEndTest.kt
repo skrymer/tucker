@@ -9,6 +9,7 @@ import org.testcontainers.containers.wait.strategy.Wait
 import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
 import org.testcontainers.utility.DockerImageName
+import java.net.CookieManager
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
@@ -31,6 +32,10 @@ class ApiEndToEndTest {
     companion object {
         private const val APP_PORT = 8080
 
+        /** What `CookieCsrfTokenRepository` puts on the wire by default (ADR 0025). */
+        private const val CSRF_COOKIE = "XSRF-TOKEN"
+        private const val CSRF_HEADER = "X-XSRF-TOKEN"
+
         @Container
         @JvmStatic
         val tucker: GenericContainer<*> =
@@ -51,7 +56,8 @@ class ApiEndToEndTest {
                 .waitingFor(Wait.forHttp("/v3/api-docs").forStatusCode(200))
     }
 
-    private val http: HttpClient = HttpClient.newHttpClient()
+    private val cookies = CookieManager()
+    private val http: HttpClient = HttpClient.newBuilder().cookieHandler(cookies).build()
 
     private fun baseUrl(): String = "http://${tucker.host}:${tucker.getMappedPort(APP_PORT)}"
 
@@ -62,10 +68,25 @@ class ApiEndToEndTest {
     private fun HttpRequest.Builder.signedIn(): HttpRequest.Builder =
         header(ACCESS_ASSERTION_HEADER, AccessTokens.mint())
 
+    /**
+     * The CSRF token, held the way a browser holds one (ADR 0025). A GET first, because the
+     * token only arrives on a response.
+     *
+     * The cookie and header names are spelled out rather than shared with the backend: this
+     * test reaches the image over a socket, and the wire contract is what it is asserting.
+     */
+    private val csrfToken: String by lazy {
+        get("/api/version")
+        checkNotNull(cookies.cookieStore.cookies.firstOrNull { it.name == CSRF_COOKIE }) {
+            "the image handed out no $CSRF_COOKIE cookie"
+        }.value
+    }
+
     private fun post(path: String, body: String): HttpResponse<String> =
         http.send(
             HttpRequest.newBuilder(URI.create(baseUrl() + path))
                 .header("Content-Type", "application/json")
+                .header(CSRF_HEADER, csrfToken)
                 .signedIn()
                 .POST(HttpRequest.BodyPublishers.ofString(body))
                 .build(),
@@ -116,11 +137,15 @@ class ApiEndToEndTest {
      * Spring Security also filters — which makes this reachable only over a real socket.
      * The door being open has to mean the status is honest, or an operator diagnosing an
      * outage reads "rejecting me" when the truth is "up, and you asked wrongly".
+     *
+     * Carries a token but no assertion: the assertion is what this probes, and a CSRF
+     * refusal would answer the wrong gate (ADR 0025).
      */
     @Test
     fun `an error on an open door reports its own status, not a refusal`() {
         val wrongMethod = http.send(
             HttpRequest.newBuilder(URI.create(baseUrl() + "/api/version"))
+                .header(CSRF_HEADER, csrfToken)
                 .POST(HttpRequest.BodyPublishers.noBody())
                 .build(),
             HttpResponse.BodyHandlers.ofString(),

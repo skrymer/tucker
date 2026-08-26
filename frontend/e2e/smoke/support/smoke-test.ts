@@ -1,10 +1,11 @@
-import type { APIRequestContext } from '@playwright/test'
+import type { APIRequestContext, PlaywrightWorkerArgs } from '@playwright/test'
 import { test as base, expect } from '@nuxt/test-utils/playwright'
 import { assertNoPageErrors, SMOKE_NOISE } from '../../support/console-guard'
 import {
   ACCESS_ASSERTION_HEADER,
   mintAccessToken,
 } from '../../../scripts/access-token.mjs'
+import { CSRF_COOKIE, CSRF_HEADER } from '../../../app/utils/csrf'
 
 const API = 'http://localhost:8080/api'
 
@@ -54,9 +55,7 @@ export const test = base.extend<{
   // icon fetches into preflighted ones that api.iconify.design refuses. The
   // browser gets its credential a different way — see global-backend.setup.ts.
   request: async ({ playwright }, use) => {
-    const api = await playwright.request.newContext({
-      extraHTTPHeaders: { [ACCESS_ASSERTION_HEADER]: await mintAccessToken() },
-    })
+    const api = await signedInApi(playwright)
     await use(api)
     await api.dispose()
   },
@@ -66,13 +65,7 @@ export const test = base.extend<{
   // line. A fixture rather than a `newContext` in each test body so disposal is
   // Playwright's job and the tests do not each carry a `try`/`finally`.
   otherUser: async ({ playwright }, use) => {
-    const api = await playwright.request.newContext({
-      extraHTTPHeaders: {
-        [ACCESS_ASSERTION_HEADER]: await mintAccessToken({
-          email: 'someone.else@tucker.invalid',
-        }),
-      },
-    })
+    const api = await signedInApi(playwright, 'someone.else@tucker.invalid')
     await use(api)
     await api.dispose()
   },
@@ -94,5 +87,44 @@ export const test = base.extend<{
     { auto: true },
   ],
 })
+
+/**
+ * An API context that seeds and cleans up as one User — signed in, and holding a CSRF
+ * token the way a browser holds one (ADR 0025).
+ *
+ * Two contexts because `extraHTTPHeaders` is fixed when a context is made and
+ * `APIRequestContext` has no way to add one later, while the token only exists once
+ * Tucker has handed one out. So the first context asks for it and the second inherits its
+ * cookie jar and echoes the value back in the header.
+ */
+async function signedInApi(
+  playwright: PlaywrightWorkerArgs['playwright'],
+  email?: string,
+): Promise<APIRequestContext> {
+  const extraHTTPHeaders = {
+    [ACCESS_ASSERTION_HEADER]: await mintAccessToken({ email }),
+  }
+  const handingOut = await playwright.request.newContext({ extraHTTPHeaders })
+  // Any GET; the cookie rides back on every response. Checked, because every smoke shares
+  // this fixture: unchecked, a backend that is down or an assertion it rejects both surface
+  // below as "handed out no XSRF-TOKEN cookie", pointing the whole suite at the CSRF layer
+  // for a fault in auth or availability.
+  const handOut = await handingOut.get(`${API}/version`)
+  if (!handOut.ok()) {
+    throw new Error(
+      `could not ask for a CSRF token: ${handOut.status()} ${await handOut.text()}`,
+    )
+  }
+  const storageState = await handingOut.storageState()
+  await handingOut.dispose()
+
+  const token = storageState.cookies.find((c) => c.name === CSRF_COOKIE)
+  if (!token) throw new Error(`the backend handed out no ${CSRF_COOKIE} cookie`)
+
+  return playwright.request.newContext({
+    storageState,
+    extraHTTPHeaders: { ...extraHTTPHeaders, [CSRF_HEADER]: token.value },
+  })
+}
 
 export { expect }

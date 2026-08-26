@@ -110,6 +110,12 @@ login screen.
   an unknown `kid`, but a cold start with no egress fails its first requests.
 - `ReminderScheduler` runs on a cron thread with **no** SecurityContext — see
   [ADR 0021](0021-every-row-is-owned-by-one-user.md) for how it acts on behalf of users.
+- **The credential is a cookie, so the origin is ambient authority.** The backend reads a
+  header and looks like a stateless token API, but Cloudflare mints that header from the
+  `CF_Authorization` cookie a browser attaches by itself — so a cross-site request arrives
+  fully authenticated. Why CSRF protection is therefore on, and why the `csrf { disable() }`
+  this ADR originally justified was wrong, is
+  [ADR 0025](0025-a-mutation-must-prove-it-came-from-tuckers-own-page.md).
 
 ## References
 
@@ -122,3 +128,5 @@ login screen.
   in-app detection of an expired Access session.
 - [0021 — every row is owned by exactly one User](0021-every-row-is-owned-by-one-user.md)
   — what the principal established here is then used for.
+- [0025 — a mutation must prove it came from Tucker's own page](0025-a-mutation-must-prove-it-came-from-tuckers-own-page.md)
+  — the cookie behind the header, and the CSRF protection this ADR had disabled.

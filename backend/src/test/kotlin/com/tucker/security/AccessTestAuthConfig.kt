@@ -3,7 +3,10 @@ package com.tucker.security
 import org.springframework.boot.test.autoconfigure.web.servlet.MockMvcBuilderCustomizer
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.mock.web.MockHttpServletRequest
+import org.springframework.mock.web.MockHttpServletResponse
 import org.springframework.security.test.web.servlet.response.SecurityMockMvcResultHandlers
+import org.springframework.security.web.csrf.CsrfTokenRepository
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders
 
 /**
@@ -30,15 +33,45 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders
 class AccessTestAuthConfig {
 
     @Bean
-    fun signEveryRequestIn(): MockMvcBuilderCustomizer = MockMvcBuilderCustomizer { builder ->
-        builder.defaultRequest(
-            MockMvcRequestBuilders.get("/").with { request ->
-                if (request.getHeader(ACCESS_ASSERTION_HEADER) == null) {
-                    request.addHeader(ACCESS_ASSERTION_HEADER, AccessTokens.mint())
-                }
-                request
-            },
-        )
+    fun signEveryRequestIn(csrfTokens: CsrfTokenRepository): MockMvcBuilderCustomizer =
+        MockMvcBuilderCustomizer { builder ->
+            builder.defaultRequest(
+                MockMvcRequestBuilders.get("/").with { request ->
+                    if (request.getHeader(ACCESS_ASSERTION_HEADER) == null) {
+                        request.addHeader(ACCESS_ASSERTION_HEADER, AccessTokens.mint())
+                    }
+                    request.carryCsrfTokenLikeABrowser(csrfTokens)
+                    request
+                },
+            )
+        }
+
+    /**
+     * Puts a CSRF token on the request the way a browser holds one (ADR 0025): the cookie
+     * Tucker hands out, sent back with its value echoed in the header.
+     *
+     * Not `SecurityMockMvcRequestPostProcessors.csrf()` — that swaps [CsrfTokenRepository]
+     * for a test double, so the suite would stop exercising the one production runs.
+     */
+    private fun MockHttpServletRequest.carryCsrfTokenLikeABrowser(tokens: CsrfTokenRepository) {
+        val token = tokens.generateToken(this)
+        // Yields to a test that brought its own, as the assertion above does. Asked of the
+        // token and of the response, so the cookie and header names stay whatever the
+        // repository says rather than being restated here.
+        if (getHeader(token.headerName) != null) return
+
+        val handedOut = MockHttpServletResponse()
+        tokens.saveToken(token, this, handedOut)
+        val alreadyCarried = cookies.orEmpty()
+        // A test that brought the cookie but no header keeps both: cookies are appended,
+        // and `WebUtils.getCookie` reads the first of a name, so a second would have the
+        // repository load the test's token while the header carried this one — a 403 that
+        // reads as a product bug rather than a fixture collision.
+        val names = alreadyCarried.map { it.name }.toSet()
+        if (handedOut.cookies.any { it.name in names }) return
+
+        setCookies(*alreadyCarried, *handedOut.cookies)
+        addHeader(token.headerName, token.token)
     }
 
     /**
