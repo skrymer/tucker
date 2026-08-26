@@ -37,8 +37,16 @@ useHead({
   ],
 })
 
+// The toast viewport is portalled into a wrapper of Tucker's own, so that the
+// wrapper can carry `aria-live`: an open sheet would otherwise leave every toast
+// out of the accessibility tree, and Reka's own announcement is inert. Why, and
+// why it can't live on `body` directly: ADR 0005, "How a toast reaches a screen
+// reader".
+const TOAST_PORTAL = 'tucker-toasts'
+
 const toaster = computed(() => ({
   max: 1,
+  portal: `#${TOAST_PORTAL}`,
   position: isDesktop.value
     ? ('bottom-right' as const)
     : ('top-center' as const),
@@ -48,9 +56,41 @@ const toaster = computed(() => ({
       : 'top-[calc(1rem+env(safe-area-inset-top))]',
   },
 }))
+
+/**
+ * How the wrapper announces the toast in it. See ADR 0005, "How a toast reaches
+ * a screen reader", for why Tucker announces toasts at all and why the wrapper
+ * cannot be `body` itself.
+ */
+function useToastAnnouncement() {
+  const { toasts } = useToast()
+
+  // `max` is 1, so the toast in the wrapper is the newest one — and `off` when
+  // there is none, since a sweep that finds no attribute at all is the thing
+  // this exists to survive. An omitted `type` is `foreground`, Reka's own
+  // default, so only an explicit `background` is polite: ADR 0005 makes every
+  // failure foreground (it interrupts) and the one kept success background.
+  const politeness = computed(() => {
+    const current = toasts.value.at(-1)
+    if (!current) return 'off'
+    return current.type === 'background' ? 'polite' : 'assertive'
+  })
+
+  return { politeness }
+}
+
+const { politeness } = useToastAnnouncement()
 </script>
 
 <template>
+  <!--
+    Teleported to `body`, where Nuxt UI would have put the viewport anyway.
+    Left inside `#__nuxt` it renders identically and paints *under* the open
+    sheet's dim overlay, which then swallows the toast's own Retry click.
+  -->
+  <Teleport to="body">
+    <div :id="TOAST_PORTAL" :aria-live="politeness"></div>
+  </Teleport>
   <UApp :toaster="toaster">
     <!--
       @vite-pwa/nuxt does not inject the manifest link on its own — this

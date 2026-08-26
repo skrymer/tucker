@@ -65,6 +65,13 @@ entry; it is now a no-op rather than a freeze).
   outside-tap or swipe to dismiss a `ResponsiveOverlay`.
 - The phone sheet now has a corner close button (the Vaul drawer had none) — the
   `[[phone-drawer-has-no-close-x]]` assumption no longer holds.
+- **An open Dialog hides the rest of the page from assistive tech**, which
+  reaches anything Tucker portals to `body` rather than into the sheet. A toast
+  raised from inside a sheet was the first casualty; the fix, and the general
+  escape hatch (an element carrying `aria-live` is exempt, and so are its
+  ancestors), is in
+  [0005](0005-notifications-persistent-errors-quiet-success.md), "How a toast
+  reaches a screen reader". Check it before adding another body-level surface.
 - This freeze class is **iOS-PWA-only** and invisible to the test suites
   (chromium has no soft keyboard); the regression guard is this ADR plus the
   `ResponsiveOverlay` code comment, not an automated test.

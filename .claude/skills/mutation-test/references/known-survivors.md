@@ -155,6 +155,39 @@ swept; #248 added `index.test.ts` (the page had none) but scoped it to the Calor
 Tracking branches, so the fetch and mutation wiring around them is still unasserted
 at this layer. `components/GoalProgressHero.vue` is 18/25, likewise pre-existing.
 
+### `app/app.vue` — 30 of 30, and the engine never ran a test
+
+Stryker cannot score the app root at all. Scoped to it alone the dry run **aborts**
+rather than reporting survivors:
+
+```
+WARN VitestTestRunner Vitest failed to find test files related to mutated files
+INFO DryRunExecutor No tests were found
+ERROR Stryker No tests were executed. Stryker will exit prematurely.
+```
+
+`vitest.related` maps a mutated file to the tests importing it, and nothing imports
+`app.vue` — it is mounted by Nuxt, and its concerns (the toast portal wrapper and its
+`aria-live` politeness, the reactive `theme-color`, the toaster position split) are all
+real-DOM facts that jsdom cannot stand in for. Their red lives in `e2e/toast.spec.ts`
+and `e2e/appearance.spec.ts`, which is ADR 0013's thin-glue rule working as intended,
+not a gap. In a whole-surface sweep the abort does not happen — the other files supply
+related tests — and app.vue's mutants simply survive.
+
+Hand-mutated instead, and the three that carry the a11y fix are all killed:
+
+| Mutant | Killed by |
+| --- | --- |
+| drop `portal: '#tucker-toasts'` from `toaster` | all 3 `toast.spec.ts` sheet/announce tests |
+| `type === 'background'` → `'foreground'` | the assertive and polite tests |
+| remove the `aria-live` binding / the wrapper | `…reaches the accessibility tree, Retry and all` |
+
+**Gotcha, and it costs a run to learn:** scoped to this one file the Stryker *parent*
+died with `FATAL ERROR: Reached heap limit` at V8's default 2 GB old-space — before
+reaching the message above. `NODE_OPTIONS=--max-old-space-size=8192` gets to the real
+error. This is the parent, not the test runner, so it is unrelated to the
+`testRunnerNodeArgs` finding the skill records as changing nothing.
+
 ### `composables/useWeightLogging.ts` — 0 of 12
 
 At 100%, and recorded because the last survivor was its `errorTitle` literal, killed
