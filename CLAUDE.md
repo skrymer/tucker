@@ -104,8 +104,12 @@ Frontend commands (run in `frontend/`, package manager is pnpm):
   rewrites the source one mutant at a time and re-runs the related tests, so a
   surviving mutant is a line no assertion pins. Bare, it mutates the whole
   frontend (minutes); in practice it is scoped to the files a change touched —
-  `pnpm exec stryker run --mutate "app/utils/entry.ts"` — at roughly 0.7s per
-  mutant. It is a **local pre-PR gate, deliberately not in CI**: it is far
+  `pnpm exec stryker run --mutate "app/utils/entry.ts"` — at roughly 0.9s per
+  mutant. Run it through `scripts/bounded-run.sh`, and **never at the same time as
+  the backend sweep**: `systemd-oomd` kills on user-slice memory pressure and takes
+  the whole terminal, which it did twice before `concurrency` came down from 4
+  (21 GB peak) to 1 (7.3 GB). The measured budget is in the `/mutation-test` skill.
+  It is a **local pre-PR gate, deliberately not in CI**: it is far
   slower than the suites CI runs, and every surviving mutant needs a human
   verdict (real gap vs equivalent mutant) rather than a pass/fail threshold. It
   reaches the Vitest layer only — Playwright is out of scope. Driven by the
@@ -945,6 +949,27 @@ The frontend is built **test-first (red-green TDD)**. Increments:
   state (e.g. whether a day is on-target) are computed by the backend and
   exposed as plain API fields; the frontend only presents them, keeping the UI
   swappable. See `docs/adr/0002-business-logic-belongs-in-the-backend.md`.
+- **A mutation must prove it came from Tucker's own page.** Access's credential
+  is the `CF_Authorization` **cookie**, which a browser attaches by itself and
+  Cloudflare turns into the assertion header at the edge — so a cross-site form
+  POST arrives fully authenticated. Every state-changing request therefore carries
+  a CSRF token, read by page JavaScript out of the `XSRF-TOKEN` cookie and echoed
+  in a header, which is the one step a cross-site page cannot take. **Never move
+  that read into the `/api` proxy** — it sees the same cookie on the attacker's
+  request and would forge the proof for them. **Two ways a stateless resource server
+  breaks Spring's stock SPA configuration** are recorded in
+  [ADR 0025](docs/adr/0025-a-mutation-must-prove-it-came-from-tuckers-own-page.md),
+  both silent and both found by measuring the running image rather than by reading:
+  `oauth2ResourceServer` exempts *every* Tucker request from CSRF via its
+  bearer-token override, so enabling CSRF without restoring the matcher protects
+  nothing while reviewing as a fix; and the token rotates on every request — there
+  being no session, every request re-authenticates — deleting the cookie and
+  deferring a replacement nothing materialises, so a client holds a token about half
+  the time. Rotation is off (`NullAuthenticatedSessionStrategy`); there is no login
+  boundary here to fixate across. The suites carry a **real** token rather than
+  `SecurityMockMvcRequestPostProcessors.csrf()`, which would swap the production
+  repository out of the shared filter. `CsrfGateTest` fails if the matcher regresses. Still open: flipping `CF_Authorization` to `SameSite=Lax`
+  ([#258](https://github.com/skrymer/tucker/issues/258)) as defence-in-depth.
 - **Absence on the wire is an explicit `null`, and the spec says so.** A field
   the backend has no value for is serialized as `null`, never omitted, and the
   OpenAPI spec marks it `nullable`, so the generated client reads

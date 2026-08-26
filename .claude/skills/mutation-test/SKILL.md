@@ -19,6 +19,59 @@ Testcontainers e2e are far too slow to re-run per mutant. Gaps there (unanchored
 aria-snapshot regexes, substring `getByText`, fixture defaults that can't occur in
 production) are still found by hand.
 
+## Run each sweep bounded, and one at a time
+
+**Both sweeps go through `scripts/bounded-run.sh`**, which puts the command in a
+memory-capped systemd scope:
+
+```bash
+scripts/bounded-run.sh --cap 10G -- pnpm exec stryker run --mutate "app/utils/csrf.ts"
+scripts/bounded-run.sh --cap 8G  -- ./gradlew mutationTest -PmutationTargets='com.tucker.domain.Goal'
+```
+
+`bounded-run.sh` is Linux + systemd only; elsewhere it warns and runs unbounded, and
+the config caps below are then the only guard.
+
+This is not belt-and-braces. `systemd-oomd` kills on **user-slice** memory
+pressure — it does not kill the process that grew, it kills a whole cgroup — so
+an unbounded sweep does not fail alone, it takes the terminal and the Claude Code
+session running in it. That happened twice (2026-08-23 and 2026-08-25); the
+journal records `Killed .../vte-spawn-….scope due to memory pressure … being
+63.62% > 50.00% for > 20s`. Inside a scope the kernel reclaims and, failing that,
+kills within that cgroup only, and the failure reads as a dead worker rather than
+a vanished session.
+
+**Do not run the two sweeps concurrently.** Overlapping them is where the OOM came
+from: they are separately affordable and jointly not. Sequential costs wall-clock
+that a killed session costs anyway, plus the work in flight.
+
+### Memory budget (measured on this repo, 30 GB machine)
+
+Anonymous memory — page cache inflates `memory.peak` and is reclaimable, so it is
+not what drives the pressure oomd watches.
+
+| Config                      | Peak anon | Same 30-mutant sweep |
+| --------------------------- | --------- | -------------------- |
+| StrykerJS `concurrency: 4`  | **21 GB** | 49s — killed sessions |
+| StrykerJS `concurrency: 2`  | 12 GB     | 49s                  |
+| StrykerJS `concurrency: 1`  | **7.3 GB** | 41s                 |
+
+`concurrency: 1` is the committed default and is **not** the slow option: four
+workers thrashed against each other, so the small sweep was *faster* at 1, and a
+721-mutant sweep runs 10m42s (~0.89s/mutant) against ~0.7s/mutant at 4 — ~29%
+per-mutant for a third of the memory. Peak anon stayed **flat at 7.3 GB** across
+those 721 mutants, and user-slice pressure held at `avg10=0.00`.
+
+The floor is one Vitest worker holding a Nuxt environment (~4 GB) plus the Stryker
+parent (~2.3 GB); there is no tuning below that. `testRunnerNodeArgs:
+--max-old-space-size` was tried and **measured to change nothing** (7.3 GB with and
+without) — Stryker's runner already pins Vitest to `pool: 'threads', maxWorkers: 1`,
+so the heap that matters is not the main isolate's. Don't re-add it.
+
+Backend heaps are capped to match: `org.gradle.jvmargs=-Xmx2g`, pitest minions at
+`-Xmx1g` (unset, each would inherit a quarter of physical RAM), and the JavaExec
+parent at 1 GB.
+
 ## Workflow
 
 Identical for both stacks; only step 1 and 2's commands differ.

@@ -323,7 +323,16 @@ tasks.register<JavaExec>("mutationTest") {
         // contend for it and report mutants killed by lock timeouts, not by
         // assertions.
         "--threads", "1",
+        // Bound the minion JVMs. Unset, each inherits the JVM default max heap
+        // of a quarter of physical RAM — ~7.5 GB on a 30 GB machine — which the
+        // fast suite never needs (Gradle forks `test` at 512 MB and it passes).
+        // It matters because systemd-oomd kills on *user-slice* pressure, so a
+        // sweep is killed by what is also resident, not by its own peak alone.
+        "--jvmArgs", "-Xmx1g",
     )
+
+    // Same reasoning for the JavaExec parent that drives the sweep.
+    maxHeapSize = "1g"
 
     // Nothing else clears the report, and the skill's triage step parses
     // mutations.xml — so a run that dies leaves the previous run's verdict on
