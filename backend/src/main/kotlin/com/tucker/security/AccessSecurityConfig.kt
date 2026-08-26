@@ -44,14 +44,12 @@ class AccessSecurityConfig {
      * `SameSite=Strict` because nothing off-site ever needs to send it — the token is only
      * ever read by Tucker's own page and replayed to Tucker's own origin.
      *
-     * It is *not* marked `Secure`, and that is a live gap rather than a free choice: a
-     * cookie an attacker can write from a sibling host over plain HTTP overwrites this one,
-     * and a double-submit check trusts whatever the cookie says. What stops it is `Secure`,
-     * which this repository would honour if asked (it prefers an explicit value over
-     * `request.isSecure()`) — but every test client here speaks plain HTTP, and Java's
-     * `CookieManager` will not send a `Secure` cookie over it, so the e2e would fail the
-     * check it exists to make. Tracked with the scheme-forwarding work in issue #258; see
-     * ADR 0025.
+     * `Secure` is left unset here on purpose, so that `saveToken` falls back to
+     * `request.isSecure()` — true behind the tunnel via `server.forward-headers-strategy`,
+     * false for every client that speaks plain HTTP. Setting it explicitly would be honoured
+     * and would break the suites: Java's `CookieManager` will not send a `Secure` cookie over
+     * an `http` URI, so the e2e would fail the very check it exists to make. `ApiEndToEndTest`
+     * pins both branches against the real image.
      *
      * A bean so the test suite carries the token the way a browser does — taking the cookie
      * this hands out and sending it back — against these exact attributes, rather than

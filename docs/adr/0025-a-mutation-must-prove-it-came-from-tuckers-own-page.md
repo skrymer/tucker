@@ -193,28 +193,62 @@ possible cause — tracked as
   `MockMvcBuilderCustomizer` that #155 introduced for signing in, the smokes'
   157 mutating calls ride the `request` and `otherUser` fixtures, and the SPA
   rides one `openFetch:onRequest:api` hook beside the auth gate's.
-- **The `XSRF-TOKEN` cookie is `SameSite=Strict`, and not `Secure` — which is a known
-  gap, not a free choice.** Strict costs nothing: the token is only ever read by Tucker's
-  own page and replayed to Tucker's own origin, so nothing off-site needs to send it.
+- **The `XSRF-TOKEN` cookie is `SameSite=Strict` and `Secure`.** Strict costs nothing:
+  the token is only ever read by Tucker's own page and replayed to Tucker's own origin,
+  so nothing off-site needs to send it.
 
-  `Secure` is the interesting one, and the first version of this ADR got it wrong. It
-  claimed `CookieCsrfTokenRepository` derives the flag from `request.isSecure()` — which
-  is only the *fallback*: `saveToken` uses `secure != null ? secure : request.isSecure()`,
-  so an explicit `it.secure(true)` is honoured whatever scheme the backend sees. The
-  cookie could therefore carry `Secure` today, behind the tunnel, unchanged.
+  `Secure` is the interesting one, and the first version of this ADR got it wrong — it
+  claimed `CookieCsrfTokenRepository` derives the flag from `request.isSecure()`, which is
+  only the *fallback*: `saveToken` uses `secure != null ? secure : request.isSecure()`. So
+  an explicit `it.secure(true)` was always available, and always unaffordable. Every test
+  client speaks plain HTTP, and Java's `CookieManager` will not return a `Secure` cookie
+  over an `http` URI, so a hardcoded flag would have the Testcontainers e2e send a header
+  with no matching cookie and be refused by the gate it exists to prove.
 
-  What it costs is the test clients. Every one of them speaks plain HTTP, and Java's
-  `CookieManager` will not return a `Secure` cookie over an `http` URI, so the
-  Testcontainers e2e would send a header with no matching cookie and be refused by the
-  gate it exists to prove.
+  The flag is therefore *derived* rather than set, which is the option this ADR named and
+  deferred. `server.forward-headers-strategy: FRAMEWORK` makes `request.isSecure()` true
+  behind the tunnel and false everywhere else, and the fallback already in `saveToken` does
+  the rest. The Kotlin is untouched but for its comment, and dev, the smokes and the e2e
+  stay coherent by construction rather than by each remembering to configure itself.
 
-  The exposure this leaves is real and worth naming rather than waving through: an
-  attacker who can write a cookie for a sibling host over plain HTTP — hostile Wi-Fi, no
-  HSTS on that name — can *overwrite* this one, and a double-submit check believes
-  whatever the cookie says. `Secure` is precisely the flag that refuses that write. It is
-  not closed here because closing it properly means forwarding the scheme
-  (`server.forward-headers-strategy`) so dev and the suites stay coherent, which is
-  [#258](https://github.com/skrymer/tucker/issues/258)'s work.
+  **The exposure it closes is wider than this ADR first described.** The original wording
+  needed an attacker able to write a cookie for a *sibling host* over plain HTTP. No sibling
+  is required: `tucker-diet.com` sends no `Strict-Transport-Security` header, so a browser's
+  first move is a plaintext request to the name itself — Cloudflare answers it with a 301,
+  and an on-path attacker answers it instead with their own `Set-Cookie: XSRF-TOKEN=…`. A
+  double-submit check believes whatever the cookie says. `Secure` is precisely the flag that
+  refuses that write: a non-secure origin may not overwrite a `Secure` cookie of the same
+  name.
+
+  **The chain carrying the scheme is two hops, and only one is ours.** `cloudflared` sets
+  `X-Forwarded-Proto` on the request it delivers
+  ([cloudflared#1245](https://github.com/cloudflare/cloudflared/issues/1245), withdrawn by
+  its own reporter after an echo-server test through a real tunnel), and h3's
+  `getProxyRequestHeaders` copies every request header except eight named ones — none of
+  them this — so the nitro proxy is not the intermediary that clobbers it, which is what
+  #1245's reporter turned out to have. Our hop is pinned by two e2e tests against the real
+  image, one per branch of the fallback. Cloudflare's hop cannot be tested from here and is
+  a live observation recorded in [`deploy/README.md`](../../deploy/README.md).
+
+  One measured detail matters if a third hop is ever added: `ForwardedHeaderFilter` reads the
+  **first** value, so a client-supplied `X-Forwarded-Proto: http` ahead of Cloudflare's would
+  drop the flag. It is not an attack — a browser never sends that header by itself, and a
+  cross-site `fetch` that sets it is non-safelisted and preflights, which Access refuses, so
+  the only cookie anyone can downgrade is their own. The live check settles it either way:
+  `Secure` on the real origin *is* the evidence that nothing upstream prepends one.
+- **`__Host-XSRF-TOKEN` was considered and rejected**, though it is strictly stronger: a
+  subdomain cannot set a `__Host-` cookie at all, which is the write above. Browsers reject
+  a `__Host-` cookie that is not `Secure`, and `Secure` here is derived from the scheme — so
+  in dev and every smoke, which speak http, the cookie would simply never be stored and the
+  SPA could not mutate anything locally. An environment-dependent cookie *name* is a worse
+  thing to own than the residual risk.
+- **Two Cloudflare settings harden the same gap from outside this repository**, both
+  [#258](https://github.com/skrymer/tucker/issues/258). `SameSite=Lax` on `CF_Authorization`
+  narrows the ambient authority this ADR opens by describing; **HSTS** removes the plaintext
+  request the cookie overwrite needs as its foothold. Neither replaces the token or the flag
+  — OWASP files `SameSite` as defence-in-depth, and HSTS is per-browser state that a first
+  visit does not yet have. They are applied and verified one at a time, because the property
+  #258 exists to preserve is that a broken sign-in has only one possible cause.
 - **`GET /api/version` is unaffected** — it is a safe method, so it stays
   reachable without a token, and an operator can still tell "the app is down"
   from "the app is rejecting me". A *`POST`* to it is now refused, which

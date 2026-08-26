@@ -968,8 +968,16 @@ The frontend is built **test-first (red-green TDD)**. Increments:
   the time. Rotation is off (`NullAuthenticatedSessionStrategy`); there is no login
   boundary here to fixate across. The suites carry a **real** token rather than
   `SecurityMockMvcRequestPostProcessors.csrf()`, which would swap the production
-  repository out of the shared filter. `CsrfGateTest` fails if the matcher regresses. Still open: flipping `CF_Authorization` to `SameSite=Lax`
-  ([#258](https://github.com/skrymer/tucker/issues/258)) as defence-in-depth.
+  repository out of the shared filter. `CsrfGateTest` fails if the matcher regresses. The
+  cookie is `SameSite=Strict` and `Secure`, and `Secure` is **derived, not set**: an
+  explicit flag is honoured but would stop every http-speaking test client sending the
+  cookie back, so `server.forward-headers-strategy` makes `request.isSecure()` true behind
+  the tunnel and the repository's own fallback does the rest. `ApiEndToEndTest` pins both
+  branches — and the whole attribute list, since `SameSite=Strict` was pinned by nothing.
+  Still open in [#258](https://github.com/skrymer/tucker/issues/258), two Cloudflare
+  dashboard settings applied and verified one at a time so a broken sign-in has one
+  possible cause: `SameSite=Lax` on `CF_Authorization`, and **HSTS**, which removes the
+  plaintext request the cookie overwrite needs as its foothold.
 - **Absence on the wire is an explicit `null`, and the spec says so.** A field
   the backend has no value for is serialized as `null`, never omitted, and the
   OpenAPI spec marks it `nullable`, so the generated client reads

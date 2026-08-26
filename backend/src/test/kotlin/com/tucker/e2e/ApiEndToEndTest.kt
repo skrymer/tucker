@@ -99,6 +99,20 @@ class ApiEndToEndTest {
             HttpResponse.BodyHandlers.ofString(),
         )
 
+    /**
+     * Everything the image put on the `XSRF-TOKEN` cookie except the token itself. Asserted
+     * as a closed list so the two tests below pin the whole of ADR 0025's wire contract:
+     * `SameSite=Strict` was specified there and pinned by nothing, and an `HttpOnly` that
+     * crept in would blind the page JavaScript that has to read the token.
+     */
+    private fun HttpResponse<*>.csrfCookieAttributes(): List<String> =
+        checkNotNull(
+            headers().allValues("set-cookie").firstOrNull { it.startsWith("$CSRF_COOKIE=") },
+        ) { "the image handed out no $CSRF_COOKIE cookie" }
+            .split(';')
+            .map { it.trim() }
+            .drop(1)
+
     @Test
     fun `the running image serves the food, entry and summary API end to end`() {
         val createFood = post(
@@ -151,5 +165,39 @@ class ApiEndToEndTest {
             HttpResponse.BodyHandlers.ofString(),
         )
         assertEquals(405, wrongMethod.statusCode(), "expected method-not-allowed, not 401")
+    }
+
+    /**
+     * Behind the tunnel the backend is reached over plain HTTP, so `Secure` can only come
+     * from the forwarded scheme (ADR 0025). Read off the raw `set-cookie` header rather than
+     * the cookie store, because that is the wire contract a browser actually applies — and
+     * because `CookieManager` would quietly drop a `Secure` cookie arriving over `http`
+     * before this could see it.
+     */
+    @Test
+    fun `the running image marks the CSRF cookie Secure when the request arrived over https`() {
+        val forwarded = http.send(
+            HttpRequest.newBuilder(URI.create(baseUrl() + "/api/version"))
+                .header("X-Forwarded-Proto", "https")
+                .GET()
+                .build(),
+            HttpResponse.BodyHandlers.ofString(),
+        )
+        assertEquals(listOf("Path=/", "Secure", "SameSite=Strict"), forwarded.csrfCookieAttributes())
+    }
+
+    /**
+     * The other half of the derivation, and the half every other test here rests on: with no
+     * scheme forwarded the cookie must *not* be `Secure`, or `CookieManager` would refuse to
+     * send it back and every mutation below would fail the gate it exists to prove. A
+     * hardcoded `secure(true)` satisfies the test above and fails this one.
+     */
+    @Test
+    fun `the running image leaves Secure off the CSRF cookie when the request arrived over http`() {
+        val direct = http.send(
+            HttpRequest.newBuilder(URI.create(baseUrl() + "/api/version")).GET().build(),
+            HttpResponse.BodyHandlers.ofString(),
+        )
+        assertEquals(listOf("Path=/", "SameSite=Strict"), direct.csrfCookieAttributes())
     }
 }
