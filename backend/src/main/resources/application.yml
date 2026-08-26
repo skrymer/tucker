@@ -22,6 +22,12 @@ spring:
 
 server:
   port: ${TUCKER_PORT:8080}
+  # Behind the tunnel the backend is reached over plain HTTP, so the forwarded scheme is the
+  # only thing that can tell it the client used https. That is what marks the CSRF cookie
+  # `Secure` (ADR 0025); nothing else here reads the scheme. Off the tunnel it is inert — no
+  # dev browser or test client sends the header, so `isSecure()` stays false and the cookie
+  # stays sendable over http, which is what every suite depends on.
+  forward-headers-strategy: FRAMEWORK
 
 springdoc:
   swagger-ui:

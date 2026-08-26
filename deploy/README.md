@@ -140,6 +140,16 @@ it needs the `LITESTREAM_*` secrets in `.env`).
 Over the real HTTPS origin, with DevTools → Application:
 
 - **SPA loads** over HTTPS and `/api/*` works same-origin (no CORS).
+- **The CSRF cookie is `Secure`** — under Application → Cookies, `XSRF-TOKEN`
+  reads `Path=/; Secure; SameSite=Strict`. Worth checking by hand because the flag
+  is not configured anywhere: it is derived from the forwarded scheme, so it
+  appears only if `X-Forwarded-Proto: https` survives both cloudflared and the
+  nitro `/api` proxy
+  ([ADR 0025](../docs/adr/0025-a-mutation-must-prove-it-came-from-tuckers-own-page.md)).
+  `ApiEndToEndTest` pins the backend's half of that chain against the real image;
+  nothing in the repository can see cloudflared's half. If `Secure` is absent the
+  cookie is writable by an on-path attacker over plain HTTP, and every suite is
+  still green.
 - **Manifest + service worker reachable** — while logged in, confirm
   `/manifest.webmanifest` and `/sw.js` return 200. The manifest link is
   credentialed (`pwa.useCredentials` in `nuxt.config.ts`) so the fetch carries
