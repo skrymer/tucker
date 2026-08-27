@@ -167,6 +167,19 @@ Over the real HTTPS origin, with DevTools → Application:
   credentialed (`pwa.useCredentials` in `nuxt.config.ts`) so the fetch carries
   the Access cookie — everything stays gated; no Access bypass is needed or
   wanted ([ADR 0015](../docs/adr/0015-production-deployment-topology.md)).
+- **Nothing is holding the old build** — while logged in, confirm
+  `Cache-Control: no-cache` on `/`, `/sw.js`, `/push-sw.js` and
+  `/manifest.webmanifest`, and that `cf-cache-status` on the two `.js` ones is
+  not `HIT`. `verify-prod.sh` asserts the header at the origin, inside the
+  container, so it cannot see Cloudflare; those two are the ones at risk,
+  because `.js` is on Cloudflare's default cacheable-extension list while `/`
+  has no extension and `.webmanifest` is not on it. An edge still serving a
+  stale `/sw.js` pins every installed app to the previous build with every
+  origin check passing ([ADR 0011](../docs/adr/0011-supported-platforms.md),
+  "How the shell is replaced"). If either is `HIT`, add a Cache Rule bypassing
+  `/sw.js` and `/push-sw.js` — `/push-sw.js` matters on its own, since a new
+  worker `importScripts` it and would otherwise install with the old build's
+  push handlers.
 - **Installable** — Android Chrome offers install (WebAPK); iOS Safari installs
   via Share → Add to Home Screen.
 - **Offline shell** — with the network cut, a reload still renders the app shell

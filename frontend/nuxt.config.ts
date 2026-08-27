@@ -1,7 +1,8 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 // Plain constants with no Nuxt runtime dependency, so the config can share the
-// app's definition of "must reach the network" rather than restating it.
+// app's own definitions of these paths rather than restating them.
 import { NETWORK_ONLY_PREFIXES } from './app/utils/exits'
+import { PWA_ENTRY_POINTS } from './app/utils/pwaEntryPoints'
 
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
@@ -106,6 +107,17 @@ export default defineNuxtConfig({
   nitro: {
     prerender: { routes: ['/'] },
   },
+
+  // Every response an update has to arrive through must revalidate, or a deploy
+  // never reaches an installed app — the reasoning, and why the rule stops at
+  // these four, is ADR 0011, "How the shell is replaced". `no-cache` is
+  // revalidate-always, not refetch-always: the ETag round-trip answers 304.
+  routeRules: Object.fromEntries(
+    PWA_ENTRY_POINTS.map((path) => [
+      path,
+      { headers: { 'cache-control': 'no-cache' } },
+    ]),
+  ),
 
   app: {
     head: {

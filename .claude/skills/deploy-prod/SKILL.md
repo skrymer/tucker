@@ -87,7 +87,13 @@ expected: since F10 slice 1 the backend verifies the Access JWT itself (ADR
 incident, exactly like a 200 on the unauthenticated probes. Do not "fix" that
 check back to expecting 200; it would then pass only when the gate is down.
 `/api/version` stays open so an operator can tell "the app is down" from "the
-app is rejecting me". Its final section prints backend error/exception log lines
+app is rejecting me". It also asserts that `/`, `/sw.js`, `/push-sw.js` and
+`/manifest.webmanifest` answer `Cache-Control: no-cache`, without which the
+deploy you just made never reaches an installed app (ADR 0011, "How the shell is
+replaced"). It reads that **at the origin**, so those four `ok` lines say the
+running image carries the rule and say nothing about Cloudflare — the edge check
+is a logged-in one in `deploy/README.md`, and skipping it is how you certify a
+deploy that no phone will ever see. Its final section prints backend error/exception log lines
 from the last 10 minutes — that part is **judged, not asserted**: investigate
 anything that isn't known-benign noise before calling the deploy good.
 
