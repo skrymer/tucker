@@ -155,3 +155,148 @@ jobs:
           name: playwright-smoke-report
           path: frontend/playwright-smoke-report
           retention-days: 7
+
+  # --- Publishing ----------------------------------------------------------
+  # The two deployable images are built here and pushed to GHCR, from which the
+  # VPS only ever pulls (ADR 0015). `needs` on all three suites is what makes a
+  # published tag mean something: an image exists for a commit only if that
+  # commit's unit, browser and real-stack suites were green.
+  #
+  # Building here rather than on the node is what lets the node stay small. It
+  # is a 1-vCPU/2 GB VPS (ADR 0012), and the Vite stage outgrew its heap the day
+  # the Intake Breakdown's chart landed — a build that aborted with exit 134 and
+  # left production on the previous image. These stages now run on runners that
+  # are thrown away afterwards.
+  #
+  # Three jobs rather than one, because the two image builds share nothing but
+  # the stamp and would otherwise queue behind each other for no reason.
+
+  # What the images are tagged with, and what they report at /api/version and in
+  # the Profile footer. Computed once and passed down, so the two images cannot
+  # be labelled differently for the same commit.
+  stamp:
+    name: Build stamp
+    # Never on a pull request: a tag published from an unmerged branch would be
+    # indistinguishable from one that shipped.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [backend, frontend, e2e]
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.compute.outputs.version }}
+      commit: ${{ steps.compute.outputs.commit }}
+      built-at: ${{ steps.compute.outputs.built-at }}
+    steps:
+      - name: Check out the repository
+        # Full history: the version counts commits since VERSION last changed,
+        # which a shallow clone cannot do.
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      # deploy/version.sh, not a copy of it — the VPS runs the same script to
+      # decide which tag to pull, and the two agreeing is what makes a 404 on
+      # that pull a true statement rather than a mystery.
+      - name: Compute the build stamp
+        id: compute
+        run: |
+          {
+            echo "version=$(deploy/version.sh)"
+            echo "commit=$(git rev-parse --short HEAD)"
+            echo "built-at=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          } >>"$GITHUB_OUTPUT"
+
+  # Three tags, each answering a different question. The version is what a deploy
+  # pins and what a rollback names; the short SHA ties an image to a commit
+  # without arithmetic; `latest` is what a first bring-up can pull before there
+  # is a version to ask for.
+  publish-backend:
+    name: Publish the backend image
+    needs: stamp
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # Granted on the two publishing jobs and nowhere else: a test job that can
+      # push to the registry is a wider blast radius than it needs for no gain.
+      packages: write
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v6
+
+      - name: Sign in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: true
+          tags: |
+            ghcr.io/skrymer/tucker-backend:${{ needs.stamp.outputs.version }}
+            ghcr.io/skrymer/tucker-backend:sha-${{ needs.stamp.outputs.commit }}
+            ghcr.io/skrymer/tucker-backend:latest
+          # Baked into the image rather than stamped on the node, so what
+          # /api/version reports cannot disagree with the artefact answering it.
+          build-args: |
+            APP_VERSION=${{ needs.stamp.outputs.version }}
+            GIT_SHA=${{ needs.stamp.outputs.commit }}
+            BUILT_AT=${{ needs.stamp.outputs.built-at }}
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,scope=backend,mode=max
+
+  publish-frontend:
+    name: Publish the frontend image
+    needs: stamp
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v6
+
+      - name: Sign in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          push: true
+          tags: |
+            ghcr.io/skrymer/tucker-frontend:${{ needs.stamp.outputs.version }}
+            ghcr.io/skrymer/tucker-frontend:sha-${{ needs.stamp.outputs.commit }}
+            ghcr.io/skrymer/tucker-frontend:latest
+          # The SPA bundle carries the same stamp as the backend, so a partial
+          # deploy shows as a visible split rather than one number for two builds.
+          build-args: |
+            APP_VERSION=${{ needs.stamp.outputs.version }}
+            GIT_SHA=${{ needs.stamp.outputs.commit }}
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,scope=frontend,mode=max
+
+  # Separate from the two builds so it reports once, and only when *both* images
+  # actually landed — a summary naming a version where half the pair failed to
+  # push would invite a deploy that cannot complete.
+  publish-report:
+    name: Report the published version
+    needs: [stamp, publish-backend, publish-frontend]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Write the job summary
+        run: |
+          echo "Published \`${{ needs.stamp.outputs.version }}\` (\`${{ needs.stamp.outputs.commit }}\`)." >>"$GITHUB_STEP_SUMMARY"
+          echo 'Deploy it with `ssh tucker tucker/deploy/update.sh`.' >>"$GITHUB_STEP_SUMMARY"
