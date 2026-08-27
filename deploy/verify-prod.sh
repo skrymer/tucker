@@ -24,7 +24,7 @@ check() { # label expected actual
 
 # 1. Unauthenticated probes must 302 to Cloudflare Access on every path.
 #    A 200 means the app is publicly exposed — treat as an incident.
-for p in / /api/foods /manifest.webmanifest /sw.js; do
+for p in / /api/foods /manifest.webmanifest /sw.js /push-sw.js; do
   code=$(curl -s -o /dev/null -m 15 -w '%{http_code}' "https://$HOST$p")
   check "GET $p unauthenticated -> Access redirect" 302 "$code"
 done
@@ -40,9 +40,16 @@ check "backend,frontend,cloudflared running" "true,true,true" "$running"
 #    assertion — which makes each probe two checks in one: the proxy reached the
 #    backend (0 would mean it did not), and the gate answered as it should.
 #    A 0 means the escaping below broke; the two are worth telling apart.
-probe() { # path -> HTTP status, or 0 if the request never completed
+#    One helper, because the hard part is the three-layer quoting through ssh ->
+#    docker exec -> node -e, and a second copy of it is a second thing to keep
+#    right against a box only the deploy exercises.
+in_frontend() { # path expr fallback -> what `expr` printed for the response
   ssh "$SSH_TARGET" \
-    "docker exec tucker-frontend node -e \"fetch('http://localhost:3000$1').then(r => console.log(r.status)).catch(() => console.log(0))\""
+    "docker exec tucker-frontend node -e \"fetch('http://localhost:3000$1').then(r => console.log($2)).catch(() => console.log('$3'))\""
+}
+
+probe() { # path -> HTTP status, or 0 if the request never completed
+  in_frontend "$1" 'r.status' 0
 }
 
 #    401, not 200: a 200 here means the gate is off — an incident, like a 200 in
@@ -52,7 +59,20 @@ probe() { # path -> HTTP status, or 0 if the request never completed
 check "in-container same-origin /api reaches a gated backend" 401 "$(probe /api/foods)"
 check "in-container /api/version reachable without an assertion" 200 "$(probe /api/version)"
 
-# 4. Backend log scan — informational: judge the hits, the script does not
+# 4. The four URLs an update has to arrive through must revalidate, or the deploy
+#    you just made never reaches an installed app (ADR 0011). This proves the
+#    running image carries the rule and nothing more: it reads the header at the
+#    origin, so it is blind to Cloudflare, which can still be answering /sw.js
+#    from its own cache. That half is a logged-in check in deploy/README.md.
+cache_control() { # path -> the Cache-Control header, or a word saying why not
+  in_frontend "$1" "r.headers.get('cache-control') || 'absent'" unreachable
+}
+
+for p in / /sw.js /push-sw.js /manifest.webmanifest; do
+  check "origin $p revalidates" no-cache "$(cache_control "$p")"
+done
+
+# 5. Backend log scan — informational: judge the hits, the script does not
 #    fail on them.
 echo "--- backend error/exception lines, last 10m (judge manually) ---"
 ssh "$SSH_TARGET" \
