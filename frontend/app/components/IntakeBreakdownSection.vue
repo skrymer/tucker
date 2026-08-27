@@ -1,66 +1,69 @@
 <script setup lang="ts">
+import type { TabsItem } from '@nuxt/ui'
 import type { components } from '#open-fetch-schemas/api'
 
 const props = defineProps<{
   breakdown: components['schemas']['IntakeBreakdownResponse']
+  /** Whether a wider (or narrower) window is on its way. */
+  pending?: boolean
 }>()
 
-/** One row of the legend — the ring's accessible equivalent. */
-interface LegendRow {
-  key: string
-  name: string
-  /** How many Foods the row stands for. Only Other stands for more than one. */
-  count?: number
-  calories: number
-  protein: number | null | undefined
-  share: number
-  isEstimate?: boolean
-  color: string
-}
+/**
+ * Which window is being asked about. Owned by the page, which turns it into the
+ * request; the section only offers the choice.
+ */
+const period = defineModel<BreakdownPeriod>('period', { default: 'today' })
+
+const periodItems: TabsItem[] = [
+  { label: 'Today', value: 'today' },
+  { label: 'Last 7 days', value: 'week' },
+]
 
 // An empty window keeps the section rather than hiding it (ADR 0026) — there is
 // nothing to draw a ring from, so it says so.
 const isEmpty = computed(() => props.breakdown.items.length === 0)
 
-/**
- * The ring's slices and the legend's rows are one list: past the palette's eighth
- * hue everything folds into one grey Other, because a ninth Food must never be
- * given an invented colour (ADR 0026).
- */
-function useLegend() {
-  const folded = computed(() => foldTail(props.breakdown.items))
-
-  const rows = computed<LegendRow[]>(() => {
-    const ringed = folded.value.ringItems.map((item, i) => ({
-      key: `slot-${i}`,
-      name: item.name,
-      calories: item.calories,
-      protein: item.protein,
-      share: item.share,
-      isEstimate: item.isEstimate,
-      color: RING_SLOT_COLORS[i]!,
-    }))
-    const other = folded.value.other
-    if (!other) return ringed
-    return [
-      ...ringed,
-      {
-        key: 'other',
-        name: 'Other',
-        count: other.count,
-        calories: other.calories,
-        protein: other.protein,
-        share: other.share,
-        // Deliberately unflagged: Other stands for several Foods at once, so an
-        // "est." on it would say something about all of them.
-        color: OTHER_COLOR,
-      },
-    ]
-  })
-
-  return { rows }
+/** How far the figures can be trusted: how much of the window was actually logged. */
+function useCoverage() {
+  // Measured off the breakdown's own bounds rather than the selected period, so
+  // the caption always describes the figures beside it and never the button last
+  // pressed — the two differ while a wider window is still loading.
+  const days = computed(() =>
+    daysInWindow(props.breakdown.from, props.breakdown.to),
+  )
+  // Silent for a single day, whose count is 0 or 1 and whose 0 already reads as
+  // "Nothing logged yet" right below.
+  const coverage = computed(() =>
+    days.value > 1
+      ? `${props.breakdown.loggedDays} of ${days.value} days logged`
+      : null,
+  )
+  return { coverage }
 }
-const { rows } = useLegend()
+const { coverage } = useCoverage()
+
+const legend = computed(() => intakeLegend(props.breakdown.items))
+
+/** Other's tail, hidden until asked for and hidden again on a second press. */
+function useTail() {
+  const { expanded, label, toggle, collapse } = useExpander(
+    () => legend.value.folded.length,
+  )
+  // Keyed to the breakdown's own bounds rather than to `period`: a new window is
+  // a new answer and opens folded, the way its ring draws, while a retry of the
+  // same one leaves a tail the User opened where they left it. Two sources rather
+  // than one getter returning both — an array built in the getter is a fresh
+  // object every run, so it would read as changed on a reload of the same window.
+  watch([() => props.breakdown.from, () => props.breakdown.to], collapse)
+
+  const rows = computed(() =>
+    expanded.value
+      ? [...legend.value.slices, ...legend.value.folded]
+      : legend.value.slices,
+  )
+  return { expanded, expanderLabel: label, rows, toggle }
+}
+const { expanded, expanderLabel, rows, toggle } = useTail()
 
 /**
  * The ring itself. Sized by calories rather than share so it is the response's own
@@ -69,10 +72,13 @@ const { rows } = useLegend()
  * not the focused window, leaving the ring at a few percent opacity.
  */
 function useRing() {
-  const data = computed(() => rows.value.map((row) => row.calories))
+  const data = computed(() => legend.value.slices.map((row) => row.calories))
   const categories = computed(() =>
     Object.fromEntries(
-      rows.value.map((row) => [row.key, { name: row.name, color: row.color }]),
+      legend.value.slices.map((row) => [
+        row.key,
+        { name: row.name, color: row.color },
+      ]),
     ),
   )
   return { data, categories }
@@ -81,7 +87,11 @@ const { data: ringData, categories: ringCategories } = useRing()
 </script>
 
 <template>
-  <UCard role="region" aria-labelledby="intake-breakdown-heading">
+  <UCard
+    role="region"
+    aria-labelledby="intake-breakdown-heading"
+    :aria-busy="pending"
+  >
     <div class="flex items-baseline justify-between gap-2">
       <h2 id="intake-breakdown-heading" class="text-sm font-medium text-muted">
         What you're eating
@@ -93,9 +103,37 @@ const { data: ringData, categories: ringCategories } = useRing()
       </span>
     </div>
 
+    <div
+      class="mt-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1"
+    >
+      <!-- `role`/`aria-label` land on the root, not on the tablist Reka renders
+           inside it, so the name is carried by a group around the tabs rather
+           than by the tablist itself. -->
+      <UTabs
+        v-model="period"
+        :items="periodItems"
+        :content="false"
+        variant="pill"
+        size="xs"
+        color="primary"
+        role="group"
+        aria-label="Period"
+      />
+      <span v-if="coverage" class="text-sm text-muted">{{ coverage }}</span>
+    </div>
+
     <p v-if="isEmpty" class="mt-3 text-sm text-muted">Nothing logged yet</p>
 
-    <div v-else class="mt-3 flex flex-col items-center gap-6 sm:flex-row">
+    <!-- The toggle moves at once while the figures below it are still the
+         previous window's, so a load in flight is said rather than left to be
+         misread as a week that happens to look like a day. Delayed by ADR 0007's
+         150 ms, in the transition rather than in a timer: a switch answered
+         faster than that is over before the dim begins, so it never flashes. -->
+    <div
+      v-else
+      class="mt-3 flex flex-col items-center gap-6 transition-opacity delay-150 sm:flex-row"
+      :class="pending && 'opacity-50'"
+    >
       <!-- Decorative: every figure it encodes is in the legend beside it, and
            three of the palette's light hues sit under 3:1, so the labelled rows
            are what make it readable at all (frontend/DESIGN.md). -->
@@ -118,10 +156,12 @@ const { data: ringData, categories: ringCategories } = useRing()
           v-for="row in rows"
           :key="row.key"
           class="flex items-baseline justify-between gap-3 py-2"
+          :class="row.kind === 'folded' && 'pl-4'"
         >
           <div class="min-w-0">
             <p class="flex items-baseline gap-1.5 font-medium text-default">
               <span
+                v-if="row.color"
                 aria-hidden="true"
                 class="size-2.5 shrink-0 self-center rounded-full"
                 :style="{ backgroundColor: row.color }"
@@ -146,8 +186,24 @@ const { data: ringData, categories: ringCategories } = useRing()
               {{ formatIntakeFigures(row.calories, row.protein) }}
             </p>
           </div>
-          <span class="shrink-0 font-semibold tabular-nums text-default">
-            {{ Math.round(row.share * 100) }}%
+          <span class="flex shrink-0 items-baseline gap-2">
+            <span class="font-semibold tabular-nums text-default">
+              {{ Math.round(row.share * 100) }}%
+            </span>
+            <!-- The tail opens in place, off the response already held. -->
+            <UButton
+              v-if="row.kind === 'other'"
+              :label="expanderLabel"
+              :trailing-icon="
+                expanded ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'
+              "
+              :aria-expanded="expanded"
+              color="neutral"
+              variant="link"
+              size="xs"
+              class="p-0"
+              @click="toggle"
+            />
           </span>
         </li>
       </ul>

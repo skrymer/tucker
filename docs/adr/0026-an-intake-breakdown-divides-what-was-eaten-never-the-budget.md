@@ -77,6 +77,15 @@ derived state and belongs in the backend ([0002](0002-business-logic-belongs-in-
 about a chart, so the fold into **Other** — and expanding it — happens in the
 client, with no second request.
 
+**The response says how much of its window was logged.** Alongside the items it
+carries the number of days in the window that hold an **Entry**, because the width
+of a window is no evidence that it was lived in and a seven-day breakdown built
+from three logged days should be discounted rather than read at face value. Only
+that count is on the wire: the window's *width* is `from`..`to`, which the response
+already states, so the client reads the denominator off the answer it was given
+rather than off the button the User last pressed — the two disagree for the length
+of a round-trip.
+
 ## Considered options
 
 - **Slices as shares of the Calorie Budget, with an unspent wedge.** The first
@@ -108,7 +117,14 @@ client, with no second request.
   becomes one **Other** slice naming how many it holds, expandable to the full
   list. A week routinely produces fifteen to twenty distinct items; a prototype
   run at six named slices put "Other" *second*, at 28% — a chart whose loudest
-  answer was "miscellaneous".
+  answer was "miscellaneous". **Other's protein is stricter than a slice's**: a
+  slice sums what it knows and omits only when nothing in it carried a figure,
+  while Other is omitted unless *every* Food it folded carried one. A slice merges
+  Entries of one Food, where summing the known understates the same thing; Other
+  merges different Foods, so one unmeasured estimate among weighed ones would put a
+  confident figure against a row whose calories are mostly unmeasured — and Other
+  is deliberately never flagged an estimate, so nothing on screen would hint at it.
+  A revealed row states its own figures normally.
 - **Free-text estimate labels split.** "Thai place" and "thai" are two slices.
   Normalising on trimmed, case-folded text catches the common case; the rest is
   accepted rather than solved, because the alternative is guessing that two

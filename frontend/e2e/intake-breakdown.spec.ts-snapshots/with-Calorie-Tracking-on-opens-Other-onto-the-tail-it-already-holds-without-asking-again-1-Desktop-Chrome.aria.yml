@@ -1,0 +1,53 @@
+- region "What you're eating":
+    - heading "What you're eating" [level=2]
+    - text: /\d+ kcal/
+    - group "Period":
+        - tablist:
+            - tab "Today" [selected]
+            - tab "Last 7 days"
+    - list:
+        - listitem:
+            - paragraph: Chicken breast
+            - paragraph: /\d+ kcal · \d+ g protein/
+            - text: /\d+%/
+        - listitem:
+            - paragraph: Work canteen est.
+            - paragraph: /\d+ kcal/
+            - text: /\d+%/
+        - listitem:
+            - paragraph: Basmati rice
+            - paragraph: /\d+ kcal · 8 g protein/
+            - text: /\d+%/
+        - listitem:
+            - paragraph: Cottage pie
+            - paragraph: /\d+ kcal · \d+ g protein/
+            - text: /\d+%/
+        - listitem:
+            - paragraph: Skyr
+            - paragraph: /\d+ kcal · \d+ g protein/
+            - text: 6%
+        - listitem:
+            - paragraph: Banana
+            - paragraph: /\d+ kcal · 1 g protein/
+            - text: 5%
+        - listitem:
+            - paragraph: Olive oil
+            - paragraph: /\d+ kcal · 0 g protein/
+            - text: 5%
+        - listitem:
+            - paragraph: Almonds
+            - paragraph: /\d+ kcal · 2 g protein/
+            - text: 3%
+        - listitem:
+            - paragraph: Other 2 items
+            - paragraph: /\d+ kcal · 0 g protein/
+            - text: 2%
+            - button "Show less" [expanded]
+        - listitem:
+            - paragraph: Blueberries
+            - paragraph: /\d+ kcal · 0 g protein/
+            - text: 1%
+        - listitem:
+            - paragraph: Black coffee
+            - paragraph: /\d+ kcal · 0 g protein/
+            - text: 1%

@@ -142,6 +142,20 @@ describe('DaySummary', () => {
     ],
   }
 
+  it('offers no Show all when the day is exactly as long as the list shows', async () => {
+    await renderSuspended(DaySummary, {
+      props: {
+        summary: { ...fiveEntries, entries: fiveEntries.entries.slice(-3) },
+      },
+    })
+
+    // Three fit, so the control would reveal nothing it had hidden.
+    expect(screen.getAllByRole('listitem')).toHaveLength(3)
+    expect(
+      screen.queryByRole('button', { name: /show all/i }),
+    ).not.toBeInTheDocument()
+  })
+
   it('shows only the three most recent entries with a Show all control', async () => {
     await renderSuspended(DaySummary, { props: { summary: fiveEntries } })
 

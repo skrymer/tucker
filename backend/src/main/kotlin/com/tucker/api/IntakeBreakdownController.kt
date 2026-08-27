@@ -35,6 +35,8 @@ data class IntakeBreakdownResponse(
     val from: LocalDate,
     val to: LocalDate,
     val totalCalories: Double,
+    /** Days in the window carrying at least one Entry, so a client can say how far to trust it. */
+    val loggedDays: Int,
     val items: List<IntakeBreakdownItemResponse>,
 )
 
@@ -51,6 +53,7 @@ private fun IntakeBreakdown.toResponse() = IntakeBreakdownResponse(
     from = from,
     to = to,
     totalCalories = totalCalories,
+    loggedDays = loggedDays,
     items = items.map { it.toResponse() },
 )
 

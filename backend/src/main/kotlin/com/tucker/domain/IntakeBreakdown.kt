@@ -41,6 +41,8 @@ data class IntakeBreakdown(
     val from: LocalDate,
     val to: LocalDate,
     val totalCalories: Double,
+    /** Days in the window that carry at least one Entry — how far to trust it. */
+    val loggedDays: Int,
     val items: List<IntakeBreakdownItem>,
 ) {
     companion object {
@@ -71,6 +73,7 @@ data class IntakeBreakdown(
                 from = from,
                 to = to,
                 totalCalories = totalCalories,
+                loggedDays = entries.map { it.loggedOn }.distinct().size,
                 items = items,
             )
         }

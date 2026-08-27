@@ -943,7 +943,7 @@ The frontend is built **test-first (red-green TDD)**. Increments:
   expandable, because the palette has exactly eight hues and a ninth Food must
   never get an invented one; slice 2
   ([#265](https://github.com/skrymer/tucker/issues/265)) — the seven-day window
-  and the **Other** you can open.
+  and the **Other** you can open. Both shipped.
 
   Slice 1 ([#264](https://github.com/skrymer/tucker/issues/264)) — **the day's
   calories, divided** — ✅ done. `GET /api/intake-breakdown?from=&to=` ranks and
@@ -979,6 +979,55 @@ The frontend is built **test-first (red-green TDD)**. Increments:
   - The ring is drawn by `vue-chrts`, which costs **221 KB gzip on `/review` alone** —
     measured, lazy, not preloaded, and no other route pays. It does still carry
     TopoJSON and `proj4` that tree-shaking did not strip. 
+
+  Slice 2 ([#265](https://github.com/skrymer/tucker/issues/265)) — **the trailing
+  seven days, and the tail you can open** — ✅ done, **and with it F14**. A period
+  toggle in the section header switches the window; `Other` opens onto the Foods it
+  folded, off the response already held.
+  - **`loggedDays` came back with the surface that states it**, as slice 1 said it
+    would, and `CONTEXT.md` now carries the sentence that makes it a domain term: the
+    width of a window is no evidence that it was logged, so a seven-day breakdown
+    built from three logged days is discounted rather than read at face value.
+  - **The caption describes the response, never the button last pressed.** Its
+    denominator is measured off the breakdown's own `from`/`to`, not off the selected
+    period — the two disagree for the length of a round-trip, and a "5 of 7" over the
+    day's figures would be a confident lie in exactly that window. It is silent for a
+    single day, whose count could only be none or all and whose none already reads as
+    "Nothing logged yet" below it.
+  - **`useOptionalFetch` gained a re-entry policy**, named as `useAsyncAction`'s is:
+    `guard` (the default, unchanged for every existing caller) drops a load issued
+    while one is in flight, `latest` issues it and discards whatever the superseded run
+    returns. Slice 1's fetcher took no arguments, so a second load was always a repeat;
+    a switchable window makes it *a different question*, and the guard silently answers
+    the wrong one. The first attempt at this was a promise queue in the page, which
+    three of the four cleanup reviewers flagged independently: it re-opened the very
+    Retry de-duplication the guard exists for, fetched the *same* window twice on a
+    quick double-switch (the fetcher reads the period at call time, and a queued link
+    runs after the burst), and was safe only while `load` never rejected — one
+    rejection poisons the chain and every later refresh is silently skipped.
+  - **The legend moved out of the SFC** into `intakeLegend`, which lays a ranked
+    breakdown out as rows with an explicit `kind` (`slice` | `other` | `folded`). That
+    made the rule worth asserting — a folded row is on no arc, so it is given no hue —
+    a data fact tested where it is decided, and took a `data-testid` back out of
+    production markup: the component test had been counting colour swatches by row
+    index, which breaks the day the palette stops having eight hues, for a reason
+    unrelated to what it asserts. The ring is fed from `slices` alone, so opening
+    `Other` leaves the donut's props untouched and triggers no d3 re-render.
+  - **The expander is one composable now.** `useExpander` holds the "Show all N" ↔
+    "Show less" label and the toggle, shared with Today's entry list — ADR 0004's
+    extract-on-the-second-consumer rule, and the label vocabulary stops being two
+    copies that had already drifted apart on `aria-expanded`.
+  - **Collapsing the tail is keyed to the window, not to the toggle**, so a *new
+    answer* opens folded the way its ring draws while a Retry of the same window leaves
+    a tail the User opened where they left it. Watched as **two sources**, not one
+    getter returning both: a getter that builds an array returns a fresh object every
+    run, which Vue compares by reference — so the obvious form would have snapped an
+    open tail shut on every reload, with the whole suite green.
+  - Two smaller ones, each a wrong answer rather than a tidy-up: `breakdownWindow`
+    reads the clock **once**, because two reads either side of midnight hand back a
+    window a day wider than the period asks for; and `daysInWindow` counts between
+    **UTC** midnights, because a local span across a daylight-saving shift is an hour
+    short of a whole number of days and needs a rounding rule to get wrong.
 
 ## Architecture
 

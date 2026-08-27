@@ -1,5 +1,27 @@
 import type { components } from '#open-fetch-schemas/api'
 
+/** The windows an Intake Breakdown is offered over (CONTEXT.md — Intake Breakdown). */
+export type BreakdownPeriod = 'today' | 'week'
+
+/** How many days each period covers, counted inclusively. */
+const PERIOD_DAYS: Record<BreakdownPeriod, number> = { today: 1, week: 7 }
+
+/**
+ * The window a period asks about, ending on the user's local today (ADR 0014).
+ *
+ * Resolved at call time rather than once at setup: a page left open over midnight
+ * whose Retry is tapped at 00:03 must ask about the day it is now.
+ */
+export function breakdownWindow(period: BreakdownPeriod): {
+  from: string
+  to: string
+} {
+  // The clock is read once: two reads either side of midnight would hand back a
+  // window a day wider than the period asks for.
+  const to = localToday()
+  return { from: localDaysAgo(PERIOD_DAYS[period] - 1, to), to }
+}
+
 /** One slice of an Intake Breakdown as the backend ranked it. */
 export type BreakdownItem = components['schemas']['IntakeBreakdownItemResponse']
 
@@ -26,7 +48,8 @@ export const RING_SLOTS = RING_SLOT_COLORS.length
 
 /** The folded tail, as one slice. */
 export interface OtherSlice {
-  count: number
+  /** The Foods it folded, in the backend's ranking — what the expander reveals. */
+  items: BreakdownItem[]
   calories: number
   /** Summed across the tail; null unless every Food in it carried a figure. */
   protein: number | null
@@ -52,7 +75,7 @@ export function foldTail(items: BreakdownItem[]): FoldedBreakdown {
     other:
       tail.length > 0
         ? {
-            count: tail.length,
+            items: tail,
             calories: sum(tail, (i) => i.calories),
             protein: knownProtein(tail),
             share: sum(tail, (i) => i.share),
@@ -82,4 +105,78 @@ function sum(
 function knownProtein(items: BreakdownItem[]): number | null {
   if (items.some((item) => item.protein == null)) return null
   return sum(items, (i) => i.protein!)
+}
+
+/**
+ * One row of the legend beside the ring — the ring's accessible equivalent, and
+ * where a folded row's figures come from when Other is opened.
+ */
+export interface LegendRow {
+  key: string
+  /**
+   * `slice` is drawn on the ring, `other` is the fold itself, and `folded` is one
+   * of the Foods inside it.
+   */
+  kind: 'slice' | 'other' | 'folded'
+  name: string
+  /** How many Foods the row stands for. Only `other` stands for more than one. */
+  count?: number
+  calories: number
+  protein: number | null | undefined
+  share: number
+  isEstimate?: boolean
+  /** Absent on a `folded` row, which is on no arc and so is given no hue. */
+  color?: string
+}
+
+export interface IntakeLegend {
+  /** What the ring draws: the ringed Foods, and Other when the tail folded. */
+  slices: LegendRow[]
+  /** What Other holds, ready to be revealed — no second request (ADR 0026). */
+  folded: LegendRow[]
+}
+
+/** Lay a ranked breakdown out as legend rows, folding the tail past the palette. */
+export function intakeLegend(items: BreakdownItem[]): IntakeLegend {
+  const { ringItems, other } = foldTail(items)
+  const ringed = ringItems.map((item, i) =>
+    rowOf(item, `slot-${i}`, 'slice', RING_SLOT_COLORS[i]!),
+  )
+  if (!other) return { slices: ringed, folded: [] }
+  return {
+    slices: [
+      ...ringed,
+      {
+        key: 'other',
+        kind: 'other',
+        name: 'Other',
+        count: other.items.length,
+        calories: other.calories,
+        protein: other.protein,
+        share: other.share,
+        // Deliberately unflagged: Other stands for several Foods at once, so an
+        // "est." on it would say something about all of them.
+        color: OTHER_COLOR,
+      },
+    ],
+    folded: other.items.map((item, i) => rowOf(item, `folded-${i}`, 'folded')),
+  }
+}
+
+function rowOf(
+  item: BreakdownItem,
+  key: string,
+  kind: LegendRow['kind'],
+  color?: string,
+): LegendRow {
+  return {
+    key,
+    kind,
+    color,
+    name: item.name,
+    calories: item.calories,
+    protein: item.protein,
+    share: item.share,
+    isEstimate: item.isEstimate,
+  }
 }

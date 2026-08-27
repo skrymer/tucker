@@ -23,19 +23,16 @@ const verdict = computed(() => dayStatusVerdict(props.summary.dayStatus))
 // behind a "Show all" expander.
 function useEntryLog() {
   const VISIBLE = 3
-  const expanded = ref(false)
   const entries = computed(() => props.summary.entries)
+  const { expanded, label, toggle } = useExpander(() => entries.value.length)
   const canExpand = computed(() => entries.value.length > VISIBLE)
   const visibleEntries = computed(() =>
     expanded.value ? entries.value : entries.value.slice(-VISIBLE),
   )
-  const toggle = () => {
-    expanded.value = !expanded.value
-  }
-  return { expanded, visibleEntries, canExpand, toggle }
+  return { visibleEntries, canExpand, expanderLabel: label, toggle }
 }
 
-const { expanded, visibleEntries, canExpand, toggle } = useEntryLog()
+const { visibleEntries, canExpand, expanderLabel, toggle } = useEntryLog()
 </script>
 
 <template>
@@ -115,7 +112,7 @@ const { expanded, visibleEntries, canExpand, toggle } = useEntryLog()
         class="mt-2"
         @click="toggle"
       >
-        {{ expanded ? 'Show less' : `Show all ${summary.entries.length}` }}
+        {{ expanderLabel }}
       </UButton>
     </UCard>
   </div>

@@ -233,20 +233,58 @@ stays reachable on an API-supplied value.
 
 ---
 
-### `components/IntakeBreakdownSection.vue` — 1 of 26
+### `components/IntakeBreakdownSection.vue` — 40 of 40, **all reported `no cov`**
 
-**`key: 'other'` L48** — the `v-for` key of the folded `Other` row, replaced with `""`.
+**StrykerJS attributes none of this component's tests to it.** Every mutant lands in
+`# no cov`, so the engine reports a 0% score for a file whose 18 tests pass and whose
+legend rows, expander, coverage caption and ring feed are all asserted. Scoped to the
+file alone the dry run refuses outright — *"Vitest failed to find test files related to
+mutated files"* — while `pnpm exec vitest related app/components/IntakeBreakdownSection.vue`
+finds the spec and runs all 18. Do not read the 0% as a coverage gap, and do not "fix"
+it by adding tests that already exist.
 
-**Verdict: equivalent mutant.** The ringed rows key on `slot-${i}` and there is exactly
-one `Other` row in any breakdown, so an empty string is as unique among the keys as the
-literal is. Nothing renders differently and no warning is emitted. Its sibling — the
-`slot-${i}` template on L34 — *is* killed, by the test that asserts the ring is fed one
-arc per legend row, so the keying is pinned where duplicates are actually reachable.
+**Settled by hand-mutation instead**, which is the verdict this case is for. Each edit
+below was applied to the source and the spec re-run; six of eight went red:
 
-The other eight survivors this component started with are gone, not filtered: the whole
-`useRing` feed (`data`, `categories`, each arc's `name` and `color`) was unreachable
-because the ring is `aria-hidden` by design, and is now asserted through the chart's own
-props — the only seam it has. See also the palette guard below.
+| Hand mutation | Result |
+| --- | --- |
+| ring `data` → all zeroes | killed |
+| ring `categories` → `{}` per arc | killed |
+| expander `v-if` → `false` | killed |
+| revealed tail never appended to `rows` | killed |
+| coverage `days > 1` → `days >= 1` | killed |
+| collapse watcher removed | killed |
+| swatch `v-if="row.color"` → `v-if="true"` | **survived** |
+| folded row's `pl-4` indent dropped | **survived** |
+
+Both survivors are the folded row's *visual* distinction, and neither produces a wrong
+figure. Neither is equivalent, though: `intakeLegend` leaves a folded row's `color`
+undefined — pinned by its own util test — so the swatch mutant renders a *transparent*
+10px circle rather than a coloured dot, which keeps "no colour dot" true while shifting
+every folded name right by the span plus its flex gap. Both are therefore real, and both
+are left to the `/verify` walk-through: one is a `pl-4` class, and asserting classes is
+the anti-pattern `component-testing-best-practices` names, while the other has no
+accessible representation to query at all.
+
+The eight survivors this component started with in slice 1 are gone, not filtered: the
+whole `useRing` feed (`data`, `categories`, each arc's `name` and `color`) was
+unreachable because the ring is `aria-hidden` by design, and is asserted through the
+chart's own props — the only seam it has. See also the palette guard below.
+
+### `components/DaySummary.vue` — 0 of 17
+
+**`entries.length > VISIBLE` → `>= VISIBLE`** was a **real gap**, closed rather than
+recorded: a day with exactly three entries offered a "Show all 3" that revealed nothing
+it had hidden. Surfaced only because F14 slice 2 moved this component onto the shared
+`useExpander` and so brought it into a sweep's scope for the first time.
+
+### `composables/useOptionalFetch.ts` — 1 of 28
+
+**`const run = ++latestRun` → `--latestRun`.** **Equivalent mutant.** The counter's only
+job is to give each run an id no other run shares and to mark every earlier run stale;
+counting down does both exactly as counting up does. Its sibling guards — the staleness
+checks on the success path, the failure path and `pending` — are each killed by a test
+that overlaps two loads and settles them out of order.
 
 ### `composables/useCalorieTracking.ts` — 4 of 37
 
@@ -270,7 +308,16 @@ short-circuit each have a test that goes red when it is forced to `false`. What 
   quietly keeping its shape must not be the only trace). Pinning the wording would pin a
   string nothing reads.
 
-### `utils/intakeBreakdown.ts` + `utils/entry.ts` — 0 of 36
+### `utils/intakeBreakdown.ts` + `utils/entry.ts` — 1 of 48
+
+**`key: 'other'` → `""`** in `intakeLegend`. **Equivalent mutant**, and the same verdict
+this carried in slice 1 when the row-building still lived in the SFC. The ringed rows key
+on `slot-${i}` and the folded ones on `folded-${i}`, and there is exactly one `Other` row
+in any breakdown, so an empty string is as unique among the keys as the literal is.
+Nothing renders differently and no warning is emitted. Its sibling — the `slot-${i}`
+template — *is* killed, by the test asserting every row keys apart, which is what stops
+eight ring arcs collapsing into one.
+
 
 `OTHER_COLOR` used to survive being blanked to `""`. The fix was
 `utils/intakeBreakdownPalette.test.ts`, which holds `main.css` and the slot list in

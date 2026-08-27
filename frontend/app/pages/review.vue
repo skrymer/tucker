@@ -19,21 +19,42 @@ const {
   load: refreshGoalProgress,
 } = useOptionalFetch(() => $api('/api/goal/progress'))
 
-// The Intake Breakdown over the user's local day (ADR 0014), both bounds
-// inclusive. Absent — and unrequested — with Calorie Tracking off: that User logs
-// no Entries, so there is nothing to be a breakdown of (ADR 0026).
+// The Intake Breakdown over the window the User picked — the local day or the
+// trailing seven days (ADR 0014, ADR 0026), both bounds inclusive. Absent — and
+// unrequested — with Calorie Tracking off, gated explicitly rather than left to
+// the data (ADR 0026): the setting is not a one-time choice at setup, so the
+// window is not reliably empty, and the seven-day one survives a flip-off for a
+// whole week.
 const { tracksCalories, ready: trackingSettled } = useCalorieTracking()
+function useIntakeBreakdown() {
+  const period = ref<BreakdownPeriod>('today')
+  const { data, error, pending, load } = useOptionalFetch(
+    (signal) =>
+      // Derived per load, not captured once at setup: a page left open over
+      // midnight whose Retry is tapped at 00:03 must ask about the day it is
+      // now, not the one it was when the page opened. Same reason `runReview`
+      // re-derives it below.
+      $api('/api/intake-breakdown', {
+        query: breakdownWindow(period.value),
+        signal,
+      }),
+    // `latest`, not the default `guard`: each call asks about a different
+    // window, so a load issued while one is in flight is a new question rather
+    // than a repeat of the one being answered, and dropping it would leave the
+    // section describing the window the User has just left.
+    { mode: 'latest' },
+  )
+
+  watch(period, load)
+  return { period, breakdown: data, error, pending, load }
+}
 const {
-  data: breakdown,
+  period,
+  breakdown,
   error: breakdownError,
+  pending: breakdownPending,
   load: refreshBreakdown,
-} = useOptionalFetch(() => {
-  // Read per load, not captured once at setup: a page left open over midnight
-  // whose Retry is tapped at 00:03 must ask about the day it is now, not the one
-  // it was when the page opened. Same reason `runReview` re-derives it below.
-  const today = localToday()
-  return $api('/api/intake-breakdown', { query: { from: today, to: today } })
-})
+} = useIntakeBreakdown()
 
 // `await trackingSettled()` before reading the setting, never the bare ref: a
 // *setup* reading it has no guarantee the navigation's Profile read has landed
@@ -96,7 +117,12 @@ const { pending, execute: runReview } = useApiMutation(
       title="Couldn't load what you're eating"
       @retry="refreshBreakdown"
     >
-      <IntakeBreakdownSection v-if="breakdown" :breakdown="breakdown" />
+      <IntakeBreakdownSection
+        v-if="breakdown"
+        v-model:period="period"
+        :breakdown="breakdown"
+        :pending="breakdownPending"
+      />
     </LoadErrorState>
 
     <LoadErrorState

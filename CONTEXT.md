@@ -167,6 +167,10 @@ Estimated Entry has no Food, so it slices by its label and is flagged as an
 estimate: eating out is a diet item like any other, and how much of the window was
 guessed is a separate question (**Daily Log**'s estimated calorie share) that a
 single lumped bucket would answer instead of this one.
+A breakdown also states how many of the window's days carry an **Entry**: the
+width of a window is no evidence that it was logged, so a seven-day breakdown
+built from three logged days is discounted rather than read at face value. A day
+counts once, however much was logged on it.
 Each slice states what it **returned** in protein alongside what it cost in
 calories, for the same reason a **Check** does: a slice's size is a fact about the
 user's week, not a verdict on the Food, and the biggest item is very often the
@@ -177,7 +181,9 @@ in it was guessed would discard something measured, and the alternative — coun
 the unknown as zero, as a **Daily Log**'s day total does — would understate a Food
 that has a real figure most of the time. A share is never presented as a ranking, a score, or advice about what to
 cut — see the no-good-or-bad rule. Absent for a User with **Calorie Tracking**
-off, who logs nothing for it to be a breakdown of.
+off — not because their window is reliably empty, which it is not (the setting can
+be turned off after a logged breakfast, and a seven-day window survives a week of
+it), but because it reads a log Tucker has agreed to stop asking them to keep.
 _Avoid_: pie chart, top foods, food ranking, biggest offender, calorie share (a
 Check's share is of the Budget — a different denominator)
 

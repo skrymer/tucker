@@ -45,6 +45,7 @@ const emptyBreakdown: Json = {
   from: '2026-08-27',
   to: '2026-08-27',
   totalCalories: 0,
+  loggedDays: 0,
   items: [],
 }
 
@@ -53,9 +54,28 @@ export async function mockIntakeBreakdown(
   page: Page,
   breakdown: Json = emptyBreakdown,
 ) {
-  await page.route('**/api/intake-breakdown**', (route) =>
-    route.fulfill({ json: breakdown }),
-  )
+  await mockIntakeBreakdownByWindow(page, () => breakdown)
+}
+
+/**
+ * Stub `GET /api/intake-breakdown` per window, recording every window asked for.
+ * The returned array is appended to as requests arrive.
+ */
+export async function mockIntakeBreakdownByWindow(
+  page: Page,
+  answer: (from: string, to: string) => Json,
+): Promise<{ from: string; to: string }[]> {
+  const asked: { from: string; to: string }[] = []
+  await page.route('**/api/intake-breakdown**', (route) => {
+    const params = new URL(route.request().url()).searchParams
+    const from = params.get('from') ?? ''
+    const to = params.get('to') ?? ''
+    asked.push({ from, to })
+    // The window is echoed back over whatever the payload carried, as the real
+    // endpoint does: a breakdown states the bounds it was asked about.
+    return route.fulfill({ json: { ...answer(from, to), from, to } })
+  })
+  return asked
 }
 
 /** Stub `GET /api/intake-breakdown` failing with a real server error. */
