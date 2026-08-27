@@ -5,6 +5,7 @@ import {
   mintAccessToken,
 } from '../../scripts/access-token.mjs'
 import { todayIso } from '../support/date'
+import { toast } from '../support/toast'
 
 // Real-stack proof of the CSRF defence (ADR 0025). Every other suite covers a
 // half of it and none covers the join: `CsrfGateTest` drives the real filter but
@@ -134,16 +135,7 @@ test.describe('when the page holds no token', () => {
     // The premise held: this really did go out unproven.
     expect((await refused).headers()[CSRF_HEADER.toLowerCase()]).toBeUndefined()
 
-    // Located through the DOM rather than the accessibility tree, which is not
-    // the house style and is forced: the open sheet is a Reka Dialog, and it
-    // marks the toast viewport `aria-hidden="true"` while it is up, so
-    // `getByRole` — and the shared `toast()` helper built on it — cannot see
-    // this toast at all. Worth knowing beyond this test: an assertive,
-    // never-dismissing failure toast raised from inside a sheet is announced to
-    // nobody using a screen reader.
-    const failure = page
-      .locator('[role="region"][aria-label*="otification" i] li')
-      .filter({ hasText: 'Could not save weight' })
+    const failure = toast(page, 'Could not save weight')
     await expect(failure).toBeVisible()
     // The sheet is the confirmation, so it stays open — nothing was saved.
     await expect(sheet).toBeVisible()
@@ -158,7 +150,7 @@ test.describe('when the page holds no token', () => {
       )
       .toBe(true)
 
-    await failure.locator('button', { hasText: /retry/i }).click()
+    await failure.getByRole('button', { name: /retry/i }).click()
 
     await expect(sheet).toBeHidden()
     await expect(page.getByText('84.2 kg')).toBeVisible()

@@ -24,3 +24,13 @@ export function toastRegion(page: Page) {
 export function toast(page: Page, title: string) {
   return toastRegion(page).getByRole('listitem').filter({ hasText: title })
 }
+
+/**
+ * The live region the toast is announced through — whichever element that turns
+ * out to be, since ADR 0005's politeness is a property of the announcement, not
+ * of one node. Matched as "the `[aria-live]` element the toast viewport sits
+ * inside", so it survives the attribute moving.
+ */
+export function toastLiveRegion(page: Page) {
+  return page.locator('[aria-live]').filter({ has: toastRegion(page) })
+}

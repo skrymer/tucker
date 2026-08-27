@@ -1007,7 +1007,12 @@ The frontend is built **test-first (red-green TDD)**. Increments:
   action, centralized in `useApiMutation`; a success toast appears only when the
   result isn't already visible at the point of focus (in practice, only "Entry
   logged"). Errors are assertive (`type: 'foreground'`), success is polite
-  (`type: 'background'`), and `toaster.max` is 1. See
+  (`type: 'background'`), and `toaster.max` is 1. Those two words only become an
+  announcement because the toaster is portalled into a Tucker-owned
+  `<div aria-live>` teleported to `body` (`app.vue`) — **don't move it back**:
+  inside `#__nuxt` the sheet's overlay paints over the toast and eats its Retry
+  click, and without the wrapper an open sheet's `aria-hidden` sweep hides the
+  toast while Reka's own (`aria-hidden`) announce region says nothing. See
   [`docs/adr/0005-notifications-persistent-errors-quiet-success.md`](docs/adr/0005-notifications-persistent-errors-quiet-success.md).
 - **The core is deterministic.** Calorie and budget math must be exact, instant,
   and free — no LLM in that path. An LLM may later be added *only* as an optional

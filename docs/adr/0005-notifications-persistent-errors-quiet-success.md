@@ -179,6 +179,34 @@ and the per-toast `base` slot), so we let the prop do it and override only the
 safe-area inset. This supersedes the earlier "bottom-anchored, thumb-zone"
 wording above for the phone case.
 
+## How a toast reaches a screen reader
+
+`type` still chooses the politeness — errors `foreground` (assertive), the one
+success `background` (polite) — but Tucker, not Reka, is what carries it. **The
+toast viewport is portalled into a Tucker-owned `<div aria-live>` teleported to
+`body`** (`app.vue`), for two reasons, both measured in a running browser rather
+than read off the docs:
+
+- **A sheet hid it.** A sheet is a Reka Dialog (ADR 0017), and an open dialog
+  marks every element outside itself `aria-hidden` — the toast viewport
+  included, since it is portalled to `body` rather than into the dialog. The
+  failure toast a sheet raises was then on screen and in no screen reader's
+  reach, Retry included, which is the only way back from a failed save. The
+  sweep (`hideOthers`) exempts `[aria-live]` elements *and their ancestors*, and
+  it runs once, when the dialog opens — so the wrapper carries the attribute at
+  all times, toast or no toast, or it would not be there to be exempted.
+- **Reka's own announcement is dead weight.** `ToastAnnounce` renders its
+  `role="alert"` text through `VisuallyHidden feature="fully-hidden"`, which has
+  stamped `aria-hidden="true"` on it since reka-ui 2.10.0 — still so in 2.10.4,
+  and Nuxt UI 4.11 pins 2.10.3. An `aria-hidden` live region announces nothing,
+  so *no* toast was announced, sheet or no sheet. That half was never
+  sheet-specific, and no upgrade fixes it.
+
+The wrapper is teleported to `body` rather than left in `#__nuxt`, where Nuxt UI
+would have put the viewport anyway: inside the app root it renders identically
+and paints *under* the open sheet's dim overlay, which then swallows the toast's
+own Retry click.
+
 ## Consequences
 
 - The error/success behaviour lives in `useApiMutation`. The error path emits a
@@ -196,7 +224,8 @@ wording above for the phone case.
   result of user action that must interrupt). Success **must explicitly** pass
   `type: 'background'` (aria-live **polite**), because Reka defaults `type` to
   `foreground`; this line governs only the one surviving success toast ("Entry
-  logged"). A known limitation: re-`add`ing a stable-`id` error pulses in place
+  logged"). What turns that choice into an actual announcement is the wrapper
+  above, not Reka. A known limitation: re-`add`ing a stable-`id` error pulses in place
   rather than re-announcing, so a repeated identical failure may not re-fire the
   assertive announcement.
 - **One toast at a time:** `toaster.max` is `1` on `<UApp>`, satisfying the
