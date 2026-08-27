@@ -916,6 +916,34 @@ The frontend is built **test-first (red-green TDD)**. Increments:
   weight-only User who opens Tucker daily and never steps on the scale is never
   nudged while their Trend Weight goes stale. The same shape of limit ADR 0010
   already records for a Check-only User. Not designed, not sliced, no issue yet.
+- **F14** — the **Intake Breakdown**: what takes up most of a User's diet (PRD
+  [#263](https://github.com/skrymer/tucker/issues/263)). A
+  donut on `/review` over two windows — the local day and the trailing seven days
+  — giving each **Food** its share of the calories actually logged, biggest
+  first. Design pass **done**, see
+  [ADR 0026](docs/adr/0026-an-intake-breakdown-divides-what-was-eaten-never-the-budget.md)
+  and the `Intake Breakdown` term in `CONTEXT.md`; chosen from a throwaway
+  four-variant UI prototype on the real `/review` page (donut / ranked bars /
+  strip / no-chart).
+  The **Calorie Budget** is deliberately absent: it is a share of what was eaten,
+  so the ring reads identically over and under budget, where a Budget denominator
+  could not be drawn past 100% at all. Each slice states what it *returned* in
+  protein beside what it cost, because the biggest slice is usually the protein
+  source and "cut your biggest item" is the advice the no-good-or-bad rule
+  refuses (ADR 0022). One slice per Food merged across **Entries**, a **Recipe**
+  whole under its own name, an **Estimated Entry** by its label and flagged.
+  `GET /api/intake-breakdown?from=&to=` ranks; the client folds the tail past
+  eight into an expandable **Other**, because eight is how many validated hues the
+  new categorical palette has (`frontend/DESIGN.md`) — a fact about a chart, not
+  about the domain. **Out of scope:** grading or scoring a Food, a Budget
+  denominator, a protein-return ring of its own, and any window other than the
+  two.
+  Two slices: slice 1 ([#264](https://github.com/skrymer/tucker/issues/264)) —
+  the breakdown end-to-end for today, with the tail folded but not yet
+  expandable, because the palette has exactly eight hues and a ninth Food must
+  never get an invented one; slice 2
+  ([#265](https://github.com/skrymer/tucker/issues/265)) — the seven-day window
+  and the **Other** you can open. 
 
 ## Architecture
 
