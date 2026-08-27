@@ -24,7 +24,17 @@ ARG APP_VERSION=dev
 ARG GIT_SHA=unknown
 ENV APP_VERSION=$APP_VERSION \
     GIT_SHA=$GIT_SHA
-RUN pnpm build
+
+# The production box is a 1-vCPU/2 GB VPS (ADR 0012) that builds its own images
+# (ADR 0015), and V8 sizes its old space from the machine — about 1 GB there.
+# The Vite pass outgrew that when the Intake Breakdown's chart landed, and a
+# heap-exhausted Node aborts (exit 134) rather than reaching for swap. The
+# ceiling is set past physical memory deliberately: the box carries a 4 GB
+# swapfile for exactly these build stages, so the build turns slow instead of
+# dying. Scoped to this one command — the runtime stage is a separate image and
+# must not inherit it. Building on the box has now been outgrown twice; GHCR
+# build-and-push is ADR 0015's recorded next step.
+RUN NODE_OPTIONS=--max-old-space-size=3072 pnpm build
 
 # ---- Runtime stage ----
 FROM node:24-slim AS runtime
