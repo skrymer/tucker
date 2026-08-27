@@ -18,7 +18,34 @@ const {
   error: goalProgressError,
   load: refreshGoalProgress,
 } = useOptionalFetch(() => $api('/api/goal/progress'))
-await refreshGoalProgress()
+
+// The Intake Breakdown over the user's local day (ADR 0014), both bounds
+// inclusive. Absent — and unrequested — with Calorie Tracking off: that User logs
+// no Entries, so there is nothing to be a breakdown of (ADR 0026).
+const { tracksCalories, ready: trackingSettled } = useCalorieTracking()
+const {
+  data: breakdown,
+  error: breakdownError,
+  load: refreshBreakdown,
+} = useOptionalFetch(() => {
+  // Read per load, not captured once at setup: a page left open over midnight
+  // whose Retry is tapped at 00:03 must ask about the day it is now, not the one
+  // it was when the page opened. Same reason `runReview` re-derives it below.
+  const today = localToday()
+  return $api('/api/intake-breakdown', { query: { from: today, to: today } })
+})
+
+// `await trackingSettled()` before reading the setting, never the bare ref: a
+// *setup* reading it has no guarantee the navigation's Profile read has landed
+// (AppNav.vue), and the default would ask a weight-only User's browser for a
+// breakdown of a log they do not keep. It adds no request either way — on a cold
+// load it joins the read already in flight beside this page's own, and on an
+// in-app navigation that read has settled and it returns at once.
+await trackingSettled()
+await Promise.all([
+  refreshGoalProgress(),
+  ...(tracksCalories.value ? [refreshBreakdown()] : []),
+])
 
 const hasReviews = computed(() => (reviews.value?.length ?? 0) > 0)
 
@@ -60,6 +87,16 @@ const { pending, execute: runReview } = useApiMutation(
       @retry="refreshGoalProgress"
     >
       <GoalProgressHero v-if="goalProgress" :progress="goalProgress" />
+    </LoadErrorState>
+
+    <!-- One gate, in setup: with Calorie Tracking off nothing was fetched, so
+         there is neither a breakdown to render nor an error to report. -->
+    <LoadErrorState
+      :error="breakdownError"
+      title="Couldn't load what you're eating"
+      @retry="refreshBreakdown"
+    >
+      <IntakeBreakdownSection v-if="breakdown" :breakdown="breakdown" />
     </LoadErrorState>
 
     <LoadErrorState

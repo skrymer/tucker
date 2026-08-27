@@ -171,7 +171,11 @@ Each slice states what it **returned** in protein alongside what it cost in
 calories, for the same reason a **Check** does: a slice's size is a fact about the
 user's week, not a verdict on the Food, and the biggest item is very often the
 protein source. Unknown protein on an Estimated Entry is omitted, not stated as
-zero. A share is never presented as a ranking, a score, or advice about what to
+zero. A slice sums the protein it *knows* about and is omitted only when nothing
+in it carried a figure at all: dropping a whole slice's protein because one Entry
+in it was guessed would discard something measured, and the alternative — counting
+the unknown as zero, as a **Daily Log**'s day total does — would understate a Food
+that has a real figure most of the time. A share is never presented as a ranking, a score, or advice about what to
 cut — see the no-good-or-bad rule. Absent for a User with **Calorie Tracking**
 off, who logs nothing for it to be a breakdown of.
 _Avoid_: pie chart, top foods, food ranking, biggest offender, calorie share (a

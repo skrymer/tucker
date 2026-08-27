@@ -41,9 +41,23 @@ async function loadTracking(start: boolean) {
   await userEvent.click(screen.getByRole('button', { name: 'load' }))
 }
 
+/**
+ * Wipes the app-wide state between tests. Without it the setting, the in-flight
+ * read and the settled flag all survive into the next test, so a pass could be a
+ * previous test's leftover and the order of the file would be load-bearing.
+ */
+const resetHost = defineComponent({
+  setup: () => {
+    clearNuxtState()
+    return {}
+  },
+  template: `<span>reset</span>`,
+})
+
 const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
-beforeEach(() => {
+beforeEach(async () => {
   warn.mockClear()
+  await renderSuspended(resetHost)
   attempts = 0
 })
 afterAll(() => warn.mockRestore())
@@ -57,6 +71,63 @@ describe('useCalorieTracking', () => {
     await renderSuspended(untouchedHost)
 
     expect(await screen.findByText('true')).toBeVisible()
+  })
+
+  it('joins the read already in flight rather than issuing a second', async () => {
+    profileResponse = { tracksCalories: false }
+
+    // The shape AppNav and a page make together: the nav starts the read, and a
+    // page's setup awaits the settled value while that read is still in flight.
+    // Driven in one setup rather than as two components, because Vue resolves
+    // sibling async setups in order — mounting a nav and a page would let the
+    // nav's read finish first and never exercise the overlap at all.
+    const host = defineComponent({
+      async setup() {
+        const navLoad = useCalorieTracking().load()
+
+        const { tracksCalories, ready } = useCalorieTracking()
+        await ready()
+        const seenAtSetup = tracksCalories.value
+
+        await navLoad
+        return { seenAtSetup }
+      },
+      template: `<span>page saw {{ seenAtSetup }}</span>`,
+    })
+    await renderSuspended(host)
+
+    // The settled value, from one request — not the default, and not a second ask.
+    expect(await screen.findByText('page saw false')).toBeVisible()
+    expect(attempts).toBe(1)
+  })
+
+  it('asks nothing further once the setting has settled', async () => {
+    profileResponse = { tracksCalories: false }
+
+    const nav = defineComponent({
+      async setup() {
+        await useCalorieTracking().load()
+        return {}
+      },
+      template: `<span>nav</span>`,
+    })
+    await renderSuspended(nav)
+    expect(attempts).toBe(1)
+
+    // A page reached later by an in-app navigation, when that read is long over,
+    // must not re-issue it — the shell already holds the answer.
+    const page = defineComponent({
+      async setup() {
+        const { tracksCalories, ready } = useCalorieTracking()
+        await ready()
+        return { seenAtSetup: tracksCalories.value }
+      },
+      template: `<span>page saw {{ seenAtSetup }}</span>`,
+    })
+    await renderSuspended(page)
+
+    expect(await screen.findByText('page saw false')).toBeVisible()
+    expect(attempts).toBe(1)
   })
 
   it('takes the setting from the signed-in User’s Profile', async () => {
@@ -87,6 +158,38 @@ describe('useCalorieTracking', () => {
     expect(await screen.findByText('false')).toBeVisible()
     // And the app carrying on is not the only trace of it.
     expect(warn).toHaveBeenCalledOnce()
+  })
+
+  it('re-asks on the next page when the read failed, rather than settling for the default', async () => {
+    profileResponse = 500
+
+    const nav = defineComponent({
+      async setup() {
+        await useCalorieTracking().load()
+        return {}
+      },
+      template: `<span>nav</span>`,
+    })
+    await renderSuspended(nav)
+    expect(attempts).toBe(1)
+
+    // A read that failed answered nothing, so the setting is still unknown and
+    // the User is holding Tucker's default shape. One transient 502 must not
+    // decide that for the rest of the session — the next page asks again, and a
+    // weight-only User gets the app they chose.
+    profileResponse = { tracksCalories: false }
+    const page = defineComponent({
+      async setup() {
+        const { tracksCalories, ready } = useCalorieTracking()
+        await ready()
+        return { seenAtSetup: tracksCalories.value }
+      },
+      template: `<span>page saw {{ seenAtSetup }}</span>`,
+    })
+    await renderSuspended(page)
+
+    expect(attempts).toBe(2)
+    expect(await screen.findByText('page saw false')).toBeVisible()
   })
 
   it('asks once, so a failure does not double the wait the shell holds paint for', async () => {

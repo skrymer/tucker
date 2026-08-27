@@ -1,0 +1,50 @@
+- main:
+    - heading "Review" [level=1]
+    - region "What you're eating":
+        - heading "What you're eating" [level=2]
+        - text: /\d+ kcal/
+        - list:
+            - listitem:
+                - paragraph: Chicken breast
+                - paragraph: /\d+ kcal · \d+ g protein/
+                - text: /\d+%/
+            - listitem:
+                - paragraph: Work canteen est.
+                - paragraph: /\d+ kcal/
+                - text: /\d+%/
+            - listitem:
+                - paragraph: Basmati rice
+                - paragraph: /\d+ kcal · 8 g protein/
+                - text: /\d+%/
+            - listitem:
+                - paragraph: Cottage pie
+                - paragraph: /\d+ kcal · \d+ g protein/
+                - text: /\d+%/
+            - listitem:
+                - paragraph: Skyr
+                - paragraph: /\d+ kcal · \d+ g protein/
+                - text: 6%
+            - listitem:
+                - paragraph: Banana
+                - paragraph: /\d+ kcal · 1 g protein/
+                - text: 5%
+            - listitem:
+                - paragraph: Olive oil
+                - paragraph: /\d+ kcal · 0 g protein/
+                - text: 5%
+            - listitem:
+                - paragraph: Almonds
+                - paragraph: /\d+ kcal · 2 g protein/
+                - text: 3%
+            - listitem:
+                - paragraph: Other 2 items
+                - paragraph: /\d+ kcal · 0 g protein/
+                - text: 2%
+    - list:
+        - listitem:
+            - paragraph: /1 Jun \d+/
+            - text: Adaptive
+            - paragraph: /\d+/
+            - paragraph: kcal budget
+            - paragraph: /\d+\.\d+ kg trend · \d+ kcal maint · \d+ g protein/
+    - button "Run review now"

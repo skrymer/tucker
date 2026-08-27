@@ -70,6 +70,22 @@
   --ui-error: #e5484d;
 }
 
+/* Categorical hues for the Intake Breakdown ring — data visualisation only,
+   never a control and never a state. Slot order, Other's grey, and the contrast
+   caveat that makes the legend load-bearing are specified in frontend/DESIGN.md;
+   app/utils/intakeBreakdownPalette.test.ts holds the two files in agreement. */
+:root {
+  --tucker-cat-1: #2a78d6;
+  --tucker-cat-2: #eb6834;
+  --tucker-cat-3: #1baf7a;
+  --tucker-cat-4: #eda100;
+  --tucker-cat-5: #e87ba4;
+  --tucker-cat-6: #008300;
+  --tucker-cat-7: #4a3aa7;
+  --tucker-cat-8: #e34948;
+  --tucker-cat-other: #93a79b;
+}
+
 /* The app canvas carries a faint green wash so white cards lift off it. Keep
    this in sync with `pwa.manifest.background_color` in nuxt.config.ts so the
    PWA launch splash matches the in-app wash. */
@@ -117,6 +133,20 @@
     0 8px 22px -12px rgb(0 0 0 / 0.55), 0 2px 6px -3px rgb(0 0 0 / 0.45);
   --shadow-float: 0 10px 24px -6px rgb(0 193 106 / 0.5);
 }
+/* Re-selected per mode against the dark card (#16241d), not re-hued: same eight
+   identities, each stepped to clear the darker ground. */
+.dark {
+  --tucker-cat-1: #3987e5;
+  --tucker-cat-2: #d95926;
+  --tucker-cat-3: #199e70;
+  --tucker-cat-4: #c98500;
+  --tucker-cat-5: #d55181;
+  --tucker-cat-6: #008300;
+  --tucker-cat-7: #9085e9;
+  --tucker-cat-8: #e66767;
+  --tucker-cat-other: #7b8f84;
+}
+
 .dark .app-canvas {
   background-color: #0f1a15;
 }

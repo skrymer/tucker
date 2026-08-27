@@ -11,7 +11,26 @@ export default defineNuxtConfig({
 
   devtools: { enabled: true },
 
-  modules: ['@nuxt/eslint', '@nuxt/ui', '@vite-pwa/nuxt', 'nuxt-open-fetch'],
+  modules: [
+    '@nuxt/eslint',
+    '@nuxt/ui',
+    '@vite-pwa/nuxt',
+    'nuxt-charts',
+    'nuxt-open-fetch',
+  ],
+
+  // The Intake Breakdown ring, and nothing else. `include` narrows what the
+  // module *registers* — it does not prune the import graph, since the component
+  // it registers resolves through a barrel that re-exports all eleven charts, so
+  // keeping the ten TopoJSON maps and their projections out of the bundle is
+  // tree-shaking's job, not this setting's. `global: false` is the part that
+  // pays: the module's default routes the chart through Nuxt's global-components
+  // plugin, which references it from the app entry on every route, and the ring
+  // is used on `/review` alone.
+  nuxtCharts: {
+    include: ['DonutChart'],
+    global: false,
+  },
 
   css: ['~/assets/css/main.css'],
 

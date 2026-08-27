@@ -40,6 +40,31 @@ export async function mockReviewHistory(page: Page, reviews: Json[]) {
   )
 }
 
+/** A day with nothing logged — what a spec that is not about the breakdown wants. */
+const emptyBreakdown: Json = {
+  from: '2026-08-27',
+  to: '2026-08-27',
+  totalCalories: 0,
+  items: [],
+}
+
+/** Stub `GET /api/intake-breakdown`; defaults to a day with nothing logged. */
+export async function mockIntakeBreakdown(
+  page: Page,
+  breakdown: Json = emptyBreakdown,
+) {
+  await page.route('**/api/intake-breakdown**', (route) =>
+    route.fulfill({ json: breakdown }),
+  )
+}
+
+/** Stub `GET /api/intake-breakdown` failing with a real server error. */
+export async function mockIntakeBreakdownError(page: Page) {
+  await page.route('**/api/intake-breakdown**', (route) =>
+    route.fulfill({ status: 500, json: { message: 'boom' } }),
+  )
+}
+
 /** Stub `GET /api/weekly-review/history` failing with a real server error. */
 export async function mockReviewHistoryError(page: Page) {
   await page.route('**/api/weekly-review/history', (route) =>

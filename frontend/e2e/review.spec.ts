@@ -1,5 +1,6 @@
 import { expect, test } from './support/test'
 import {
+  mockIntakeBreakdown,
   mockNoActiveGoal,
   mockReviewHistory,
   mockReviewHistoryError,
@@ -11,6 +12,7 @@ test('shows a retryable error instead of an empty ledger when the review history
   goto,
 }) => {
   await mockNoActiveGoal(page)
+  await mockIntakeBreakdown(page)
   await mockReviewHistoryError(page)
 
   await goto('/review', { waitUntil: 'hydration' })
@@ -29,6 +31,7 @@ test('a mixed history keeps its calorie columns and em-dashes the weeks without 
   goto,
 }) => {
   await mockNoActiveGoal(page)
+  await mockIntakeBreakdown(page)
   await mockReviewHistory(page, [
     weeklyReview({ id: 1, reviewedOn: '2026-06-01', trendWeightKg: 86 }),
     weeklyReview({
@@ -50,6 +53,7 @@ test('a history with no targets at all is a dated trend, not four empty columns'
   goto,
 }) => {
   await mockNoActiveGoal(page)
+  await mockIntakeBreakdown(page)
   await mockReviewHistory(page, [
     weeklyReview({
       id: 1,

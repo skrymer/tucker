@@ -118,5 +118,16 @@ client, with no second request.
   branches, and it self-corrects as the day fills. An *empty* window keeps the
   section (with a "nothing logged" line) rather than hiding it, so the period
   toggle stays reachable.
-- **Absent with Calorie Tracking off**, which needs no gate of its own: that User
-  logs no Entries, so there is nothing to be a breakdown of.
+- **Absent with Calorie Tracking off**, and gated explicitly rather than left to
+  the data. The first draft of this decision said no gate was needed, on the
+  reasoning that such a User logs no Entries — but the setting is not a one-time
+  choice at setup (`CONTEXT.md`, Calorie Tracking), so the window is not reliably
+  empty: someone who logs breakfast and turns tracking off at lunchtime has a full
+  *today* window all afternoon, and the trailing-seven-day window survives a
+  flip-off for a week. Ungated, the section would also render "Nothing logged yet"
+  at a User Tucker has agreed to stop asking about eating — the shape F12 removed
+  from `/` — and spend a request per `/review` load to do it. The gate is in the
+  page's setup, which means reading `Calorie Tracking` there rather than in a
+  template: that read races the navigation's own, so `useCalorieTracking` exposes
+  `ready()`, memoising the one in-flight read so a page joins it instead of
+  issuing a second.

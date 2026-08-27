@@ -233,6 +233,58 @@ stays reachable on an API-supplied value.
 
 ---
 
+### `components/IntakeBreakdownSection.vue` — 1 of 26
+
+**`key: 'other'` L48** — the `v-for` key of the folded `Other` row, replaced with `""`.
+
+**Verdict: equivalent mutant.** The ringed rows key on `slot-${i}` and there is exactly
+one `Other` row in any breakdown, so an empty string is as unique among the keys as the
+literal is. Nothing renders differently and no warning is emitted. Its sibling — the
+`slot-${i}` template on L34 — *is* killed, by the test that asserts the ring is fed one
+arc per legend row, so the keying is pinned where duplicates are actually reachable.
+
+The other eight survivors this component started with are gone, not filtered: the whole
+`useRing` feed (`data`, `categories`, each arc's `name` and `color`) was unreachable
+because the ring is `aria-hidden` by design, and is now asserted through the chart's own
+props — the only seam it has. See also the palette guard below.
+
+### `composables/useCalorieTracking.ts` — 4 of 37
+
+F14 slice 1 added `ready()`, so this file grew a shared `inFlight` promise and a
+`settled` flag. Both `ready()` guards *are* killed — the in-flight join and the settled
+short-circuit each have a test that goes red when it is forced to `false`. What remains:
+
+- **`useState(…, () => null)` L46 and `useState(…, () => false)` L53**, each replaced with
+  `() => undefined`. **Equivalent mutants.** Both defaults are only ever read through a
+  truthiness test (`if (inFlight.value)`, `if (settled.value)`), and `undefined` is falsy
+  exactly as `null` and `false` are. Nothing can observe the difference.
+- **`if (inFlight.value === started)` L74 → `if (true)`.** **Real gap, low value.** The
+  identity check stops an *older* `load` clearing the pointer to a *newer* one still in
+  flight. Reaching it takes two overlapping loads whose completion order is reversed, and
+  the cost of getting it wrong is one redundant `GET /api/profile` — a later `ready()`
+  fails to join and asks again. No wrong value is produced, and the answer falls back
+  either way, so a test holding two reads open to pin it would cost more than the bug.
+- **`console.warn('Could not read Calorie Tracking off the profile', …)` L103 → `""`.**
+  **Real gap, low value**, and the same verdict as every other log-text survivor here: the
+  test asserts the warning happened, which is the load-bearing part (ADR 0007 — the app
+  quietly keeping its shape must not be the only trace). Pinning the wording would pin a
+  string nothing reads.
+
+### `utils/intakeBreakdown.ts` + `utils/entry.ts` — 0 of 36
+
+`OTHER_COLOR` used to survive being blanked to `""`. The fix was
+`utils/intakeBreakdownPalette.test.ts`, which holds `main.css` and the slot list in
+agreement. Two things about it are load-bearing and easy to undo by accident:
+
+- it reads the stylesheet via `import.meta.dirname`, **not** `process.cwd()` — under
+  StrykerJS the working directory is the sandbox, where the `cwd`-relative read threw and
+  took every assertion in the file with it;
+- it reads `RING_SLOT_COLORS` / `OTHER_COLOR` **inside** the test bodies rather than at
+  module load. Hoisted into an `it.each` table they are read at import time, Stryker
+  attributes them to no test, and the file reports `covered 0` while passing.
+
+Both failure modes look like a green guard that is not guarding anything.
+
 ## Backend — pitest
 
 ### Excluded from `--targetClasses` (28) — false survivors the tool cannot see
@@ -433,5 +485,13 @@ Unchanged by any of the above, and worth re-reading before trusting a 100%:
   invisible to it. A tuning constant needs a test asserting the number it produces.
 - **Stryker has no truthiness mutator** — a guard distinguishing *absent* from *zero*
   needs an explicit zero case.
+- **`x in a..b` hides a conditional pitest can negate but no test can reach.** A
+  `require(entries.all { it.loggedOn in from..to })` in `IntakeBreakdown.of` left one
+  unkillable `NegateConditionals` at a synthetic line past the end of the file, and it
+  survived tests covering both bounds, the inclusive edges, and a valid element ahead of
+  the offending one. Written out as `filter { it.loggedOn < from || it.loggedOn > to }`
+  the same rule scores 100%. Prefer explicit comparisons in a guard you intend to pin —
+  `none { … }` is no better than `all { … }` here; it is the *range* that hides the
+  conditional, not the quantifier.
 - Both engines reach the fast suites only. Playwright, the smokes and the
   Testcontainers e2e are out of scope in both.

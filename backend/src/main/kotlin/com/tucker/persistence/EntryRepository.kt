@@ -38,6 +38,17 @@ class EntryRepository(
             .orderBy(ENTRY.ID)
             .fetch().map { it.toEntry() }
 
+    /**
+     * Every Entry logged from [start] to [endInclusive], oldest first — the rows an
+     * Intake Breakdown rolls up. Both bounds are inclusive.
+     */
+    fun findBetween(start: LocalDate, endInclusive: LocalDate): List<Entry> =
+        dsl.selectFrom(ENTRY)
+            .where(ENTRY.LOGGED_ON.between(start.toString(), endInclusive.toString()))
+            .and(ENTRY.USER_ID.eq(currentUser.ownerId))
+            .orderBy(ENTRY.LOGGED_ON, ENTRY.ID)
+            .fetch().map { it.toEntry() }
+
     /** Total calories across every Entry logged from [start] to [endInclusive], in one query. */
     fun totalCaloriesBetween(start: LocalDate, endInclusive: LocalDate): Double =
         dsl.select(DSL.sum(ENTRY.CALORIES))
