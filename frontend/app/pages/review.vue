@@ -20,6 +20,20 @@ const {
 } = useOptionalFetch(() => $api('/api/goal/progress'))
 await refreshGoalProgress()
 
+// The Intake Breakdown over the user's local day (ADR 0014), both bounds
+// inclusive. Absent — and unrequested — with Calorie Tracking off: that User logs
+// no Entries, so there is nothing to be a breakdown of (ADR 0026).
+const { tracksCalories } = useCalorieTracking()
+const today = localToday()
+const {
+  data: breakdown,
+  error: breakdownError,
+  load: refreshBreakdown,
+} = useOptionalFetch(() =>
+  $api('/api/intake-breakdown', { query: { from: today, to: today } }),
+)
+if (tracksCalories.value) await refreshBreakdown()
+
 const hasReviews = computed(() => (reviews.value?.length ?? 0) > 0)
 
 const { pending, execute: runReview } = useApiMutation(
@@ -60,6 +74,15 @@ const { pending, execute: runReview } = useApiMutation(
       @retry="refreshGoalProgress"
     >
       <GoalProgressHero v-if="goalProgress" :progress="goalProgress" />
+    </LoadErrorState>
+
+    <LoadErrorState
+      v-if="tracksCalories"
+      :error="breakdownError"
+      title="Couldn't load what you're eating"
+      @retry="refreshBreakdown"
+    >
+      <IntakeBreakdownSection v-if="breakdown" :breakdown="breakdown" />
     </LoadErrorState>
 
     <LoadErrorState

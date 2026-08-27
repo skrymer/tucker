@@ -40,6 +40,20 @@ export async function mockReviewHistory(page: Page, reviews: Json[]) {
   )
 }
 
+/** Stub `GET /api/intake-breakdown` with a window the section renders. */
+export async function mockIntakeBreakdown(page: Page, breakdown: Json) {
+  await page.route('**/api/intake-breakdown**', (route) =>
+    route.fulfill({ json: breakdown }),
+  )
+}
+
+/** Stub `GET /api/intake-breakdown` failing with a real server error. */
+export async function mockIntakeBreakdownError(page: Page) {
+  await page.route('**/api/intake-breakdown**', (route) =>
+    route.fulfill({ status: 500, json: { message: 'boom' } }),
+  )
+}
+
 /** Stub `GET /api/weekly-review/history` failing with a real server error. */
 export async function mockReviewHistoryError(page: Page) {
   await page.route('**/api/weekly-review/history', (route) =>

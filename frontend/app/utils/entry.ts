@@ -9,8 +9,19 @@ type EntryResponse = components['schemas']['EntryResponse']
  * confirm and the "Entry logged" toast so the wording can't drift (ADR 0005).
  */
 export function formatEntryName(entry: EntryResponse): string {
-  // `== null`, not falsiness: a known 0 g is stated, not omitted (CONTEXT.md).
-  const protein =
-    entry.protein == null ? '' : ` · ${Math.round(entry.protein)} g protein`
-  return `${entry.foodName ?? entry.label} — ${Math.round(entry.calories)} kcal${protein}`
+  return `${entry.foodName ?? entry.label} — ${formatIntakeFigures(entry.calories, entry.protein)}`
+}
+
+/**
+ * What was eaten stated as cost and return: `107 kcal · 12 g protein`. Protein is
+ * omitted when there is no figure; a known 0 g is stated (CONTEXT.md). Shared by
+ * the Today row and the Intake Breakdown legend so the wording can't drift.
+ */
+export function formatIntakeFigures(
+  calories: number,
+  protein: number | null | undefined,
+): string {
+  // `== null`, not falsiness, so a known 0 g survives.
+  const returned = protein == null ? '' : ` · ${Math.round(protein)} g protein`
+  return `${Math.round(calories)} kcal${returned}`
 }

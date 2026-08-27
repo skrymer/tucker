@@ -11,7 +11,20 @@ export default defineNuxtConfig({
 
   devtools: { enabled: true },
 
-  modules: ['@nuxt/eslint', '@nuxt/ui', '@vite-pwa/nuxt', 'nuxt-open-fetch'],
+  modules: [
+    '@nuxt/eslint',
+    '@nuxt/ui',
+    '@vite-pwa/nuxt',
+    'nuxt-charts',
+    'nuxt-open-fetch',
+  ],
+
+  // The Intake Breakdown ring, and nothing else. Left to its default the module
+  // registers all eleven vue-chrts components — among them the TopoJSON maps,
+  // which drag maplibre-gl into the client bundle.
+  nuxtCharts: {
+    include: ['DonutChart'],
+  },
 
   css: ['~/assets/css/main.css'],
 

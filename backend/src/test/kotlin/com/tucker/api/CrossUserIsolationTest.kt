@@ -124,6 +124,30 @@ class CrossUserIsolationTest {
     }
 
     @Test
+    fun `an Intake Breakdown slices only the caller's own Entries, and totals only theirs`() {
+        // A window aggregate, which is the shape that has leaked twice before (the
+        // adaptive engine's intake window, and the held-Maintenance fallback). A leak
+        // here would show no wrong name — only a share divided by somebody else's day.
+        logEstimated(alice, calories = 700.0, protein = 40.0, label = "Alice's lunch out")
+        logEstimated(bob, calories = 250.0, protein = 12.0, label = "Bob's porridge")
+
+        mockMvc.get("/api/intake-breakdown") {
+            header(ACCESS_ASSERTION_HEADER, bob)
+            param("from", "$day")
+            param("to", "$day")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.items.length()") { value(1) }
+            jsonPath("$.items[0].name") { value("Bob's porridge") }
+            jsonPath("$.items[0].calories") { value(250.0) }
+            jsonPath("$.totalCalories") { value(250.0) }
+            // Bob's porridge is his whole day. Borrow Alice's 700 kcal into the
+            // denominator and it silently becomes 26%.
+            jsonPath("$.items[0].share") { value(1.0) }
+        }
+    }
+
+    @Test
     fun `a User's Entries for a day are only their own`() {
         logEstimated(alice, calories = 700.0, protein = 40.0, label = "Alice's lunch out")
         logEstimated(bob, calories = 250.0, protein = 12.0, label = "Bob's porridge")

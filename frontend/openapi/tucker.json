@@ -2059,6 +2059,96 @@
         }
       }
     },
+    "/api/intake-breakdown": {
+      "get": {
+        "tags": [
+          "intake-breakdown-controller"
+        ],
+        "operationId": "breakdown",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntakeBreakdownResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/goals": {
       "get": {
         "tags": [
@@ -3503,6 +3593,75 @@
         "properties": {
           "email": {
             "type": "string"
+          }
+        }
+      },
+      "IntakeBreakdownItemResponse": {
+        "required": [
+          "calories",
+          "isEstimate",
+          "name",
+          "share"
+        ],
+        "type": "object",
+        "properties": {
+          "foodId": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "name": {
+            "type": "string"
+          },
+          "calories": {
+            "type": "number",
+            "format": "double"
+          },
+          "protein": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "share": {
+            "type": "number",
+            "format": "double"
+          },
+          "isEstimate": {
+            "type": "boolean"
+          }
+        }
+      },
+      "IntakeBreakdownResponse": {
+        "required": [
+          "from",
+          "items",
+          "loggedDays",
+          "to",
+          "totalCalories"
+        ],
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date"
+          },
+          "to": {
+            "type": "string",
+            "format": "date"
+          },
+          "totalCalories": {
+            "type": "number",
+            "format": "double"
+          },
+          "loggedDays": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IntakeBreakdownItemResponse"
+            }
           }
         }
       },
