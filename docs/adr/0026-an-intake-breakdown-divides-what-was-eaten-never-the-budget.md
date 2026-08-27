@@ -3,7 +3,7 @@
 An **Intake Breakdown** states each **Food**'s share of the calories a **User**
 actually logged over a window — the user's local day, or the trailing seven days
 — and the **Calorie Budget** appears nowhere in it. Every slice carries what it
-*returned* in protein alongside what it cost in calories, for the same reason a
+_returned_ in protein alongside what it cost in calories, for the same reason a
 **Check** does. It is a description of a diet, never a ranking of Foods.
 
 _Status: accepted; extends [0022](0022-a-check-states-cost-and-return-and-never-labels-a-food.md)'s
@@ -15,7 +15,7 @@ denominator; honours [0002](0002-business-logic-belongs-in-the-backend.md) and
 ## Context
 
 Tucker could say what a day cost and what a single product would cost, and could
-say nothing at all about *pattern* — which of the things a User eats week after
+say nothing at all about _pattern_ — which of the things a User eats week after
 week is where their calories actually go. The Today screen lists a day's Entries
 and the Weekly Review ledger tracks the targets; neither answers "what takes up
 most of my diet?".
@@ -34,10 +34,10 @@ window's intake, not to a target.
 Three things follow from that, and each is why it was chosen:
 
 - **It renders identically over and under budget.** With the Budget as the
-  denominator, a day under budget leaves an unspent wedge, and a day *over* it
+  denominator, a day under budget leaves an unspent wedge, and a day _over_ it
   cannot be drawn at all — a ring has no room past 100%. Tucker already has a
   rule for that case (`ringFraction` clamps an over-target arc to full and the
-  *number* says "312 kcal over"), but clamping silently rescales every slice, so
+  _number_ says "312 kcal over"), but clamping silently rescales every slice, so
   each one's stated percentage stops matching its drawn size. A chart whose
   labels and geometry disagree is worse than no chart.
 - **The ranking is unaffected either way.** Slice order and relative size do not
@@ -52,7 +52,7 @@ Three things follow from that, and each is why it was chosen:
 Entry** has no mass, so grams could never be universal), which means the biggest
 slice is very often the protein source — chicken breast, eggs, skyr. A ranking
 that states only cost reads as a hit list, and "cut your biggest item" is exactly
-the advice the no-good-or-bad rule exists to refuse. Stating cost *and* return on
+the advice the no-good-or-bad rule exists to refuse. Stating cost _and_ return on
 each row is ADR 0022's move applied to a second surface, from figures the Entries
 already carry. Unknown protein on an Estimated Entry is omitted rather than
 stated as zero — the rule the entry rows already follow.
@@ -76,6 +76,15 @@ derived state and belongs in the backend ([0002](0002-business-logic-belongs-in-
 "eight fit on a ring before the palette runs out of validated hues" is a fact
 about a chart, so the fold into **Other** — and expanding it — happens in the
 client, with no second request.
+
+**The response says how much of its window was logged.** Alongside the items it
+carries the number of days in the window that hold an **Entry**, because the width
+of a window is no evidence that it was lived in and a seven-day breakdown built
+from three logged days should be discounted rather than read at face value. Only
+that count is on the wire: the window's _width_ is `from`..`to`, which the response
+already states, so the client reads the denominator off the answer it was given
+rather than off the button the User last pressed — the two disagree for the length
+of a round-trip.
 
 ## Considered options
 
@@ -103,19 +112,30 @@ client, with no second request.
   added, validated for colour-vision separation and contrast against Tucker's own
   light and dark card surfaces. Three of the light steps fall under 3:1, so the
   **labelled legend is load-bearing, not decoration** — the ring and its rows
-  ship together, and identity is never carried by colour alone.
+  ship together, and identity is never carried by colour alone. Pointing at or
+  tapping an arc names its Food in the middle of the donut, which is the one
+  question eight similar hues cannot answer; that readout repeats a legend row
+  and lives inside the `aria-hidden` ring, so it adds a way to read the chart
+  rather than becoming the only one (`frontend/DESIGN.md`).
 - **The tail is folded, and that fold is visible.** Past eight items everything
   becomes one **Other** slice naming how many it holds, expandable to the full
   list. A week routinely produces fifteen to twenty distinct items; a prototype
-  run at six named slices put "Other" *second*, at 28% — a chart whose loudest
-  answer was "miscellaneous".
+  run at six named slices put "Other" _second_, at 28% — a chart whose loudest
+  answer was "miscellaneous". **Other's protein is stricter than a slice's**: a
+  slice sums what it knows and omits only when nothing in it carried a figure,
+  while Other is omitted unless _every_ Food it folded carried one. A slice merges
+  Entries of one Food, where summing the known understates the same thing; Other
+  merges different Foods, so one unmeasured estimate among weighed ones would put a
+  confident figure against a row whose calories are mostly unmeasured — and Other
+  is deliberately never flagged an estimate, so nothing on screen would hint at it.
+  A revealed row states its own figures normally.
 - **Free-text estimate labels split.** "Thai place" and "thai" are two slices.
   Normalising on trimmed, case-folded text catches the common case; the rest is
   accepted rather than solved, because the alternative is guessing that two
   different words meant the same meal.
 - **A one-item window draws a full circle.** Early in a day the ring can be a
   single slice at 100%. Accepted deliberately: one shape, no conditional
-  branches, and it self-corrects as the day fills. An *empty* window keeps the
+  branches, and it self-corrects as the day fills. An _empty_ window keeps the
   section (with a "nothing logged" line) rather than hiding it, so the period
   toggle stays reachable.
 - **Absent with Calorie Tracking off**, and gated explicitly rather than left to
@@ -123,7 +143,7 @@ client, with no second request.
   reasoning that such a User logs no Entries — but the setting is not a one-time
   choice at setup (`CONTEXT.md`, Calorie Tracking), so the window is not reliably
   empty: someone who logs breakfast and turns tracking off at lunchtime has a full
-  *today* window all afternoon, and the trailing-seven-day window survives a
+  _today_ window all afternoon, and the trailing-seven-day window survives a
   flip-off for a week. Ungated, the section would also render "Nothing logged yet"
   at a User Tucker has agreed to stop asking about eating — the shape F12 removed
   from `/` — and spend a request per `/review` load to do it. The gate is in the

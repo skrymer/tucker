@@ -1,8 +1,9 @@
 import { test, expect } from './support/smoke-test'
-import { todayIso } from '../support/date'
+import { isoShiftDays, todayIso } from '../support/date'
 
-// F14 slice 1 smoke: the Intake Breakdown on /review, end-to-end against the real
-// backend. Foods and Entries are seeded through the API and asserted on screen.
+// The Intake Breakdown on /review, end-to-end against the real backend, over both
+// of its windows. Foods and Entries are seeded through the API and asserted on
+// screen.
 // No teardown: the auto `freshDatabase` fixture resets the DB before every smoke
 // (issue #70), so seeding is all a test owes.
 const API = 'http://localhost:8080/api'
@@ -88,4 +89,66 @@ test("the day's calories are divided between the Foods they went on", async ({
   await expect(rows.nth(2)).toContainText(riceFood.name)
   await expect(rows.nth(2)).toContainText('293 kcal · 16 g protein')
   await expect(rows.nth(2)).toContainText('24%')
+})
+
+test('the week is a wider question than the day, and says how much of it was logged', async ({
+  page,
+  goto,
+  request,
+}) => {
+  const today = todayIso()
+
+  const skyr = await request.post(`${API}/foods`, {
+    data: {
+      name: 'Smoke skyr',
+      proteinPer100g: 11,
+      carbsPer100g: 4,
+      fatPer100g: 0.2,
+    },
+  })
+  expect(skyr.status()).toBe(201)
+  const skyrFood = (await skyr.json()) as { id: number; name: string }
+
+  // Eaten today, and eaten again three days ago — the same Food is one slice
+  // over the week, and the week is the only window the older day is in.
+  for (const on of [today, isoShiftDays(today, -3)]) {
+    const logged = await request.post(`${API}/entries/weighed`, {
+      data: { date: on, foodId: skyrFood.id, grams: 200 },
+    })
+    expect(logged.status()).toBe(201)
+  }
+
+  // Only on the older day, so it is absent from today and present in the week.
+  const takeaway = await request.post(`${API}/entries/estimated`, {
+    data: {
+      date: isoShiftDays(today, -3),
+      label: 'Smoke takeaway',
+      calories: 900,
+      protein: null,
+    },
+  })
+  expect(takeaway.status()).toBe(201)
+
+  await goto('/review', { waitUntil: 'hydration' })
+
+  const section = page.getByRole('region', { name: "What you're eating" })
+
+  // 200 g of skyr: 4x11 + 4x4 + 9x0.2 = 61.8 kcal/100 g, so 124 kcal today.
+  await expect(section.getByText('124 kcal', { exact: true })).toBeVisible()
+  await expect(section.getByText('Smoke takeaway')).toBeHidden()
+  await expect(section.getByText(/days logged/)).toBeHidden()
+
+  await section.getByRole('tab', { name: 'Last 7 days' }).click()
+
+  // Both days, and both Foods: 247.2 + 900 = 1147 kcal over two logged days.
+  await expect(section.getByText('1147 kcal', { exact: true })).toBeVisible()
+  await expect(section.getByText('Smoke takeaway')).toBeVisible()
+  await expect(section.getByText('2 of 7 days logged')).toBeVisible()
+
+  const rows = section.getByRole('listitem')
+  await expect(rows).toHaveCount(2)
+  await expect(rows.nth(0)).toContainText('Smoke takeaway')
+  await expect(rows.nth(0)).toContainText('900 kcal')
+  await expect(rows.nth(1)).toContainText(skyrFood.name)
+  await expect(rows.nth(1)).toContainText('247 kcal · 44 g protein')
 })

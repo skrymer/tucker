@@ -186,6 +186,25 @@ class IntakeBreakdownTest {
     }
 
     @Test
+    fun `a window states how many of its days carry an Entry, counting a day once however many it holds`() {
+        val week = IntakeBreakdown.of(
+            from = day.minusDays(6),
+            to = day,
+            entries = listOf(
+                weighed(chickenId, calories = 520.0, protein = 97.0, on = day),
+                // A second Entry on a day already counted must not count it twice.
+                weighed(riceId, calories = 350.0, protein = 8.0, on = day),
+                estimated("Work canteen", calories = 640.0, protein = null, on = day.minusDays(5)),
+            ),
+            foodNames = names,
+        )
+
+        // Three Entries over seven days, but only two of those days were logged:
+        // a seven-day figure built from two days is discounted rather than trusted.
+        assertEquals(2, week.loggedDays)
+    }
+
+    @Test
     fun `a window with nothing logged is an empty breakdown rather than an absent one`() {
         val breakdown = breakdownOf()
 

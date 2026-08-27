@@ -1,11 +1,13 @@
 import { expect, test } from './support/test'
 import {
   mockIntakeBreakdown,
+  mockIntakeBreakdownByWindow,
   mockIntakeBreakdownError,
   mockNoActiveGoal,
   mockProfile,
   mockReviewHistory,
 } from './support/mock-api'
+import { isoShiftDays } from './support/date'
 import { weeklyReview } from '../test/review-fixtures'
 import {
   breakdownItem,
@@ -106,6 +108,35 @@ const A_FULL_DAY = intakeBreakdown({
   ],
 })
 
+/** The same User's week: different Foods, so a stale day is visible as one. */
+const A_FULL_WEEK = intakeBreakdown({
+  totalCalories: 9000,
+  loggedDays: 5,
+  items: [
+    breakdownItem({
+      foodId: 10,
+      name: 'Sourdough',
+      calories: 3400,
+      protein: 100,
+      share: 0.3777,
+    }),
+    breakdownItem({
+      foodId: 2,
+      name: 'Basmati rice',
+      calories: 3000,
+      protein: 70,
+      share: 0.3334,
+    }),
+    breakdownItem({
+      foodId: 1,
+      name: 'Chicken breast',
+      calories: 2600,
+      protein: 480,
+      share: 0.2889,
+    }),
+  ],
+})
+
 test.describe('with Calorie Tracking on', () => {
   test.beforeEach(async ({ page }) => {
     await mockProfile(page, TRACKING)
@@ -162,6 +193,148 @@ test.describe('with Calorie Tracking on', () => {
 
     await expect(page.getByText('Chicken breast')).toBeVisible()
   })
+  test('opens on the day, and asks about seven days ending today when the week is chosen', async ({
+    page,
+    goto,
+  }) => {
+    const asked = await mockIntakeBreakdownByWindow(page, (from, to) =>
+      from === to ? A_FULL_DAY : A_FULL_WEEK,
+    )
+
+    await goto('/review', { waitUntil: 'hydration' })
+
+    // The day is what a User is shown first, and it is one day wide.
+    await expect(page.getByRole('tab', { name: 'Today' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+    await expect(page.getByText('Almonds')).toBeVisible()
+    expect(asked).toHaveLength(1)
+    // A real day on both bounds: a client that dropped the window entirely would
+    // otherwise record two empty strings and read as a one-day window.
+    expect(asked[0]!.to).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+    expect(asked[0]!.from).toBe(asked[0]!.to)
+
+    await page.getByRole('tab', { name: 'Last 7 days' }).click()
+
+    // The week's own Foods, ranked afresh — nothing of the day survives it.
+    await expect(page.getByText('Sourdough')).toBeVisible()
+    await expect(page.getByText('Almonds')).toBeHidden()
+    await expect(page.getByText('5 of 7 days logged')).toBeVisible()
+
+    expect(asked).toHaveLength(2)
+    // Ending on the same day the first window asked about, and seven days wide,
+    // so today's Entries are in the week as well as in the day.
+    expect(asked[1]!.to).toBe(asked[0]!.to)
+    expect(asked[1]!.from).toBe(isoShiftDays(asked[1]!.to, -6))
+
+    // And back again: a toggle that only works one way strands the User on the
+    // week until they reload.
+    await page.getByRole('tab', { name: 'Today' }).click()
+
+    await expect(page.getByText('Almonds')).toBeVisible()
+    await expect(page.getByText('Sourdough')).toBeHidden()
+    expect(asked).toHaveLength(3)
+    expect(asked[2]!.from).toBe(asked[2]!.to)
+  })
+
+  test('opens Other onto the tail it already holds, without asking again', async ({
+    page,
+    goto,
+  }) => {
+    const asked = await mockIntakeBreakdownByWindow(page, () => A_FULL_DAY)
+
+    await goto('/review', { waitUntil: 'hydration' })
+
+    // Almonds is the eighth slice and the last on the ring; Blueberries and the
+    // coffee are the tail Other folded away.
+    await expect(page.getByText('Almonds')).toBeVisible()
+    await expect(page.getByText('Blueberries')).toBeHidden()
+
+    await page.getByRole('button', { name: 'Show all 2' }).click()
+
+    // The whole opened section, so the revealed rows' figures, shares and flags
+    // are pinned together with the expander's own state.
+    await expect(
+      page.getByRole('region', { name: "What you're eating" }),
+    ).toMatchAriaSnapshot()
+
+    await page.getByRole('button', { name: 'Show less' }).click()
+    await expect(page.getByText('Blueberries')).toBeHidden()
+
+    // Re-read at the end, where a late duplicate request would have landed.
+    expect(asked).toHaveLength(1)
+  })
+
+  test('the ring reads the slice under the pointer out in its own centre', async ({
+    page,
+    goto,
+  }) => {
+    await mockIntakeBreakdownByWindow(page, () => A_FULL_DAY)
+
+    await goto('/review', { waitUntil: 'hydration' })
+
+    const ring = page.locator('.intake-ring')
+    await expect(ring).toBeVisible()
+
+    // Straight up from the middle is the first arc: the ring starts at twelve
+    // o'clock and the backend ranks the biggest slice first. Driven by geometry
+    // rather than by hovering the path, whose bounding box centre falls in the
+    // hole.
+    const box = (await ring.boundingBox())!
+    await page.mouse.move(
+      box.x + box.width / 2 + 8,
+      box.y + box.height / 2 - 74,
+    )
+
+    await expect(ring.getByText('Chicken breast')).toBeVisible()
+    await expect(ring.getByText('520 kcal · 97 g protein')).toBeVisible()
+  })
+
+  test('a tap reads a slice out too, which is the only pointer a phone has', async ({
+    page,
+    goto,
+  }, testInfo) => {
+    test.skip(
+      testInfo.project.name !== 'Mobile Chrome',
+      'a touchscreen is what this is about',
+    )
+    await mockIntakeBreakdownByWindow(page, () => A_FULL_DAY)
+
+    await goto('/review', { waitUntil: 'hydration' })
+
+    const ring = page.locator('.intake-ring')
+    const box = (await ring.boundingBox())!
+    // The same arc the pointer test hovers, so the two differ only in how they
+    // were touched.
+    await page.touchscreen.tap(
+      box.x + box.width / 2 + 8,
+      box.y + box.height / 2 - 74,
+    )
+
+    await expect(ring.getByText('Chicken breast')).toBeVisible()
+    await expect(ring.getByText('520 kcal · 97 g protein')).toBeVisible()
+  })
+
+  test('an empty day still offers the week, which is the point of asking', async ({
+    page,
+    goto,
+  }) => {
+    await mockIntakeBreakdownByWindow(page, (from, to) =>
+      from === to
+        ? intakeBreakdown({ totalCalories: 0, loggedDays: 0, items: [] })
+        : A_FULL_WEEK,
+    )
+
+    await goto('/review', { waitUntil: 'hydration' })
+
+    await expect(page.getByText('Nothing logged yet')).toBeVisible()
+
+    await page.getByRole('tab', { name: 'Last 7 days' }).click()
+
+    await expect(page.getByText('Sourdough')).toBeVisible()
+    await expect(page.getByText('Nothing logged yet')).toBeHidden()
+  })
 })
 
 test('with Calorie Tracking off the section is absent and never asked for', async ({
@@ -172,11 +345,7 @@ test('with Calorie Tracking off the section is absent and never asked for', asyn
   await mockNoActiveGoal(page)
   await mockReviewHistory(page, HISTORY)
 
-  let requests = 0
-  await page.route('**/api/intake-breakdown**', (route) => {
-    requests += 1
-    return route.fulfill({ json: A_FULL_DAY })
-  })
+  const asked = await mockIntakeBreakdownByWindow(page, () => A_FULL_DAY)
 
   await goto('/review', { waitUntil: 'hydration' })
 
@@ -188,5 +357,5 @@ test('with Calorie Tracking off the section is absent and never asked for', asyn
   await expect(
     page.getByRole('region', { name: "What you're eating" }),
   ).toBeHidden()
-  expect(requests).toBe(0)
+  expect(asked).toHaveLength(0)
 })

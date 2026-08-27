@@ -146,6 +146,21 @@ Three rules ride with them, and none is optional:
   over-budget day and a red slice mean nothing to each other. Status remains its
   own axis, as above.
 
+**The ring answers "which slice is this?" in its own middle.** Pointing at or
+tapping an arc names the Food in the hole of the donut, with what it cost and
+what it returned — the one thing eight similar hues cannot tell you, and the
+reason a chart that did nothing on hover read as broken. Three things about it:
+
+- **In the centre, not beside the cursor.** A tooltip that follows the pointer
+  has nowhere to be on a phone, which is Tucker's first target; the hole is
+  already empty and is where the eye is.
+- **It sticks.** The readout holds the last arc rather than clearing, because a
+  tap has no hover to leave — so on a phone the figure you asked for stays put.
+  Nothing is read out until the first arc is touched.
+- **It stays decorative.** The readout is inside the `aria-hidden` ring and every
+  word of it repeats a legend row, so the legend is still what carries identity.
+  It adds a way to read the chart, never the only one.
+
 This does **not** breach "spend boldness only on a ring" — it _is_ a ring, and it
 lives on `/review`, where neither the Day Ring nor the Goal Ring's calorie arc
 appears. The Goal Progress hero and the breakdown ring are the page's two loud

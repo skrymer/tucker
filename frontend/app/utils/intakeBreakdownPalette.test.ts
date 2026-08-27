@@ -79,3 +79,22 @@ describe('the Intake Breakdown palette', () => {
     expect(RING_SLOT_COLORS).not.toContain(OTHER_COLOR)
   })
 })
+
+describe('the ring is the only chart whose tooltip is suppressed', () => {
+  it('keeps the tooltip mounted but invisible, which is what feeds the centre readout', () => {
+    // Read inside the test body, like the palette above: a constant read at
+    // module load is attributed to no test by the mutation runner.
+    const suppressed = [
+      '--vis-tooltip-background-color: transparent',
+      '--vis-tooltip-border-color: transparent',
+      '--vis-tooltip-box-shadow: none',
+      '--vis-tooltip-padding: 0',
+    ]
+    const block = css.match(/\.intake-ring\s*\{([^}]*)\}/)?.[1]
+
+    expect(block, '`.intake-ring` is not declared in main.css').toBeDefined()
+    for (const declaration of suppressed) {
+      expect(block).toContain(declaration)
+    }
+  })
+})

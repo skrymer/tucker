@@ -102,6 +102,23 @@ class IntakeBreakdownApiTest {
     }
 
     @Test
+    fun `the window states how many of its days carry an Entry`() {
+        // Three Entries over three days, but only two of those days were logged —
+        // the figure that says how far to trust a seven-day breakdown.
+        logEstimated("Breakfast", calories = 300.0, protein = null, on = day.minusDays(2))
+        logEstimated("Dinner", calories = 700.0, protein = null, on = day.minusDays(2))
+        logEstimated("Lunch", calories = 500.0, protein = null, on = day)
+
+        mockMvc.get("/api/intake-breakdown") {
+            param("from", "${day.minusDays(6)}")
+            param("to", "$day")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.loggedDays") { value(2) }
+        }
+    }
+
+    @Test
     fun `a Recipe is one slice under its own name, never its ingredients`() {
         val mince = createFood("Beef mince", proteinPer100g = 26.0)
         val potato = createFood("Potato", proteinPer100g = 2.0)

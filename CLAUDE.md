@@ -37,6 +37,7 @@ model, jOOQ/SQLite persistence, the adaptive weekly-review engine, the full REST
 API, a Dockerfile + compose stack, and a unit / integration / e2e test suite.
 
 Backend commands (run in `backend/`):
+
 - `./gradlew build` — compiles, runs Detekt, and runs the fast test suite
 - `./gradlew detekt` — Detekt static analysis on its own (also part of `build`)
 - `./gradlew e2eTest` — Testcontainers e2e against the Docker image; build it
@@ -76,6 +77,7 @@ and a TDD'd responsive app shell with adaptive navigation (bottom tab bar on
 phone, side nav on desktop) over four routes: Today, Foods, Review, Profile.
 
 Frontend commands (run in `frontend/`, package manager is pnpm):
+
 - `pnpm dev` — start the dev server
 - `pnpm build` — production build
 - `pnpm test` — Vitest component / unit tests (`@nuxt/test-utils`, `@vue/test-utils`)
@@ -130,7 +132,7 @@ it. Detekt, ESLint, and typecheck failures fail the build.
 `pnpm typecheck` is CI-only and deliberately **not** in the pre-commit hook
 (issue #200). Not for speed — it runs in ~5s, comparable to ESLint — but
 because it is whole-program by nature while the hook is staged-file scoped via
-`lint-staged`. A type error usually lands in a *different* file from the one
+`lint-staged`. A type error usually lands in a _different_ file from the one
 edited (change a component's props, break its test), so a staged-file check
 can't express it, and a whole-program check would block committing in-progress
 work over errors elsewhere in the tree. CI is where the guarantee has to hold.
@@ -231,8 +233,8 @@ The frontend is built **test-first (red-green TDD)**. Increments:
     Home Screen hint, nothing once installed), surfaced on `/profile`. Each a
     red-green TDD unit/component test; a real-stack `pwa-install` smoke covers
     manifest + SW + offline shell + the install affordance on both viewports.
-  Slice 2 ([#81](https://github.com/skrymer/tucker/issues/81), shipped
-  [#92](https://github.com/skrymer/tucker/pull/92)) — **Enable reminders** — ✅ done:
+    Slice 2 ([#81](https://github.com/skrymer/tucker/issues/81), shipped
+    [#92](https://github.com/skrymer/tucker/pull/92)) — **Enable reminders** — ✅ done:
   - `Profile` widened with `timezone` / `reminderHour` / `remindersEnabled` (Flyway
     V3), the per-device `Push Subscription` store, and a self-bootstrapping
     `VapidKeyStore` (V4 `app_config`) exposing the public key.
@@ -244,7 +246,7 @@ The frontend is built **test-first (red-green TDD)**. Increments:
   Slice 3 ([#82](https://github.com/skrymer/tucker/issues/82), shipped
   [#95](https://github.com/skrymer/tucker/pull/95)) — **Reminder cron + sender**
   (ADR 0010) — ✅ done:
-  - Tucker's one `@Scheduled` job, scoped solely to *sending* — it computes nothing;
+  - Tucker's one `@Scheduled` job, scoped solely to _sending_ — it computes nothing;
     the review engine stays lazy. Deep modules (ADR 0013): shared
     `ReviewCadence.isOverdue` (the ≥7-day predicate reused by lazy catch-up and the
     reminder), pure `ReminderPolicy.shouldSend` (enabled / setup / subscribed /
@@ -262,7 +264,7 @@ The frontend is built **test-first (red-green TDD)**. Increments:
     those already in a tray to `/`, which stays canonical.
   - Reliability hardening ([#96](https://github.com/skrymer/tucker/issues/96)) — ✅
     done. The dedupe compares a stored local **day** against the review's date (V8)
-    instead of re-deriving that day from an instant in the Profile's *current*
+    instead of re-deriving that day from an instant in the Profile's _current_
     timezone — which is what made it safe to widen the hour gate from "is the
     reminder hour" to a **two-hour window** opening at it, since the dedupe is then
     the only thing holding one nudge per episode. Two hours, not the rest of the day:
@@ -270,11 +272,11 @@ The frontend is built **test-first (red-green TDD)**. Increments:
     spring-forward gap, and an open-ended window would let a nudge owed since
     breakfast land at 23:00. Alongside: an undecodable key is `GONE` (prune) rather
     than retried forever, every send is time-bounded, and the last-seen stamp moved to
-    after a *successful* summary read. Reasoning in ADR 0010, "Clocks the rule has to
+    after a _successful_ summary read. Reasoning in ADR 0010, "Clocks the rule has to
     survive"; of the two gaps it exposed but does not close,
     [#193](https://github.com/skrymer/tucker/issues/193) is now fixed — the transport
     built a fresh HTTP client per send and closed it from a callback that ran on the
-    reactor thread and joined itself, so a *refused* connect stranded that client and
+    reactor thread and joined itself, so a _refused_ connect stranded that client and
     its `availableProcessors + 1` threads for the life of the process. The sender now
     owns one client, posting the library's own `preparePost` request on it, so the
     per-send close that deadlocked is gone rather than guarded. Still open:
@@ -291,28 +293,29 @@ The frontend is built **test-first (red-green TDD)**. Increments:
   the offline shell, and the reminder Push Subscription are verified on the real
   HTTPS origin. The missing manifest link that blocked Chromium install was found
   and fixed in [#99](https://github.com/skrymer/tucker/pull/99) (`<NuxtPwaManifest />`
-  + credentialed manifest fetch behind Access). Off-host backup
-  [#89](https://github.com/skrymer/tucker/issues/89) is **done** — WAL is on and
-  Litestream replicates the production DB to R2. Remaining siblings: GHCR
-  build-and-push (ADR 0015 next step) and
-  [#100](https://github.com/skrymer/tucker/issues/100) (install-button SPA-nav
-  timing, ready-for-agent).
+  - credentialed manifest fetch behind Access). Off-host backup
+    [#89](https://github.com/skrymer/tucker/issues/89) is **done** — WAL is on and
+    Litestream replicates the production DB to R2. Remaining siblings: GHCR
+    build-and-push (ADR 0015 next step) and
+    [#100](https://github.com/skrymer/tucker/issues/100) (install-button SPA-nav
+    timing, ready-for-agent).
+
 - **F7** — Maintenance Mode after a Goal is reached (design pass **done**, see
   [`docs/adr/0008-maintenance-mode-is-the-absence-of-a-goal.md`](docs/adr/0008-maintenance-mode-is-the-absence-of-a-goal.md)
   and the `Maintenance Mode` / reached-Goal / `Drift Status` terms in
-  `CONTEXT.md`). Maintenance Mode is **not an aggregate** — it's the *derived
-  state of having no active Goal*: Calorie Budget = Maintenance (no deficit),
+  `CONTEXT.md`). Maintenance Mode is **not an aggregate** — it's the _derived
+  state of having no active Goal_: Calorie Budget = Maintenance (no deficit),
   Protein Floor still applies (decoupled from the Goal). A Goal is **reached**
-  when the live Trend Weight first meets its target; reaching *latches*
+  when the live Trend Weight first meets its target; reaching _latches_
   (stamped on Weight-Measurement write, the only moment the trend can cross) and
-  is resolved by an **insistent two-way fork** on `/today` — *Switch to
-  maintenance* (deactivate) or *Set a lower goal* (replace) — never a silent
+  is resolved by an **insistent two-way fork** on `/today` — _Switch to
+  maintenance_ (deactivate) or _Set a lower goal_ (replace) — never a silent
   auto-switch. Any Goal lifecycle change (switch, create, replace) force-recomputes
   today's Weekly Review (overwrite) so the Budget lifts immediately
   ([#61](https://github.com/skrymer/tucker/issues/61), shipped with F7). The
   adaptive engine is **unchanged** and keeps
   its weekly cadence (it self-corrects drift even with no deficit). `Drift
-  Status` reuses the observed-pace slope classified against a zero rate;
+Status` reuses the observed-pace slope classified against a zero rate;
   surfaced (not alerted) on `/today` (a "Maintaining" card replacing
   Goal-Progress) and `/profile` (durable status + "Start a goal" re-entry).
   API: `GET /api/goal` + `/goal/progress` 404 in Maintenance Mode; drift folds
@@ -333,7 +336,7 @@ The frontend is built **test-first (red-green TDD)**. Increments:
   offline→manual fallback, density 1.0. Caching (shared per-barcode) over a
   throttle; the offline catalog cache is deferred to F6. The multi-user
   shared/private catalog split was **rejected** in F10 — every Food is private to
-  its owner and the shared per-barcode *lookup* cache carries the dedupe benefit
+  its owner and the shared per-barcode _lookup_ cache carries the dedupe benefit
   ([ADR 0021](docs/adr/0021-every-row-is-owned-by-one-user.md)).
 - **F9** — Recipes: a composite Food defined once from ingredient Foods and
   rolled up into per-100g nutrition (**shipped**, PRD
@@ -360,6 +363,7 @@ The frontend is built **test-first (red-green TDD)**. Increments:
   not-yet-saved input, which the backend re-derives authoritatively on save —
   the carve-out is recorded in
   [ADR 0002](docs/adr/0002-business-logic-belongs-in-the-backend.md).
+
 - **F10** — multiple users (**shipped and live**, all seven slices; see
   [ADR 0020](docs/adr/0020-identity-comes-from-cloudflare-access.md),
   [ADR 0021](docs/adr/0021-every-row-is-owned-by-one-user.md), and the `User` term
@@ -383,17 +387,17 @@ The frontend is built **test-first (red-green TDD)**. Increments:
 
   Slice 1 ([#155](https://github.com/skrymer/tucker/issues/155)) — **the auth gate
   alone** — ✅ done. `/api/**` needs a verified assertion; `/api/version` and
-  `/v3/api-docs/**` stay open — and the servlet ERROR *dispatch*, matched on dispatcher
+  `/v3/api-docs/**` stay open — and the servlet ERROR _dispatch_, matched on dispatcher
   type rather than on `/error`, so an error on one of those two reports its own status
   instead of a 401 without opening a third door. `/api/test/**` is **not** permitted — it stays
   `smoke`-profile-only and its callers carry an assertion like everything else.
   Missing, expired, tampered, foreign-key, wrong-audience, wrong-issuer and
-  **email-less** assertions each 401 — the last excluding Cloudflare *service*
+  **email-less** assertions each 401 — the last excluding Cloudflare _service_
   tokens, which authenticate a machine and so have nothing to be a User.
   - **One verification path everywhere** (ADR 0020): production points
     `NimbusJwtDecoder` at Cloudflare's team JWKS, everything else at the committed
     non-production JWK set in `backend/src/main/resources/access/`. Only the key
-    *source* differs — same signature check, same validators, same failure modes.
+    _source_ differs — same signature check, same validators, same failure modes.
   - **Nothing shipped can mint.** The private half lives in `dev/access-key/`,
     outside every packaged tree; Gradle hands it to the test classpath only. Kotlin
     tests mint in-process, the smokes mint with `jose`, and `pnpm dev` attaches a
@@ -414,22 +418,22 @@ The frontend is built **test-first (red-green TDD)**. Increments:
   `user(id, email UNIQUE COLLATE NOCASE)`, and `AccessPrincipalConverter` — the
   `JwtAuthenticationConverter` slice 1 left a seam for — is the single home of
   provisioning, resolving every verified assertion to a `TuckerPrincipal(userId,
-  email)`. **Nothing is scoped yet**: queries still ignore `user_id`, which is safe
+email)`. **Nothing is scoped yet**: queries still ignore `user_id`, which is safe
   because production holds one User until [#161](https://github.com/skrymer/tucker/issues/161).
   - **`user_id` is nullable, and that is forced, not sloppy.** SQLite refuses to add
     a `NOT NULL` column carrying a `REFERENCES` clause to a table **that already has
-    rows** — and *only* then. A `NOT NULL` V9 therefore passes every test, every
+    rows** — and _only_ then. A `NOT NULL` V9 therefore passes every test, every
     smoke and the jOOQ codegen schema, and fails against exactly one database in the
     world: the production one. So the FK lands now and `NOT NULL` rides along with the
     per-user-uniqueness rebuilds ADR 0021 already requires. (V9's comment prices those
     rebuilds at `executeInTransaction=false` plus `PRAGMA foreign_keys = OFF`; slice 4
-    showed that is the *general* recipe and wrong for these tables, which nothing
+    showed that is the _general_ recipe and wrong for these tables, which nothing
     references — see ADR 0021, "What a rebuild actually costs". V9 is applied and so
     left as written.) `OwnerBackfillMigrationTest` is the guard: it migrates
     to V8, seeds the schema the way a real installation is filled, and only then
     migrates forward, **with foreign keys enforced** — the only shape of test that
     can see this at all.
-  - **Eight owned tables, not nine.** `recipe_ingredient` is owned *through* its
+  - **Eight owned tables, not nine.** `recipe_ingredient` is owned _through_ its
     Recipe (a Recipe is a Food row): it cascades away with it and every query already
     reaches it through a Food, so a `user_id` there would be a second copy of a fact
     nothing keeps in agreement. `app_config` stays global.
@@ -442,7 +446,7 @@ The frontend is built **test-first (red-green TDD)**. Increments:
     row — so `deploy/README.md` step 6 carries the one-line fix.
   - **Provisioning resolves its own race in SQL** (`ON CONFLICT DO NOTHING`), because
     the exception handler it replaced could never have worked: jOOQ raises its own
-    `IntegrityConstraintViolationException`, *not* Spring's `DuplicateKeyException`,
+    `IntegrityConstraintViolationException`, _not_ Spring's `DuplicateKeyException`,
     so a catch written against the Spring hierarchy compiles, reads correctly and
     never fires — and two devices a newcomer opens together would 500.
   - AC7 (a `SecurityContext` in the ~8 direct-bean test classes) is deliberately
@@ -464,7 +468,7 @@ The frontend is built **test-first (red-green TDD)**. Increments:
     wrong number. `FoodRepository.update` was a third in waiting: `applyFrom` writes
     `user_id`, so a key-only UPDATE would not merely overwrite a foreign Food, it would
     silently **re-own** it. Note the engine is only **half** scoped after this slice:
-    its *intake* is per-User now, but the fallback it holds when coverage is thin —
+    its _intake_ is per-User now, but the fallback it holds when coverage is thin —
     `reviews.latestBefore`, `profiles.get`, `weights.findAll` — is not, so a second
     User below the floor would still hold somebody else's Maintenance. That half is
     slice 4's, and is why [#161](https://github.com/skrymer/tucker/issues/161) is last.
@@ -475,20 +479,20 @@ The frontend is built **test-first (red-green TDD)**. Increments:
     400, matching `POST /api/entries/weighed`, which resolves a `foodId` out of a
     request body the same way; 400 keeps malformed input alone.
   - **V10** makes `food.barcode` unique per User — a plain `DROP INDEX` +
-    `CREATE UNIQUE INDEX`, because `idx_food_barcode` was a *named* index. It surfaced a
+    `CREATE UNIQUE INDEX`, because `idx_food_barcode` was a _named_ index. It surfaced a
     latent build bug: `prepareJooqDatabase` sorted migrations by **name**, and `"V10__"`
     sorts before `"V1__"` (`'0'` < `'_'`), so codegen ran the tenth migration first
     against an empty database. Sorted by parsed version now; Flyway was never affected,
     which is why it went unnoticed for nine migrations.
   - **Direct-bean tests sign in with `@WithTuckerUser`** — Spring Security's own
-    `@WithSecurityContext` hook, whose factory is a bean that *provisions* the User so
+    `@WithSecurityContext` hook, whose factory is a bean that _provisions_ the User so
     the foreign key has a row to point at. It defaults to `AccessTokens.EMAIL`, which is
     load-bearing: several tests seed through a repository and read back over HTTP, and
     those must be the same person. Opt-in per class, because an ambient identity would
     also reach the cron scheduler and make slice 5's `runAs` untestable.
   - **AC 8 is met by construction, not by a guard.** No cross-owner reference can exist:
     V9 backfilled every legacy row to one User, and scoped ids stop the API making a new
-    one. Its wording was lifted from ADR 0021's argument *against* the shared catalog.
+    one. Its wording was lifted from ADR 0021's argument _against_ the shared catalog.
     The `referencesFood` / `recipesUsingIngredient` predicates are still there as
     belt-and-braces, and are commented as such rather than as reachable guards.
   - **Half-answered by slice 4**: `SecurityContextHolderFilter` clears
@@ -509,18 +513,18 @@ The frontend is built **test-first (red-green TDD)**. Increments:
   one Maintenance from two people's intake, producing a Calorie Budget wrong for both.
   - **Three more live holes, each silent.** `WeightMeasurementRepository.save` looked a date
     up unscoped, so a second person weighing in on a day found the first person's row and
-    **overwrote their reading**; `deactivateAll` cleared *every* active Goal, so one person
+    **overwrote their reading**; `deactivateAll` cleared _every_ active Goal, so one person
     starting a Goal dropped another into Maintenance Mode having decided nothing; and a
     review is idempotent **by date**, so an unscoped lookup never collided at all — it
     handed the second person the first's trend weight, Maintenance, Budget and Floor under
     their own name. `latestBefore` did the same for the held-Maintenance fallback, which is
     the half of the engine slice 3 left unscoped.
   - **V11 corrected what a rebuild actually costs.** `measured_on` and `reviewed_on` carry
-    *column-level* `UNIQUE`, whose backing `sqlite_autoindex` cannot be dropped, so that
+    _column-level_ `UNIQUE`, whose backing `sqlite_autoindex` cannot be dropped, so that
     constraint can only move per-User by rebuilding the table. ADR 0021 priced every rebuild
     at `executeInTransaction=false` plus `PRAGMA foreign_keys = OFF`; **neither is needed
     here**. That is the general 12-step recipe, whose step 1 disables foreign keys so that
-    dropping a table does not strand rows in tables that *reference* it — and nothing
+    dropping a table does not strand rows in tables that _reference_ it — and nothing
     references these. The rule is "does anything reference this table?", not "is this a
     rebuild?", so foreign keys stayed enforced and V11 ran inside Flyway's transaction like
     any other migration. `PerUserUniquenessMigrationTest` walks the reference graph, so the
@@ -529,7 +533,7 @@ The frontend is built **test-first (red-green TDD)**. Increments:
   - **An unowned row is adopted, never deleted**, guarded on there being exactly one User.
     The first version deleted them, on the reasoning that an unowned row is invisible to
     everybody — true of Foods and Entries, scoped in slice 3, and false of these three,
-    which *this* slice scopes. Deploy slice 3, use Tucker for a week, deploy slice 4, and it
+    which _this_ slice scopes. Deploy slice 3, use Tucker for a week, deploy slice 4, and it
     would have destroyed every reading since, the active Goal, and Weekly Reviews the project
     calls irreversible. With no User or several, attribution would be a guess, so nothing is
     adopted and the new `NOT NULL` refuses the migration inside a transaction that rolls back
@@ -537,7 +541,7 @@ The frontend is built **test-first (red-green TDD)**. Increments:
   - **`runAs` came forward from [#159](https://github.com/skrymer/tucker/issues/159).**
     Scoping reviews breaks the hourly reminder, which runs on a cron thread with no security
     context — so one system-level `UserRepository.findAll()` (the `user` table is not
-    user-owned) now drives a loop giving each User their own turn through the *same* scoped
+    user-owned) now drives a loop giving each User their own turn through the _same_ scoped
     repositories a request uses. `ReminderScheduler` holds only the loop and the per-User
     failure isolation; `UserReminder` does one User's turn. A turn that throws is logged
     naming whose it was and contributes nothing, rather than ending the tick for everyone
@@ -574,12 +578,12 @@ The frontend is built **test-first (red-green TDD)**. Increments:
     and `reminder_state` gains a per-User unique index; `push_subscription` needs no
     widening and is rebuilt only so that every table the slice scopes ends it with a
     `NOT NULL` owner — V11's rule for `goal`. Unowned rows are **adopted, never deleted**,
-    guarded on there being exactly one User, because it is *this* slice that scopes the
+    guarded on there being exactly one User, because it is _this_ slice that scopes the
     repositories reading them.
   - **`push_subscription.endpoint` stays globally unique, deliberately.** A Web Push
     endpoint names one browser profile on one machine, so re-subscribing one another User
     holds **reassigns** the device rather than failing, and its reminders follow whoever
-    opted in last. That is the one unscoped read in the slice; `deleteByEndpoint` *is*
+    opted in last. That is the one unscoped read in the slice; `deleteByEndpoint` _is_
     scoped, and the asymmetry is the point — subscribing is a claim only the newest opt-in
     can settle, unsubscribing is a User forgetting a device of theirs.
   - **Every migration assertion was mutation-checked** rather than assumed green: adoption
@@ -588,7 +592,7 @@ The frontend is built **test-first (red-green TDD)**. Increments:
     guard. Same for the scoping predicates, each removed in turn to confirm the test that
     names it goes red.
   - **The fudged test is un-fudged.** Slice 4's "every User gets a turn" reached "up to
-    date" by *inserting a review*, because the honest way — opening Tucker — would have
+    date" by _inserting a review_, because the honest way — opening Tucker — would have
     tripped the shared last-seen stamp. It is now #159's actual criterion, reached the
     honest way, and four more cover fan-out, two timezones, per-User dedupe and device
     reassignment.
@@ -598,13 +602,13 @@ The frontend is built **test-first (red-green TDD)**. Increments:
     [#232](https://github.com/skrymer/tucker/issues/232), after slice 6 — see below.
 
   Slice 6 ([#160](https://github.com/skrymer/tucker/issues/160)) — **"Signed in as…" and
-  Sign out** — ✅ done, and it is the *entire* user-visible surface of multi-user: one
+  Sign out** — ✅ done, and it is the _entire_ user-visible surface of multi-user: one
   byline under the `/profile` h1, on no other page. No account screen, no user switcher,
   no avatar — Access runs the login, so there is nothing for Tucker to offer.
   - **`GET /api/me` → `{ email }`**, the one piece of identity the client is given.
     `/api/me` rather than `/api/user` though every other path is a domain noun: a User can
     only ever ask about themselves (ADR 0021), so the path names the caller instead of
-    inviting the question of *which* User. The id stays off the wire — it is a surrogate
+    inviting the question of _which_ User. The id stays off the wire — it is a surrogate
     key (ADR 0020) and every scoped endpoint already resolves the owner from the assertion,
     so nothing has one to send. `CurrentUser` gained `email` rather than the controller
     reading `@AuthenticationPrincipal`, keeping one principal-reading path in main source
@@ -614,24 +618,24 @@ The frontend is built **test-first (red-green TDD)**. Increments:
     boldness in one place"). It leads rather than sitting in the footer with the install
     prompt and build tag, because "whose diet am I looking at?" is the question the slice
     exists to answer and six sections of scrolling is a bad way to answer it. Muted
-    neutral, never the error red: being signed out *unexpectedly* is a fault, choosing to
+    neutral, never the error red: being signed out _unexpectedly_ is a fault, choosing to
     leave is not.
   - **The service worker would have eaten it.** `navigateFallbackDenylist` exempted only
     `/api/`, so in the installed PWA — Tucker's primary target — a navigation to
     `/cdn-cgi/access/logout` would have been answered from the precached shell (ADR 0011)
     and silently re-rendered Tucker as the same person. `/cdn-cgi/` is Cloudflare's edge
     namespace (not just the one logout path) and is now exempt too. The same trap was
-    already understood in the *sign-in* direction: `SignedOutState` points at
+    already understood in the _sign-in_ direction: `SignedOutState` points at
     `/api/version` precisely because it is denylisted.
   - **That rule is now executable, which it was not.** It had been prose in three files
     that never referenced each other, and deleting the prefix left the entire suite green —
-    every test asserts the *href*, which stays correct while the navigation silently stops
+    every test asserts the _href_, which stays correct while the navigation silently stops
     working. `app/utils/exits.ts` holds the two exits and the prefixes as one thing,
     `nuxt.config.ts` imports the prefixes rather than restating them, and `exits.test.ts`
     fails if any exit is not covered. The same move `RunAsCallSitesTest` makes on the backend.
   - **`wrap-anywhere`, not `break-words`.** As a flex item the address span's floor is its
     min-content width, and CSS excludes `overflow-wrap: break-word` from that calculation —
-    so the class that *looked* like the wrap fix left a long address overflowing the line.
+    so the class that _looked_ like the wrap fix left a long address overflowing the line.
     Measured in a real browser at a 320px column: `break-words` renders 354px wide (34px of
     overflow), `wrap-anywhere` renders 320px and wraps.
   - **One vocabulary for the session boundary.** The app said "Signed in as…" in
@@ -644,9 +648,9 @@ The frontend is built **test-first (red-green TDD)**. Increments:
   - **AC2's "and ends the session" is not covered by any suite here, and that is stated
     rather than papered over.** `/cdn-cgi/access/logout` is served by Cloudflare's edge, so
     it exists only on the deployed origin and 404s in `pnpm dev` and every smoke. The tests
-    assert the *destination*; the outcome is verifiable on the real origin alone, which the
+    assert the _destination_; the outcome is verifiable on the real origin alone, which the
     F10 deploy hold puts out of reach until [#161](https://github.com/skrymer/tucker/issues/161).
-    Everything up to that edge *is* covered: `identity.smoke.spec.ts` drives the real gated
+    Everything up to that edge _is_ covered: `identity.smoke.spec.ts` drives the real gated
     backend through the SPA's same-origin proxy, and asserts two real assertions get two
     different addresses — the one thing a mocked `/api/me` can never prove.
 
@@ -663,12 +667,12 @@ The frontend is built **test-first (red-green TDD)**. Increments:
     is confirmed a no-op. But that is a fact about **order**. V13 parks `food`'s two
     children in constraint-free holding tables, drops them, and only then drops `food` — a
     parent of nothing by that point — so the ordinary case ADR 0021 already sanctioned is
-    *reached* rather than circumvented. The whole migration runs inside Flyway's transaction
+    _reached_ rather than circumvented. The whole migration runs inside Flyway's transaction
     with foreign keys enforced, so there is no non-transactional window to document a
     recovery for. The ADR's rule is restated to match: not "does anything reference this
     table?" but "can everything that references it be rebuilt alongside it?".
   - **The rollback claim is the assertion that matters, and it discriminates.** V13 drops
-    `entry` and `recipe_ingredient` *before* the INSERT it can fail on, so at the moment of
+    `entry` and `recipe_ingredient` _before_ the INSERT it can fail on, so at the moment of
     refusal the log and every Recipe's composition exist only inside the transaction.
     Replaying V13 statement by statement in autocommit leaves both tables gone and
     `food_new` behind — which is what the refusal test asserts against.
@@ -680,14 +684,14 @@ The frontend is built **test-first (red-green TDD)**. Increments:
   - **The two adoption sides masked each other, and the first fix made it worse.** Seeding
     both an unowned Food and an unowned Entry in one refusal test reads as thorough and
     costs the test its point: with either row able to refuse the migration, dropping the
-    *Food*'s one-User guard is still caught by the Entry, and vice versa. It is two tests,
+    _Food_'s one-User guard is still caught by the Entry, and vice versa. It is two tests,
     each with exactly one unattributable row. Every assertion was mutation-checked, and that
     is what caught it — along with a rebuild that could preserve every foreign-key edge
-    while silently changing what one *does* (`ON DELETE CASCADE` stripped from
+    while silently changing what one _does_ (`ON DELETE CASCADE` stripped from
     `recipe_ingredient.recipe_id`), and a `CREATE UNIQUE INDEX` whose deletion dropped an
     ADR 0021 decision out of the schema with the whole suite still green.
   - One CHECK is **uncatchable rather than uncovered**: `entry`'s `kind IN ('WEIGHED',
-    'ESTIMATED')` is subsumed by the table-level shape CHECK, whose two branches each pin
+'ESTIMATED')` is subsumed by the table-level shape CHECK, whose two branches each pin
     `kind` to one of those values, so no row can violate the first alone. Said in the test
     rather than faked with a row that violates two constraints at once.
 
@@ -703,7 +707,7 @@ The frontend is built **test-first (red-green TDD)**. Increments:
     open created the `user` row. Confirmed on the live origin: an empty Foods catalog, no
     Entries, no history.
   - **The evidence worth keeping is the same-day weight row.** Both Users now hold a
-    Weight Measurement on the *same date*, both intact. That is precisely the hole slice 4
+    Weight Measurement on the _same date_, both intact. That is precisely the hole slice 4
     closed — `WeightMeasurementRepository.save` used to resolve the date unscoped, so the
     second person weighing in on a day would silently overwrite the first's reading — and
     `idx_weight_measurement_user_day` on `(user_id, measured_on)` is what lets both exist.
@@ -717,7 +721,7 @@ The frontend is built **test-first (red-green TDD)**. Increments:
     push services (FCM and Apple), the timezone is captured onto the enabling User's
     Profile alone, and `reminder_state` keeps a separate absent-today stamp and dedupe per
     User. **A live send was not observed**: `ReminderPolicy` requires a review ≥7 days
-    overdue *and* the User absent that day, so with both Users active and freshly reviewed
+    overdue _and_ the User absent that day, so with both Users active and freshly reviewed
     every gate is correctly shut. The send-and-dedupe path is covered by the
     `reminder-send` real-stack smoke instead.
   - **AC5 (revoke) was not exercised**, by choice — it locks the second User out of a
@@ -733,7 +737,8 @@ The frontend is built **test-first (red-green TDD)**. Increments:
     immediately" holds only for both steps together; `deploy/README.md` documents the pair
     and why each is insufficient alone. The "without a deploy" half of that AC is
     unaffected — neither step touches Tucker.
-- **F11** — Check: scan a package *before* buying it (**shipped**, PRD
+
+- **F11** — Check: scan a package _before_ buying it (**shipped**, PRD
   [#168](https://github.com/skrymer/tucker/issues/168), see
   [ADR 0022](docs/adr/0022-a-check-states-cost-and-return-and-never-labels-a-food.md)
   and the `Check` / `Pace` terms in `CONTEXT.md`). A second use for the scanner,
@@ -766,8 +771,8 @@ The frontend is built **test-first (red-green TDD)**. Increments:
   - Slice 3 ([#171](https://github.com/skrymer/tucker/issues/171), shipped
     [#184](https://github.com/skrymer/tucker/pull/184)) — tell a provider outage
     apart from a genuine miss. An Inconclusive Lookup earns a **"Try again"**
-    that re-runs `GET /api/check/{barcode}` against the barcode *already
-    decoded* — the camera is not restarted and the decode, which never failed,
+    that re-runs `GET /api/check/{barcode}` against the barcode _already
+    decoded_ — the camera is not restarted and the decode, which never failed,
     is not repeated. It lives inside that alert's own `actions`, so it
     **structurally cannot** render for a miss (404) or incomplete nutrition
     (422); both are permanent for that product, and "try again" is bad advice
@@ -775,7 +780,7 @@ The frontend is built **test-first (red-green TDD)**. Increments:
     available under all three. The Check lookup also passes `retry: 0`: ofetch's
     stock GET retry was silently re-adding the provider-load multiplication the
     backend deliberately refuses (ADR 0007, [#164](https://github.com/skrymer/tucker/issues/164)).
-    Proving the retry *is* a retry takes a camera-acquisition count: a restarted
+    Proving the retry _is_ a retry takes a camera-acquisition count: a restarted
     camera re-decodes the same barcode and issues its own lookup, so request
     counts and a retrying `toBeVisible()` both pass either way.
 
@@ -789,9 +794,10 @@ The frontend is built **test-first (red-green TDD)**. Increments:
   asymmetry — **both barcode look-ups now pass `retry: 0`**; ADR 0007 records why
   the earlier Check-only scope did not survive. Still open:
   [#197](https://github.com/skrymer/tucker/issues/197) — a newer `useAsyncAction`
-  run that inherits a *visible* spinner tears it down with no hold, because
+  run that inherits a _visible_ spinner tears it down with no hold, because
   `shownAt` is scoped to a run while `busy` is scoped to the episode (pre-existing,
   unchanged by #183, most reachable on `/check`).
+
 - **F12** — Calorie Tracking is optional: use Tucker as a goal and weight tracker
   (**shipped**, PRD [#246](https://github.com/skrymer/tucker/issues/246)). Some
   people want the other half of the app and not the log half — they weigh in, they
@@ -824,12 +830,12 @@ The frontend is built **test-first (red-green TDD)**. Increments:
     [ADR 0024](docs/adr/0024-a-weekly-review-carries-intake-targets-only-when-they-can-be-corrected.md)
     and the `Intake Targets` term in `CONTEXT.md`.
     - **A Weekly Review has two jobs, and only the second is gated.** Every review
-      records the **Trend Weight**; with Calorie Tracking on it *also* derives that
+      records the **Trend Weight**; with Calorie Tracking on it _also_ derives that
       week's **Intake Targets** — one nullable value object holding the Maintenance
       (with its basis), the Budget and the Floor. Not four nullable fields: those
       admit states the domain does not have (a Floor with no Budget, a Budget with
       no basis) and force every consumer to re-establish that they agree. The
-      `require(> 0)` invariants moved *inside* it intact rather than being relaxed
+      `require(> 0)` invariants moved _inside_ it intact rather than being relaxed
       for every tracking User.
     - **Why absent rather than derived-and-hidden.** The Budget a non-tracking User
       was shown is uncorrectable by construction: the adaptive correction needs 10
@@ -842,16 +848,16 @@ The frontend is built **test-first (red-green TDD)**. Increments:
       button and no Budget for up to a week, and turning it off leaves a stale
       Budget on `/`. `PUT /api/profile` therefore carries `clientToday` (ADR 0014),
       and the recompute fires only on an actual change, once setup is complete.
-    - **Coming back after a weight-only *stretch* is a cold start**, a narrow
+    - **Coming back after a weight-only _stretch_ is a cold start**, a narrow
       deviation from ADR 0018: seed against the current Trend Weight rather than
-      hold. ADR 0018 rejected seeding for the *lapsed logger*, where reverting makes
+      hold. ADR 0018 rejected seeding for the _lapsed logger_, where reverting makes
       the Budget yo-yo with logging diligence; a stretch is a declared absence, and
       the held figure was computed for a body that may be many kilos away. **A
       toggle is not a stretch** — and the two need telling apart precisely because
       the recompute trigger above makes reviews neither weekly nor contiguous, so
       "the preceding review has no targets" would also catch a setting flipped off
       on Tuesday and back on Wednesday. Hold the most recent review that carries
-      targets when the *gap* is under one cadence — measured from the preceding
+      targets when the _gap_ is under one cadence — measured from the preceding
       review's date, which is when tracking went off, not from the held figure's own
       age, or a fortnight's **absence** followed by a one-day toggle would re-seed
       somebody ADR 0018 says to hold. Seed beyond that.
@@ -861,13 +867,13 @@ The frontend is built **test-first (red-green TDD)**. Increments:
       splitting it out would reintroduce the Floor-without-a-Budget state the value
       object exists to forbid.
     - **`setupComplete` is promoted onto the summary**, because `calorieBudget ==
-      null` now means two things that earn opposite messages — the same trap
+null` now means two things that earn opposite messages — the same trap
       **Inconclusive Lookup** exists to name. It is orthogonal to tracking, so
       `SetupBanner` keys on it and tracking only picks the sentence, and `/check`'s
       no-budget state says calorie tracking is off rather than that setup is
       unfinished.
     - **The ledger picks its columns from the data, not the setting** — the calorie
-      four render whenever *any* review carries targets, em-dashed per row where
+      four render whenever _any_ review carries targets, em-dashed per row where
       they don't. Choosing from the setting is wrong both ways. The Trend Weight
       delta spans a gap (the trend is continuous); a targets delta needs both
       neighbours, so no delta is invented across one — and `BudgetChange` is null
@@ -893,7 +899,7 @@ The frontend is built **test-first (red-green TDD)**. Increments:
       tracks, because its first job — recording the Trend Weight — is the one
       neither setting removes. A copy split is exactly the change a later reader
       assumes implied a gate split, so two Users differing in that one field alone
-      are asserted to be gated in and out *together*.
+      are asserted to be gated in and out _together_.
     - **Chosen inside a User's turn**, from the Profile that turn already read to
       resolve the timezone and the hour — so one tick says the right thing to each
       of several people. Resolved once for the tick, whoever sorted first would
@@ -907,11 +913,11 @@ The frontend is built **test-first (red-green TDD)**. Increments:
     - `push-sw.js` is untouched, and structurally so: both payloads carry exactly
       `title` and `body`, which is what leaves the worker in sole charge of the
       icon, the badge, the collapse tag and where a tap lands (issues #178, #189).
-  **Out of scope:** self-service anything beyond the setting itself, and a
-  surplus/gaining shape of the same idea ([#62](https://github.com/skrymer/tucker/issues/62)).
+      **Out of scope:** self-service anything beyond the setting itself, and a
+      surplus/gaining shape of the same idea ([#62](https://github.com/skrymer/tucker/issues/62)).
 - **F13** — a **Weigh-in Reminder**: nudge a User who has not weighed in, rather
   than one who has not opened Tucker. Deferred out of F12 slice 4 rather than
-  smuggled into it, because it is a different *trigger* and not a different
+  smuggled into it, because it is a different _trigger_ and not a different
   sentence — the Weekly-Review Reminder fires on absence from the **app**, so a
   weight-only User who opens Tucker daily and never steps on the scale is never
   nudged while their Trend Weight goes stale. The same shape of limit ADR 0010
@@ -927,7 +933,7 @@ The frontend is built **test-first (red-green TDD)**. Increments:
   strip / no-chart).
   The **Calorie Budget** is deliberately absent: it is a share of what was eaten,
   so the ring reads identically over and under budget, where a Budget denominator
-  could not be drawn past 100% at all. Each slice states what it *returned* in
+  could not be drawn past 100% at all. Each slice states what it _returned_ in
   protein beside what it cost, because the biggest slice is usually the protein
   source and "cut your biggest item" is the advice the no-good-or-bad rule
   refuses (ADR 0022). One slice per Food merged across **Entries**, a **Recipe**
@@ -943,7 +949,7 @@ The frontend is built **test-first (red-green TDD)**. Increments:
   expandable, because the palette has exactly eight hues and a ninth Food must
   never get an invented one; slice 2
   ([#265](https://github.com/skrymer/tucker/issues/265)) — the seven-day window
-  and the **Other** you can open.
+  and the **Other** you can open. Both shipped.
 
   Slice 1 ([#264](https://github.com/skrymer/tucker/issues/264)) — **the day's
   calories, divided** — ✅ done. `GET /api/intake-breakdown?from=&to=` ranks and
@@ -952,7 +958,7 @@ The frontend is built **test-first (red-green TDD)**. Increments:
     palette's light hues sit under 3:1 on the card, so the labelled legend beside it
     is what makes the figures readable and the ring adds no identity of its own —
     which is exactly what the e2e aria snapshot asserts. The cost is that nothing
-    could see what the chart was *given*: a mutation sweep gutted `data`,
+    could see what the chart was _given_: a mutation sweep gutted `data`,
     `categories` and every arc colour with the suite still green. It is now pinned
     through the chart's own props, the only seam it has.
   - **The palette is two files that never referenced each other**, and every way of
@@ -973,12 +979,90 @@ The frontend is built **test-first (red-green TDD)**. Increments:
     explicit comparisons, not `in from..to` — see the mutation note in
     `known-survivors.md`.
   - `isEstimate` is derived from `foodId == null` rather than stored: having no Food
-    *is* what makes a slice an estimate. `loggedDays` was cut before it shipped — it
+    _is_ what makes a slice an estimate. `loggedDays` was cut before it shipped — it
     was produced at every layer and read by nothing, and is neither in ADR 0026 nor
     in `CONTEXT.md`; slice 2 can add it with the surface that states it.
   - The ring is drawn by `vue-chrts`, which costs **221 KB gzip on `/review` alone** —
     measured, lazy, not preloaded, and no other route pays. It does still carry
-    TopoJSON and `proj4` that tree-shaking did not strip. 
+    TopoJSON and `proj4` that tree-shaking did not strip.
+
+  Slice 2 ([#265](https://github.com/skrymer/tucker/issues/265)) — **the trailing
+  seven days, and the tail you can open** — ✅ done, **and with it F14**. A period
+  toggle in the section header switches the window; `Other` opens onto the Foods it
+  folded, off the response already held.
+  - **`loggedDays` came back with the surface that states it**, as slice 1 said it
+    would, and `CONTEXT.md` now carries the sentence that makes it a domain term: the
+    width of a window is no evidence that it was logged, so a seven-day breakdown
+    built from three logged days is discounted rather than read at face value.
+  - **The caption describes the response, never the button last pressed.** Its
+    denominator is measured off the breakdown's own `from`/`to`, not off the selected
+    period — the two disagree for the length of a round-trip, and a "5 of 7" over the
+    day's figures would be a confident lie in exactly that window. It is silent for a
+    single day, whose count could only be none or all and whose none already reads as
+    "Nothing logged yet" below it.
+  - **`useOptionalFetch` gained a re-entry policy**, named as `useAsyncAction`'s is:
+    `guard` (the default, unchanged for every existing caller) drops a load issued
+    while one is in flight, `latest` issues it and discards whatever the superseded run
+    returns. Slice 1's fetcher took no arguments, so a second load was always a repeat;
+    a switchable window makes it _a different question_, and the guard silently answers
+    the wrong one. The first attempt at this was a promise queue in the page, which
+    three of the four cleanup reviewers flagged independently: it re-opened the very
+    Retry de-duplication the guard exists for, fetched the _same_ window twice on a
+    quick double-switch (the fetcher reads the period at call time, and a queued link
+    runs after the burst), and was safe only while `load` never rejected — one
+    rejection poisons the chain and every later refresh is silently skipped.
+  - **The legend moved out of the SFC** into `intakeLegend`, which lays a ranked
+    breakdown out as rows with an explicit `kind` (`slice` | `other` | `folded`). That
+    made the rule worth asserting — a folded row is on no arc, so it is given no hue —
+    a data fact tested where it is decided, and took a `data-testid` back out of
+    production markup: the component test had been counting colour swatches by row
+    index, which breaks the day the palette stops having eight hues, for a reason
+    unrelated to what it asserts. The ring is fed from `slices` alone, so opening
+    `Other` leaves the donut's props untouched and triggers no d3 re-render.
+  - **The expander is one composable now.** `useExpander` holds the "Show all N" ↔
+    "Show less" label and the toggle, shared with Today's entry list — ADR 0004's
+    extract-on-the-second-consumer rule, and the label vocabulary stops being two
+    copies that had already drifted apart on `aria-expanded`.
+  - **Collapsing the tail is keyed to the window, not to the toggle**, so a _new
+    answer_ opens folded the way its ring draws while a Retry of the same window leaves
+    a tail the User opened where they left it. Watched as **two sources**, not one
+    getter returning both: a getter that builds an array returns a fresh object every
+    run, which Vue compares by reference — so the obvious form would have snapped an
+    open tail shut on every reload, with the whole suite green.
+  - Two smaller ones, each a wrong answer rather than a tidy-up: `breakdownWindow`
+    reads the clock **once**, because two reads either side of midnight hand back a
+    window a day wider than the period asks for; and `daysInWindow` counts between
+    **UTC** midnights, because a local span across a daylight-saving shift is an hour
+    short of a whole number of days and needs a rounding rule to get wrong.
+  - **The ring answers "which slice is this?" in its own middle.** Slice 1 shipped it
+    with `hide-tooltip` — a setting that rode in beside `hide-legend`, which the card
+    genuinely needs, and was argued nowhere: not the ADR, not `DESIGN.md`, not the
+    commit. A donut that does nothing on hover reads as broken, and eight similar hues
+    are exactly what a legend cannot disambiguate at a glance. Pointing at or tapping
+    an arc now names its Food in the hole of the donut with what it cost and returned.
+    Three things it turned on:
+    - **The chart reports the hovered segment to its `tooltip` slot and nowhere else**,
+      so that slot is where the card learns it — it draws nothing, and the empty string
+      it returns is what the chart puts in its own tooltip box. The box is made
+      invisible in `main.css` rather than switched off, because switching it off is
+      what stops the segment being reported at all. Deleting those four declarations is
+      silent — the readout keeps working and an empty bordered box starts following the
+      cursor — so `intakeBreakdownPalette.test.ts` asserts them, the executable link it
+      already provides for the palette.
+    - **The stock tooltip would have rendered light-on-dark.** unovis switches to its
+      dark palette on `html[data-theme="dark"]` / `.theme-dark`; Tucker uses
+      `html.dark`, which matches none of them. Moot once the box is invisible, and
+      recorded because the next chart will meet it.
+    - **A slice is matched on its name _and_ its calories.** An Estimated Entry slices
+      by a label the User typed, so a Food and an estimate can carry the same name, and
+      the name alone would read out the wrong row's figures.
+      The readout **sticks** rather than clearing on pointer-leave: a tap has no hover to
+      leave, and Tucker's first target has no pointer at all. Enabling the tooltip also
+      made the real chart unmountable under happy-dom, whose `MutationObserver.disconnect`
+      throws on the observer unovis tears down — so the chart is stubbed for the whole
+      component-test file (ADR 0013 rule 1; it is a third-party component with no
+      accessible surface), which is also what lets a test play the part of the pointer.
+      The browser layers render it for real.
 
 ## Architecture
 
@@ -1023,7 +1107,7 @@ The frontend is built **test-first (red-green TDD)**. Increments:
   breaks Spring's stock SPA configuration** are recorded in
   [ADR 0025](docs/adr/0025-a-mutation-must-prove-it-came-from-tuckers-own-page.md),
   both silent and both found by measuring the running image rather than by reading:
-  `oauth2ResourceServer` exempts *every* Tucker request from CSRF via its
+  `oauth2ResourceServer` exempts _every_ Tucker request from CSRF via its
   bearer-token override, so enabling CSRF without restoring the matcher protects
   nothing while reviewing as a fix; and the token rotates on every request — there
   being no session, every request re-authenticates — deleting the cookie and
@@ -1078,7 +1162,7 @@ The frontend is built **test-first (red-green TDD)**. Increments:
   toast while Reka's own (`aria-hidden`) announce region says nothing. See
   [`docs/adr/0005-notifications-persistent-errors-quiet-success.md`](docs/adr/0005-notifications-persistent-errors-quiet-success.md).
 - **The core is deterministic.** Calorie and budget math must be exact, instant,
-  and free — no LLM in that path. An LLM may later be added *only* as an optional
+  and free — no LLM in that path. An LLM may later be added _only_ as an optional
   input adapter for free-text meal parsing.
 - **Adaptive maintenance.** Maintenance calories are seeded from the Mifflin-St
   Jeor formula, then recomputed weekly from the smoothed weight trend and logged

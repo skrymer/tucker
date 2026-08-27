@@ -3635,6 +3635,7 @@
         "required": [
           "from",
           "items",
+          "loggedDays",
           "to",
           "totalCalories"
         ],
@@ -3651,6 +3652,10 @@
           "totalCalories": {
             "type": "number",
             "format": "double"
+          },
+          "loggedDays": {
+            "type": "integer",
+            "format": "int32"
           },
           "items": {
             "type": "array",
