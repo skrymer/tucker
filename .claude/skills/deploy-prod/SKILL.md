@@ -1,14 +1,15 @@
 ---
 name: deploy-prod
-description: Update Tucker's production deployment on the VPS (git pull + compose rebuild over SSH), then verify the stack, the Cloudflare Access gate, and the same-origin /api path before reporting. Use when the user asks to deploy, ship, release, or update production / the VPS / tucker-diet.com, or after merging a PR that should go live.
+description: Update Tucker's production deployment on the VPS (git pull + pull the images CI published to GHCR, over SSH), then verify the stack, the Cloudflare Access gate, and the same-origin /api path before reporting. Use when the user asks to deploy, ship, release, or update production / the VPS / tucker-diet.com, or after merging a PR that should go live.
 ---
 
 # Deploy to production
 
 Production is a single VPS (ADR 0012) running the compose prod overlay
 (ADR 0015): `backend` + `frontend` + `cloudflared`, no host ports, fronted by
-`https://tucker-diet.com` behind Cloudflare Access. Deploys are
-**build-on-host from `main`** — `git pull` + rebuild. First-time bring-up is
+`https://tucker-diet.com` behind Cloudflare Access. **Nothing builds on the box**:
+CI publishes both images to GHCR and a deploy pulls the tag for the commit
+(ADR 0015). First-time bring-up is
 [`deploy/README.md`](../../../deploy/README.md); this skill is the *update*
 path for a box already deployed.
 
@@ -18,14 +19,17 @@ the operator's `~/.ssh/config`). If `ssh tucker true` fails, stop and ask.
 ## 1. Preflight
 
 - Confirm `main`'s head is green in CI: `gh run list --branch main --limit 1`.
-  Never ship a red or still-running main without the user's say-so.
+  A red or still-running main is not just risky here, it is *undeployable*: the
+  images are published by the same run, so there is nothing to pull until it
+  finishes. `not found` on the pull means exactly that.
 - Show what will ship:
   `ssh tucker 'cd tucker && git fetch -q && git log --oneline HEAD..origin/main'`
   (empty → nothing to deploy; report and stop). Record old → new SHAs for the
   report.
 - Disk check: `ssh tucker 'df -h / | tail -1'`. If usage > 80%, run
-  `ssh tucker 'docker builder prune -f'` first — on-host builds accumulate
-  build cache.
+  `ssh tucker 'docker image prune -f'` first — every deploy leaves the images it
+  replaced behind, which is what makes `--tag` rollback instant, and they
+  accumulate.
 
 ## 2. Deploy
 
@@ -34,21 +38,21 @@ ssh tucker 'tucker/deploy/update.sh'
 ```
 
 The script ([`deploy/update.sh`](../../../deploy/update.sh)) is `git pull` +
-the prod-overlay rebuild with the compose file pair hardcoded — never run a
+`compose pull` + `up -d`, with the compose file pair hardcoded — never run a
 bare `docker compose up -d` on the box; without the overlay it drops the
 frontend and the tunnel and re-publishes the backend port.
 
-`update.sh` also stamps the build version (`APP_VERSION`/`GIT_SHA`/`BUILT_AT`)
-into `.env`, so `/api/version` and the Profile footer report the running build.
-**Always deploy through `update.sh`** (or `--no-pull`, below): a bare
-`docker compose ... up --build` that skips it would otherwise bake the
-`dev`/`unknown` defaults — though now, thanks to the `.env` stamp, a bare rebuild
-inherits the *last* `update.sh` stamp rather than resetting to `dev`/`unknown`.
+It takes a minute or two now, not fifteen: the images are already built. The
+version stamp is baked by CI, and `update.sh` writes the deployed tag into
+`.env` as `TUCKER_TAG`, so a hand-run `docker compose ... up -d` that skips the
+script still starts the same images.
 
-Run it in the background — the build takes 10–20 min on the 1-vCPU box.
-**Slow is normal; OOM is not**: the Gradle and Vite stages dip into the 4 GB
-swapfile by design. If the build is OOM-killed, check swap is on
-(`free -h`) before anything else.
+Two failure modes, both named by the script itself:
+
+- **`unauthorized`** — the node has no GHCR credential. See "Sign the node in to
+  GHCR" in `deploy/README.md`; it is a one-time `docker login`.
+- **`not found`** — CI has not published this commit yet, or it went red. Go back
+  to the preflight rather than retrying.
 
 ## 3. Verify (curl, not a browser)
 
@@ -95,12 +99,12 @@ deployed.
 
 ## Rollback
 
-`ssh tucker 'cd tucker && git checkout <previous-sha> && deploy/update.sh --no-pull'`
-— images aren't tagged per release (yet), so rollback is a rebuild of the
-previous commit. `--no-pull` deploys the checked-out SHA as-is (no `git pull` to
-drag it back to the branch tip) and **stamps that SHA's version** the same way a
-forward deploy does. Return the checkout to `main` (`git checkout main`, then a
-normal `update.sh`) once fixed.
+`ssh tucker 'tucker/deploy/update.sh --tag 0.1.69'` — a retag, not a rebuild:
+the image still exists, so going back costs a pull. It leaves the checkout alone
+and deploys the artefact that shipped rather than a fresh build of the same
+source. `ssh tucker 'grep ^TUCKER_TAG tucker/.env'` says what is running now, and
+the GitHub job summary of any green `main` run names the version it published.
+Return to the tip with a plain `deploy/update.sh` once the fix is on `main`.
 
 ## Hard rules
 
@@ -109,5 +113,3 @@ normal `update.sh`) once fixed.
   with `grep -qE "^TUNNEL_TOKEN=.+" .env && echo set`.
 - The DB (`tucker-data` volume) is live user data. Nothing in a deploy
   touches it; treat any step that would as out of scope for this skill.
-- When GHCR build-and-push lands (ADR 0015's recorded next step), step 2's
-  `--build` becomes an image pull — update this skill in the same PR.

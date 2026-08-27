@@ -21,12 +21,18 @@ points the tunnel at it, ungates the tunnel, and drops the backend's host port s
 nothing binds `8080` on the host. Run everything through both files:
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+docker compose -f docker-compose.yml -f docker-compose.prod.yml pull
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 ```
 
-This brings up `backend`, `frontend`, `cloudflared`, and `litestream` (the prod
-overlay ungates off-host backup — see [Off-host backup](#off-host-backup) below;
-it needs the `LITESTREAM_*` secrets in `.env`).
+No `--build`: both images come from GHCR, published by CI
+([ADR 0015](../docs/adr/0015-production-deployment-topology.md)), and the overlay
+resets the base file's `build:` stanzas so nothing can compile on the box. It
+needs `TUCKER_TAG` in `.env` — `deploy/update.sh` writes it, and in practice that
+script is what you run. This brings up `backend`, `frontend`, `cloudflared`, and
+`litestream` (the prod overlay ungates off-host backup — see
+[Off-host backup](#off-host-backup) below; it needs the `LITESTREAM_*` secrets in
+`.env`).
 
 > Requires Docker Compose ≥ v2.24.4 (the overlay uses the `!reset` tag).
 
@@ -130,10 +136,16 @@ it needs the `LITESTREAM_*` secrets in `.env`).
 7. **Set the timezone** if the box isn't already in your zone — the engine works
    in the user's local day, so export `TZ` before composing (e.g.
    `TZ=Australia/Brisbane`); see the note in `docker-compose.yml`.
-8. **Bring it up**:
+8. **Sign the node in to GHCR** — one `docker login`, see
+   [Sign the node in to GHCR](#sign-the-node-in-to-ghcr-one-time-operator-step)
+   below. Without it the first pull fails with `unauthorized`.
+9. **Bring it up**:
    ```bash
-   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+   deploy/update.sh
    ```
+   It computes the version for the checked-out commit, pulls that tag from GHCR
+   and starts the stack. A bare `docker compose ... up -d` works too once
+   `TUCKER_TAG` is in `.env`, but only `update.sh` puts it there.
 
 ## Verify the install (both viewports)
 
@@ -178,11 +190,10 @@ Over the real HTTPS origin, with DevTools → Application:
 
 > **Once, before the first deploy that includes the Access gate:** add the three
 > `TUCKER_ACCESS_*` keys from [step 6](#first-deploy-to-a-vps) to the host `.env`. They have
-> no defaults, so without them `update.sh` pulls, stamps the new version into `.env`, and
-> then dies at `docker compose` with `required variable TUCKER_ACCESS_ISSUER is missing a
-> value`. The running containers keep serving — it is not an outage — but the checkout and
-> the version stamp have moved ahead of what is deployed, so fill the keys in and re-run
-> `deploy/update.sh` to converge.
+> no defaults, so without them `update.sh` pulls the images and then dies at
+> `docker compose` with `required variable TUCKER_ACCESS_ISSUER is missing a value`. The
+> running containers keep serving — it is not an outage — but the checkout has moved ahead
+> of what is deployed, so fill the keys in and re-run `deploy/update.sh` to converge.
 
 > **Once, before the deploy that carries V13** (issue #232 — `food` and `entry` gain a
 > `NOT NULL` owner): run `PRAGMA foreign_key_check` against the production database and
@@ -208,24 +219,62 @@ Over the real HTTPS origin, with DevTools → Application:
 deploy/update.sh
 ```
 
-`git pull` + the prod-overlay rebuild, with the compose file pair hardcoded.
-Both images rebuild on the host and the containers recreate. Use this rather than
-a bare `docker compose ... up --build`: `update.sh` also stamps the build version
-(`APP_VERSION`/`GIT_SHA`/`BUILT_AT`) into `.env` so `/api/version` and the Profile
-footer report the running build; a bare rebuild that skips it would bake the
-`dev`/`unknown` defaults (it now inherits the *last* stamp from `.env`, but only
-`update.sh` advances it). To redeploy an older commit, `git checkout <sha>` then
-`deploy/update.sh --no-pull`.
+`git pull`, then pull the images CI published for that commit and recreate the
+containers around them — the compose file pair is hardcoded so the overlay can't
+be skipped. **Nothing builds on the box any more**
+([ADR 0015](../docs/adr/0015-production-deployment-topology.md)): CI pushes both
+images to GHCR and the VPS only pulls. `update.sh` writes the tag it deployed into
+`.env` as `TUCKER_TAG`, so even a hand-run `docker compose ... up -d` that skips
+this script starts the same images rather than something else.
+
+If the pull fails, the script names the two causes, because neither says much on
+its own:
+
+- **unauthorized** — this node has never signed in to GHCR (below).
+- **not found** — CI has not published this commit yet, or it went red. Check
+  `gh run list --branch main --limit 1` before assuming a typo.
+
+**Rolling back is a retag, not a rebuild**, because the old image still exists:
+
+```bash
+deploy/update.sh --tag 0.1.69
+```
+
+That leaves the checkout alone and deploys the named version as-is. Return to the
+tip with a plain `deploy/update.sh` once the fix is on `main`.
 
 **Versioning.** The root `VERSION` file holds the `major.minor` base (e.g. `0.1`);
-`update.sh` derives the patch as the number of commits since `VERSION` last
-changed, so the version advances on every deploy (`v0.1.0`, `v0.1.1`, …) with no
-manual bump. To start a new line, edit `VERSION` (`0.1` → `0.2`, or `1.0`) — that
-commit resets the patch to 0.
+[`deploy/version.sh`](version.sh) derives the patch as the number of commits since
+`VERSION` last changed, so the version advances on every merge (`0.1.0`, `0.1.1`,
+…) with no manual bump. To start a new line, edit `VERSION` (`0.1` → `0.2`, or
+`1.0`) — that commit resets the patch to 0. CI and the VPS both run that one
+script, on their own checkouts: CI tags the images with what it computes and
+`update.sh` pulls what *it* computes, which is what makes a "not found" a true
+statement rather than a mystery.
 
-(Building in CI and pulling from GHCR is the recorded next step in
-[ADR 0015](../docs/adr/0015-production-deployment-topology.md), taken when
-reproducible promotion or VPS RAM pressure justifies it.)
+### Sign the node in to GHCR (one-time operator step)
+
+The images are pushed by CI under `ghcr.io/skrymer/tucker-{backend,frontend}`.
+GHCR packages start **private** even for a public repository, so the node needs a
+token before its first pull:
+
+1. Create a classic personal access token with **`read:packages`** only — nothing
+   else, since this token lives on the VPS.
+2. On the node, with the token on stdin so it never reaches the shell history or
+   this file:
+
+   ```bash
+   ssh tucker
+   read -rs CR_PAT          # paste the token, press enter
+   echo "$CR_PAT" | docker login ghcr.io -u skrymer --password-stdin
+   unset CR_PAT
+   ```
+
+Docker stores the credential in `~/.docker/config.json` and every later
+`update.sh` pull uses it. The alternative is making both packages public in the
+GitHub package settings, which removes the step entirely — reasonable here, since
+the repository is public and the images carry no secrets, but it is a deliberate
+choice rather than the default.
 
 ## Inviting and revoking a User
 

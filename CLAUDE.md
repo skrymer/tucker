@@ -295,8 +295,8 @@ The frontend is built **test-first (red-green TDD)**. Increments:
   and fixed in [#99](https://github.com/skrymer/tucker/pull/99) (`<NuxtPwaManifest />`
   - credentialed manifest fetch behind Access). Off-host backup
     [#89](https://github.com/skrymer/tucker/issues/89) is **done** — WAL is on and
-    Litestream replicates the production DB to R2. Remaining siblings: GHCR
-    build-and-push (ADR 0015 next step) and
+    Litestream replicates the production DB to R2. GHCR build-and-push is **done**
+    too — see Hosting below. Remaining sibling:
     [#100](https://github.com/skrymer/tucker/issues/100) (install-button SPA-nav
     timing, ready-for-agent).
 
@@ -1085,6 +1085,20 @@ null` now means two things that earn opposite messages — the same trap
   [`docs/adr/0012`](docs/adr/0012-single-node-self-hosting.md) (where it runs) and
   [`docs/adr/0015`](docs/adr/0015-production-deployment-topology.md) (how the pieces
   are wired). Keep Tucker a well-behaved, resource-limited container.
+  **Nothing builds on the box.** CI publishes both images to
+  `ghcr.io/skrymer/tucker-{backend,frontend}` — tagged with the version, the short
+  SHA and `latest` — and `deploy/update.sh` pulls the tag for the commit being
+  deployed, so a published tag exists only for a commit whose three suites were
+  green. Building on the host was ADR 0015's original call and it expired the way
+  that ADR predicted, though not where: the **Vite** stage, not the JDK one, ran the
+  1-vCPU/2 GB box out of heap the day F14's chart landed and aborted the deploy with
+  exit 134. It failed safe — the build dies before the containers are recreated —
+  which is why that was a scheduling decision rather than an outage. The version is
+  computed by one script, `deploy/version.sh`, run independently by CI and by the
+  node: CI tags what it computes, the node pulls what it computes, and the two
+  agreeing is what makes a `not found` a true statement (CI unfinished, or red)
+  rather than a mystery. Rollback is `deploy/update.sh --tag <version>` — a retag of
+  an image that already exists, not a rebuild.
 
 ## Key design decisions
 

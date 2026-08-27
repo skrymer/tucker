@@ -39,12 +39,21 @@ compose overlay; images are built on the host for now.**
   port-publish** — in prod nothing binds `8080` on the host; only the frontend and the
   tunnel reach the backend over the internal network. Run with
   `docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d`.
-- **Build on the host for now; GHCR is the documented next step.** Deploy is `git pull`
-  + `docker compose up -d --build`, exactly as the backend builds today — zero new
-  secrets, the VPS bootstrap stays "install Docker, clone, up." Building both images in
-  CI and pushing to **GHCR** (the VPS then only `pull`s and runs the JRE/node images) is
-  the recorded next step, taken when reproducible promotion or VPS RAM pressure during
-  the JDK build stage justifies it.
+- **CI builds both images and pushes them to GHCR; the VPS only pulls.** Deploy is
+  `git pull` + `docker compose pull` + `up -d`, against
+  `ghcr.io/skrymer/tucker-{backend,frontend}` tagged with the version, the short SHA and
+  `latest`. An image exists for a commit only if that commit's three suites were green,
+  so a published tag is a statement about what was tested rather than about what happened
+  to compile on the box.
+
+  **This was originally "build on the host for now", with GHCR recorded as the next step**
+  once "reproducible promotion or VPS RAM pressure during the JDK build stage justifies
+  it". RAM pressure is what came due, and not where it was expected: the JDK stage was
+  never the problem. The **Vite** stage was, the day F14's chart landed — `pnpm build`
+  aborted with exit 134, a heap-exhausted Node on a 1-vCPU/2 GB box that also serves. The
+  deploy failed safe (the build dies before the containers are recreated, so production
+  kept serving the previous images), which is the only reason this was a scheduling
+  decision rather than an outage.
 
 ## Alternatives rejected
 
@@ -59,10 +68,11 @@ compose overlay; images are built on the host for now.**
 - **Build-time proxy target** (bake `TUCKER_API_UPSTREAM` via a build arg). Yields a
   per-environment image that can't run in dev and can't be promoted as the exact
   artifact CI tested. The runtime proxy costs ~15 lines of server code to avoid that.
-- **CI → registry → pull as the *first* step.** The right eventual answer, but it adds
-  a publish job, GHCR auth on the host, and tag/version discipline for a greenfield
-  single-operator deploy that a 3-minute on-host build handles fine. Recorded as next,
-  not now.
+- **CI → registry → pull as the *first* step.** The right eventual answer, and deferred
+  rather than rejected: it adds a publish job, GHCR auth on the host, and tag/version
+  discipline, which a greenfield single-operator deploy did not need while a 3-minute
+  on-host build handled it. That build grew to ~15 minutes and then stopped fitting at
+  all, so the deferral has expired and the decision above supersedes this.
 
 ## Consequences
 
@@ -90,9 +100,26 @@ compose overlay; images are built on the host for now.**
 - **Backup is not wired by this ADR.** Off-host Litestream replication (and its WAL
   prerequisite) is deferred to issue #89; the first deploy runs without it (accepted for
   a greenfield start, must land before real reliance).
-- **VPS sizing.** Build-on-host needs enough RAM for the Gradle/JDK build stage; a very
-  small box can OOM compiling. The GHCR next-step removes that (the host runs only the
-  JRE + node images).
+- **VPS sizing is no longer a build constraint.** The host runs only the JRE and node
+  images; nothing compiles there, so a dependency that makes the front-end build heavier
+  costs runner minutes rather than threatening the deploy. `docker-compose.prod.yml`
+  resets the base file's `build:` stanzas to `null`, so even a hand-run `up -d --build`
+  cannot start building on the box.
+- **A deploy now needs the registry reachable and the node signed in.** That is one more
+  thing between a commit and production, and it fails in two ways that look alike from
+  outside — `unauthorized` (the node has no GHCR credential) and `not found` (CI has not
+  published this commit, or went red). `deploy/update.sh` names both rather than passing
+  Docker's wording through.
+- **The version is computed by one script, `deploy/version.sh`, run independently by CI
+  and by the node.** CI tags what it computes and the node pulls what it computes; the two
+  agreeing is what makes a "not found" a true statement. A change to the formula that
+  reached only one of them would be a deploy that can never find its image.
+- **Rollback stops being a rebuild.** `deploy/update.sh --tag <version>` retags an image
+  that already exists, so going back costs a pull rather than a compile — and it deploys
+  the artefact that shipped rather than a fresh build of the same source.
+- **The build stamp is baked by CI**, not stamped on the node at deploy time, so what
+  `/api/version` and the Profile footer report cannot disagree with the artefact answering
+  them.
 
 ## References
 

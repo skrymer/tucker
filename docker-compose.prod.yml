@@ -1,13 +1,21 @@
 # Production overlay (ADR 0015 — production deployment topology). Layer it on the
 # dev base; nothing here is for local dev:
 #
-#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 #
 # It adds the frontend container (serves the SPA and same-origins /api -> backend
 # at runtime), points the single Cloudflare tunnel ingress at the frontend, and
 # stops publishing the backend's port on the host. The Cloudflare dashboard
 # ingress (<host> -> http://frontend:3000) is a one-time operator step, not
 # expressible here (token tunnel) — see deploy/README.md.
+#
+# Both images come from GHCR, built by CI (ADR 0015). `build: !reset null` drops
+# the base file's build stanza so that even a hand-run `up -d --build` cannot
+# start building on the node: the box is a 1-vCPU/2 GB VPS and the Vite stage no
+# longer fits in it. TUCKER_TAG is written into .env by deploy/update.sh; `:?`
+# fails at compose-parse time rather than resolving to an empty tag, which Docker
+# would read as `latest` and quietly deploy something other than what was asked
+# for.
 #
 # Off-host backup (litestream) is ungated here so a bare `up -d` brings it up in
 # prod (issue #89); it needs the LITESTREAM_* secrets in .env and the backend's
@@ -16,15 +24,8 @@
 # Requires Docker Compose >= v2.24.4 for the `!reset` tag.
 services:
   frontend:
-    build:
-      context: ./frontend
-      # Build stamp (issue #117): the same APP_VERSION/GIT_SHA update.sh exports
-      # for the backend, baked into the SPA bundle so the frontend and backend
-      # report the identical semver and a partial deploy is a visible SHA split.
-      args:
-        APP_VERSION: ${APP_VERSION:-dev}
-        GIT_SHA: ${GIT_SHA:-unknown}
-    image: tucker-frontend:latest
+    build: !reset null
+    image: ghcr.io/skrymer/tucker-frontend:${TUCKER_TAG:?set by deploy/update.sh}
     container_name: tucker-frontend
     restart: unless-stopped
     environment:
@@ -39,6 +40,8 @@ services:
           memory: 256M         # light nitro node server — keep Tucker bounded
 
   backend:
+    build: !reset null
+    image: ghcr.io/skrymer/tucker-backend:${TUCKER_TAG:?set by deploy/update.sh}
     environment:
       # The real Access team, application and JWKS (deploy/README.md step 6), which
       # replace the dev base's non-production values key by key. `:?` makes a missing
