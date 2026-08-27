@@ -136,7 +136,7 @@ test.describe('with Calorie Tracking on', () => {
   }) => {
     await mockIntakeBreakdown(
       page,
-      intakeBreakdown({ totalCalories: 0, loggedDays: 0, items: [] }),
+      intakeBreakdown({ totalCalories: 0, items: [] }),
     )
 
     await goto('/review', { waitUntil: 'hydration' })

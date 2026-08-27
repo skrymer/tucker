@@ -943,7 +943,42 @@ The frontend is built **test-first (red-green TDD)**. Increments:
   expandable, because the palette has exactly eight hues and a ninth Food must
   never get an invented one; slice 2
   ([#265](https://github.com/skrymer/tucker/issues/265)) — the seven-day window
-  and the **Other** you can open. 
+  and the **Other** you can open.
+
+  Slice 1 ([#264](https://github.com/skrymer/tucker/issues/264)) — **the day's
+  calories, divided** — ✅ done. `GET /api/intake-breakdown?from=&to=` ranks and
+  caps nothing; the client folds past the eighth hue into one grey **Other**.
+  - **The ring is `aria-hidden`, which made its own feed untestable.** Three of the
+    palette's light hues sit under 3:1 on the card, so the labelled legend beside it
+    is what makes the figures readable and the ring adds no identity of its own —
+    which is exactly what the e2e aria snapshot asserts. The cost is that nothing
+    could see what the chart was *given*: a mutation sweep gutted `data`,
+    `categories` and every arc colour with the suite still green. It is now pinned
+    through the chart's own props, the only seam it has.
+  - **The palette is two files that never referenced each other**, and every way of
+    breaking it was silent — misname a token and the arc and its dot render
+    unfilled; add a ninth hue and nothing reaches it; drop one from `.dark` and it
+    falls back to a hue validated only against the light card.
+    `intakeBreakdownPalette.test.ts` is the executable link, the move `exits.ts`
+    already makes for the service-worker exits.
+  - **A page reading `tracksCalories` in `setup` was racing**, which `AppNav.vue`
+    says in writing. It passed only because two awaited fetches preceded it — so
+    parallelising them, which is the obvious efficiency fix, would have inverted it.
+    `useCalorieTracking` gained `ready()`, memoising the one in-flight read so a
+    page joins it rather than issuing a second, and the two gates collapsed to one.
+  - **The window is now defended rather than carried.** `IntakeBreakdown.of` refused
+    nothing and said so in its KDoc; selecting the window is the repository's job, so
+    an Entry outside it is a caller bug and is refused rather than filtered away,
+    where a filter would mask it and still return a plausible breakdown. Written as
+    explicit comparisons, not `in from..to` — see the mutation note in
+    `known-survivors.md`.
+  - `isEstimate` is derived from `foodId == null` rather than stored: having no Food
+    *is* what makes a slice an estimate. `loggedDays` was cut before it shipped — it
+    was produced at every layer and read by nothing, and is neither in ADR 0026 nor
+    in `CONTEXT.md`; slice 2 can add it with the surface that states it.
+  - The ring is drawn by `vue-chrts`, which costs **221 KB gzip on `/review` alone** —
+    measured, lazy, not preloaded, and no other route pays. It does still carry
+    TopoJSON and `proj4` that tree-shaking did not strip. 
 
 ## Architecture
 

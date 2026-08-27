@@ -28,7 +28,7 @@ export const RING_SLOTS = RING_SLOT_COLORS.length
 export interface OtherSlice {
   count: number
   calories: number
-  /** Summed across the tail's known figures; null when none of them carried one. */
+  /** Summed across the tail; null unless every Food in it carried a figure. */
   protein: number | null
   share: number
 }
@@ -68,8 +68,18 @@ function sum(
   return items.reduce((total, item) => total + of(item), 0)
 }
 
-/** The tail's protein, or null when nothing in it stated any — never a claimed 0 g. */
+/**
+ * The tail's protein, or null unless every Food in it carried a figure.
+ *
+ * Stricter than a single slice, and deliberately: a slice merges Entries of one
+ * Food, where summing what is known understates the same thing. Other merges
+ * *different* Foods, so one unmeasured estimate among several weighed ones would
+ * put a confident figure against a row whose calories are mostly unmeasured — and
+ * Other is never flagged an estimate, so nothing on screen would hint at it.
+ * Omitted rather than understated is the rule the entry rows already follow
+ * (ADR 0026).
+ */
 function knownProtein(items: BreakdownItem[]): number | null {
-  const known = items.filter((item) => item.protein != null)
-  return known.length > 0 ? sum(known, (i) => i.protein!) : null
+  if (items.some((item) => item.protein == null)) return null
+  return sum(items, (i) => i.protein!)
 }

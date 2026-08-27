@@ -30,7 +30,6 @@ export function intakeBreakdown(
     from: '2026-08-27',
     to: '2026-08-27',
     totalCalories: 1935,
-    loggedDays: 1,
     items: [breakdownItem()],
     ...overrides,
   }

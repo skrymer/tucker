@@ -6,21 +6,13 @@ import {
   mockReviewHistoryError,
 } from './support/mock-api'
 import { weeklyReview } from '../test/review-fixtures'
-import { intakeBreakdown } from '../test/intake-breakdown-fixtures'
-
-/** These specs are about the ledger; the breakdown is stubbed empty to stay out of it. */
-const NO_BREAKDOWN = intakeBreakdown({
-  totalCalories: 0,
-  loggedDays: 0,
-  items: [],
-})
 
 test('shows a retryable error instead of an empty ledger when the review history fails to load', async ({
   page,
   goto,
 }) => {
   await mockNoActiveGoal(page)
-  await mockIntakeBreakdown(page, NO_BREAKDOWN)
+  await mockIntakeBreakdown(page)
   await mockReviewHistoryError(page)
 
   await goto('/review', { waitUntil: 'hydration' })
@@ -39,7 +31,7 @@ test('a mixed history keeps its calorie columns and em-dashes the weeks without 
   goto,
 }) => {
   await mockNoActiveGoal(page)
-  await mockIntakeBreakdown(page, NO_BREAKDOWN)
+  await mockIntakeBreakdown(page)
   await mockReviewHistory(page, [
     weeklyReview({ id: 1, reviewedOn: '2026-06-01', trendWeightKg: 86 }),
     weeklyReview({
@@ -61,7 +53,7 @@ test('a history with no targets at all is a dated trend, not four empty columns'
   goto,
 }) => {
   await mockNoActiveGoal(page)
-  await mockIntakeBreakdown(page, NO_BREAKDOWN)
+  await mockIntakeBreakdown(page)
   await mockReviewHistory(page, [
     weeklyReview({
       id: 1,

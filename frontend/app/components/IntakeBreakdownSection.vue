@@ -9,12 +9,12 @@ const props = defineProps<{
 interface LegendRow {
   key: string
   name: string
-  /** How many Foods the row holds; null for every row but Other. */
-  count: number | null
+  /** How many Foods the row stands for. Only Other stands for more than one. */
+  count?: number
   calories: number
   protein: number | null | undefined
   share: number
-  isEstimate: boolean
+  isEstimate?: boolean
   color: string
 }
 
@@ -34,7 +34,6 @@ function useLegend() {
     const ringed = folded.value.ringItems.map((item, i) => ({
       key: `slot-${i}`,
       name: item.name,
-      count: null,
       calories: item.calories,
       protein: item.protein,
       share: item.share,
@@ -52,7 +51,8 @@ function useLegend() {
         calories: other.calories,
         protein: other.protein,
         share: other.share,
-        isEstimate: false,
+        // Deliberately unflagged: Other stands for several Foods at once, so an
+        // "est." on it would say something about all of them.
         color: OTHER_COLOR,
       },
     ]
@@ -131,7 +131,7 @@ const { data: ringData, categories: ringCategories } = useRing()
                 v-if="row.count"
                 class="shrink-0 text-sm font-normal text-muted"
               >
-                {{ row.count }} items
+                {{ row.count }} {{ row.count === 1 ? 'item' : 'items' }}
               </span>
               <UBadge
                 v-if="row.isEstimate"

@@ -70,13 +70,10 @@
   --ui-error: #e5484d;
 }
 
-/* Categorical — the Intake Breakdown ring (frontend/DESIGN.md). The one place
-   Tucker colours for identity rather than for a role: eight hues, used nowhere
-   but a data visualisation, never on a control, never meaning a state. Slots are
-   assigned in this order and never cycled — a ninth Food folds into `Other`,
-   whose grey is a de-emphasis step and not slot 9. Slots 3, 4 and 5 sit under
-   3:1 on the light card, which is why the labelled legend beside the ring is
-   load-bearing rather than decoration. */
+/* Categorical hues for the Intake Breakdown ring — data visualisation only,
+   never a control and never a state. Slot order, Other's grey, and the contrast
+   caveat that makes the legend load-bearing are specified in frontend/DESIGN.md;
+   app/utils/intakeBreakdownPalette.test.ts holds the two files in agreement. */
 :root {
   --tucker-cat-1: #2a78d6;
   --tucker-cat-2: #eb6834;

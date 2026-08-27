@@ -87,9 +87,7 @@ internal fun Entry.toResponse(foodName: String? = null): EntryResponse = when (t
 
 /** Map Entries to responses, resolving every weighed Entry's Food name in one query. */
 internal fun List<Entry>.toResponses(foods: FoodRepository): List<EntryResponse> {
-    val namesById = foods
-        .findByIds(filterIsInstance<WeighedEntry>().map { it.foodId }.distinct())
-        .associate { it.id to it.name }
+    val namesById = foods.namesOf(this)
     return map { entry ->
         when (entry) {
             is WeighedEntry -> entry.toResponse(namesById[entry.foodId])

@@ -16,8 +16,14 @@ data class IntakeBreakdownItem(
     val calories: Double,
     val protein: Double?,
     val share: Double,
-    val isEstimate: Boolean,
-)
+) {
+    /**
+     * Whether the slice came from Estimated Entries. Derived rather than stored:
+     * having no Food *is* what makes an Entry an estimate, so a second copy of that
+     * fact would be one nothing keeps in agreement.
+     */
+    val isEstimate: Boolean get() = foodId == null
+}
 
 /** What decides whether two Entries belong to the same slice. */
 private data class SliceKey(val foodId: Long?, val label: String?)
@@ -35,14 +41,14 @@ data class IntakeBreakdown(
     val from: LocalDate,
     val to: LocalDate,
     val totalCalories: Double,
-    /** Days in the window that carry at least one Entry — how much of it to trust. */
-    val loggedDays: Int,
     val items: List<IntakeBreakdownItem>,
 ) {
     companion object {
         /**
-         * Roll [entries] up into slices. The window is the caller's: [from] and [to]
-         * are carried, not applied, so an Entry outside them would be counted.
+         * Roll [entries] up into slices of the window [from]..[to], both bounds
+         * inclusive. Selecting them is the repository's job, so an Entry outside the
+         * window is a bug in the caller and is refused rather than quietly filtered
+         * away — a filter here would mask it and still return a plausible breakdown.
          * [foodNames] must name every Food the weighed Entries reference.
          */
         fun of(
@@ -51,6 +57,12 @@ data class IntakeBreakdown(
             entries: List<Entry>,
             foodNames: Map<Long, String>,
         ): IntakeBreakdown {
+            require(!from.isAfter(to)) { "a window must not end before it starts" }
+            // Written out rather than `all { it.loggedOn in from..to }`: the range
+            // form compiles to a conditional no test can reach, so the guard reads
+            // as pinned while one of its bounds is not (see known-survivors.md).
+            val outside = entries.filter { it.loggedOn < from || it.loggedOn > to }
+            require(outside.isEmpty()) { "every Entry must fall in $from..$to" }
             val totalCalories = entries.sumOf { it.calories }
             val items = entries.groupBy { it.sliceKey() }
                 .map { (key, logged) -> key.slice(logged, totalCalories, foodNames) }
@@ -59,7 +71,6 @@ data class IntakeBreakdown(
                 from = from,
                 to = to,
                 totalCalories = totalCalories,
-                loggedDays = entries.map { it.loggedOn }.distinct().size,
                 items = items,
             )
         }
@@ -91,7 +102,6 @@ data class IntakeBreakdown(
                 // A window that ate nothing shares out nothing; the alternative is a
                 // NaN on the wire.
                 share = if (totalCalories > 0) calories / totalCalories else 0.0,
-                isEstimate = logged.first().isEstimate,
             )
         }
 

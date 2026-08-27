@@ -2,10 +2,10 @@ package com.tucker.api
 
 import com.tucker.domain.IntakeBreakdown
 import com.tucker.domain.IntakeBreakdownItem
-import com.tucker.domain.WeighedEntry
 import com.tucker.persistence.EntryRepository
 import com.tucker.persistence.FoodRepository
 import org.springframework.format.annotation.DateTimeFormat
+import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
@@ -35,8 +35,6 @@ data class IntakeBreakdownResponse(
     val from: LocalDate,
     val to: LocalDate,
     val totalCalories: Double,
-    /** Days in the window carrying at least one Entry — how far to trust the figures. */
-    val loggedDays: Int,
     val items: List<IntakeBreakdownItemResponse>,
 )
 
@@ -53,7 +51,6 @@ private fun IntakeBreakdown.toResponse() = IntakeBreakdownResponse(
     from = from,
     to = to,
     totalCalories = totalCalories,
-    loggedDays = loggedDays,
     items = items.map { it.toResponse() },
 )
 
@@ -68,7 +65,16 @@ class IntakeBreakdownController(
      * The breakdown of the window [from]..[to], both bounds inclusive. The client
      * owns the window (ADR 0014) — it is the only thing that knows the User's local
      * day. An empty window is an empty breakdown, not a 404.
+     *
+     * Read-only transactional because it reads two tables and the second must
+     * describe the first: without it the Entries and the Food names are two
+     * separate instants, and a Food deleted in the gap leaves an Entry whose name
+     * cannot be resolved. Deleting a referenced Food is refused, so that gap is the
+     * only way the two can disagree — and it closes by holding one connection
+     * across both reads rather than by tolerating a missing name, which would put
+     * an invented label on a real slice.
      */
+    @Transactional(readOnly = true)
     @GetMapping
     fun breakdown(
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) from: LocalDate,
@@ -77,9 +83,7 @@ class IntakeBreakdownController(
         val logged = entries.findBetween(from, to)
         // A Recipe is a Food row, so it names itself here like any other and is never
         // exploded into its ingredients (ADR 0026).
-        val names = foods
-            .findByIds(logged.filterIsInstance<WeighedEntry>().map { it.foodId }.distinct())
-            .associate { persistedId(it.id) to it.name }
+        val names = foods.namesOf(logged)
         return IntakeBreakdown.of(from, to, logged, names).toResponse()
     }
 }

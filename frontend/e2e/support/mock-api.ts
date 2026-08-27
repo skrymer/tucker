@@ -40,8 +40,19 @@ export async function mockReviewHistory(page: Page, reviews: Json[]) {
   )
 }
 
-/** Stub `GET /api/intake-breakdown` with a window the section renders. */
-export async function mockIntakeBreakdown(page: Page, breakdown: Json) {
+/** A day with nothing logged — what a spec that is not about the breakdown wants. */
+const emptyBreakdown: Json = {
+  from: '2026-08-27',
+  to: '2026-08-27',
+  totalCalories: 0,
+  items: [],
+}
+
+/** Stub `GET /api/intake-breakdown`; defaults to a day with nothing logged. */
+export async function mockIntakeBreakdown(
+  page: Page,
+  breakdown: Json = emptyBreakdown,
+) {
   await page.route('**/api/intake-breakdown**', (route) =>
     route.fulfill({ json: breakdown }),
   )

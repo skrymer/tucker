@@ -1,5 +1,9 @@
 package com.tucker.api
 
+import com.tucker.domain.Entry
+import com.tucker.domain.WeighedEntry
+import com.tucker.persistence.FoodRepository
+
 /**
  * The id of an entity that has already been persisted — loading from or saving to
  * the database always sets it. A null here is a bug, not a client error.
@@ -23,3 +27,13 @@ internal fun barcodeNotFound(barcode: String) =
  */
 internal fun providersUnreachable(barcode: String) =
     ServiceUnavailableException("could not reach a nutrition source for barcode $barcode")
+
+/**
+ * Every weighed Entry's Food name, resolved in one query. Shared by the surfaces
+ * that name a Food beside the Entry that ate it, so "one query, not one per Entry"
+ * is stated once. An Entry's Food always exists — deleting a referenced Food is
+ * refused — so a lookup that misses is a bug, and the caller decides how loud.
+ */
+internal fun FoodRepository.namesOf(entries: List<Entry>): Map<Long, String> =
+    findByIds(entries.filterIsInstance<WeighedEntry>().map { it.foodId }.distinct())
+        .associate { persistedId(it.id) to it.name }

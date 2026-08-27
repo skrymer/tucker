@@ -3,6 +3,7 @@ package com.tucker.domain
 import org.junit.jupiter.api.Test
 import java.time.LocalDate
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -132,19 +133,56 @@ class IntakeBreakdownTest {
     }
 
     @Test
-    fun `logged days counts the days in the window that carry an Entry, not the days it spans`() {
+    fun `a window spanning several days rolls all of them into one ranking`() {
         val week = IntakeBreakdown.of(
             from = day.minusDays(6),
             to = day,
             entries = listOf(
                 weighed(chickenId, calories = 520.0, protein = 97.0, on = day),
-                weighed(riceId, calories = 350.0, protein = 8.0, on = day),
-                estimated("Work canteen", calories = 640.0, protein = null, on = day.minusDays(3)),
+                weighed(chickenId, calories = 350.0, protein = 66.0, on = day.minusDays(3)),
+                estimated("Work canteen", calories = 640.0, protein = null, on = day.minusDays(5)),
             ),
             foodNames = names,
         )
 
-        assertEquals(2, week.loggedDays)
+        // The same Food on two different days is still one slice.
+        assertEquals(listOf("Chicken breast", "Work canteen"), week.items.map { it.name })
+        assertEquals(870.0, week.items.first().calories)
+    }
+
+    @Test
+    fun `an Entry logged either side of the window is refused rather than counted into it`() {
+        // Both sides: a guard that only checks one of them still lets half the
+        // bug through, and reads as if it checked the window.
+        for (outside in listOf(day.minusDays(1), day.plusDays(1))) {
+            assertFailsWith<IllegalArgumentException> {
+                IntakeBreakdown.of(
+                    from = day,
+                    to = day,
+                    // Behind an Entry that *is* in the window, so the check has to
+                    // reach past the first one rather than stopping at it.
+                    entries = listOf(
+                        weighed(riceId, calories = 350.0, protein = 8.0, on = day),
+                        weighed(chickenId, calories = 520.0, protein = 97.0, on = outside),
+                    ),
+                    foodNames = names,
+                )
+            }
+        }
+    }
+
+    @Test
+    fun `a window that ends before it starts is refused rather than answered as an empty day`() {
+        // Otherwise a client that swapped its bounds is told it ate nothing, which
+        // is a plausible answer and a wrong one.
+        assertFailsWith<IllegalArgumentException> {
+            IntakeBreakdown.of(
+                from = day,
+                to = day.minusDays(1),
+                entries = emptyList(),
+                foodNames = names,
+            )
+        }
     }
 
     @Test
@@ -153,6 +191,5 @@ class IntakeBreakdownTest {
 
         assertEquals(emptyList(), breakdown.items)
         assertEquals(0.0, breakdown.totalCalories)
-        assertEquals(0, breakdown.loggedDays)
     }
 }

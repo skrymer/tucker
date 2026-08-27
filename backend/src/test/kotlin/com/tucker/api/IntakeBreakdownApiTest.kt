@@ -68,7 +68,6 @@ class IntakeBreakdownApiTest {
             jsonPath("$.from") { value("$day") }
             jsonPath("$.to") { value("$day") }
             jsonPath("$.totalCalories") { value(952.8) }
-            jsonPath("$.loggedDays") { value(1) }
             jsonPath("$.items.length()") { value(2) }
             jsonPath("$.items[0].name") { value("Work canteen") }
             jsonPath("$.items[0].foodId") { value(null) }
@@ -129,6 +128,21 @@ class IntakeBreakdownApiTest {
     }
 
     @Test
+    fun `a window whose bounds are the wrong way round is rejected, not answered`() {
+        logEstimated("Work canteen", calories = 640.0, protein = null)
+
+        mockMvc.get("/api/intake-breakdown") {
+            param("from", "$day")
+            param("to", "${day.minusDays(6)}")
+        }.andExpect {
+            // The window matches nothing, so without a guard this answers 200 with
+            // an empty breakdown — telling a client that swapped its bounds that
+            // the User ate nothing, which is wrong and looks right.
+            status { isBadRequest() }
+        }
+    }
+
+    @Test
     fun `a window with nothing logged is an empty breakdown rather than a not-found`() {
         mockMvc.get("/api/intake-breakdown") {
             param("from", "$day")
@@ -137,7 +151,6 @@ class IntakeBreakdownApiTest {
             status { isOk() }
             jsonPath("$.items") { isEmpty() }
             jsonPath("$.totalCalories") { value(0.0) }
-            jsonPath("$.loggedDays") { value(0) }
         }
     }
 }

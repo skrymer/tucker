@@ -19,11 +19,17 @@ export default defineNuxtConfig({
     'nuxt-open-fetch',
   ],
 
-  // The Intake Breakdown ring, and nothing else. Left to its default the module
-  // registers all eleven vue-chrts components — among them the TopoJSON maps,
-  // which drag maplibre-gl into the client bundle.
+  // The Intake Breakdown ring, and nothing else. `include` narrows what the
+  // module *registers* — it does not prune the import graph, since the component
+  // it registers resolves through a barrel that re-exports all eleven charts, so
+  // keeping the ten TopoJSON maps and their projections out of the bundle is
+  // tree-shaking's job, not this setting's. `global: false` is the part that
+  // pays: the module's default routes the chart through Nuxt's global-components
+  // plugin, which references it from the app entry on every route, and the ring
+  // is used on `/review` alone.
   nuxtCharts: {
     include: ['DonutChart'],
+    global: false,
   },
 
   css: ['~/assets/css/main.css'],

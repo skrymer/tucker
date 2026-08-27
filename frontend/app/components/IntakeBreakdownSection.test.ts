@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
+import { defineComponent, h } from 'vue'
 import { renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen } from '@testing-library/vue'
+import { OTHER_COLOR, RING_SLOT_COLORS } from '~/utils/intakeBreakdown'
 import IntakeBreakdownSection from './IntakeBreakdownSection.vue'
 import {
   breakdownItem,
@@ -138,7 +140,6 @@ describe('IntakeBreakdownSection', () => {
       props: {
         breakdown: intakeBreakdown({
           totalCalories: 0,
-          loggedDays: 0,
           items: [],
         }),
       },
@@ -146,6 +147,123 @@ describe('IntakeBreakdownSection', () => {
 
     expect(screen.getByText('Nothing logged yet')).toBeVisible()
     expect(screen.queryByRole('list')).not.toBeInTheDocument()
+  })
+
+  // The ring is aria-hidden by design — three of the palette's light hues sit
+  // under 3:1, so the legend beside it is what makes it readable (DESIGN.md).
+  // That leaves its feed invisible to every other test in the suite: gut it and
+  // the ring draws nothing while the legend still reads correctly. Asserted
+  // through the chart's own props, which is the only seam it has.
+  it('feeds the ring one arc per legend row, sized and coloured to match it', async () => {
+    let seen: Record<string, unknown> = {}
+    await renderSuspended(IntakeBreakdownSection, {
+      props: {
+        breakdown: intakeBreakdown({
+          totalCalories: 1000,
+          items: [
+            ...Array.from({ length: 8 }, (_, i) =>
+              breakdownItem({
+                name: `Food ${i + 1}`,
+                calories: 100,
+                share: 0.1,
+              }),
+            ),
+            breakdownItem({ name: 'Ninth', calories: 120, share: 0.12 }),
+            breakdownItem({ name: 'Tenth', calories: 80, share: 0.08 }),
+          ],
+        }),
+      },
+      global: {
+        stubs: {
+          DonutChart: defineComponent({
+            props: {
+              data: { type: Array, default: () => [] },
+              categories: { type: Object, default: () => ({}) },
+            },
+            setup: (props) => {
+              seen = { data: props.data, categories: props.categories }
+              return () => h('div')
+            },
+          }),
+        },
+      },
+    })
+
+    // Sized by calories, in the legend's order — eight Foods then the fold.
+    expect(seen.data).toEqual([100, 100, 100, 100, 100, 100, 100, 100, 200])
+
+    const categories = seen.categories as Record<
+      string,
+      { name: string; color: string }
+    >
+    expect(Object.values(categories).map((c) => c.name)).toEqual([
+      'Food 1',
+      'Food 2',
+      'Food 3',
+      'Food 4',
+      'Food 5',
+      'Food 6',
+      'Food 7',
+      'Food 8',
+      'Other',
+    ])
+    // Each arc carries its slot's hue, and Other the de-emphasis grey — never a
+    // ninth slot, and never an invented colour.
+    expect(Object.values(categories).map((c) => c.color)).toEqual([
+      ...RING_SLOT_COLORS,
+      OTHER_COLOR,
+    ])
+  })
+
+  it('counts the one Food it folded in the singular', async () => {
+    // Exactly nine slices is an ordinary day, and the only case where Other
+    // stands for a single Food.
+    await renderSuspended(IntakeBreakdownSection, {
+      props: {
+        breakdown: intakeBreakdown({
+          items: Array.from({ length: 9 }, (_, i) =>
+            breakdownItem({ name: `Food ${i + 1}`, calories: 100 - i }),
+          ),
+        }),
+      },
+    })
+
+    const other = screen.getAllByRole('listitem').at(-1)!
+    expect(other).toHaveTextContent('1 item')
+    expect(other).not.toHaveTextContent('1 items')
+  })
+
+  it('never flags Other an estimate, whatever the tail it folded held', async () => {
+    await renderSuspended(IntakeBreakdownSection, {
+      props: {
+        breakdown: intakeBreakdown({
+          items: [
+            ...Array.from({ length: 8 }, (_, i) =>
+              breakdownItem({ name: `Food ${i + 1}`, calories: 100 }),
+            ),
+            // The whole tail is estimated, and Other still is not: it stands for
+            // several Foods at once, so a flag on it would say something about
+            // all of them.
+            breakdownItem({
+              foodId: null,
+              name: 'Ninth',
+              calories: 50,
+              isEstimate: true,
+            }),
+            breakdownItem({
+              foodId: null,
+              name: 'Tenth',
+              calories: 40,
+              isEstimate: true,
+            }),
+          ],
+        }),
+      },
+    })
+
+    const other = screen.getAllByRole('listitem').at(-1)!
+    expect(other).toHaveTextContent('Other')
+    expect(other).not.toHaveTextContent('est.')
   })
 
   it('states the window total, which is the denominator every share is of', async () => {
