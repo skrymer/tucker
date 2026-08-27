@@ -266,6 +266,56 @@ test.describe('with Calorie Tracking on', () => {
     expect(asked).toHaveLength(1)
   })
 
+  test('the ring reads the slice under the pointer out in its own centre', async ({
+    page,
+    goto,
+  }) => {
+    await mockIntakeBreakdownByWindow(page, () => A_FULL_DAY)
+
+    await goto('/review', { waitUntil: 'hydration' })
+
+    const ring = page.locator('.intake-ring')
+    await expect(ring).toBeVisible()
+
+    // Straight up from the middle is the first arc: the ring starts at twelve
+    // o'clock and the backend ranks the biggest slice first. Driven by geometry
+    // rather than by hovering the path, whose bounding box centre falls in the
+    // hole.
+    const box = (await ring.boundingBox())!
+    await page.mouse.move(
+      box.x + box.width / 2 + 8,
+      box.y + box.height / 2 - 74,
+    )
+
+    await expect(ring.getByText('Chicken breast')).toBeVisible()
+    await expect(ring.getByText('520 kcal · 97 g protein')).toBeVisible()
+  })
+
+  test('a tap reads a slice out too, which is the only pointer a phone has', async ({
+    page,
+    goto,
+  }, testInfo) => {
+    test.skip(
+      testInfo.project.name !== 'Mobile Chrome',
+      'a touchscreen is what this is about',
+    )
+    await mockIntakeBreakdownByWindow(page, () => A_FULL_DAY)
+
+    await goto('/review', { waitUntil: 'hydration' })
+
+    const ring = page.locator('.intake-ring')
+    const box = (await ring.boundingBox())!
+    // The same arc the pointer test hovers, so the two differ only in how they
+    // were touched.
+    await page.touchscreen.tap(
+      box.x + box.width / 2 + 8,
+      box.y + box.height / 2 - 74,
+    )
+
+    await expect(ring.getByText('Chicken breast')).toBeVisible()
+    await expect(ring.getByText('520 kcal · 97 g protein')).toBeVisible()
+  })
+
   test('an empty day still offers the week, which is the point of asking', async ({
     page,
     goto,

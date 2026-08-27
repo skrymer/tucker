@@ -66,6 +66,42 @@ function useTail() {
 const { expanded, expanderLabel, rows, toggle } = useTail()
 
 /**
+ * The slice under the pointer, read out in the middle of the ring.
+ *
+ * Sticky on purpose: it holds the last slice rather than clearing, so a tap on a
+ * phone — which has no hover to leave — leaves something to read.
+ */
+function useFocus() {
+  const pointedAt = ref<{ name: string; calories: number } | null>(null)
+
+  /**
+   * Take the segment the chart reports. Its `tooltip` slot is the only place it
+   * says which one that is, so the slot is where the card learns it; the slot
+   * draws nothing, and the empty string it returns is what the chart puts in its
+   * own tooltip box, which is made invisible in `main.css`.
+   */
+  function focusOn(values: Record<string, unknown> | null): string {
+    const name = typeof values?.label === 'string' ? values.label : null
+    pointedAt.value =
+      name === null ? null : { name, calories: Number(values?.[name]) }
+    return ''
+  }
+
+  // Matched on both, not on the name alone: an Estimated Entry slices by a label
+  // the User typed, so two slices can share a name and only their figures tell
+  // them apart.
+  const focused = computed(() =>
+    legend.value.slices.find(
+      (row) =>
+        row.name === pointedAt.value?.name &&
+        row.calories === pointedAt.value?.calories,
+    ),
+  )
+  return { focused, focusOn }
+}
+const { focused, focusOn } = useFocus()
+
+/**
  * The ring itself. Sized by calories rather than share so it is the response's own
  * figures being drawn; the two are proportional. `duration: 0` because the enter
  * animation is a d3 transition that freezes part-way through whenever the tab is
@@ -137,7 +173,7 @@ const { data: ringData, categories: ringCategories } = useRing()
       <!-- Decorative: every figure it encodes is in the legend beside it, and
            three of the palette's light hues sit under 3:1, so the labelled rows
            are what make it readable at all (frontend/DESIGN.md). -->
-      <div aria-hidden="true" class="w-45 shrink-0">
+      <div aria-hidden="true" class="intake-ring w-45 shrink-0">
         <DonutChart
           :data="ringData"
           :categories="ringCategories"
@@ -147,8 +183,20 @@ const { data: ringData, categories: ringCategories } = useRing()
           :duration="0"
           :show-background="false"
           hide-legend
-          hide-tooltip
-        />
+        >
+          <!-- Drawn dead-centre of the ring by the chart itself. -->
+          <template #default>
+            <p v-if="focused" class="max-w-32 text-center">
+              <span class="block truncate text-sm font-medium text-default">
+                {{ focused.name }}
+              </span>
+              <span class="block text-xs text-muted">
+                {{ formatIntakeFigures(focused.calories, focused.protein) }}
+              </span>
+            </p>
+          </template>
+          <template #tooltip="{ values }">{{ focusOn(values) }}</template>
+        </DonutChart>
       </div>
 
       <ul class="w-full divide-y divide-default">

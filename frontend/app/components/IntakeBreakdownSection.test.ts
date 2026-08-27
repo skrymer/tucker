@@ -1,5 +1,6 @@
-import { describe, expect, it, vi } from 'vitest'
-import { defineComponent, h } from 'vue'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { defineComponent, h, ref } from 'vue'
+import { config } from '@vue/test-utils'
 import { renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen, within } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
@@ -10,7 +11,49 @@ import {
   intakeBreakdown,
 } from '~~/test/intake-breakdown-fixtures'
 
+/** What the chart reports under the pointer, as a test drives it. */
+const pointedAt = ref<unknown>(null)
+/** The props the chart was last handed — its only seam (see known-survivors.md). */
+let seen: Record<string, unknown> = {}
+
+/**
+ * The chart, stubbed for the whole file. It is a third-party component with no
+ * accessible surface, so ADR 0013's "mock only the true external boundary" puts
+ * it here — and stubbing it is also what lets a test play the part of the
+ * pointer: the real one reports the segment under the cursor to its `tooltip`
+ * slot and nowhere else, and draws whatever its `default` slot returns in the
+ * middle of the ring.
+ *
+ * Enabling the real tooltip also makes the real chart unmountable under
+ * happy-dom, whose `MutationObserver.disconnect` throws on the observer unovis
+ * tears down. The browser layers render it for real.
+ */
+const RingStub = defineComponent({
+  props: {
+    data: { type: Array, default: () => [] },
+    categories: { type: Object, default: () => ({}) },
+  },
+  setup:
+    (props, { slots }) =>
+    () => {
+      seen = { data: props.data, categories: props.categories }
+      return h('div', [
+        h('div', { 'data-testid': 'ring-centre' }, slots.default?.()),
+        h('div', slots.tooltip?.({ values: pointedAt.value })),
+      ])
+    },
+})
+
 describe('IntakeBreakdownSection', () => {
+  beforeEach(() => {
+    pointedAt.value = null
+    seen = {}
+    config.global.stubs = { ...config.global.stubs, DonutChart: RingStub }
+  })
+  afterEach(() => {
+    delete (config.global.stubs as Record<string, unknown>).DonutChart
+  })
+
   /**
    * Eight slices that fill the palette, plus a tail that folds into Other. The
    * tail is the part each test cares about, so it is the part each test states.
@@ -342,6 +385,79 @@ describe('IntakeBreakdownSection', () => {
     ).toHaveAttribute('aria-busy', 'true')
   })
 
+  it('reads the slice under the pointer out in the middle of the ring', async () => {
+    await renderSuspended(IntakeBreakdownSection, {
+      props: { breakdown: aFoldingDay() },
+    })
+
+    // What the chart reports when the cursor crosses the eighth arc.
+    pointedAt.value = { label: 'Food 8', 'Food 8': 100 }
+    await nextTick()
+
+    // Scoped to the middle of the ring: the same Food is named in the legend
+    // beside it, and the readout is the copy under test.
+    const centre = within(screen.getByTestId('ring-centre'))
+    expect(centre.getByText('Food 8')).toBeInTheDocument()
+    expect(centre.getByText('100 kcal · 10 g protein')).toBeInTheDocument()
+  })
+
+  it('leaves the middle of the ring empty until a slice is pointed at', async () => {
+    await renderSuspended(IntakeBreakdownSection, {
+      props: { breakdown: aFoldingDay() },
+    })
+
+    expect(screen.getByTestId('ring-centre')).toBeEmptyDOMElement()
+  })
+
+  it('reads Other out under its own name and the figures it folded', async () => {
+    await renderSuspended(IntakeBreakdownSection, {
+      props: { breakdown: aFoldingDay() },
+    })
+
+    // Other is an arc like any other, so pointing at it must say what it stands
+    // for rather than name one of the Foods inside it.
+    pointedAt.value = { label: 'Other', Other: 200 }
+    await nextTick()
+
+    const centre = within(screen.getByTestId('ring-centre'))
+    expect(centre.getByText('Other')).toBeInTheDocument()
+    // The tail mixes an unmeasured estimate with a weighed Food, so it states no
+    // protein at all — the rule Other already follows in the legend.
+    expect(centre.getByText('200 kcal')).toBeInTheDocument()
+  })
+
+  it('tells two slices that share a name apart by what they cost', async () => {
+    // An Estimated Entry slices by a label the User typed, so a Food and an
+    // estimate can carry the same name and only their figures separate them.
+    await renderSuspended(IntakeBreakdownSection, {
+      props: {
+        breakdown: intakeBreakdown({
+          totalCalories: 900,
+          items: [
+            breakdownItem({
+              name: 'Chicken breast',
+              calories: 520,
+              protein: 97,
+            }),
+            breakdownItem({
+              foodId: null,
+              name: 'Chicken breast',
+              calories: 380,
+              protein: null,
+              isEstimate: true,
+            }),
+          ],
+        }),
+      },
+    })
+
+    pointedAt.value = { label: 'Chicken breast', 'Chicken breast': 380 }
+    await nextTick()
+
+    const centre = within(screen.getByTestId('ring-centre'))
+    expect(centre.getByText('380 kcal')).toBeInTheDocument()
+  })
+
   it('says nothing was logged rather than drawing an empty ring', async () => {
     await renderSuspended(IntakeBreakdownSection, {
       props: {
@@ -365,30 +481,12 @@ describe('IntakeBreakdownSection', () => {
   // the ring draws nothing while the legend still reads correctly. Asserted
   // through the chart's own props, which is the only seam it has.
   it('feeds the ring one arc per legend row, sized and coloured to match it', async () => {
-    let seen: Record<string, unknown> = {}
     await renderSuspended(IntakeBreakdownSection, {
       props: {
         breakdown: aFoldingDay([
           { name: 'Ninth', calories: 120, share: 0.12 },
           { name: 'Tenth', calories: 80, share: 0.08 },
         ]),
-      },
-      global: {
-        stubs: {
-          DonutChart: defineComponent({
-            props: {
-              data: { type: Array, default: () => [] },
-              categories: { type: Object, default: () => ({}) },
-            },
-            // Captured on every render, not once in `setup`: the regression this
-            // guards is the ring being fed the *revealed* rows, which only shows
-            // up on a re-render after Other is opened.
-            setup: (props) => () => {
-              seen = { data: props.data, categories: props.categories }
-              return h('div')
-            },
-          }),
-        },
       },
     })
 

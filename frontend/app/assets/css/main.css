@@ -86,6 +86,19 @@
   --tucker-cat-other: #93a79b;
 }
 
+/* The Intake Breakdown's ring reads the slice under the pointer out in its own
+   centre rather than in a box beside the cursor. The chart's tooltip is the only
+   place it reports which slice that is, so the tooltip stays mounted and is made
+   invisible here instead of switched off. Deleting these four is silent: the
+   readout keeps working and an empty bordered box starts following the cursor,
+   which is why app/utils/intakeBreakdownPalette.test.ts asserts they are here. */
+.intake-ring {
+  --vis-tooltip-background-color: transparent;
+  --vis-tooltip-border-color: transparent;
+  --vis-tooltip-box-shadow: none;
+  --vis-tooltip-padding: 0;
+}
+
 /* The app canvas carries a faint green wash so white cards lift off it. Keep
    this in sync with `pwa.manifest.background_color` in nuxt.config.ts so the
    PWA launch splash matches the in-app wash. */
