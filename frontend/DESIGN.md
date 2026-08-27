@@ -109,6 +109,50 @@ figure switch to **error**, not coral.
 
 ---
 
+### Categorical — the Intake Breakdown ring (data only)
+
+The one place Tucker uses colour for **identity** rather than for a role. An
+**Intake Breakdown** ring has to tell eight Foods apart, which green and coral
+cannot do — so eight hues are added, used **nowhere but a data visualisation**.
+They are not brand colours, never appear on a control, and never mean a state.
+
+Selected and verified with the `dataviz` skill's validator against Tucker's own
+card surfaces (`#ffffff` light, `#16241d` dark): every slot inside the lightness
+band and above the chroma floor, worst adjacent colour-vision separation ΔE 9.1
+light / 8.4 dark, worst adjacent normal-vision ΔE 19.6 / 19.3.
+
+| Slot | Hue     | Light     | Dark      |
+| ---- | ------- | --------- | --------- |
+| 1    | blue    | `#2A78D6` | `#3987E5` |
+| 2    | orange  | `#EB6834` | `#D95926` |
+| 3    | aqua    | `#1BAF7A` | `#199E70` |
+| 4    | yellow  | `#EDA100` | `#C98500` |
+| 5    | magenta | `#E87BA4` | `#D55181` |
+| 6    | green   | `#008300` | `#008300` |
+| 7    | violet  | `#4A3AA7` | `#9085E9` |
+| 8    | red     | `#E34948` | `#E66767` |
+| —    | Other   | `#93A79B` | `#7B8F84` |
+
+Three rules ride with them, and none is optional:
+
+- **Slots are assigned in this order and never cycled.** A ninth Food does not
+  get a generated hue — it folds into **Other**, whose grey is a de-emphasis
+  step, not slot 9.
+- **The legend is load-bearing.** Slots 3, 4 and 5 sit under 3:1 against the
+  light card, so the ring alone is not readable — the labelled rows beside it
+  are what make it legible, and the two ship together. Identity is never carried
+  by colour alone.
+- **Status colour stays out.** `#E34948` is slot 8, not `--ui-error`; an
+  over-budget day and a red slice mean nothing to each other. Status remains its
+  own axis, as above.
+
+This does **not** breach "spend boldness only on a ring" — it _is_ a ring, and it
+lives on `/review`, where neither the Day Ring nor the Goal Ring's calorie arc
+appears. The Goal Progress hero and the breakdown ring are the page's two loud
+things, exactly as Today's two are the Day Ring and the Goal ring.
+
+---
+
 ## Dark mode
 
 The user picks **Light / Dark / System** from an **Appearance** control on

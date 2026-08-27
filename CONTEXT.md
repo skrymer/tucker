@@ -151,6 +151,32 @@ including one that rounds to `0 g`: that says the food gave almost none, which i
 the opposite of saying nothing. A day's protein total counts unknown protein as
 zero, since there is nothing else to add.
 
+**Intake Breakdown**:
+The share of a window's logged calories attributable to each **Food**, biggest
+first — the answer to "what takes up most of my diet?". Defined over two windows,
+the user's local day and the trailing seven days, and it is a share of what was
+*eaten*, never of the **Calorie Budget**: the question is where the calories went,
+not how much of a target they spent, so the same breakdown reads identically on a
+day under budget and a day over it. Calories are the measure, because an
+**Estimated Entry** has no mass for grams to measure.
+One slice per Food, merged across every **Entry** in the window. A **Recipe** is
+one slice under its own name, never its ingredients — an Entry snapshots its
+calories and a Recipe's definition can be edited afterwards, so attributing a past
+Entry through today's ingredient list would report a meal that was never eaten. An
+Estimated Entry has no Food, so it slices by its label and is flagged as an
+estimate: eating out is a diet item like any other, and how much of the window was
+guessed is a separate question (**Daily Log**'s estimated calorie share) that a
+single lumped bucket would answer instead of this one.
+Each slice states what it **returned** in protein alongside what it cost in
+calories, for the same reason a **Check** does: a slice's size is a fact about the
+user's week, not a verdict on the Food, and the biggest item is very often the
+protein source. Unknown protein on an Estimated Entry is omitted, not stated as
+zero. A share is never presented as a ranking, a score, or advice about what to
+cut — see the no-good-or-bad rule. Absent for a User with **Calorie Tracking**
+off, who logs nothing for it to be a breakdown of.
+_Avoid_: pie chart, top foods, food ranking, biggest offender, calorie share (a
+Check's share is of the Budget — a different denominator)
+
 **Budget Projection**:
 A forecast of whether logging a prospective **Entry** would push the day over the
 **Calorie Budget** — the over-budget rule applied to the day's intake *plus* one
