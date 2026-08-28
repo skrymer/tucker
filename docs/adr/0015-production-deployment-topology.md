@@ -76,9 +76,10 @@ compose overlay; images are built on the host for now.**
 
 ## Consequences
 
-- **The frontend is a server, not static files.** The runtime `/api` proxy depends on
-  it; a future move to static hosting (e.g. Cloudflare Pages) would have to relocate the
-  proxy to the edge and is therefore a real change, not a swap.
+- **The frontend is a server, not static files.** The runtime `/api` proxy and the
+  `/sign-in` re-entry route both depend on it; a future move to static hosting (e.g.
+  Cloudflare Pages) would have to relocate both to the edge and is therefore a real
+  change, not a swap.
 - **The tunnel ingress is dashboard-managed (token tunnel).** Pointing `<host>` →
   `frontend:3000` is a one-time **operator step in the Cloudflare dashboard**, not in
   the repo — the compose file can't express it.
@@ -92,10 +93,13 @@ compose overlay; images are built on the host for now.**
   `redirect: 'manual'` on the `api` client so that interception surfaces as an
   inspectable opaque-redirect response instead of a silent cross-origin failure, and
   switches the whole app to a "You've been signed out" interstitial (DESIGN.md
-  Feedback states) whose action forces a real navigation to `/api/version` — a path the
+  Feedback states) whose action forces a real navigation to `/sign-in` — a path the
   offline-shell precache always sends to the network — so Access's login challenge
-  actually runs. The exits and the prefixes that keep them network-only are one rule,
-  kept together and tested in `frontend/app/utils/exits.ts` (#160): `/api/` for this
+  actually runs. Access returns a User to the path they asked for, so `/sign-in` is a
+  route of Tucker's own (`frontend/server/routes/sign-in.get.ts`) redirecting to `/`: an
+  exit pointing at a path the app has no use for passes the challenge and then strands
+  them on it. The exits and the prefixes that keep them network-only are one rule,
+  kept together and tested in `frontend/app/utils/exits.ts` (#160): `/sign-in` for this
   sign-back-in path, `/cdn-cgi/` for the sign-out path Access serves at its own edge.
 - **Backup is not wired by this ADR.** Off-host Litestream replication (and its WAL
   prerequisite) is deferred to issue #89; the first deploy runs without it (accepted for

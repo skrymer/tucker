@@ -625,8 +625,8 @@ email)`. **Nothing is scoped yet**: queries still ignore `user_id`, which is saf
     `/cdn-cgi/access/logout` would have been answered from the precached shell (ADR 0011)
     and silently re-rendered Tucker as the same person. `/cdn-cgi/` is Cloudflare's edge
     namespace (not just the one logout path) and is now exempt too. The same trap was
-    already understood in the _sign-in_ direction: `SignedOutState` points at
-    `/api/version` precisely because it is denylisted.
+    already understood in the _sign-in_ direction: `SignedOutState` points at a
+    denylisted path precisely for that reason.
   - **That rule is now executable, which it was not.** It had been prose in three files
     that never referenced each other, and deleting the prefix left the entire suite green —
     every test asserts the _href_, which stays correct while the navigation silently stops
@@ -682,6 +682,24 @@ email)`. **Nothing is scoped yet**: queries still ignore `user_id`, which is saf
   - The split `isSignedOut` (the session is gone — what `useApiMutation` suppresses its
     toast on) / `showsSignedOut` (safe to replace the shell) is deliberate; collapsing
     it would let a "check your connection" Retry through on an expired session.
+
+  Follow-up — **the way back in lands in Tucker** — ✅ done, straight after #273 and
+  found by it: fixing the blank page made the "Sign back in" button reachable for the
+  first time, and it went to `/api/version`. Cloudflare Access returns a User to the
+  path they asked for, so signing back in passed the challenge and then left them on
+  the API's JSON. The exit is now `/sign-in`, a nitro route
+  (`frontend/server/routes/sign-in.get.ts`) that 302s to `/` — it reaches the network
+  for the same reason `/api/version` did (`NETWORK_ONLY_PREFIXES`, so the precached
+  shell does not answer it) and then ends somewhere worth being.
+  - **Named for the action, not for what it does.** DESIGN.md's "one vocabulary for the
+    session boundary" governs Tucker's own paths, not only its copy — its carve-out for
+    `/cdn-cgi/access/logout` is granted because that path is *Cloudflare's*. An `/enter`
+    would have been a third verb next to "Sign back in" and `SIGN_IN_PATH`.
+  - **The denylist entry matches exactly what nitro routes**, `/^\/sign-in\/?($|\?)/`.
+    Workbox tests its denylist against `url.pathname + url.search`, so an entry ended at
+    `$` misses `/sign-in?…` — and Access already appends a parameter on the way *out*.
+    Left open instead, it would claim every route merely beginning with those letters.
+    Both halves are pinned; the mutation sweep is what surfaced them.
 
   Follow-up [#232](https://github.com/skrymer/tucker/issues/232) — **every owned table
   enforces its owner** — ✅ done, after slice 6 and before [#161](https://github.com/skrymer/tucker/issues/161).
