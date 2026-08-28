@@ -23,6 +23,6 @@ describe('SignedOutState', () => {
 
     const link = screen.getByRole('link', { name: 'Sign back in' })
 
-    expect(link).toHaveAttribute('href', '/api/version')
+    expect(link).toHaveAttribute('href', '/sign-in')
   })
 })

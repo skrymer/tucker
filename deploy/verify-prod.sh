@@ -59,6 +59,16 @@ probe() { # path -> HTTP status, or 0 if the request never completed
 check "in-container same-origin /api reaches a gated backend" 401 "$(probe /api/foods)"
 check "in-container /api/version reachable without an assertion" 200 "$(probe /api/version)"
 
+
+# 3b. The way back in, served by the frontend itself rather than proxied: /sign-in
+#    is where Access hands a signed-in User back (app/utils/exits.ts). `fetch`
+#    follows the redirect, so the URL it settles on is the assertion — the way
+#    back in has to end at Tucker, not at whatever path it took to reach the
+#    network past the precached shell. A missing route and a served shell both
+#    settle on /sign-in, so this one check catches either.
+check "in-container /sign-in lands back in the app" http://localhost:3000/ \
+  "$(in_frontend /sign-in 'r.url' unreachable)"
+
 # 4. The four URLs an update has to arrive through must revalidate, or the deploy
 #    you just made never reaches an installed app (ADR 0011). This proves the
 #    running image carries the rule and nothing more: it reads the header at the

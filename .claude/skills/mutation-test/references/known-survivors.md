@@ -285,6 +285,18 @@ recorded: a day with exactly three entries offered a "Show all 3" that revealed 
 it had hidden. Surfaced only because F14 slice 2 moved this component onto the shared
 `useExpander` and so brought it into a sweep's scope for the first time.
 
+### `server/routes/sign-in.get.ts` — 2 of 2, both reported `no cov`
+
+Both **killed by an out-of-scope layer**. The route is the redirect that hands a
+User back into Tucker after Access signs them in; no Vitest test covers it, so
+Stryker reports it uncovered rather than surviving. `e2e/signed-out.spec.ts`
+asserts the status *and* the `location`, which is what makes the subtler of the
+two killable — settled by hand: `sendRedirect(event, '', 302)` fails that spec on
+`Expected "/" · Received ""`.
+
+The exit's *pairing* with the service-worker denylist is a separate concern and
+is pinned in Vitest by `exits.test.ts` (`app/utils/exits.ts` scores 8 of 8).
+
 ### `plugins/auth-gate.client.ts` — 10 of 10
 
 All **killed by an out-of-scope layer**, and only since `e2e/signed-out.spec.ts`
