@@ -8,15 +8,15 @@
 // recognises instead of following it — the auth-gate then short-circuits the
 // whole app to the "signed out" state (see app/layouts/default.vue).
 //
-// Unverified against a real redirect: Playwright's `route.fulfill` with a 3xx
-// status doesn't reproduce this — it surfaces to the page as a genuine
-// `net::ERR_ABORTED` request failure, not the resolved opaque Response a real
-// server's redirect produces under `redirect: 'manual'` (a CDP interception
-// limitation, not app behaviour), so the mocked/smoke suites can't exercise
-// this path end-to-end. `isAuthRedirectResponse` and the hook wiring are unit
-// (useAuthGate.test.ts) and cross-file-traced, but the actual trigger needs a
-// real Cloudflare Access session expiry to confirm — do this once, manually,
-// against the deployed app, and don't re-attempt the route.fulfill approach.
+// `markSignedOut()` lands mid-render, so a consumer must not tear down a
+// suspending branch on it — see app/layouts/default.vue.
+//
+// Not reproducible with `route.fulfill`: a fulfilled 3xx reaches the page as a
+// genuine `net::ERR_ABORTED` request failure, not the resolved opaque Response
+// a real server's redirect produces under `redirect: 'manual'` (a CDP
+// interception limitation, not app behaviour), so don't re-attempt that
+// approach. The e2e serves the built app behind a real redirecting origin
+// instead — e2e/support/expired-access-origin.ts.
 export default defineNuxtPlugin((nuxtApp) => {
   nuxtApp.hooks.hook('openFetch:onRequest:api', ({ options }) => {
     options.redirect = 'manual'

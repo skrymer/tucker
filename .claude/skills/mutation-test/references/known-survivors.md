@@ -285,6 +285,20 @@ recorded: a day with exactly three entries offered a "Show all 3" that revealed 
 it had hidden. Surfaced only because F14 slice 2 moved this component onto the shared
 `useExpander` and so brought it into a sweep's scope for the first time.
 
+### `plugins/auth-gate.client.ts` — 10 of 10
+
+All **killed by an out-of-scope layer**, and only since `e2e/signed-out.spec.ts`
+exists — before it, nothing in any suite killed them. The plugin is hook wiring:
+its whole behaviour is that `/api` requests carry `redirect: 'manual'` and an
+opaque redirect marks the session gone, neither of which any Vitest test can
+observe (a fulfilled 3xx reaches the page as `net::ERR_ABORTED`, so `page.route`
+cannot express it either — the spec serves the built app behind a real
+redirecting origin instead).
+
+Settled by hand: replacing the whole body with `defineNuxtPlugin(() => {})`
+fails that spec on both projects. `isAuthRedirectResponse` itself is a deep
+module and is pinned by `useAuthGate.test.ts`.
+
 ### `composables/useOptionalFetch.ts` — 2 of 33
 
 Both **equivalent mutants**, and the staleness guards around them — on the success path,

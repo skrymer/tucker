@@ -654,6 +654,35 @@ email)`. **Nothing is scoped yet**: queries still ignore `user_id`, which is saf
     backend through the SPA's same-origin proxy, and asserts two real assertions get two
     different addresses — the one thing a mocked `/api/me` can never prove.
 
+  Follow-up [#273](https://github.com/skrymer/tucker/issues/273) — **the signed-out
+  state actually renders** — ✅ done. Every User who signed out met a blank page instead
+  of it, because the layout swapped `SignedOutState` in for the branch holding a
+  still-suspending `AppNav`: `markSignedOut()` fires from the `/api` response hook, and
+  on a signed-out load the read that meets Access's redirect *is* the one `AppNav`
+  suspends on. Vue queues `instance.isUnmounted` into a post-render effect that a
+  pending `<Suspense>` defers, so the component resolved anyway and inserted into a
+  parent that was gone (`insertBefore` of null), and nothing rendered at all — the
+  interstitial included.
+  - **The gate is `onMounted`, and it is the invariant rather than a proxy for one.**
+    A mounted hook inside a boundary is queued into those same deferred effects and
+    flushed only by `resolve()`, so it reads "every dep of this boundary has landed".
+    `nextTick` does not — it flushes the job queue — so the obvious tidy-up reinstates
+    the blank page.
+  - **Only the first load was ever exposed**, measured rather than argued: every page
+    `NuxtPage` suspends sits in *its own* `<Suspense>`, whose `unmount` sets
+    `isUnmounted` synchronously, so an in-app navigation whose page is still pending is
+    safe with or without the gate. `AppNav` is the app's only async dep of the
+    *layout's* boundary.
+  - **The browser layers can reach this after all.** The standing warning is about
+    `route.fulfill`, which surfaces a fulfilled 3xx as `net::ERR_ABORTED`, not about
+    Playwright: `e2e/signed-out.spec.ts` serves the built app from an origin that
+    answers Tucker's own exits with Access's redirect, and goes red on the real symptom.
+    Until it existed, nothing in any suite killed a single mutant of
+    `auth-gate.client.ts`.
+  - The split `isSignedOut` (the session is gone — what `useApiMutation` suppresses its
+    toast on) / `showsSignedOut` (safe to replace the shell) is deliberate; collapsing
+    it would let a "check your connection" Retry through on an expired session.
+
   Follow-up [#232](https://github.com/skrymer/tucker/issues/232) — **every owned table
   enforces its owner** — ✅ done, after slice 6 and before [#161](https://github.com/skrymer/tucker/issues/161).
   V13 rebuilds `food` and `entry` so `user_id` is `NOT NULL`, which is the last of

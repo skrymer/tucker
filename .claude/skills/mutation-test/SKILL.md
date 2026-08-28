@@ -158,6 +158,12 @@ tests (~1–5 tests, not all 473), which is what makes this affordable as a gate
   Nuxt's generated `tsconfig.app.json` and every run crashes in the dry run. It
   does **not** read `.gitignore` — `ignorePatterns` is the only project-level
   control.
+- **Clear `frontend/.nuxt/test` first if you have been running Playwright.**
+  `ignorePatterns: ["!.nuxt"]` un-ignores the whole tree, and every `pnpm test:e2e`
+  leaves another full Nuxt build under `.nuxt/test/<hash>/`. At 2.2 GB / 65k files
+  the sandbox copy kills the Stryker **parent** with `FATAL ERROR: Reached heap
+  limit` before a single mutant runs — `bounded-run.sh` does not help, the limit is
+  V8's own. `rm -rf .nuxt/test` (the e2e rebuilds it) takes the tree back to ~2.6 MB.
 - **`.vue` mutates the `<script>` block only** — templates are untouched. A
   template-only defect (a wrong class, a missing `v-if`) needs a component test.
 - **`app/pages/design.vue` is excluded** — a static design reference with no
