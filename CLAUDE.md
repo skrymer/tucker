@@ -1111,6 +1111,49 @@ null` now means two things that earn opposite messages — the same trap
       accessible surface), which is also what lets a test play the part of the pointer.
       The browser layers render it for real.
 
+- **F15** — **Micronutrient Intake**: the vitamins and minerals a week's food supplied
+  (PRD [#277](https://github.com/skrymer/tucker/issues/277)). Design pass **done**, see
+  [ADR 0027](docs/adr/0027-micronutrients-are-borrowed-bounded-and-never-a-target.md)
+  and the `Reference Food` / `Reference Intake` / `Micronutrient Intake` terms in
+  `CONTEXT.md`. A section on `/review` over the trailing seven days, stated as a day's
+  average against the **NHMRC Nutrient Reference Values** — one set, because every User
+  is in Australia.
+  - **A Reference Intake is not a target**, and that is what lets Tucker carry one while
+    staying **diet-agnostic**: a target is adapted and committed to by a **Weekly
+    Review**, a Reference Intake is a published figure read off a table and never
+    corrected. The standing rule in `CONTEXT.md` is amended to say so. Sodium is in
+    (a published safety threshold, read against a window and never a Food); sugar and
+    saturated fat stay out, because they are macros and the rule already settles those.
+  - **No Australian barcode carries a micronutrient** — labels declare seven nutrients
+    and that is the law, not a gap in Open Food Facts. The **Australian Branded Food
+    Database** looks like the answer and is not: same seven, and it is not publicly
+    available at all. So a **Food** *borrows* its micronutrients by a link to an AFCD
+    **Reference Food**, keeping its own macros; the link is **user-confirmed, never
+    auto-matched**, because `"Chicken"` hits forty entries and raw against roasted moves
+    iron materially.
+  - **Every figure is a lower bound**, so Tucker has exactly two claims it can make —
+    over an **Upper Level** (sound at any coverage) and clears the reference (sound once
+    the bound clears it). A bound that falls short is **not a shortfall**, is drawn as a
+    name without a figure, and the missing share is **never scaled up**.
+  - **Measured before it was sliced.** AFCD Release 3 was downloaded and analysed: 1,588
+    foods, 272 columns, plain `.xlsx`, and **all 19 curated nutrients populated on every
+    row** — which is why there is **no USDA fallback** (nothing to fill, and the two
+    disagree on niacin equivalents, RE vs RAE, and soil-dependent iodine). Search needed
+    three fixes to go from 5/15 to 16/19 top-1: FTS5 porter stemming, **head-noun
+    boosting** (`bm25(f, 10.0, 1.0)` — AFCD names are `Head, qualifier, …`), and a
+    twelve-row synonym rewrite grown only on observed failure. Elasticsearch was
+    rejected: same BM25, would make every original mistake, and wants 2–4 GB on a
+    1 vCPU / 2 GB node for 1,588 rows.
+  - Three slices: [#278](https://github.com/skrymer/tucker/issues/278) matching and the
+    coverage figure (nothing computed yet — the irreversible parts land first),
+    [#279](https://github.com/skrymer/tucker/issues/279) the figures,
+    [#280](https://github.com/skrymer/tucker/issues/280) Recipes contribute (which
+    amends ADR 0026 — see ADR 0027 for why the snapshot rule does not reach it).
+  - **Out of scope:** any LLM in this path (the deterministic-core rule stands; an
+    analysis adapter is an *output* adapter and a separate decision), a fallback source,
+    grading a Food on its micronutrients, a per-Food micronutrient screen, any other
+    window, and pregnancy/lactation values.
+
 ## Architecture
 
 - **Frontend** — Nuxt + Nuxt UI, TypeScript, SPA mode (`ssr: false`). A
