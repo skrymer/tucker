@@ -128,6 +128,119 @@ answered; if any could not, the lookup is Inconclusive. Never cached, so it can
 never stick.
 _Avoid_: error, failure, outage, provider down, offline
 
+**Reference Food**:
+A generic food in the Australian Food Composition Database — "Beef, mince,
+regular, raw" — carrying the micronutrient detail a package label never does. A
+**Food** may be **matched** to one, and then *borrows* its micronutrient profile:
+the Food's own macros are unchanged and still derive its calories, and only the
+vitamins and minerals come from the Reference Food, scaled by the grams eaten.
+Borrowed, never copied — a Reference Food is not owned by any **User**, the match
+is a pointer rather than a snapshot, and a new release of the database therefore
+reaches every Food already matched to it. That is the opposite of how a **Nutrition
+Provider** behaves, and deliberately: a Provider's macros are copied into the Food
+at creation because they describe *that product* and are the user's to correct,
+while a micronutrient profile is an estimate by analogy — *this is roughly chicken
+breast* — that no one is ever going to hand-correct.
+A **Recipe** is never matched. Its composition is already known, so rolling its
+micronutrients up from whichever ingredients *are* matched — each weighed as added,
+re-expressed over the cooked weight — always beats matching the finished dish to a
+generic prepared one. Recipes therefore make matching easier rather than harder: a
+recipe's ingredients are raw whole foods the database describes well, where a
+branded packaged food often has no generic worth pointing at.
+A match is **always confirmed by the user**. Tucker suggests one by name and the
+user taps to accept it; nothing is matched silently, because a wrong match reports
+a confident figure for a food that was never eaten. Australian labelling declares
+only energy, protein, fat, saturated fat, carbohydrate, sugars and sodium, so a
+scanned Food arrives with no micronutrients at all — matching is how it gets them,
+and an unmatched Food simply contributes none (see **Reference Intake** on how much
+of a window that leaves unaccounted for).
+_Avoid_: generic food, AFCD food, food match, nutrient source, composition record
+
+**Reference Intake**:
+What a body of a given age and sex is published as needing of a nutrient — the
+line a window's vitamin and mineral intake is read against. Tucker uses the
+**Nutrient Reference Values** for Australia and New Zealand (NHMRC), which give a
+recommended intake to reach and an **Upper Level** not to exceed; every **User** is
+in Australia, so there is one set and it is never chosen per user or per food.
+A Reference Intake is **not a target**, and the distinction is the whole reason
+Tucker can carry it while staying diet-agnostic: a target is something Tucker
+adapts and a **Weekly Review** commits to — the **Calorie Budget** and the
+**Protein Floor**. A Reference Intake is a fixed published figure Tucker reads off
+a table, never corrects, and never holds the user to. Keto and low-fat still track
+identically, because the iron line is the same number under both.
+Resolved from the **Profile**'s sex and age, taken **once at the end of the
+window** rather than per day, so a window spanning a birthday has one answer.
+Pregnancy and lactation shift several of these figures substantially and Tucker
+has no field for either; the assumption is stated where the figures are read
+rather than guessed at. Read **live**, never snapshotted: a **Calorie Budget** from
+a past week is a commitment the user was held to and is preserved as it was, while
+a Reference Intake is a measuring stick for a body *now* — if the published figure
+was revised, the old reading was simply wrong. The edition in force is named
+wherever the figures appear, or the user has no way to see that the line moved.
+_Avoid_: RDI, RDA, daily value, target, requirement, recommended amount
+
+**Micronutrient Intake**:
+The vitamins and minerals a window's logged food supplied, each read against its
+**Reference Intake** — the answer to "am I getting enough of everything?". Defined
+over the trailing seven days and no shorter window: micronutrient intake is
+enormously spiky day to day (one serve of liver is a week of vitamin A), so a
+single day's figure is noise wearing a number's clothes. Stated as **a day's
+average** over that window, because a Reference Intake is a daily figure — a
+week's total read against a daily line clears almost every reference at once and
+means nothing.
+Vitamins and minerals **only**. Energy and the macros are excluded, and protein
+most deliberately of all: it already has a **Protein Floor** set from body weight,
+the published reference for protein is a quite different and much lower figure, and
+carrying both would have Tucker contradicting itself about the one macro it does
+target.
+**Every figure is a lower bound.** Only food that can contribute does — a
+**Weighed Entry** whose **Food** is matched to a **Reference Food**, or a
+**Recipe** through whichever of its ingredients are matched. An **Estimated Entry**
+has no Food, so it can never contribute at all. What is summed is therefore *at
+least* what was eaten, and the share of the window's calories that could contribute
+is stated alongside it, always. Calories are the measure of that share for the same
+reason they measure an **Intake Breakdown**: an Estimated Entry has no mass, so
+grams cannot measure the very entries most likely to be missing.
+A partly-matched Recipe contributes partly, and its calories count **fractionally**
+toward the share above — by how much of the recipe's own calories came from matched
+ingredients. All-or-none would throw away something measured. Rolling a past Entry
+up through the Recipe's *current* ingredients is deliberate and is not the thing an
+**Intake Breakdown** refuses: that rule protects a figure the Entry snapshotted, and
+a micronutrient was never snapshotted at all, so the choice is today's composition
+or nothing.
+The missing share is **never scaled up to fill the gap**. It looks like a neutral
+estimate and it is a biased one — what goes unmatched is disproportionately
+restaurant and packaged food, which differs systematically in micronutrient density
+rather than sampling the same diet at random. Extrapolating would turn *I don't
+know* into a confident number, which is an **Inconclusive Lookup**'s mistake made
+about a whole week.
+A lower bound is sound in one direction and not the other, and Tucker says only
+what it can. Against an **Upper Level** it holds at any coverage: more data can only
+push the figure further over, so *at least 45 mg of zinc against a 40 mg Upper
+Level* is a real finding on a barely-matched week. Against the recommended intake it
+holds only once the bound already clears it. A bound that falls short is **not a
+shortfall** — the unaccounted share could easily hold the rest — so the gap is named
+as unknown and never as a deficit, and never as advice about what to eat. Two
+figures and a consequence; the user draws the conclusion, exactly as with a
+**Check**.
+**Full coverage is unreachable, and Tucker says so only once it matters.** An
+Estimated Entry has no Food to match, and some manufactured foods have no generic
+worth matching them to, so a window has a ceiling below 100% that no amount of
+diligence passes. While anything remains matchable the honest message is what is
+left to do; once nothing is, the sentence changes to name what remains and why it
+will not move. Naming the ceiling earlier would be a second denominator to
+understand on every read, in service of a problem that only exists at the end —
+and the same distinction an **Inconclusive Lookup** draws: *you can fix this*
+against *this will never resolve*.
+Where almost nothing is matched, Tucker declines to draw the figures at all and
+offers the matching flow instead. That is a judgement about usefulness rather than
+honesty — twenty-five near-empty bars mislead no one, they just waste the screen —
+and it doubles as the surface that tells a new user what to do. Absent entirely for
+a **User** with **Calorie Tracking** off, by the same rule as an Intake Breakdown:
+it reads a log Tucker has agreed to stop asking them to keep.
+_Avoid_: nutrition profile (Profile is the user's settings), nutrient profile,
+deficiency, deficit, RDA score, nutrient gap, micros
+
 **Entry**:
 One occurrence of the user eating a Food — a date, a quantity, and the resulting
 calories, with protein where it is known. Creating an Entry is what "logging"
@@ -485,11 +598,19 @@ _Avoid_: device token, push token, registration
   **Calorie Tracking** on, and carries all four figures or none: there is no review
   with a **Protein Floor** and no **Calorie Budget**, and none with a **Calorie
   Budget** and no **Maintenance** behind it
-- Tucker is **diet-agnostic**: protein is the only macro with a target, because it
-  is the lever for retaining muscle while losing fat. Carbs and fat are recorded
+- Tucker is **diet-agnostic**: protein is the only macro with a **target**, because
+  it is the lever for retaining muscle while losing fat. Carbs and fat are recorded
   (they are needed to derive calories) but never judged, so keto, low-fat, and
-  low-carb all track identically. Tucker has no opinion on sugar, saturated fat,
-  or any nutrient it sets no target for
+  low-carb all track identically. Tucker has no opinion on sugar or saturated fat,
+  and sets no target for any nutrient beyond protein and calories
+- A **Reference Intake** is not a target, and reporting against one does not breach
+  the rule above. A target is adapted, committed to by a **Weekly Review**, and the
+  user is held to it; a Reference Intake is a published figure Tucker reads off a
+  table, never corrects, and never enforces. **Micronutrient Intake** can therefore
+  report vitamins and minerals — sodium included, against its published **Upper
+  Level** — without Tucker taking a dietary position. Sugar and saturated fat stay
+  out because they are macros, and the rule above already settles Tucker's position
+  on those: protein alone
 - **No Food is good or bad.** Tucker never labels, grades, or scores a Food — no
   verdict word, no letter, no traffic light. It states what a Food *costs* against
   the **Calorie Budget** and what it *returns* against the **Protein Floor**, and
