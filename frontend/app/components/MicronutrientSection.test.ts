@@ -106,6 +106,20 @@ describe('MicronutrientSection', () => {
     )
   })
 
+  it('reports itself busy while the figures behind it are being refreshed', async () => {
+    await renderSuspended(MicronutrientSection, {
+      props: { intake: micronutrientIntake({ coverage: 0.62 }), pending: true },
+    })
+
+    // Keep-stale-and-dim rather than blank: a match refreshes this card, and the
+    // coverage figure on screen is the one from before the match landed
+    // (ADR 0007).
+    expect(
+      screen.getByRole('region', { name: 'Vitamins and minerals' }),
+    ).toHaveAttribute('aria-busy', 'true')
+    expect(screen.getByText(/62% of the last 7 days' calories/)).toBeVisible()
+  })
+
   it('tells a window with nothing logged from one that is fully matched', async () => {
     await renderSuspended(MicronutrientSection, {
       props: {
@@ -125,20 +139,26 @@ describe('MicronutrientSection', () => {
     ).not.toBeInTheDocument()
     // Nor "Nothing left to match", which is true of an empty week and says the
     // wrong thing about it: there was never anything to match.
-    expect(screen.queryByText('Nothing left to match.')).not.toBeInTheDocument()
+    expect(screen.queryByText(/Nothing left to match/)).not.toBeInTheDocument()
   })
 
-  it('says there is nothing left to match once the queue is empty', async () => {
+  it('names what the last of the window is, once nothing is left to match', async () => {
     await renderSuspended(MicronutrientSection, {
       props: {
         intake: micronutrientIntake({ coverage: 0.71, unmatched: [] }),
       },
     })
 
-    expect(screen.getByText('Nothing left to match.')).toBeVisible()
-    // Full coverage is unreachable — an Estimated Entry has no Food to match, and
-    // a Recipe is never matched — so the remaining 29% is not a chore going
-    // undone, and offering an empty disclosure would say it was (ADR 0027).
+    // Full coverage is unreachable, so an unexplained 29% reads as a chore
+    // undone. Once nothing is matchable the sentence names what remains and why
+    // no tap will move it (ADR 0027).
+    expect(
+      screen.getByText(
+        /Nothing left to match\. The rest came from meals you estimated and from recipes/,
+      ),
+    ).toBeVisible()
+    // And the disclosure goes with it: an empty one is a chore on display with
+    // nothing behind it.
     expect(
       screen.queryByRole('button', { name: /to match/ }),
     ).not.toBeInTheDocument()

@@ -43,6 +43,18 @@ data class Food(
     /** Protein (grams) in [grams] of this Food. */
     fun proteinFor(grams: Double): Double = nutrition.proteinFor(grams)
 
+    /**
+     * This Food borrowing [reference]'s micronutrients (ADR 0027).
+     *
+     * A pointer rather than a copy, so a later AFCD release reaches every Food
+     * already matched. Refused for a Recipe by the invariant above — which is why
+     * the transition lives here rather than in a caller assigning the field.
+     */
+    fun matchedTo(reference: ReferenceFood): Food = copy(referenceFoodId = reference.id)
+
+    /** This Food borrowing nothing again. Idempotent, like the endpoint that calls it. */
+    fun unmatched(): Food = copy(referenceFoodId = null)
+
     companion object {
         /** A plain (non-recipe) Food. */
         fun plain(id: Long?, name: String, barcode: String?, nutrition: Nutrition): Food =

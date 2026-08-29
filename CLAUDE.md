@@ -1141,7 +1141,7 @@ null` now means two things that earn opposite messages — the same trap
     disagree on niacin equivalents, RE vs RAE, and soil-dependent iodine). Search needed
     three fixes to go from 5/15 to 16/19 top-1: FTS5 porter stemming, **head-noun
     boosting** (`bm25(f, 10.0, 1.0)` — AFCD names are `Head, qualifier, …`), and a
-    twelve-row synonym rewrite grown only on observed failure. Elasticsearch was
+    eleven-row synonym rewrite grown only on observed failure. Elasticsearch was
     rejected: same BM25, would make every original mistake, and wants 2–4 GB on a
     1 vCPU / 2 GB node for 1,588 rows.
   - Three slices: [#278](https://github.com/skrymer/tucker/issues/278) matching and the

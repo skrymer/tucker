@@ -65,8 +65,8 @@ class MicronutrientIntakeTest {
         assertEquals(
             0.0,
             intake.coverage,
-            "and it contributes nothing in this slice — issue #280 is what makes it count " +
-                "fractionally, by how much of it came from matched ingredients",
+            "and it contributes nothing to coverage either, until a later slice makes it " +
+                "count fractionally, by how much of it came from matched ingredients",
         )
     }
 

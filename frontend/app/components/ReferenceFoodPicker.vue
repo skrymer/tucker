@@ -10,7 +10,18 @@ export interface Matchable {
   referenceFoodName?: string | null
 }
 
-const props = defineProps<{ food: Matchable | null }>()
+// Stryker disable all: a compiler macro's arguments are hoisted out of setup()
+const props = withDefaults(
+  defineProps<{
+    food: Matchable | null
+    /** Whether the page's claim is in flight — the tapped row's busy signal. */
+    matching?: boolean
+    /** Whether the page's unmatch is in flight. */
+    unmatching?: boolean
+  }>(),
+  { matching: false, unmatching: false },
+)
+// Stryker restore all
 const emit = defineEmits<{
   match: [referenceFoodId: number]
   unmatch: []
@@ -26,7 +37,7 @@ const { $api } = useNuxtApp()
  */
 function useCandidates(food: () => Matchable | null) {
   const query = ref('')
-  const { data, error, load } = useOptionalFetch(
+  const { data, error, pending, load } = useOptionalFetch(
     (signal) =>
       $api('/api/reference-foods', { query: { q: query.value }, signal }),
     // `latest`, not the default `guard`: every keystroke asks a different
@@ -64,10 +75,18 @@ function useCandidates(food: () => Matchable | null) {
   const foundNothing = computed(
     () => query.value.trim().length > 0 && data.value?.candidates.length === 0,
   )
-  return { query, candidates, suggestedId, foundNothing, error, search: load }
+  return {
+    query,
+    candidates,
+    suggestedId,
+    foundNothing,
+    error,
+    pending,
+    search: load,
+  }
 }
 
-const { query, candidates, suggestedId, foundNothing, error, search } =
+const { query, candidates, suggestedId, foundNothing, error, pending, search } =
   useCandidates(() => props.food)
 
 const searchBox = useTemplateRef<{ inputRef: HTMLInputElement | null }>(
@@ -83,6 +102,21 @@ function clearSearch() {
   query.value = ''
   search()
   searchBox.value?.inputRef?.focus()
+}
+
+/**
+ * The candidate whose row was tapped, so the busy signal lands on the control
+ * that triggered the write rather than on the whole list (ADR 0007). Cleared
+ * whenever the sheet is pointed at another Food, so a row never opens busy.
+ */
+const claiming = ref<number | null>(null)
+watch(
+  () => props.food,
+  () => (claiming.value = null),
+)
+function claimFor(referenceFoodId: number) {
+  claiming.value = referenceFoodId
+  emit('match', referenceFoodId)
 }
 
 // The length guard is load-bearing, not redundant with the template's v-else-if:
@@ -117,6 +151,7 @@ const willNotGuess = computed(
           color="neutral"
           variant="subtle"
           class="min-h-11 shrink-0"
+          :loading="unmatching"
           @click="emit('unmatch')"
         />
       </div>
@@ -164,12 +199,22 @@ const willNotGuess = computed(
           something else.
         </p>
 
-        <ul role="list" class="divide-y divide-default">
+        <!-- The list is emptied before every search rather than kept stale (see
+             `useCandidates`), so the busy signal is what stands in for the
+             candidates while the next answer is on its way — without it the sheet
+             reads as broken on each keystroke (ADR 0007). -->
+        <ul
+          role="list"
+          class="divide-y divide-default transition-opacity delay-150"
+          :aria-busy="pending"
+          :class="pending && 'opacity-50'"
+        >
           <li v-for="candidate in candidates" :key="candidate.id">
             <button
               type="button"
               class="w-full rounded-md py-2.5 text-left hover:bg-elevated active:bg-elevated"
-              @click="emit('match', candidate.id)"
+              :aria-busy="matching && claiming === candidate.id"
+              @click="claimFor(candidate.id)"
             >
               <span class="flex items-baseline gap-2">
                 <span class="min-w-0 font-medium text-default">
@@ -198,6 +243,12 @@ const willNotGuess = computed(
           </li>
         </ul>
       </LoadErrorState>
+
+      <!-- The licence attaches to the figures rather than to one card, and this
+           sheet carries both a name and a per-100 g figure for every candidate.
+           On `/foods` it is the only AFCD surface there is, so without this the
+           page distributes the data with no attribution at all (ADR 0027). -->
+      <ReferenceFoodAttribution />
     </div>
   </ResponsiveOverlay>
 </template>

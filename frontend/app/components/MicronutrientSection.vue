@@ -3,9 +3,20 @@ import type { components } from '#open-fetch-schemas/api'
 
 type UnmatchedFood = components['schemas']['UnmatchedFoodResponse']
 
-const props = defineProps<{
-  intake: components['schemas']['MicronutrientIntakeResponse']
-}>()
+// Stryker disable all: a compiler macro's arguments are hoisted out of setup()
+const props = withDefaults(
+  defineProps<{
+    intake: components['schemas']['MicronutrientIntakeResponse']
+    /**
+     * Whether the figures below are being re-read. Keep-stale-and-dim rather
+     * than blank: a match refreshes this card, and what is on screen until the
+     * answer lands is the coverage from before it (ADR 0007).
+     */
+    pending?: boolean
+  }>(),
+  { pending: false },
+)
+// Stryker restore all
 const emit = defineEmits<{ match: [UnmatchedFood] }>()
 
 /**
@@ -33,7 +44,13 @@ const queueLabel = computed(() => {
 </script>
 
 <template>
-  <UCard role="region" aria-labelledby="micronutrient-heading">
+  <UCard
+    role="region"
+    aria-labelledby="micronutrient-heading"
+    :aria-busy="pending"
+    class="transition-opacity delay-150"
+    :class="pending && 'opacity-50'"
+  >
     <h2 id="micronutrient-heading" class="text-sm font-medium text-muted">
       Vitamins and minerals
     </h2>
@@ -45,14 +62,14 @@ const queueLabel = computed(() => {
     <template v-else>
       <p class="mt-2 text-sm text-default">{{ coverage }}</p>
 
-      <!-- Once nothing is left, the sentence says so and the disclosure goes:
-           the rest came from meals that were never weighed and from Recipes, and
-           no tap will ever move it, so an empty queue would read as a chore
-           undone (ADR 0027). Nested rather than re-testing `isEmptyWindow`: an
-           empty window has an empty queue, and stating that twice is what lets
-           the two drift. -->
+      <!-- Full coverage is unreachable, so once nothing is left the sentence has
+           to name what remains and why no tap will move it — otherwise the share
+           it leaves unexplained reads as a chore undone (ADR 0027). Nested rather
+           than re-testing `isEmptyWindow`: an empty window has an empty queue,
+           and stating that twice is what lets the two drift. -->
       <p v-if="intake.unmatched.length === 0" class="mt-2 text-sm text-muted">
-        Nothing left to match.
+        Nothing left to match. The rest came from meals you estimated and from
+        recipes, which have no single food to borrow from.
       </p>
 
       <UCollapsible v-else class="mt-3">

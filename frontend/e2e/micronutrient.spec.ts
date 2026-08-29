@@ -131,6 +131,44 @@ test('a matched food in the catalog names its borrow and can take it back', asyn
   await expect(page.getByText(/Vitamins and minerals from/)).toBeHidden()
 })
 
+test('with Calorie Tracking off the catalog says nothing about a borrow', async ({
+  page,
+  goto,
+}) => {
+  await mockProfile(page, {
+    sex: 'MALE',
+    birthDate: '1990-06-15',
+    heightCm: 180,
+    tracksCalories: false,
+  })
+  await page.route('**/api/foods', (route) =>
+    route.fulfill({
+      json: [
+        food({
+          id: 1,
+          name: 'Chicken breast',
+          referenceFoodId: chickenBreast.id,
+          referenceFoodName: chickenBreast.name,
+        }),
+      ],
+    }),
+  )
+
+  await goto('/foods', { waitUntil: 'hydration' })
+
+  // The row is up, so the page has settled and a subline would have rendered.
+  await expect(
+    page.getByRole('button', { name: 'Log Chicken breast' }),
+  ).toBeVisible()
+  // Gated on the setting rather than on the row still holding a match: this
+  // User matched foods before turning tracking off, and the whole surface goes
+  // with the setting (ADR 0027).
+  await expect(page.getByText(/Vitamins and minerals from/)).toBeHidden()
+  await expect(
+    page.getByRole('button', { name: /borrows vitamins and minerals from/ }),
+  ).toBeHidden()
+})
+
 test('matching a queued food from the picker moves the coverage figure', async ({
   page,
   goto,
@@ -181,5 +219,9 @@ test('matching a queued food from the picker moves the coverage figure', async (
       "100% of the last 7 days' calories came from food Tucker can read vitamins and minerals for.",
     ),
   ).toBeVisible()
-  await expect(page.getByText('Nothing left to match.')).toBeVisible()
+  await expect(
+    page.getByText(
+      /Nothing left to match\. The rest came from meals you estimated and from recipes/,
+    ),
+  ).toBeVisible()
 })

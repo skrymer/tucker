@@ -65,7 +65,7 @@ const {
  * breakdown's reason: it reads a log Tucker has agreed to stop asking for.
  */
 function useMicronutrientIntake() {
-  const { data, error, load } = useOptionalFetch((signal) =>
+  const { data, error, pending, load } = useOptionalFetch((signal) =>
     // Derived per load rather than captured at setup, like the breakdown's
     // window: a page left open over midnight must ask about the week it is now.
     $api('/api/micronutrient-intake', {
@@ -73,11 +73,12 @@ function useMicronutrientIntake() {
       signal,
     }),
   )
-  return { intake: data, error, load }
+  return { intake: data, error, pending, load }
 }
 const {
   intake: micronutrients,
   error: micronutrientsError,
+  pending: micronutrientsPending,
   load: refreshMicronutrients,
 } = useMicronutrientIntake()
 
@@ -101,10 +102,12 @@ await Promise.all([
  * carries no borrow to take back.
  */
 const foodToMatch = ref<Matchable | null>(null)
-const { claim: claimMatch, clear: clearMatch } = useReferenceFoodMatch(
-  foodToMatch,
-  refreshMicronutrients,
-)
+const {
+  claim: claimMatch,
+  clear: clearMatch,
+  matching,
+  unmatching,
+} = useReferenceFoodMatch(foodToMatch, refreshMicronutrients)
 
 const hasReviews = computed(() => (reviews.value?.length ?? 0) > 0)
 
@@ -174,12 +177,15 @@ const { pending, execute: runReview } = useApiMutation(
       <MicronutrientSection
         v-if="micronutrients"
         :intake="micronutrients"
+        :pending="micronutrientsPending"
         @match="foodToMatch = { id: $event.foodId, name: $event.name }"
       />
     </LoadErrorState>
 
     <ReferenceFoodPicker
       :food="foodToMatch"
+      :matching="matching"
+      :unmatching="unmatching"
       @match="claimMatch"
       @unmatch="clearMatch"
       @close="foodToMatch = null"

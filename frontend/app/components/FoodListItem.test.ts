@@ -77,6 +77,28 @@ describe('FoodListItem', () => {
     ).toBeVisible()
   })
 
+  it('says nothing about a borrow to a User who does not count calories', async () => {
+    await renderSuspended(FoodListItem, {
+      props: {
+        food: food({
+          id: 3,
+          name: 'Tasty cheese',
+          referenceFoodId: 9,
+          referenceFoodName: 'Cheese, cheddar, natural, regular fat',
+        }),
+        tracksCalories: false,
+      },
+    })
+
+    // Gated on the setting, never on whether the row happens to hold a match:
+    // a weight-only User who matched foods before turning tracking off would
+    // otherwise keep the whole surface (ADR 0027).
+    expect(screen.queryByText(/Vitamins and minerals/)).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /borrows vitamins and minerals/ }),
+    ).not.toBeInTheDocument()
+  })
+
   it('emits match — not log — when the user changes what a matched Food borrows', async () => {
     const cheese = food({
       id: 3,

@@ -1,17 +1,8 @@
 package com.tucker.provider
 
-import com.tucker.domain.BarcodeLookup
 import com.tucker.domain.ProviderCapability
-import com.tucker.persistence.FoodRepository
-import com.tucker.service.BarcodeLookupService
-import com.tucker.service.InMemoryBarcodeLookupCache
+import com.tucker.domain.ProviderLookup
 import org.junit.jupiter.api.Test
-import org.mockito.kotlin.any
-import org.mockito.kotlin.mock
-import org.mockito.kotlin.never
-import org.mockito.kotlin.spy
-import org.mockito.kotlin.verify
-import org.mockito.kotlin.whenever
 import kotlin.test.assertEquals
 
 /**
@@ -19,7 +10,9 @@ import kotlin.test.assertEquals
  * `TEXT_SEARCH` capability ADR 0006 defined and left a seam for, finally filled.
  *
  * AFCD is the mirror image of a barcode source: rich micronutrient detail on
- * *generic* foods, and no barcodes at all (ADR 0027).
+ * *generic* foods, and no barcodes at all (ADR 0027). What keeps it out of a scan
+ * is the capability it declares; that the chain honours a declaration is
+ * `BarcodeLookupService`'s own rule and is specified with its other rules.
  */
 class AfcdNutritionProviderTest {
 
@@ -34,20 +27,13 @@ class AfcdNutritionProviderTest {
     }
 
     @Test
-    fun `a scanned barcode never reaches AFCD`() {
-        val afcd = spy(AfcdNutritionProvider())
-        val foods = mock<FoodRepository>()
-        whenever(foods.findByBarcode(any())).thenReturn(null)
-        val chain = BarcodeLookupService(foods, listOf(afcd), InMemoryBarcodeLookupCache())
-
-        val result = chain.lookup("9310072011691")
-
-        verify(afcd, never()).lookupByBarcode(any())
+    fun `AFCD asked for a barcode anyway says it has nothing, rather than throwing`() {
         assertEquals(
-            BarcodeLookup.Missing,
-            result,
-            "a chain holding no barcode-capable Provider knows nothing rather than being " +
-                "broken, so it is a miss and not an Inconclusive Lookup (ADR 0006)",
+            ProviderLookup.Missing,
+            AfcdNutritionProvider().lookupByBarcode("9310072011691"),
+            "a Provider never throws (ADR 0006) — and a miss rather than an Inconclusive " +
+                "Lookup, because a source that holds no barcodes is not a source that is " +
+                "having a bad day, so there is nothing for a retry to fix",
         )
     }
 }

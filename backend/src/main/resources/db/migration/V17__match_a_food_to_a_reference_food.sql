@@ -59,9 +59,9 @@ CREATE TABLE reference_food_synonym (
     replacement TEXT NOT NULL
 );
 
--- The rewrites the spike measured. ADR 0027 counts twelve and enumerates these
--- eleven, and eleven is what is seeded: inventing the twelfth is exactly what
--- "grown only on observed failure" forbids.
+-- The eleven rewrites the spike measured, and only those: this list is grown on an
+-- observed failure and never speculatively, because one that grows speculatively
+-- grows without bound (ADR 0027).
 INSERT INTO reference_food_synonym (term, replacement) VALUES
     ('tasty', 'cheddar'),
     ('greek', 'natural'),

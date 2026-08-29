@@ -3,8 +3,12 @@ import type { components } from '#open-fetch-schemas/api'
 
 type FoodResponse = components['schemas']['FoodResponse']
 
-// Stryker disable next-line all: a compiler macro must stay a top-level statement
-defineProps<{ foods: FoodResponse[] }>()
+// Stryker disable all: a compiler macro's arguments are hoisted out of setup()
+withDefaults(
+  defineProps<{ foods: FoodResponse[]; tracksCalories?: boolean }>(),
+  { tracksCalories: true },
+)
+// Stryker restore all
 
 const emit = defineEmits<{
   log: [FoodResponse]
@@ -19,6 +23,7 @@ const emit = defineEmits<{
     <li v-for="food in foods" :key="food.id">
       <FoodListItem
         :food="food"
+        :tracks-calories="tracksCalories"
         @log="(picked) => emit('log', picked)"
         @delete="(picked) => emit('delete', picked)"
         @view="(picked) => emit('view', picked)"

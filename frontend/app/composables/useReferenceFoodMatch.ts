@@ -19,7 +19,7 @@ export function useReferenceFoodMatch(
     await onChanged()
   }
 
-  const { execute: claimFor } = useApiMutation(
+  const { execute: claimFor, pending: matching } = useApiMutation(
     (target: { foodId: number; referenceFoodId: number }) =>
       $api('/api/foods/{id}/reference-food', {
         method: 'PUT',
@@ -31,7 +31,7 @@ export function useReferenceFoodMatch(
     { errorTitle: 'Could not match this food', onSuccess: settled },
   )
 
-  const { execute: clearFor } = useApiMutation(
+  const { execute: clearFor, pending: unmatching } = useApiMutation(
     (foodId: number) =>
       $api('/api/foods/{id}/reference-food', {
         method: 'DELETE',
@@ -55,5 +55,8 @@ export function useReferenceFoodMatch(
     return target && clearFor(target.id)
   }
 
-  return { claim, clear }
+  // `matching` and `unmatching` are the picker's in-flight signal: the sheet
+  // deliberately stays open until the server answers, so without them there is
+  // nothing at all between the tap and the close (ADR 0007).
+  return { claim, clear, matching, unmatching }
 }

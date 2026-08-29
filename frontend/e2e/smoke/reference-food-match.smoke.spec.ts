@@ -63,7 +63,11 @@ test('a matched Food moves the coverage figure and names its borrow in the catal
       "100% of the last 7 days' calories came from food Tucker can read vitamins and minerals for.",
     ),
   ).toBeVisible()
-  await expect(section.getByText('Nothing left to match.')).toBeVisible()
+  await expect(
+    section.getByText(
+      /Nothing left to match\. The rest came from meals you estimated and from recipes/,
+    ),
+  ).toBeVisible()
 
   // And the catalog names what it borrows from, rather than ticking it.
   await goto('/foods', { waitUntil: 'hydration' })

@@ -3,7 +3,18 @@ import type { components } from '#open-fetch-schemas/api'
 
 type FoodResponse = components['schemas']['FoodResponse']
 
-const props = defineProps<{ food: FoodResponse }>()
+/**
+ * `tracksCalories` gates the borrow, which the page resolves from the Profile
+ * rather than this row inferring it from whether a match happens to be set:
+ * a weight-only User who matched foods before turning tracking off would
+ * otherwise keep the whole surface (ADR 0027).
+ */
+// Stryker disable all: a compiler macro's arguments are hoisted out of setup()
+const props = withDefaults(
+  defineProps<{ food: FoodResponse; tracksCalories?: boolean }>(),
+  { tracksCalories: true },
+)
+// Stryker restore all
 const emit = defineEmits<{
   log: [FoodResponse]
   delete: [FoodResponse]
@@ -64,7 +75,7 @@ const recipeSubline = computed(() => {
              row at all — a marker there would decorate a Food with a status it
              did not earn (ADR 0027). -->
         <p
-          v-if="food.referenceFoodName"
+          v-if="tracksCalories && food.referenceFoodName"
           class="mt-0.5 truncate text-xs text-dimmed"
         >
           Vitamins and minerals from {{ food.referenceFoodName }}
@@ -88,7 +99,7 @@ const recipeSubline = computed(() => {
          (ADR 0027), and it no longer lists a Food that has one — so changing or
          clearing it lives beside the subline that names it. -->
     <UButton
-      v-if="food.referenceFoodName"
+      v-if="tracksCalories && food.referenceFoodName"
       :aria-label="`Change what ${food.name} borrows vitamins and minerals from`"
       icon="i-lucide-pencil"
       color="neutral"

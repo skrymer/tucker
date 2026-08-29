@@ -177,7 +177,7 @@ class FoodController(
         // surface an unknown id as a 500 rather than as the plain 404 it is.
         val reference = referenceFoods.findById(request.referenceFoodId)
             ?: throw NotFoundException("no Reference Food with id ${request.referenceFoodId}")
-        val matched = food.copy(referenceFoodId = reference.id)
+        val matched = food.matchedTo(reference)
         foods.update(matched)
         return matched.toResponse(referenceFoodName = reference.name)
     }
@@ -193,7 +193,7 @@ class FoodController(
     @ResponseStatus(HttpStatus.NO_CONTENT)
     fun unmatch(@PathVariable id: Long) {
         val food = foods.findById(id) ?: return
-        foods.update(food.copy(referenceFoodId = null))
+        foods.update(food.unmatched())
     }
 
     /** What [food] is matched to, as a User would recognise it, or null if nothing. */

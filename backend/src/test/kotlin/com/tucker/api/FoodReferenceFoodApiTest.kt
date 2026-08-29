@@ -115,6 +115,18 @@ class FoodReferenceFoodApiTest {
     }
 
     @Test
+    fun `matching a Food that does not exist answers as a foreign one does`() {
+        mockMvc.put("/api/foods/999999/reference-food") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"referenceFoodId":${referenceFood("Tasty cheese").first}}"""
+        }.andExpect { status { isNotFound() } }
+
+        mockMvc.delete("/api/foods/999999/reference-food").andExpect {
+            status { isNoContent() }
+        }
+    }
+
+    @Test
     fun `matching to a Reference Food the database does not hold is not found`() {
         val foodId = createFood("Tasty cheese")
 

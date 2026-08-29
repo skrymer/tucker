@@ -104,6 +104,97 @@ describe('ReferenceFoodPicker', () => {
     expect(onUnmatch).toHaveBeenCalled()
   })
 
+  it('carries the attribution the figures it shows are licensed under', async () => {
+    registerEndpoint('/api/reference-foods', () =>
+      referenceFoodSearch({
+        candidates: [
+          referenceFoodCandidate({
+            id: 101,
+            name: 'Chicken, breast, lean flesh, raw',
+          }),
+        ],
+      }),
+    )
+
+    await renderSuspended(ReferenceFoodPicker, { props: { food: chicken } })
+
+    // CC BY-SA 3.0 AU attaches to the figures, not to one card — and this sheet
+    // is the only AFCD surface on `/foods`, where there is no section behind it
+    // to carry the paragraph (ADR 0027).
+    expect(
+      await screen.findByText(/Australian Food Composition Database/),
+    ).toBeVisible()
+    expect(screen.getByText(/CC BY-SA 3\.0 AU/)).toBeVisible()
+    expect(
+      screen.getByText(
+        /There are limitations associated with food composition databases\./,
+      ),
+    ).toBeInTheDocument()
+  })
+
+  it('reports the tapped candidate busy while its match is in flight', async () => {
+    registerEndpoint('/api/reference-foods', () =>
+      referenceFoodSearch({
+        candidates: [
+          referenceFoodCandidate({
+            id: 101,
+            name: 'Chicken, breast, lean flesh, raw',
+          }),
+          referenceFoodCandidate({
+            id: 102,
+            name: 'Chicken, breast, lean flesh, baked',
+          }),
+        ],
+      }),
+    )
+
+    await renderSuspended(ReferenceFoodPicker, {
+      props: { food: chicken, matching: true },
+    })
+    await userEvent
+      .setup()
+      .click(await screen.findByText('Chicken, breast, lean flesh, raw'))
+
+    // The sheet stays open until the server answers, so without a signal on the
+    // control that was tapped there is nothing at all between the tap and the
+    // close (ADR 0007). It is the tapped row and not the list: busy is local to
+    // the control that triggered it.
+    const rows = screen.getAllByRole('button', { name: /Chicken, breast/ })
+    expect(rows[0]).toHaveAttribute('aria-busy', 'true')
+    expect(rows[1]).toHaveAttribute('aria-busy', 'false')
+  })
+
+  it('reports the results busy while a search is still in flight', async () => {
+    let release!: () => void
+    registerEndpoint('/api/reference-foods', async () => {
+      await new Promise<void>((resolve) => {
+        release = resolve
+      })
+      return referenceFoodSearch({
+        candidates: [
+          referenceFoodCandidate({
+            id: 101,
+            name: 'Chicken, breast, lean flesh, raw',
+          }),
+        ],
+      })
+    })
+
+    await renderSuspended(ReferenceFoodPicker, { props: { food: chicken } })
+
+    // The list is emptied before each search rather than kept stale, so without
+    // a busy signal a keystroke replaces the candidates with nothing at all and
+    // the sheet reads as broken (ADR 0007).
+    expect(screen.getByRole('list')).toHaveAttribute('aria-busy', 'true')
+
+    release()
+
+    expect(
+      await screen.findByText('Chicken, breast, lean flesh, raw'),
+    ).toBeVisible()
+    expect(screen.getByRole('list')).toHaveAttribute('aria-busy', 'false')
+  })
+
   it('closes when dismissed, leaving the Food as it was', async () => {
     registerEndpoint('/api/reference-foods', () => referenceFoodSearch())
     const onClose = vi.fn()

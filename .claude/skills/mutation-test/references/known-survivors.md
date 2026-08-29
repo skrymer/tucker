@@ -48,6 +48,29 @@ mutants got the tests they were owed.
 
 `app/utils/`, 8 survivors, all one cluster.
 
+### Vue compiler macros break the run before it starts
+
+Not survivors — the sweep dies. Stryker rewrites a `.vue` SFC's `<script setup>` the
+same way it rewrites a `.ts` file, and Vue's compiler macros are not ordinary calls, so
+two rewrites are illegal in ways only the browser finds out:
+
+- a bare `defineProps<T>()` wrapped in Stryker's `if/else` is no longer a top-level
+  statement, and the compiler never replaces it → `defineProps is not defined`.
+- `defineModel(…)`, `withDefaults(…)` and `defineOptions(…)` have their **arguments**
+  mutated in place, and the compiler hoists those arguments out of `setup()` — past the
+  point where Stryker's `stryMutAct_9fa48` helper is in scope → `stryMutAct_9fa48 is not
+  defined`.
+
+The fix is a `// Stryker disable next-line all: …` above the macro, and it is load-bearing
+on **15 components** (`grep -rl 'Stryker disable' frontend/app`). Do not tidy them away.
+A **multi-line** `withDefaults(…)` needs a `disable` / `restore` **pair** — `next-line`
+cannot reach the mutants inside the object literal (`LedgerFigure.vue` is the worked
+example). Assigning `const props = defineProps…` to dodge it is not an option: ESLint
+rejects the unused variable.
+
+Upstream is [stryker-js#3305](https://github.com/stryker-mutator/stryker-js/issues/3305),
+closed stale and still unfixed on Stryker 10.
+
 ### Presentation tokens (8) — accepted, deliberately unasserted
 
 | Where                                                         | Mutants |
