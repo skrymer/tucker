@@ -80,6 +80,14 @@ describe('useReferenceFoodMatch', () => {
     await userEvent.setup().click(screen.getByRole('button', { name: 'claim' }))
     await vi.waitFor(() => expect(toastAdd).toHaveBeenCalled())
 
+    // The title is the whole of what the User is told — the description is the
+    // shared connection message — so it has to name the action that was lost
+    // (ADR 0005). It also keys the toast's id, so two blank titles would have a
+    // failed unmatch replace a live match failure.
+    expect(toastAdd).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'Could not match this food' }),
+    )
+
     // The sheet is closed and reopened on a different Food while the failure's
     // Retry is still on screen (ADR 0005 — it persists so the User need not
     // re-enter the sheet). Retry must replay the match that failed.
@@ -101,5 +109,27 @@ describe('useReferenceFoodMatch', () => {
     expect(seen).toEqual({ method: 'DELETE' })
     expect(food.value).toBeNull()
     expect(onChanged).toHaveBeenCalled()
+  })
+  it('names the unmatch when taking the borrow back fails, and stays on that Food', async () => {
+    toastAdd.mockClear()
+    registerEndpoint('/api/foods/7/reference-food', {
+      method: 'DELETE',
+      handler: () => {
+        throw createError({ statusCode: 500 })
+      },
+    })
+
+    const { component, food } = host(vi.fn())
+    await renderSuspended(component)
+    await userEvent.setup().click(screen.getByRole('button', { name: 'clear' }))
+
+    await vi.waitFor(() =>
+      expect(toastAdd).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'Could not unmatch this food' }),
+      ),
+    )
+    // `settled` never ran, so the sheet is still on the Food whose unmatch was
+    // lost — the Retry in that toast has something to go back to (ADR 0005).
+    expect(food.value).not.toBeNull()
   })
 })

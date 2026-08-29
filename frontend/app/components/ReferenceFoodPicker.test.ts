@@ -265,6 +265,52 @@ describe('ReferenceFoodPicker', () => {
     expect(await screen.findByText('Rice, white')).toBeVisible()
   })
 
+  it('searches the Food it is on now, even while the last one is still out', async () => {
+    // Both answers are held, so the second search is issued *while* the first is
+    // still in flight — which is the only window the re-entry policy decides.
+    let releaseChicken!: () => void
+    let releaseRice!: () => void
+    registerEndpoint('/api/reference-foods', async (event) => {
+      if (String(getQuery(event).q) === 'Chicken breast') {
+        await new Promise<void>((resolve) => {
+          releaseChicken = resolve
+        })
+        return referenceFoodSearch()
+      }
+      await new Promise<void>((resolve) => {
+        releaseRice = resolve
+      })
+      return referenceFoodSearch({
+        suggestedId: 303,
+        candidates: [referenceFoodCandidate({ id: 303, name: 'Rice, white' })],
+      })
+    })
+
+    const { rerender } = await renderSuspended(ReferenceFoodPicker, {
+      props: { food: chicken },
+    })
+    await vi.waitFor(() => expect(releaseChicken).toBeTypeOf('function'))
+
+    await rerender({ food: { id: 2, name: 'Jasmine rice' } })
+
+    // Every keystroke and every queue row asks a *different* question, so a
+    // search issued while one is in flight supersedes it rather than being
+    // dropped — dropped, the sheet would answer the Food it is no longer on.
+    await vi.waitFor(() => expect(releaseRice).toBeTypeOf('function'))
+
+    releaseChicken()
+    // And the superseded answer never lands: it would list chicken under a sheet
+    // titled "Match Jasmine rice", where a tap writes the wrong match (ADR 0027).
+    await vi.waitFor(() =>
+      expect(
+        screen.queryByText('Chicken, breast, lean flesh, raw'),
+      ).not.toBeInTheDocument(),
+    )
+
+    releaseRice()
+    expect(await screen.findByText('Rice, white')).toBeVisible()
+  })
+
   it('stays quiet about not being sure when it has offered a candidate', async () => {
     registerEndpoint('/api/reference-foods', () =>
       referenceFoodSearch({ suggestedId: 101 }),
@@ -276,6 +322,38 @@ describe('ReferenceFoodPicker', () => {
     // The line is about choosing between candidates Tucker will not choose
     // between; printing it over an offered one contradicts the badge beside it.
     expect(screen.queryByText(/Pick one, or search/)).not.toBeInTheDocument()
+  })
+
+  it('says nothing about the database when the box holds only spaces', async () => {
+    registerEndpoint('/api/reference-foods', (event) =>
+      String(getQuery(event).q).trim() === ''
+        ? referenceFoodSearch({ suggestedId: null, candidates: [] })
+        : referenceFoodSearch(),
+    )
+    await renderSuspended(ReferenceFoodPicker, { props: { food: chicken } })
+    const user = userEvent.setup()
+    const box = screen.getByRole('textbox', {
+      name: 'Search the food database',
+    })
+    expect(
+      await screen.findByText('Chicken, breast, lean flesh, raw'),
+    ).toBeVisible()
+
+    await user.clear(box)
+    await user.type(box, ' ')
+
+    // The blank search has landed — without this the assertion below would pass
+    // for the wrong reason, on an answer that had simply not come back yet.
+    await vi.waitFor(() =>
+      expect(
+        screen.queryByText('Chicken, breast, lean flesh, raw'),
+      ).not.toBeInTheDocument(),
+    )
+    // A box holding spaces asked nothing, so a statement about what the corpus
+    // holds would be an answer to no question.
+    expect(
+      screen.queryByText('No match in the Australian food database.'),
+    ).not.toBeInTheDocument()
   })
 
   it('asks again after clearing, rather than leaving the old answer on screen', async () => {

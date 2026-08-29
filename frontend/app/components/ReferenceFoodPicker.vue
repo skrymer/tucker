@@ -106,14 +106,13 @@ function clearSearch() {
 
 /**
  * The candidate whose row was tapped, so the busy signal lands on the control
- * that triggered the write rather than on the whole list (ADR 0007). Cleared
- * whenever the sheet is pointed at another Food, so a row never opens busy.
+ * that triggered the write rather than on the whole list (ADR 0007).
+ *
+ * It is never reset, and needs no reset: a row is busy only while `matching` is
+ * also true, and the page holds that true only between this sheet's own tap and
+ * the answer that closes it. A stale id outlives nothing it is read against.
  */
 const claiming = ref<number | null>(null)
-watch(
-  () => props.food,
-  () => (claiming.value = null),
-)
 function claimFor(referenceFoodId: number) {
   claiming.value = referenceFoodId
   emit('match', referenceFoodId)

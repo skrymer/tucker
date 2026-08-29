@@ -301,6 +301,56 @@ whole `useRing` feed (`data`, `categories`, each arc's `name` and `color`) was
 unreachable because the ring is `aria-hidden` by design, and is asserted through the
 chart's own props — the only seam it has. See also the palette guard below.
 
+### `components/ReferenceFoodPicker.vue` — 4 of 52
+
+**`const query = ref('')` (1)** — StringLiteral.
+
+**Verdict: equivalent mutant.** The initialiser is dead in every state where the box
+is observable. The picker lives inside `ResponsiveOverlay` → `UModal`, a Reka Dialog
+with no `force-mount`, so it is in the DOM only while `food !== null` — and the
+`watch(food, …, { immediate: true })` assigns `query.value = current.name` on every
+transition to non-null, in a `pre`-flush watcher that runs *before* render. Both
+consumers mount it with `food` starting `null`. Killing it would take
+`wrapper.vm.query`, which the component-testing conventions forbid. **It becomes live
+if `ResponsiveOverlay` gains `force-mount`, or if that watch loses `immediate`.**
+
+**`{ mode: 'latest' }` → `{ mode: "" }` (1)** — StringLiteral.
+
+**Verdict: equivalent at every layer Tucker tests** — worded that way deliberately, so
+a later reader does not conclude the abort is pointless and delete it from
+`useOptionalFetch`, where it *is* pinned (`aborts the request it supersedes…`). `""`
+matches neither branch, so there is no re-entry drop *and* no `inFlight.abort()`; every
+run still takes a fresh `++latestRun` and every superseded one is still discarded by
+`isStale()` on all three paths. The abort is redundant *for correctness* — a run is
+aborted iff a later load started, which is exactly what makes it stale. What is
+genuinely lost is ADR 0007's other reason for it, freeing the connection on a
+constrained link, which no layer here can observe. Two things pin the rest: `""` is not
+assignable to `'guard' | 'latest'`, so `pnpm typecheck` rejects it, and *searches the
+Food it is on now, even while the last one is still out* pins that the mode is not
+`guard`. **The sibling `{ mode: 'latest' }` → `{}` mutant was a real gap and is now
+killed by that test** — under `guard` the superseded search is dropped *before*
+`++latestRun`, so the previous Food's candidates land under the next Food's title and a
+tap writes the wrong match.
+
+**`searchBox.value?.inputRef?.focus()` (2)** — both OptionalChaining arms.
+
+**Verdict: equivalent mutants**, same shape as `DateField.vue` above: the optionals
+exist to satisfy `useTemplateRef<{ inputRef: HTMLInputElement | null }>`'s declared
+type, not because either link is expected to be nullish. `clearSearch` has one caller —
+the × button rendered in the `#trailing` slot *of that same `UInput`* — so the input is
+mounted and the handler is synchronous; Nuxt UI's `Input.vue` renders its `<input
+ref="inputRef">` unconditionally and exposes it. Hand-checked per the protocol: both
+`?.` deleted, suite stays green at 20 passed.
+
+### `composables/useReferenceFoodMatch.ts` — 0 of 27
+
+Was 2 — both `errorTitle` literals, killed by asserting the toast **title** rather than
+only that a toast was raised, which is the verdict `useWeightLogging` already records.
+Worth restating why it is a gap and not a presentation token: ADR 0005 makes the title
+the whole of what a User is told (the description is the shared connection message), and
+`useApiMutation` derives `errorToastId` from it — so blanking both would collapse match
+and unmatch onto one id, and a failed unmatch would replace a live match failure.
+
 ### `components/DaySummary.vue` — 0 of 17
 
 **`entries.length > VISIBLE` → `>= VISIBLE`** was a **real gap**, closed rather than
@@ -524,6 +574,17 @@ The note is on `ApiIntegrationTest`.
 Four survivors that looked like this cluster were **real gaps and are now fixed**:
 `caloriesRemaining`'s sign, `FoodController.byId`'s recipe branch, `EntryController.delete`
 actually deleting, and a 409 carrying its domain message.
+
+### `domain.ReferenceFoodQuery$Companion.startsAt` (1) — false survivor
+
+Reported **NO_COVERAGE**, `NegateConditionals`, at *line 79 of a 67-line file* — the
+synthetic line pitest attributes to the lambda inlined by `phrase.indices.all { … }`.
+The same shape as the `x in a..b` note at the end of this file, and settled the same
+way: hand-mutating `== phrase[it]` to `!=` fails **15 tests** across
+`ReferenceFoodQueryTest` and `ReferenceFoodRankingTest`. The tool cannot see it; no
+test is owed. Kotlin's inlining is what `*$$inlined$*` filters elsewhere, and there is
+nothing to filter here — the mutant is on the enclosing method, not on a generated
+class.
 
 ### `persistence` and `service` — the class 6 glue
 
