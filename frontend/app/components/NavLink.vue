@@ -7,6 +7,7 @@ import { isDestinationActive, type NavDestination } from '~/utils/navigation'
 // the segment-aware matcher (via the `custom` slot) — that keeps a destination
 // active across its nested children (e.g. Profile on /profile/weight). The
 // caller passes the per-nav anchor/icon classes.
+// Stryker disable next-line all: a compiler macro must stay a top-level statement
 defineProps<{
   destination: NavDestination
   anchorClass: string

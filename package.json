@@ -1,0 +1,8 @@
+{
+  "name": "tucker-tooling",
+  "private": true,
+  "description": "Repo-root dev tooling only. The application lives in backend/ (Gradle) and frontend/ (pnpm).",
+  "devDependencies": {
+    "@nizos/probity": "1.10.0"
+  }
+}

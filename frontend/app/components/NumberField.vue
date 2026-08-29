@@ -17,6 +17,7 @@
  * `v-model` works exactly as it does on the field itself. Slots are not
  * forwarded, because no call site uses one.
  */
+// Stryker disable next-line all: a compiler macro's arguments are hoisted out of setup()
 defineOptions({ inheritAttrs: false })
 </script>
 

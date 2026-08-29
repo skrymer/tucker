@@ -11,6 +11,7 @@ const emit = defineEmits<{
   logged: [{ date: string; weightKg: number }]
 }>()
 
+// Stryker disable next-line all: a compiler macro's arguments are hoisted out of setup()
 const open = defineModel<boolean>('open', { default: false })
 
 const loggedToday = computed(

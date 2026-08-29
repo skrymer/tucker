@@ -58,6 +58,56 @@ describe('FoodListItem', () => {
     expect(screen.getByText(/1 ingredient · makes/)).toBeVisible()
   })
 
+  it('names the Reference Food a matched Food borrows its micronutrients from', async () => {
+    await renderSuspended(FoodListItem, {
+      props: {
+        food: food({
+          id: 3,
+          name: 'Tasty cheese',
+          referenceFoodId: 9,
+          referenceFoodName: 'Cheese, cheddar, natural, regular fat',
+        }),
+      },
+    })
+
+    expect(
+      screen.getByText(
+        'Vitamins and minerals from Cheese, cheddar, natural, regular fat',
+      ),
+    ).toBeVisible()
+  })
+
+  it('emits match — not log — when the user changes what a matched Food borrows', async () => {
+    const cheese = food({
+      id: 3,
+      name: 'Tasty cheese',
+      referenceFoodId: 9,
+      referenceFoodName: 'Cheese, cheddar, natural, regular fat',
+    })
+    const onLog = vi.fn()
+    const onMatch = vi.fn()
+    await renderSuspended(FoodListItem, {
+      props: { food: cheese, onLog, onMatch },
+    })
+
+    // A wrong match is worse than none, so changing or clearing one has to be as
+    // easy as making it — and the queue on /review no longer lists this Food.
+    await userEvent.setup().click(
+      screen.getByRole('button', {
+        name: 'Change what Tasty cheese borrows vitamins and minerals from',
+      }),
+    )
+
+    expect(onMatch).toHaveBeenCalledWith(cheese)
+    expect(onLog).not.toHaveBeenCalled()
+  })
+
+  it('leaves an unmatched Food carrying no marker of any kind', async () => {
+    await renderSuspended(FoodListItem, { props: { food: skyr } })
+
+    expect(screen.queryByText(/Vitamins and minerals/)).not.toBeInTheDocument()
+  })
+
   it('leaves a plain Food row without a Recipe chip or a view button', async () => {
     await renderSuspended(FoodListItem, { props: { food: skyr } })
 

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { REVIEW_BASIS_BADGE, type ReviewBasis } from '~/utils/reviewLedger'
 
+// Stryker disable all: a compiler macro's arguments are hoisted out of setup()
 const props = withDefaults(
   defineProps<{
     /** The review's Maintenance Basis; absent for a review with no Intake Targets. */
@@ -10,6 +11,7 @@ const props = withDefaults(
   }>(),
   { placeholder: false },
 )
+// Stryker restore all
 
 const badge = computed(() =>
   props.basis ? REVIEW_BASIS_BADGE[props.basis] : null,

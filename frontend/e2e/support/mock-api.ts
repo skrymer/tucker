@@ -78,6 +78,85 @@ export async function mockIntakeBreakdownByWindow(
   return asked
 }
 
+/** A week with nothing logged — what a spec that is not about matching wants. */
+const emptyMicronutrientIntake: Json = {
+  from: '2026-08-21',
+  to: '2026-08-27',
+  totalCalories: 0,
+  coverage: 0,
+  unmatched: [],
+}
+
+/**
+ * Stub `GET /api/micronutrient-intake`; defaults to a week with nothing logged.
+ * Every `/review` spec needs it — the section loads on that page whether or not
+ * the spec is about it.
+ */
+export async function mockMicronutrientIntake(
+  page: Page,
+  intake: Json = emptyMicronutrientIntake,
+) {
+  await page.route('**/api/micronutrient-intake**', (route) => {
+    const params = new URL(route.request().url()).searchParams
+    // The window is echoed back as the real endpoint does.
+    return route.fulfill({
+      json: {
+        ...intake,
+        from: params.get('from') ?? '',
+        to: params.get('to') ?? '',
+      },
+    })
+  })
+}
+
+/**
+ * Stub `GET /api/reference-foods` plus the `PUT`/`DELETE` that claim and take
+ * back a match, remembering what each Food currently borrows.
+ */
+export async function mockReferenceFoods(
+  page: Page,
+  candidates: Json[],
+  options: { suggestedId?: number | null } = {},
+): Promise<Map<number, number | null>> {
+  const matched = new Map<number, number | null>()
+
+  await page.route('**/api/reference-foods**', (route) => {
+    if (route.request().method() !== 'GET') return route.fallback()
+    const q = new URL(route.request().url()).searchParams.get('q') ?? ''
+    const hits = q.trim() === '' ? [] : candidates
+    return route.fulfill({
+      json: {
+        suggestedId:
+          hits.length === 0
+            ? null
+            : (options.suggestedId ?? (hits[0] as { id: number }).id),
+        candidates: hits,
+      },
+    })
+  })
+
+  await page.route('**/api/foods/*/reference-food', (route) => {
+    const method = route.request().method()
+    const id = Number(new URL(route.request().url()).pathname.split('/').at(-2))
+    if (method === 'PUT') {
+      const body = route.request().postDataJSON() as {
+        referenceFoodId: number
+      }
+      matched.set(id, body.referenceFoodId)
+      return route.fulfill({
+        json: { id, referenceFoodId: body.referenceFoodId },
+      })
+    }
+    if (method === 'DELETE') {
+      matched.set(id, null)
+      return route.fulfill({ status: 204, body: '' })
+    }
+    return route.fallback()
+  })
+
+  return matched
+}
+
 /** Stub `GET /api/intake-breakdown` failing with a real server error. */
 export async function mockIntakeBreakdownError(page: Page) {
   await page.route('**/api/intake-breakdown**', (route) =>

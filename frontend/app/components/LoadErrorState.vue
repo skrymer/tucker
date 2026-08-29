@@ -1,4 +1,5 @@
 <script setup lang="ts">
+// Stryker disable next-line all: a compiler macro must stay a top-level statement
 defineProps<{ title: string; error: unknown }>()
 const emit = defineEmits<{ retry: [] }>()
 </script>

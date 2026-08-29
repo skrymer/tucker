@@ -12,6 +12,7 @@ const props = defineProps<{
  * Which window is being asked about. Owned by the page, which turns it into the
  * request; the section only offers the choice.
  */
+// Stryker disable next-line all: a compiler macro's arguments are hoisted out of setup()
 const period = defineModel<BreakdownPeriod>('period', { default: 'today' })
 
 const periodItems: TabsItem[] = [

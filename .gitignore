@@ -10,3 +10,6 @@
 .claude/settings.local.json
 # Per-session memory / transcripts — local only, never commit
 .claude/projects/
+
+# Repo-root dev tooling (probity TDD gate) — installed, never committed
+node_modules

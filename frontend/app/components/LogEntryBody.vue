@@ -5,6 +5,7 @@ import type { BudgetWarning } from '~/composables/useBudgetGate'
 
 type FoodResponse = components['schemas']['FoodResponse']
 
+// Stryker disable next-line all: a compiler macro must stay a top-level statement
 defineProps<{
   date: string
   foods: FoodResponse[]

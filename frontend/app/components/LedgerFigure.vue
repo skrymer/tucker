@@ -1,4 +1,5 @@
 <script setup lang="ts">
+// Stryker disable all: a compiler macro's arguments are hoisted out of setup()
 withDefaults(
   defineProps<{
     /** The figure; absent for a review with no Intake Targets. */
@@ -12,6 +13,7 @@ withDefaults(
   }>(),
   { decimals: 0, lead: false },
 )
+// Stryker restore all
 </script>
 
 <template>

@@ -181,6 +181,17 @@ const { execute: deleteFood } = useApiMutation(
   },
 )
 
+/**
+ * Changing or clearing what a Food borrows its micronutrients from. The queue on
+ * `/review` is the one way *into* a match (ADR 0027), and it stops listing a Food
+ * that has one — so the way back out lives here, beside the subline naming it.
+ */
+const foodToMatch = ref<FoodResponse | null>(null)
+const { claim: claimMatch, clear: clearMatch } = useReferenceFoodMatch(
+  foodToMatch,
+  refresh,
+)
+
 function handleDeleteConfirm() {
   const food = selectedFood.value
   if (food) deleteFood(food)
@@ -216,6 +227,7 @@ function handleDeleteConfirm() {
         @log="foodToLog = $event"
         @delete="selectedFood = $event"
         @view="recipeToView = $event"
+        @match="foodToMatch = $event"
       />
       <FoodEmptyState v-else @add="open = true" />
     </LoadErrorState>
@@ -258,6 +270,13 @@ function handleDeleteConfirm() {
       :food="selectedFood"
       @cancel="selectedFood = null"
       @confirm="handleDeleteConfirm"
+    />
+
+    <ReferenceFoodPicker
+      :food="foodToMatch"
+      @match="claimMatch"
+      @unmatch="clearMatch"
+      @close="foodToMatch = null"
     />
 
     <RecipeCompositionSheet

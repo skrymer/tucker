@@ -10,6 +10,7 @@ type RecipePayload = {
   ingredients: { foodId: number; grams: number }[]
 }
 
+// Stryker disable all: a compiler macro's arguments are hoisted out of setup()
 const props = withDefaults(
   defineProps<{
     recipe: FoodResponse | null
@@ -22,6 +23,7 @@ const props = withDefaults(
   }>(),
   { foods: () => [], createdIngredient: null },
 )
+// Stryker restore all
 const emit = defineEmits<{
   close: []
   'submit-edit': [RecipePayload]

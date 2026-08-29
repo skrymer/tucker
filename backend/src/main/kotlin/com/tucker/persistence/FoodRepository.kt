@@ -100,6 +100,7 @@ class FoodRepository(
         carbsPer_100g = food.nutrition.carbsPer100g
         fatPer_100g = food.nutrition.fatPer100g
         cookedWeightG = food.cookedWeightG
+        referenceFoodId = food.referenceFoodId?.toInt()
     }
 
     fun delete(id: Long) {
@@ -121,5 +122,6 @@ class FoodRepository(
             fatPer100g = fatPer_100g,
         ),
         cookedWeightG = cookedWeightG,
+        referenceFoodId = referenceFoodId?.toLong(),
     )
 }

@@ -1,5 +1,7 @@
 <script setup lang="ts">
+// Stryker disable next-line all: a compiler macro must stay a top-level statement
 defineProps<{ title: string; dismissible?: boolean }>()
+// Stryker disable next-line all: a compiler macro's arguments are hoisted out of setup()
 const open = defineModel<boolean>('open', { required: true })
 
 // A bottom sheet on phone, a centred modal on desktop — both are the SAME Reka
