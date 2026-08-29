@@ -45,16 +45,28 @@ data class ReferenceFoodSearch(
         /**
          * The nutrients this set of foods most disagrees about, most first.
          *
-         * Disagreement is measured as the range over the largest value, so it is a
-         * ratio rather than an amount: 40 mg of potassium and 40 µg of iodine are
-         * the same number and nothing else, and ranking by amount would put
-         * potassium and sodium above every vitamin on every search. A nutrient
-         * nobody in the set carries divides nothing and scores zero.
+         * Measured as *how many of the candidates the column separates* — the count
+         * of distinct figures in it. A nutrient AFCD reports as zero for all but one
+         * candidate splits off that one and leaves the rest indistinguishable, which
+         * is a column a User cannot choose by, and zeros are everywhere in AFCD:
+         * fibre in every cut of meat, iodine and selenium in most plants.
+         *
+         * Columns that separate the set equally are ordered by [spread], the range
+         * over the largest value. That is a ratio and not an amount, because 40 mg
+         * of potassium and 40 µg of iodine are the same number and nothing else, so
+         * ranking by amount would put potassium and sodium above every vitamin on
+         * every search.
          */
         private fun distinguishing(foods: List<ReferenceFood>): List<Micronutrient> =
             Micronutrient.entries
-                .sortedByDescending { nutrient -> spread(foods.map { it.micronutrients[nutrient] }) }
+                .map { nutrient -> nutrient to foods.map { it.micronutrients[nutrient] } }
+                .sortedWith(
+                    compareByDescending<Pair<Micronutrient, List<Double>>> { (_, amounts) ->
+                        amounts.distinct().size
+                    }.thenByDescending { (_, amounts) -> spread(amounts) },
+                )
                 .take(DISTINGUISHING_COUNT)
+                .map { (nutrient, _) -> nutrient }
 
         private fun spread(amounts: List<Double>): Double {
             // An empty set has no largest value, so `most` is 0 and the branch below

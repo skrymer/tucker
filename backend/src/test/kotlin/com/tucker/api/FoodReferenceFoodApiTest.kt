@@ -101,6 +101,20 @@ class FoodReferenceFoodApiTest {
     }
 
     @Test
+    fun `a matched Food found by its barcode still says what it borrows from`() {
+        val foodId = createFood("Tasty cheese", barcode = "9300601234567")
+        val cheddar = referenceFood("Tasty cheese")
+        match(foodId, cheddar.first)
+
+        mockMvc.get("/api/foods/barcode/9300601234567").andExpect {
+            status { isOk() }
+            jsonPath("$.outcome") { value("EXISTING") }
+            jsonPath("$.food.referenceFoodId") { value(cheddar.first) }
+            jsonPath("$.food.referenceFoodName") { value(cheddar.second) }
+        }
+    }
+
+    @Test
     fun `matching to a Reference Food the database does not hold is not found`() {
         val foodId = createFood("Tasty cheese")
 
@@ -130,10 +144,11 @@ class FoodReferenceFoodApiTest {
         }.andExpect { status { isOk() } }
     }
 
-    private fun createFood(name: String): Long {
+    private fun createFood(name: String, barcode: String? = null): Long {
         val body = mockMvc.post("/api/foods") {
             contentType = MediaType.APPLICATION_JSON
-            content = """{"name":"$name","proteinPer100g":25.0,"carbsPer100g":0.0,"fatPer100g":33.0}"""
+            content = """{"name":"$name","barcode":${barcode?.let { "\"$it\"" }},
+                          "proteinPer100g":25.0,"carbsPer100g":0.0,"fatPer100g":33.0}"""
         }.andExpect { status { isCreated() } }.andReturn().response.contentAsString
         return objectMapper.readTree(body).get("id").asLong()
     }

@@ -112,6 +112,23 @@ class ReferenceFoodRankingTest {
     }
 
     @Test
+    fun `every figure offered tells most of the candidates apart`() {
+        val search = ReferenceFoodSearch.of(candidates("Chicken"))
+        val separates = search.distinguishing.associateWith { nutrient ->
+            search.candidates.map { it.food.micronutrients[nutrient] }.distinct().size
+        }
+
+        assertEquals(
+            emptyMap(),
+            separates.filterValues { it * 2 <= search.candidates.size },
+            "AFCD reports a real zero constantly -- fibre is 0 g on 18 of these 20 cuts of " +
+                "chicken -- and a column of them splits two candidates off and leaves the " +
+                "rest identical, which is not something a User can choose by. Measured over " +
+                "${search.candidates.size} candidates: $separates",
+        )
+    }
+
+    @Test
     fun `a candidate carries the figures its row holds, undegraded by the search`() {
         val found = candidates("Chicken breast")
             .map { it.food }

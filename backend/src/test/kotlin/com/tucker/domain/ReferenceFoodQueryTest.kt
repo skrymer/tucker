@@ -42,6 +42,18 @@ class ReferenceFoodQueryTest {
     }
 
     @Test
+    fun `a replacement is reduced to plain words like anything else a User typed`() {
+        assertEquals(
+            listOf("cheddar", "natural"),
+            ReferenceFoodQuery.of("Tasty cheese", mapOf("tasty cheese" to """cheddar "natural"""")).terms,
+            "a term goes into the FTS5 MATCH string inside quotes of the repository's own, " +
+                "so a replacement carrying one of its own would close them early — and FTS5 " +
+                "does not reject the result, it parses a different query and silently answers " +
+                "nothing. A replacement is seeded data and gets the same treatment as typing",
+        )
+    }
+
+    @Test
     fun `a word that describes farming rather than food is dropped`() {
         assertEquals(
             listOf("egg"),

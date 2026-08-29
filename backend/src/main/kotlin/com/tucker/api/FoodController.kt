@@ -210,7 +210,7 @@ class FoodController(
         when (val result = barcodeLookup.lookup(barcode)) {
             is BarcodeLookup.Existing -> BarcodeLookupResponse(
                 BarcodeLookupOutcome.EXISTING,
-                food = result.food.toResponse(),
+                food = result.food.toResponse(referenceFoodName = matchedName(result.food)),
                 candidate = null,
             )
             is BarcodeLookup.Candidate -> BarcodeLookupResponse(

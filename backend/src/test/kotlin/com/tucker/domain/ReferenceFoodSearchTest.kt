@@ -15,18 +15,69 @@ class ReferenceFoodSearchTest {
     fun `the figures offered are the ones the candidates most disagree about`() {
         val search = ReferenceFoodSearch.of(
             listOf(
-                candidate("Beef, mince, regular, raw", Micronutrient.IRON to 1.8, Micronutrient.SODIUM to 65.0),
-                candidate("Beef, mince, regular, fried", Micronutrient.IRON to 2.4, Micronutrient.SODIUM to 66.0),
-                candidate("Beef, liver, raw", Micronutrient.IRON to 6.1, Micronutrient.SODIUM to 67.0),
+                candidate("Beef, mince, regular, raw", Micronutrient.IRON to 1.8, Micronutrient.CALCIUM to 100.0),
+                candidate("Beef, mince, regular, fried", Micronutrient.IRON to 2.4, Micronutrient.CALCIUM to 102.0),
+                candidate("Beef, liver, raw", Micronutrient.IRON to 6.1, Micronutrient.CALCIUM to 105.0),
             ),
         )
 
         assertEquals(
             Micronutrient.IRON,
             search.distinguishing.first(),
-            "iron spans more than threefold across these three and sodium barely moves, " +
-                "so iron is what tells them apart — and the two are compared as ratios " +
-                "because milligrams of one nutrient say nothing about milligrams of another",
+            "iron and calcium each give all three a different figure, so neither separates " +
+                "more of the set than the other — and iron wins the tie because it spans " +
+                "more than threefold while calcium moves by a twentieth. That is a ratio " +
+                "and not an amount on purpose: calcium covers the wider range in milligrams, " +
+                "and milligrams of one nutrient say nothing about milligrams of another",
+        )
+    }
+
+    @Test
+    fun `a nutrient nearly every candidate reports as zero is not what tells them apart`() {
+        val search = ReferenceFoodSearch.of(
+            listOf(
+                candidate(
+                    "Chicken, breast, lean flesh, raw",
+                    Micronutrient.FIBRE to 0.0,
+                    Micronutrient.IRON to 0.4,
+                    Micronutrient.ZINC to 0.8,
+                    Micronutrient.NIACIN to 8.5,
+                    Micronutrient.SODIUM to 60.0,
+                ),
+                candidate(
+                    "Chicken, breast, lean flesh, baked",
+                    Micronutrient.FIBRE to 0.0,
+                    Micronutrient.IRON to 0.7,
+                    Micronutrient.ZINC to 1.1,
+                    Micronutrient.NIACIN to 9.2,
+                    Micronutrient.SODIUM to 60.0,
+                ),
+                candidate(
+                    "Chicken, thigh, lean flesh, baked",
+                    Micronutrient.FIBRE to 0.0,
+                    Micronutrient.IRON to 1.2,
+                    Micronutrient.ZINC to 1.9,
+                    Micronutrient.NIACIN to 11.0,
+                    Micronutrient.SODIUM to 60.0,
+                ),
+                candidate(
+                    "Chicken, breast, crumbed, fried",
+                    Micronutrient.FIBRE to 0.5,
+                    Micronutrient.IRON to 1.6,
+                    Micronutrient.ZINC to 2.6,
+                    Micronutrient.NIACIN to 12.4,
+                    Micronutrient.SODIUM to 60.0,
+                ),
+            ),
+        )
+
+        assertEquals(
+            listOf(Micronutrient.IRON, Micronutrient.ZINC, Micronutrient.NIACIN),
+            search.distinguishing,
+            "fibre is 0 g on every cut but the crumbed one, so it separates that one " +
+                "candidate from the rest and tells the other three nothing apart — while " +
+                "iron, zinc and niacin each give all four a different figure, which is what " +
+                "a column has to do to be worth reading down",
         )
     }
 

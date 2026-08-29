@@ -24,7 +24,7 @@ data class ReferenceFoodQuery(val terms: List<String>) {
          * order the first two were declared in.
          */
         fun of(text: String, synonyms: Map<String, String>): ReferenceFoodQuery {
-            val words = text.lowercase().split(NOT_A_WORD).filter { it.isNotEmpty() }
+            val words = text.words()
             // Split once, both sides: matching on the words and then rebuilding the
             // key to look the replacement back up would make the lookup depend on
             // rejoining exactly what was split.
@@ -49,8 +49,17 @@ data class ReferenceFoodQuery(val terms: List<String>) {
         /** Punctuation and case carry no meaning here — FTS5 folds both away too. */
         private val NOT_A_WORD = Regex("[^a-z0-9]+")
 
-        /** A replacement's words. Empty for a synonym that rewrites to nothing. */
-        private fun String.words(): List<String> = split(" ").filter { it.isNotEmpty() }
+        /**
+         * The plain words in [this]. Empty for a synonym that rewrites to nothing.
+         *
+         * A seeded replacement is reduced exactly as typing is, and that is the whole
+         * of what keeps `ReferenceFoodRepository`'s quoting honest: a term reaches the
+         * FTS5 `MATCH` string inside quotes the repository adds, and FTS5 answers a
+         * replacement that closes them early by parsing a different query rather than
+         * by failing.
+         */
+        private fun String.words(): List<String> =
+            lowercase().split(NOT_A_WORD).filter { it.isNotEmpty() }
 
         private fun List<String>.startsAt(at: Int, phrase: List<String>): Boolean =
             at + phrase.size <= size && phrase.indices.all { this[at + it] == phrase[it] }
