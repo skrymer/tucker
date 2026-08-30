@@ -210,7 +210,18 @@ test('matching a queued food from the picker moves the coverage figure', async (
 
   await page.getByRole('button', { name: '1 food to match' }).click()
   await page.getByRole('button', { name: 'Match Chicken breast' }).click()
-  await page
+
+  // On Mobile Chrome this sheet is a Reka Dialog bottom sheet (ADR 0017), a
+  // different form factor with its own max height — and the licence paragraph
+  // shares its scroll container with the candidates. Both have to be reachable:
+  // the attribution is an obligation, and a candidate you cannot get to is a
+  // picker that does not work.
+  const sheet = page.getByRole('dialog')
+  await expect(
+    sheet.getByText(/Based on the Australian Food Composition Database/),
+  ).toBeVisible()
+
+  await sheet
     .getByRole('button', { name: /Chicken, breast, lean flesh, raw/ })
     .click()
 

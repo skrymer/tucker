@@ -219,6 +219,15 @@ const willNotGuess = computed(
                 <span class="min-w-0 font-medium text-default">
                   {{ candidate.name }}
                 </span>
+                <!-- Visible, not only announced: the sheet stays open until the
+                   server answers, so a tap that changes nothing on screen reads
+                   as a tap that missed (ADR 0007). -->
+                <UIcon
+                  v-if="matching && claiming === candidate.id"
+                  name="i-lucide-loader-circle"
+                  aria-label="Matching"
+                  class="size-4 shrink-0 animate-spin text-muted"
+                />
                 <!-- Offered, not applied: nothing is matched silently, because a
                    wrong match reports confident figures for food that was never
                    eaten (ADR 0027). -->

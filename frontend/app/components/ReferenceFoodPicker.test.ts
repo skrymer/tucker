@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { registerEndpoint, renderSuspended } from '@nuxt/test-utils/runtime'
 import { getQuery, setResponseStatus } from 'h3'
-import { screen } from '@testing-library/vue'
+import { screen, within } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import {
   referenceFoodCandidate,
@@ -162,6 +162,13 @@ describe('ReferenceFoodPicker', () => {
     const rows = screen.getAllByRole('button', { name: /Chicken, breast/ })
     expect(rows[0]).toHaveAttribute('aria-busy', 'true')
     expect(rows[1]).toHaveAttribute('aria-busy', 'false')
+    // And it is visible, not only announced: a tap that changes nothing on
+    // screen reads as a tap that missed, and the sheet stays open until the
+    // server answers (ADR 0007).
+    expect(within(rows[0]!).getByLabelText('Matching')).toBeVisible()
+    expect(
+      within(rows[1]!).queryByLabelText('Matching'),
+    ).not.toBeInTheDocument()
   })
 
   it('reports the results busy while a search is still in flight', async () => {
