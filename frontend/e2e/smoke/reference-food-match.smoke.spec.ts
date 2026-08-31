@@ -44,7 +44,9 @@ test('a matched Food moves the coverage figure and names its borrow in the catal
     ),
   ).toBeVisible()
 
-  await section.getByRole('button', { name: '1 food to match' }).click()
+  await section
+    .getByRole('button', { name: '1 food is not matched yet' })
+    .click()
   await section.getByRole('button', { name: 'Match Tasty cheese' }).click()
 
   // The picker opens already searching for the Food's own name, and the real
@@ -86,6 +88,6 @@ test('a matched Food moves the coverage figure and names its borrow in the catal
 
   await goto('/review', { waitUntil: 'hydration' })
   await expect(
-    section.getByRole('button', { name: '1 food to match' }),
+    section.getByRole('button', { name: '1 food is not matched yet' }),
   ).toBeVisible()
 })

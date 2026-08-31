@@ -1,6 +1,7 @@
 package com.tucker.domain
 
 import org.junit.jupiter.api.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
@@ -12,6 +13,19 @@ import kotlin.test.assertTrue
 class MicronutrientsTest {
 
     private val everything = Micronutrient.entries.associateWith { 1.0 }
+
+    @Test
+    fun `an amount is scaled from the per-100 g figure by the grams eaten`() {
+        val profile = Micronutrients(everything + (Micronutrient.IRON to 2.5))
+
+        assertEquals(
+            17.5,
+            profile.amountFor(Micronutrient.IRON, grams = 700.0),
+            "700 g of a food reporting 2.5 mg per 100 g supplies 17.5 mg — the " +
+                "micronutrient counterpart of Nutrition.proteinFor, on the type that " +
+                "owns the per-100 g unit rather than in a caller doing its own division",
+        )
+    }
 
     @Test
     fun `a profile missing a nutrient is refused, and says which`() {

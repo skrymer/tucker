@@ -5,6 +5,7 @@ import {
   localDaysAgo,
   localToday,
   localYesterday,
+  trailingWindow,
 } from './date'
 
 describe('formatDateFromISO', () => {
@@ -76,5 +77,35 @@ describe('daysInWindow', () => {
     // timezone observes DST — Brisbane and CI's UTC do not — so it is a guard
     // against the day one does, not evidence the local-midnight form was tried.
     expect(daysInWindow('2026-03-26', '2026-04-01')).toBe(7)
+  })
+})
+
+describe('trailingWindow', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('ends on the local today and spans the days asked for, both bounds counted', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(2026, 7, 27, 8, 30))
+
+    expect(trailingWindow(7)).toEqual({ from: '2026-08-21', to: '2026-08-27' })
+    expect(daysInWindow('2026-08-21', '2026-08-27')).toBe(7)
+  })
+
+  it('is a single day when one day is asked for', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(2026, 7, 27, 8, 30))
+
+    expect(trailingWindow(1)).toEqual({ from: '2026-08-27', to: '2026-08-27' })
+  })
+
+  it('reads the clock once, so a call across midnight cannot widen the window', () => {
+    vi.useFakeTimers()
+    // One millisecond before midnight: a second read of the clock inside would
+    // land on the next day and hand back a window a day wider than was asked for.
+    vi.setSystemTime(new Date(2026, 7, 27, 23, 59, 59, 999))
+
+    expect(trailingWindow(7)).toEqual({ from: '2026-08-21', to: '2026-08-27' })
   })
 })

@@ -256,15 +256,26 @@ stays reachable on an API-supplied value.
 
 ---
 
-### `components/IntakeBreakdownSection.vue` — 65 of 65, **all reported `no cov`**
+### `components/IntakeBreakdownSection.vue` — `no cov` alone, 6 of 54 in company
 
-**StrykerJS attributes none of this component's tests to it.** Every mutant lands in
-`# no cov`, so the engine reports a 0% score for a file whose 18 tests pass and whose
-legend rows, expander, coverage caption and ring feed are all asserted. Scoped to the
-file alone the dry run refuses outright — _"Vitest failed to find test files related to
-mutated files"_ — while `pnpm exec vitest related app/components/IntakeBreakdownSection.vue`
+**Scoped to this file alone, StrykerJS attributes none of its tests to it.** Every
+mutant lands in `# no cov`, so the engine reports a 0% score for a file whose 18 tests
+pass and whose legend rows, expander, coverage caption and ring feed are all asserted;
+the dry run refuses outright — _"Vitest failed to find test files related to mutated
+files"_ — while `pnpm exec vitest related app/components/IntakeBreakdownSection.vue`
 finds the spec and runs all 18. Do not read the 0% as a coverage gap, and do not "fix"
 it by adding tests that already exist.
+
+**In a multi-file scope it does get scored** (88.89%, 48 killed / 6 survived), so the
+`no cov` above is an artefact of the scope, not of the file. The six are all in the
+ring readout and the period tabs, and none produces a wrong figure: the `value: 'today'`
+tab literal and `name === null` readout guard are **killed by an out-of-scope layer**
+(`e2e/intake-breakdown.spec.ts` switches periods and hovers arcs); the two
+`OptionalChaining` removals and the tooltip slot's `return ''` are **equivalent** — the
+box is made invisible in `main.css`, so what the slot returns is unobservable, and
+neither optional chain has a null case a test can produce; and the `watch` losing its
+`to` source is **equivalent** because `trailingWindow` moves both bounds together, so
+watching `from` alone still fires the collapse.
 
 **Settled by hand-mutation instead**, which is the verdict this case is for. Each edit
 below was applied to the source and the spec re-run; six of eight went red:
@@ -636,6 +647,36 @@ which holds the actual gating rules, is a deep module with its own test and is f
 killed.
 
 **`CheckOutcome$Incomplete.getSource` (1)** — DTO accessor, as above.
+
+### Micronutrient Intake — 5 of 145, every one a false survivor
+
+Swept scoped to the F15 figures slice. **All five survivors are the tool failing to
+run a test that kills them**, each settled by hand-mutation, and the pattern is worth
+knowing: a scoped sweep whose classes are covered by `@SpringBootTest` tests selects
+badly, so `succeedingTests` comes back empty on a mutant the suite would catch.
+
+| Hand mutation                                            | Tests it fails |
+| -------------------------------------------------------- | -------------- |
+| `NutrientReferenceValues.forBody` `fromAge <= age` → `<`  | 2              |
+| `ReferenceFoodRepository.findByIds` → always `emptyMap()` | 8              |
+| `Micronutrients.<init>` `it >= 0` → `it <= 0`             | 6+             |
+| `namesOf`/`search`/`namesTheWholeFood` (mutated together) | 27             |
+
+Do not write tests for these — `NutrientReferenceValuesTest` and
+`MicronutrientIntakeApiTest` already pin them. Read an empty `succeedingTests` on this
+scope as "unproven", not as "unasserted".
+
+**The one real gap the sweep did find** was `MicronutrientIntakeResponse.hasReferenceIntakes`,
+surviving both `BooleanTrueReturnVals` and `BooleanFalseReturnVals`: the domain asserted
+the flag, nothing asserted it reached the wire, so the controller could have shipped
+either constant and only the browser would have known. Closed by
+`MicronutrientIntakeApiTest.the wire says whether there was a body to read the window against`,
+which reads the same poorly-matched window with and without a Profile.
+
+**4 `NO_COVERAGE`** — `Micronutrients.getAmounts`, `Micronutrients$Companion.getALL`,
+`ReferenceFood.getPublicFoodKey`, `ReferenceFoodRepository$Companion.getRANKED`. Data-class
+accessors and constants, the categories the section above and "What the score still cannot
+ask for" already settle.
 
 ### Noise removed at the source
 

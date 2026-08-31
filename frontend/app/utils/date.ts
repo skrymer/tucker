@@ -50,6 +50,19 @@ export function localYesterday(): string {
 }
 
 /**
+ * The trailing window of [days], ending on the user's local today (ADR 0014).
+ *
+ * Resolved at call time rather than once at setup: a page left open over midnight
+ * whose Retry is tapped at 00:03 must ask about the day it is now. The clock is
+ * read once inside, because two reads either side of midnight would hand back a
+ * window a day wider than was asked for.
+ */
+export function trailingWindow(days: number): { from: string; to: string } {
+  const to = localToday()
+  return { from: localDaysAgo(days - 1, to), to }
+}
+
+/**
  * How many days a window spans, both bounds inclusive — the same day is 1.
  *
  * Measured between UTC midnights rather than local ones: a local span crossing a

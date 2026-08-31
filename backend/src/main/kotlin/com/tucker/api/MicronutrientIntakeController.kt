@@ -1,10 +1,17 @@
 package com.tucker.api
 
-import com.tucker.domain.IntakeBreakdown
+import com.tucker.domain.BorrowedFood
+import com.tucker.domain.IntakeLimitKind
+import com.tucker.domain.Micronutrient
+import com.tucker.domain.MicronutrientClaim
 import com.tucker.domain.MicronutrientIntake
+import com.tucker.domain.MicronutrientRow
 import com.tucker.domain.UnmatchedFood
 import com.tucker.persistence.EntryRepository
 import com.tucker.persistence.FoodRepository
+import com.tucker.persistence.NutrientReferenceValueRepository
+import com.tucker.persistence.ProfileRepository
+import com.tucker.persistence.ReferenceFoodRepository
 import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.bind.annotation.GetMapping
@@ -17,15 +24,42 @@ import java.time.LocalDate
 data class UnmatchedFoodResponse(
     val foodId: Long,
     val name: String,
-    val calories: Double,
     /** The Food's calories over [MicronutrientIntakeResponse.totalCalories], 0–1. */
     val share: Double,
 )
 
+/** The line a nutrient is not to cross, and which published figure it is. */
+data class IntakeLimitResponse(
+    val amount: Double,
+    /** The domain enum, so the spec lists the values (see [FoodResponse.kind]). */
+    val kind: IntakeLimitKind,
+)
+
 /**
- * A **Micronutrient Intake** on the wire, in its slice-1 shape (ADR 0027): how much
- * of the window could contribute a figure, and what is left to match. The figures
- * themselves are issue #279.
+ * One nutrient's window on the wire: a lower-bound daily average, the published
+ * figures it was read against, and what that lets Tucker claim.
+ *
+ * **A row Tucker can make no claim about carries no figures**, only its name and
+ * that fact. A shortfall is not published, so there is nothing here to draw one
+ * from — the rule is a property of the response rather than a convention every
+ * client has to keep, which is what ADR 0002 asks of a rule this load-bearing.
+ */
+data class MicronutrientRowResponse(
+    /** The domain enums, so the spec lists the values (see [FoodResponse.kind]). */
+    val nutrient: Micronutrient,
+    val label: String,
+    val unit: String,
+    val amount: Double?,
+    val recommended: Double?,
+    val limit: IntakeLimitResponse?,
+    val claim: MicronutrientClaim,
+)
+
+/**
+ * A **Micronutrient Intake** on the wire (ADR 0027): what the window's matched food
+ * supplied per nutrient, how much of it could supply anything at all, and what is
+ * left to match. Nothing is stored per window — it is a read, like an Intake
+ * Breakdown.
  *
  * [coverage] is stated always and never scaled up — the unaccounted share is
  * disproportionately restaurant and packaged food, so filling it in would read as a
@@ -36,18 +70,49 @@ data class MicronutrientIntakeResponse(
     val from: LocalDate,
     val to: LocalDate,
     val totalCalories: Double,
+    /** Days of the window holding an Entry — how far the claim above can be trusted. */
+    val loggedDays: Int,
     val coverage: Double,
+    /**
+     * Whether any Reference Intake resolved for this body. False until the User
+     * has a **Profile**, and then no nutrient can earn a claim however much of
+     * the window was matched — which is advice about the Profile, not about
+     * matching more food.
+     */
+    val hasReferenceIntakes: Boolean,
+    val rows: List<MicronutrientRowResponse>,
     val unmatched: List<UnmatchedFoodResponse>,
 )
 
 private fun UnmatchedFood.toResponse() =
-    UnmatchedFoodResponse(foodId = foodId, name = name, calories = calories, share = share)
+    UnmatchedFoodResponse(foodId = foodId, name = name, share = share)
+
+private fun MicronutrientRow.toResponse() = MicronutrientRowResponse(
+    nutrient = nutrient,
+    // The label and the unit ride along per row rather than being a second copy of
+    // the enum in the client: 0.4 µg of iodine and 490 mg of sodium are the same
+    // number and nothing else, which is why the unit travels with the figure.
+    label = nutrient.label,
+    unit = nutrient.unit,
+    amount = amount.takeIf { canBeStated },
+    recommended = reference?.recommended.takeIf { canBeStated },
+    limit = reference?.limit
+        ?.takeIf { canBeStated }
+        ?.let { IntakeLimitResponse(it.amount, it.kind) },
+    claim = claim,
+)
+
+private val MicronutrientRow.canBeStated: Boolean
+    get() = claim != MicronutrientClaim.NOT_ENOUGH_MATCHED
 
 private fun MicronutrientIntake.toResponse() = MicronutrientIntakeResponse(
     from = from,
     to = to,
     totalCalories = totalCalories,
+    loggedDays = loggedDays,
     coverage = coverage,
+    hasReferenceIntakes = hasReferenceIntakes,
+    rows = rows.map { it.toResponse() },
     unmatched = unmatched.map { it.toResponse() },
 )
 
@@ -56,6 +121,9 @@ private fun MicronutrientIntake.toResponse() = MicronutrientIntakeResponse(
 class MicronutrientIntakeController(
     private val entries: EntryRepository,
     private val foods: FoodRepository,
+    private val referenceFoods: ReferenceFoodRepository,
+    private val referenceValues: NutrientReferenceValueRepository,
+    private val profiles: ProfileRepository,
 ) {
 
     /**
@@ -74,8 +142,14 @@ class MicronutrientIntakeController(
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) to: LocalDate,
     ): MicronutrientIntakeResponse {
         val logged = entries.findBetween(from, to)
-        val eaten = foods.foodsOf(logged)
-        val breakdown = IntakeBreakdown.of(from, to, logged, eaten.mapValues { it.value.name })
-        return MicronutrientIntake.of(breakdown, eaten).toResponse()
+        val catalog = foods.foodsOf(logged)
+        val borrowed = referenceFoods.findByIds(catalog.values.mapNotNull { it.referenceFoodId }.toSet())
+        val eaten = catalog.mapValues { (_, food) -> BorrowedFood(food, borrowed[food.referenceFoodId]) }
+        // Resolved once, at the window's END date, so a window spanning a birthday
+        // has one answer rather than a different line per day (CONTEXT.md). A User
+        // who has not set a Profile up has no body to read against, and every
+        // nutrient then earns no claim rather than being read against a guess.
+        val references = profiles.get()?.let { referenceValues.all().forBody(it, on = to) }
+        return MicronutrientIntake.of(from, to, logged, eaten, references).toResponse()
     }
 }

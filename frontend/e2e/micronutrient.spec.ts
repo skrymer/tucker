@@ -11,8 +11,10 @@ import { weeklyReview } from '../test/review-fixtures'
 import { food } from '../test/food-fixtures'
 import {
   micronutrientIntake,
+  micronutrientRow,
   referenceFoodCandidate,
   unmatchedFood,
+  unstatedMicronutrientRow,
 } from '../test/micronutrient-fixtures'
 
 /**
@@ -31,10 +33,12 @@ test('states the week’s coverage and folds what is left to match into one disc
   await mockReviewHistory(page, [])
   await mockMicronutrientIntake(page, {
     totalCalories: 12000,
+    loggedDays: 7,
+    rows: [],
     coverage: 0.62,
     unmatched: [
-      { foodId: 1, name: 'Chicken breast', calories: 3200, share: 0.27 },
-      { foodId: 2, name: 'Jasmine rice', calories: 1300, share: 0.11 },
+      { foodId: 1, name: 'Chicken breast', share: 0.27 },
+      { foodId: 2, name: 'Jasmine rice', share: 0.11 },
     ],
   })
 
@@ -46,11 +50,70 @@ test('states the week’s coverage and folds what is left to match into one disc
     ),
   ).toBeVisible()
   await expect(
-    page.getByRole('button', { name: '2 foods to match' }),
+    page.getByRole('button', { name: '2 foods are not matched yet' }),
   ).toBeVisible()
   await expect(
     page.getByRole('button', { name: 'Match Chicken breast' }),
   ).toBeHidden()
+})
+
+test('reads the week per nutrient, tiling what it can claim and only naming what it cannot', async ({
+  page,
+  goto,
+}) => {
+  await mockNoActiveGoal(page)
+  await mockIntakeBreakdown(page)
+  await mockReviewHistory(page, [])
+  await mockMicronutrientIntake(page, {
+    totalCalories: 12000,
+    loggedDays: 5,
+    coverage: 0.62,
+    rows: [
+      micronutrientRow({
+        nutrient: 'SODIUM',
+        label: 'Sodium',
+        unit: 'mg',
+        amount: 2430,
+        recommended: null,
+        limit: { amount: 2000, kind: 'SUGGESTED_DIETARY_TARGET' },
+        claim: 'OVER_LIMIT',
+      }),
+      micronutrientRow({
+        nutrient: 'IRON',
+        label: 'Iron',
+        unit: 'mg',
+        amount: 21.4,
+        recommended: 18,
+        limit: { amount: 45, kind: 'UPPER_LEVEL' },
+        claim: 'CLEARS_REFERENCE',
+      }),
+      unstatedMicronutrientRow({
+        nutrient: 'VITAMIN_B12',
+        label: 'Vitamin B12',
+        unit: 'µg',
+      }),
+    ],
+    unmatched: [{ foodId: 1, name: 'Chicken breast', share: 0.27 }],
+  })
+
+  await goto('/review', { waitUntil: 'hydration' })
+
+  const section = page.getByRole('region', { name: 'Vitamins and minerals' })
+  // The seven-day claim is discounted by the log behind it (ADR 0026).
+  await expect(section.getByText('5 of 7 days logged')).toBeVisible()
+  await expect(section.getByRole('group', { name: 'Sodium' })).toContainText(
+    'Suggested target 2000 mg',
+  )
+  await expect(section.getByRole('group', { name: 'Iron' })).toContainText(
+    '≥ 21 mg',
+  )
+  // A shortfall is not published, so it is not drawn: the name is there and the
+  // 0.30 µg behind it is nowhere on the page (ADR 0027).
+  await expect(section.getByText(/Not enough matched to say/)).toContainText(
+    'Vitamin B12',
+  )
+  await expect(section.getByRole('group', { name: 'Vitamin B12' })).toBeHidden()
+  await expect(section.getByText('0.30 µg')).toBeHidden()
 })
 
 test('with Calorie Tracking off the section is absent and never asked for', async ({
@@ -185,18 +248,17 @@ test('matching a queued food from the picker moves the coverage figure', async (
         ? micronutrientIntake({
             totalCalories: 12000,
             coverage: 1,
+            rows: [
+              micronutrientRow({ label: 'Iron', claim: 'CLEARS_REFERENCE' }),
+            ],
             unmatched: [],
           })
         : micronutrientIntake({
             totalCalories: 12000,
             coverage: 0,
+            rows: [],
             unmatched: [
-              unmatchedFood({
-                foodId: 1,
-                name: 'Chicken breast',
-                calories: 12000,
-                share: 1,
-              }),
+              unmatchedFood({ foodId: 1, name: 'Chicken breast', share: 1 }),
             ],
           }),
     }),
@@ -208,7 +270,7 @@ test('matching a queued food from the picker moves the coverage figure', async (
 
   await goto('/review', { waitUntil: 'hydration' })
 
-  await page.getByRole('button', { name: '1 food to match' }).click()
+  await page.getByRole('button', { name: '1 food is not matched yet' }).click()
   await page.getByRole('button', { name: 'Match Chicken breast' }).click()
 
   // On Mobile Chrome this sheet is a Reka Dialog bottom sheet (ADR 0017), a
@@ -230,9 +292,10 @@ test('matching a queued food from the picker moves the coverage figure', async (
       "100% of the last 7 days' calories came from food Tucker can read vitamins and minerals for.",
     ),
   ).toBeVisible()
+  await expect(page.getByText(/Nothing left to match/)).toBeVisible()
+  // Every calorie is covered now, so there is no rest for estimates and recipes
+  // to account for — and a card reading 100% must not claim otherwise.
   await expect(
-    page.getByText(
-      /Nothing left to match\. The rest came from meals you estimated and from recipes/,
-    ),
-  ).toBeVisible()
+    page.getByText(/The rest came from meals you estimated/),
+  ).toBeHidden()
 })

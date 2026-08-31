@@ -4005,10 +4005,33 @@
           }
         }
       },
+      "IntakeLimitResponse": {
+        "required": [
+          "amount",
+          "kind"
+        ],
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "number",
+            "format": "double"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "UPPER_LEVEL",
+              "SUGGESTED_DIETARY_TARGET"
+            ]
+          }
+        }
+      },
       "MicronutrientIntakeResponse": {
         "required": [
           "coverage",
           "from",
+          "hasReferenceIntakes",
+          "loggedDays",
+          "rows",
           "to",
           "totalCalories",
           "unmatched"
@@ -4027,9 +4050,22 @@
             "type": "number",
             "format": "double"
           },
+          "loggedDays": {
+            "type": "integer",
+            "format": "int32"
+          },
           "coverage": {
             "type": "number",
             "format": "double"
+          },
+          "hasReferenceIntakes": {
+            "type": "boolean"
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MicronutrientRowResponse"
+            }
           },
           "unmatched": {
             "type": "array",
@@ -4039,9 +4075,75 @@
           }
         }
       },
+      "MicronutrientRowResponse": {
+        "required": [
+          "claim",
+          "label",
+          "nutrient",
+          "unit"
+        ],
+        "type": "object",
+        "properties": {
+          "nutrient": {
+            "type": "string",
+            "enum": [
+              "FIBRE",
+              "CALCIUM",
+              "IODINE",
+              "IRON",
+              "MAGNESIUM",
+              "POTASSIUM",
+              "SELENIUM",
+              "SODIUM",
+              "ZINC",
+              "VITAMIN_A",
+              "THIAMIN",
+              "RIBOFLAVIN",
+              "NIACIN",
+              "VITAMIN_B6",
+              "VITAMIN_B12",
+              "FOLATE",
+              "VITAMIN_C",
+              "VITAMIN_D",
+              "VITAMIN_E"
+            ]
+          },
+          "label": {
+            "type": "string"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "recommended": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "limit": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/IntakeLimitResponse"
+              }
+            ]
+          },
+          "claim": {
+            "type": "string",
+            "enum": [
+              "OVER_LIMIT",
+              "CLEARS_REFERENCE",
+              "NOT_ENOUGH_MATCHED"
+            ]
+          }
+        }
+      },
       "UnmatchedFoodResponse": {
         "required": [
-          "calories",
           "foodId",
           "name",
           "share"
@@ -4054,10 +4156,6 @@
           },
           "name": {
             "type": "string"
-          },
-          "calories": {
-            "type": "number",
-            "format": "double"
           },
           "share": {
             "type": "number",

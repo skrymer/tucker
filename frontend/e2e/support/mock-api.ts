@@ -1,4 +1,5 @@
 import type { Page } from '@playwright/test'
+import { micronutrientIntake } from '../../test/micronutrient-fixtures'
 
 type Json = Record<string, unknown>
 
@@ -79,29 +80,37 @@ export async function mockIntakeBreakdownByWindow(
 }
 
 /** A week with nothing logged — what a spec that is not about matching wants. */
-const emptyMicronutrientIntake: Json = {
-  from: '2026-08-21',
-  to: '2026-08-27',
+const emptyMicronutrientIntake: MicronutrientIntakeOverrides = {
   totalCalories: 0,
+  loggedDays: 0,
   coverage: 0,
+  rows: [],
   unmatched: [],
 }
+
+type MicronutrientIntakeOverrides = Parameters<typeof micronutrientIntake>[0]
 
 /**
  * Stub `GET /api/micronutrient-intake`; defaults to a week with nothing logged.
  * Every `/review` spec needs it — the section loads on that page whether or not
  * the spec is about it.
+ *
+ * Overrides are completed by the response fixture rather than sent as given, so
+ * a spec cannot omit a field the API always sends. `hasReferenceIntakes` is why
+ * that matters: absent, it reads as a User with no **Profile**, and the card
+ * draws that advice instead of the nutrients the spec is asserting on.
  */
 export async function mockMicronutrientIntake(
   page: Page,
-  intake: Json = emptyMicronutrientIntake,
+  intake: MicronutrientIntakeOverrides = emptyMicronutrientIntake,
 ) {
+  const body = micronutrientIntake(intake)
   await page.route('**/api/micronutrient-intake**', (route) => {
     const params = new URL(route.request().url()).searchParams
     // The window is echoed back as the real endpoint does.
     return route.fulfill({
       json: {
-        ...intake,
+        ...body,
         from: params.get('from') ?? '',
         to: params.get('to') ?? '',
       },

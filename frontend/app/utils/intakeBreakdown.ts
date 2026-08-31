@@ -6,20 +6,12 @@ export type BreakdownPeriod = 'today' | 'week'
 /** How many days each period covers, counted inclusively. */
 const PERIOD_DAYS: Record<BreakdownPeriod, number> = { today: 1, week: 7 }
 
-/**
- * The window a period asks about, ending on the user's local today (ADR 0014).
- *
- * Resolved at call time rather than once at setup: a page left open over midnight
- * whose Retry is tapped at 00:03 must ask about the day it is now.
- */
+/** The window a period asks about, ending on the user's local today (ADR 0014). */
 export function breakdownWindow(period: BreakdownPeriod): {
   from: string
   to: string
 } {
-  // The clock is read once: two reads either side of midnight would hand back a
-  // window a day wider than the period asks for.
-  const to = localToday()
-  return { from: localDaysAgo(PERIOD_DAYS[period] - 1, to), to }
+  return trailingWindow(PERIOD_DAYS[period])
 }
 
 /** One slice of an Intake Breakdown as the backend ranked it. */
