@@ -1,4 +1,5 @@
 <script setup lang="ts">
+// Stryker disable next-line all: a compiler macro must stay a top-level statement
 defineProps<{ date: string; open: boolean }>()
 
 const emit = defineEmits<{ logged: []; 'update:open': [boolean] }>()

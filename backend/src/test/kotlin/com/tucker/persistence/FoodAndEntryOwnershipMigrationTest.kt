@@ -98,9 +98,10 @@ class FoodAndEntryOwnershipMigrationTest {
 
         connect(db).use { connection ->
             assertEquals(
-                listOf("user_id" to "user"),
-                connection.foreignKeysOf("food"),
-                "`food.user_id` must be a foreign key to `user`, not a loose integer",
+                listOf("reference_food_id" to "reference_food", "user_id" to "user"),
+                connection.foreignKeysOf("food").sortedBy { (from, _) -> from },
+                "a Food must name both the User who owns it and the Reference Food it " +
+                    "borrows micronutrients from, neither as a loose integer",
             )
             assertEquals(
                 listOf("food_id" to "food", "user_id" to "user"),
@@ -113,28 +114,32 @@ class FoodAndEntryOwnershipMigrationTest {
                 "an ingredient line must still name both its Recipe and the Food it weighs in",
             )
 
-            // An edge can survive a rebuild while what it *does* changes, and every edge into
-            // `food` governs a rule a shipped slice depends on. Read all four, so none is
-            // covered only by the graph above — which stays correct under every swap.
+            // An edge can survive a rebuild while what it *does* changes, and every edge
+            // touching `food` governs a rule a shipped slice depends on. Read all five, so
+            // none is covered only by the graph above — which stays correct under every swap.
             assertEquals(
                 mapOf(
                     "recipe_ingredient.recipe_id" to "CASCADE",
                     "recipe_ingredient.ingredient_food_id" to "NO ACTION",
                     "entry.food_id" to "NO ACTION",
                     "entry.user_id" to "NO ACTION",
+                    "food.reference_food_id" to "NO ACTION",
                 ),
                 listOf(
                     "recipe_ingredient" to "recipe_id",
                     "recipe_ingredient" to "ingredient_food_id",
                     "entry" to "food_id",
                     "entry" to "user_id",
+                    "food" to "reference_food_id",
                 ).associate { (table, column) ->
                     "$table.$column" to connection.onDeleteActionOf(table, column)
                 },
                 "deleting a Recipe takes its own ingredient lines with it, and nothing else " +
                     "cascades: a Food some Recipe weighs in cannot be deleted (issue #145), " +
                     "and neither can one an Entry recorded — a cascade on `entry.food_id` " +
-                    "would delete every Entry that recorded eating it",
+                    "would delete every Entry that recorded eating it. A borrowed Reference " +
+                    "Food is the same rule pointing the other way: a cascade there would " +
+                    "delete a User's own Food because a later release dropped a generic",
             )
         }
     }

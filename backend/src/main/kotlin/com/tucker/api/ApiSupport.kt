@@ -1,6 +1,7 @@
 package com.tucker.api
 
 import com.tucker.domain.Entry
+import com.tucker.domain.Food
 import com.tucker.domain.WeighedEntry
 import com.tucker.persistence.FoodRepository
 
@@ -29,11 +30,16 @@ internal fun providersUnreachable(barcode: String) =
     ServiceUnavailableException("could not reach a nutrition source for barcode $barcode")
 
 /**
- * Every weighed Entry's Food name, resolved in one query. Shared by the surfaces
- * that name a Food beside the Entry that ate it, so "one query, not one per Entry"
- * is stated once. An Entry's Food always exists — deleting a referenced Food is
- * refused — so a lookup that misses is a bug, and the caller decides how loud.
+ * Every Food the weighed Entries ate, resolved in one query. Shared by the
+ * surfaces that reach past an Entry to the Food behind it, so "one query, not one
+ * per Entry" is stated once. An Entry's Food always exists — deleting a
+ * referenced Food is refused — so a lookup that misses is a bug, and the caller
+ * decides how loud.
  */
-internal fun FoodRepository.namesOf(entries: List<Entry>): Map<Long, String> =
+internal fun FoodRepository.foodsOf(entries: List<Entry>): Map<Long, Food> =
     findByIds(entries.filterIsInstance<WeighedEntry>().map { it.foodId }.distinct())
-        .associate { persistedId(it.id) to it.name }
+        .associateBy { persistedId(it.id) }
+
+/** [foodsOf] narrowed to what most callers want: the name to print beside an Entry. */
+internal fun FoodRepository.namesOf(entries: List<Entry>): Map<Long, String> =
+    foodsOf(entries).mapValues { (_, food) -> food.name }

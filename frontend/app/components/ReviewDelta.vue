@@ -1,4 +1,5 @@
 <script setup lang="ts">
+// Stryker disable all: a compiler macro's arguments are hoisted out of setup()
 const props = withDefaults(
   defineProps<{
     /** Signed change vs the previous review; null when there is no previous. */
@@ -10,6 +11,7 @@ const props = withDefaults(
   }>(),
   { decimals: 0, placeholder: false },
 )
+// Stryker restore all
 
 // A delta that rounds to zero reads as "no change", same as no previous review:
 // neither sprouts an arrow.

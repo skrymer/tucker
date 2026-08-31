@@ -3,6 +3,7 @@ import type { components } from '#open-fetch-schemas/api'
 
 type FoodResponse = components['schemas']['FoodResponse']
 
+// Stryker disable next-line all: a compiler macro must stay a top-level statement
 defineProps<{ food: FoodResponse | null }>()
 
 const emit = defineEmits<{

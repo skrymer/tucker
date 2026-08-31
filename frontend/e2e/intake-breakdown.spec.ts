@@ -3,6 +3,7 @@ import {
   mockIntakeBreakdown,
   mockIntakeBreakdownByWindow,
   mockIntakeBreakdownError,
+  mockMicronutrientIntake,
   mockNoActiveGoal,
   mockProfile,
   mockReviewHistory,
@@ -142,6 +143,9 @@ test.describe('with Calorie Tracking on', () => {
     await mockProfile(page, TRACKING)
     await mockNoActiveGoal(page)
     await mockReviewHistory(page, HISTORY)
+    // The Vitamins and minerals section loads on this page too, and an unmocked
+    // read would put a second Retry on it and make every one below ambiguous.
+    await mockMicronutrientIntake(page)
   })
 
   // The snapshot is the assertion that the ring carries no identity of its own:

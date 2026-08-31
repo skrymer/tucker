@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { Matchable } from '~/components/ReferenceFoodPicker.vue'
+
 // The Weekly Review ledger: the history of the adaptive engine's recomputes,
 // newest-first, plus a manual "run review now" trigger. Reuses the existing
 // per-aggregate endpoints — no composite UI endpoint (ADR 0002).
@@ -56,6 +58,30 @@ const {
   load: refreshBreakdown,
 } = useIntakeBreakdown()
 
+/**
+ * How much of the week's food can say anything about its vitamins and minerals,
+ * and what is left to match (ADR 0027). The trailing seven days and nothing else
+ * — there is no other window in scope — and gated on Calorie Tracking for the
+ * breakdown's reason: it reads a log Tucker has agreed to stop asking for.
+ */
+function useMicronutrientIntake() {
+  const { data, error, pending, load } = useOptionalFetch((signal) =>
+    // Derived per load rather than captured at setup, like the breakdown's
+    // window: a page left open over midnight must ask about the week it is now.
+    $api('/api/micronutrient-intake', {
+      query: breakdownWindow('week'),
+      signal,
+    }),
+  )
+  return { intake: data, error, pending, load }
+}
+const {
+  intake: micronutrients,
+  error: micronutrientsError,
+  pending: micronutrientsPending,
+  load: refreshMicronutrients,
+} = useMicronutrientIntake()
+
 // `await trackingSettled()` before reading the setting, never the bare ref: a
 // *setup* reading it has no guarantee the navigation's Profile read has landed
 // (AppNav.vue), and the default would ask a weight-only User's browser for a
@@ -65,8 +91,23 @@ const {
 await trackingSettled()
 await Promise.all([
   refreshGoalProgress(),
-  ...(tracksCalories.value ? [refreshBreakdown()] : []),
+  ...(tracksCalories.value
+    ? [refreshBreakdown(), refreshMicronutrients()]
+    : []),
 ])
+
+/**
+ * The Food whose borrow is being claimed — non-null opens the picker. The queue
+ * is the one way in (ADR 0027), so what arrives here is always unmatched and
+ * carries no borrow to take back.
+ */
+const foodToMatch = ref<Matchable | null>(null)
+const {
+  claim: claimMatch,
+  clear: clearMatch,
+  matching,
+  unmatching,
+} = useReferenceFoodMatch(foodToMatch, refreshMicronutrients)
 
 const hasReviews = computed(() => (reviews.value?.length ?? 0) > 0)
 
@@ -124,6 +165,31 @@ const { pending, execute: runReview } = useApiMutation(
         :pending="breakdownPending"
       />
     </LoadErrorState>
+
+    <!-- Between the breakdown and the ledger, and gated in setup by the same
+         rule: with Calorie Tracking off nothing was fetched, so there is neither
+         an intake to render nor an error to report. -->
+    <LoadErrorState
+      :error="micronutrientsError"
+      title="Couldn't load your vitamins and minerals"
+      @retry="refreshMicronutrients"
+    >
+      <MicronutrientSection
+        v-if="micronutrients"
+        :intake="micronutrients"
+        :pending="micronutrientsPending"
+        @match="foodToMatch = { id: $event.foodId, name: $event.name }"
+      />
+    </LoadErrorState>
+
+    <ReferenceFoodPicker
+      :food="foodToMatch"
+      :matching="matching"
+      :unmatching="unmatching"
+      @match="claimMatch"
+      @unmatch="clearMatch"
+      @close="foodToMatch = null"
+    />
 
     <LoadErrorState
       :error="reviewsError"

@@ -5,6 +5,15 @@ type FoodResponse = components['schemas']['FoodResponse']
 
 const { data: foods, error: foodsError, refresh } = await useApi('/api/foods')
 
+// Gated explicitly on the setting, never on whether a row happens to hold a
+// match: a weight-only User who matched foods before turning tracking off would
+// otherwise keep the whole borrow surface (ADR 0027). Awaited here for the
+// reason `/review` awaits it — a *setup* has no guarantee the navigation's
+// Profile read has landed (AppNav.vue), and it joins that read rather than
+// issuing a second (useCalorieTracking).
+const { tracksCalories, ready: trackingSettled } = useCalorieTracking()
+await trackingSettled()
+
 const open = ref(false)
 const selectedFood = ref<FoodResponse | null>(null)
 // The recipe whose row's view button was tapped — non-null opens the read-only
@@ -181,6 +190,19 @@ const { execute: deleteFood } = useApiMutation(
   },
 )
 
+/**
+ * Changing or clearing what a Food borrows its micronutrients from. The queue on
+ * `/review` is the one way *into* a match (ADR 0027), and it stops listing a Food
+ * that has one — so the way back out lives here, beside the subline naming it.
+ */
+const foodToMatch = ref<FoodResponse | null>(null)
+const {
+  claim: claimMatch,
+  clear: clearMatch,
+  matching,
+  unmatching,
+} = useReferenceFoodMatch(foodToMatch, refresh)
+
 function handleDeleteConfirm() {
   const food = selectedFood.value
   if (food) deleteFood(food)
@@ -213,9 +235,11 @@ function handleDeleteConfirm() {
       <FoodList
         v-if="foods && foods.length > 0"
         :foods="foods"
+        :tracks-calories="tracksCalories"
         @log="foodToLog = $event"
         @delete="selectedFood = $event"
         @view="recipeToView = $event"
+        @match="foodToMatch = $event"
       />
       <FoodEmptyState v-else @add="open = true" />
     </LoadErrorState>
@@ -258,6 +282,15 @@ function handleDeleteConfirm() {
       :food="selectedFood"
       @cancel="selectedFood = null"
       @confirm="handleDeleteConfirm"
+    />
+
+    <ReferenceFoodPicker
+      :food="foodToMatch"
+      :matching="matching"
+      :unmatching="unmatching"
+      @match="claimMatch"
+      @unmatch="clearMatch"
+      @close="foodToMatch = null"
     />
 
     <RecipeCompositionSheet

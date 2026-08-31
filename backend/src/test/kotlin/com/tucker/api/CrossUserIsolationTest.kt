@@ -1,6 +1,8 @@
 package com.tucker.api
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.tucker.domain.ReferenceFoodQuery
+import com.tucker.persistence.ReferenceFoodRepository
 import com.tucker.provider.OpenFoodFactsProvider
 import com.tucker.security.ACCESS_ASSERTION_HEADER
 import com.tucker.security.AccessTokens
@@ -34,10 +36,15 @@ import kotlin.test.assertTrue
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
+// One rule read as one table. Split by aggregate it would still be the same length,
+// and a reader could no longer see at a glance which endpoints the guarantee has been
+// asserted for — which is the only question this file exists to answer.
+@Suppress("LargeClass")
 class CrossUserIsolationTest {
 
     @Autowired lateinit var mockMvc: MockMvc
     @Autowired lateinit var objectMapper: ObjectMapper
+    @Autowired lateinit var referenceFoods: ReferenceFoodRepository
 
     /**
      * Stubbed with no capabilities, so no Provider takes part in a scan and a barcode
@@ -205,6 +212,70 @@ class CrossUserIsolationTest {
         mockMvc.get("/api/foods") { header(ACCESS_ASSERTION_HEADER, alice) }.andExpect {
             jsonPath("$.length()") { value(1) }
             jsonPath("$[0].name") { value("Alice's almonds") }
+        }
+    }
+
+    @Test
+    fun `a Micronutrient Intake covers only the caller's own window, and queues only their Foods`() {
+        val aliceFood = createFood(alice, "Alice's almonds")
+        logWeighed(alice, aliceFood, grams = 100.0)
+        val bobFood = createFood(bob, "Bob's oats")
+        mockMvc.put("/api/foods/$bobFood/reference-food") {
+            header(ACCESS_ASSERTION_HEADER, bob)
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"referenceFoodId":${aReferenceFood()}}"""
+        }.andExpect { status { isOk() } }
+        logWeighed(bob, bobFood, grams = 100.0)
+
+        // Alice has matched nothing, so her coverage is 0 — Bob's matched Food must not
+        // lift it, and his Food must not appear in her queue as somebody else's chore.
+        mockMvc.get("/api/micronutrient-intake") {
+            header(ACCESS_ASSERTION_HEADER, alice)
+            param("from", "$day")
+            param("to", "$day")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.coverage") { value(0.0) }
+            jsonPath("$.unmatched.length()") { value(1) }
+            jsonPath("$.unmatched[0].name") { value("Alice's almonds") }
+            jsonPath("$.unmatched[0].share") { value(1.0) }
+        }
+    }
+
+    @Test
+    fun `matching another User's Food leaves it borrowing nothing`() {
+        val almonds = createFood(alice, "Alice's almonds")
+
+        mockMvc.put("/api/foods/$almonds/reference-food") {
+            header(ACCESS_ASSERTION_HEADER, bob)
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"referenceFoodId":${aReferenceFood()}}"""
+        }.andExpect { status { isNotFound() } }
+
+        mockMvc.get("/api/foods/$almonds") { header(ACCESS_ASSERTION_HEADER, alice) }.andExpect {
+            status { isOk() }
+            jsonPath("$.referenceFoodId") { value(null) }
+        }
+    }
+
+    @Test
+    fun `unmatching another User's Food leaves the borrow they claimed`() {
+        val almonds = createFood(alice, "Alice's almonds")
+        val nut = aReferenceFood()
+        mockMvc.put("/api/foods/$almonds/reference-food") {
+            header(ACCESS_ASSERTION_HEADER, alice)
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"referenceFoodId":$nut}"""
+        }.andExpect { status { isOk() } }
+
+        // 204 rather than 404, for the reason deleting a foreign Food answers 204:
+        // unmatching is idempotent, so a foreign id has to answer as an absent one.
+        mockMvc.delete("/api/foods/$almonds/reference-food") { header(ACCESS_ASSERTION_HEADER, bob) }
+            .andExpect { status { isNoContent() } }
+
+        mockMvc.get("/api/foods/$almonds") { header(ACCESS_ASSERTION_HEADER, alice) }.andExpect {
+            status { isOk() }
+            jsonPath("$.referenceFoodId") { value(nut) }
         }
     }
 
@@ -756,6 +827,15 @@ class CrossUserIsolationTest {
         return objectMapper.readTree(json).get("id").asLong()
     }
 
+    /**
+     * Any seeded Reference Food's id. Which one is immaterial — the table is global
+     * and unowned (ADR 0021), so it is the *Food* side of a match that this suite is
+     * about, and both Users reach the same row here by design.
+     */
+    private fun aReferenceFood(): Long =
+        referenceFoods.search(ReferenceFoodQuery.of("almond", referenceFoods.synonyms()), limit = 1)
+            .first().food.id
+
     /** Create a Food owned by whoever [token] names, and return its id. */
     private fun createFood(token: String, name: String, barcode: String? = null): Long {
         return postForId(
@@ -777,6 +857,10 @@ class CrossUserIsolationTest {
             """.trimIndent(),
         )
     }
+
+    /** Log a weighed Entry owned by whoever [token] names, and return its id. */
+    private fun logWeighed(token: String, foodId: Long, grams: Double, on: LocalDate = day): Long =
+        postForId(token, "/api/entries/weighed", """{"date":"$on","foodId":$foodId,"grams":$grams}""")
 
     /** Log an estimated Entry owned by whoever [token] names, and return its id. */
     private fun logEstimated(

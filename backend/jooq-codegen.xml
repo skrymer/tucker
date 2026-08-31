@@ -8,6 +8,16 @@
         <database>
             <name>org.jooq.meta.sqlite.SQLiteDatabase</name>
             <includes>.*</includes>
+            <!--
+                The FTS5 search index over reference_food (V17) and the shadow
+                tables SQLite creates behind it. They are storage for the
+                `MATCH` queries in ReferenceFoodRepository, which are plain SQL
+                because jOOQ has no `MATCH` operator or bm25() to generate
+                against. A generated record for any of them would therefore be
+                dead code, and one for `_data` (rowid plus a BLOB of index
+                pages) would be actively misleading.
+            -->
+            <excludes>reference_food_fts.*</excludes>
             <forcedTypes>
                 <!--
                     SQLite REAL is an 8-byte IEEE double, but jOOQ's SQLite dialect maps

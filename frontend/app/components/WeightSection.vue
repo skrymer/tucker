@@ -12,6 +12,7 @@ const emit = defineEmits<{
   logged: [{ date: string; weightKg: number }]
 }>()
 
+// Stryker disable next-line all: a compiler macro's arguments are hoisted out of setup()
 const open = defineModel<boolean>('open', { default: false })
 
 // The current weight at a glance: the latest reading and its neutral delta

@@ -188,11 +188,15 @@ single day's figure is noise wearing a number's clothes. Stated as **a day's
 average** over that window, because a Reference Intake is a daily figure — a
 week's total read against a daily line clears almost every reference at once and
 means nothing.
-Vitamins and minerals **only**. Energy and the macros are excluded, and protein
-most deliberately of all: it already has a **Protein Floor** set from body weight,
-the published reference for protein is a quite different and much lower figure, and
-carrying both would have Tucker contradicting itself about the one macro it does
-target.
+Vitamins and minerals, and **dietary fibre**. Energy and the other macros are
+excluded, and protein most deliberately of all: it already has a **Protein Floor**
+set from body weight, the published reference for protein is a quite different and
+much lower figure, and carrying both would have Tucker contradicting itself about
+the one macro it does target. Fibre is the one member that is not a micronutrient,
+and it is admitted on the same test sodium passes rather than on the fact that AFCD
+reports it: the NHMRC publishes a reference for it, it is read against a **window**
+and never against a **Food**, and Tucker sets no target for it — so it stays a
+**Reference Intake** and does not become an opinion about a diet.
 **Every figure is a lower bound.** Only food that can contribute does — a
 **Weighed Entry** whose **Food** is matched to a **Reference Food**, or a
 **Recipe** through whichever of its ingredients are matched. An **Estimated Entry**

@@ -27,7 +27,12 @@ identically, because the iron line is the same number under both.
 
 The line is drawn at macros, not at "nutrients we happen to have data for". Sugar
 and saturated fat stay out because they are macros, and the rule above already
-settles Tucker's position on macros: protein alone. **Sodium is in**, and it is the
+settles Tucker's position on macros: protein alone. **Dietary fibre is in**, and it
+is the one member of the set that is not a micronutrient. It is admitted on the test
+sodium passes below, not on the fact that AFCD reports it alongside the others: the
+NHMRC publishes a reference for it, it is read against a *window* and never against
+a Food, and Tucker sets no target for it — so it stays a **Reference Intake** rather
+than becoming an opinion about a diet. **Sodium is in**, and it is the
 hardest case — it is the one nutrient here a reasonable reader will call a dietary
 position. It earns its place because the **Upper Level** is a published safety
 threshold rather than a diet opinion, and because it is read against a *window* and
@@ -172,9 +177,10 @@ SQLite:
    because *free* appears only in the other column.
 2. **A synonym map of Australian retail vernacular.** The failures are systematic,
    not random: AFCD writes `Milk, cow, fluid, regular fat`, `Cheese, cheddar`,
-   `Yoghurt, natural` where a shopper writes *full cream*, *tasty*, *Greek*. Twelve
-   rewrites fixed every one of them. It is **seeded with those twelve and grown only
-   on observed failure** — a curated list is real ongoing debt, and one that grows
+   `Yoghurt, natural` where a shopper writes *full cream*, *tasty*, *Greek*. Eleven
+   rewrites fixed every one of them — `tasty`, `greek`, `full cream`, `jasmine`,
+   `basmati`, `tinned`, `free range`, `lite`, `chook`, `roo`, `avo`. It is **seeded
+   with exactly those and grown only on observed failure** — a curated list is real ongoing debt, and one that grows
    speculatively grows without bound, but the difference between `Tasty cheese`
    working and not is most of a first impression.
 3. **Porter stemming** (`tokenize='porter unicode61'`), without which plurals return
@@ -189,11 +195,37 @@ node that [0015](0015-production-deployment-topology.md) records already OOM-kil
 a *Vite build*, and it is a second datastore with its own backup story next to a
 Litestream-replicated SQLite file. For 1,588 rows.
 
-Two residuals are accepted rather than solved: `Almonds` still ranks *Almond
-beverage* above the nut, because head-boosting backfires on a compound head that
-starts with the query word; and **`sourdough` returns zero rows in all 1,588 foods**
-— AFCD is generic staples, not a retail catalogue, which is the coverage ceiling
-above, confirmed empirically rather than assumed.
+**A suggestion is withheld rather than guessed at.** Ranking first is not the same
+as being right, so Tucker offers the top hit for a tap only when the query accounted
+for every word of that candidate's *head*. `cheddar cheese` names the whole of the
+head `Cheese` and is offered; `almond` names half of `Almond beverage`, which is a
+different food that merely starts with the word asked for, so nothing is offered and
+the picker says so and leaves the candidates listed. Withholding costs one tap on a
+listed candidate; guessing costs a week of figures for food that was never eaten,
+invisibly — the same asymmetry that makes a match a claim a human makes.
+
+That rule turns the first of two residuals from a wrong answer into no answer:
+`Almonds` still *ranks* **Almond beverage** above the nut, because head-boosting
+backfires on a compound head that starts with the query word, and the ranking is
+unfixed. What it no longer does is offer it. The rule does **not** reach a head
+**shared** by many foods — a bare `Chicken` names the whole of forty-two heads, and
+one of them is offered arbitrarily. A confidence rule with a real signal behind it
+has to be re-measured against the whole spike query set before it lands, so that is
+tracked rather than guessed at here.
+
+The second residual is accepted outright: **`sourdough` returns zero rows in all
+1,588 foods** — AFCD is generic staples, not a retail catalogue, which is the
+coverage ceiling above, confirmed empirically rather than assumed.
+
+**A candidate carries figures, and they are chosen for the set rather than for the
+candidate.** Forty near-identical names give a user nothing to choose between, so
+each row also states the three nutrients that most *separate the candidates on
+offer* — measured as how many of them a column tells apart, because AFCD reports a
+real zero constantly and a column of them separates one row while leaving the rest
+identical. Chosen for the result set so the list reads down a column, and shown as a
+text subline rather than a stat-sized tile: these describe a **Reference Food** a
+user is choosing between, never their own **Food**, which is what keeps the per-Food
+micronutrient screen out of scope.
 
 The obvious objection is the tap count — a user with sixty Foods facing sixty taps
 does none of them. That is solved by **ordering, not automation**. The match queue

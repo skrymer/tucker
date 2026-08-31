@@ -35,6 +35,8 @@ export function food(
     fatPer100g: 0,
     cookedWeightG: null,
     ingredientCount: null,
+    referenceFoodId: null,
+    referenceFoodName: null,
     ...partial,
   }
 }
