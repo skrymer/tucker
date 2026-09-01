@@ -1149,6 +1149,60 @@ null` now means two things that earn opposite messages — the same trap
     [#279](https://github.com/skrymer/tucker/issues/279) the figures,
     [#280](https://github.com/skrymer/tucker/issues/280) Recipes contribute (which
     amends ADR 0026 — see ADR 0027 for why the snapshot rule does not reach it).
+
+  Slice 2 ([#279](https://github.com/skrymer/tucker/issues/279)) — **the figures** —
+  ✅ done. V18 seeds the NHMRC **Nutrient Reference Values** by nutrient, sex and the
+  age its band opens at; a week's matched food is summed **by the grams eaten**,
+  divided by the window's days, and read against the band in force at the window's
+  **end** date. `/review` stops being a queue with a heading and states, per
+  nutrient, what the week supplied.
+  - **The figures were transcribed from the NHMRC document itself**, not from
+    memory — the 2006 publication (sodium revised 2017), read per nutrient for both
+    the recommended figure and the Upper Level. That is what turned up the finding
+    below, which no amount of reasoning from the ADR would have.
+  - **Sodium has no Upper Level, and ADR 0027 said it did.** The 2017 revision
+    withdrew it outright — an adult's reads *not determined*, because the review
+    found a linear dose-response with no breakpoint to hang one on — and set a
+    **Suggested Dietary Target** of 2,000 mg/day instead. Its other figure is an
+    Adequate Intake expressed as a *range*, which is nothing to reach. So the one
+    nutrient the ADR admits *on* its Upper Level is the one nutrient without one.
+    The row records the **kind** of line beside the amount and sodium's tile reads
+    *Suggested target*, because storing a population chronic-disease target in an
+    Upper Level column would have Tucker saying a dietary target is where harm
+    begins — the substitution ADR 0022's no-good-or-bad rule exists to refuse. The
+    claim is `OVER_LIMIT`, not the issue's `OVER_UPPER_LEVEL`, because two different
+    published figures reach it.
+  - **Ten of the nineteen carry no line at all, each for a stated reason.** Five
+    have no Upper Level published; magnesium's is *as a supplement* and potassium's
+    is explicitly not set for dietary sources; and three — vitamin A, niacin, folate
+    — publish one for a **different substance than AFCD reports** (preformed retinol
+    against retinol equivalents, nicotinic acid against niacin derived equivalents,
+    folic acid against dietary folate equivalents). An over-the-limit claim is the
+    one Tucker makes at *any* coverage, so a wrong line there is worse than none.
+    V18 says which and why per nutrient, and a migration test pins the whole map.
+  - **The decline at low coverage is "no claim survived", not a threshold.** A
+    coverage cutoff would be a second arbitrary number and — worse — would suppress
+    the over-the-limit finding that is sound at any coverage. Falling out of the
+    claims instead means a barely-matched week with 45 mg of zinc still draws that
+    tile.
+  - **Three inherited issues were settled here rather than carried.** #283: the
+    response carries `loggedDays` and the card discounts its seven-day sentence the
+    way the Intake Breakdown's caption does. #284: `MicronutrientIntake.of` refuses
+    any span but seven days — `IntakeBreakdown.of`'s move for an out-of-window Entry
+    — and the card measures its three day counts off the response's own bounds, so
+    the copy cannot drift from the rule. #285: `UnmatchedFood.calories` is cut, the
+    F14 `loggedDays` precedent, since this slice's surface still does not read it.
+  - **`BorrowedFood` exists because detekt caps a function at six parameters**, and
+    the fix was a better model rather than a suppression: a Food and the Reference
+    Food behind it are only ever read together, and as two maps they can disagree —
+    a matched Food joined to nothing reads as unmatched, which is a lower figure and
+    a longer queue with nothing saying why. The join is now checked in both
+    directions.
+  - Two smaller ones: a figure is rendered with decimals chosen by **magnitude, not
+    by unit**, so 0.3 µg of B12 reads `0.30 µg` and never `0 µg` — the rule
+    `CONTEXT.md` already states for protein; and the queue's heading names the state
+    a User can change ("2 foods are not matched yet") rather than what Tucker cannot
+    read.
   - **Out of scope:** any LLM in this path (the deterministic-core rule stands; an
     analysis adapter is an *output* adapter and a separate decision), a fallback source,
     grading a Food on its micronutrients, a per-Food micronutrient screen, any other

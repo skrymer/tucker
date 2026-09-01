@@ -123,9 +123,17 @@ private fun candidate(
     namesTheWholeFood: Boolean = true,
 ) = ReferenceFoodCandidate(referenceFood(name, *amounts), namesTheWholeFood)
 
-/** A Reference Food carrying [amounts], and zero of everything else. */
-internal fun referenceFood(name: String, vararg amounts: Pair<Micronutrient, Double>) = ReferenceFood(
-    id = name.hashCode().toLong(),
+/**
+ * A Reference Food carrying [amounts], and zero of everything else. [id] defaults
+ * to one derived from the name, and is given explicitly by the tests that join a
+ * Food to it — a [BorrowedFood] refuses a join whose two halves name each other.
+ */
+internal fun referenceFood(
+    name: String,
+    vararg amounts: Pair<Micronutrient, Double>,
+    id: Long = name.hashCode().toLong(),
+) = ReferenceFood(
+    id = id,
     publicFoodKey = "F%06d".format(name.hashCode().mod(1_000_000)),
     name = name,
     micronutrients = Micronutrients(

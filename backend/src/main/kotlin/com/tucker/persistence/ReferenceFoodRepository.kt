@@ -89,7 +89,8 @@ class ReferenceFoodRepository(private val dsl: DSLContext) {
                 )
             }
 
-    private fun findByIds(ids: List<Long>): Map<Long, ReferenceFood> {
+    /** The Reference Foods behind [ids], in one query — what a window's borrows need. */
+    fun findByIds(ids: Collection<Long>): Map<Long, ReferenceFood> {
         if (ids.isEmpty()) return emptyMap()
         return dsl.selectFrom(REFERENCE_FOOD)
             .where(REFERENCE_FOOD.ID.`in`(ids.map { it.toInt() }))

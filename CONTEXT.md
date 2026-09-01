@@ -162,6 +162,16 @@ line a window's vitamin and mineral intake is read against. Tucker uses the
 **Nutrient Reference Values** for Australia and New Zealand (NHMRC), which give a
 recommended intake to reach and an **Upper Level** not to exceed; every **User** is
 in Australia, so there is one set and it is never chosen per user or per food.
+A nutrient carries each of those two only where one is published *and* can be read
+against food that was eaten, so most carry only the first: ten of the nineteen
+have no line not to cross, because NHMRC set none, or set one for supplements alone,
+or set one for a different substance than the **Reference Food** reports. Sodium is
+the mirror image and the only one — it has a line not to cross and nothing to reach,
+because its Adequate Intake is a range and the 2017 revision withdrew its Upper Level
+and set a **Suggested Dietary Target** of 2,000 mg/day instead. That target is
+carried as what it is rather than as an Upper Level: it is a figure for lowering
+chronic-disease risk across a population, not the point where harm begins, and
+Tucker does not tell a user otherwise.
 A Reference Intake is **not a target**, and the distinction is the whole reason
 Tucker can carry it while staying diet-agnostic: a target is something Tucker
 adapts and a **Weekly Review** commits to — the **Calorie Budget** and the
@@ -184,7 +194,9 @@ The vitamins and minerals a window's logged food supplied, each read against its
 **Reference Intake** — the answer to "am I getting enough of everything?". Defined
 over the trailing seven days and no shorter window: micronutrient intake is
 enormously spiky day to day (one serve of liver is a week of vitamin A), so a
-single day's figure is noise wearing a number's clothes. Stated as **a day's
+single day's figure is noise wearing a number's clothes. The read **refuses** any
+other span rather than serving it, so that rule lives in one place instead of in
+whichever client happens to ask. Stated as **a day's
 average** over that window, because a Reference Intake is a daily figure — a
 week's total read against a daily line clears almost every reference at once and
 means nothing.
@@ -227,6 +239,18 @@ shortfall** — the unaccounted share could easily hold the rest — so the gap 
 as unknown and never as a deficit, and never as advice about what to eat. Two
 figures and a consequence; the user draws the conclusion, exactly as with a
 **Check**.
+That leaves exactly three things Tucker can say about a nutrient, and the screen is
+grouped by them: it is over the line not to cross, it has reached its reference, or
+there is not enough matched to say. Only the first two are drawn as figures. The
+third is a name in a list with **no figure beside it** — a stat-sized `≥ 2 µg of
+5 µg` *is* a deficiency readout whatever the caption says — and that list is always
+visible, because the one thing the screen most needs to admit is not a thing to
+hide. Where no nutrient earns a claim at all, nothing is drawn and the matching
+queue is offered instead; the rule is that no claim survived, never that coverage
+fell below some figure, so a barely-matched week with a nutrient over its line still
+says so. The window also states **how many of its days were logged**, the same
+discount an **Intake Breakdown** carries: the sentence claims something about seven
+days, and that claim is exactly as strong as the log behind it.
 **Full coverage is unreachable, and Tucker says so only once it matters.** An
 Estimated Entry has no Food to match, and some manufactured foods have no generic
 worth matching them to, so a window has a ceiling below 100% that no amount of
@@ -611,8 +635,9 @@ _Avoid_: device token, push token, registration
   the rule above. A target is adapted, committed to by a **Weekly Review**, and the
   user is held to it; a Reference Intake is a published figure Tucker reads off a
   table, never corrects, and never enforces. **Micronutrient Intake** can therefore
-  report vitamins and minerals — sodium included, against its published **Upper
-  Level** — without Tucker taking a dietary position. Sugar and saturated fat stay
+  report vitamins and minerals — sodium included, against whichever line NHMRC
+  publishes for it, which for sodium is a **Suggested Dietary Target** and not an
+  **Upper Level** — without Tucker taking a dietary position. Sugar and saturated fat stay
   out because they are macros, and the rule above already settles Tucker's position
   on those: protein alone
 - **No Food is good or bad.** Tucker never labels, grades, or scores a Food — no

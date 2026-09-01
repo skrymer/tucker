@@ -100,9 +100,7 @@ class ReferenceFoodSeedMigrationTest {
         }
     }
 
-    private fun migrated() = tempDir.resolve("seeded.db").toString()
-        .also { migrate(it, upTo = null) }
-        .let { connect(it) }
+    private fun migrated() = migratedDatabase(tempDir, "seeded.db")
 
     private companion object {
         /** The 19 of ADR 0027, as V16 names them. */

@@ -59,5 +59,8 @@
         </p>
       </template>
     </UCollapsible>
+    <!-- Any second source read on the same surface goes here, so the two share
+         one footer rather than stacking two bordered ones. -->
+    <slot />
   </footer>
 </template>

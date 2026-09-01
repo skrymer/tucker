@@ -1,6 +1,7 @@
 package com.tucker.persistence
 
 import org.flywaydb.core.Flyway
+import java.nio.file.Path
 import java.sql.Connection
 import java.sql.DriverManager
 
@@ -73,6 +74,13 @@ fun migrate(db: String, upTo: String?, owner: String = MIGRATION_TEST_OWNER) {
 
 /** Open [db] with foreign keys enforced, as the running backend has them. */
 fun connect(db: String): Connection = DriverManager.getConnection(jdbcUrl(db))
+
+/**
+ * A database in [dir] migrated all the way forward and open — what a test asserting
+ * about the schema a fresh install ends up with needs, in one line.
+ */
+fun migratedDatabase(dir: Path, name: String): Connection =
+    dir.resolve(name).toString().also { migrate(it, upTo = null) }.let { connect(it) }
 
 private fun jdbcUrl(db: String) = "jdbc:sqlite:$db?foreign_keys=true"
 

@@ -34,10 +34,28 @@ NHMRC publishes a reference for it, it is read against a *window* and never agai
 a Food, and Tucker sets no target for it — so it stays a **Reference Intake** rather
 than becoming an opinion about a diet. **Sodium is in**, and it is the
 hardest case — it is the one nutrient here a reasonable reader will call a dietary
-position. It earns its place because the **Upper Level** is a published safety
-threshold rather than a diet opinion, and because it is read against a *window* and
+position. It earns its place because the line Tucker reads it against is a published
+figure rather than a diet opinion, and because it is read against a *window* and
 never against a Food, which keeps [0022](0022-a-check-states-cost-and-return-and-never-labels-a-food.md)'s
 no-good-or-bad rule intact.
+
+**That line is not an Upper Level, which this ADR originally said it was.** The 2017
+NHMRC revision **withdrew** sodium's adult UL outright — an adult's now reads *not
+determined*, because the review found a linear dose-response with no breakpoint
+anywhere in 1,200–3,300 mg/day to hang one on — and set a **Suggested Dietary
+Target** of 2,000 mg/day in its place. Sodium's other published figure is an
+*Adequate Intake* expressed as a **range** (460–920 mg/day), which is nothing to
+reach: clearing the bottom of a range is not a finding worth publishing. So sodium
+carries a line not to cross and nothing to reach, and that line is an SDT.
+
+An SDT is a population chronic-disease target rather than a threshold where harm
+begins, so it is **carried as what it is**: a `nutrient_reference_value` row records
+the *kind* of line beside the amount, and sodium's tile reads *Suggested target
+2,000 mg* where every other reads *Upper Level*. Storing it in an Upper Level column
+was the cheap option and is exactly the substitution the paragraph above exists to
+refuse — it would have Tucker telling a User that a dietary target is where harm
+begins. The claim is therefore named **over the limit** rather than over the Upper
+Level, because two different published figures now reach it.
 
 **Protein is excluded**, deliberately and against the grain. It is the one nutrient
 Tucker already has a figure for — and the **Protein Floor** is set from body weight
@@ -52,9 +70,30 @@ policy is the admission list ([0020](0020-identity-comes-from-cloudflare-access.
 so there is **one** reference set and no per-user or per-jurisdiction resolution:
 the **Nutrient Reference Values** for Australia and New Zealand (NHMRC, 2006,
 sodium and fluoride revised 2017, CC BY 4.0). The recommended intake is the line to
-reach and the **Upper Level** is the line not to cross. A flat label `%DV` was
+reach and the **Upper Level** is the line not to cross — except for sodium, whose
+line is a Suggested Dietary Target, for the reason above. A flat label `%DV` was
 rejected: `Profile` already carries sex and birth date, and one number for everyone
 is wrong by 60% on iron between a 25-year-old man and a 55-year-old woman.
+
+**A nutrient carries a line only where one can be read against food that was
+eaten**, and ten of the nineteen carry none. Five have no Upper Level published
+at all (fibre, thiamin, riboflavin, B12, and vitamin C — for which NHMRC states one
+*cannot* be established and names 1,000 mg only as a prudent limit). Two publish one
+for a different route into the body: magnesium's 350 mg is *as a supplement*, and
+potassium's is explicitly not set for dietary sources. Three publish one for a
+**different substance than AFCD reports** — vitamin A's 3,000 µg is preformed
+retinol against AFCD's retinol *equivalents*, niacin's 35 mg is nicotinic acid from
+fortified food against AFCD's niacin *derived equivalents*, and folate's 1,000 µg is
+folic acid against AFCD's *dietary folate equivalents*. Reading one against the other
+would put a carotene-rich week over a threshold it is nowhere near, and the
+over-the-limit claim is the one Tucker makes at **any** coverage — so a wrong line
+there is worse than none. Each absence is recorded per nutrient in `V18`.
+
+The bands are seeded **from age 14**, NHMRC's own adolescent band and below any
+plausible User of a weight-loss tracker. Below it nothing resolves and a nutrient
+with no Reference Intake earns no claim, rather than being read against an adult line
+that is not its own. The bands are also **ragged, because NHMRC's are**: sodium's open
+at 14 and 18 where every other nutrient's open at 14, 19, 31, 51 and 71.
 
 The reference is **read live**, never snapshotted, and a revision reaches windows
 that predate it. This deviates from Tucker's usual rule — a derived figure records
@@ -314,9 +353,9 @@ made about a whole week.
 A lower bound is sound in one direction only, and that asymmetry replaces the
 arbitrary coverage threshold this feature would otherwise need:
 
-- Against an **Upper Level** it holds at **any** coverage — more data can only push
-  the figure further over. *At least 45 mg of zinc against a 40 mg Upper Level* is a
-  real finding on a barely-matched week.
+- Against the **line not to cross** it holds at **any** coverage — more data can only
+  push the figure further over. *At least 45 mg of zinc against a 40 mg Upper Level*
+  is a real finding on a barely-matched week.
 - Against the recommended intake it holds only **once the bound already clears it**.
   A bound that falls short is not a shortfall; the unaccounted share could hold the
   rest. The gap is named as unknown, never as a deficit, and never as advice about
@@ -334,6 +373,33 @@ says "not enough matched to say" is rendered as **names without figures**: a
 caption says. Structure carries the epistemic split — a tile means Tucker can state
 this, a name in a list means it cannot.
 
+**Where nothing at all can be stated, nothing is drawn.** The rule is *no claim
+survives*, not *coverage is below N%*: a threshold would be a second arbitrary number
+in a feature whose whole design avoids one, and — worse — it would suppress the
+over-the-limit finding that the paragraph above says holds at any coverage. Falling
+out of the claims rather than being gated ahead of them means a barely-matched week
+with 45 mg of zinc in it still draws that tile, while a barely-matched week with
+nothing in it draws no figures and offers the queue instead. Nineteen names under
+"not enough matched to say" is the whole set, which wastes the screen without
+misleading anybody — a judgement about usefulness rather than about honesty, and it
+doubles as the surface that tells a new user what to do.
+
+**The claim also states how much of its window was logged**, the discount
+[0026](0026-an-intake-breakdown-divides-what-was-eaten-never-the-budget.md) requires
+of a windowed read. Coverage is a ratio of logged calories to logged calories and so
+is scale-invariant in how many days were logged — but the *sentence* makes a claim
+about the last seven days, not about the calories in them, and that claim is exactly
+as strong as the log behind it. `3 of 7 days logged` is the same caption an Intake
+Breakdown carries, beside figures that matter more.
+
+**Seven days is enforced, not assumed.** `CONTEXT.md` states the window as an
+invariant and until #284 nothing checked it: the endpoint took arbitrary bounds, the
+seven came from one client call site, and the number then lived in hardcoded English.
+`MicronutrientIntake.of` now refuses any other span — the move
+`IntakeBreakdown.of` already makes in refusing an Entry outside its window rather
+than filtering it away — and the card measures every day count off the response's own
+bounds, so the copy cannot drift from the rule.
+
 **Full coverage is unreachable**, and Tucker says so only once it matters: while
 anything remains matchable the honest message is what is left to do, and once nothing
 is, the sentence names what remains and why it will never move. Showing the ceiling
@@ -348,10 +414,12 @@ distinction an **Inconclusive Lookup** draws.
   `NutritionProvider` declaring `TEXT_SEARCH` only, so it never joins a barcode scan;
   an FTS5 index over a head/rest split of the name with porter stemming, plus a
   seeded synonym table, behind `GET /api/reference-foods?q=`;
-  an NRV table resolved by sex and age; a windowed **Micronutrient Intake** read
-  returning per-nutrient lower bounds, the reference, the Upper Level and the
-  coverage share, plus the ranked unmatched Foods. Nothing is stored per window —
-  it is a read, like an Intake Breakdown.
+  a `nutrient_reference_value` table keyed by nutrient, sex and the age its band
+  opens at, carrying the recommended figure and the line not to cross with the kind
+  of figure that line is; a windowed **Micronutrient Intake** read returning
+  per-nutrient lower bounds, the figures each was read against, one of three claims,
+  the coverage share and the logged-day count, plus the ranked unmatched Foods.
+  Nothing is stored per window — it is a read, like an Intake Breakdown.
 - **Frontend:** one section on `/review` below the Intake Breakdown, with the match
   queue folded inside it rather than as a peer card; a searchable Reference Food
   picker in the existing `ResponsiveOverlay`; a match subline on `FoodListItem`

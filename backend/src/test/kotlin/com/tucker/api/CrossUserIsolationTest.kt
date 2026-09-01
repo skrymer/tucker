@@ -231,7 +231,7 @@ class CrossUserIsolationTest {
         // lift it, and his Food must not appear in her queue as somebody else's chore.
         mockMvc.get("/api/micronutrient-intake") {
             header(ACCESS_ASSERTION_HEADER, alice)
-            param("from", "$day")
+            param("from", "${day.minusDays(6)}")
             param("to", "$day")
         }.andExpect {
             status { isOk() }

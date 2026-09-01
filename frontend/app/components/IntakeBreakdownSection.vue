@@ -25,23 +25,13 @@ const periodItems: TabsItem[] = [
 const isEmpty = computed(() => props.breakdown.items.length === 0)
 
 /** How far the figures can be trusted: how much of the window was actually logged. */
-function useCoverage() {
-  // Measured off the breakdown's own bounds rather than the selected period, so
-  // the caption always describes the figures beside it and never the button last
-  // pressed — the two differ while a wider window is still loading.
-  const days = computed(() =>
-    daysInWindow(props.breakdown.from, props.breakdown.to),
-  )
-  // Silent for a single day, whose count is 0 or 1 and whose 0 already reads as
-  // "Nothing logged yet" right below.
-  const coverage = computed(() =>
-    days.value > 1
-      ? `${props.breakdown.loggedDays} of ${days.value} days logged`
-      : null,
-  )
-  return { coverage }
-}
-const { coverage } = useCoverage()
+const coverage = computed(() =>
+  loggedDaysCaption(
+    props.breakdown.loggedDays,
+    props.breakdown.from,
+    props.breakdown.to,
+  ),
+)
 
 const legend = computed(() => intakeLegend(props.breakdown.items))
 

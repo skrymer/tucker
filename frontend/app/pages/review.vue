@@ -60,16 +60,18 @@ const {
 
 /**
  * How much of the week's food can say anything about its vitamins and minerals,
- * and what is left to match (ADR 0027). The trailing seven days and nothing else
- * — there is no other window in scope — and gated on Calorie Tracking for the
- * breakdown's reason: it reads a log Tucker has agreed to stop asking for.
+ * and what is left to match (ADR 0027). Its own window rather than the Intake
+ * Breakdown's `week`: the backend refuses any other span, so borrowing a period
+ * a User can change would make one card's toggle 400 the other's request. Gated
+ * on Calorie Tracking for the breakdown's reason — it reads a log Tucker has
+ * agreed to stop asking for.
  */
 function useMicronutrientIntake() {
   const { data, error, pending, load } = useOptionalFetch((signal) =>
     // Derived per load rather than captured at setup, like the breakdown's
     // window: a page left open over midnight must ask about the week it is now.
     $api('/api/micronutrient-intake', {
-      query: breakdownWindow('week'),
+      query: trailingWindow(MICRONUTRIENT_WINDOW_DAYS),
       signal,
     }),
   )
