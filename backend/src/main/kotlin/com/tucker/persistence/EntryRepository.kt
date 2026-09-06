@@ -3,6 +3,7 @@ package com.tucker.persistence
 import com.tucker.domain.Entry
 import com.tucker.domain.EntryKind
 import com.tucker.domain.EstimatedEntry
+import com.tucker.domain.FoodLogCount
 import com.tucker.domain.WeighedEntry
 import com.tucker.jooq.Tables.ENTRY
 import com.tucker.jooq.tables.records.EntryRecord
@@ -48,6 +49,29 @@ class EntryRepository(
             .and(ENTRY.USER_ID.eq(currentUser.ownerId))
             .orderBy(ENTRY.LOGGED_ON, ENTRY.ID)
             .fetch().map { it.toEntry() }
+
+    /**
+     * How often each Food was logged from [start] to [endInclusive], and when it
+     * was last reached for — the counts a **Frequent Foods** ranking is decided on.
+     *
+     * An **Estimated Entry** names no Food, so it is excluded here in SQL rather
+     * than dropped afterwards: the grouping happens first, so every estimate in
+     * the window would arrive as one group keyed on null with nowhere to go.
+     */
+    fun logCountsBetween(start: LocalDate, endInclusive: LocalDate): List<FoodLogCount> =
+        dsl.select(ENTRY.FOOD_ID, DSL.count(), DSL.max(ENTRY.LOGGED_ON))
+            .from(ENTRY)
+            .where(ENTRY.LOGGED_ON.between(start.toString(), endInclusive.toString()))
+            .and(ENTRY.USER_ID.eq(currentUser.ownerId))
+            .and(ENTRY.FOOD_ID.isNotNull)
+            .groupBy(ENTRY.FOOD_ID)
+            .fetch { (foodId, count, lastLoggedOn) ->
+                FoodLogCount(
+                    foodId = foodId!!.toLong(),
+                    entryCount = count,
+                    lastLoggedOn = LocalDate.parse(lastLoggedOn),
+                )
+            }
 
     /** Total calories across every Entry logged from [start] to [endInclusive], in one query. */
     fun totalCaloriesBetween(start: LocalDate, endInclusive: LocalDate): Double =

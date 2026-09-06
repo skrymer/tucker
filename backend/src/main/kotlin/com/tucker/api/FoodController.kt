@@ -4,12 +4,15 @@ import com.tucker.domain.BarcodeLookup
 import com.tucker.domain.Food
 import com.tucker.domain.FoodCandidate
 import com.tucker.domain.FoodKind
+import com.tucker.domain.FrequentFoods
 import com.tucker.domain.Nutrition
+import com.tucker.persistence.EntryRepository
 import com.tucker.persistence.FoodRepository
 import com.tucker.persistence.RecipeRepository
 import com.tucker.persistence.ReferenceFoodRepository
 import com.tucker.service.BarcodeLookupService
 import com.tucker.service.FoodService
+import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
@@ -18,8 +21,11 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
+import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
+import java.time.LocalDate
 
 /** API representation of a Food (nutrition flattened for the wire). */
 data class FoodResponse(
@@ -134,6 +140,7 @@ data class MatchReferenceFoodRequest(val referenceFoodId: Long)
 @RequestMapping("/api/foods")
 class FoodController(
     private val foods: FoodRepository,
+    private val entries: EntryRepository,
     private val recipes: RecipeRepository,
     private val foodService: FoodService,
     private val barcodeLookup: BarcodeLookupService,
@@ -141,11 +148,19 @@ class FoodController(
 ) {
 
     @GetMapping
-    fun list(): List<FoodResponse> {
-        val all = foods.findAll()
-        val counts = recipes.ingredientCounts(all.filter { it.kind == FoodKind.RECIPE }.mapNotNull { it.id })
-        val matched = referenceFoods.namesOf(all.mapNotNull { it.referenceFoodId }.distinct())
-        return all.map {
+    fun list(): List<FoodResponse> = foods.findAll().describe()
+
+    /**
+     * These Foods on the wire, each carrying what only another table knows: a
+     * Recipe's ingredient count and the name of what a Food borrows its
+     * micronutrients from. Two queries however long the list, and one place that
+     * decides what a `FoodResponse` says, so a Food does not read differently for
+     * having arrived by a different route.
+     */
+    private fun List<Food>.describe(): List<FoodResponse> {
+        val counts = recipes.ingredientCounts(filter { it.kind == FoodKind.RECIPE }.mapNotNull { it.id })
+        val matched = referenceFoods.namesOf(mapNotNull { it.referenceFoodId }.distinct())
+        return map {
             it.toResponse(
                 ingredientCount = counts[it.id],
                 referenceFoodName = matched[it.referenceFoodId],
@@ -153,15 +168,35 @@ class FoodController(
         }
     }
 
+    /**
+     * The caller's **Frequent Foods** (ADR 0028) over the window [from]..[to], both
+     * bounds inclusive — at most ten, most logged first. The client owns the window
+     * (ADR 0014) and sorts nothing.
+     *
+     * Read-only transactional for [IntakeBreakdownController.breakdown]'s reason:
+     * the counts and the Foods they name must describe one instant.
+     */
+    @Transactional(readOnly = true)
+    @GetMapping("/frequent")
+    fun frequent(
+        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) from: LocalDate,
+        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) to: LocalDate,
+    ): List<FoodResponse> {
+        // Checked before the read rather than left to `rank`'s own guard, which
+        // Kotlin's argument evaluation would reach only after the query had run.
+        FrequentFoods.requireWindow(from, to)
+        val ranked = FrequentFoods.rank(from, to, entries.logCountsBetween(from, to))
+        val byId = foods.findByIds(ranked.map { it.foodId }).associateBy { it.id }
+        // `getValue`, not a lookup that tolerates a miss: deleting a Food an Entry
+        // names is refused, so a ranked id with no Food is a bug rather than a tile
+        // to leave out.
+        return ranked.map { byId.getValue(it.foodId) }.describe()
+    }
+
     @GetMapping("/{id}")
     fun byId(@PathVariable id: Long): FoodResponse {
         val food = foods.findById(id) ?: throw NotFoundException("no Food with id $id")
-        val count = if (food.kind == FoodKind.RECIPE) {
-            recipes.ingredientCounts(listOfNotNull(food.id))[food.id]
-        } else {
-            null
-        }
-        return food.toResponse(ingredientCount = count, referenceFoodName = matchedName(food))
+        return listOf(food).describe().single()
     }
 
     /**
