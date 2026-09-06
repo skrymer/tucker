@@ -1,3 +1,4 @@
+import type { APIRequestContext } from '@playwright/test'
 import { test, expect } from './support/smoke-test'
 import { isoShiftDays, todayIso } from '../support/date'
 
@@ -8,6 +9,32 @@ import { isoShiftDays, todayIso } from '../support/date'
 // Today. The per-test reset wipes the seed, so there is no cleanup.
 const API = 'http://localhost:8080/api'
 
+/**
+ * A Food whose macros make 57.8 kcal per 100 g under Atwater — the figure the
+ * assertions below are read against, derived by the backend and never sent.
+ */
+async function createFood(
+  request: APIRequestContext,
+  name: string,
+): Promise<number> {
+  const created = await request.post(`${API}/foods`, {
+    data: { name, proteinPer100g: 10, carbsPer100g: 4, fatPer100g: 0.2 },
+  })
+  expect(created.status()).toBe(201)
+  return (await created.json()).id as number
+}
+
+async function logWeighed(
+  request: APIRequestContext,
+  foodId: number,
+  on: string,
+) {
+  const logged = await request.post(`${API}/entries/weighed`, {
+    data: { date: on, foodId, grams: 100 },
+  })
+  expect(logged.status()).toBe(201)
+}
+
 test('the Log destination ranks a rotation and logs the food tapped in it', async ({
   page,
   goto,
@@ -16,36 +43,21 @@ test('the Log destination ranks a rotation and logs the food tapped in it', asyn
   const today = todayIso()
   const window = { from: isoShiftDays(today, -29), to: today }
 
-  async function createFood(name: string): Promise<number> {
-    const created = await request.post(`${API}/foods`, {
-      data: { name, proteinPer100g: 10, carbsPer100g: 4, fatPer100g: 0.2 },
-    })
-    expect(created.status()).toBe(201)
-    return (await created.json()).id as number
-  }
-
-  async function logWeighed(foodId: number, on: string) {
-    const logged = await request.post(`${API}/entries/weighed`, {
-      data: { date: on, foodId, grams: 100 },
-    })
-    expect(logged.status()).toBe(201)
-  }
-
   const stamp = Date.now()
-  const oats = await createFood(`Rolled oats ${stamp}`)
-  const eggs = await createFood(`Free-range eggs ${stamp}`)
-  const dropped = await createFood(`Sourdough loaf ${stamp}`)
+  const oats = await createFood(request, `Rolled oats ${stamp}`)
+  const eggs = await createFood(request, `Free-range eggs ${stamp}`)
+  const dropped = await createFood(request, `Sourdough loaf ${stamp}`)
 
   // Eggs three times, oats twice — and the loaf nine times, but all of it just
   // outside the window, so a ranking that widened its span would put it first.
   for (const on of [today, isoShiftDays(today, -3), isoShiftDays(today, -9)]) {
-    await logWeighed(eggs, on)
+    await logWeighed(request, eggs, on)
   }
   for (const on of [isoShiftDays(today, -1), isoShiftDays(today, -5)]) {
-    await logWeighed(oats, on)
+    await logWeighed(request, oats, on)
   }
   for (let i = 0; i < 9; i++) {
-    await logWeighed(dropped, isoShiftDays(today, -30 - i))
+    await logWeighed(request, dropped, isoShiftDays(today, -30 - i))
   }
   // An Estimated Entry names no Food, so however often it is logged it can
   // never rank.
@@ -64,7 +76,10 @@ test('the Log destination ranks a rotation and logs the food tapped in it', asyn
 
   await goto('/log', { waitUntil: 'hydration' })
 
-  await page.getByRole('button', { name: `Log Rolled oats ${stamp}` }).click()
+  await page
+    .getByRole('region', { name: 'Frequent foods' })
+    .getByRole('button', { name: `Log Rolled oats ${stamp}` })
+    .click()
   const sheet = page.getByRole('dialog', { name: `Log Rolled oats ${stamp}` })
   await expect(sheet).toBeVisible()
   await sheet.getByLabel(/weight \(g\)/i).click()
@@ -78,4 +93,50 @@ test('the Log destination ranks a rotation and logs the food tapped in it', asyn
   // food's per-100g figures: 4×10 + 4×4 + 9×0.2 = 57.8 kcal/100 g, so 80 g is 46.
   await goto('/', { waitUntil: 'hydration' })
   await expect(page.getByText(`Rolled oats ${stamp} — 46 kcal`)).toBeVisible()
+})
+
+test('finds a food the ranking cannot hold, and logs it the same way', async ({
+  page,
+  goto,
+  request,
+}) => {
+  const today = todayIso()
+  const stamp = Date.now()
+
+  // Both halves of the shape the filter exists for, and both are asserted below:
+  // ten Foods with an Entry each fill the grid to its cap, and the eleventh has
+  // no Entry in the window, so no ranking can hold it. Neither is spare —
+  // without the ten the grid is not full, without the eleventh there is no tail.
+  for (let i = 0; i < 10; i++) {
+    const id = await createFood(request, `Rotation food ${i} ${stamp}`)
+    await logWeighed(request, id, today)
+  }
+  const tuna = `Tinned tuna ${stamp}`
+  await createFood(request, tuna)
+
+  await goto('/log', { waitUntil: 'hydration' })
+
+  const grid = page.getByRole('region', { name: 'Frequent foods' })
+  await expect(grid.getByRole('listitem')).toHaveCount(10)
+  await expect(grid.getByRole('button', { name: `Log ${tuna}` })).toBeHidden()
+
+  await page.getByLabel('Filter foods').fill('Tinned tuna')
+
+  await expect(grid).toBeHidden()
+  const matches = page.getByRole('region', { name: 'Matching foods' })
+  await expect(matches.getByRole('listitem')).toHaveCount(1)
+  await matches.getByRole('button', { name: `Log ${tuna}` }).click()
+
+  const sheet = page.getByRole('dialog', { name: `Log ${tuna}` })
+  await expect(sheet).toBeVisible()
+  await sheet.getByLabel(/weight \(g\)/i).click()
+  await page.keyboard.type('120')
+  // The number field commits its model on blur, so leave it before submitting.
+  await page.keyboard.press('Tab')
+  await sheet.getByRole('button', { name: /log entry/i }).click()
+  await expect(sheet).toBeHidden()
+
+  // 57.8 kcal/100 g derived by the backend, so 120 g is 69.
+  await goto('/', { waitUntil: 'hydration' })
+  await expect(page.getByText(`${tuna} — 69 kcal`)).toBeVisible()
 })

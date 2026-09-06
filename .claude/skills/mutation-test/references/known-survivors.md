@@ -455,6 +455,33 @@ agreement. Two things about it are load-bearing and easy to undo by accident:
 
 Both failure modes look like a green guard that is not guarding anything.
 
+### `pages/log.vue` — 14 of 57
+
+The Log destination. Its slice-2 sweep scores 43/57; the fourteen alive split three ways,
+and only one of them is on code slice 2 wrote.
+
+**`filterFoods(catalog.value ?? [], …)` → `?? ["Stryker was here"]` (1, `no cov`).**
+**Equivalent mutant.** `shown` is read only inside the catalog `<section>`, which renders
+only where `catalogError` is falsy, and the read is awaited in `setup` — so the fallback
+is a type requirement rather than a branch, and no state evaluates it.
+
+**The `/api/foods/frequent` call's options (3).** Blanking `{ query, signal }`, blanking
+`{ mode: 'latest' }`, and emptying the mode string. The first is **killed by an
+out-of-scope layer** — `e2e/log.spec.ts` "ranks the frequent foods over the trailing 30
+days…" asserts the window asked for, exactly once. The other two are a **real gap**
+carried from slice 1: `useOptionalFetch.test.ts` specifies both re-entry policies, but
+nothing pins that *this* call site picks `latest`, and the behaviour that separates them —
+a reload issued while one is in flight — needs two overlapping loads to observe.
+
+**The two sheet composables' plumbing (10).** `usePickedFood`'s `onLogged` clearing
+`picked` and its `gate.reset()` on pick and on close, and `useEstimate`'s `open.value =
+false` and its `watch` guard. The sheet closing after a log **is** killed by
+`e2e/log.spec.ts` and the real-stack smoke, both of which assert `toBeHidden()`. The rest
+are a **real gap** carried from slice 1 — picking a second Food while an over-budget
+warning stands, and closing the grams sheet without logging, are states no Vitest test
+enters. `watch(open, …)`'s two mutants are **equivalent**: resetting on open leaves the
+form just as clean as resetting on close, so nothing observable separates them.
+
 ## Backend — pitest
 
 ### Excluded from `--targetClasses` (28) — false survivors the tool cannot see

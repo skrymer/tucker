@@ -10,26 +10,28 @@ const emit = defineEmits<{ pick: [FoodResponse] }>()
 </script>
 
 <template>
-  <ul role="list" class="grid grid-cols-2 gap-2">
+  <ul role="list" class="divide-y divide-default">
     <li v-for="food in foods" :key="food.id">
       <button
         type="button"
         :aria-label="logFoodLabel(food)"
-        class="h-full w-full rounded-xl border border-default bg-default p-3 text-left transition-colors hover:border-primary active:bg-elevated"
+        class="w-full rounded-md py-3 text-left hover:bg-elevated active:bg-elevated"
         @click="emit('pick', food)"
       >
-        <span class="flex items-start gap-1.5">
-          <span class="line-clamp-2 font-medium text-default">{{
-            food.name
-          }}</span>
-          <UIcon
+        <span class="flex min-w-0 items-center gap-2">
+          <span class="truncate font-medium text-default">{{ food.name }}</span>
+          <UBadge
             v-if="food.kind === 'RECIPE'"
-            name="i-lucide-cooking-pot"
-            class="mt-0.5 size-3.5 shrink-0 text-primary"
-            aria-hidden
-          />
+            color="primary"
+            variant="subtle"
+            size="sm"
+            class="shrink-0"
+          >
+            <UIcon name="i-lucide-cooking-pot" class="size-3" />
+            Recipe
+          </UBadge>
         </span>
-        <span class="mt-1 block text-xs text-muted">
+        <span class="mt-0.5 block text-sm text-muted">
           {{ formatPer100g(food) }}
         </span>
       </button>

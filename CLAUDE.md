@@ -1286,6 +1286,45 @@ null` now means two things that earn opposite messages — the same trap
   - Nothing is removed: Today keeps its Log-entry button and FAB, and `/foods` keeps its
     row tap, so the surface in use survives until slice 3 completes its replacement.
 
+  Slice 2 ([#296](https://github.com/skrymer/tucker/issues/296)) — **the tail, and the
+  filter that finds it** — ✅ done. The whole catalog renders under the grid, a field
+  above both narrows it in place, and a non-empty query collapses the two sections into
+  one flat list of matches. Client-side over the catalog **already fetched** — no search
+  endpoint, and **no new request**: that read existed in slice 1 only to tell an empty
+  catalog from a quiet month, so a whole surface arrives free on the network axis.
+  - **The ranked ten are repeated in "All foods" rather than subtracted from it**, which
+    ADR 0028 says and the throwaway prototype did not. A section defined as "the catalog
+    minus whatever ranked today" has membership that shifts as the ranking moves, so a
+    Food found there yesterday is gone today with nothing on the page saying why; "All
+    foods" is a stable alphabetical list, and Recents-above-All is a shape people read
+    without instruction.
+  - **That makes two buttons named `Log Rolled oats`, and the section is what tells them
+    apart.** A `<section aria-labelledby>` per list — the house pattern already on
+    `/review` and `/profile` — so the ambiguity is resolved for a screen reader and not
+    merely for the tests, which a `data-testid` would have done the other way round.
+  - **The estimate button moved above both sections**, because it is the one control
+    whose place must not depend on the query: under the grid it slides up the page the
+    moment one is typed, and under the catalog it sits several screens down, which is not
+    a peer of picking a Food.
+  - **Un-nesting the two reads created a state slice 1 could not reach.** The catalog's
+    error panel used to be nested inside the ranking's empty branch; rendered as siblings
+    so neither read can blank the section the other loaded, both failing stacks two
+    identical cloud-off cards with two Retry buttons. That is the case `default.vue`
+    already argues about the signed-out shell — one clear message beats six identical
+    Retry cards — so both failing is one message and one Retry that refreshes both.
+  - **A query of whitespace alone is not a query**, or a brushed space bar collapses a
+    grid nothing asked to narrow. `filterFoods` states the rule and the page's `filtering`
+    has to agree with it, which is why the two share one `trimmed`.
+  - **The no-scroll criterion was re-expressed, not deleted.** Slice 1 asserted the whole
+    document fit the phone viewport; the catalog below the grid is *meant* to scroll, so
+    it now asserts the grid's tenth cell is fully in view — **confirmed to still fail with
+    one column**, which is the criterion the two-column layout exists for.
+  - **`formatPer100g`** — `379 kcal · 13 g protein /100g` was three copies across the grid,
+    the catalog row and the new list, so it is one function built on the `formatIntakeFigures`
+    an Entry already uses. `logFoodLabel` went the same way on its second consumer; `/foods`'
+    row is deliberately not a third, being a shortcut slice 3 removes.
+  - Nothing is removed here either: Today keeps its FAB and `/foods` its row tap.
+
 ## Architecture
 
 - **Frontend** — Nuxt + Nuxt UI, TypeScript, SPA mode (`ssr: false`). A

@@ -408,6 +408,19 @@ kcal`) sits beneath its own ring, so no arc is ever colour-alone. Calorie
   scrolling, where ten full-width rows do not. A Recipe is marked by a pot icon
   beside the name **and** in the cell's accessible name — the icon is nothing at
   all to a screen reader, and this grid is a phone's whole logging surface.
+- **Food pick row** — the Frequent-Foods cell's full-width sibling, for the whole
+  catalog under it: name over the same `kcal · g protein /100g` line, divided
+  rules rather than borders, the Recipe badge that `/foods` uses, and the same
+  accessible name. A row where the grid has a card because this list is scanned
+  and scrolled rather than fitted to a screen — and it carries **no** catalog
+  controls (delete, ingredients, reference food), because on the Log destination
+  the row _is_ the action.
+- **Filter field** — a full-width `UInput` with a leading magnifier, sitting above
+  what it narrows and always visible. Never a popover: a field ignored costs
+  nothing on a full-height page, where a disclosure makes typing the price of
+  seeing anything (ADR 0028). It grows a one-tap clear in its trailing slot only
+  while it holds a query — the way back cannot be holding backspace on a phone —
+  and it is absent, not disabled, where there is nothing to narrow.
 - **Chip / badge** — pill, subtle tint of its colour (`primary/10`, `coral/10`,
   `warning/15`). The estimate flag is icon **+** text in warning, never colour
   alone.
@@ -456,6 +469,14 @@ through icon and colour, never through colour alone.
   red (`#E5484D`, see Colour) on the icon only; the surrounding card stays the
   same restrained white/quiet treatment as everywhere else. Colour is always
   paired with a distinct icon and heading per state — never the only signal.
+- **A page whose reads both fail shows one load error, not one each.** The reads
+  stay separate so neither can blank the section the other loaded, but two
+  identical cloud-off cards with two Retry buttons read as two things broken —
+  the same argument `layouts/default.vue` makes for the signed-out shell. One
+  message, and its Retry replays both. By the same rule a load error never
+  stacks above an **empty** state that already answers the page: a User with no
+  Foods can have no rotation, so a failed ranking read is not worth a panel over
+  the dead end that is.
 - **Load error and signed out are deliberately different icons and verbs**
   (`cloud-off` / "Retry" vs. `lock` / "Sign back in"), because they call for
   different user actions — telling someone to "check your connection" when

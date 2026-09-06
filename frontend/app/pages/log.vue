@@ -27,13 +27,41 @@ const {
   { mode: 'latest' },
 )
 
-// The catalog, read only to tell an empty one from a quiet month: both leave the
-// grid with nothing to draw, and only one of them is a dead end. Issued before
-// the ranking is awaited so the two overlap, rather than costing the app's
-// most-opened destination two round trips before it paints.
+// The catalog: the tail the grid says nothing about, and the read that tells an
+// empty catalog from a quiet month. Issued before the ranking is awaited so the
+// two overlap, rather than costing the app's most-opened destination two round
+// trips before it paints.
 const catalogRead = useApi('/api/foods')
 const [{ data: catalog, error: catalogError, refresh: refreshCatalog }] =
   await Promise.all([catalogRead, refreshFrequent()])
+
+/** Whether there is a catalog to list or to narrow at all. */
+const hasCatalog = computed(() => (catalog.value?.length ?? 0) > 0)
+
+/**
+ * A catalog that loaded and holds nothing — the dead end, as opposed to a
+ * catalog that failed to load. A User with no Foods can have no rotation, so a
+ * failed ranking read tells them nothing they can act on and is not worth a
+ * second full-height panel above the one thing that is.
+ */
+const catalogIsEmpty = computed(
+  () => !catalogError.value && catalog.value?.length === 0,
+)
+
+/**
+ * Narrowing the catalog to a query. A query of whitespace alone is not one, so
+ * a stray space cannot collapse the grid — the rule `filterFoods` states, and
+ * `filtering` has to agree with it or the two states disagree about what a
+ * query is.
+ */
+function useCatalogFilter() {
+  const query = ref('')
+  const trimmed = computed(() => query.value.trim())
+  const filtering = computed(() => trimmed.value.length > 0)
+  const shown = computed(() => filterFoods(catalog.value ?? [], query.value))
+  return { query, trimmed, filtering, shown }
+}
+const filter = useCatalogFilter()
 
 /** Picking a Food out of the grid, and weighing it in the sheet that opens. */
 function usePickedFood(onLogged: () => Promise<void>) {
@@ -78,50 +106,53 @@ function useEstimate() {
   return { ...gate, open }
 }
 const estimate = useEstimate()
+
+/**
+ * Both reads failing is one fault and gets one message — the rule the layout
+ * already applies to the signed-out shell (`default.vue`): two identical Retry
+ * cards read as two things broken. They stay separate otherwise, so neither
+ * read can blank the section the other loaded.
+ */
+const bothFailed = computed(() => !!frequentError.value && !!catalogError.value)
+function retryBoth() {
+  refreshFrequent()
+  refreshCatalog()
+}
 </script>
 
 <template>
   <section class="flex flex-col gap-4">
     <h1 class="text-2xl font-bold text-default">Log</h1>
 
-    <LoadErrorState
-      :error="frequentError"
-      title="Couldn't load your frequent foods"
-      @retry="refreshFrequent"
+    <!-- Always visible and never a popover: a field on a full-height page costs
+         nothing when ignored, where a popover makes typing the price of seeing
+         anything at all (ADR 0028). Absent only where there is nothing to
+         narrow. -->
+    <UInput
+      v-if="hasCatalog"
+      v-model="filter.query.value"
+      icon="i-lucide-search"
+      placeholder="Filter foods"
+      aria-label="Filter foods"
+      :ui="{ trailing: 'pe-1' }"
     >
-      <!-- Absent, not empty, when the window holds nothing: a heading over an
-           empty grid promises a rotation the User does not have. -->
-      <template v-if="frequent && frequent.length > 0">
-        <!-- A heading, though it is drawn as a small label: slice 2 puts the
-             full catalog under a second one, and a page whose sections are
-             paragraphs cannot be navigated by them. -->
-        <h2
-          class="mb-2 text-xs font-medium tracking-wide text-dimmed uppercase"
-        >
-          Frequent foods
-        </h2>
-        <FrequentFoodsGrid :foods="frequent" @pick="weighed.pick" />
+      <!-- Clearing has to be one tap: the way back to the grid cannot be
+           holding backspace on a phone. -->
+      <template v-if="filter.filtering.value" #trailing>
+        <UButton
+          icon="i-lucide-x"
+          color="neutral"
+          variant="link"
+          size="sm"
+          aria-label="Clear filter"
+          @click="filter.query.value = ''"
+        />
       </template>
+    </UInput>
 
-      <!-- The catalog only decides what to say where the ranking has nothing to
-           show, so a failed catalog read can never blank a grid that loaded. -->
-      <LoadErrorState
-        v-else
-        :error="catalogError"
-        title="Couldn't load your foods"
-        @retry="refreshCatalog"
-      >
-        <FoodEmptyState v-if="catalog?.length === 0" :to="CATALOG_ADD_ROUTE" />
-        <!-- A stocked catalog and a quiet month: not a dead end, and not a
-             stale rotation either — so it says which, rather than leaving a
-             primary destination blank. Slice 2 puts the full catalog here. -->
-        <p v-else-if="catalog" class="py-8 text-center text-sm text-muted">
-          Nothing logged in the last 30 days, so there is no rotation to show
-          yet.
-        </p>
-      </LoadErrorState>
-    </LoadErrorState>
-
+    <!-- Fixed here in both states: it is the one control whose place must not
+         depend on the query, and under the catalog it would sit several screens
+         down rather than beside picking a Food as its peer. -->
     <UButton
       icon="i-lucide-pencil-line"
       color="neutral"
@@ -135,6 +166,79 @@ const estimate = useEstimate()
     >
       Log an estimate instead
     </UButton>
+
+    <LoadErrorState
+      v-if="bothFailed"
+      :error="frequentError"
+      title="Couldn't load your foods"
+      @retry="retryBoth"
+    />
+
+    <!-- A query has stopped asking about the rotation, so it collapses the two
+         sections into one flat list of matches (ADR 0028) rather than leaving
+         ten unrelated Foods above them. The guard takes the whole block, so a
+         failed ranking's Retry goes with it: recovering a grid a query is
+         hiding is worth nothing, and clearing brings both back. -->
+    <LoadErrorState
+      v-else-if="!filter.filtering.value && !catalogIsEmpty"
+      :error="frequentError"
+      title="Couldn't load your frequent foods"
+      @retry="refreshFrequent"
+    >
+      <!-- Absent, not empty, when the window holds nothing: a heading over an
+           empty grid promises a rotation the User does not have. It is a named
+           region rather than a bare heading because both sections offer a
+           "Log <name>" control for a Food in each, so the section is what tells
+           the two apart. -->
+      <section
+        v-if="frequent && frequent.length > 0"
+        aria-labelledby="frequent-foods-heading"
+      >
+        <h2
+          id="frequent-foods-heading"
+          class="mb-2 text-xs font-medium tracking-wide text-dimmed uppercase"
+        >
+          Frequent foods
+        </h2>
+        <FrequentFoodsGrid :foods="frequent" @pick="weighed.pick" />
+      </section>
+
+      <!-- A stocked catalog and a quiet month: not a dead end, and not a stale
+           rotation either — so it says which, rather than leaving the gap above
+           the catalog unexplained. -->
+      <p v-else-if="hasCatalog" class="py-4 text-center text-sm text-muted">
+        Nothing logged in the last 30 days, so there is no rotation to show yet.
+      </p>
+    </LoadErrorState>
+
+    <LoadErrorState
+      v-if="!bothFailed"
+      :error="catalogError"
+      title="Couldn't load your foods"
+      @retry="refreshCatalog"
+    >
+      <FoodEmptyState v-if="!hasCatalog" :to="CATALOG_ADD_ROUTE" />
+      <section v-else aria-labelledby="catalog-heading">
+        <h2
+          id="catalog-heading"
+          class="mb-2 text-xs font-medium tracking-wide text-dimmed uppercase"
+        >
+          {{ filter.filtering.value ? 'Matching foods' : 'All foods' }}
+        </h2>
+        <FoodPickList
+          v-if="filter.shown.value.length > 0"
+          :foods="filter.shown.value"
+          @pick="weighed.pick"
+        />
+        <!-- Reached only while filtering, since an empty query matches every
+             Food — and it names the query rather than saying a bare "nothing
+             found", because on a page whose other section has just collapsed
+             that is what says the emptiness came from what was typed. -->
+        <p v-else class="py-4 text-center text-sm text-muted">
+          No foods match “{{ filter.trimmed.value }}”.
+        </p>
+      </section>
+    </LoadErrorState>
 
     <LogGramsSheet
       :food="weighed.picked.value"

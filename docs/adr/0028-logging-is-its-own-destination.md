@@ -128,6 +128,13 @@ A non-empty query collapses both sections into one flat result list. Leaving ten
 unrelated Frequent Foods above the matches would answer a question the user has
 stopped asking.
 
+Non-empty means non-**blank**: a query of whitespace alone is not a question, and
+treating it as one would collapse the grid the moment a thumb brushed the space
+bar. The filter and the collapse have to agree on that, or the page holds two
+answers to what a query is. Matching folds case and accents on both sides for the
+same reason — a Food nobody can spell twice the same way is a Food this section
+cannot reach, which is the friction it exists to remove.
+
 ## Three primary destinations and a fixed More
 
 The tab bar carries **Today · Log · Review**. **Foods**, **Check** and **Profile**
