@@ -50,7 +50,7 @@ test('a food used as a recipe ingredient cannot be deleted from the catalog', as
   try {
     await goto('/foods', { waitUntil: 'hydration' })
     await expect(
-      page.getByRole('button', { name: `Log ${ingredientName}` }),
+      page.getByRole('button', { name: `Delete ${ingredientName}` }),
     ).toBeVisible()
 
     await page.getByRole('button', { name: `Delete ${ingredientName}` }).click()
@@ -70,7 +70,7 @@ test('a food used as a recipe ingredient cannot be deleted from the catalog', as
     ).toBeVisible()
     await expect(dialog).toBeHidden()
     await expect(
-      page.getByRole('button', { name: `Log ${ingredientName}` }),
+      page.getByRole('button', { name: `Delete ${ingredientName}` }),
     ).toBeVisible()
 
     // Still in the catalog server-side.

@@ -134,17 +134,6 @@ registerEndpoint(`/api/foods/barcode/${EXISTING_BARCODE}`, {
   }),
 })
 
-// The Food the parent hands back after a save — the same one either
-// continuation test needs, so it is stated once.
-const createdFood = food({
-  id: 99,
-  name: 'Saved Skyr',
-  caloriesPer100g: 63,
-  proteinPer100g: 10,
-  carbsPer100g: 4,
-  fatPer100g: 0.2,
-})
-
 describe('AddSheet', () => {
   it('offers a barcode lookup alongside the manual form', async () => {
     await renderSuspended(AddSheet, { props: { open: true } })
@@ -240,42 +229,58 @@ describe('AddSheet', () => {
     expect(screen.queryByLabelText(/^name$/i)).not.toBeInTheDocument()
   })
 
-  it('leads a catalog hit with the option to log it now', async () => {
+  it('closes on Done once a catalog hit has answered the barcode', async () => {
+    const onUpdateOpen = vi.fn()
+    await renderSuspended(AddSheet, {
+      props: { open: true, 'onUpdate:open': onUpdateOpen },
+    })
+    const user = userEvent.setup()
+
+    await user.type(screen.getByLabelText(/barcode/i), EXISTING_BARCODE)
+    await user.click(screen.getByRole('button', { name: /look up/i }))
+
+    // Not a Cancel: there is nothing here to cancel. It acknowledges a finished
+    // lookup — the barcode has been answered and the Food already exists.
+    await user.click(await screen.findByRole('button', { name: /^done$/i }))
+
+    expect(onUpdateOpen).toHaveBeenCalledWith(false)
+  })
+
+  it('offers no way to log a catalog hit — the catalog only names it', async () => {
     await renderSuspended(AddSheet, { props: { open: true } })
     const user = userEvent.setup()
 
     await user.type(screen.getByLabelText(/barcode/i), EXISTING_BARCODE)
     await user.click(screen.getByRole('button', { name: /look up/i }))
 
-    expect(
-      await screen.findByRole('button', { name: /log it now/i }),
-    ).toBeVisible()
-    expect(screen.getByLabelText(/grams/i)).toBeVisible()
+    // ADR 0028: the Log destination is the one surface that creates an Entry.
+    await screen.findByText(/already in your catalog/i)
+    expect(screen.queryByRole('button', { name: /log it now/i })).toBeNull()
+    expect(screen.queryByLabelText(/grams/i)).toBeNull()
   })
 
-  it('offers to log a Food the parent just saved', async () => {
-    await renderSuspended(AddSheet, {
-      props: { open: true, createdFood },
-    })
-
-    expect(screen.getByRole('button', { name: /log it now/i })).toBeVisible()
-    expect(screen.getByLabelText(/grams/i)).toBeVisible()
-    // The add form gives way to the continuation once the Food exists.
-    expect(screen.queryByLabelText(/^name$/i)).not.toBeInTheDocument()
-  })
-
-  it('forwards the weighed-entry payload when the user logs it', async () => {
-    const onLog = vi.fn()
-    await renderSuspended(AddSheet, {
-      props: { open: true, createdFood, onLog },
+  it('leaves its contents alone while it closes', async () => {
+    const { rerender } = await renderSuspended(AddSheet, {
+      props: { open: true },
     })
     const user = userEvent.setup()
 
-    await user.click(screen.getByLabelText(/grams/i))
-    await user.keyboard('120')
-    await user.click(screen.getByRole('button', { name: /log it now/i }))
+    await user.click(screen.getByRole('tab', { name: /recipe/i }))
+    expect(
+      await screen.findByRole('dialog', { name: /add recipe/i }),
+    ).toBeVisible()
 
-    expect(onLog).toHaveBeenCalledWith({ foodId: 99, grams: 120 })
+    // The parent closes the sheet on a successful save. The overlay keeps this
+    // component mounted through the exit animation, so anything reset here is
+    // watched: the header would retitle and the blank Food form slide out in
+    // place of the recipe the User just saved.
+    await rerender({ open: false })
+
+    expect(screen.getByRole('dialog', { name: /add recipe/i })).toBeVisible()
+    expect(screen.getByRole('tab', { name: /recipe/i })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
   })
 
   it('resets to a fresh add form after closing and reopening', async () => {
@@ -286,7 +291,7 @@ describe('AddSheet', () => {
 
     await user.type(screen.getByLabelText(/barcode/i), EXISTING_BARCODE)
     await user.click(screen.getByRole('button', { name: /look up/i }))
-    await screen.findByRole('button', { name: /log it now/i })
+    await screen.findByText(/already in your catalog/i)
 
     // The parent closes the sheet, then the user reopens it for a new food.
     await rerender({ open: false })
@@ -295,7 +300,7 @@ describe('AddSheet', () => {
     // The stale catalog hit is gone; the add form leads again.
     expect(screen.getByLabelText(/^name$/i)).toBeVisible()
     expect(
-      screen.queryByRole('button', { name: /log it now/i }),
+      screen.queryByText(/already in your catalog/i),
     ).not.toBeInTheDocument()
   })
 

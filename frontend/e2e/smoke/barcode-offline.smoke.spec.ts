@@ -67,11 +67,7 @@ test('an offline lookup degrades to manual entry carrying the barcode', async ({
 
     await sheet.getByRole('button', { name: /save food/i }).click()
 
-    // Saved → decline the offered "log it now" continuation (its own smoke).
-    await expect(
-      sheet.getByRole('button', { name: /log it now/i }),
-    ).toBeVisible()
-    await sheet.getByRole('button', { name: /not now/i }).click()
+    // Saved → the sheet closes onto the catalog (ADR 0028).
     await expect(sheet).toBeHidden()
     await expect(page.getByText(foodName)).toBeVisible()
 

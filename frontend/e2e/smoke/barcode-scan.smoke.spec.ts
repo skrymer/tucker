@@ -63,12 +63,7 @@ test('a scanned barcode resolves through the lookup and saves a Food', async ({
 
     await sheet.getByRole('button', { name: /save food/i }).click()
 
-    // Saving a Food from the barcode flow opens the "log it now" continuation
-    // (F8 slice 3) instead of closing the sheet. This smoke only proves the
-    // scan resolved and saved a Food — logging it now has its own smoke — so
-    // dismiss the offer with "Not now".
-    await expect(sheet.getByText(/saved to your catalog/i)).toBeVisible()
-    await sheet.getByRole('button', { name: /not now/i }).click()
+    // Saved → the sheet closes onto the catalog (ADR 0028).
     await expect(sheet).toBeHidden()
     await expect(page.getByText(foodName)).toBeVisible()
 

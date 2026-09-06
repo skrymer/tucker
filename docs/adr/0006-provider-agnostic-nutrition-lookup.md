@@ -267,6 +267,20 @@ nothing worth typing for — but that is a rule about *that* tab only. Do not
 "harmonise" the two: a denied camera must still leave the user able to add a
 Food.
 
+### Amended by [0028](0028-logging-is-its-own-destination.md): the flow offers nothing to log
+
+The **"log it now"** continuation is withdrawn. F16 makes **Log** a destination of
+its own and leaves it the only surface that creates an **Entry**, so a second one
+living inside the Add-Food flow — for the minutes after a Food is saved — is
+exactly what that change was for. Saving now closes the sheet onto the catalog.
+
+The glossary rule it was built to honour survives, and reads more plainly than
+before: *scanning creates a Food, not an Entry*. There is no next step to decline.
+
+A **catalog hit** still leads, and still displaces the whole add form — a blank
+form over a barcode this User already owns invites a duplicate of their own Food.
+It now names the Food and closes, where it used to name it and ask for grams.
+
 ## Multi-user direction — **superseded by [ADR 0021](0021-every-row-is-owned-by-one-user.md)**
 
 This section predicted a **hybrid** catalog: barcode-scanned product Foods
@@ -308,7 +322,9 @@ Atwater derivation, and the stated-energy cross-check are all ownership-neutral.
   three-outcome branch (surface existing Food → offer log / pre-fill `AddFoodForm`
   from a Candidate / open blank manual entry with the barcode), which #164 makes
   four by saying so when the lookup was inconclusive; the "log it now"
-  step. Regenerate the typed `nuxt-open-fetch` client after the endpoint change.
+  step (both withdrawn by 0028 — a catalog hit is named, not logged, and the
+  sheet closes). Regenerate the typed `nuxt-open-fetch` client after the
+  endpoint change.
 - **v1 scope is deliberately narrow:** Open Food Facts only, keyless, online
   lookup with graceful manual fallback, density 1.0, single user. USDA (free
   key) is the first proof of the keyed-config seam; text-search autofill, the OFF

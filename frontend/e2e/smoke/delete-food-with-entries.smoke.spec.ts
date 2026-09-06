@@ -43,7 +43,7 @@ test('a food with logged entries cannot be deleted from the catalog', async ({
   try {
     await goto('/foods', { waitUntil: 'hydration' })
     await expect(
-      page.getByRole('button', { name: `Log ${foodName}` }),
+      page.getByRole('button', { name: `Delete ${foodName}` }),
     ).toBeVisible()
 
     await page.getByRole('button', { name: `Delete ${foodName}` }).click()
@@ -63,7 +63,7 @@ test('a food with logged entries cannot be deleted from the catalog', async ({
     ).toBeVisible()
     await expect(dialog).toBeHidden()
     await expect(
-      page.getByRole('button', { name: `Log ${foodName}` }),
+      page.getByRole('button', { name: `Delete ${foodName}` }),
     ).toBeVisible()
 
     // Still in the catalog server-side.

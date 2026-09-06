@@ -16,7 +16,8 @@ test('the Foods page shows the catalog from the API', async ({
   // External aria-snapshot — Playwright stores one baseline per project
   // (Desktop Chrome / Mobile Chrome) under foods.spec.ts-snapshots/,
   // because the Add-food button is a header button on desktop and a
-  // floating action button on phone.
+  // floating action button on phone. Closed-world, so it is also what
+  // carries "no row logs a Food": a returning Log button is a diff.
   await expect(page.getByRole('main')).toMatchAriaSnapshot()
 })
 

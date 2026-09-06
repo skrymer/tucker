@@ -50,9 +50,9 @@ function fold(text: string): string {
 /**
  * What a control that logs this Food is called, e.g. `Log Weekday chilli, a
  * recipe`. A Recipe is marked in the *name* and not only by the pot icon beside
- * it, which is nothing at all to a screen reader. Shared by Log's two surfaces
- * so the wording cannot drift; `/foods`' row is deliberately not a third — that
- * button is a shortcut ADR 0028 removes rather than a logging surface.
+ * it, which is nothing at all to a screen reader. Shared by the Log
+ * destination's two surfaces — the only two there are — so the wording cannot
+ * drift between them.
  */
 export function logFoodLabel(
   food: Pick<FoodResponse, 'name' | 'kind'>,

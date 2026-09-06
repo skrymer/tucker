@@ -6,15 +6,9 @@ type EntryResponse = components['schemas']['EntryResponse']
 // The day to show — the user's local date.
 const today = localToday()
 
-// The Log-entry action lives on the page (header button on desktop, FAB on
-// phone) so it's always reachable, matching Foods/Profile; the sheet is the
-// controlled overlay it opens.
-const isDesktop = useIsDesktop()
-const logEntryOpen = ref(false)
-
 // With Calorie Tracking off the log half of Today is not hidden decoration —
-// there is nothing to log against, so the day summary, the budget banner and
-// the Log-entry action all go (CONTEXT.md — Calorie Tracking).
+// there is nothing to log against, so the day summary and the budget banner go
+// (CONTEXT.md — Calorie Tracking).
 const { tracksCalories } = useCalorieTracking()
 
 const { $api } = useNuxtApp()
@@ -79,10 +73,6 @@ const { execute: switchToMaintenance } = useApiMutation(
   },
 )
 
-async function onEntryLogged() {
-  await refresh()
-}
-
 // Delete a mislogged Entry (issue #113) — today's only, so it never rewrites
 // intake a Weekly Review has already counted. A tapped trash icon selects the
 // row; confirming removes it and refreshes the day, whose totals/dayStatus then
@@ -122,21 +112,7 @@ const {
 
 <template>
   <section class="flex flex-col gap-4">
-    <header class="flex items-center justify-between">
-      <h1 class="text-2xl font-bold text-default">Today</h1>
-      <UButton
-        v-if="isDesktop && tracksCalories"
-        icon="i-lucide-plus"
-        color="primary"
-        @click="
-          () => {
-            logEntryOpen = true
-          }
-        "
-      >
-        Log entry
-      </UButton>
-    </header>
+    <h1 class="text-2xl font-bold text-default">Today</h1>
     <LoadErrorState
       :error="summaryError"
       title="Couldn't load today's summary"
@@ -189,29 +165,6 @@ const {
         />
       </LoadErrorState>
     </LoadErrorState>
-    <UButton
-      v-if="!isDesktop && tracksCalories"
-      icon="i-lucide-plus"
-      color="primary"
-      size="xl"
-      aria-label="Log entry"
-      class="fixed right-4 bottom-[calc(5rem+env(safe-area-inset-bottom))] size-14 rounded-full shadow-lg"
-      :ui="{ base: 'justify-center' }"
-      @click="
-        () => {
-          logEntryOpen = true
-        }
-      "
-    />
-
-    <!-- Mounted only while there is something to log: the sheet fetches the
-         Foods catalog on setup, which a weight-only User never opens. -->
-    <LogEntrySheet
-      v-if="tracksCalories"
-      v-model:open="logEntryOpen"
-      @logged="onEntryLogged"
-    />
-
     <DeleteEntryConfirm
       :entry="selectedEntry"
       @cancel="selectedEntry = null"

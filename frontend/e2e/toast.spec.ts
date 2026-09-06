@@ -2,9 +2,9 @@ import type { Page, TestType } from '@playwright/test'
 import { expect, test } from './support/test'
 import { toast, toastLiveRegion, toastRegion } from './support/toast'
 import {
+  mockFoods,
+  mockFrequentFoods,
   mockProfile,
-  mockSummary,
-  mockWeightApi,
   mockWeightList,
 } from './support/mock-api'
 import { estimatedEntry } from '../test/entry-fixtures'
@@ -199,8 +199,9 @@ test('a logged entry is announced politely, waiting its turn rather than interru
   page,
   goto,
 }) => {
-  await mockWeightApi(page)
-  await mockSummary(page)
+  await mockProfile(page, { ...SAVED, tracksCalories: true })
+  await mockFoods(page, [])
+  await mockFrequentFoods(page, [])
   // The budget gate previews before it commits (CONTEXT.md — Budget Projection),
   // so both endpoints need stubbing. The preview is registered last, hence
   // matched first — though the commit glob would not swallow it either, since a
@@ -216,10 +217,10 @@ test('a logged entry is announced politely, waiting its turn rather than interru
     }),
   )
 
-  await goto('/', { waitUntil: 'hydration' })
+  await goto('/log', { waitUntil: 'hydration' })
 
-  await page.getByRole('button', { name: 'Log entry' }).click()
-  const sheet = page.getByRole('dialog', { name: /log entry/i })
+  await page.getByRole('button', { name: /log an estimate instead/i }).click()
+  const sheet = page.getByRole('dialog', { name: /log an estimate/i })
   await sheet.getByLabel('Label').fill('Lunch out')
   await sheet.getByLabel('Calories').fill('600')
   // A number field commits its value on blur, so leave it before submitting.

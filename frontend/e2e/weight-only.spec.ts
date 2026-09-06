@@ -12,8 +12,8 @@ import { denyCamera } from './support/fake-camera'
 import { visibleNav, withOverflowNav } from './support/nav'
 
 // Tucker takes the shape of the Calorie Tracking choice. With it off there is no
-// log half — no Log destination, no Foods or Check, no day summary, no
-// budget-change banner and no Log-entry action — and the Goal is a ring.
+// log half — no Log destination, no Foods or Check, no day summary and no
+// budget-change banner — and the Goal is a ring.
 
 const WEIGHT_ONLY = {
   sex: 'MALE',
@@ -211,7 +211,6 @@ test('turning Calorie Tracking back on restores the log half without a reload', 
   await visibleNav(page).getByRole('link', { name: 'Today' }).click()
 
   await expect(page.getByText('0 / 2400 kcal')).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Log entry' })).toBeVisible()
 
   // Foods and Check came back too, wherever this viewport keeps the overflow.
   await withOverflowNav(page, async (nav) => {

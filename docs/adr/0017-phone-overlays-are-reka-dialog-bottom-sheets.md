@@ -30,7 +30,7 @@ centred modal. Both keep the modal semantics we want — backdrop dim and a focu
 trap — but via Reka's Dialog mechanism, which does not have the Vaul iOS bug.
 
 The Dialog's corner **close button is kept** (Nuxt UI default). It replaces the
-drawer's swipe-to-dismiss, which the Dialog drops: `LogEntrySheet` and
+drawer's swipe-to-dismiss, which the Dialog drops: `LogGramsSheet` and
 `LogWeightSheet` have no Cancel button of their own, so the close button is their
 universal out. Outside-tap/swipe no longer dismiss a sheet — acceptable, and
 arguably better for a data-entry form (a stray tap can't discard a half-typed

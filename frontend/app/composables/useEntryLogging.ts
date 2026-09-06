@@ -32,6 +32,10 @@ export interface EntryLogOptions {
  * The two endpoints arrive as typed callers rather than as a path built from a
  * kind — a template-literal path is a string to `nuxt-open-fetch`, so deriving
  * one would trade the generated request and response types for a cast.
+ *
+ * It stays a shared composable on one consumer: this is the single home of the
+ * gate, which is what makes "every Entry carries a Budget Projection" (ADR 0028)
+ * checkable by looking in one place rather than at every page.
  */
 function useGatedEntryLog<TEntry extends object>(
   endpoints: {

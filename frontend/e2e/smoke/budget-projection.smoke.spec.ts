@@ -1,11 +1,15 @@
 import { test, expect } from './support/smoke-test'
 import { todayIso } from '../support/date'
+import { enterGrams, pickFoodToLog } from '../support/log-page'
 
 // Budget Projection smoke (issue #119): the confirm-to-proceed gate over the real
-// backend. With a Calorie Budget in place and most of the day already eaten, a
-// weighed entry that would tip the day over budget is NOT logged on the first Save
-// — the sheet shows an over-budget warning and the action becomes "Log anyway".
-// A second deliberate tap logs it, and the dashboard flips to "Over budget".
+// backend, from the Log destination — the only surface that creates an Entry, so
+// every path through it carries this gate (ADR 0028). With a Calorie Budget in
+// place and most of the day already eaten, a weighed entry that would tip the day
+// over budget is NOT logged on the first Save — the sheet shows an over-budget
+// warning and the action becomes "Log anyway". A second deliberate tap logs it,
+// and the day earns its over-budget verdict. That verdict is read off the API
+// rather than off Today, which day-status.smoke.spec.ts already renders.
 // The per-test reset (smoke-test.ts) wipes the seeded review, food, and entries.
 const API = 'http://localhost:8080/api'
 
@@ -61,32 +65,36 @@ test('a weighed entry over budget warns first, then logs on "Log anyway"', async
   expect(created.status()).toBe(201)
   const grams = Math.ceil((budget * 0.5) / 4)
 
-  await goto('/', { waitUntil: 'hydration' })
+  await goto('/log', { waitUntil: 'hydration' })
 
-  await page.getByRole('button', { name: /log entry/i }).click()
-  const sheet = page.getByRole('dialog', { name: /log entry/i })
+  // The new Food has no Entries, so no ranking can hold it — it is in the
+  // catalog below the grid, which offers the same "Log <name>" control.
+  const sheet = await pickFoodToLog(page, {
+    section: 'All foods',
+    food: foodName,
+  })
   await expect(sheet).toBeVisible()
-  await sheet.getByRole('tab', { name: 'Weighed' }).click()
-
-  await sheet.getByRole('button', { name: 'Show popup' }).click()
-  await page.getByRole('option', { name: foodName }).click()
-  await expect(sheet.getByText(foodName)).toBeVisible()
-
-  await sheet.getByLabel('Grams').click()
-  await page.keyboard.type(String(grams))
+  await enterGrams(page, sheet, grams)
 
   // First Save → the projection warns; nothing is logged yet, the sheet stays open.
-  await sheet.getByRole('button', { name: /log weighed entry/i }).click()
+  await sheet.getByRole('button', { name: /log entry/i }).click()
   await expect(sheet).toBeVisible()
   await expect(sheet.getByText(/over your .* budget/i)).toBeVisible()
   const logAnyway = sheet.getByRole('button', { name: /log anyway/i })
   await expect(logAnyway).toBeVisible()
-  await expect(
-    sheet.getByRole('button', { name: /log weighed entry/i }),
-  ).toBeHidden()
+  await expect(sheet.getByRole('button', { name: /log entry/i })).toBeHidden()
 
   // Second deliberate tap → logs anyway; the day is now over budget.
   await logAnyway.click()
   await expect(sheet).toBeHidden()
-  await expect(page.getByText('Over budget')).toBeVisible()
+  await expect
+    .poll(
+      async () =>
+        (
+          await (
+            await request.get(`${API}/summary`, { params: { date: today } })
+          ).json()
+        ).dayStatus,
+    )
+    .toBe('over-budget')
 })

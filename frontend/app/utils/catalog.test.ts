@@ -43,6 +43,11 @@ describe('filtering the catalog', () => {
     const creme = food({ id: 4, name: 'Crème fraîche' })
 
     expect(filterFoods([...foods, creme], 'creme fraiche')).toEqual([creme])
+    // And the other way round, which no mutant can ask for: Stryker swaps a
+    // normalising call rather than deleting it, so stripping accents from the
+    // stored name alone scores the same. A User who does reach the grave — an
+    // iOS long-press, a paste — must still find their own Food.
+    expect(filterFoods([...foods, creme], 'crème')).toEqual([creme])
   })
 
   it('keeps the order the backend sent, rather than sorting again', () => {

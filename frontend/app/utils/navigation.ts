@@ -7,10 +7,9 @@ export interface NavDestination {
   icon: string
   /**
    * Shown only while the User counts calories (CONTEXT.md — Calorie Tracking).
-   * Marks a destination whose whole subject is the log: the catalog is never
-   * logged against, and a Check answers a shopping question about a day's intake
-   * this User is not keeping. Not because there is no Calorie Budget — the
-   * backend still derives one for them.
+   * Marks a destination whose whole subject is the log — including a Check,
+   * every figure of which is a share of a Calorie Budget or a Protein Floor
+   * that a Weekly Review run with tracking off does not derive (ADR 0024).
    */
   requiresCalorieTracking?: boolean
 }

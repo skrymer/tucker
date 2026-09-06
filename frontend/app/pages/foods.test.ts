@@ -23,7 +23,16 @@ const oats = food({
   proteinPer100g: 13,
 })
 
-registerEndpoint('/api/foods', () => [oats])
+// One handler for both methods: the module-level registration is per-URL, so a
+// separate POST one would replace the catalog read.
+let holdSave: Promise<void> | null = null
+let savesLanded = 0
+registerEndpoint('/api/foods', async (event) => {
+  if (event.method !== 'POST') return [oats]
+  if (holdSave) await holdSave
+  savesLanded += 1
+  return { ...oats, id: 8, name: 'Skyr' }
+})
 
 // The backend rejects deleting a Food that has logged Entries with a 400 whose
 // `{ message }` names the Food (issue #107). Mirror that exact shape.
@@ -55,13 +64,86 @@ describe('/foods deleting a food with logged entries', () => {
     expect(toast.actions).toBeUndefined()
 
     // The Food stays in the catalog and the confirm dialog is dismissed.
-    expect(screen.getByRole('button', { name: 'Log Oats' })).toBeVisible()
+    expect(screen.getByText('Oats')).toBeVisible()
     expect(
       screen.queryByRole('dialog', { name: /delete this food/i }),
     ).toBeNull()
   })
 })
 
+describe('/foods saving a new food', () => {
+  it('closes the Add sheet onto the catalog, which is the confirmation', async () => {
+    toastAdd.mockClear()
+    const user = userEvent.setup()
+    await renderSuspended(Foods, { route: '/foods?add=1' })
+    const sheet = screen.getByRole('dialog', { name: /add/i })
+
+    await user.type(within(sheet).getByLabelText(/^name$/i), 'Skyr')
+    for (const macro of [
+      /protein \/100\s*g/i,
+      /carbs \/100\s*g/i,
+      /fat \/100\s*g/i,
+    ]) {
+      await user.click(within(sheet).getByLabelText(macro))
+      await user.keyboard('5')
+    }
+    // A number field commits its model on blur, so leave the last one.
+    await user.tab()
+    await user.click(within(sheet).getByRole('button', { name: /save food/i }))
+
+    // There is no "log it now" continuation to hold the sheet open any more
+    // (ADR 0028), and no success toast either: the row in the list behind it is
+    // the confirmation (ADR 0005).
+    await vi.waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: /add/i })).toBeNull(),
+    )
+    expect(toastAdd).not.toHaveBeenCalled()
+  })
+
+  it('leaves a sheet the User has reopened alone when a slow save lands', async () => {
+    // The save resolves whenever it resolves, which on a slow connection is
+    // after the User has given up on it, dismissed the sheet and opened a fresh
+    // one. Closing *that* sheet would take a half-typed Recipe with it.
+    let release!: () => void
+    holdSave = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    savesLanded = 0
+    const user = userEvent.setup()
+    await renderSuspended(Foods, { route: '/foods?add=1' })
+
+    const sheet = screen.getByRole('dialog', { name: /add/i })
+    await user.type(within(sheet).getByLabelText(/^name$/i), 'Skyr')
+    for (const macro of [
+      /protein \/100\s*g/i,
+      /carbs \/100\s*g/i,
+      /fat \/100\s*g/i,
+    ]) {
+      await user.click(within(sheet).getByLabelText(macro))
+      await user.keyboard('5')
+    }
+    await user.tab()
+    await user.click(within(sheet).getByRole('button', { name: /save food/i }))
+
+    // Dismissed while the save is still in flight, then reopened.
+    await user.click(within(sheet).getByRole('button', { name: /close/i }))
+    await vi.waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: /add/i })).toBeNull(),
+    )
+    await user.click(screen.getByRole('button', { name: /add food/i }))
+    expect(screen.getByRole('dialog', { name: /add/i })).toBeVisible()
+
+    release()
+
+    // The reopened sheet survives the save that the previous one issued.
+    await vi.waitFor(() => expect(savesLanded).toBe(1))
+    expect(screen.getByRole('dialog', { name: /add/i })).toBeVisible()
+    holdSave = null
+  })
+})
+
+// Last of the describes that need a working catalog: this one re-registers
+// `/api/foods` to throw, and the override outlives the test.
 describe('/foods when the catalog fails to load', () => {
   it('shows a retryable error instead of the empty-catalog state', async () => {
     registerEndpoint('/api/foods', () => {

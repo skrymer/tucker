@@ -1,13 +1,17 @@
 import { test, expect } from './support/smoke-test'
 import { todayIso } from '../support/date'
+import { enterGrams, pickFoodToLog } from '../support/log-page'
 import { toast } from '../support/toast'
 
-// Slice 2 smoke: the full UI → API → DB path for logging a Weighed entry
-// against the real backend. Creates a food in the catalog, logs an
-// entry against it through the UI, asserts the dashboard reflects it,
-// then deletes the entry and the food to leave the docker volume
-// unchanged between runs.
-test('user logs a Weighed entry from Today and the dashboard updates', async ({
+// The full UI → API → DB path for logging a Weighed entry against the real
+// backend, from the Log destination (ADR 0028). Creates a food in the catalog,
+// picks it out of the catalog list — a brand-new Food has no Entries, so no
+// ranking can hold it — weighs a portion, and reads the Entry back off the API.
+// Where it lands on Today is frequent-foods.smoke.spec.ts's subject; what this
+// one adds is the toast, which on this path is the only thing that names the
+// Entry at the point of focus (ADR 0005). Deletes the entry and the food to
+// leave the docker volume unchanged between runs.
+test('user logs a Weighed entry from Log and the toast names it', async ({
   page,
   goto,
   request,
@@ -34,41 +38,22 @@ test('user logs a Weighed entry from Today and the dashboard updates', async ({
 
   let entryId: number | undefined
   try {
-    await goto('/', { waitUntil: 'hydration' })
+    await goto('/log', { waitUntil: 'hydration' })
 
-    await page.getByRole('button', { name: /log entry/i }).click()
-    const sheet = page.getByRole('dialog', { name: /log entry/i })
+    const sheet = await pickFoodToLog(page, {
+      section: 'All foods',
+      food: foodName,
+    })
     await expect(sheet).toBeVisible()
-
-    await sheet.getByRole('tab', { name: 'Weighed' }).click()
-
-    // The visible trigger is a button whose accessible name is "Show
-    // popup" (Reka UI's combobox internal label); UFormField's "Food"
-    // label points at a sibling hidden input. Click the trigger by role
-    // so the popup actually opens. Options render in a portal at
-    // document.body, so the option locator is scoped to `page`.
-    await sheet.getByRole('button', { name: 'Show popup' }).click()
-    await page.getByRole('option', { name: foodName }).click()
-    // Confirm the trigger now shows the picked food before moving on,
-    // so the picker portal has actually closed.
-    await expect(sheet.getByText(foodName)).toBeVisible()
-
-    // UInputNumber's underlying NumberField doesn't pick up programmatic
-    // .fill() reliably — use keyboard typing into the focused input.
-    await sheet.getByLabel('Grams').click()
-    await page.keyboard.type(String(grams))
-    await sheet.getByRole('button', { name: /log weighed entry/i }).click()
+    await enterGrams(page, sheet, grams)
+    await sheet.getByRole('button', { name: /log entry/i }).click()
 
     await expect(sheet).toBeHidden()
     // The toast names the Food and the figures derived from it, so a mis-picked
     // food or a stale grams value is visible without leaving the point of focus.
     await expect(toast(page, 'Entry logged')).toContainText(expectedName)
 
-    // Scoped to the page: the toast carries the same words by design, so an
-    // unscoped match would be ambiguous while the toast is still up.
-    await expect(page.getByRole('main').getByText(expectedName)).toBeVisible()
-
-    // Capture the logged entry id for cleanup.
+    // And it reached the database, with the grams the sheet was given.
     const today = todayIso()
     const list = await request.get('http://localhost:8080/api/entries', {
       params: { date: today },
@@ -76,12 +61,14 @@ test('user logs a Weighed entry from Today and the dashboard updates', async ({
     const entries = (await list.json()) as Array<{
       id: number
       foodName?: string
+      grams?: number
     }>
     const entry = entries.find((e) => e.foodName === foodName)
     expect(
       entry,
       'logged weighed entry should be returned by GET /api/entries',
     ).toBeDefined()
+    expect(entry!.grams).toBe(grams)
     entryId = entry!.id
   } finally {
     if (entryId !== undefined) {

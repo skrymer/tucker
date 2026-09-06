@@ -1,6 +1,5 @@
 - main:
     - heading "Today" [level=1]
-    - button "Log entry"
     - heading "Today's weight" [level=2]
     - paragraph: No weight logged today.
     - button "Log weight"

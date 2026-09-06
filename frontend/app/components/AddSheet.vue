@@ -7,11 +7,6 @@ type Food = components['schemas']['FoodResponse']
 
 const props = defineProps<{
   open: boolean
-  /**
-   * A Food the parent has just persisted through this flow (the POST response).
-   * Its presence flips the sheet from "add" to the "log it now" continuation.
-   */
-  createdFood?: Food | null
   /** The catalog, for the recipe builder's ingredient picker (recipes excluded). */
   foods?: Food[]
   /** True while a recipe save is in flight, to lock the builder's Save. */
@@ -47,7 +42,6 @@ const emit = defineEmits<{
       fatPer100g: number
     },
   ]
-  log: [{ foodId: number; grams: number }]
 }>()
 
 // The overlay hosts two builders (CONTEXT.md): a plain Food (with its barcode
@@ -154,10 +148,10 @@ function useBarcodeLookup() {
     inconclusive.value = false
   }
 
-  return { barcode, looking, branch, inconclusive, lookup, reset }
+  return { barcode, looking, branch, inconclusive, lookup, cancel, reset }
 }
 
-const { barcode, looking, branch, inconclusive, lookup, reset } =
+const { barcode, looking, branch, inconclusive, lookup, cancel, reset } =
   useBarcodeLookup()
 
 // The camera scanner is a peer input to the manual field, lazy-loading
@@ -185,24 +179,29 @@ watch(mode, (current) => {
   if (current !== 'food') stopScan()
 })
 
-// Release the camera whenever the sheet is dismissed — by the overlay or by the
-// parent flipping `open` after a save. The overlay keeps this component mounted
-// while closed, so onScopeDispose alone would leave the camera light on.
 watch(
   () => props.open,
   (open) => {
     if (!open) {
+      // Release the camera the moment the sheet is dismissed — by the overlay or
+      // by the parent flipping `open` after a save. The overlay keeps this
+      // component mounted while closed, so onScopeDispose alone would leave the
+      // light on. `cancel()` goes with it so a late look-up can't resurface.
       stopScan()
-      // Start clean on the next open: a stale catalog hit or candidate must not
-      // resurface after the sheet has been dismissed (e.g. once a Food is saved
-      // and the continuation closes).
-      reset()
-      // Remount the add form on the next open so typed/merged values don't
-      // linger across opens (within one open it stays mounted; see formSession).
-      formSession.value++
-      // Reopen on the Food builder — the mode is a per-session choice.
-      mode.value = 'food'
+      cancel()
+      return
     }
+    // Everything else starts clean on the way *in*, not on the way out: the
+    // overlay holds this component through its exit animation, so a reset on
+    // close is watched — the header retitles and a blank Food form slides out in
+    // place of whatever the User just saved.
+    //
+    // A stale catalog hit or candidate must not resurface; the form is remounted
+    // so typed and merged values don't linger across opens (within one open it
+    // stays mounted, see formSession); and the mode is a per-session choice.
+    reset()
+    formSession.value++
+    mode.value = 'food'
   },
 )
 
@@ -239,19 +238,12 @@ const filledFromSource = computed(() =>
 // wiping what the user has typed; reopening the sheet starts a fresh form.
 const formSession = ref(0)
 
-// Once a Food exists, scanning is done — offer the explicit next step of logging
-// it (issue #52, "scanning creates a Food, not an Entry"). A catalog hit surfaces
-// an existing Food straight away; a saved Candidate/manual entry comes back from
-// the parent as `createdFood`. Either way the user still enters grams.
-const loggable = computed<{
-  food: Food
-  origin: 'created' | 'existing'
-} | null>(() => {
-  if (branch.value.kind === 'existing')
-    return { food: branch.value.food, origin: 'existing' }
-  if (props.createdFood) return { food: props.createdFood, origin: 'created' }
-  return null
-})
+// A barcode this User already has a Food for. Surfaced rather than dropped into
+// a blank form, which would invite a duplicate of a Food they own (ADR 0006);
+// the Food itself is the answer, and there is nothing to do with it here.
+const existingFood = computed<Food | null>(() =>
+  branch.value.kind === 'existing' ? branch.value.food : null,
+)
 </script>
 
 <template>
@@ -261,18 +253,27 @@ const loggable = computed<{
     @update:open="(value) => emit('update:open', value)"
   >
     <div class="flex flex-col gap-4 pb-4">
-      <!-- Once a Food exists (catalog hit or just saved), the flow pivots to the
-           offered "log it now" continuation. Otherwise the food details lead:
-           manual entry is the primary, always-available path, and a barcode is
-           just an optional way to pre-fill those fields. A saved Recipe is a
-           Food too, so it pivots into the very same continuation. -->
-      <LogItNow
-        v-if="loggable"
-        :food="loggable.food"
-        :origin="loggable.origin"
-        @log="(payload) => emit('log', payload)"
-        @dismiss="emit('update:open', false)"
-      />
+      <!-- A barcode already in the catalog answers the whole flow: there is
+           nothing to add. Otherwise the food details lead — manual entry is the
+           primary, always-available path, and a barcode is just an optional way
+           to pre-fill those fields. -->
+      <div v-if="existingFood" class="flex flex-col gap-4">
+        <UAlert
+          icon="i-lucide-check"
+          color="success"
+          variant="subtle"
+          title="Already in your catalog"
+          :description="existingFood.name"
+        />
+        <UButton
+          type="button"
+          color="primary"
+          class="w-full"
+          @click="emit('update:open', false)"
+        >
+          Done
+        </UButton>
+      </div>
       <UTabs
         v-else
         v-model="mode"

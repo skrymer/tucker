@@ -57,24 +57,18 @@ afterEach(() => {
   activeGoal = null
 })
 
-describe('/ with Calorie Tracking off', () => {
+// Logging is its own destination (ADR 0028): Today reads the day. Stated once,
+// because the page no longer branches on viewport for it — today.spec.ts's two
+// per-project snapshots are what say the phone has no FAB either.
+describe('/ never logs an entry', () => {
   it('offers no way to log an entry', async () => {
-    tracking.tracksCalories = false
-
     await renderToday()
 
     expect(screen.queryByRole('button', { name: /log entry/i })).toBeNull()
   })
+})
 
-  it('offers no floating action button on a phone either', async () => {
-    tracking.tracksCalories = false
-    viewport.desktop = false
-
-    await renderToday()
-
-    expect(screen.queryByRole('button', { name: /log entry/i })).toBeNull()
-  })
-
+describe('/ with Calorie Tracking off', () => {
   it('shows no day summary', async () => {
     tracking.tracksCalories = false
 
@@ -155,10 +149,9 @@ describe('/ in Maintenance Mode', () => {
 })
 
 describe('/ with Calorie Tracking on', () => {
-  it('keeps the day summary and the log-entry action', async () => {
+  it('keeps the day summary', async () => {
     await renderToday()
 
     expect(screen.getByText('1500 / 2000 kcal')).toBeVisible()
-    expect(screen.getByRole('button', { name: /log entry/i })).toBeVisible()
   })
 })
