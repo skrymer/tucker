@@ -61,8 +61,7 @@ const recipeSubline = computed(() => {
         <!-- Nutrition subline: identical for plain foods and recipes, so a
              recipe reads as "a food, plus more". -->
         <p class="mt-0.5 text-sm text-muted">
-          {{ Math.round(food.caloriesPer100g) }} kcal ·
-          {{ Math.round(food.proteinPer100g) }} g protein /100g
+          {{ formatPer100g(food) }}
         </p>
 
         <!-- Recipe-only meta line, quieter than the nutrition line. -->

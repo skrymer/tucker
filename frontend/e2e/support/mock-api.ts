@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test'
 import { micronutrientIntake } from '../../test/micronutrient-fixtures'
+import { weighedEntry } from '../../test/entry-fixtures'
 
 type Json = Record<string, unknown>
 
@@ -211,6 +212,46 @@ export async function mockFrequentFoodsError(page: Page) {
   await page.route('**/api/foods/frequent**', (route) =>
     route.fulfill({ status: 500, json: { message: 'boom' } }),
   )
+}
+
+/**
+ * Stub the weighed-entry log path — the projection preview and the write —
+ * returning the array the write records into, so a test can assert what the
+ * page sent rather than that something was sent.
+ *
+ * The reply is built by `weighedEntry`, not by hand: it carries every key the
+ * wire carries, `label: null` included (ADR 0023), and pairs `foodName` with
+ * `foodId` structurally — a hand-written stub naming `label` on a Weighed Entry
+ * puts a string production cannot produce into the "Entry logged" toast of
+ * every test that uses this.
+ */
+export async function mockWeighedEntryLog(
+  page: Page,
+  { foodName = 'Rolled oats' }: { foodName?: string } = {},
+): Promise<unknown[]> {
+  await page.route('**/api/entries/weighed/preview', (route) =>
+    route.fulfill({
+      json: { wouldExceedBudget: false, calorieBudget: 1900, overByKcal: null },
+    }),
+  )
+  const logged: unknown[] = []
+  await page.route('**/api/entries/weighed', (route) => {
+    const sent = route.request().postDataJSON()
+    logged.push(sent)
+    return route.fulfill({
+      status: 201,
+      json: weighedEntry({
+        id: 9,
+        loggedOn: sent.date,
+        foodId: sent.foodId,
+        foodName,
+        grams: sent.grams,
+        calories: 303,
+        protein: 26,
+      }),
+    })
+  })
+  return logged
 }
 
 /** Stub `GET /api/me` — the address the identity byline prints. */

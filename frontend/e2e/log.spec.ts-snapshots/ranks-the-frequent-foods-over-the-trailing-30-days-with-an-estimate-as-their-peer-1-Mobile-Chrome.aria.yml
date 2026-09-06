@@ -1,11 +1,22 @@
 - main:
     - heading "Log" [level=1]
-    - heading "Frequent foods" [level=2]
-    - list:
-        - listitem:
-            - button "Log Free-range eggs": /Free-range eggs \d+ kcal · \d+ g protein \/100g/
-        - listitem:
-            - button "Log Rolled oats": /Rolled oats \d+ kcal · \d+ g protein \/100g/
-        - listitem:
-            - button "Log Weekday chilli, a recipe": /Weekday chilli \d+ kcal · \d+ g protein \/100g/
+    - textbox "Filter foods"
     - button "Log an estimate instead"
+    - region "Frequent foods":
+        - heading "Frequent foods" [level=2]
+        - list:
+            - listitem:
+                - button "Log Free-range eggs": /Free-range eggs \d+ kcal · \d+ g protein \/100g/
+            - listitem:
+                - button "Log Rolled oats": /Rolled oats \d+ kcal · \d+ g protein \/100g/
+            - listitem:
+                - button "Log Weekday chilli, a recipe": /Weekday chilli \d+ kcal · \d+ g protein \/100g/
+    - region "All foods":
+        - heading "All foods" [level=2]
+        - list:
+            - listitem:
+                - button "Log Free-range eggs": /Free-range eggs \d+ kcal · \d+ g protein \/100g/
+            - listitem:
+                - button "Log Rolled oats": /Rolled oats \d+ kcal · \d+ g protein \/100g/
+            - listitem:
+                - button "Log Weekday chilli, a recipe": /Weekday chilli Recipe \d+ kcal · \d+ g protein \/100g/
