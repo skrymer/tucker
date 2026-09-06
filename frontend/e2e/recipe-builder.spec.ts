@@ -5,7 +5,7 @@ import { food, recipe } from '../test/food-fixtures'
 // F9 Slice 1: the recipe builder happy path with /api mocked, on both Desktop
 // and Mobile Chrome (the responsive check). Drives the Food|Recipe switch, the
 // one-ingredient-at-a-time step machine, the cook-down, and the save — asserting
-// the POST body the backend receives and the pivot to "log it now".
+// the POST body the backend receives and that the sheet closes onto the catalog.
 test('user builds and saves a recipe through the Food or Recipe switch', async ({
   page,
   goto,
@@ -62,8 +62,9 @@ test('user builds and saves a recipe through the Food or Recipe switch', async (
 
   await sheet.getByRole('button', { name: /save recipe/i }).click()
 
-  // The saved recipe is a Food, so the flow pivots to "log it now".
-  await expect(sheet.getByRole('button', { name: /log it now/i })).toBeVisible()
+  // A saved Recipe is a Food, and the catalog is only a catalog (ADR 0028): the
+  // sheet closes onto it rather than pivoting into a second way to log.
+  await expect(sheet).toBeHidden()
 
   expect(recipeBody).toEqual({
     name: 'Cottage pie',

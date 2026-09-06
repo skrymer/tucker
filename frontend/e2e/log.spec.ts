@@ -8,7 +8,7 @@ import {
   mockWeighedEntryLog,
 } from './support/mock-api'
 import { food, recipe } from '../test/food-fixtures'
-import { isoShiftDays, todayIso } from './support/date'
+import { isoShiftDays, localTodayIso } from './support/date'
 
 // The Log destination: Frequent Foods as a grid, an estimate as its peer, and
 // nothing else that creates an Entry (ADR 0028).
@@ -87,7 +87,7 @@ test('ranks the frequent foods over the trailing 30 days, with an estimate as th
   await expect(page.getByRole('main')).toMatchAriaSnapshot()
   // The window is the client's (ADR 0014) and is the only one the backend
   // accepts — a different span would 400 rather than return a wider ranking.
-  const today = todayIso()
+  const today = localTodayIso()
   // Every request, not merely one of them: a second read on a different window
   // would be a different question answered into the same grid.
   expect(asked).toEqual([{ from: isoShiftDays(today, -29), to: today }])
@@ -149,7 +149,7 @@ test('logs a weighed entry for the food whose cell was tapped', async ({
   await sheet.getByRole('button', { name: /log entry/i }).click()
 
   await expect(sheet).toBeHidden()
-  expect(logged).toEqual([{ date: todayIso(), foodId: 1, grams: 80 }])
+  expect(logged).toEqual([{ date: localTodayIso(), foodId: 1, grams: 80 }])
 })
 
 test('finds a food the grid does not hold, and logs it the same way', async ({
@@ -179,7 +179,7 @@ test('finds a food the grid does not hold, and logs it the same way', async ({
   await sheet.getByRole('button', { name: /log entry/i }).click()
 
   await expect(sheet).toBeHidden()
-  expect(logged).toEqual([{ date: todayIso(), foodId: 4, grams: 120 }])
+  expect(logged).toEqual([{ date: localTodayIso(), foodId: 4, grams: 120 }])
 })
 
 test('restores the grid and the whole catalog when the filter is cleared', async ({

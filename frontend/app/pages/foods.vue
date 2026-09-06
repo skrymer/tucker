@@ -19,21 +19,14 @@ const router = useRouter()
 const open = ref(opensAddSheet(route.query))
 const selectedFood = ref<FoodResponse | null>(null)
 // The recipe whose row's view button was tapped — non-null opens the read-only
-// composition sheet. Logging a recipe still goes through the ordinary log path.
+// composition sheet.
 const recipeToView = ref<FoodResponse | null>(null)
-// The Food whose row was tapped — non-null opens the grams-only log sheet.
-const foodToLog = ref<FoodResponse | null>(null)
-// The Food just saved through the Add-Food flow. Its presence pivots the sheet
-// into the "log it now" continuation (issue #52); cleared whenever the sheet
-// closes so the next open starts on a blank add form.
-const createdFood = ref<FoodResponse | null>(null)
 const isDesktop = useIsDesktop()
 const { $api } = useNuxtApp()
 const toast = useToast()
 
 watch(open, (isOpen) => {
   if (!isOpen) {
-    createdFood.value = null
     createdIngredient.value = null
     // The hand-off is spent once the sheet closes; left in the URL it reopens
     // the sheet on a reload, over a catalog the User has since stocked.
@@ -44,24 +37,43 @@ watch(open, (isOpen) => {
   }
 })
 
+/** Which opening of the Add sheet is on screen; a reopen starts a new one. */
+const sheetSession = ref(0)
+watch(open, (isOpen) => {
+  if (isOpen) sheetSession.value++
+})
+
+/**
+ * A catalog save, closing the sheet it was issued from — and only that one,
+ * which is what `sheetSession` is for: a save resolves whenever it resolves,
+ * and on a slow connection that can be after the User gave up on it, dismissed
+ * the sheet and opened a fresh one. Closing *that* sheet would take a half-typed
+ * Recipe with it.
+ *
+ * The sheet closing is the confirmation, as the vanishing row is for a delete
+ * (ADR 0005) — it closes on success alone, a failure leaving it open under a
+ * Retry toast.
+ */
+async function savingFromThisSheet<T>(save: Promise<T>): Promise<T> {
+  const issuedIn = sheetSession.value
+  const saved = await save
+  if (sheetSession.value === issuedIn) open.value = false
+  return saved
+}
+
 const { execute: handleSubmit } = useApiMutation(
-  async (payload: {
+  (payload: {
     name: string
     barcode?: string
     proteinPer100g: number
     carbsPer100g: number
     fatPer100g: number
-  }) => {
-    // Capture the created Food (with its id) to offer logging it next.
-    createdFood.value = await $api('/api/foods', {
-      method: 'POST',
-      body: payload,
-    })
-  },
+  }) =>
+    savingFromThisSheet($api('/api/foods', { method: 'POST', body: payload })),
   {
-    // No success toast: the new food appears in the list, and the sheet stays
-    // open offering the "log it now" continuation.
     errorTitle: 'Could not add food',
+    // The catalog is re-read rather than appended to, because its order is the
+    // server's.
     onSuccess: () => refresh(),
   },
 )
@@ -90,19 +102,17 @@ const { execute: handleCreateIngredient } = useApiMutation(
 )
 
 // A Recipe is a composite Food (kind = RECIPE); the backend rolls up its
-// nutrition and returns a FoodResponse, so it pivots into the same "log it now"
-// continuation and appears in the catalog exactly like a plain Food (F9 #142).
+// nutrition and returns a FoodResponse, so it appears in the catalog exactly
+// like a plain Food (F9 #142).
 const { pending: recipePending, execute: handleSubmitRecipe } = useApiMutation(
-  async (payload: {
+  (payload: {
     name: string
     cookedWeightG: number
     ingredients: { foodId: number; grams: number }[]
-  }) => {
-    createdFood.value = await $api('/api/recipes', {
-      method: 'POST',
-      body: payload,
-    })
-  },
+  }) =>
+    savingFromThisSheet(
+      $api('/api/recipes', { method: 'POST', body: payload }),
+    ),
   {
     errorTitle: 'Could not add recipe',
     onSuccess: () => refresh(),
@@ -141,32 +151,6 @@ const { pending: recipeEditPending, execute: handleEditRecipe } =
 watch(recipeToView, (recipe) => {
   if (!recipe) createdIngredient.value = null
 })
-
-// An explicit, user-driven Weighed Entry against today for a Food that
-// already exists — a tapped catalog row, a barcode catalog hit, or the
-// "log it now" continuation after a save. The user always supplies the grams.
-const { pending: logPending, execute: handleLog } = useApiMutation(
-  (payload: { foodId: number; grams: number }) =>
-    $api('/api/entries/weighed', {
-      method: 'POST',
-      body: {
-        date: localToday(),
-        foodId: payload.foodId,
-        grams: payload.grams,
-      },
-    }),
-  {
-    // The new Entry lives on Today, not here — a toast confirms it landed, and
-    // names it, since the user stays on /foods and never sees the row.
-    successTitle: 'Entry logged',
-    successDescription: formatEntryName,
-    errorTitle: 'Could not log entry',
-    onSuccess: () => {
-      open.value = false
-      foodToLog.value = null
-    },
-  },
-)
 
 const { execute: deleteFood } = useApiMutation(
   (food: FoodResponse) =>
@@ -244,7 +228,6 @@ function handleDeleteConfirm() {
         v-if="foods && foods.length > 0"
         :foods="foods"
         :tracks-calories="tracksCalories"
-        @log="foodToLog = $event"
         @delete="selectedFood = $event"
         @view="recipeToView = $event"
         @match="foodToMatch = $event"
@@ -269,21 +252,12 @@ function handleDeleteConfirm() {
 
     <AddSheet
       v-model:open="open"
-      :created-food="createdFood"
       :created-ingredient="createdIngredient"
       :foods="foods ?? []"
       :recipe-pending="recipePending"
       @submit="handleSubmit"
       @submit-recipe="handleSubmitRecipe"
       @create-food="handleCreateIngredient"
-      @log="handleLog"
-    />
-
-    <LogGramsSheet
-      :food="foodToLog"
-      :pending="logPending"
-      @log="handleLog"
-      @close="foodToLog = null"
     />
 
     <DeleteFoodConfirm

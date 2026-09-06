@@ -30,17 +30,13 @@ describe('FoodListItem', () => {
     expect(screen.getByText(/11 g protein/)).toBeVisible()
   })
 
-  it('emits log with the food when the user taps the row', async () => {
-    const onLog = vi.fn()
-    await renderSuspended(FoodListItem, {
-      props: { food: skyr, onLog },
-    })
+  it('leaves the row body inert — the catalog does not log', async () => {
+    await renderSuspended(FoodListItem, { props: { food: skyr } })
 
-    await userEvent
-      .setup()
-      .click(screen.getByRole('button', { name: 'Log Skyr' }))
-
-    expect(onLog).toHaveBeenCalledWith(skyr)
+    // Logging is its own destination (ADR 0028), so the row states the Food and
+    // offers only the catalog's own actions.
+    expect(screen.queryByRole('button', { name: /^Log Skyr$/ })).toBeNull()
+    expect(screen.getByText('Skyr')).toBeVisible()
   })
 
   it('marks a recipe with a Recipe chip and an "N ingredients · makes X g" subline', async () => {
@@ -99,17 +95,16 @@ describe('FoodListItem', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('emits match — not log — when the user changes what a matched Food borrows', async () => {
+  it('emits match when the user changes what a matched Food borrows', async () => {
     const cheese = food({
       id: 3,
       name: 'Tasty cheese',
       referenceFoodId: 9,
       referenceFoodName: 'Cheese, cheddar, natural, regular fat',
     })
-    const onLog = vi.fn()
     const onMatch = vi.fn()
     await renderSuspended(FoodListItem, {
-      props: { food: cheese, onLog, onMatch },
+      props: { food: cheese, onMatch },
     })
 
     // A wrong match is worse than none, so changing or clearing one has to be as
@@ -121,7 +116,6 @@ describe('FoodListItem', () => {
     )
 
     expect(onMatch).toHaveBeenCalledWith(cheese)
-    expect(onLog).not.toHaveBeenCalled()
   })
 
   it('leaves an unmatched Food carrying no marker of any kind', async () => {
@@ -139,11 +133,10 @@ describe('FoodListItem', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('emits view — not log — when the user taps a recipe row’s view button', async () => {
-    const onLog = vi.fn()
+  it('emits view when the user taps a recipe row’s view button', async () => {
     const onView = vi.fn()
     await renderSuspended(FoodListItem, {
-      props: { food: cottagePie, onLog, onView },
+      props: { food: cottagePie, onView },
     })
 
     await userEvent
@@ -153,14 +146,12 @@ describe('FoodListItem', () => {
       )
 
     expect(onView).toHaveBeenCalledWith(cottagePie)
-    expect(onLog).not.toHaveBeenCalled()
   })
 
-  it('emits delete — not log — when the user activates the delete button', async () => {
-    const onLog = vi.fn()
+  it('emits delete when the user activates the delete button', async () => {
     const onDelete = vi.fn()
     await renderSuspended(FoodListItem, {
-      props: { food: skyr, onLog, onDelete },
+      props: { food: skyr, onDelete },
     })
 
     await userEvent
@@ -168,6 +159,5 @@ describe('FoodListItem', () => {
       .click(screen.getByRole('button', { name: 'Delete Skyr' }))
 
     expect(onDelete).toHaveBeenCalledWith(skyr)
-    expect(onLog).not.toHaveBeenCalled()
   })
 })

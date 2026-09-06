@@ -38,19 +38,6 @@ describe('FoodList', () => {
     expect(screen.getByText('Chicken breast')).toBeVisible()
   })
 
-  it('bubbles log with the picked food when the user taps a row', async () => {
-    const onLog = vi.fn()
-    await renderSuspended(FoodList, {
-      props: { foods: sampleFoods, onLog },
-    })
-
-    await userEvent
-      .setup()
-      .click(screen.getByRole('button', { name: 'Log Skyr' }))
-
-    expect(onLog).toHaveBeenCalledWith(sampleFoods[1])
-  })
-
   it('bubbles view with the picked recipe when the user taps its view button', async () => {
     const onView = vi.fn()
     await renderSuspended(FoodList, {

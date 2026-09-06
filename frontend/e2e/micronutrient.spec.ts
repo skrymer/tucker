@@ -221,7 +221,7 @@ test('with Calorie Tracking off the catalog says nothing about a borrow', async 
 
   // The row is up, so the page has settled and a subline would have rendered.
   await expect(
-    page.getByRole('button', { name: 'Log Chicken breast' }),
+    page.getByRole('button', { name: 'Delete Chicken breast' }),
   ).toBeVisible()
   // Gated on the setting rather than on the row still holding a match: this
   // User matched foods before turning tracking off, and the whole surface goes

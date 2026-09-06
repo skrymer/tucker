@@ -16,7 +16,6 @@ const props = withDefaults(
 )
 // Stryker restore all
 const emit = defineEmits<{
-  log: [FoodResponse]
   delete: [FoodResponse]
   view: [FoodResponse]
   match: [FoodResponse]
@@ -33,54 +32,47 @@ const recipeSubline = computed(() => {
 </script>
 
 <template>
-  <!-- Sibling controls only (nested buttons are invalid HTML): the row body
-       logs the food, the list icon views a recipe's composition, the trash
-       icon deletes it. -->
+  <!-- The row body states the Food and takes no tap of its own — logging is its
+       own destination (ADR 0028). Beside it the list icon views a recipe's
+       composition, the pencil changes a borrow and the trash deletes. -->
   <div class="flex items-center gap-1">
-    <button
-      type="button"
-      :aria-label="`Log ${food.name}`"
-      class="min-w-0 flex-1 rounded-md py-3 text-left hover:bg-elevated active:bg-elevated"
-      @click="emit('log', props.food)"
-    >
-      <div class="min-w-0">
-        <div class="flex min-w-0 items-center gap-2">
-          <p class="truncate font-medium text-default">{{ food.name }}</p>
-          <UBadge
-            v-if="isRecipe"
-            color="primary"
-            variant="subtle"
-            size="sm"
-            class="shrink-0"
-          >
-            <UIcon name="i-lucide-cooking-pot" class="size-3" />
-            Recipe
-          </UBadge>
-        </div>
+    <div class="min-w-0 flex-1 py-3">
+      <div class="flex min-w-0 items-center gap-2">
+        <p class="truncate font-medium text-default">{{ food.name }}</p>
+        <UBadge
+          v-if="isRecipe"
+          color="primary"
+          variant="subtle"
+          size="sm"
+          class="shrink-0"
+        >
+          <UIcon name="i-lucide-cooking-pot" class="size-3" />
+          Recipe
+        </UBadge>
+      </div>
 
-        <!-- Nutrition subline: identical for plain foods and recipes, so a
+      <!-- Nutrition subline: identical for plain foods and recipes, so a
              recipe reads as "a food, plus more". -->
-        <p class="mt-0.5 text-sm text-muted">
-          {{ formatPer100g(food) }}
-        </p>
+      <p class="mt-0.5 text-sm text-muted">
+        {{ formatPer100g(food) }}
+      </p>
 
-        <!-- Recipe-only meta line, quieter than the nutrition line. -->
-        <p v-if="isRecipe" class="mt-0.5 text-xs text-dimmed">
-          {{ recipeSubline }}
-        </p>
+      <!-- Recipe-only meta line, quieter than the nutrition line. -->
+      <p v-if="isRecipe" class="mt-0.5 text-xs text-dimmed">
+        {{ recipeSubline }}
+      </p>
 
-        <!-- What this Food borrows its micronutrients from, named rather than
+      <!-- What this Food borrows its micronutrients from, named rather than
              ticked: a tick is unverifiable, and there is nothing on an unmatched
              row at all — a marker there would decorate a Food with a status it
              did not earn (ADR 0027). -->
-        <p
-          v-if="tracksCalories && food.referenceFoodName"
-          class="mt-0.5 truncate text-xs text-dimmed"
-        >
-          Vitamins and minerals from {{ food.referenceFoodName }}
-        </p>
-      </div>
-    </button>
+      <p
+        v-if="tracksCalories && food.referenceFoodName"
+        class="mt-0.5 truncate text-xs text-dimmed"
+      >
+        Vitamins and minerals from {{ food.referenceFoodName }}
+      </p>
+    </div>
 
     <UButton
       v-if="isRecipe"

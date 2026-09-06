@@ -31,7 +31,7 @@ one composable rather than improvise it per screen.
 
 We considered an **inline/top banner rendered per surface**. Rejected: it means
 adding banner state, markup, and a Retry wire-up to every page, form, and
-overlay (including inside `LogEntrySheet`, which has no natural banner slot),
+overlay (including inside a bottom sheet, which has no natural banner slot),
 inviting drift across the six flows; and on a tall scroll view a per-surface
 banner can scroll above the fold — the same "user misses it" failure we are
 fixing. A single toast viewport, owned by one composable, is identical
@@ -57,17 +57,16 @@ lands** after the action. Default to silent. By that test:
   added (row appears in the list), Food deleted (row disappears — the
   disappearance is the confirmation), Weight saved (appears in the trend). The
   visible state change *is* the confirmation.
-- **Kept:** Entry logged — the log sheet closes and returns to the Today
-  dashboard, where the only confirmation is a calorie/protein delta that may be
-  scrolled off-screen. Focus lands somewhere the result isn't reliably visible,
-  so the toast bridges "sheet closed → it worked."
+- **Kept:** Entry logged — the sheet closes and leaves the user on the **Log**
+  destination, while the Entry itself lands on Today. Focus never ends up where
+  the result is, so the toast bridges "sheet closed → it worked."
 
 ### The kept toast names the Entry it confirms
 
 "Entry logged" alone says that *an* Entry landed, not which one — and a mis-tap
-on the neighbouring food in the picker, a "log it now" on the wrong scanned
-product, and a grams field that silently kept a stale value all produce a
-message identical to the correct outcome (issue #206). Since this toast is by
+on the neighbouring cell in the **Frequent Foods** grid, or a grams field that
+silently kept a stale value, both produce a message identical to the correct
+outcome (issue #206). Since this toast is by
 design the *only* confirmation the user gets, it carries the thing worth
 confirming: the title stays `Entry logged` and the **description** names the
 Entry — `Banana — 107 kcal · 12 g protein`, `Cafe lunch — 600 kcal` — which is
@@ -215,11 +214,12 @@ own Retry click.
   `() => execute(...args)`. The success path stays optional via `successTitle`.
 - Adding a `successTitle` to a flow whose result is already visible is a
   regression — the default is silent. Only entry-log mutations pass one
-  ("Entry logged"): the `LogEntrySheet` flows on Today, and the Foods-page
-  flows (catalog tap-to-log, barcode "log it now") whose Entry also lands on
-  Today while the user stays on `/foods`. Those same three pass
-  `successDescription: formatEntryName`; a `successDescription` without a
-  `successTitle` is inert, since there is no toast to describe.
+  ("Entry logged"), and since [ADR 0028](0028-logging-is-its-own-destination.md)
+  they are the two on the **Log** destination — a Food picked out of the grid or
+  the catalog, and an estimate — whose Entry lands on Today while the user stays
+  on `/log`. Both pass `successDescription: formatEntryName`; a
+  `successDescription` without a `successTitle` is inert, since there is no toast
+  to describe.
 - **a11y:** errors use `type: 'foreground'` (aria-live **assertive** — a direct
   result of user action that must interrupt). Success **must explicitly** pass
   `type: 'background'` (aria-live **polite**), because Reka defaults `type` to

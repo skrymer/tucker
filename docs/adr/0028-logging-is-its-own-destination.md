@@ -177,15 +177,18 @@ changed is the usage, not the logic.
 
 ## Consequences
 
-- `LogFoodSheet` is deleted. With it goes the one path that created an Entry
-  **without a Budget Projection** — `LogEntrySheet` runs both its forms through
-  `useBudgetGate` and the `/foods` row tap ran through nothing, so the surface
+- The `/foods` row tap is deleted. With it goes the one path that created an
+  Entry **without a Budget Projection** — `LogEntrySheet` runs both its forms
+  through `useBudgetGate` and the row tap ran through nothing, so the surface
   actually in use was the one that never warned. The restructure closes that by
-  removing the path rather than by adding a guard to it.
+  removing the path rather than by adding a guard to it. `LogFoodSheet` itself
+  survives the tap that opened it: it is the grams sheet the Log destination
+  needs, renamed `LogGramsSheet` and gated.
 - The Log destination needs the backend to rank Frequent Foods; the client sorts
   nothing.
 - `navigation.ts` documents "Tucker's five primary destinations" and justifies
   Check's tab. Both statements stop being true.
-- Today becomes read-only for Entries. Its `LogEntrySheet` and the components
-  under it move to the new destination rather than being rewritten — the Weighed
-  path loses its picker, the Estimated path is unchanged.
+- Today becomes read-only for Entries. Nothing under its `LogEntrySheet` is
+  rewritten: `EstimatedEntryForm` moves to the new destination untouched, the
+  Weighed path is served by the grams sheet the `/foods` row tap already had, and
+  the sheet, its tab body and its picker are deleted rather than carried over.

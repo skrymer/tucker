@@ -11,7 +11,6 @@ withDefaults(
 // Stryker restore all
 
 const emit = defineEmits<{
-  log: [FoodResponse]
   delete: [FoodResponse]
   view: [FoodResponse]
   match: [FoodResponse]
@@ -24,7 +23,6 @@ const emit = defineEmits<{
       <FoodListItem
         :food="food"
         :tracks-calories="tracksCalories"
-        @log="(picked) => emit('log', picked)"
         @delete="(picked) => emit('delete', picked)"
         @view="(picked) => emit('view', picked)"
         @match="(picked) => emit('match', picked)"

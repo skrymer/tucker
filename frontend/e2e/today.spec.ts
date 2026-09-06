@@ -9,60 +9,44 @@ import {
   mockWeightApi,
 } from './support/mock-api'
 
+/** An on-target day with one Entry on it — the resting shape Today renders. */
+const DAY_WITH_AN_ENTRY = {
+  date: '2026-05-22',
+  caloriesConsumed: 1500,
+  proteinConsumed: 140,
+  estimatedCalorieShare: 0,
+  setupComplete: true,
+  calorieBudget: 2000,
+  proteinFloor: 140,
+  caloriesRemaining: 500,
+  dayStatus: 'on-target',
+  entries: [
+    weighedEntry({
+      id: 1,
+      calories: 240,
+      protein: 8,
+      foodId: 3,
+      foodName: 'Oats',
+      grams: 60,
+    }),
+  ],
+}
+
 test('the Today page shows the daily summary from the API', async ({
   page,
   goto,
 }) => {
   await mockWeightApi(page)
-  await mockSummary(page, {
-    date: '2026-05-22',
-    caloriesConsumed: 1500,
-    proteinConsumed: 140,
-    estimatedCalorieShare: 0,
-    setupComplete: true,
-    calorieBudget: 2000,
-    proteinFloor: 140,
-    caloriesRemaining: 500,
-    dayStatus: 'on-target',
-    entries: [
-      weighedEntry({
-        id: 1,
-        calories: 240,
-        protein: 8,
-        foodId: 3,
-        foodName: 'Oats',
-        grams: 60,
-      }),
-    ],
-  })
+  await mockNoActiveGoal(page)
+  await mockSummary(page, DAY_WITH_AN_ENTRY)
 
   await goto('/', { waitUntil: 'hydration' })
 
-  // The Log-entry action is always reachable without scrolling — a header button
-  // on desktop, a floating button on phone — so the resting tree differs by
-  // viewport; one closed-world baseline per project (the Desktop/Mobile split).
-  await expect(page.getByRole('button', { name: 'Log entry' })).toBeVisible()
+  // A closed-world baseline of the whole resting page, which is what carries
+  // "Today never logs an Entry": no header button, and no phone FAB either.
+  // Playwright keeps one baseline per project (Desktop / Mobile Chrome), and
+  // with the FAB gone the two now read alike.
   await expect(page.getByRole('main')).toMatchAriaSnapshot()
-})
-
-test('the always-visible action opens the log-entry sheet', async ({
-  page,
-  goto,
-}) => {
-  await mockWeightApi(page)
-  await mockSummary(page)
-
-  await goto('/', { waitUntil: 'hydration' })
-
-  // The page owns the trigger now — a header button on desktop, a FAB on phone,
-  // both named "Log entry" — so this one assertion guards both viewports' wiring
-  // through to the controlled sheet (the fast-suite guard the smokes also cover).
-  await page.getByRole('button', { name: 'Log entry' }).click()
-
-  const sheet = page.getByRole('dialog', { name: /log entry/i })
-  await expect(sheet).toBeVisible()
-  await expect(page.getByRole('tab', { name: 'Estimated' })).toBeVisible()
-  await expect(sheet.getByLabel('Label')).toBeVisible()
 })
 
 test("logging a weight from the tile shows it as today's weight", async ({
@@ -70,6 +54,7 @@ test("logging a weight from the tile shows it as today's weight", async ({
   goto,
 }) => {
   await mockWeightApi(page)
+  await mockNoActiveGoal(page)
   await mockSummary(page)
 
   await goto('/', { waitUntil: 'hydration' })
@@ -94,6 +79,7 @@ test('the weight sheet stays put, reporting busy, until the save lands', async (
   goto,
 }) => {
   await mockWeightApi(page)
+  await mockNoActiveGoal(page)
   await mockSummary(page)
 
   // Hold the POST open so the in-flight window is observable. Registered after

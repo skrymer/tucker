@@ -1239,7 +1239,8 @@ null` now means two things that earn opposite messages — the same trap
   earn — recorded there rather than reversed silently, and `More` is Check's entry
   point, a settled placement rather than a holding position; and the `/foods` row tap was the
   one path creating an Entry with **no Budget Projection**, closed by *removing the path*
-  rather than guarding it. Three slices, each with a real-stack smoke:
+  rather than guarding it. Three slices, each covered real-stack (ADR 0013 rule 4;
+  slice 3 deletes rather than builds, so its smoke is a re-pointed one — see there):
   [#295](https://github.com/skrymer/tucker/issues/295) the Log destination end-to-end
   plus the shell, [#296](https://github.com/skrymer/tucker/issues/296) the tail and its
   filter, [#297](https://github.com/skrymer/tucker/issues/297) the old paths go — last,
@@ -1331,6 +1332,54 @@ null` now means two things that earn opposite messages — the same trap
     an Entry already uses. `logFoodLabel` went the same way on its second consumer; `/foods`'
     row is deliberately not a third, being a shortcut slice 3 removes.
   - Nothing is removed here either: Today keeps its FAB and `/foods` its row tap.
+
+  Slice 3 ([#297](https://github.com/skrymer/tucker/issues/297)) — **the old logging
+  paths go** — ✅ done, **and with it F16**. Today's header button, its FAB and the sheet
+  they opened; `/foods`' row tap and the "log it now" continuation; the `USelectMenu`
+  picker that started all this, and the throwaway prototype. The **Log** destination is
+  the only surface that creates an **Entry**, so every path to one carries the **Budget
+  Projection** gate — closed by removing the ungated path, not by guarding it.
+  - **A catalog hit is not the continuation, and only the continuation goes.** `LogItNow`
+    served two branches: a Food the parent had just saved, and a barcode already in the
+    catalog. Deleting both would leave a *blank add form* over a barcode this User owns —
+    the duplicate ADR 0006's discriminated lookup exists to prevent. So the hit keeps its
+    panel, names the Food and closes; the grams field and "Log it now" are what go.
+    Recorded as an amendment on ADR 0006 rather than left to be rediscovered.
+  - **The `/foods` row body stops being a control**, rather than becoming a
+    differently-labelled one. There is no second thing for a tap to mean: the row's
+    actions are the icons beside it — view a Recipe's composition, change a borrow,
+    delete — and the body states the Food.
+  - **Saving a Food closes the sheet, which is ADR 0005's rule catching up.** "Food added
+    (row appears in the list)" was in its *dropped* column from the start; the
+    continuation was the only reason the sheet stayed open over the list that was already
+    the confirmation. With it gone the row is the feedback again, and no toast is added.
+  - **Six specs asserted the continuation, not the one the issue names.** Besides
+    `add-food`, it was declined as a step in `barcode-lookup` (twice), `barcode-offline`
+    and `barcode-scan`, and asserted as a pivot in the mocked `recipe-builder`.
+    `create-recipe` is the only one that actually *logged* through it, so it is the only
+    one that had to move to `/log` rather than lose a line.
+  - **`log-food-from-catalog.smoke.spec.ts` is subsumed, not re-pointed.** Its subject
+    was the path, and re-pointing it would have produced a second copy of
+    `frequent-foods.smoke.spec.ts`, which already picks a Food out of the catalog list
+    and logs it. Two `/foods` smokes lost only a *settle check* that happened to name
+    the row's Log button.
+  - **The slice's own real-stack smoke is `add-food.smoke.spec.ts`** (ADR 0013 rule 4).
+    A deletion slice has no new golden path to cover, and what has to be proven against
+    a live backend is that the continuation is *gone* — a Food saved through the sheet
+    now closes it, with no offer to log. The two budget smokes prove the other half:
+    the gate every surviving path carries, now reached through `/log`.
+  - **AC 8 was already met by slice 1** — "Tucker's five primary destinations" went with
+    the shell split. Only AC 9's claim was still standing, and it is the interesting one:
+    Check is hidden from a weight-only User *because* they have no Calorie Budget and no
+    Protein Floor, ADR 0024 having removed the **Intake Targets** the comment said the
+    backend still derived.
+  - **Two latent test faults surfaced, both invisible in CI.** `log.spec.ts` compared
+    client-stamped dates against the deliberately-UTC `todayIso()`, so slices 1 and 2
+    were red for a whole Brisbane morning and green only where the process clock is UTC —
+    `localTodayIso()` names the distinction. And Today's aria snapshot never mocked
+    `/api/goal/progress`: the baseline was whatever that read had managed by the time the
+    tree first matched, so *removing an assertion above it* was enough to make the error
+    panel appear. `mockNoActiveGoal` states the intended state instead.
 
 ## Architecture
 

@@ -5,8 +5,11 @@ import { todayIso } from '../support/date'
 // Estimated Entries. With a Calorie Budget in place and most of the day already
 // eaten, an estimated entry whose calories would tip the day over budget is NOT
 // logged on the first Save — the sheet shows an over-budget warning and the action
-// becomes "Log anyway". A second deliberate tap logs it, and the dashboard flips to
-// "Over budget". The per-test reset (smoke-test.ts) wipes the seeded review and entries.
+// becomes "Log anyway". A second deliberate tap logs it, and the day earns its
+// over-budget verdict — read off the API rather than off Today, which
+// day-status.smoke.spec.ts already renders. Driven from the Log destination,
+// where an estimate is a peer of picking a Food (ADR 0028). The per-test reset
+// (smoke-test.ts) wipes the seeded review and entries.
 const API = 'http://localhost:8080/api'
 
 test('an estimated entry over budget warns first, then logs on "Log anyway"', async ({
@@ -50,12 +53,11 @@ test('an estimated entry over budget warns first, then logs on "Log anyway"', as
   // An estimate worth ~50% of the budget, so the projected total (~130%) is clearly over.
   const estimate = Math.ceil(budget * 0.5)
 
-  await goto('/', { waitUntil: 'hydration' })
+  await goto('/log', { waitUntil: 'hydration' })
 
-  await page.getByRole('button', { name: /log entry/i }).click()
-  const sheet = page.getByRole('dialog', { name: /log entry/i })
+  await page.getByRole('button', { name: /log an estimate instead/i }).click()
+  const sheet = page.getByRole('dialog', { name: /log an estimate/i })
   await expect(sheet).toBeVisible()
-  // Estimated is the default tab — log the calories directly, no food picker.
 
   await sheet.getByLabel('Label').fill('Dinner out')
   await sheet.getByLabel('Calories').click()
@@ -74,5 +76,14 @@ test('an estimated entry over budget warns first, then logs on "Log anyway"', as
   // Second deliberate tap → logs anyway; the day is now over budget.
   await logAnyway.click()
   await expect(sheet).toBeHidden()
-  await expect(page.getByText('Over budget')).toBeVisible()
+  await expect
+    .poll(
+      async () =>
+        (
+          await (
+            await request.get(`${API}/summary`, { params: { date: today } })
+          ).json()
+        ).dayStatus,
+    )
+    .toBe('over-budget')
 })

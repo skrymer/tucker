@@ -170,9 +170,8 @@ test('Tucker takes the shape of the choice', async ({
   await expect(nav.getByRole('link', { name: 'Review' })).toBeVisible()
   await expect(nav.getByRole('link', { name: 'Log' })).toBeHidden()
 
-  // Nothing to log, and nothing to log it against.
+  // Nothing to log it against either — the day summary goes with the Budget.
   await expect(page.getByText(/\d+ \/ \d+ kcal/)).toBeHidden()
-  await expect(page.getByRole('button', { name: /log entry/i })).toBeHidden()
 
   // What is left is the weight and the goal, the goal as a ring.
   await expect(

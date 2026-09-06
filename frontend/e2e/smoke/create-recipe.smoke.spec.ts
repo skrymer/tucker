@@ -1,19 +1,21 @@
 import { test, expect } from './support/smoke-test'
 import { todayIso } from '../support/date'
+import { enterGrams, pickFoodToLog } from '../support/log-page'
 
 // F9 Slice 1 smoke: the full UI → API → DB path for creating a Recipe against
 // the real backend, then logging it like any other Food. Seeds one ingredient
 // Food, builds a Recipe through the Food|Recipe switch (pick → grams → cook-down
-// → save), logs 250 g through the "log it now" continuation, and asserts Today's
+// → save), then logs 250 g of it from the Log destination — a saved Recipe is a
+// Food, so it is picked there exactly like one (ADR 0028) — and asserts Today's
 // dashboard reflects it. Cleans up so the docker volume is unchanged between runs.
 test('user builds a recipe, saves it, and logs a portion onto Today', async ({
   page,
   goto,
   request,
 }) => {
-  // Building a recipe step-by-step and logging it spans two SPA navigations and
-  // many field interactions against the real backend — more than the default
-  // 30 s budget on a cold route. Triple it.
+  // Building a recipe step-by-step and logging it spans three SPA navigations
+  // (/foods, /log, /) and many field interactions against the real backend —
+  // more than the default 30 s budget on a cold route. Triple it.
   test.slow()
 
   const stamp = Date.now()
@@ -89,15 +91,22 @@ test('user builds a recipe, saves it, and logs a portion onto Today', async ({
 
     await sheet.getByRole('button', { name: /save recipe/i }).click()
 
-    // Saved → the flow pivots to "log it now" (the recipe is a Food too).
-    await expect(
-      sheet.getByRole('button', { name: /log it now/i }),
-    ).toBeVisible()
-    await sheet.getByLabel('Grams').click()
-    await page.keyboard.type(String(portionGrams))
-    await page.keyboard.press('Tab')
-    await sheet.getByRole('button', { name: /log it now/i }).click()
+    // Saved → the sheet closes onto the catalog, where the Recipe is now a row.
     await expect(sheet).toBeHidden()
+    await expect(page.getByText(recipeName)).toBeVisible()
+
+    // Logging it is the Log destination's job, and it names a Recipe as one so
+    // a screen reader is not left with a pot icon.
+    await goto('/log', { waitUntil: 'hydration' })
+    const portion = await pickFoodToLog(page, {
+      section: 'All foods',
+      food: recipeName,
+      recipe: true,
+    })
+    await expect(portion).toBeVisible()
+    await enterGrams(page, portion, portionGrams)
+    await portion.getByRole('button', { name: /log entry/i }).click()
+    await expect(portion).toBeHidden()
 
     // The portion lands on Today's dashboard.
     await goto('/', { waitUntil: 'hydration' })
