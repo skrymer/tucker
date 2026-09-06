@@ -1208,6 +1208,38 @@ null` now means two things that earn opposite messages — the same trap
     grading a Food on its micronutrients, a per-Food micronutrient screen, any other
     window, and pregnancy/lactation values.
 
+- **F16** — Logging is its own destination (PRD
+  [#294](https://github.com/skrymer/tucker/issues/294)). Design pass **done**, see
+  [ADR 0028](docs/adr/0028-logging-is-its-own-destination.md) and the `Frequent Foods`
+  term in `CONTEXT.md`; chosen from a throwaway three-variant UI prototype driven at a
+  412px viewport. Logging shipped as a sheet on **Today** and lost outright to `/foods`'
+  row tap, which nobody designed for. The picker had already tried and lost once —
+  `WeighedEntryForm` suppresses the keyboard (`inputmode: 'none'`) because somebody
+  worked out it should not make you type — so the friction is **height**, **information**
+  and **taps**, not typing, and a search box was never the fix.
+  So logging becomes a primary **Log** destination: **Frequent Foods** (the ten Foods
+  with the most Entries in the trailing 30 days) as a two-column grid that fits all ten
+  on one phone screen without scrolling, the full catalog and a filter field beneath it,
+  and **"Log an estimate instead"** as a peer — the first home an **Estimated Entry** has
+  had outside Today. `/foods` becomes strictly a catalog and Today read-only for Entries
+  (it still deletes today's). The bar narrows to **Today · Log · Review** with Foods,
+  Check and Profile behind `More`; with **Calorie Tracking** off `More` holds Profile
+  alone, so one setting does not also move a destination.
+  Three consequences worth stating: the ranking is **absent** rather than falling back
+  when the window is empty, because a fallback presents a stale rotation as a current
+  one; **it amends [ADR 0022](docs/adr/0022-a-check-states-cost-and-return-and-never-labels-a-food.md)**,
+  which gave Check a nav tab on a shop-reachability argument that the feature did not
+  earn — recorded there rather than reversed silently; and the `/foods` row tap was the
+  one path creating an Entry with **no Budget Projection**, closed by *removing the path*
+  rather than guarding it. Three slices, each with a real-stack smoke:
+  [#295](https://github.com/skrymer/tucker/issues/295) the Log destination end-to-end
+  plus the shell, [#296](https://github.com/skrymer/tucker/issues/296) the tail and its
+  filter, [#297](https://github.com/skrymer/tucker/issues/297) the old paths go — last,
+  so the surface in use is never deleted before its replacement is complete.
+  **Out of scope:** Check's new entry point (deferred, not answered), adding a Food from
+  the Log destination, a backend search, a decaying or user-configurable ranking, and any
+  window other than 30 days.
+
 ## Architecture
 
 - **Frontend** — Nuxt + Nuxt UI, TypeScript, SPA mode (`ssr: false`). A

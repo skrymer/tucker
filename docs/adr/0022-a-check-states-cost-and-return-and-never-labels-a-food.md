@@ -172,6 +172,20 @@ to buy, which is the worst possible place to guess.
   `CONTEXT.md`, constraining every future surface, not just this one.
 - Substantial enough for its own **F-number** (F11) rather than an F8 follow-up.
 
+## Amended by [0028](0028-logging-is-its-own-destination.md): the nav tab is withdrawn
+
+This ADR gave a Check its own nav tab, amending ADR 0006 to do it, because *in a
+shop, one-handed reachability decides it*. In use the feature did not earn it —
+Check is hardly opened — and the tab bar has since been narrowed to three primary
+destinations, so it is paying for a tab out of a much smaller budget.
+
+Check therefore moves into the `More` sheet. The reachability argument above is
+**not answered by that**, only deferred: a one-handed entry point that is not a
+bottom-bar tab is an open design question, and the reasoning in *Placement,
+endpoint, and failure* is the right starting point for whoever takes it. The rest
+of this ADR — the no-good-or-bad rule, Pace, whole-day framing, the camera as the
+only way in — is untouched.
+
 ## References
 
 - [0002 — business logic belongs in the backend](0002-business-logic-belongs-in-the-backend.md)

@@ -292,6 +292,26 @@ including one that rounds to `0 g`: that says the food gave almost none, which i
 the opposite of saying nothing. A day's protein total counts unknown protein as
 zero, since there is nothing else to add.
 
+**Frequent Foods**:
+The **Foods** a **User** reaches for most, ranked by how many **Entries** name them
+in the trailing 30 days, ties broken by the most recently logged. At most ten —
+that cap is a fact about the surface that shows them, not about the domain.
+Thirty days so a weekly staple clears four appearances while a Food dropped a month
+ago falls out. An all-time count would ossify (the Food eaten every morning for
+three months stays first forever after the user stops eating it) and pure recency
+would lose the staples after a single varied day.
+A window with no Entries has **no** Frequent Foods: the list is absent rather than
+filled from a longer window, because a fallback would present a stale rotation as a
+current one.
+It ranks how often the user reached for a Food, never how good the Food is — a fact
+about their own behaviour, carrying no verdict (see the no-good-or-bad rule).
+Distinct from an **Intake Breakdown**, its sibling: a Breakdown ranks by the
+*calories* a Food contributed and answers "where did my diet go?", while Frequent
+Foods ranks by *count* and exists to put the next Entry within one tap. So the two
+disagree often and neither is wrong — a splash of olive oil is logged constantly
+and contributes little; one big restaurant meal is the reverse.
+_Avoid_: top 10, favourites, recents, most used, top foods
+
 **Intake Breakdown**:
 The share of a window's logged calories attributable to each **Food**, biggest
 first — the answer to "what takes up most of my diet?". Defined over two windows,
@@ -325,7 +345,8 @@ cut — see the no-good-or-bad rule. Absent for a User with **Calorie Tracking**
 off — not because their window is reliably empty, which it is not (the setting can
 be turned off after a logged breakfast, and a seven-day window survives a week of
 it), but because it reads a log Tucker has agreed to stop asking them to keep.
-_Avoid_: pie chart, top foods, food ranking, biggest offender, calorie share (a
+_Avoid_: pie chart, top foods, food ranking (**Frequent Foods** is the ranking by
+count — this one is by calorie share), biggest offender, calorie share (a
 Check's share is of the Budget — a different denominator)
 
 **Budget Projection**:
