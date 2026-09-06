@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { isDestinationActive, visibleDestinations } from './navigation'
 
-// navDestinations' icon names are deliberately unasserted. They are lookup
+// The destinations' icon names are deliberately unasserted. They are lookup
 // data: a test naming 'i-lucide-house' pins the token a designer is entitled to
 // change, not a rule. That every destination has one is enforced by the
 // NavDestination type, and that they render is covered by the app-shell
-// component tests. Mutation testing reports the five as survivors for this
+// component tests. Mutation testing reports all six as survivors for this
 // reason; that is the intended verdict, not a gap.
 
 describe('isDestinationActive', () => {
@@ -39,21 +39,29 @@ describe('isDestinationActive', () => {
 })
 
 describe('visibleDestinations', () => {
-  it('shows all five destinations while the User counts calories', () => {
-    expect(visibleDestinations(true).map((d) => d.label)).toEqual([
+  it('carries Today, Log and Review in the tab bar', () => {
+    expect(visibleDestinations(true).primary.map((d) => d.label)).toEqual([
       'Today',
+      'Log',
+      'Review',
+    ])
+  })
+
+  it('puts Foods, Check and Profile behind More', () => {
+    expect(visibleDestinations(true).overflow.map((d) => d.label)).toEqual([
       'Foods',
       'Check',
-      'Review',
       'Profile',
     ])
   })
 
-  it('drops Foods and Check when the User is not counting calories', () => {
-    expect(visibleDestinations(false).map((d) => d.label)).toEqual([
-      'Today',
-      'Review',
-      'Profile',
-    ])
+  it('drops Log, Foods and Check when the User is not counting calories', () => {
+    const { primary, overflow } = visibleDestinations(false)
+
+    expect(primary.map((d) => d.label)).toEqual(['Today', 'Review'])
+    // Profile stays behind More rather than being promoted into the bar: the
+    // alternative makes one setting both remove Log and move a destination the
+    // User had learned the position of (ADR 0028).
+    expect(overflow.map((d) => d.label)).toEqual(['Profile'])
   })
 })

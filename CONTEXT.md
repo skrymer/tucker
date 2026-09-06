@@ -294,8 +294,10 @@ zero, since there is nothing else to add.
 
 **Frequent Foods**:
 The **Foods** a **User** reaches for most, ranked by how many **Entries** name them
-in the trailing 30 days, ties broken by the most recently logged. At most ten —
-that cap is a fact about the surface that shows them, not about the domain.
+in the trailing 30 days, ties broken by the most recently logged. At most ten — that cap is a
+fact about the surface that shows them rather than about the domain, but it is
+applied by the backend all the same, because the client sorts nothing and so
+cannot be what decides *which* ten.
 Thirty days so a weekly staple clears four appearances while a Food dropped a month
 ago falls out. An all-time count would ossify (the Food eaten every morning for
 three months stays first forever after the user stops eating it) and pure recency

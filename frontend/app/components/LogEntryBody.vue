@@ -7,7 +7,6 @@ type FoodResponse = components['schemas']['FoodResponse']
 
 // Stryker disable next-line all: a compiler macro must stay a top-level statement
 defineProps<{
-  date: string
   foods: FoodResponse[]
   /** Set when the catalog fetch failed — distinct from a genuinely empty catalog. */
   foodsError?: unknown
@@ -22,15 +21,8 @@ defineProps<{
 }>()
 
 const emit = defineEmits<{
-  submitEstimated: [
-    {
-      date: string
-      label: string
-      calories: number
-      protein?: number
-    },
-  ]
-  submitWeighed: [{ date: string; foodId: number; grams: number }]
+  submitEstimated: [{ label: string; calories: number; protein?: number }]
+  submitWeighed: [{ foodId: number; grams: number }]
   editedEstimated: []
   editedWeighed: []
   retryFoods: []
@@ -51,7 +43,6 @@ const items: TabsItem[] = [
   >
     <template #estimated>
       <EstimatedEntryForm
-        :date="date"
         :warning="estimatedWarning"
         :pending="estimatedPending"
         class="mt-4"
@@ -67,7 +58,6 @@ const items: TabsItem[] = [
         @retry="emit('retryFoods')"
       >
         <WeighedEntryForm
-          :date="date"
           :foods="foods"
           :warning="weighedWarning"
           :pending="weighedPending"

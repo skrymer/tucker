@@ -4,5 +4,7 @@
         - /url: /
     - link "Review":
         - /url: /review
-    - link "Profile":
-        - /url: /profile
+    - group "More":
+        - paragraph: More
+        - link "Profile":
+            - /url: /profile

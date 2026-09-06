@@ -1,6 +1,6 @@
 import { test, expect } from './support/smoke-test'
 import { todayIso } from '../support/date'
-import { visibleNav } from '../support/nav'
+import { visibleNav, withOverflowNav } from '../support/nav'
 
 // Calorie Tracking is a stored choice on the Profile, Tucker takes its shape
 // from it, and the engine underneath stops producing figures nobody can act on.
@@ -162,14 +162,13 @@ test('Tucker takes the shape of the choice', async ({
 
   await goto('/', { waitUntil: 'hydration' })
 
-  // Foods and Check are dead ends for this User, and on a phone that is two of
-  // five thumb-reachable slots.
+  // Log, Foods and Check are dead ends for this User: their whole subject is
+  // the log. Profile stays in the overflow either way, so one setting does not
+  // also move a destination (ADR 0028).
   const nav = visibleNav(page)
   await expect(nav.getByRole('link', { name: 'Today' })).toBeVisible()
   await expect(nav.getByRole('link', { name: 'Review' })).toBeVisible()
-  await expect(nav.getByRole('link', { name: 'Profile' })).toBeVisible()
-  await expect(nav.getByRole('link', { name: 'Foods' })).toBeHidden()
-  await expect(nav.getByRole('link', { name: 'Check' })).toBeHidden()
+  await expect(nav.getByRole('link', { name: 'Log' })).toBeHidden()
 
   // Nothing to log, and nothing to log it against.
   await expect(page.getByText(/\d+ \/ \d+ kcal/)).toBeHidden()
@@ -183,6 +182,11 @@ test('Tucker takes the shape of the choice', async ({
     page.getByRole('heading', { name: 'Goal progress', level: 2 }),
   ).toBeVisible()
   await expect(page.getByText('kg to go')).toBeVisible()
+
+  // Profile is behind More, and it is the only thing there for this User.
+  await withOverflowNav(page, async (nav) => {
+    await expect(nav.getByRole('link')).toHaveText(['Profile'])
+  })
 
   // The route stays reachable — hiding a tab is navigation, not access control.
   await page.goto('/foods')

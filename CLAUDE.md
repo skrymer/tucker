@@ -1240,6 +1240,52 @@ null` now means two things that earn opposite messages — the same trap
   **Out of scope:** adding a Food from the Log destination, a backend search, a decaying
   or user-configurable ranking, and any window other than 30 days.
 
+  Slice 1 ([#295](https://github.com/skrymer/tucker/issues/295)) — **the Log destination
+  and the narrowed shell** — ✅ done. `GET /api/foods/frequent?from=&to=` ranks; the
+  client sorts nothing.
+  - **`FrequentFoods.rank` refuses any span but 30 days**, the move `IntakeBreakdown.of`
+    and `MicronutrientIntake.of` already make: the width is an invariant of the read and
+    not a User's choice, so leaving it to the one call site that happens to ask for
+    thirty days is an invariant nothing checks. The cap at ten is applied here too,
+    because the client sorts nothing and so cannot be what decides *which* ten.
+  - **An Estimated Entry is excluded in SQL, not in Kotlin.** It names no Food, and the
+    `GROUP BY food_id` would otherwise lump every estimate in the window under one null
+    key before any caller could tell them apart from a Food.
+  - **The response is a `FoodResponse` like the catalog's**, which is what the
+    `describe()` extraction is for: a Recipe's ingredient count and a borrowed
+    Reference Food's name each come from another table, and a Food that read
+    differently for having arrived by a different route would be one fact in two shapes.
+  - **The shell splits in two, and renders in two shapes.** `visibleDestinations`
+    returns `{ primary, overflow }`; the phone bar puts the overflow behind a `More`
+    sheet, while the side rail lays the same set out in place under a `More` label — a
+    rail has the room, and hiding three links from a column with space for them buys
+    nothing. `overflowNav` in `e2e/support/nav.ts` is the one helper that reaches either.
+  - **The grid marks a Recipe in the cell's accessible name**, not only with the pot
+    icon: an icon is nothing at all to a screen reader, and this grid is a phone's whole
+    logging surface.
+  - **The grams sheet is `LogFoodSheet` renamed and gated, not a second one.** Its new
+    props are optional, so `/foods`' row tap renders the same `LogGramsSheet` and behaves
+    exactly as before — which makes slice 3 a deletion of a *path* rather than of a
+    near-duplicate component, and leaves the surviving sheet with the twelve tests the
+    old one had rather than the five a fresh copy would.
+  - **Logging an Entry is one composable, `useEntryLogging`.** `/log` was the second
+    consumer of the mutation-plus-**Budget Projection** assembly `LogEntrySheet` already
+    held, which is exactly ADR 0004's extraction trigger; forking it would have put the
+    toast copy, the gate wiring and the `localToday()` stamp in two files for the length
+    of three slices. The stamp moving into it is what let `date` come off both entry
+    forms: they echoed a day back that the page then overwrote, so the value was computed,
+    passed down, passed back and thrown away.
+  - **An empty catalog and a quiet month are told apart**, which is why the page reads
+    `/api/foods` beside the ranking: both leave the grid with nothing to draw, and only
+    one of them is a dead end. The catalog is consulted *only* in the branch where the
+    ranking has nothing to show, so a failed catalog read can never blank a grid that
+    loaded, and the two reads are issued together rather than one behind the other. That
+    dead end is handed to `/foods?add=1` — one `CATALOG_ADD_ROUTE` symbol rather than the
+    query spelled out at both ends, so the agreement between the link and the page that
+    reads it is executable, as `exits.ts` makes the service worker's.
+  - Nothing is removed: Today keeps its Log-entry button and FAB, and `/foods` keeps its
+    row tap, so the surface in use survives until slice 3 completes its replacement.
+
 ## Architecture
 
 - **Frontend** — Nuxt + Nuxt UI, TypeScript, SPA mode (`ssr: false`). A

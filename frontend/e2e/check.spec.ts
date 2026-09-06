@@ -1,9 +1,10 @@
 import { expect, test } from './support/test'
 import { mockSummary } from './support/mock-api'
 import { denyCamera, fakeBarcodeCamera } from './support/fake-camera'
+import { withOverflowNav } from './support/nav'
 
-// F11 slice 1: the Check tab. A scan states what a product costs and returns
-// against the whole day's targets, and creates nothing.
+// F11 slice 1: Check. A scan states what a product costs and returns against
+// the whole day's targets, and creates nothing. It is reached from `More`.
 
 const BARCODE = '3017620422003'
 
@@ -68,7 +69,7 @@ test('a scanned product states its cost and return against the day', async ({
   await expect(page.getByRole('main')).toMatchAriaSnapshot()
 })
 
-test('the Check tab is reachable from the primary navigation', async ({
+test('Check is reachable from the navigation, under More', async ({
   page,
   goto,
 }) => {
@@ -76,7 +77,9 @@ test('the Check tab is reachable from the primary navigation', async ({
   await denyCamera(page)
 
   await goto('/', { waitUntil: 'hydration' })
-  await page.getByRole('link', { name: 'Check' }).click()
+  await withOverflowNav(page, (nav) =>
+    nav.getByRole('link', { name: 'Check' }).click(),
+  )
 
   await expect(page).toHaveURL(/\/check$/)
   await expect(page.getByRole('heading', { name: 'Check' })).toBeVisible()
@@ -93,7 +96,7 @@ test('a blocked camera ends the tab rather than offering a manual path', async (
 
   await expect(page.getByText('Camera access is blocked')).toBeVisible()
   // A Check produces nothing, so there is nothing worth typing for. Add-Food
-  // keeps both manual paths (ADR 0006) — this narrows only the Check tab.
+  // keeps both manual paths (ADR 0006) — this narrows only Check.
   await expect(page.getByRole('textbox')).toHaveCount(0)
   await expect(page.getByRole('spinbutton')).toHaveCount(0)
 })

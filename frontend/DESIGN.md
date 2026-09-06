@@ -394,7 +394,20 @@ kcal`) sits beneath its own ring, so no arc is ever colour-alone. Calorie
 - **FAB** (phone) — solid green pill-circle, floating shadow, bottom-right above
   the tab bar (respects `env(safe-area-inset-bottom)`).
 - **Nav** — side rail on desktop (`lg:`), bottom tab bar on phone. Active item =
-  primary text on a `primary/10` tint (rail) / primary text (tabs).
+  primary text on a `primary/10` tint (rail) / primary text (tabs). The bar
+  carries three destinations — **Today · Log · Review** — and the rest sit under
+  **More** (ADR 0028). On phone that is a fourth tab opening a sheet; on desktop
+  the rail has the room, so the same set is laid out in place under a `More`
+  label, and there is no button to press. One set of destinations, two shapes.
+- **Frequent-Foods cell** — a two-column grid of bordered `rounded-xl` cards, the
+  Food's name over its `kcal · g protein /100g` in `text-xs`. The nutrient is
+  named, as on every other Food surface: everything in Tucker is weighed in
+  grams, so a bare gram figure beside a Food reads as a portion weight — and the
+  next tap opens a sheet asking for exactly that. The two columns are the
+  whole reason logging moved here: ten of these fit one phone screen without
+  scrolling, where ten full-width rows do not. A Recipe is marked by a pot icon
+  beside the name **and** in the cell's accessible name — the icon is nothing at
+  all to a screen reader, and this grid is a phone's whole logging surface.
 - **Chip / badge** — pill, subtle tint of its colour (`primary/10`, `coral/10`,
   `warning/15`). The estimate flag is icon **+** text in warning, never colour
   alone.

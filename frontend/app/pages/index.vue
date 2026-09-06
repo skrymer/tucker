@@ -209,7 +209,6 @@ const {
     <LogEntrySheet
       v-if="tracksCalories"
       v-model:open="logEntryOpen"
-      :date="today"
       @logged="onEntryLogged"
     />
 

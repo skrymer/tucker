@@ -1,6 +1,7 @@
 package com.tucker.api
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.tucker.domain.FrequentFoods
 import com.tucker.domain.ReferenceFoodQuery
 import com.tucker.persistence.ReferenceFoodRepository
 import com.tucker.provider.OpenFoodFactsProvider
@@ -166,6 +167,57 @@ class CrossUserIsolationTest {
             status { isOk() }
             jsonPath("$.length()") { value(1) }
             jsonPath("$[0].label") { value("Bob's porridge") }
+        }
+    }
+
+    @Test
+    fun `another User's Entries never rank this User's Frequent Foods`() {
+        val oats = createFood(bob, "Bob's rolled oats")
+        val skyr = createFood(bob, "Bob's skyr")
+        logWeighed(bob, oats, grams = 100.0)
+        repeat(2) { logWeighed(bob, skyr, grams = 100.0) }
+        // Alice reaching for a Food of her own is no evidence about Bob's rotation.
+        // Hers is logged *more* often than either of his, so an unscoped count
+        // would put her Food at the top of his grid.
+        val aliceStaple = createFood(alice, "Alice's rolled oats")
+        repeat(9) { logWeighed(alice, aliceStaple, grams = 100.0) }
+
+        mockMvc.get("/api/foods/frequent") {
+            header(ACCESS_ASSERTION_HEADER, bob)
+            param("from", "${day.minusDays(FrequentFoods.WINDOW_DAYS - 1L)}")
+            param("to", "$day")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.length()") { value(2) }
+            jsonPath("$[0].name") { value("Bob's skyr") }
+            jsonPath("$[1].name") { value("Bob's rolled oats") }
+        }
+    }
+
+    @Test
+    fun `another User's rotation cannot crowd this User's Frequent Foods out of the ranking`() {
+        // The ranking is capped at ten, so the leak that survives a tolerant
+        // lookup is not a foreign *name* — it is a foreign Food taking a slot.
+        // Alice fills the cap on her own, each of hers logged more often than
+        // either of Bob's, so unscoped his rotation is pushed off the end.
+        val oats = createFood(bob, "Bob's rolled oats")
+        val skyr = createFood(bob, "Bob's skyr")
+        logWeighed(bob, oats, grams = 100.0)
+        repeat(2) { logWeighed(bob, skyr, grams = 100.0) }
+        repeat(FrequentFoods.CAP) { i ->
+            val hers = createFood(alice, "Alice's staple $i")
+            repeat(3) { logWeighed(alice, hers, grams = 100.0) }
+        }
+
+        mockMvc.get("/api/foods/frequent") {
+            header(ACCESS_ASSERTION_HEADER, bob)
+            param("from", "${day.minusDays(FrequentFoods.WINDOW_DAYS - 1L)}")
+            param("to", "$day")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.length()") { value(2) }
+            jsonPath("$[0].id") { value(skyr) }
+            jsonPath("$[1].id") { value(oats) }
         }
     }
 

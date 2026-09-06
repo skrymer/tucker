@@ -3,7 +3,6 @@ import { z } from 'zod'
 import type { BudgetWarning } from '~/composables/useBudgetGate'
 
 const props = defineProps<{
-  date: string
   /** Over-budget heads-up for the entry being composed; null/absent when within budget. */
   warning?: BudgetWarning | null
   /** True while the budget projection is in flight, to lock the action. */
@@ -11,14 +10,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  submit: [
-    {
-      date: string
-      label: string
-      calories: number
-      protein?: number
-    },
-  ]
+  submit: [{ label: string; calories: number; protein?: number }]
   edited: []
 }>()
 
@@ -45,7 +37,6 @@ watch(
 
 function onSubmit() {
   emit('submit', {
-    date: props.date,
     label: state.label,
     calories: state.calories!,
     protein: state.protein,

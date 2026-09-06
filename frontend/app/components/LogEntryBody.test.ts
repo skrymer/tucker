@@ -12,7 +12,7 @@ const sampleFoods = [
 describe('LogEntryBody', () => {
   it('offers an Estimated tab and a Weighed tab', async () => {
     await renderSuspended(LogEntryBody, {
-      props: { date: '2026-05-24', foods: [] },
+      props: { foods: [] },
     })
 
     expect(screen.getByRole('tab', { name: 'Estimated' })).toBeVisible()
@@ -21,7 +21,7 @@ describe('LogEntryBody', () => {
 
   it('shows the Estimated entry form when the Estimated tab is active', async () => {
     await renderSuspended(LogEntryBody, {
-      props: { date: '2026-05-24', foods: [] },
+      props: { foods: [] },
     })
 
     // Estimated is the default tab → its form is on screen without
@@ -37,7 +37,6 @@ describe('LogEntryBody', () => {
     const submitEstimated = vi.fn()
     await renderSuspended(LogEntryBody, {
       props: {
-        date: '2026-05-24',
         foods: [],
         onSubmitEstimated: submitEstimated,
       },
@@ -51,7 +50,6 @@ describe('LogEntryBody', () => {
     )
 
     expect(submitEstimated).toHaveBeenCalledWith({
-      date: '2026-05-24',
       label: 'Cafe lunch',
       calories: 600,
       protein: undefined,
@@ -60,7 +58,7 @@ describe('LogEntryBody', () => {
 
   it('shows the Weighed entry form on the Weighed tab', async () => {
     await renderSuspended(LogEntryBody, {
-      props: { date: '2026-05-24', foods: sampleFoods },
+      props: { foods: sampleFoods },
     })
     const user = userEvent.setup()
 
@@ -75,7 +73,7 @@ describe('LogEntryBody', () => {
 
   it('shows a retryable error on the Weighed tab when the catalog fails to load', async () => {
     await renderSuspended(LogEntryBody, {
-      props: { date: '2026-05-24', foods: [], foodsError: new Error('boom') },
+      props: { foods: [], foodsError: new Error('boom') },
     })
     const user = userEvent.setup()
 

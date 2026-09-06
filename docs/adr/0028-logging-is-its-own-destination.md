@@ -131,7 +131,13 @@ stopped asking.
 ## Three primary destinations and a fixed More
 
 The tab bar carries **Today · Log · Review**. **Foods**, **Check** and **Profile**
-move behind a `More` sheet.
+move behind **More**.
+
+That is one set of destinations in two shapes, because the constraint is the tab
+bar's and not the side rail's: on a phone `More` is the fourth tab and opens a
+sheet, while the desktop rail has the room and lays the same three out in place
+under a `More` heading, with no button to press. A rail that hid three links
+behind a menu would be paying a cost it does not have.
 
 With **Calorie Tracking** off, Log, Foods and Check all disappear — their whole
 subject is the log — leaving Today · Review and a `More` holding **Profile

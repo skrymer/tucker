@@ -14,6 +14,31 @@ defineProps<{
   iconClass: string
 }>()
 
+/**
+ * Chosen — this destination was actually followed. Emitted here rather than
+ * listened for on the anchor from outside: this component's root is a `NuxtLink`
+ * in `custom` mode, which renders a fragment, so a listener passed in inherits
+ * onto nothing and a caller ends up watching the row instead — where a click in
+ * the padding looks the same as a click on the link.
+ */
+const emit = defineEmits<{ chosen: [] }>()
+
+/**
+ * Whether the router will actually navigate for this click, matching what
+ * `vue-router` itself declines: a modified or non-primary click is the browser's
+ * to handle (a new tab), and the page it was made from does not change.
+ */
+function navigates(event: MouseEvent): boolean {
+  return (
+    !event.defaultPrevented &&
+    event.button === 0 &&
+    !event.metaKey &&
+    !event.altKey &&
+    !event.ctrlKey &&
+    !event.shiftKey
+  )
+}
+
 const route = useRoute()
 </script>
 
@@ -26,7 +51,13 @@ const route = useRoute()
         :aria-current="
           isDestinationActive(destination.to, route.path) ? 'page' : undefined
         "
-        @click="navigate"
+        @click="
+          (event: MouseEvent) => {
+            const followed = navigates(event)
+            navigate(event)
+            if (followed) emit('chosen')
+          }
+        "
       >
         <UIcon :name="destination.icon" :class="iconClass" />
         <span>{{ destination.label }}</span>

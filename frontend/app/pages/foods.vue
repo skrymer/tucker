@@ -14,7 +14,9 @@ const { data: foods, error: foodsError, refresh } = await useApi('/api/foods')
 const { tracksCalories, ready: trackingSettled } = useCalorieTracking()
 await trackingSettled()
 
-const open = ref(false)
+const route = useRoute()
+const router = useRouter()
+const open = ref(opensAddSheet(route.query))
 const selectedFood = ref<FoodResponse | null>(null)
 // The recipe whose row's view button was tapped — non-null opens the read-only
 // composition sheet. Logging a recipe still goes through the ordinary log path.
@@ -33,6 +35,12 @@ watch(open, (isOpen) => {
   if (!isOpen) {
     createdFood.value = null
     createdIngredient.value = null
+    // The hand-off is spent once the sheet closes; left in the URL it reopens
+    // the sheet on a reload, over a catalog the User has since stocked.
+    if (opensAddSheet(route.query)) {
+      const { add: _spent, ...rest } = route.query
+      router.replace({ query: rest })
+    }
   }
 })
 
@@ -271,7 +279,7 @@ function handleDeleteConfirm() {
       @log="handleLog"
     />
 
-    <LogFoodSheet
+    <LogGramsSheet
       :food="foodToLog"
       :pending="logPending"
       @log="handleLog"
