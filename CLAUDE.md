@@ -1229,16 +1229,16 @@ null` now means two things that earn opposite messages — the same trap
   when the window is empty, because a fallback presents a stale rotation as a current
   one; **it amends [ADR 0022](docs/adr/0022-a-check-states-cost-and-return-and-never-labels-a-food.md)**,
   which gave Check a nav tab on a shop-reachability argument that the feature did not
-  earn — recorded there rather than reversed silently; and the `/foods` row tap was the
+  earn — recorded there rather than reversed silently, and `More` is Check's entry
+  point, a settled placement rather than a holding position; and the `/foods` row tap was the
   one path creating an Entry with **no Budget Projection**, closed by *removing the path*
   rather than guarding it. Three slices, each with a real-stack smoke:
   [#295](https://github.com/skrymer/tucker/issues/295) the Log destination end-to-end
   plus the shell, [#296](https://github.com/skrymer/tucker/issues/296) the tail and its
   filter, [#297](https://github.com/skrymer/tucker/issues/297) the old paths go — last,
   so the surface in use is never deleted before its replacement is complete.
-  **Out of scope:** Check's new entry point (deferred, not answered), adding a Food from
-  the Log destination, a backend search, a decaying or user-configurable ranking, and any
-  window other than 30 days.
+  **Out of scope:** adding a Food from the Log destination, a backend search, a decaying
+  or user-configurable ranking, and any window other than 30 days.
 
 ## Architecture
 

@@ -179,12 +179,18 @@ shop, one-handed reachability decides it*. In use the feature did not earn it �
 Check is hardly opened — and the tab bar has since been narrowed to three primary
 destinations, so it is paying for a tab out of a much smaller budget.
 
-Check therefore moves into the `More` sheet. The reachability argument above is
-**not answered by that**, only deferred: a one-handed entry point that is not a
-bottom-bar tab is an open design question, and the reasoning in *Placement,
-endpoint, and failure* is the right starting point for whoever takes it. The rest
-of this ADR — the no-good-or-bad rule, Pace, whole-day framing, the camera as the
-only way in — is untouched.
+Check therefore moves into the `More` sheet, and **that is its entry point** — a
+settled placement, not a holding position. The reachability argument above is
+answered by observation rather than overturned by argument: a tab is worth
+spending in proportion to how often the destination is reached for, and this one
+is not reached for. A Check costs one extra tap, taken while standing still with a
+package in hand.
+
+The reasoning in *Placement, endpoint, and failure* is left intact rather than
+struck out, because it becomes right again the day Check is used enough to earn
+the tab back — what changed is the usage, not the logic. The rest of this ADR —
+the no-good-or-bad rule, Pace, whole-day framing, the camera as the only way in —
+is untouched.
 
 ## References
 

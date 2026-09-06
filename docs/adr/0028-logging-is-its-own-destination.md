@@ -151,11 +151,16 @@ reachability decides it*. That argument was sound and the feature it predicted d
 not materialise: Check is hardly used, and it is now paying for a tab out of a
 budget of three.
 
-So Check moves into `More`, and the shop argument is not answered — it is
-**deferred**. A one-handed entry point that is not a bottom-bar tab is a design
-question this ADR does not settle, and re-reading ADR 0022's reasoning is the
-right starting point for it. Until then Check is reachable and slower to reach,
-which is the honest description of the trade.
+So Check moves into `More`, and **that is its entry point** — not a holding
+position pending a better one. The shop argument is answered by observation
+rather than by argument: reachability is worth a tab only in proportion to how
+often the thing is reached for, and this one is not reached for. A Check now costs
+one extra tap, taken while standing still with a package in hand, which is the
+cheapest moment in the flow to spend it.
+
+The 0022 reasoning is left intact and cited rather than deleted, because it
+becomes right again the day Check is used enough to earn the tab back. What
+changed is the usage, not the logic.
 
 ## Consequences
 
