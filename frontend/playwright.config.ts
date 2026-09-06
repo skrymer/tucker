@@ -1,6 +1,7 @@
 import { fileURLToPath } from 'node:url'
 import { defineConfig, devices } from '@playwright/test'
 import type { ConfigOptions } from '@nuxt/test-utils/playwright'
+import { MOCKED_E2E_TIMEZONE } from './e2e/support/date'
 
 // Browser end-to-end tests with the backend API mocked via `page.route`
 // (see e2e/support/mock-api.ts). Fast, deterministic, no external services.
@@ -28,6 +29,9 @@ export default defineConfig<ConfigOptions>({
     },
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
+    // Pinned so a spec reading a date the client stamped means the same thing
+    // on a laptop and in CI; `e2e/support/date.ts` answers for the same zone.
+    timezoneId: MOCKED_E2E_TIMEZONE,
   },
   // Two viewport projects so every spec runs on both — catches responsive
   // bugs (e.g. drawer-vs-modal branches, phone-only FAB layouts) that a
