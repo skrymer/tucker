@@ -37,7 +37,7 @@ not restate them.
   and `deploy/README.md` step 6 are where the existing ones live.
 - **Doc comments are brief, present-tense, and non-obvious**, and never a changelog — a KDoc
   earns its place by saying what the signature doesn't. The full rule, and the sweep that
-  enforces it, live in `feature-sign-off` gate 2.
+  enforces it, live in `feature-sign-off` gate 1.
 
 ## Test strategy — five layers, test-first
 
@@ -88,7 +88,7 @@ not restate them.
 ## Exit
 
 When the change works and is tested, run **`feature-sign-off`** (verify → simplify →
-mutation-test → code-review → check-adrs) before committing. Gate 3 is where the tests
+mutation-test → code-review → check-adrs → verify) before committing. Gate 2 is where the tests
 themselves get tested: `mutation-test` scopes pitest to the classes the change touched,
 and every survivor gets one of its four verdicts.
 

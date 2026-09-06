@@ -64,7 +64,7 @@ Backend commands (run in `backend/`):
   `-PmutationTargets='com.tucker.domain.Entry,com.tucker.domain.Entry$*'` — at
   ~0.8s per mutant for domain code and ~1.6s for anything a controller test
   covers, on top of a fixed ~13s coverage pass. Driven by the `/mutation-test`
-  skill, gate 3 of `/feature-sign-off`. Why pitest, and what accepting it costs:
+  skill, gate 2 of `/feature-sign-off`. Why pitest, and what accepting it costs:
   [ADR 0013](docs/adr/0013-test-coverage-policy.md); the noise filters it needs
   and why each is there: `backend/build.gradle.kts`. The sweep scores **92%
   (81/1011 unkilled)**, and each of those 81 already has a verdict in
@@ -115,7 +115,7 @@ Frontend commands (run in `frontend/`, package manager is pnpm):
   slower than the suites CI runs, and every surviving mutant needs a human
   verdict (real gap vs equivalent mutant) rather than a pass/fail threshold. It
   reaches the Vitest layer only — Playwright is out of scope. Driven by the
-  `/mutation-test` skill, gate 3 of `/feature-sign-off`; standing verdicts live
+  `/mutation-test` skill, gate 2 of `/feature-sign-off`; standing verdicts live
   alongside the backend's in
   `.claude/skills/mutation-test/references/known-survivors.md`.
 - `pnpm lint` / `pnpm lint:fix` — ESLint (`@nuxt/eslint`)
@@ -140,14 +140,21 @@ work over errors elsewhere in the tree. CI is where the guarantee has to hold.
 **PR walk-through gate.** Before a PR can be merged, drive a feature
 walk-through in a real browser using the `claude-in-chrome` MCP tools —
 start the dev server, navigate to the changed surface, exercise the
-golden path, and probe a couple of edge cases. Walk through **at both
-phone and desktop viewports** (resize the chrome window or use DevTools
-device mode) — Tucker has a responsive split (bottom-nav vs side-nav,
-drawer vs modal, FAB vs header button) and a single-viewport
-walk-through misses half the layout. Automated tests can't catch UX
-regressions like an overlapping toast or a broken responsive layout;
-the walk-through can. Invoke it via the `/verify` skill, which wraps
-the protocol and emits a verdict the reviewer can replay.
+golden path, and **probe the inputs the change accepts, at their
+boundaries**: a capitalised query, an accented name, whitespace, zero,
+one past a cap. Not only the empty and error states — those are states
+the app puts itself in, and the bugs live in the values a User puts in.
+Walk through **at both phone and desktop viewports** (resize the chrome
+window or use DevTools device mode) — Tucker has a responsive split
+(bottom-nav vs side-nav, drawer vs modal, FAB vs header button) and a
+single-viewport walk-through misses half the layout. Automated tests
+can't catch UX regressions like an overlapping toast or a broken
+responsive layout; the walk-through can. Invoke it via the `/verify`
+skill, which wraps the protocol and emits a verdict the reviewer can
+replay. It runs **twice** in `/feature-sign-off` — a one-viewport
+reachability pass before the other gates, and this walk-through last,
+on the code that ships, because the gates in between change behaviour
+every time.
 
 **Decision-compliance gate.** Alongside the walk-through, run the
 `/check-adrs` skill on the change before opening a PR. It verifies the

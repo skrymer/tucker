@@ -1,6 +1,6 @@
 ---
 name: mutation-test
-description: Runs mutation testing over Tucker's fast test suites — StrykerJS over Vitest in frontend/, pitest over JUnit in backend/ — scoped to the source a change touched, then triages every surviving mutant. Use as gate 3 of feature-sign-off, or when the user asks to mutation-test a change, run Stryker or pitest, measure a mutation score, or check whether the tests would actually catch a bug.
+description: Runs mutation testing over Tucker's fast test suites — StrykerJS over Vitest in frontend/, pitest over JUnit in backend/ — scoped to the source a change touched, then triages every surviving mutant. Use as gate 2 of feature-sign-off, or when the user asks to mutation-test a change, run Stryker or pitest, measure a mutation score, or check whether the tests would actually catch a bug.
 ---
 
 # Mutation test (Tucker)
@@ -170,6 +170,16 @@ tests (~1–5 tests, not all 473), which is what makes this affordable as a gate
   behaviour to pin.
 - A **timeout** verdict is not a survivor: it usually means an infinite loop, which
   counts as killed.
+- **No mutator deletes a normalising call, so a fold is invisible to the score.**
+  `MethodExpression` swaps `toLowerCase`↔`toUpperCase` — which a test kills easily —
+  and never removes the call. So `fold(a).includes(fold(b))` scores the same as
+  `a.includes(fold(b))`: apply a fold to one side of a comparison and not the other
+  and the file still reports **100%**. `app/utils/catalog.ts` did exactly that, with
+  a live bug (a capitalised query matched nothing) that 759 tests and a full sweep
+  both passed. **A 100% score on any normalise-then-compare function means nothing**
+  — case folding, accent stripping, trimming, unit conversion, key canonicalisation.
+  Assert each side independently: a fixture whose *stored* value needs the transform,
+  not only the query.
 - **Stryker has no truthiness mutator.** `x == null ? a : b` scoring 100% says
   nothing about whether `x ? b : a` would be caught — and those differ for `0`,
   `''` and `NaN`. Any guard distinguishing *absent* from *zero* needs an explicit
@@ -300,6 +310,6 @@ work. Write the tests yourself afterwards — don't let the agent edit the tree.
 
 ## Related
 
-`tdd` (writing the missing test) · `feature-sign-off` (runs this as gate 3) ·
+`tdd` (writing the missing test) · `feature-sign-off` (runs this as gate 2) ·
 `frontend-dev` · `backend-dev` · `component-testing-best-practices` ·
 ADR 0013 (test coverage policy).
