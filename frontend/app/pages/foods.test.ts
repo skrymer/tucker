@@ -78,3 +78,26 @@ describe('/foods when the catalog fails to load', () => {
     ).not.toBeInTheDocument()
   })
 })
+
+describe('/foods reached with the Add sheet asked for', () => {
+  it('opens the Add sheet straight away', async () => {
+    // Where the Log destination sends a User with an empty catalog (ADR 0028):
+    // landing on the catalog and still having to find the button would spend
+    // the tap the hand-off exists to save.
+    await renderSuspended(Foods, { route: '/foods?add=1' })
+
+    expect(screen.getByRole('dialog', { name: /add/i })).toBeVisible()
+  })
+})
+
+describe('/foods once the Add sheet the query asked for is closed', () => {
+  it('drops the query, so a reload does not reopen it', async () => {
+    const user = userEvent.setup()
+    await renderSuspended(Foods, { route: '/foods?add=1' })
+    const sheet = screen.getByRole('dialog', { name: /add/i })
+
+    await user.click(within(sheet).getByRole('button', { name: /close/i }))
+
+    await vi.waitFor(() => expect(useRoute().query.add).toBeUndefined())
+  })
+})

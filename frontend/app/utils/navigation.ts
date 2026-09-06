@@ -16,16 +16,28 @@ export interface NavDestination {
 }
 
 /**
- * Tucker's five primary destinations. One per roadmap area: Today (F2), Foods
- * (F3), Check (F11), Review (F5), Profile (F4) — see CLAUDE.md. Check earns a
- * tab of its own because it creates nothing (ADR 0022, which amends 0006's "no
- * new nav tab"); in a shop, one-handed reachability decides it.
- *
- * The full set. What the app shell renders is [visibleDestinations], which
- * narrows it to the User.
+ * The three destinations the tab bar carries — Today (F2), Log (F16) and
+ * Review (F5). Three because a phone tab bar is a budget, and logging is the
+ * thing done ten times a day (ADR 0028).
  */
-export const navDestinations: NavDestination[] = [
+const primary: NavDestination[] = [
   { label: 'Today', to: '/', icon: 'i-lucide-house' },
+  {
+    label: 'Log',
+    to: '/log',
+    icon: 'i-lucide-circle-plus',
+    requiresCalorieTracking: true,
+  },
+  { label: 'Review', to: '/review', icon: 'i-lucide-trending-down' },
+]
+
+/**
+ * The destinations behind `More` — Foods (F3), Check (F11) and Profile (F4).
+ * Check sits here as its entry point rather than as a holding position: it was
+ * given a tab on a shop-reachability argument the feature did not earn
+ * (ADR 0028, amending ADR 0022).
+ */
+const overflow: NavDestination[] = [
   {
     label: 'Foods',
     to: '/foods',
@@ -38,7 +50,6 @@ export const navDestinations: NavDestination[] = [
     icon: 'i-lucide-scan-search',
     requiresCalorieTracking: true,
   },
-  { label: 'Review', to: '/review', icon: 'i-lucide-trending-down' },
   { label: 'Profile', to: '/profile', icon: 'i-lucide-user' },
 ]
 
@@ -58,13 +69,19 @@ export function isDestinationActive(to: string, path: string): boolean {
   return path === to || path.startsWith(`${to}/`)
 }
 
+/** What the app shell renders: the tab bar's three, and what `More` holds. */
+export interface NavShell {
+  primary: NavDestination[]
+  overflow: NavDestination[]
+}
+
 /**
- * The destinations to show a User whose Calorie Tracking is [tracksCalories].
+ * The two groups to show a User whose Calorie Tracking is [tracksCalories].
  * The hidden routes stay reachable — hiding a tab is a navigation choice, not
  * access control, and a User who tracked before still owns their Foods.
  */
-export function visibleDestinations(tracksCalories: boolean): NavDestination[] {
-  return navDestinations.filter(
-    (d) => tracksCalories || !d.requiresCalorieTracking,
-  )
+export function visibleDestinations(tracksCalories: boolean): NavShell {
+  const shown = (d: NavDestination) =>
+    tracksCalories || !d.requiresCalorieTracking
+  return { primary: primary.filter(shown), overflow: overflow.filter(shown) }
 }

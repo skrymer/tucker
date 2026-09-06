@@ -7,7 +7,7 @@ import EstimatedEntryForm from './EstimatedEntryForm.vue'
 describe('EstimatedEntryForm', () => {
   it('shows the label, calories, and optional protein fields with a submit button', async () => {
     await renderSuspended(EstimatedEntryForm, {
-      props: { date: '2026-05-24' },
+      props: {},
     })
 
     expect(screen.getByLabelText('Label')).toBeVisible()
@@ -21,7 +21,7 @@ describe('EstimatedEntryForm', () => {
   it('emits the entry payload when the user logs it', async () => {
     const onSubmit = vi.fn()
     await renderSuspended(EstimatedEntryForm, {
-      props: { date: '2026-05-24', onSubmit },
+      props: { onSubmit },
     })
     const user = userEvent.setup()
 
@@ -32,7 +32,6 @@ describe('EstimatedEntryForm', () => {
     )
 
     expect(onSubmit).toHaveBeenCalledWith({
-      date: '2026-05-24',
       label: 'Cafe lunch',
       calories: 600,
       protein: undefined,
@@ -44,7 +43,7 @@ describe('EstimatedEntryForm', () => {
     // half-figure carried over from a label or a split portion stands.
     const onSubmit = vi.fn()
     await renderSuspended(EstimatedEntryForm, {
-      props: { date: '2026-05-24', onSubmit },
+      props: { onSubmit },
     })
     const user = userEvent.setup()
 
@@ -56,7 +55,6 @@ describe('EstimatedEntryForm', () => {
     )
 
     expect(onSubmit).toHaveBeenCalledWith({
-      date: '2026-05-24',
       label: 'Half a pastry',
       calories: 212.5,
       protein: 3.5,
@@ -66,7 +64,6 @@ describe('EstimatedEntryForm', () => {
   it('warns and relabels the action to "Log anyway" when the entry would exceed the budget', async () => {
     await renderSuspended(EstimatedEntryForm, {
       props: {
-        date: '2026-05-24',
         warning: { overByKcal: 180, calorieBudget: 2000 },
       },
     })
@@ -81,7 +78,7 @@ describe('EstimatedEntryForm', () => {
   it('emits "edited" when the entry is changed so a showing warning can be cleared', async () => {
     const onEdited = vi.fn()
     await renderSuspended(EstimatedEntryForm, {
-      props: { date: '2026-05-24', onEdited },
+      props: { onEdited },
     })
     const user = userEvent.setup()
 
@@ -93,7 +90,7 @@ describe('EstimatedEntryForm', () => {
   it('requires a label for the entry', async () => {
     const onSubmit = vi.fn()
     await renderSuspended(EstimatedEntryForm, {
-      props: { date: '2026-05-24', onSubmit },
+      props: { onSubmit },
     })
     const user = userEvent.setup()
 
@@ -112,7 +109,7 @@ describe('EstimatedEntryForm', () => {
   it('requires an estimated calorie figure', async () => {
     const onSubmit = vi.fn()
     await renderSuspended(EstimatedEntryForm, {
-      props: { date: '2026-05-24', onSubmit },
+      props: { onSubmit },
     })
     const user = userEvent.setup()
 

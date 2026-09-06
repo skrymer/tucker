@@ -11,7 +11,6 @@ const schema = z.object({
 })
 
 const props = defineProps<{
-  date: string
   foods: FoodResponse[]
   /** Over-budget heads-up for the entry being composed; null/absent when within budget. */
   warning?: BudgetWarning | null
@@ -20,7 +19,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  submit: [{ date: string; foodId: number; grams: number }]
+  submit: [{ foodId: number; grams: number }]
   edited: []
 }>()
 
@@ -50,7 +49,6 @@ const warningMessage = computed(() => formatBudgetWarning(props.warning))
 
 function onSubmit() {
   emit('submit', {
-    date: props.date,
     foodId: state.foodId!,
     grams: state.grams!,
   })

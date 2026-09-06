@@ -1,6 +1,14 @@
 <script setup lang="ts">
+/**
+ * Escape and the backdrop are refused, and the corner close is the sheet's one
+ * exit — its *universal* out, since no sheet here carries a Cancel (ADR 0017).
+ * It is kept in every state, including while a request is in flight: nothing
+ * bounds that window, so taking the exit away would trap a User behind a hung
+ * request. Dismissing mid-request abandons what was being composed, which is
+ * what a deliberate tap on it asks for.
+ */
 // Stryker disable next-line all: a compiler macro must stay a top-level statement
-defineProps<{ title: string; dismissible?: boolean }>()
+defineProps<{ title: string }>()
 // Stryker disable next-line all: a compiler macro's arguments are hoisted out of setup()
 const open = defineModel<boolean>('open', { required: true })
 
@@ -29,7 +37,7 @@ const bottomSheetUi = {
   <UModal
     v-model:open="open"
     :title="title"
-    :dismissible="dismissible"
+    :dismissible="false"
     :ui="isDesktop ? undefined : bottomSheetUi"
   >
     <template #body><slot /></template>

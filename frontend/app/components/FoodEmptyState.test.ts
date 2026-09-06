@@ -24,4 +24,12 @@ describe('FoodEmptyState', () => {
 
     expect(onAdd).toHaveBeenCalledOnce()
   })
+
+  it('links to the catalog instead when the sheet it opens is on another page', async () => {
+    await renderSuspended(FoodEmptyState, { props: { to: '/foods?add=1' } })
+
+    expect(
+      screen.getByRole('link', { name: /add your first food/i }),
+    ).toHaveAttribute('href', '/foods?add=1')
+  })
 })

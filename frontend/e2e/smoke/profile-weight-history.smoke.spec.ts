@@ -1,5 +1,6 @@
 import { test, expect } from './support/smoke-test'
 import { todayIso, isoShiftDays, formatDmy } from '../support/date'
+import { withOverflowNav } from '../support/nav'
 
 // Issue #105: the /profile Weight section shows only the current value; the full
 // chronological log lives on its own /profile/weight history page reached via
@@ -56,10 +57,13 @@ test('the Weight section shows the current value and links to the full history',
   await expect(page.getByRole('listitem')).toHaveCount(7)
   await expect(page.getByText(oldestDate)).toBeVisible()
 
-  // It's Profile detail, so the Profile nav tab stays active on this route.
-  await expect(
-    page.getByRole('link', { name: 'Profile', exact: true }),
-  ).toHaveAttribute('aria-current', 'page')
+  // It's Profile detail, so the Profile destination stays active on this route —
+  // wherever this viewport keeps it, since Profile sits under More (ADR 0028).
+  await withOverflowNav(page, async (nav) => {
+    await expect(
+      nav.getByRole('link', { name: 'Profile', exact: true }),
+    ).toHaveAttribute('aria-current', 'page')
+  })
 
   // The back affordance returns to Profile, where the summary still shows.
   await page.getByRole('link', { name: /back to profile/i }).click()

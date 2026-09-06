@@ -1,6 +1,7 @@
 import { expect, test } from './support/test'
 import {
   mockFoods,
+  mockFrequentFoods,
   mockGoalProgress,
   mockProfile,
   mockSummary,
@@ -8,11 +9,11 @@ import {
 } from './support/mock-api'
 import { goalProgress } from '../test/goal-fixtures'
 import { denyCamera } from './support/fake-camera'
-import { visibleNav } from './support/nav'
+import { visibleNav, withOverflowNav } from './support/nav'
 
 // Tucker takes the shape of the Calorie Tracking choice. With it off there is no
-// log half — no Foods or Check tab, no day summary, no budget-change banner and
-// no Log-entry action — and the Goal is a ring.
+// log half — no Log destination, no Foods or Check, no day summary, no
+// budget-change banner and no Log-entry action — and the Goal is a ring.
 
 const WEIGHT_ONLY = {
   sex: 'MALE',
@@ -74,13 +75,40 @@ test.describe('with Calorie Tracking off', () => {
     await mockGoalProgress(page, PROGRESS)
   })
 
-  test('the navigation offers Today, Review and Profile only', async ({
+  test('the navigation offers Today and Review, with Profile alone behind More', async ({
     page,
     goto,
   }) => {
     await goto('/', { waitUntil: 'hydration' })
 
     await expect(visibleNav(page)).toMatchAriaSnapshot()
+  })
+
+  test('the Log destination is gone with the rest of the log half', async ({
+    page,
+    goto,
+  }) => {
+    await goto('/', { waitUntil: 'hydration' })
+
+    await expect(
+      visibleNav(page).getByRole('link', { name: 'Log' }),
+    ).toBeHidden()
+  })
+
+  test('the Log destination is still reachable by a direct link', async ({
+    page,
+    goto,
+  }) => {
+    // Hiding a tab is a navigation choice, not access control — a weight-only
+    // User who arrives here can still log what they ate.
+    await mockFoods(page, [])
+    await mockFrequentFoods(page, [])
+
+    await goto('/log', { waitUntil: 'hydration' })
+
+    await expect(
+      page.getByRole('heading', { level: 1, name: 'Log' }),
+    ).toBeVisible()
   })
 
   test('Today is the weight and the goal, with nothing to log against', async ({
@@ -121,15 +149,12 @@ test.describe('with Calorie Tracking off', () => {
     await expect(
       page.getByRole('heading', { level: 1, name: 'Foods' }),
     ).toBeVisible()
-    await expect(
-      visibleNav(page).getByRole('link', { name: 'Foods' }),
-    ).toBeHidden()
+    await withOverflowNav(page, async (nav) => {
+      await expect(nav.getByRole('link', { name: 'Foods' })).toBeHidden()
+    })
   })
 
-  test('the Check tab is still reachable by a direct link', async ({
-    page,
-    goto,
-  }) => {
+  test('Check is still reachable by a direct link', async ({ page, goto }) => {
     // Stubbed like every other /check spec, so the route is exercised without
     // reaching for headless Chromium's absent camera.
     await denyCamera(page)
@@ -172,18 +197,13 @@ test('turning Calorie Tracking back on restores the log half without a reload', 
 
   await goto('/profile', { waitUntil: 'hydration' })
 
-  await expect(
-    visibleNav(page).getByRole('link', { name: 'Foods' }),
-  ).toBeHidden()
+  await expect(visibleNav(page).getByRole('link', { name: 'Log' })).toBeHidden()
 
   await page.getByRole('radio', { name: /calories and weight/i }).click()
   await page.getByRole('button', { name: /save profile/i }).click()
 
   await expect(
-    visibleNav(page).getByRole('link', { name: 'Foods' }),
-  ).toBeVisible()
-  await expect(
-    visibleNav(page).getByRole('link', { name: 'Check' }),
+    visibleNav(page).getByRole('link', { name: 'Log' }),
   ).toBeVisible()
 
   // And Today is the full dashboard again, reached by navigation rather than a
@@ -192,4 +212,10 @@ test('turning Calorie Tracking back on restores the log half without a reload', 
 
   await expect(page.getByText('0 / 2400 kcal')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Log entry' })).toBeVisible()
+
+  // Foods and Check came back too, wherever this viewport keeps the overflow.
+  await withOverflowNav(page, async (nav) => {
+    await expect(nav.getByRole('link', { name: 'Foods' })).toBeVisible()
+    await expect(nav.getByRole('link', { name: 'Check' })).toBeVisible()
+  })
 })

@@ -6,7 +6,7 @@ import LogEntrySheet from './LogEntrySheet.vue'
 describe('LogEntrySheet', () => {
   it('renders no overlay and no trigger of its own when closed', async () => {
     await renderSuspended(LogEntrySheet, {
-      props: { date: '2026-05-24', open: false },
+      props: { open: false },
     })
 
     // The page owns the trigger now (FAB / header button); the sheet is purely
@@ -17,7 +17,7 @@ describe('LogEntrySheet', () => {
 
   it('renders the entry overlay titled "Log entry" when open', async () => {
     await renderSuspended(LogEntrySheet, {
-      props: { date: '2026-05-24', open: true },
+      props: { open: true },
     })
 
     const sheet = screen.getByRole('dialog', { name: /log entry/i })

@@ -1,37 +1,51 @@
 <script setup lang="ts">
 import { z } from 'zod'
 import type { components } from '#open-fetch-schemas/api'
+import type { BudgetWarning } from '~/composables/useBudgetGate'
 
 type FoodResponse = components['schemas']['FoodResponse']
 
 const props = defineProps<{
   food: FoodResponse | null
-  /** The log mutation's in-flight flag — shows on the submit (ADR 0007). */
+  /** Over-budget heads-up for the entry being composed; null/absent when within budget. */
+  warning?: BudgetWarning | null
+  /** True while the budget projection or the save is in flight, to lock the action. */
   pending?: boolean
 }>()
 
 const emit = defineEmits<{
   log: [{ foodId: number; grams: number }]
+  edited: []
   close: []
 }>()
 
 // Autofocus the grams field on desktop for quick entry, but NOT on phone: there
-// the focus pops the on-screen keyboard the instant the drawer opens, which
-// covers the controls and blocks swipe-to-dismiss, making the sheet hard to
-// dismiss (the corner close button stays the reliable exit).
+// the focus pops the on-screen keyboard the instant the sheet opens, which
+// covers the controls and makes the sheet hard to dismiss.
 const isDesktop = useIsDesktop()
 
 const schema = z.object({ grams: gramsSchema })
 
 const state = reactive({ grams: undefined as number | undefined })
 
-// Reset on every (re)open so a previous session's grams don't linger.
+// Reset on every (re)open so a previous session's grams don't linger. The
+// form's `:key` remounts the field but not this state, which the number field's
+// blur-scoped commit hides from a test that types without leaving the field.
 watch(
   () => props.food,
   (food) => {
     if (food) state.grams = undefined
   },
 )
+
+// Editing the grams clears any showing budget warning so the next Save
+// re-checks against the new number (no stale "Log anyway").
+watch(
+  () => state.grams,
+  () => emit('edited'),
+)
+
+const warningMessage = computed(() => formatBudgetWarning(props.warning))
 
 function onSubmit() {
   emit('log', { foodId: props.food!.id, grams: state.grams! })
@@ -63,8 +77,16 @@ function onSubmit() {
         />
       </UFormField>
 
-      <UButton type="submit" color="primary" :loading="pending" class="w-full">
-        Log entry
+      <UAlert
+        v-if="warningMessage"
+        color="warning"
+        variant="soft"
+        icon="i-lucide-triangle-alert"
+        :title="warningMessage"
+      />
+
+      <UButton type="submit" color="primary" class="w-full" :loading="pending">
+        {{ warningMessage ? 'Log anyway' : 'Log entry' }}
       </UButton>
     </UForm>
   </ResponsiveOverlay>

@@ -188,6 +188,31 @@ export async function mockFoods(page: Page, foods: Json[] = []) {
   await page.route('**/api/foods', (route) => route.fulfill({ json: foods }))
 }
 
+/**
+ * Stub `GET /api/foods/frequent`, recording every window asked for. Registered
+ * before `mockFoods` in a spec that needs both is fine — the two globs are
+ * distinct, and `**\/api/foods` does not reach a nested path.
+ */
+export async function mockFrequentFoods(
+  page: Page,
+  foods: Json[] = [],
+): Promise<{ from: string; to: string }[]> {
+  const asked: { from: string; to: string }[] = []
+  await page.route('**/api/foods/frequent**', (route) => {
+    const params = new URL(route.request().url()).searchParams
+    asked.push({ from: params.get('from') ?? '', to: params.get('to') ?? '' })
+    return route.fulfill({ json: foods })
+  })
+  return asked
+}
+
+/** Stub `GET /api/foods/frequent` failing with a real server error. */
+export async function mockFrequentFoodsError(page: Page) {
+  await page.route('**/api/foods/frequent**', (route) =>
+    route.fulfill({ status: 500, json: { message: 'boom' } }),
+  )
+}
+
 /** Stub `GET /api/me` — the address the identity byline prints. */
 export async function mockMe(page: Page, email: string) {
   // No method guard, unlike the stubs below: `/api/me` is GET-only, so one

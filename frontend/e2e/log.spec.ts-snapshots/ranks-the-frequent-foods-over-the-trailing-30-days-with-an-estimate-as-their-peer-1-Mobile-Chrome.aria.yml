@@ -1,0 +1,11 @@
+- main:
+    - heading "Log" [level=1]
+    - heading "Frequent foods" [level=2]
+    - list:
+        - listitem:
+            - button "Log Free-range eggs": /Free-range eggs \d+ kcal · \d+ g protein \/100g/
+        - listitem:
+            - button "Log Rolled oats": /Rolled oats \d+ kcal · \d+ g protein \/100g/
+        - listitem:
+            - button "Log Weekday chilli, a recipe": /Weekday chilli \d+ kcal · \d+ g protein \/100g/
+    - button "Log an estimate instead"

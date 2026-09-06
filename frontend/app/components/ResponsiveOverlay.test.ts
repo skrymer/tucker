@@ -37,4 +37,14 @@ describe('ResponsiveOverlay', () => {
 
     expect(screen.queryByText('Weight form goes here')).not.toBeInTheDocument()
   })
+
+  it('keeps the corner close in every state — the sheet only exit', async () => {
+    // Escape and the backdrop are refused, and no sheet here carries a Cancel,
+    // so this is the universal out (ADR 0017). Nothing bounds a request, so
+    // taking it away while one is in flight would trap the User behind it.
+    viewport.desktop = true
+    await renderOverlay({ open: true })
+
+    expect(screen.getByRole('button', { name: /close/i })).toBeVisible()
+  })
 })

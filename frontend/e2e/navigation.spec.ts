@@ -1,5 +1,6 @@
 import { expect, test } from './support/test'
 import { mockSummary } from './support/mock-api'
+import { visibleNav } from './support/nav'
 
 const PHONE = { width: 375, height: 812 }
 const DESKTOP = { width: 1280, height: 800 }
@@ -43,6 +44,42 @@ test.describe('app shell navigation', () => {
     await expect(
       page.getByRole('heading', { level: 1, name: 'Today' }),
     ).toBeVisible()
+  })
+
+  test('carries Today, Log and Review, with the rest behind More', async ({
+    page,
+    goto,
+  }) => {
+    await page.setViewportSize(PHONE)
+    await goto('/', { waitUntil: 'hydration' })
+
+    const bar = visibleNav(page)
+    await expect(bar.getByRole('link')).toHaveText(['Today', 'Log', 'Review'])
+
+    await bar.getByRole('button', { name: 'More' }).click()
+
+    const sheet = page.getByRole('dialog', { name: 'More' })
+    await expect(sheet.getByRole('link')).toHaveText([
+      'Foods',
+      'Check',
+      'Profile',
+    ])
+  })
+
+  test('lays the same overflow out in place in the side navigation', async ({
+    page,
+    goto,
+  }) => {
+    // A side rail has the room, so there is no sheet to open — and no More
+    // button either, which is what keeps the two shells honest about it.
+    await page.setViewportSize(DESKTOP)
+    await goto('/', { waitUntil: 'hydration' })
+
+    const rail = visibleNav(page)
+    await expect(
+      rail.getByRole('group', { name: 'More' }).getByRole('link'),
+    ).toHaveText(['Foods', 'Check', 'Profile'])
+    await expect(rail.getByRole('button', { name: 'More' })).toBeHidden()
   })
 
   test('opens the selected destination while the shell persists', async ({
