@@ -455,6 +455,24 @@ agreement. Two things about it are load-bearing and easy to undo by accident:
 
 Both failure modes look like a green guard that is not guarding anything.
 
+### `utils/catalog.ts` — 0 of 21, and the score was a lie
+
+The file scores **100%** and did so while holding a user-facing bug: `filterFoods`
+folded case on the query and not on the Food's name, so every query typed from the
+start of a capitalised name — which is every Food name — matched nothing.
+
+Not a survivor to triage, then, but the standing reason a 100% here is not evidence.
+Stryker's `MethodExpression` mutator **swaps** `toLowerCase` for `toUpperCase` and
+never **deletes** the call, so the two sides of a comparison are not independently
+mutated: `fold(name).includes(fold(query))` and `name.includes(fold(query))` are
+indistinguishable to the engine. Every normalise-then-compare function inherits this
+— trimming, accent stripping, unit conversion, key canonicalisation.
+
+What kills it is a fixture whose *stored* value needs the transform, not only the
+query: `filterFoods(foods, 'tinned')` against `Tinned tuna`, and `'creme fraiche'`
+against `Crème fraîche`. Both were added, and both were confirmed by hand-mutating
+each side of the fold in turn — which is the only way to check this class at all.
+
 ### `pages/log.vue` — 14 of 57
 
 The Log destination. Its slice-2 sweep scores 43/57; the fourteen alive split three ways,

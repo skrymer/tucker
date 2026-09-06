@@ -6,7 +6,7 @@ description: Pre-PR gate that verifies a code change against Tucker's recorded d
 # Check against recorded decisions
 
 Tucker records its design in `docs/adr/*.md` (architecture + domain decisions) and
-`CONTEXT.md` (the ubiquitous language). This skill is the **third pre-PR gate**:
+`CONTEXT.md` (the ubiquitous language). This skill is a **pre-PR gate**:
 `/verify` checks runtime behaviour, `/code-review` checks correctness, and this
 checks that the implementation actually honours the decisions the project already
 made. It catches drift the other gates miss — an out-of-scope line crossed, a

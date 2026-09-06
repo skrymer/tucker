@@ -1,14 +1,29 @@
 ---
 name: verify
-description: The pre-PR runtime walk-through gate for Tucker — drive the real app in a real browser with the claude-in-chrome MCP tools, at both phone and desktop viewports, and emit a verdict a reviewer can replay. Use when a change is functionally complete and you need runtime evidence it actually works (gate 1 of feature-sign-off), when the user says "verify this", "walk it through", "does it actually work", or before opening a PR that touches a user-facing surface. This is runtime behaviour only — /code-review checks correctness and /check-adrs checks recorded decisions.
+description: The runtime walk-through gate for Tucker — drive the real app in a real browser with the claude-in-chrome MCP tools, at both phone and desktop viewports, and emit a verdict a reviewer can replay. Runs twice in feature-sign-off: a one-viewport reachability pass before the other gates, and the full walk-through last, on the code that ships. Use when a change is functionally complete and you need runtime evidence it actually works, when the user says "verify this", "walk it through", "does it actually work", or before opening a PR that touches a user-facing surface. This is runtime behaviour only — /code-review checks correctness and /check-adrs checks recorded decisions.
 ---
 
 # Verify (Tucker)
 
-**Gate 1 of [`feature-sign-off`](../feature-sign-off/SKILL.md).** Tests prove the code
-does what you told it to; this proves the *app* does what the user needs. Automated
+**Gates 0 and 5 of [`feature-sign-off`](../feature-sign-off/SKILL.md).** Tests prove the
+code does what you told it to; this proves the *app* does what the user needs. Automated
 tests can't catch an overlapping toast, a broken responsive layout, a focus trap, or a
 control that's unreachable one-handed — a walk-through can.
+
+## Two passes, because the code changes underneath you
+
+This runs **twice**, and they are not the same run:
+
+- **Reachability (gate 0)** — one viewport, the golden path, no edge probes. It answers
+  "does the surface load and do the thing at all", so nobody reviews code that does not
+  run. Two minutes. A FAIL here stops the sign-off before an agent is spawned.
+- **The walk-through (gate 5)** — both viewports, the golden path *and* the input probes
+  below. It runs **last**, on the code that ships.
+
+The split exists because `/simplify` and `/code-review` change behaviour, every time —
+in the run this was written from, both did, and a single up-front walk-through was stale
+twice over. Verifying once, at the end, on final code, is the point; the cheap first pass
+only stops the expensive gates being spent on a broken surface.
 
 **Real browser, via `claude-in-chrome`.** A scripted Playwright drive is **not** a
 substitute; it's a fallback only when no browser is connected, and then you must say so
@@ -24,12 +39,40 @@ explicitly in the verdict.
    first: `curl -s "http://localhost:8080/api/summary?date=<today>"`.
 3. **Walk the golden path** at **desktop**, then **repeat at phone width**. Tucker has a
    real responsive split (side-nav vs bottom-tabs, modal vs bottom sheet, header button
-   vs FAB) — a single-viewport walk-through misses half the layout.
-4. **Probe two edges** per viewport: the empty/zero state, the extreme value, the
-   error path, the reset. Pick the ones your change could plausibly have broken.
+   vs FAB) — a single-viewport walk-through misses half the layout. (Gate 0 stops here,
+   at one viewport.)
+4. **Probe the input space, then the states.** See below — this is the step that earns
+   the gate, and the one most easily reduced to nothing.
 5. **Emit the verdict** (below).
 6. **Clean up**: stop the dev server you started and delete any scratch asset you
    dropped into the repo. Confirm with `git status --short`.
+
+## Probing — inputs first, states second
+
+"Probe two edges" is read as *empty state and error path* and that is not enough: those
+are states the app puts itself in, and the bugs live in the values **the user** puts in.
+
+**Probe the inputs your change accepts, at their boundaries, before anything else.** For
+each input the change added — a text field, a number, a picker, a barcode — ask what
+shapes a real user's data comes in, and drive at least one of each:
+
+| Input | Shapes that have bitten Tucker |
+| --- | --- |
+| A text query | a **capitalised** word (every Food name starts with one), an **accented** name, whitespace alone, the empty string, a word matching nothing |
+| A number | zero, the boundary of its rule, one past it, a decimal where an integer is expected |
+| A list | none, one, the cap, one past the cap |
+| A date | today, a local midnight, a day the rule spans |
+
+Then the states: empty/zero, the error path, the reset. Two of those, chosen by what the
+change could plausibly have broken.
+
+The rule this replaces let two user-facing bugs through in one slice. F16 slice 2's
+filter was walked with three queries — `oli`, `skyr`, `quinoa` — all lowercase and all
+matching, so the fact that a **capitalised** query found nothing was invisible, as was an
+accented Food being unreachable by any spelling a phone keyboard reaches easily. Both
+survived 759 tests and a 100% mutation score on the file that held them, and were found
+by `/code-review` two gates later. **Pick probe values your fixtures do not already
+resemble** — a value that looks like the happy path is not a probe.
 
 ## Viewports — the part that bites
 
@@ -60,15 +103,20 @@ Emit something the reviewer can replay — what you drove, where, and what you s
 Stack: docker backend + pnpm dev; seeded <what>
 Desktop (2133px): golden path ✅ — <the concrete figures/state observed>
 Phone (555px):    golden path ✅ — bottom-tabs, no overflow, control reachable
-Edge probes: <empty state> ✅ · <extreme value> ✅
+Input probes: <the actual values driven, e.g. "Rolled" (capitalised) ✅ · "creme" → Crème fraîche ✅ · "   " ✅>
+State probes: <empty state> ✅ · <error path> ✅
 
 Verdict: PASS
 ```
 
-**PASS** only if you saw it work at both viewports. **FAIL** stops the sign-off — fix
-and re-verify. **BLOCKED** (couldn't reach the surface) is not a PASS; say what blocked
-you. If you fell back to Playwright, label the verdict
-`PASS (Playwright fallback — claude-in-chrome unavailable)`.
+**PASS** only if you saw it work at both viewports, and only with the input probes named
+in the verdict — a walk-through that lists no probe values is a reachability pass wearing
+the wrong label. **FAIL** stops the sign-off — fix and re-verify. **BLOCKED** (couldn't
+reach the surface) is not a PASS; say what blocked you. If you fell back to Playwright,
+label the verdict `PASS (Playwright fallback — claude-in-chrome unavailable)`.
+
+Gate 0's verdict is one line: `reachability ✅ — <surface> loads and <the one action>
+works at <width>`.
 
 ## Notes
 
