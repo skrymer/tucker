@@ -81,11 +81,35 @@ resemble** — a value that looks like the happy path is not a probe.
 - **A maximized window silently refuses to resize** (no `wmctrl`/`xdotool` under
   Wayland). If two resize attempts don't move `innerWidth`, **ask the user to
   unmaximize the Chrome window** — one sentence, and the next resize works.
+- **Ask before the desktop pass, not after it.** The resize only fails at the
+  *phone* step, which is halfway through the gate, so the question lands after the
+  stack is up and the desktop walk is done — and then everything waits on a human.
+  One `resize_window` + `innerWidth` check at the very start costs one tool call
+  and moves the question to a moment where the user can answer it while you seed
+  data.
 - **Chrome floors at ~555px wide**, so Pixel-7 width (412px) is unreachable. 555px is
   still under Tucker's 1024px breakpoint, so the phone layout *is* genuinely exercised
   — say which width you actually used. For a true 412px check, lean on the Playwright
   **Mobile Chrome** project.
 - `navigate` can re-maximize; re-check `innerWidth` after every navigation.
+
+## Driving — by ref, from the first click
+
+`read_page` / `find` give element refs; use them for **every** click and type.
+Screenshot pixels are not page coordinates (device pixel ratio, window scaling), so
+a coordinate click lands off-target and typing goes into whatever has focus instead
+— and the failure is silent: the form looks filled, the field is empty, and the
+submit does nothing. In the measured run three interactions were lost that way
+before switching, plus one on a modal caught mid-transition, whose coordinates were
+stale by the time the click landed.
+
+Two related ones, both cheap:
+
+- **A screenshot can time out on an open modal** (`Page.captureScreenshot` after
+  30s). That is a capture flake, not a frozen page — read the dialog's text with
+  `javascript_tool` and carry on rather than retrying the screenshot.
+- **Batch with `browser_batch`** whenever you can predict two steps ahead: click,
+  type, Tab, assert. Each standalone call is a round trip.
 
 ## Camera-gated surfaces
 

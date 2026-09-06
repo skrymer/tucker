@@ -78,8 +78,19 @@ does not load, and the real one runs last, on the code that ships.
 4. **`/check-adrs` — honour the recorded decisions.** Verify the diff against the
    ADRs in `docs/adr/` and the ubiquitous language in `CONTEXT.md`. A FAIL is
    either a code fix or a same-PR doc fix (per `[[prefer-source-fix-over-adr]]`)
-   — the user's call, surfaced. It runs after the code gates so it judges the
-   final code.
+   — the user's call, surfaced.
+
+   **Launch it in the same message as gate 3.** Both are pure read-and-report —
+   neither edits the tree, and you apply both sets of findings afterwards — so
+   running them back to back spends the shorter one's wall-clock for nothing
+   (4–7 min against code-review's 12 in the run this was measured on). The cost
+   is that it judges pre-fix code: when code-review's fixes land, re-check **only
+   the files they touched** against the constraints `/check-adrs` cited, which is
+   a read of a handful of lines rather than a second run.
+
+   Gate 2 does **not** join them. It writes tests, and gate 3's test-quality pass
+   reviews them — in the measured run it caught a vacuous assertion in a test
+   gate 2 had just added. Overlapping those two hides exactly that.
 
 5. **`/verify` (the walk-through) — does the shipping code actually work?** Both
    viewports, the golden path, and the **input probes** the skill now names — the
@@ -87,6 +98,23 @@ does not load, and the real one runs last, on the code that ships.
    error states. This is CLAUDE.md's PR walk-through gate and it is the last thing
    before the commit, so nothing changes under it. A FAIL sends you back to
    whichever gate owns the fix, and then back here.
+
+## Spending the agents well
+
+Gates 1, 3 and 4 fan out to subagents, and they are the sign-off's critical path —
+everything else is minutes, they are tens of minutes. Two things cut that without
+losing a finding:
+
+- **Hand each agent a context pack, not just the diff.** Every agent otherwise
+  re-discovers the same files: in the measured run, eight agents each independently
+  read `log.vue`, `catalog.ts` and the ADRs, at ~15–35 tool calls apiece. Write the
+  diff to a scratch file *and* inline the three-to-five files the angle actually
+  needs, then say which further reading is expected. Naming the files it will need
+  is also what stops it wandering.
+- **Batch the fixes, not one test run each.** Findings arrive in groups and most are
+  independent. Apply a whole gate's worth, then run the touched spec once. The
+  exception is a fix you intend to prove by hand-mutation — those stay one at a
+  time, because the point is watching that single mutant die.
 
 ## After the gates
 
@@ -102,6 +130,11 @@ justified):
    frontend e2e and the smokes once, here, before the commit. The full mocked e2e
    is ~2 minutes and CI re-runs all of it on the PR, so running it after every
    gate spends ~6 minutes proving something twice.
+
+   **`docker compose build backend` only when the diff touched the backend.**
+   `pnpm test:smoke` force-recreates the container from the existing image and
+   resets the DB per test (issue #70), so a frontend-only slice needs no rebuild —
+   and building one costs a minute to produce a byte-identical image.
 2. **Commit and push** on the feature branch (never straight to `main`; see
    `[[always-work-on-a-feature-branch]]` and `[[push-after-committing]]`). Group
    commits by concern; end messages with the `Co-Authored-By` trailer.
@@ -127,11 +160,14 @@ Suites green (detekt/build, lint/test). Committed + pushed to <branch>.
 
 ## Notes
 
-- **Order is load-bearing.** Reachability first (don't review code that doesn't
-  run), simplify before mutation-test (mutate the shipping code, not a draft),
-  mutation-test before review (its new tests are part of what gets reviewed),
-  check-adrs after the code gates (judge the final diff), and the full
-  walk-through last so nothing changes under it. Don't reorder for convenience.
+- **Order is load-bearing, and the two overlaps are not.** Reachability first
+  (don't review code that doesn't run), simplify before mutation-test (mutate the
+  shipping code, not a draft), mutation-test before review (its new tests are part
+  of what gets reviewed), and the full walk-through last so nothing changes under
+  it. Don't reorder those for convenience. `/check-adrs` is the one that may run
+  *alongside* review rather than after it, because it edits nothing — that is a
+  concurrency, not a reorder, and the re-check on review's changed files is what
+  pays for it.
 - **A gate that finds the most and runs late is not a scheduling accident.**
   `/code-review` found this list's two worst defects — both user-facing, both past
   759 tests and a 100% mutation score — and it runs fourth by design: it reads the
