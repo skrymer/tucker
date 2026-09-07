@@ -500,6 +500,136 @@ warning stands, and closing the grams sheet without logging, are states no Vites
 enters. `watch(open, …)`'s two mutants are **equivalent**: resetting on open leaves the
 form just as clean as resetting on close, so nothing observable separates them.
 
+### `components/AddSheet.vue` — 21 of 118
+
+The Add-Food overlay: the barcode look-up, the camera scanner and the Food|Recipe
+switch. Never swept until [#303](https://github.com/skrymer/tucker/issues/303),
+which took it from 77 killed / 38 survived to **95 killed / 21 survived / 2 no cov**.
+Of the 21, **nineteen are equivalent mutants** and two are **real gaps** carried: the
+close branch's `cancel()`, which no test drives, and `cache: 'no-store'`, which no
+layer the engine or Playwright can run honours at all.
+
+**The `{ kind: 'manual' }` discriminant (8).** `branch`'s initial value, the
+`timedOut` arm's assignment, the `catch`'s, and `reset()`'s — each mutated to `{}`
+and to `{ kind: "" }`. `'manual'` is the union's default arm and is compared against
+nowhere: every read tests `'candidate'` or `'existing'` and falls through to manual,
+so an absent or empty discriminant selects exactly the same branch. Typecheck rejects
+the mutants; nothing at runtime can see them.
+
+**The `timedOut` arm (3).** `if (false)`, `=== ""`, and the block emptied. Bypassing
+the arm falls through to `const result = outcome.value` — `undefined` for a timed-out
+outcome — which throws, and the `catch` sets byte-for-byte the same state
+(`{ kind: 'manual' }` plus `inconclusive = true`). Load-bearing for intent, not for
+behaviour: it stops being equivalent the day `AsyncOutcome.timedOut` carries a value
+or `isNotFound` widens.
+
+**`result.outcome === 'EXISTING' && result.food` (2).** `&&` → `||`, and the left
+side → `true`. The `&&` exists only to narrow the OpenAPI-nullable `food` for
+TypeScript; no response the backend can produce carries a `food` without the
+`EXISTING` outcome, or the outcome without the food, so both mutants select the arm
+the original does.
+
+**The two `cancel()` calls (2), and they are not the same verdict.** `reset()`'s
+(`:145`) is an **equivalent mutant** under single mutation: `reset()` runs on the way
+*in*, and the close branch has already aborted on the way *out*, so by the time it
+runs there is nothing left in flight to cancel. The close branch's (`:191`) is a
+**real gap**: the overlay holds this component mounted through its exit animation —
+which `AddSheet.test.ts` › *leaves its contents alone while it closes* exists to
+prove — so without it a late result visibly replaces the contents of a sheet the
+User has just dismissed. No test drives that window.
+
+**`watch(mode, …)`'s residue (2).** `if (true) stopScan()` and `current !== ""`.
+`AddSheet.test.ts` › *releases the camera when the user switches to the recipe
+builder* kills the other four. Both survivors only widen the watcher to fire on the
+recipe→food transition as well, where the camera is already stopped — **equivalent
+for every sequence a User can produce**, with one contrived exception worth writing
+down rather than glossing: `useBarcodeScanner`'s `decodeFrame` catch sets
+`state = 'unsupported'` without re-checking generation, so a `readBarcodes`
+rejection landing *after* the tab switch leaves that alert standing, and coming back
+to Food would clear it under the mutant and keep it under the original. Unreachable
+without a decoder that fails mid-switch; recorded, not chased.
+
+**`formSession.value++` → `--` (1).** The counter is only a `:key`; it has to change
+per open, not increase.
+
+**Two nobody can run here (2).** `cache: 'no-store'` → `""` is a browser fetch
+semantic that `registerEndpoint` never honours — a **real gap** with no layer to put
+it in, since the mocked Playwright suite stubs the same requests. `{ mode: 'latest' }`
+→ `{ mode: "" }` is the standing `ReferenceFoodPicker` verdict: supersession is safe
+on `useAsyncAction`'s generation counter, and only the *abort* is lost, which nothing
+observable depends on.
+
+`existingFood`'s ternary → `true ? branch.value.food : null` rounds it out: the
+non-existing arms have no `food`, so the computed is falsy either way.
+
+The two `no cov` are the same discriminant again — the branch ternary's final
+`: { kind: 'manual' }` fallback, reached only by a response that is neither
+`EXISTING` nor a candidate, which the backend does not produce.
+
+### `pages/foods.vue` — 19 of 71, and 18 with no coverage
+
+The catalog page. **Every survivor is glue** — `useApiMutation` option objects, their
+`errorTitle` strings, their `onSuccess: () => refresh()` arrows, and two defensive
+guards — which ADR 0013 says is driven by the integrated test rather than given one
+of its own. Stryker cannot run those layers, so they survive by construction. #303
+leaves it at **34 killed / 19 survived / 18 no cov**, up from the 22/22 the issue
+reported. What moved the score is the closed-world toast assertion in
+`foods.test.ts`; the `handleCreateIngredient` gap #303 also closed is at the
+Playwright layer, which no Stryker score can show. (Don't reconcile the two figures
+by subtraction — the baseline was taken against the file as F16 slice 3 left it.)
+
+**The four mutations' option objects and their `onSuccess` (8).** Four whole option
+objects emptied to `{}` (`:73`, `:98`, `:116`, `:140`), three `onSuccess: () =>
+refresh()` arrows blanked (`:77`, `:100`, `:118` — the fourth, `handleEditRecipe`'s
+at `:142`, reports `no cov` rather than surviving), and `:108`'s whole request arrow
+replaced by `() => undefined`. Each is **killed by an out-of-scope layer**, with a
+named killer:
+
+| mutation | killer | what it asserts |
+| --- | --- | --- |
+| `handleSubmit` | `e2e/smoke/add-food.smoke.spec.ts` | the new row, with its derived kcal |
+| `handleCreateIngredient` | `e2e/recipe-builder.spec.ts` › *user adds a new food inline…* | the POST body, and the Food in the catalog behind the closed sheet |
+| `handleSubmitRecipe` | `e2e/smoke/create-recipe.smoke.spec.ts` | the recipe's row |
+| `handleEditRecipe` | `e2e/smoke/recipe-edit.smoke.spec.ts` | the sheet closing, and the recipe re-read over the API |
+
+The `handleCreateIngredient` row is the one #303 added; before it, that mutation was
+a real gap with no killer at any layer. `recipe-edit`'s is the weakest of the four —
+it never reads the row, so it kills the emptied option object but would not catch
+`refresh()` removed on its own. That mutant is `no cov` rather than a survivor, so
+nothing is claimed for it here.
+
+**The five `errorTitle` strings (5).** A **real gap**, carried, and explicitly *not*
+the accepted presentation-token class above — the same verdict this file already
+reaches for `useWeightLogging` and `ReferenceFoodPicker`, and for the same
+mechanism: ADR 0005 makes the title the whole of what a User is told, and
+`useApiMutation` derives `errorToastId` from it, so a blanked title collides two
+unrelated failures onto one toast. Two of the five are already the same string
+(`'Could not add food'`, deliberately — both are an add failing), which is what
+makes the third and fourth collapsing onto them invisible. Only the hand-rolled
+`onValidationError` toast is pinned, by `foods.test.ts` › *surfaces the rule
+message…*, and that is a different call.
+
+**`watch(open, …)` and `watch(recipeToView, …)` (5, plus `:200`).** **Equivalent
+mutants.** `if (!isOpen)` → `if (true)`: dropping `?add=1` on the way in changes
+nothing, the sheet being open already. `if (opensAddSheet(route.query))` → `if (true)`
+replaces the query with itself when there is no `add` to spend, and
+`router.replace({ query: rest })` → `{}` drops a query `/foods` never has anything
+else in. `sheetSession`'s `if (true)` and `--` both keep the value distinct per open,
+which is the only thing `savingFromThisSheet` compares. `if (food) deleteFood(food)` →
+`if (true)` is unreachable: the confirm dialog renders only with a Food selected.
+
+`watch(recipeToView, …)` clearing `createdIngredient` is the same shape and reports
+`no cov` for all four of its mutants: `RecipeBuilder`'s own `createdIngredient` watcher
+is not `immediate` and every assignment is a fresh object off a fresh response, so no
+sequence makes a stale value fire it. Symmetric with `watch(open, …)`'s clear, and kept
+for that symmetry.
+
+**The 18 with no coverage** are those four plus the request shapes of the four
+mutations — the paths, the methods, the bodies and the two `onSuccess` blocks — which
+no Vitest test reaches at all. Each is **killed by an out-of-scope layer**, by the same
+smoke named above for its mutation: a blanked path or method fails the request the smoke
+asserts the result of.
+
 ## Backend — pitest
 
 ### Excluded from `--targetClasses` (28) — false survivors the tool cannot see
@@ -740,7 +870,19 @@ Unchanged by any of the above, and worth re-reading before trusting a 100%:
   `OBSERVED_WINDOW_DAYS`, `PACE_BAND`, `DRIFT_BAND_KG_PER_WEEK` and every timeout are
   invisible to it. A tuning constant needs a test asserting the number it produces.
 - **Stryker has no truthiness mutator** — a guard distinguishing _absent_ from _zero_
-  needs an explicit zero case.
+  needs an explicit zero case. `AddSheet.vue`'s three are the worked examples, and
+  they do not all take the same case: `lookup()`'s `if (!code) return` and
+  `barcode.value.trim() || undefined` needed a **whitespace** barcode, while the
+  scanned-barcode watcher's `if (!code) return` needed an **empty decode** — the
+  scanner clears its own value on restart, so whitespace never reaches it. All
+  three were written by hand; no score asked for any of them (#303).
+- **`MethodExpression` deletes some built-in calls, which is narrower than it
+  sounds.** `trim`, `slice`, `filter`, `sort`, `substring` and `charAt` are removed
+  rather than substituted, so a built-in fold that *is* written gets proven
+  load-bearing (`AddSheet.vue`'s two `.trim()` calls, #303). It says nothing about
+  the fold that is **missing** from the other side of a comparison — there is no
+  call node there to mutate — so the skill's one-sided-fold warning holds for
+  built-ins exactly as it does for a normaliser you wrote.
 - **`x in a..b` hides a conditional pitest can negate but no test can reach.** A
   `require(entries.all { it.loggedOn in from..to })` in `IntakeBreakdown.of` left one
   unkillable `NegateConditionals` at a synthetic line past the end of the file, and it
