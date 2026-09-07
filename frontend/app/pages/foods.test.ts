@@ -46,7 +46,7 @@ registerEndpoint('/api/foods/7', {
 })
 
 describe('/foods deleting a food with logged entries', () => {
-  it('surfaces the rule message with no Retry and keeps the food listed', async () => {
+  it('surfaces the rule message as a persistent error with no Retry, and keeps the food listed', async () => {
     toastAdd.mockClear()
     await renderSuspended(Foods)
 
@@ -57,11 +57,23 @@ describe('/foods deleting a food with logged entries', () => {
     )
 
     await vi.waitFor(() => expect(toastAdd).toHaveBeenCalled())
-    const toast = toastAdd.mock.calls.at(-1)![0]
     // The backend's message reaches the user, not the misleading transient
-    // "check your connection" copy, and with no pointless Retry action.
-    expect(toast.description).toBe(rejection)
-    expect(toast.actions).toBeUndefined()
+    // "check your connection" copy. Hand-rolled rather than routed through
+    // useApiMutation's shared toast, so nothing else pins its shape: assertive,
+    // dismissible, and persistent with no countdown, because the rejection is
+    // permanent (ADR 0005). Closed-world, so the absent Retry is asserted by the
+    // shape rather than by a separate check for it — as is the absent `id` the
+    // shared error path carries: one toast can't stack on itself under
+    // `toaster.max: 1`, and the confirm closing behind it is the other exit.
+    expect(toastAdd.mock.calls.at(-1)![0]).toEqual({
+      title: 'Could not delete food',
+      description: rejection,
+      color: 'error',
+      type: 'foreground',
+      duration: Infinity,
+      close: true,
+      progress: false,
+    })
 
     // The Food stays in the catalog and the confirm dialog is dismissed.
     expect(screen.getByText('Oats')).toBeVisible()

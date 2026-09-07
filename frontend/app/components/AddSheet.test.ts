@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { registerEndpoint, renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
@@ -117,6 +117,25 @@ registerEndpoint(`/api/foods/barcode/${SLOW_CANDIDATE_BARCODE}`, {
   },
 })
 
+// A candidate whose every macro is present, so each one is pinned reaching the
+// form. CANDIDATE_BARCODE deliberately withholds fat, to pin the blank instead.
+const FULL_CANDIDATE_BARCODE = '5700000000002'
+registerEndpoint(`/api/foods/barcode/${FULL_CANDIDATE_BARCODE}`, {
+  method: 'GET',
+  handler: () => ({
+    outcome: 'CANDIDATE',
+    candidate: {
+      name: 'Peanut Butter',
+      barcode: FULL_CANDIDATE_BARCODE,
+      proteinPer100g: 25.1,
+      carbsPer100g: 12.2,
+      fatPer100g: 50.3,
+      statedEnergyKcalPer100g: 600,
+      source: 'Open Food Facts',
+    },
+  }),
+})
+
 const EXISTING_BARCODE = '5709999999999'
 registerEndpoint(`/api/foods/barcode/${EXISTING_BARCODE}`, {
   method: 'GET',
@@ -135,6 +154,12 @@ registerEndpoint(`/api/foods/barcode/${EXISTING_BARCODE}`, {
 })
 
 describe('AddSheet', () => {
+  // Structural rather than per-test: a gate left armed by a test that throws
+  // before its own reset hangs every later SLOW_CANDIDATE_BARCODE look-up.
+  afterEach(() => {
+    candidateGate = null
+  })
+
   it('offers a barcode lookup alongside the manual form', async () => {
     await renderSuspended(AddSheet, { props: { open: true } })
 
@@ -142,6 +167,12 @@ describe('AddSheet', () => {
     expect(screen.getByRole('button', { name: /look up/i })).toBeVisible()
     // Manual entry is an always-on peer, not gated behind the lookup.
     expect(screen.getByLabelText(/^name$/i)).toBeVisible()
+  })
+
+  it('claims no failed look-up before one has been run', async () => {
+    await renderSuspended(AddSheet, { props: { open: true } })
+
+    expect(screen.queryByText(/couldn't look that up/i)).not.toBeInTheDocument()
   })
 
   it('marks the barcode as an optional shortcut', async () => {
@@ -167,9 +198,48 @@ describe('AddSheet', () => {
     expect(screen.getByLabelText(/protein \/100\s*g/i)).toHaveDisplayValue(
       '10.3',
     )
+    expect(screen.getByLabelText(/carbs \/100\s*g/i)).toHaveDisplayValue('4')
     // Absent macro stays blank and the stated energy shows as a cross-check.
     expect(screen.getByLabelText(/fat \/100\s*g/i)).toHaveDisplayValue('')
     expect(screen.getByText(/63 kcal/i)).toBeVisible()
+  })
+
+  it('carries every macro the provider supplied into the form', async () => {
+    await renderSuspended(AddSheet, { props: { open: true } })
+    const user = userEvent.setup()
+
+    await user.type(screen.getByLabelText(/barcode/i), FULL_CANDIDATE_BARCODE)
+    await user.click(screen.getByRole('button', { name: /look up/i }))
+
+    // Fat is the one this fixture exists for: the candidate above withholds it,
+    // to pin the blank, so no single fixture can pin both.
+    expect(await screen.findByDisplayValue('Peanut Butter')).toBeVisible()
+    expect(screen.getByLabelText(/fat \/100\s*g/i)).toHaveDisplayValue('50.3')
+  })
+
+  it('does not look up a barcode of nothing but whitespace', async () => {
+    // The guard is on the *trimmed* code, so a stray space is not a barcode. Run
+    // it anyway and the miss would wipe the candidate already on screen.
+    await renderSuspended(AddSheet, { props: { open: true } })
+    const user = userEvent.setup()
+
+    const input = screen.getByLabelText(/barcode/i)
+    await user.type(input, CANDIDATE_BARCODE)
+    await user.click(screen.getByRole('button', { name: /look up/i }))
+    expect(await screen.findByDisplayValue('Skyr Natural')).toBeVisible()
+
+    await user.clear(input)
+    await user.type(input, '   ')
+    await user.click(screen.getByRole('button', { name: /look up/i }))
+    // A look-up run anyway would miss and blank the form a round-trip later, so
+    // drain the loop before asserting it did not.
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    // Nothing was asked, so nothing changed.
+    expect(screen.getByDisplayValue('Skyr Natural')).toBeVisible()
+    expect(screen.getByLabelText(/protein \/100\s*g/i)).toHaveDisplayValue(
+      '10.3',
+    )
   })
 
   it('keeps what the user typed when a slow look-up lands a candidate', async () => {
@@ -196,7 +266,39 @@ describe('AddSheet', () => {
 
     // The typed name survived; only the blank macro filled.
     expect(screen.getByLabelText(/^name$/i)).toHaveValue('My Skyr')
-    candidateGate = null
+  })
+
+  it("keeps the newer look-up's result when a superseded one settles", async () => {
+    // A superseded run carries no value, so falling through to read one throws
+    // and lands in the catch — which would blank the newer look-up's result and
+    // add a failure note under it (issue #164's corruption from a third side).
+    let releaseLookup!: () => void
+    candidateGate = new Promise<void>((resolve) => {
+      releaseLookup = resolve
+    })
+    await renderSuspended(AddSheet, { props: { open: true } })
+    const user = userEvent.setup()
+
+    // Enter runs the look-up without going through the Look-up button, which the
+    // first run's spinner may already have disabled.
+    const input = screen.getByLabelText(/barcode/i)
+    await user.type(input, `${SLOW_CANDIDATE_BARCODE}{Enter}`)
+    await user.clear(input)
+    await user.type(input, `${CANDIDATE_BARCODE}{Enter}`)
+
+    // The second look-up wins the screen.
+    expect(await screen.findByDisplayValue('Skyr Natural')).toBeVisible()
+    expect(screen.getByLabelText(/protein \/100\s*g/i)).toHaveDisplayValue(
+      '10.3',
+    )
+
+    // The first look-up settled the moment the second aborted it, so it has
+    // already had its say; releasing only frees the handler still holding the
+    // gate. It said nothing.
+    releaseLookup()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(screen.queryByText(/couldn't look that up/i)).not.toBeInTheDocument()
+    expect(screen.getByDisplayValue('Skyr Natural')).toBeVisible()
   })
 
   it('notes that the form was pre-filled from the provider after a candidate lookup', async () => {
@@ -297,11 +399,14 @@ describe('AddSheet', () => {
     await rerender({ open: false })
     await rerender({ open: true })
 
-    // The stale catalog hit is gone; the add form leads again.
+    // The stale catalog hit is gone; the add form leads again, with the barcode
+    // that produced it cleared and nothing claiming a look-up failed.
     expect(screen.getByLabelText(/^name$/i)).toBeVisible()
     expect(
       screen.queryByText(/already in your catalog/i),
     ).not.toBeInTheDocument()
+    expect(screen.getByLabelText(/barcode/i)).toHaveValue('')
+    expect(screen.queryByText(/couldn't look that up/i)).not.toBeInTheDocument()
   })
 
   it('drops to a blank form carrying the barcode on a miss', async () => {
@@ -311,7 +416,9 @@ describe('AddSheet', () => {
     await renderSuspended(AddSheet, { props: { open: true, onSubmit } })
     const user = userEvent.setup()
 
-    await user.type(screen.getByLabelText(/barcode/i), MISS_BARCODE)
+    // Typed with the whitespace a paste brings along: the code that rides to the
+    // created Food is the trimmed one, not what was in the field.
+    await user.type(screen.getByLabelText(/barcode/i), `  ${MISS_BARCODE}  `)
     await user.click(screen.getByRole('button', { name: /look up/i }))
 
     // Blank form — no candidate prefill — and no stated-energy note.
@@ -626,6 +733,29 @@ describe('AddSheet camera scanning', () => {
     ).toBeVisible()
   })
 
+  it('leaves the decoded barcode alone when the scanner is restarted', async () => {
+    // Restarting clears the scanner's own decoded value, which is a no-decode —
+    // not a barcode of nothing to look up, and not a field to blank.
+    mockCameraGranted(CANDIDATE_BARCODE)
+    await renderSuspended(AddSheet, { props: { open: true } })
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole('button', { name: /scan barcode/i }))
+    await screen.findByText(/point the camera/i)
+    primeVideoFrame()
+    await screen.findByDisplayValue('Skyr Natural', undefined, {
+      timeout: 3000,
+    })
+    expect(screen.getByLabelText(/barcode/i)).toHaveValue(CANDIDATE_BARCODE)
+
+    // Point it at nothing and scan again.
+    vi.mocked(readBarcodes).mockResolvedValue([])
+    await user.click(screen.getByRole('button', { name: /scan barcode/i }))
+    await screen.findByText(/point the camera/i)
+
+    expect(screen.getByLabelText(/barcode/i)).toHaveValue(CANDIDATE_BARCODE)
+  })
+
   it('falls back to the manual input when the camera is denied', async () => {
     mockCameraDenied()
     await renderSuspended(AddSheet, { props: { open: true } })
@@ -670,6 +800,22 @@ describe('AddSheet camera scanning', () => {
 
     // The parent closes the sheet (e.g. after a save) by flipping the prop.
     await rerender({ open: false })
+
+    await vi.waitFor(() => expect(track.stop).toHaveBeenCalled())
+  })
+
+  it('releases the camera when the user switches to the recipe builder', async () => {
+    // The scanner lives in the sheet's scope, not the Food tab panel, so leaving
+    // the tab must stop it explicitly — otherwise the light stays on and a stray
+    // decode hijacks the sheet (ADR 0006, "never leave the camera light on").
+    const { track } = mockCameraGranted()
+    await renderSuspended(AddSheet, { props: { open: true } })
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole('button', { name: /scan barcode/i }))
+    await screen.findByText(/point the camera/i)
+
+    await user.click(screen.getByRole('tab', { name: /recipe/i }))
 
     await vi.waitFor(() => expect(track.stop).toHaveBeenCalled())
   })
