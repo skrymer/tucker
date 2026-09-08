@@ -170,16 +170,24 @@ tests (~1–5 tests, not all 473), which is what makes this affordable as a gate
   behaviour to pin.
 - A **timeout** verdict is not a survivor: it usually means an infinite loop, which
   counts as killed.
-- **No mutator deletes a normalising call, so a fold is invisible to the score.**
-  `MethodExpression` swaps `toLowerCase`↔`toUpperCase` — which a test kills easily —
-  and never removes the call. So `fold(a).includes(fold(b))` scores the same as
-  `a.includes(fold(b))`: apply a fold to one side of a comparison and not the other
-  and the file still reports **100%**. `app/utils/catalog.ts` did exactly that, with
-  a live bug (a capitalised query matched nothing) that 759 tests and a full sweep
-  both passed. **A 100% score on any normalise-then-compare function means nothing**
-  — case folding, accent stripping, trimming, unit conversion, key canonicalisation.
-  Assert each side independently: a fixture whose *stored* value needs the transform,
-  not only the query.
+- **No mutator can flag the normalising call that isn't there.** This is about the
+  *missing* fold, and no engine reaches it: there is no call node to mutate, so
+  `fold(a).includes(fold(b))` scores exactly the same as `a.includes(fold(b))`.
+  Apply a fold to one side of a comparison and not the other and the file still
+  reports **100%**. `app/utils/catalog.ts` did exactly that, with a live bug (a
+  capitalised query matched nothing) that 759 tests and a full sweep both passed.
+  **A 100% score on any normalise-then-compare function means nothing** — case
+  folding, accent stripping, trimming, unit conversion, key canonicalisation.
+  Assert each side independently: a fixture whose *stored* value needs the
+  transform, not only the query.
+  What the engine *does* buy you is narrower than it looks: `MethodExpression`
+  knows a fixed list of built-in names, and for some of them — `trim`, `slice`,
+  `filter`, `sort`, `substring`, `charAt` — it **deletes the call**, so a built-in
+  fold that *is* written is proven load-bearing (`AddSheet.vue`'s two
+  `barcode.value.trim()` mutants, issue #303). For the rest it substitutes
+  (`toLowerCase`↔`toUpperCase`), which a test kills trivially and which says
+  nothing about the missing side. And it knows nothing at all about a normaliser
+  you wrote.
 - **Stryker has no truthiness mutator.** `x == null ? a : b` scoring 100% says
   nothing about whether `x ? b : a` would be caught — and those differ for `0`,
   `''` and `NaN`. Any guard distinguishing *absent* from *zero* needs an explicit

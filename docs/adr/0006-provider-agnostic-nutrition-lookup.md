@@ -219,6 +219,15 @@ is a permanent peer to the camera**, not just an error fallback — it is the
 landing for a Provider miss, a denied/absent camera, *and* the offline case, and
 also serves "type the number under the barcode".
 
+**Never leave the camera light on.** The stream is released the moment the
+scanner stops being on screen — the sheet dismissed, or the Food tab left for the
+Recipe builder — and not merely when the component unmounts, because the overlay
+holds it mounted while closed. Two things ride on it: a camera light burning
+behind a dismissed sheet is alarming whatever the reason, and a live decoder in a
+surface the User has navigated away from can still fire, hijacking a sheet they
+are using for something else. The scanner therefore lives in the sheet's scope
+rather than the tab panel's, and every exit from that scope stops it explicitly.
+
 **Liquids:** a Provider value published per 100 ml is treated as per 100 g —
 density assumed **1 g/ml (water)**, not a per-product density. The error is ≲5%
 on the subset of drinks that are non-water, and the Food Candidate confirmation
