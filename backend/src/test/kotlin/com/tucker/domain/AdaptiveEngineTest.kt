@@ -44,15 +44,15 @@ class AdaptiveEngineTest {
     }
 
     @Test
-    fun `Maintenance adaptive averages intake over logged days and spreads weight loss over the window`() {
+    fun `Maintenance adaptive averages intake over logged days and spreads weight loss over its span`() {
         // Logged 2000 kcal on each of 10 days (20000 total), but the trend fell 0.5 kg
-        // over the full 14-day window. Intake averages over the 10 logged days (2000),
-        // while the weight loss spreads over 14 days: 0.5 x 7700 / 14 = 275 kcal/day
+        // across a 14-day span. Intake averages over the 10 logged days (2000), while
+        // the weight loss spreads over all 14: 0.5 x 7700 / 14 = 275 kcal/day
         // shortfall -> maintenance 2275. The two divisors differ on purpose (ADR 0018).
         val adaptive = Maintenance.adaptive(
             totalIntakeKcal = 20000.0,
             loggedDays = 10,
-            trendWeightChangeKg = -0.5,
+            trendChange = WeightTrend.Change(kg = -0.5, overDays = 14),
             windowDays = 14,
         )
         assertEquals(2275.0, adaptive.kcal, 0.01)
@@ -75,7 +75,7 @@ class AdaptiveEngineTest {
             Maintenance.adaptive(
                 totalIntakeKcal = 20000.0,
                 loggedDays = 0,
-                trendWeightChangeKg = -0.5,
+                trendChange = WeightTrend.Change(kg = -0.5, overDays = 14),
                 windowDays = 14,
             )
         }
@@ -83,14 +83,65 @@ class AdaptiveEngineTest {
 
     @Test
     fun `the adaptive estimate refuses a window of no days`() {
+        // The window is a divisor too — the floor under the change's own span — and a
+        // correction over no days is not a daily rate. Refused here rather than left
+        // to the span to rescue: with a span of its own the arithmetic sails through
+        // and produces a figure for a window that never happened.
         assertFailsWith<IllegalArgumentException> {
             Maintenance.adaptive(
                 totalIntakeKcal = 20000.0,
                 loggedDays = 10,
-                trendWeightChangeKg = -0.5,
+                trendChange = WeightTrend.Change(kg = -0.5, overDays = 14),
                 windowDays = 0,
             )
         }
+    }
+
+    @Test
+    fun `a change seen across more days than the window is spread over its own span`() {
+        // The scale saw 0.2 kg move over 20 days, and the window it corrects is 14.
+        // At the window's rate that reads 110 kcal/day; at the rate actually observed
+        // it is 0.2 x 7700 / 20 = 77.
+        val adaptive = Maintenance.adaptive(
+            totalIntakeKcal = 20000.0,
+            loggedDays = 10,
+            trendChange = WeightTrend.Change(kg = -0.2, overDays = 20),
+            windowDays = 14,
+        )
+
+        assertEquals(2077.0, adaptive.kcal, 0.01)
+    }
+
+    @Test
+    fun `a change seen across fewer days than the window is spread over the window`() {
+        // 0.2 kg between two readings a day apart is one EWMA step off one noisy
+        // reading. At its own rate that is 1540 kcal/day of imbalance claimed for a
+        // fortnight; over the window it corrects it is 110. Evidence about a day is
+        // not evidence about a fortnight.
+        val adaptive = Maintenance.adaptive(
+            totalIntakeKcal = 20000.0,
+            loggedDays = 10,
+            trendChange = WeightTrend.Change(kg = -0.2, overDays = 1),
+            windowDays = 14,
+        )
+
+        assertEquals(2110.0, adaptive.kcal, 0.01)
+    }
+
+    @Test
+    fun `a trend change observed across no days corrects nothing`() {
+        // Nothing weighed since the window opened, so both ends are the same point.
+        // The floor is load-bearing here and not merely redundant: without it the
+        // divisor is the change's own span of zero, and -0.0 / 0 is NaN, which
+        // Maintenance's `kcal > 0` refuses.
+        val adaptive = Maintenance.adaptive(
+            totalIntakeKcal = 20000.0,
+            loggedDays = 10,
+            trendChange = WeightTrend.Change(kg = 0.0, overDays = 0),
+            windowDays = 14,
+        )
+
+        assertEquals(2000.0, adaptive.kcal, 0.01)
     }
 
     @Test

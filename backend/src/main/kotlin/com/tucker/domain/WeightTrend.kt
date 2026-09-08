@@ -12,12 +12,44 @@ data class WeightTrend(val points: List<Point>) {
 
     data class Point(val date: LocalDate, val trendKg: Double)
 
+    /**
+     * A movement in the Trend Weight and the days it was observed across — one value,
+     * because a daily rate needs both and is wrong if they came from different spans.
+     */
+    data class Change(val kg: Double, val overDays: Long) {
+        init {
+            require(overDays >= 0) { "overDays must not be negative, was $overDays" }
+            require(overDays > 0 || kg == 0.0) { "a change across no days must be zero, was $kg kg" }
+        }
+    }
+
     /** The most recent trend point, or null when there are no measurements. */
     fun latest(): Point? = points.lastOrNull()
 
-    /** The trend value at the latest point on or before [date], if any. */
-    fun asOf(date: LocalDate): Double? =
-        points.lastOrNull { !it.date.isAfter(date) }?.trendKg
+    /**
+     * The latest trend point on or before [date], if any. With sparse weighing it can
+     * be far older than [date], and what it measures is only readable against the day
+     * it was actually taken — so it stays private, and callers ask for a [Change].
+     */
+    private fun asOf(date: LocalDate): Point? =
+        points.lastOrNull { !it.date.isAfter(date) }
+
+    /**
+     * How far the trend has moved since the latest point on or before [from], across
+     * the days between that point and the latest of all. Both ends are days a reading
+     * was actually taken, so it carries the rate observed rather than one stretched
+     * over days holding no evidence. Null when no point reaches back that far.
+     */
+    fun changeSince(from: LocalDate): Change? {
+        val anchor = asOf(from) ?: return null
+        // `asOf` found a point, so the list is non-empty and this is `latest()`'s
+        // far end — read directly rather than through a null check nothing can fail.
+        val latest = points.last()
+        return Change(
+            kg = latest.trendKg - anchor.trendKg,
+            overDays = ChronoUnit.DAYS.between(anchor.date, latest.date),
+        )
+    }
 
     /**
      * The trend's rate of loss (kg/week, positive when falling, negative when
@@ -34,11 +66,12 @@ data class WeightTrend(val points: List<Point>) {
             return null
         }
         val currentTrendKg = points.last().trendKg
-        val anchor = points.lastOrNull {
-            !it.date.isAfter(today.minusDays(OBSERVED_WINDOW_DAYS))
-        } ?: earliest
-        val windowDays = ChronoUnit.DAYS.between(anchor.date, today)
-        return (anchor.trendKg - currentTrendKg) / windowDays * Goal.DAYS_PER_WEEK
+        val anchor = asOf(today.minusDays(OBSERVED_WINDOW_DAYS)) ?: earliest
+        // Divides to [today], not to the anchor's far end as [changeSince] does. ADR 0018
+        // rules that asymmetry out of scope here: this feeds Drift Status and goal pace,
+        // which are read as "where the trend stands now", not a correction to an intake window.
+        val spanDays = ChronoUnit.DAYS.between(anchor.date, today)
+        return (anchor.trendKg - currentTrendKg) / spanDays * Goal.DAYS_PER_WEEK
     }
 
     companion object {

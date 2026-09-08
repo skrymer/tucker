@@ -62,6 +62,16 @@ class WeeklyReviewServiceTest {
         weights.save(WeightMeasurement(null, today, 86.0))
     }
 
+    /**
+     * Two readings: 86.0 at [anchorDaysAgo] and 84.0 at [latestDaysAgo]. The EWMA
+     * seeds at 86.0 and the second moves it a tenth of the way, to 85.8 — a 0.2 kg
+     * fall across the days between them.
+     */
+    private fun seedTrendFalling(anchorDaysAgo: Long, latestDaysAgo: Long = 0) {
+        weights.save(WeightMeasurement(null, today.minusDays(anchorDaysAgo), 86.0))
+        weights.save(WeightMeasurement(null, today.minusDays(latestDaysAgo), 84.0))
+    }
+
     /** Log 2000 kcal on each window day in [offsets] (days before today). */
     private fun logIntakeDays(offsets: IntProgression) {
         for (offset in offsets) {
@@ -179,6 +189,92 @@ class WeeklyReviewServiceTest {
         // Averaged over the whole window the four gaps would read as zero-calorie days
         // and drag the average to ~1429; over the 10 logged days it is the true 2000.
         logIntakeDays(14 downTo 5)
+
+        val review = service.runReview(today)
+
+        assertEquals(Maintenance.Basis.ADAPTIVE, review.targets.maintenance.basis)
+        assertEquals(2000.0, review.targets.maintenance.kcal, 0.5)
+    }
+
+    @Test
+    fun `weighing on the window's first day spreads the trend change over the 14 days it covers`() {
+        seedProfileAndGoal()
+        // Weighed on the window's first day and again today, so the trend anchor sits
+        // exactly on the window start.
+        seedTrendFalling(anchorDaysAgo = 14)
+        logIntakeDays(14 downTo 5) // 2000 kcal on 10 of the 14 window days
+
+        val review = service.runReview(today)
+
+        // 0.2 x 7700 / 14 = 110 kcal/day of shortfall on top of the 2000 average.
+        assertEquals(Maintenance.Basis.ADAPTIVE, review.targets.maintenance.basis)
+        assertEquals(2110.0, review.targets.maintenance.kcal, 0.5)
+    }
+
+    @Test
+    fun `an anchor older than the window start spreads the trend change over its own span`() {
+        seedProfileAndGoal()
+        // Weighed 20 days ago and again today. The window opens at today-14, but the
+        // newest trend point on or before it is the 20-day-old one, so the change it
+        // measures covers 20 days - not the 14 the window spans.
+        seedTrendFalling(anchorDaysAgo = 20)
+        logIntakeDays(14 downTo 5) // 2000 kcal on 10 of the 14 window days
+
+        val review = service.runReview(today)
+
+        // The same 0.2 kg fall as the daily-weighing case, spread over 20 days
+        // instead of 14: 0.2 x 7700 / 20 = 77 kcal/day, not 110. Divided by the
+        // window it would read 2110 and overstate Maintenance - and the Budget - by 33.
+        assertEquals(Maintenance.Basis.ADAPTIVE, review.targets.maintenance.basis)
+        assertEquals(2077.0, review.targets.maintenance.kcal, 0.5)
+    }
+
+    @Test
+    fun `the span ends at the last reading, not at the review date`() {
+        seedProfileAndGoal()
+        // Weighing weekly, the last one three days back: the trend moved between the
+        // 20-day-old anchor and that reading, and about the three days since it there
+        // is no evidence either way.
+        seedTrendFalling(anchorDaysAgo = 20, latestDaysAgo = 3)
+        logIntakeDays(14 downTo 5) // 2000 kcal on 10 of the 14 window days
+
+        val review = service.runReview(today)
+
+        // 17 days between the two readings: 0.2 x 7700 / 17 = 90.6 kcal/day on top of
+        // the 2000 average. The span is what picks that out - a fixed 14 reads 2110,
+        // and measuring to the review date reads 2077 over 20 days.
+        assertEquals(Maintenance.Basis.ADAPTIVE, review.targets.maintenance.basis)
+        assertEquals(2090.6, review.targets.maintenance.kcal, 0.5)
+    }
+
+    @Test
+    fun `a change seen over fewer days than the window is read at the window's rate`() {
+        seedProfileAndGoal()
+        // Two readings a day apart at the far edge of the window, and nothing since.
+        // The 0.2 kg between them is a single EWMA step off one noisy reading — real
+        // scales move that much on salt alone — so reading it as a one-day rate would
+        // claim 1540 kcal/day of imbalance for a fortnight the scale barely saw.
+        seedTrendFalling(anchorDaysAgo = 14, latestDaysAgo = 13)
+        logIntakeDays(14 downTo 5) // 2000 kcal on 10 of the 14 window days
+
+        val review = service.runReview(today)
+
+        // Spread over the window it corrects: 0.2 x 7700 / 14 = 110 kcal/day,
+        // not 0.2 x 7700 / 1.
+        assertEquals(Maintenance.Basis.ADAPTIVE, review.targets.maintenance.basis)
+        assertEquals(2110.0, review.targets.maintenance.kcal, 0.5)
+    }
+
+    @Test
+    fun `a trend with no reading since the window opened corrects nothing`() {
+        seedProfileAndGoal()
+        // One reading, three weeks old: the newest point on or before the window
+        // start is also the newest point there is, so the trend has observed no
+        // change at all. It contributes nothing rather than a rate, and Maintenance
+        // is the intake average alone. Whether evidence this thin should adapt at
+        // all is a coverage question, not this one.
+        weights.save(WeightMeasurement(null, today.minusDays(20), 86.0))
+        logIntakeDays(14 downTo 5) // 2000 kcal on 10 of the 14 window days
 
         val review = service.runReview(today)
 

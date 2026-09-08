@@ -432,10 +432,15 @@ per-100ml rule), protein score, food quality, rating
 The estimated daily calories that hold the user's weight steady (their TDEE).
 Seeded from a standard BMR formula, then corrected each week by an energy
 balance: the average daily intake over the **days actually logged** in the
-trailing two weeks, plus the energy equivalent of the Trend Weight's change over
-that window. Averaging over logged days — not over the whole window — keeps a day
-the user didn't log from reading as a zero-calorie day and dragging Maintenance
-(and the Calorie Budget) down. The correction is only trusted with enough
+trailing two weeks, plus the energy equivalent of the Trend Weight's change since
+the last reading on or before that window opened. Averaging over logged days — not
+over the whole window — keeps a day the user didn't log from reading as a
+zero-calorie day and dragging Maintenance (and the Calorie Budget) down. The weight
+change is divided by the days between the **two readings it was measured between**,
+or by the fortnight if that is longer: a change the scale saw over three weeks is not
+a fortnight's daily rate, and one it saw overnight is not one either. A user who
+hasn't weighed since the window opened has seen no change at all, and their
+Maintenance is the intake average alone. The correction is only trusted with enough
 coverage: at least 10 of the trailing 14 days must carry an Entry, otherwise the
 previous review's Maintenance is held steady — the Budget moves with the trend,
 not with logging diligence. The BMR seed applies only when there is no figure to

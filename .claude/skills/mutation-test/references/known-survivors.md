@@ -739,7 +739,7 @@ because the class here looks nothing like a `@Bean`.
 **Verdict: real gap, accepted by decision** — the same category as the `api` DTO
 accessors below.
 
-**`WeightTrend.from` L70 (1)** — `throwIndexOverflow` removed.
+**`WeightTrend.from` (1)** — `throwIndexOverflow` removed.
 
 **Verdict: noise.** The overflow guard Kotlin compiles into `forEachIndexed`;
 reaching it needs more than 2³¹ measurements. Not filtered, because the only

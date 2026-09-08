@@ -3,6 +3,7 @@ package com.tucker.domain
 import org.junit.jupiter.api.Test
 import java.time.LocalDate
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
 
 class WeightTrendTest {
@@ -19,19 +20,77 @@ class WeightTrendTest {
         )
 
     @Test
-    fun `asOf reads the trend as it stood then, ignoring everything measured since`() {
-        // What a past Weekly Review saw. Later points must not leak backwards into
-        // it — a review is a historical record, so the figure it read has to stay
-        // the figure it read.
+    fun `a change spans the two readings it was measured between`() {
+        // Neither end is the day asked about: the anchor is the newest reading on or
+        // before it, and the far end is the newest reading there is. Sixteen days lie
+        // between them, which is neither the fourteen the caller named nor the twenty
+        // back to today.
         val trend = WeightTrend(
             listOf(
                 WeightTrend.Point(today.minusDays(20), 88.0),
-                WeightTrend.Point(today.minusDays(10), 87.0),
-                WeightTrend.Point(today, 86.0),
+                WeightTrend.Point(today.minusDays(4), 86.0),
             ),
         )
 
-        assertEquals(87.0, trend.asOf(today.minusDays(5))!!, 1e-9)
+        val change = trend.changeSince(today.minusDays(14))!!
+
+        assertEquals(-2.0, change.kg, 1e-9)
+        assertEquals(16, change.overDays)
+    }
+
+    @Test
+    fun `a lone reading has observed no change, and so carries no rate`() {
+        // The anchor and the far end are the same point. Zero across no days is the
+        // only change it can hold, and zero is the rate that follows — the correction
+        // it feeds contributes nothing rather than dividing by nothing.
+        val trend = WeightTrend(listOf(WeightTrend.Point(today.minusDays(20), 88.0)))
+
+        val change = trend.changeSince(today.minusDays(14))!!
+
+        assertEquals(0.0, change.kg, 1e-9)
+        assertEquals(0, change.overDays)
+    }
+
+    @Test
+    fun `there is no change to measure before the trend begins`() {
+        val trend = trendFalling(fromKg = 87.0, toKg = 86.0, overDays = 10)
+
+        assertNull(trend.changeSince(today.minusDays(14)))
+    }
+
+    @Test
+    fun `a change across a negative span is refused`() {
+        assertFailsWith<IllegalArgumentException> {
+            WeightTrend.Change(kg = -0.5, overDays = -1)
+        }
+    }
+
+    @Test
+    fun `a movement across no days is refused`() {
+        // Neither this nor the negative span is reachable through `changeSince`, whose
+        // two ends come off one list in order. They are the type's own invariants, so
+        // that a second producer cannot pair a movement with a span it never spanned.
+        assertFailsWith<IllegalArgumentException> {
+            WeightTrend.Change(kg = -0.5, overDays = 0)
+        }
+    }
+
+    @Test
+    fun `the observed rate is measured to today, not to the last reading`() {
+        // The deliberate asymmetry with `changeSince` (ADR 0018): Drift Status and goal
+        // pace read as "where the trend stands now", so days since the last weigh-in
+        // count against the rate. Every other trend fixture here weighs on `today`,
+        // where the two divisors coincide and a switch to `changeSince` would be silent.
+        val trend = WeightTrend(
+            listOf(
+                WeightTrend.Point(today.minusDays(28), 88.0),
+                WeightTrend.Point(today.minusDays(14), 87.0),
+            ),
+        )
+
+        // 1.0 kg over the 28 days back to today = 0.25 kg/week. Measured to the last
+        // reading it would span 14 days and read 0.5.
+        assertEquals(0.25, trend.observedRateKgPerWeek(today)!!, 1e-9)
     }
 
     @Test

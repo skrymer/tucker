@@ -1,7 +1,8 @@
-import type { APIRequestContext, APIResponse } from '@playwright/test'
+import type { APIRequestContext } from '@playwright/test'
 import { test, expect } from './support/smoke-test'
 import { todayIso, isoShiftDays, formatDmy } from '../support/date'
 import { tickAt } from './support/reminder-tick'
+import { expectCreated, expectStatus } from './support/seeding'
 
 const API = 'http://localhost:8080/api'
 
@@ -307,15 +308,4 @@ async function completeSetupAcrossTheWindow(
       200,
     )
   }
-}
-
-/** Assert a seeding call was accepted, failing with the body when it was not. */
-async function expectCreated(pending: Promise<APIResponse>) {
-  await expectStatus(pending, 201)
-}
-
-/** [expectCreated] for the endpoints that answer with something other than 201. */
-async function expectStatus(pending: Promise<APIResponse>, status: number) {
-  const response = await pending
-  expect(response.status(), await response.text()).toBe(status)
 }
