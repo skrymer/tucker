@@ -746,6 +746,20 @@ reaching it needs more than 2³¹ measurements. Not filtered, because the only
 available filter is `avoidCallsTo kotlin.collections.CollectionsKt`, which would also
 silence `sortedBy`, `sumOf` and every other collection call in the codebase.
 
+**`WeightTrend.weighedDaysSince` (3)** — `throwCountOverflow` removed, a negated
+conditional, and a conditional boundary, all reported against line numbers past the
+end of the file.
+
+**Verdict: noise, and measured rather than argued.** The three sit in the body
+Kotlin inlines from `Iterable.count`, not in the one-line predicate: its `this is
+Collection` test, which a `List` always satisfies; its `count < 0` overflow check,
+reached only after an increment so never at the boundary; and the overflow throw
+itself. Rewriting the function as an explicit loop — no inlined stdlib — scores
+**38/38** with the same tests and leaves only `from`'s survivor above, which is what
+says the tests pin the behaviour and the engine is looking at machinery. The
+idiomatic `count { }` ships: choosing the loop would be picking worse code to please
+the tool, the same move as narrowing a scope.
+
 ### `api` — 12 of 226
 
 DTO accessors on `GoalResponse` (3), `WeeklyReviewResponse` (3), `FoodResponse` (2),

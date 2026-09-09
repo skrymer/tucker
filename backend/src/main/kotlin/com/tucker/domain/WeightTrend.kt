@@ -52,6 +52,14 @@ data class WeightTrend(val points: List<Point>) {
     }
 
     /**
+     * How many days carried a Weight Measurement after [from] — the evidence the
+     * scale contributed about the window opening there. Strictly after, because the
+     * newest reading on or before [from] is the anchor a [Change] is measured *from*,
+     * and so is evidence about the days before it rather than the ones since.
+     */
+    fun weighedDaysSince(from: LocalDate): Int = points.count { it.date.isAfter(from) }
+
+    /**
      * The trend's rate of loss (kg/week, positive when falling, negative when
      * gaining) over the trailing window ending at [today]: the slope from the
      * trend point ~[OBSERVED_WINDOW_DAYS] days ago (or the earliest available,

@@ -134,6 +134,9 @@ class AdaptiveEngineTest {
         // The floor is load-bearing here and not merely redundant: without it the
         // divisor is the change's own span of zero, and -0.0 / 0 is NaN, which
         // Maintenance's `kcal > 0` refuses.
+        // Unreachable through the engine, which holds rather than adapting on a window
+        // it has no weighing for — but specified here, because whether evidence is
+        // enough is the engine's judgement and this is the formula's answer if asked.
         val adaptive = Maintenance.adaptive(
             totalIntakeKcal = 20000.0,
             loggedDays = 10,
