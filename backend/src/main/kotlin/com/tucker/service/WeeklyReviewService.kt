@@ -136,9 +136,9 @@ class WeeklyReviewService(
         trend: WeightTrend,
         currentTrendKg: Double,
     ): Maintenance {
-        val windowStart = on.minusDays(ADAPTIVE_WINDOW_DAYS.toLong())
+        val windowStart = on.minusDays(ADAPTIVE_WINDOW_DAYS)
         val windowEnd = on.minusDays(1)
-        val startTrendKg = trend.asOf(windowStart)
+        val trendChange = trend.changeSince(windowStart)
         val loggedDays = entries.loggedDayCount(windowStart, windowEnd)
         val totalIntake =
             if (loggedDays >= MIN_LOGGED_DAYS) entries.totalCaloriesBetween(windowStart, windowEnd) else 0.0
@@ -146,15 +146,13 @@ class WeeklyReviewService(
         // Adapt only with a trend anchor to measure the change against, enough logging
         // coverage that the average isn't set by one or two noisy days, and real
         // intake to average (days logged only as zero-calorie carry no signal).
-        // Average over the days actually logged, not the whole window, so an unlogged
-        // day doesn't read as a zero-calorie day and drag maintenance down; the
-        // weight-change term keeps the full calendar span — the scale integrated the
-        // real eating on the unlogged days regardless (ADR 0018).
-        if (startTrendKg != null && loggedDays >= MIN_LOGGED_DAYS && totalIntake > 0.0) {
+        // The two terms' divisors are Maintenance.adaptive's business, not this
+        // method's — it hands over the raw totals and divides nothing (ADR 0018).
+        if (trendChange != null && loggedDays >= MIN_LOGGED_DAYS && totalIntake > 0.0) {
             return Maintenance.adaptive(
                 totalIntakeKcal = totalIntake,
                 loggedDays = loggedDays,
-                trendWeightChangeKg = currentTrendKg - startTrendKg,
+                trendChange = trendChange,
                 windowDays = ADAPTIVE_WINDOW_DAYS,
             )
         }
@@ -195,7 +193,7 @@ class WeeklyReviewService(
 
     private companion object {
         /** The review window for the adaptive Maintenance correction. */
-        const val ADAPTIVE_WINDOW_DAYS = 14
+        const val ADAPTIVE_WINDOW_DAYS = 14L
 
         /**
          * Minimum logged days in the window before the adaptive correction is trusted

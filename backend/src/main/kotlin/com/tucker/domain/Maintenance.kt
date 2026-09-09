@@ -30,26 +30,30 @@ data class Maintenance(
             )
 
         /**
-         * The adaptive estimate over a window, as an energy balance: average daily
-         * intake plus the energy equivalent of the Trend Weight change. If the trend
-         * fell, the user ate below maintenance — so maintenance is the intake plus
-         * that shortfall.
+         * The adaptive estimate over a window of [windowDays], as an energy balance:
+         * average daily intake plus the energy equivalent of the Trend Weight change.
+         * If the trend fell, the user ate below maintenance — so maintenance is the
+         * intake plus that shortfall.
          *
-         * The two terms divide by different denominators on purpose (ADR 0018):
-         * intake by [loggedDays] (the days that actually carry an Entry, so an
-         * unlogged day isn't a phantom zero-calorie day that drags the average down),
-         * while the weight change is spread over the full [windowDays] — the scale
-         * integrated the real eating on the unlogged days regardless.
+         * The two terms divide by different denominators on purpose (ADR 0018): intake
+         * by [loggedDays] (the days that actually carry an Entry, so an unlogged day
+         * isn't a phantom zero-calorie day that drags the average down), and
+         * [trendChange] by every calendar day it was observed across, logged or not,
+         * because the scale integrated the real eating on the unlogged ones regardless.
+         *
+         * Never by fewer than [windowDays] though: evidence about less than the window
+         * is not evidence about the window.
          */
         fun adaptive(
             totalIntakeKcal: Double,
             loggedDays: Int,
-            trendWeightChangeKg: Double,
-            windowDays: Int,
+            trendChange: WeightTrend.Change,
+            windowDays: Long,
         ): Maintenance {
             require(loggedDays > 0) { "loggedDays must be > 0, was $loggedDays" }
             require(windowDays > 0) { "windowDays must be > 0, was $windowDays" }
-            val energyFromWeightChange = -trendWeightChangeKg * Goal.KCAL_PER_KG_FAT / windowDays
+            val divisorDays = maxOf(trendChange.overDays, windowDays)
+            val energyFromWeightChange = -trendChange.kg * Goal.KCAL_PER_KG_FAT / divisorDays
             return Maintenance(
                 kcal = totalIntakeKcal / loggedDays + energyFromWeightChange,
                 basis = Basis.ADAPTIVE,
