@@ -59,6 +59,32 @@ class WeightTrendTest {
     }
 
     @Test
+    fun `the days weighed since a date exclude the anchor that precedes it`() {
+        // Three readings, one of them the anchor the change is measured from. The
+        // anchor is evidence about the days *before* the date asked about, so it is
+        // not one of them — two days were weighed since, not three.
+        val trend = WeightTrend(
+            listOf(
+                WeightTrend.Point(today.minusDays(20), 88.0),
+                WeightTrend.Point(today.minusDays(9), 87.0),
+                WeightTrend.Point(today.minusDays(2), 86.5),
+            ),
+        )
+
+        assertEquals(2, trend.weighedDaysSince(today.minusDays(14)))
+    }
+
+    @Test
+    fun `a reading on the date itself is not weighed since it`() {
+        // The boundary follows the anchor's own rule: a change measures *from* the
+        // newest reading on or before that date, so counting it would let the anchor
+        // stand as evidence about the window it merely opens.
+        val trend = WeightTrend(listOf(WeightTrend.Point(today.minusDays(14), 88.0)))
+
+        assertEquals(0, trend.weighedDaysSince(today.minusDays(14)))
+    }
+
+    @Test
     fun `a change across a negative span is refused`() {
         assertFailsWith<IllegalArgumentException> {
             WeightTrend.Change(kg = -0.5, overDays = -1)

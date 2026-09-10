@@ -2,8 +2,10 @@
 
 The weekly adaptive **Maintenance** correction averages logged intake over the
 **days that actually carry an Entry**, not over the fixed two-week window; it only
-runs with at least **10 of the trailing 14 days** logged, and below that coverage
-it **holds the previous review's Maintenance** rather than recompute.
+runs with at least **10 of the trailing 14 days** logged — and, since
+[#292](https://github.com/skrymer/tucker/issues/292), at least **1 of them weighed** —
+and below either coverage floor it **holds the previous review's Maintenance** rather
+than recompute.
 
 *Status: accepted; refines the adaptive engine of
 [0008](0008-maintenance-mode-is-the-absence-of-a-goal.md), honours
@@ -104,7 +106,9 @@ weight term:        −Δtrend × 7700 / 14  (unchanged — full calendar span; 
 - Redefines **Maintenance** in [`CONTEXT.md`](../../CONTEXT.md).
 - **No data migration** (single-user, ADR 0012): past reviews remain honest
   history under the old rule; the next review recomputes today under the new one.
-- The window length (14) and the coverage floor (10) are tunable constants.
+- The window length (14) and the coverage floors (10 logged days, and since
+  [#292](https://github.com/skrymer/tucker/issues/292) 1 weighed day) are tunable
+  constants.
 
 ## Amended by [#291](https://github.com/skrymer/tucker/issues/291): the weight term spans the two readings it was measured between
 
@@ -175,7 +179,10 @@ restores the property this amendment started from — the correction only ever
 *shrinks* the term, never grows it — and keeps every short-span case reading exactly
 as it did before.
 
-**A window the scale never saw corrects nothing.** When no reading has been taken
+**A window the scale never saw corrects nothing** *(and, since
+[#292](https://github.com/skrymer/tucker/issues/292), does not reach the correction at
+all — the amendment below holds instead, so what follows describes the formula rather
+than the engine)*. When no reading has been taken
 since the window opened — whether the trend holds one point or fifty — both ends
 resolve to the same point: the change is zero across zero days.
 `WeightTrend.Change` holds the movement and its span as one value (a rate needs both,
@@ -183,7 +190,8 @@ and is wrong if they came from different spans), and the floor above is what tur
 zero-across-zero-days into a zero term rather than a `0/0` — so the estimate is the
 intake average with nothing on top, which is what the fixed divisor produced too. Whether evidence that thin should adapt *at all* is
 [#292](https://github.com/skrymer/tucker/issues/292)'s question, and this amendment
-leaves it exactly where it found it.
+leaves it exactly where it found it — answered in the amendment below, which refuses
+to adapt on it.
 
 `Maintenance.adaptive` therefore takes that one `Change` in place of the loose
 `trendWeightChangeKg` / `windowDays` pair, alongside the window it is correcting —
@@ -212,11 +220,95 @@ how much of a real change two EWMA points capture between them
 same asymmetry — it feeds **Drift Status** and goal pace, not Maintenance, so it is
 a separate change to a separate surface.
 
+## Amended by [#292](https://github.com/skrymer/tucker/issues/292): a window the scale never saw does not adapt
+
+Decision 2 gave the **intake** term a coverage floor and decision 3 said what happens
+below it. The **weight** term got neither. It entered the adaptive branch on there
+being a trend anchor at all — which a single reading of any age satisfies — so the
+degenerate case the #291 amendment describes above was not merely tolerated, it was
+stamped `ADAPTIVE`.
+
+Reachable today, and observed rather than argued. A User with one Weight Measurement
+dated 15 days back, 13 logged days and 29,087.45 kcal in the window was driven against
+a real backend: both ends of `changeSince` resolved to that single point, the term was
+zero across zero days, and Maintenance came out at **2237.50** — the average intake to
+the cent, with the Budget following. Tucker told somebody who was actively losing that
+they maintain on what they eat. The dangerous User is the diligent food logger who
+rarely weighs, and the failure is silent: every figure is plausible, and the basis badge
+says the engine measured it.
+
+**The floor: at least one of the trailing 14 days carries a Weight Measurement**
+(`MIN_WEIGHED_DAYS = 1`, beside `MIN_LOGGED_DAYS = 10`). Below it the adaptive branch
+does not run, and decision 3 applies unchanged — the prior review's Maintenance is
+**held**, the seed only at genuine cold start. No new fallback path: the weighing floor
+joins the condition the logging floor already gates.
+
+**Why not a floor proportional to the window, as the intake term has.** The symmetric
+answer — *n* of 14 days weighed — was rejected on a measurement, not on taste. The EWMA
+smooths per *reading*, so the obvious worry is that a sparse weigher's trend understates
+its own movement. Over a 14-day span, against a true 1.0 kg fall:
+
+```
+daily weigher, settled history      0.996 kg
+weekly weigher, settled history     0.950 kg
+weekly weigher, 3rd reading ever    0.145 kg
+two readings ever, 14 days apart    0.100 kg
+```
+
+The lag an EWMA carries is a *level* offset, and in steady state both ends of
+`changeSince` carry the same one, so it cancels and the slope survives whatever the
+cadence. A settled weekly weigher's weight term is therefore already right, and a
+10-of-14 floor would refuse it and hold their Budget forever — which is decision 3's own
+failure mode, arrived at from the other side. What the bottom two rows show is a
+transient of **short history**, not of sparse cadence: it bites while the anchor still
+sits among a trend's first readings, and it is
+[#293](https://github.com/skrymer/tucker/issues/293)'s, deliberately left there. Telling
+the two apart is the whole reason this floor is one reading rather than seven.
+
+**Why one reading is enough, and not merely the least that could be shipped.** The
+neighbouring worry is the mirror of decision 2's: a term resting on a single
+measurement should be noise-sensitive. It is not, because the #291 amendment's divisor
+floor already bounds it — α is 0.10, so a 1.5 kg water swing moves the trend 0.15 kg,
+and read over the window rather than its own span that is 82 kcal/day. The one risk
+left for this floor to carry is *absence* of evidence, and one reading is exactly its
+negation.
+
+**Why hold rather than seed**, where ADR 0024 seeds. Its carve-out fires when there is
+**nothing to hold** — the preceding review carries no **Intake Targets** after a
+Calorie-Tracking stretch — and re-anchors on the body the User has now. Neither half
+applies here. There is a figure to hold, computed when the scale had last been looked
+at; and "the body the User has now" is precisely what this User has not measured, so
+`Maintenance.seed` would be fed the same stale Trend Weight while discarding an
+adaptively corrected figure for a formula. Holding is also recoverable in one step: one
+weighing re-opens the adaptive path the same day.
+
+**What it costs.** A User who logs diligently and never weighs again holds forever. That
+is decision 3's contract rather than a regression of it — the Budget moves with
+physiology, not with logging diligence — but it is worth saying plainly that the engine
+would rather be a week stale than confidently wrong. Tucker does **not** say which floor
+held it: `HELD` stays one value, though the remedy differs (weigh once / log more), and
+a basis that explains itself is a surface decision this ADR does not take.
+
+**Byte-for-byte unchanged** for every case that adapts today: the floor's negation is
+exactly the case where both ends of `changeSince` resolve to one point, which contributed
+a zero term before and produces a `HELD` review now.
+
+**Out of scope, still:** how much of a real change two EWMA points capture between them
+([#293](https://github.com/skrymer/tucker/issues/293)), and what a Calorie Budget does
+when the arithmetic runs it to zero
+([#305](https://github.com/skrymer/tucker/issues/305)). Both are about refusing to
+publish a figure that cannot be trusted, and both fire on evidence this floor reads as
+sufficient — #305 on *good* evidence and a Goal steeper than the body can support — so
+they are separate decisions rather than parts of this one.
+
 ## References
 
 - [#129](https://github.com/skrymer/tucker/issues/129) — the report this resolves.
 - [#291](https://github.com/skrymer/tucker/issues/291) — the weight term's span,
   amended above.
+- [#292](https://github.com/skrymer/tucker/issues/292) — the weight-coverage floor,
+  amended above; [#293](https://github.com/skrymer/tucker/issues/293) and
+  [#305](https://github.com/skrymer/tucker/issues/305) are what it deliberately leaves.
 - [0008 — Maintenance Mode is the absence of an active Goal](0008-maintenance-mode-is-the-absence-of-a-goal.md)
   — the adaptive engine this refines; keeps its weekly cadence and trend basis.
 - [0002 — business logic belongs in the backend](0002-business-logic-belongs-in-the-backend.md)

@@ -266,20 +266,54 @@ class WeeklyReviewServiceTest {
     }
 
     @Test
-    fun `a trend with no reading since the window opened corrects nothing`() {
+    fun `a window the scale never saw holds rather than adapting on the intake average`() {
         seedProfileAndGoal()
-        // One reading, three weeks old: the newest point on or before the window
-        // start is also the newest point there is, so the trend has observed no
-        // change at all. It contributes nothing rather than a rate, and Maintenance
-        // is the intake average alone. Whether evidence this thin should adapt at
-        // all is a coverage question, not this one.
+        seedReviewOn(today.minusDays(7)) // the 2400 kcal there is to hold
+        // One reading, three weeks old: the newest point on or before the window start
+        // is also the newest point there is, so the window carries no weighing at all.
+        // Adapting would leave the weight term at zero and Maintenance at the intake
+        // average exactly — telling a User who is losing that they maintain on what
+        // they eat.
         weights.save(WeightMeasurement(null, today.minusDays(20), 86.0))
         logIntakeDays(14 downTo 5) // 2000 kcal on 10 of the 14 window days
 
         val review = service.runReview(today)
 
+        assertEquals(Maintenance.Basis.HELD, review.targets.maintenance.basis)
+        assertEquals(2400.0, review.targets.maintenance.kcal, 0.5)
+    }
+
+    @Test
+    fun `a thinly weighed window with nothing to hold seeds rather than adapting`() {
+        seedProfileAndGoal()
+        // The same window the scale never saw, but at cold start — no earlier review
+        // carries a Maintenance forward. ADR 0018's seed is the cold-start device, and
+        // this is a cold start; what it must not be is the intake average dressed as a
+        // measurement.
+        weights.save(WeightMeasurement(null, today.minusDays(20), 86.0))
+        logIntakeDays(14 downTo 5)
+
+        val review = service.runReview(today)
+
+        assertEquals(Maintenance.Basis.FORMULA_SEED, review.targets.maintenance.basis)
+        assertTrue(review.targets.maintenance.kcal > 0)
+    }
+
+    @Test
+    fun `one reading since the window opened is enough to adapt`() {
+        seedProfileAndGoal()
+        seedReviewOn(today.minusDays(7)) // 2400 to hold, so holding would be visible
+        // The anchor is six days older than the window and only one reading falls
+        // inside it — a weekly weigher's fortnight. That is the floor exactly, and it
+        // adapts: the pair 0.2 kg over 7 days is real evidence, and the divisor floor
+        // is what keeps a single noisy reading from shouting (0.2 x 7700 / 14 = 110).
+        seedTrendFalling(anchorDaysAgo = 20, latestDaysAgo = 13)
+        logIntakeDays(14 downTo 5)
+
+        val review = service.runReview(today)
+
         assertEquals(Maintenance.Basis.ADAPTIVE, review.targets.maintenance.basis)
-        assertEquals(2000.0, review.targets.maintenance.kcal, 0.5)
+        assertEquals(2110.0, review.targets.maintenance.kcal, 0.5)
     }
 
     @Test

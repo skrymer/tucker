@@ -438,13 +438,17 @@ over the whole window — keeps a day the user didn't log from reading as a
 zero-calorie day and dragging Maintenance (and the Calorie Budget) down. The weight
 change is divided by the days between the **two readings it was measured between**,
 or by the fortnight if that is longer: a change the scale saw over three weeks is not
-a fortnight's daily rate, and one it saw overnight is not one either. A user who
-hasn't weighed since the window opened has seen no change at all, and their
-Maintenance is the intake average alone. The correction is only trusted with enough
-coverage: at least 10 of the trailing 14 days must carry an Entry, otherwise the
-previous review's Maintenance is held steady — the Budget moves with the trend,
-not with logging diligence. The BMR seed applies only when there is no figure to
-hold: at cold start, before any review exists, and again on the far side of a
+a fortnight's daily rate, and one it saw overnight is not one either. The
+correction is only trusted with enough coverage, on both terms: at least 10 of
+the trailing 14 days must carry an Entry, and at least 1 of them a Weight
+Measurement. Below either floor the previous review's Maintenance is held steady
+— the Budget moves with the trend, not with logging diligence. The weighing floor
+is the lower of the two because the terms fail differently: a thin intake sample
+makes the level swing, while a window the scale never saw contributes nothing at
+all, leaving Maintenance at the intake average exactly — which asserts that a user
+who is losing weight maintains on what they eat.
+The BMR seed applies only when there is no figure to hold: at cold start, before
+any review exists, and again on the far side of a
 **Calorie Tracking** stretch — where the review before this one carries no
 **Intake Targets** and tracking has been off for a week or more. A shorter gap
 holds: flipping the setting for a day never moves the Budget. See
@@ -540,6 +544,15 @@ _Avoid_: weigh-in
 A smoothed, exponentially-weighted average of recent Weight Measurements. Goal
 progress and the adaptive Maintenance correction both run on the Trend Weight,
 never on a single raw measurement.
+The smoothing is **per reading, not per elapsed day**: each measurement moves the
+trend a tenth of the way toward itself, so it takes about seven readings to cover
+half the distance to a new level. That is calibrated for **daily weighing** — about
+a week to catch up. Weighing weekly, the same catch-up takes nearly two months, so
+the trend sits further behind the body; once it has settled it still falls at the
+rate the body does, but a trend built from a handful of readings understates its own
+movement. Weighing less often than the window being corrected leaves no evidence
+about that window at all, which is why the adaptive **Maintenance** correction needs
+at least one reading since the window opened and holds otherwise.
 _Avoid_: average weight
 
 **Goal Progress**:

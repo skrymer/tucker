@@ -126,8 +126,9 @@ class WeeklyReviewService(
     }
 
     /**
-     * Adaptive with a trend anchor and at least [MIN_LOGGED_DAYS] of logging coverage;
-     * below the floor it holds the prior review's Maintenance, or seeds at cold start
+     * Adaptive with a trend anchor and both coverage floors cleared — at least
+     * [MIN_LOGGED_DAYS] of the window logged and [MIN_WEIGHED_DAYS] of it weighed.
+     * Below either it holds the prior review's Maintenance, or seeds at cold start
      * when there is none to hold (ADR 0018).
      */
     private fun estimateMaintenance(
@@ -139,16 +140,22 @@ class WeeklyReviewService(
         val windowStart = on.minusDays(ADAPTIVE_WINDOW_DAYS)
         val windowEnd = on.minusDays(1)
         val trendChange = trend.changeSince(windowStart)
+        val weighedDays = trend.weighedDaysSince(windowStart)
         val loggedDays = entries.loggedDayCount(windowStart, windowEnd)
         val totalIntake =
             if (loggedDays >= MIN_LOGGED_DAYS) entries.totalCaloriesBetween(windowStart, windowEnd) else 0.0
 
-        // Adapt only with a trend anchor to measure the change against, enough logging
-        // coverage that the average isn't set by one or two noisy days, and real
-        // intake to average (days logged only as zero-calorie carry no signal).
+        // One floor per term, read together because the estimate is one energy balance
+        // and either term alone is not it (ADR 0018): enough logging that the average
+        // isn't set by one or two noisy days, and enough weighing that the window has a
+        // change to contribute at all.
+        val coverageFloorsCleared = loggedDays >= MIN_LOGGED_DAYS && weighedDays >= MIN_WEIGHED_DAYS
+
+        // Adapt only with that coverage, a trend anchor to measure the change against,
+        // and real intake to average (days logged only as zero-calorie carry no signal).
         // The two terms' divisors are Maintenance.adaptive's business, not this
         // method's — it hands over the raw totals and divides nothing (ADR 0018).
-        if (trendChange != null && loggedDays >= MIN_LOGGED_DAYS && totalIntake > 0.0) {
+        if (trendChange != null && coverageFloorsCleared && totalIntake > 0.0) {
             return Maintenance.adaptive(
                 totalIntakeKcal = totalIntake,
                 loggedDays = loggedDays,
@@ -157,7 +164,8 @@ class WeeklyReviewService(
             )
         }
 
-        // Can't adapt — no trend anchor yet, too few logged days, or no real intake.
+        // Can't adapt — no trend anchor yet, a window the scale never saw, too few
+        // logged days, or no real intake.
         // Hold the most recent earlier review's maintenance steady rather than
         // recompute from thin data: the Budget moves with the trend, not with logging
         // diligence (ADR 0018). The seed is the cold-start value, for when there is
@@ -201,5 +209,15 @@ class WeeklyReviewService(
          * can't set the Budget.
          */
         const val MIN_LOGGED_DAYS = 10
+
+        /**
+         * Minimum weighed days in the window, the [MIN_LOGGED_DAYS] of the weight term
+         * (ADR 0018). Far lower because the two terms fail differently: a thin intake
+         * sample makes the level swing, while a window the scale never saw contributes
+         * nothing at all and leaves Maintenance at the intake average exactly. One
+         * reading is the negation of that, and the divisor floor already bounds how
+         * much noise it can carry.
+         */
+        const val MIN_WEIGHED_DAYS = 1
     }
 }
