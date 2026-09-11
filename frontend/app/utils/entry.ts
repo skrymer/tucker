@@ -3,13 +3,13 @@ import type { components } from '#open-fetch-schemas/api'
 type EntryResponse = components['schemas']['EntryResponse']
 
 /**
- * How an Entry reads as one line — its Food name (Weighed) or label (Estimated),
- * rounded calories, and protein when it has a figure, omitted when it doesn't:
+ * How an Entry reads as one line — the name the API states for it, rounded
+ * calories, and protein when it has a figure, omitted when it doesn't:
  * `Banana — 107 kcal · 12 g protein`. Shared by the Today row, the delete
  * confirm and the "Entry logged" toast so the wording can't drift (ADR 0005).
  */
 export function formatEntryName(entry: EntryResponse): string {
-  return `${entry.foodName ?? entry.label} — ${formatIntakeFigures(entry.calories, entry.protein)}`
+  return `${entry.name} — ${formatIntakeFigures(entry.calories, entry.protein)}`
 }
 
 /**

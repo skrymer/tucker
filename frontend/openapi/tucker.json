@@ -3704,7 +3704,8 @@
           "id",
           "isEstimate",
           "kind",
-          "loggedOn"
+          "loggedOn",
+          "name"
         ],
         "type": "object",
         "properties": {
@@ -3752,6 +3753,9 @@
           "label": {
             "type": "string",
             "nullable": true
+          },
+          "name": {
+            "type": "string"
           }
         }
       },

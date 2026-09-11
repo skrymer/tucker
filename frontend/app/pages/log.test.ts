@@ -4,6 +4,7 @@ import { readBody, setResponseStatus } from 'h3'
 import { screen, within } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import { food } from '~~/test/food-fixtures'
+import { estimatedEntry, weighedEntry } from '~~/test/entry-fixtures'
 import Log from './log.vue'
 
 const oats = food({
@@ -53,8 +54,18 @@ registerEndpoint('/api/entries/weighed/preview', {
 registerEndpoint('/api/entries/weighed', {
   method: 'POST',
   handler: async (event) => {
-    logged.push(await readBody(event))
-    return { id: 1, kind: 'WEIGHED', label: 'Rolled oats', calories: 300 }
+    const sent = await readBody(event)
+    logged.push(sent)
+    // Answered from what was sent, so a test that logs the tuna is not told it
+    // logged the oats — the reply names the Food the request named.
+    return weighedEntry({
+      id: 1,
+      foodId: sent.foodId,
+      foodName: catalog.find((f) => f.id === sent.foodId)!.name,
+      grams: sent.grams,
+      calories: 300,
+      protein: 10,
+    })
   },
 })
 
@@ -70,8 +81,14 @@ registerEndpoint('/api/entries/estimated/preview', {
 registerEndpoint('/api/entries/estimated', {
   method: 'POST',
   handler: async (event) => {
-    estimated.push(await readBody(event))
-    return { id: 2, kind: 'ESTIMATED', label: 'Work canteen', calories: 640 }
+    const sent = await readBody(event)
+    estimated.push(sent)
+    return estimatedEntry({
+      id: 2,
+      label: sent.label,
+      calories: sent.calories,
+      protein: sent.protein ?? null,
+    })
   },
 })
 
