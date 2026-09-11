@@ -395,6 +395,20 @@ Settled by hand: replacing the whole body with `defineNuxtPlugin(() => {})`
 fails that spec on both projects. `isAuthRedirectResponse` itself is a deep
 module and is pinned by `useAuthGate.test.ts`.
 
+### `plugins/pwa-install.client.ts` — 2 of 2, and both are false survivors
+
+The engine reports `startPwaInstallCapture()` deleted, and the whole plugin body
+emptied, as surviving — and reports the file at 0% coverage while saying it "ran
+all tests". Both are **false survivors**: applying either by hand fails **7**
+tests across `usePwaInstall.test.ts` and `InstallPrompt.test.ts`, which dispatch
+a `beforeinstallprompt` at `window` and have nothing listening without it.
+
+The Nuxt test environment runs the real plugin list (`@nuxt/test-utils` boots
+Nuxt's own client entry in a `beforeAll`), so the plugin *is* covered; what the
+engine does not observe is the mutant reaching that boot. Don't write a test for
+these, and don't exclude the file — hand-mutate to re-settle it if the plugin
+body ever grows a decision. `usePwaInstall.ts` itself scores 50/50.
+
 ### `composables/useOptionalFetch.ts` — 2 of 33
 
 Both **equivalent mutants**, and the staleness guards around them — on the success path,

@@ -1,9 +1,12 @@
 import { test, expect } from './support/smoke-test'
+import { offerInstall } from '../support/install-offer'
 
 // F6 slice 1 smoke (issue #80): the PWA foundation + install affordance against
 // the real stack. Proves the manifest and service worker are served, the
 // precached shell loads with the network cut, and the platform-aware install
-// affordance shows (the Chromium button and the iOS instructional path).
+// affordance shows (the Chromium button and the iOS instructional path). The
+// offer surviving an SPA navigation has no backend in it and belongs to the
+// mocked e2e (ADR 0013).
 
 // Going offline makes the live /api/* probes fail at the network layer — that is
 // the point of the offline test, not a regression, so tolerate exactly that.
@@ -72,18 +75,7 @@ test('shows the install button once the browser offers an install', async ({
   goto,
 }) => {
   await goto('/profile', { waitUntil: 'hydration' })
-
-  // Stand in for Chromium's beforeinstallprompt, which doesn't fire on its own
-  // under test; usePwaInstall captures it and reveals the button.
-  await page.evaluate(() => {
-    const event = new Event('beforeinstallprompt') as Event & {
-      prompt: () => Promise<void>
-      userChoice: Promise<{ outcome: string }>
-    }
-    event.prompt = () => Promise.resolve()
-    event.userChoice = Promise.resolve({ outcome: 'accepted' })
-    window.dispatchEvent(event)
-  })
+  await offerInstall(page)
 
   await expect(
     page.getByRole('button', { name: /install tucker/i }),
