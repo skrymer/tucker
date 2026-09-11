@@ -4,6 +4,7 @@ import { renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import InstallPrompt from './InstallPrompt.vue'
+import { resetPwaInstallCapture } from '../composables/usePwaInstall'
 import {
   fakeInstallEvent,
   setStandalone,
@@ -27,6 +28,9 @@ beforeEach(() => {
 afterEach(() => {
   vi.restoreAllMocks()
   vi.unstubAllGlobals()
+  // The capture outlives every component by design, so an offer made here would
+  // otherwise still be standing in the next test.
+  resetPwaInstallCapture()
 })
 
 describe('InstallPrompt', () => {

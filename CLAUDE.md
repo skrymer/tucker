@@ -303,9 +303,14 @@ The frontend is built **test-first (red-green TDD)**. Increments:
   - credentialed manifest fetch behind Access). Off-host backup
     [#89](https://github.com/skrymer/tucker/issues/89) is **done** — WAL is on and
     Litestream replicates the production DB to R2. GHCR build-and-push is **done**
-    too — see Hosting below. Remaining sibling:
-    [#100](https://github.com/skrymer/tucker/issues/100) (install-button SPA-nav
-    timing, ready-for-agent).
+    too — see Hosting below. Sibling
+    [#100](https://github.com/skrymer/tucker/issues/100) is **done**: the Install
+    button never appeared on `/profile` when reached by SPA navigation, because the
+    capture lived in the consuming component's `onMounted` and the browser offers
+    once per page load, before any route component mounts. The offer is now held in
+    module scope and captured by a boot plugin (ADR 0011, "Install is programmatic on
+    Chromium"), so it survives the navigation — and `usePwaInstall`'s own tests are
+    what fail if that plugin goes.
 
 - **F7** — Maintenance Mode after a Goal is reached (design pass **done**, see
   [`docs/adr/0008-maintenance-mode-is-the-absence-of-a-goal.md`](docs/adr/0008-maintenance-mode-is-the-absence-of-a-goal.md)

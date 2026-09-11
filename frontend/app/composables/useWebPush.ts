@@ -20,7 +20,7 @@ export function useWebPush() {
   // screen (ADR 0011); reuse the install composable's platform/installed signal.
   const { platform, isInstalled } = usePwaInstall()
   const requiresInstall = computed(
-    () => platform.value === 'ios' && !isInstalled.value,
+    () => platform === 'ios' && !isInstalled.value,
   )
 
   const isSubscribed = ref(false)
