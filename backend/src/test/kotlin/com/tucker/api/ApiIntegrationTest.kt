@@ -59,6 +59,7 @@ class ApiIntegrationTest {
             // protein per-100 g Banana. An Entry reads by its protein as well as
             // its calories, and the weighed pair is what the client renders it from.
             jsonPath("$.entries[0].foodName") { value("Banana") }
+            jsonPath("$.entries[0].name") { value("Banana") }
             jsonPath("$.entries[0].foodId") { value(foodId) }
             jsonPath("$.entries[0].kind") { value("WEIGHED") }
             jsonPath("$.entries[0].isEstimate") { value(false) }
