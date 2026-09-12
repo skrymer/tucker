@@ -171,6 +171,27 @@ jobs:
   # Three jobs rather than one, because the two image builds share nothing but
   # the stamp and would otherwise queue behind each other for no reason.
 
+  # The Claude Code hook scripts under .claude/hooks/. Its own job rather than a
+  # step on Frontend: it is developer tooling, shares none of that job's pnpm
+  # setup, and its failure means something different. Gates `stamp` alongside
+  # the other three, so a guard that has gone red cannot reach a published tag.
+  hooks:
+    name: Claude Code hooks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      # No dependencies to install: the scripts and their tests are plain ESM on
+      # node:test.
+      - name: Test the hook scripts
+        run: node --test .claude/hooks/*.test.mjs
+
   # What the images are tagged with, and what they report at /api/version and in
   # the Profile footer. Computed once and passed down, so the two images cannot
   # be labelled differently for the same commit.
@@ -179,7 +200,7 @@ jobs:
     # Never on a pull request: a tag published from an unmerged branch would be
     # indistinguishable from one that shipped.
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [backend, frontend, e2e]
+    needs: [backend, frontend, e2e, hooks]
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.compute.outputs.version }}
