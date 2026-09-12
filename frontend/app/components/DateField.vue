@@ -9,12 +9,14 @@ import { useFormField } from '@nuxt/ui/composables'
  * The heading drills day → month → year, so a day decades away is a few taps
  * rather than one step per month — which is what a native `type="date"` costs
  * on Android, where it renders as a tap-only calendar with no typed path
- * (issue #241). `max` states the field's latest allowed day to the control
+ * (issue #241). `min` and `max` state the field's allowed range to the control
  * itself, so an out-of-range day is refused at the point of picking instead of
  * on submit.
  */
 const props = defineProps<{
   modelValue?: string
+  /** Earliest selectable day, ISO `yyyy-mm-dd`. */
+  min?: string
   /** Latest selectable day, ISO `yyyy-mm-dd`. */
   max?: string
 }>()
@@ -124,7 +126,11 @@ const contentProps = {
     </UButton>
 
     <template #content>
-      <UCalendar v-model="selected" :max-value="asCalendarDate(max)" />
+      <UCalendar
+        v-model="selected"
+        :min-value="asCalendarDate(min)"
+        :max-value="asCalendarDate(max)"
+      />
     </template>
   </UPopover>
 

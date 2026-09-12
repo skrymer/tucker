@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { registerEndpoint, renderSuspended } from '@nuxt/test-utils/runtime'
-import { createError, readBody } from 'h3'
+import { createError, getQuery, readBody } from 'h3'
 import { screen, within } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import type { components } from '#open-fetch-schemas/api'
@@ -16,6 +16,7 @@ import { setStandalone, setUserAgent, UA } from '../../test/pwa-install-helpers'
 // the true external boundaries — the browser push machinery (setupWebPush) and
 // the network (registerEndpoint) — never the composable itself (ADR 0013).
 let savedProfile: Record<string, unknown> | undefined
+let savedQuery: Record<string, unknown> | undefined
 let postedSubscription: Record<string, unknown> | undefined
 let deletedSubscription: Record<string, unknown> | undefined
 let failSubscriptionPost = false
@@ -41,6 +42,7 @@ registerEndpoint('/api/push/subscriptions', {
 registerEndpoint('/api/profile', {
   method: 'PUT',
   handler: async (event) => {
+    savedQuery = getQuery(event)
     savedProfile = await readBody(event)
     return savedProfile
   },
@@ -63,6 +65,7 @@ const render = (over: Partial<typeof profile> = {}) =>
 
 beforeEach(() => {
   savedProfile = undefined
+  savedQuery = undefined
   postedSubscription = undefined
   deletedSubscription = undefined
   failSubscriptionPost = false
@@ -97,6 +100,22 @@ describe('ReminderSettings', () => {
       reminderHour: 9,
       timezone: 'Europe/Copenhagen',
     })
+  })
+
+  it('sends the local day with the reminder write, which replaces the whole Profile', async () => {
+    // The write carries the stored birth date back, and the backend judges it
+    // against "today" — so a caller that omits the client's day leaves the
+    // server's clock to decide, which differs for the width of a UTC offset.
+    setupWebPush({
+      supported: true,
+      created: fakePushSubscription('https://push.example/this-device'),
+    })
+    await render({ reminderHour: 9, remindersEnabled: false })
+
+    await userEvent.click(screen.getByRole('switch', { name: /reminder/i }))
+
+    await vi.waitFor(() => expect(savedProfile).toBeDefined())
+    expect(savedQuery?.clientToday).toBe(localToday())
   })
 
   it('turning the toggle off unsubscribes the device and saves reminders as off', async () => {

@@ -546,6 +546,15 @@ date, height) and the user's locale: their **timezone** (an IANA zone, e.g.
 at, and whether reminders are on) — and whether they are doing **Calorie
 Tracking** at all. The body inputs are set once and rarely changed; combined
 with the latest Weight Measurement they seed the initial Maintenance estimate.
+The birth date is judged whenever the Profile is captured: it has to be in the
+past and within a human lifetime (120 years), where "today" is the user's
+_local_ day, supplied by the client as for a **Weight Measurement**. A save is a
+whole-Profile replace, so the date is judged again on a save that came to change
+something else; only _reading_ a stored Profile is exempt, since a row already
+written is history and has to load whatever it says. A birth date outside that
+window doesn't merely look wrong — it drives the age every derived figure is
+read against: the BMR seed and with it the **Calorie Budget**, and the age band
+that picks a **Reference Intake**.
 The timezone is user-level state (one human, one local day),
 defaulted from the browser when first captured — it is the proper home for "the
 user's local today," which weight-dating approximates client-side today. The

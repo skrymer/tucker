@@ -4,6 +4,7 @@ import {
   formatDateFromISO,
   localDaysAgo,
   localToday,
+  localYearsAgo,
   localYesterday,
   trailingWindow,
 } from './date'
@@ -38,6 +39,20 @@ describe('localDaysAgo', () => {
     expect(localDaysAgo(0)).toBe('2026-08-27')
     expect(localDaysAgo(6)).toBe('2026-08-21')
     expect(localDaysAgo(6, '2026-03-04')).toBe('2026-02-26')
+  })
+})
+
+describe('localYearsAgo', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('counts back whole calendar years from the local today', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(2026, 8, 11, 8, 30))
+
+    expect(localYearsAgo(0)).toBe('2026-09-11')
+    expect(localYearsAgo(120)).toBe('1906-09-11')
   })
 })
 

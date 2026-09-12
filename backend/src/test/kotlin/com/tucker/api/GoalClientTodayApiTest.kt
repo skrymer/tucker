@@ -20,11 +20,12 @@ import java.time.LocalDate
 import java.time.ZoneOffset
 
 /**
- * The client owns "today" (ADR 0014): a Goal-lifecycle recompute is stamped on the
+ * The client owns "today" (ADR 0014): everything the day decides — a Goal-lifecycle
+ * recompute's date, and whether a birth date is in the past — is decided on the
  * client's local date, never the server's wall clock. The server clock is frozen a
- * full day *ahead* of the client's date, so each test proves the review lands on
- * the client's day — the exact runner-vs-container skew that made
- * `goal-recompute-budget` flake (#84).
+ * full day *ahead* of the client's date, so each test proves the outcome follows the
+ * client's day — the exact runner-vs-container skew that made `goal-recompute-budget`
+ * flake (#84).
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -115,6 +116,18 @@ class GoalClientTodayApiTest {
             jsonPath("$.reviewedOn") { value("$CLIENT_TODAY") }
             jsonPath("$.intakeTargets") { value(null) }
         }
+    }
+
+    @Test
+    fun `a birth date is judged past against the client's day, not the server's`() {
+        // The client's own day is the server's yesterday, so a birth date of the
+        // client's today already reads as past on the server clock. Judged there it
+        // would be accepted, and a User just over local midnight could save a
+        // Profile the picker in front of them refuses.
+        mockMvc.put("/api/profile?clientToday=$CLIENT_TODAY") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"sex":"MALE","birthDate":"$CLIENT_TODAY","heightCm":180.0}"""
+        }.andExpect { status { isBadRequest() } }
     }
 
     companion object {

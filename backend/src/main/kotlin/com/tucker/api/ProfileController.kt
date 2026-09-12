@@ -61,9 +61,10 @@ class ProfileController(
         profiles.get()?.toDto() ?: throw NotFoundException("profile not set")
 
     /**
-     * Replace the caller's Profile. [clientToday] is the user's local date (ADR 0014),
-     * the day a Calorie-Tracking change stamps its review recompute on; it falls back
-     * to the server date when omitted, as `POST`/`DELETE /api/goal` do.
+     * Replace the caller's Profile. [clientToday] is the user's local date (ADR 0014) —
+     * the day a Calorie-Tracking change stamps its review recompute on, and the day the
+     * birth date has to fall before; it falls back to the server date when omitted, as
+     * `POST`/`DELETE /api/goal` do.
      */
     @PutMapping
     fun save(
@@ -71,16 +72,19 @@ class ProfileController(
         @RequestParam(required = false)
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
         clientToday: LocalDate?,
-    ): ProfileDto = profileService.save(
-        Profile(
-            sex = Sex.valueOf(request.sex),
-            birthDate = request.birthDate,
-            heightCm = request.heightCm,
-            timezone = request.timezone,
-            reminderHour = request.reminderHour,
-            remindersEnabled = request.remindersEnabled,
-            tracksCalories = request.tracksCalories,
-        ),
-        userToday.resolve(clientToday),
-    ).toDto()
+    ): ProfileDto {
+        val today = userToday.resolve(clientToday)
+        return profileService.save(
+            Profile(
+                sex = Sex.valueOf(request.sex),
+                birthDate = request.birthDate,
+                heightCm = request.heightCm,
+                timezone = request.timezone,
+                reminderHour = request.reminderHour,
+                remindersEnabled = request.remindersEnabled,
+                tracksCalories = request.tracksCalories,
+            ).capturedOn(today),
+            today,
+        ).toDto()
+    }
 }

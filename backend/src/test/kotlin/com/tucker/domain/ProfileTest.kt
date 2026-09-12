@@ -7,6 +7,8 @@ import kotlin.test.assertEquals
 
 class ProfileTest {
 
+    private val today = LocalDate.of(2026, 9, 10)
+
     private fun profileWith(
         timezone: String = "Europe/Copenhagen",
         reminderHour: Int = 8,
@@ -18,6 +20,10 @@ class ProfileTest {
         reminderHour = reminderHour,
         remindersEnabled = true,
     )
+
+    /** Capture-time check of a Profile that varies only in [birthDate]. */
+    private fun capturedWith(birthDate: LocalDate) =
+        Profile(sex = Sex.MALE, birthDate = birthDate, heightCm = 180.0).capturedOn(today)
 
     @Test
     fun `rejects a height of zero`() {
@@ -66,5 +72,40 @@ class ProfileTest {
     @Test
     fun `accepts a known IANA zone`() {
         assertEquals("Europe/Copenhagen", profileWith(timezone = "Europe/Copenhagen").timezone)
+    }
+
+    @Test
+    fun `capturedOn rejects a birth date of today`() {
+        // Where the rule sits, exactly: the latest acceptable birth date is
+        // yesterday, the same boundary the birth-date picker already pins.
+        val ex = assertThrows<IllegalArgumentException> { capturedWith(today) }
+        assert(ex.message!!.contains("birthDate", ignoreCase = true)) {
+            "expected message to mention birthDate, was '${ex.message}'"
+        }
+    }
+
+    @Test
+    fun `capturedOn accepts a birth date of yesterday`() {
+        val yesterday = today.minusDays(1)
+        assertEquals(yesterday, capturedWith(yesterday).birthDate)
+    }
+
+    @Test
+    fun `capturedOn rejects a birth date more than 120 years before today`() {
+        // The mirror of a future birth date, and just as damaging: an age of 500
+        // drives the Mifflin-St Jeor seed deeply negative instead of merely wrong.
+        // The number is spelled out here because a mutation sweep can't reach a constant.
+        val ex = assertThrows<IllegalArgumentException> {
+            capturedWith(today.minusYears(120).minusDays(1))
+        }
+        assert(ex.message!!.contains("birthDate", ignoreCase = true)) {
+            "expected message to mention birthDate, was '${ex.message}'"
+        }
+    }
+
+    @Test
+    fun `capturedOn accepts a birth date exactly 120 years before today`() {
+        val hundredAndTwentieth = today.minusYears(120)
+        assertEquals(hundredAndTwentieth, capturedWith(hundredAndTwentieth).birthDate)
     }
 }

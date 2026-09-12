@@ -172,4 +172,22 @@ class ProfileApiTest {
             jsonPath("$.intakeTargets.calorieBudgetKcal") { isNumber() }
         }
     }
+
+    /**
+     * The API is reachable without the SPA, so the birth-date picker's rule cannot be
+     * the only one: a future birth date makes `Profile.ageOn` negative, which inflates
+     * the Maintenance seed and every Budget derived from it.
+     */
+    @Test
+    fun `PUT rejects a future birth date and persists nothing`() {
+        mockMvc.put("/api/profile") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"sex":"MALE","birthDate":"2999-12-31","heightCm":180.0}"""
+        }.andExpect {
+            status { isBadRequest() }
+            jsonPath("$.message") { value(org.hamcrest.Matchers.containsString("birthDate")) }
+        }
+
+        mockMvc.get("/api/profile").andExpect { status { isNotFound() } }
+    }
 }

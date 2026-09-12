@@ -48,12 +48,40 @@ data class Profile(
         }
     }
 
+    /**
+     * This Profile, checked against [today] — the local day the User captured it on,
+     * which a birth date has to fall before and within a human lifetime of.
+     *
+     * The reference day is a parameter because the domain must not read a clock
+     * (ADR 0014). Every capture is judged, and a whole-Profile `PUT` is a capture
+     * even when it was a reminder the User came to change — the client sends the
+     * stored birth date back, so it is re-judged with it. Only hydration is exempt:
+     * [ProfileRepository] reads a row through the constructor, because a row already
+     * written is history and must load whatever it says.
+     *
+     * A member rather than a `WeightMeasurement.recorded`-style companion factory:
+     * the rule concerns one field, and a factory would restate all seven to reach it.
+     */
+    fun capturedOn(today: LocalDate): Profile {
+        require(birthDate.isBefore(today)) {
+            "birthDate must be in the past (was $birthDate, today is $today)"
+        }
+        require(!birthDate.isBefore(today.minusYears(MAX_AGE_YEARS))) {
+            "birthDate must be within the last $MAX_AGE_YEARS years " +
+                "(was $birthDate, today is $today)"
+        }
+        return this
+    }
+
     companion object {
         /** Sensible defaults until the user captures their own locale/prefs. */
         const val DEFAULT_TIMEZONE = "UTC"
         const val DEFAULT_REMINDER_HOUR = 9
         const val DEFAULT_TRACKS_CALORIES = true
         private const val LAST_HOUR_OF_DAY = 23
+
+        /** Oldest a User can plausibly be — past this a birth date is a typo, not a life. */
+        private const val MAX_AGE_YEARS = 120L
 
         // Mifflin-St Jeor equation coefficients.
         const val WEIGHT_COEFFICIENT = 10.0
