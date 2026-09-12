@@ -124,10 +124,11 @@ Frontend commands (run in `frontend/`, package manager is pnpm):
 
 Continuous integration — every pull request runs `.github/workflows/ci.yml`:
 the backend `./gradlew detekt` + `./gradlew build`, the frontend ESLint +
-typecheck + Vitest + mocked Playwright suite, and a real-stack `e2e` job that
+typecheck + Vitest + mocked Playwright suite, a real-stack `e2e` job that
 builds the backend Docker image once and runs both the backend Testcontainers
 e2e (`./gradlew e2eTest`) and the frontend smokes (`pnpm test:smoke`) against
-it. Detekt, ESLint, and typecheck failures fail the build.
+it, and a `hooks` job running `node --test` over the Claude Code hook scripts
+in `.claude/hooks/`. Detekt, ESLint, and typecheck failures fail the build.
 
 `pnpm typecheck` is CI-only and deliberately **not** in the pre-commit hook
 (issue #200). Not for speed — it runs in ~5s, comparable to ESLint — but
@@ -1454,7 +1455,7 @@ null` now means two things that earn opposite messages — the same trap
   **Nothing builds on the box.** CI publishes both images to
   `ghcr.io/skrymer/tucker-{backend,frontend}` — tagged with the version, the short
   SHA and `latest` — and `deploy/update.sh` pulls the tag for the commit being
-  deployed, so a published tag exists only for a commit whose three suites were
+  deployed, so a published tag exists only for a commit whose four suites were
   green. Building on the host was ADR 0015's original call and it expired the way
   that ADR predicted, though not where: the **Vite** stage, not the JDK one, ran the
   1-vCPU/2 GB box out of heap the day F14's chart landed and aborted the deploy with
