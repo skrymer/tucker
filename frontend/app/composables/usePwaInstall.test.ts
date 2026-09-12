@@ -3,7 +3,8 @@ import { defineComponent, nextTick } from 'vue'
 import { renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
-import { usePwaInstall } from './usePwaInstall'
+import { resetPwaInstallCapture, usePwaInstall } from './usePwaInstall'
+import { INSTALLED_EVENT } from '../utils/installEvents'
 import {
   fakeInstallEvent,
   setStandalone,
@@ -43,6 +44,9 @@ beforeEach(() => {
 afterEach(() => {
   vi.restoreAllMocks()
   vi.unstubAllGlobals()
+  // The capture outlives every component by design, so an offer made here would
+  // otherwise still be standing in the next test.
+  resetPwaInstallCapture()
 })
 
 describe('usePwaInstall', () => {
@@ -65,6 +69,17 @@ describe('usePwaInstall', () => {
     expect(text('can-install')).toBe('true')
   })
 
+  it('suppresses the browser mini-infobar so Tucker drives the install itself', async () => {
+    await renderSuspended(Harness)
+    const event = fakeInstallEvent()
+    const preventDefault = vi.spyOn(event, 'preventDefault')
+
+    window.dispatchEvent(event)
+    await nextTick()
+
+    expect(preventDefault).toHaveBeenCalledOnce()
+  })
+
   it('shows the browser install prompt and consumes it so it cannot be reused', async () => {
     await renderSuspended(Harness)
     const event = fakeInstallEvent()
@@ -75,6 +90,15 @@ describe('usePwaInstall', () => {
 
     expect(event.prompt).toHaveBeenCalledOnce()
     expect(text('can-install')).toBe('false')
+  })
+
+  // Called directly rather than through the Harness: the button's handler is not
+  // awaited, so a throw from it would surface as an unhandled rejection rather
+  // than as a failure here.
+  it('does nothing when asked to install with no offer in hand', async () => {
+    const { promptInstall } = usePwaInstall()
+
+    await expect(promptInstall()).resolves.toBeUndefined()
   })
 
   it('offers iOS Safari add-to-home-screen instructions, since it has no programmatic install', async () => {
@@ -96,6 +120,24 @@ describe('usePwaInstall', () => {
     expect(text('can-install')).toBe('false')
   })
 
+  it('reports installed on iOS, which reports it as navigator.standalone and nothing else', async () => {
+    // matchMedia stays false: the display-mode query iOS Safari does not answer
+    // is exactly what makes this flag the only signal there is (ADR 0011).
+    setUserAgent(UA.ios, { standalone: true })
+    setStandalone(false)
+    await renderSuspended(Harness)
+
+    expect(text('installed')).toBe('true')
+    expect(text('ios-hint')).toBe('false')
+  })
+
+  it('reports not installed when the browser has no matchMedia to ask', async () => {
+    vi.stubGlobal('matchMedia', undefined)
+    await renderSuspended(Harness)
+
+    expect(text('installed')).toBe('false')
+  })
+
   it('detects the Android platform', async () => {
     setUserAgent(UA.android)
     await renderSuspended(Harness)
@@ -110,10 +152,35 @@ describe('usePwaInstall', () => {
     await nextTick()
     expect(text('can-install')).toBe('true')
 
-    window.dispatchEvent(new Event('appinstalled'))
+    window.dispatchEvent(new Event(INSTALLED_EVENT))
     await nextTick()
 
     expect(text('installed')).toBe('true')
     expect(text('can-install')).toBe('false')
+  })
+
+  it('reports an install offer the browser made before the component mounted', async () => {
+    // Nothing here starts the capture: app/plugins/pwa-install.client.ts does,
+    // at app boot, which is the whole of the fix. The Nuxt test environment runs
+    // the real plugin list, so this is what fails if that plugin goes.
+    window.dispatchEvent(fakeInstallEvent())
+
+    await renderSuspended(Harness)
+
+    expect(
+      text('can-install'),
+      'nothing was listening — is app/plugins/pwa-install.client.ts still there?',
+    ).toBe('true')
+    expect(text('installed')).toBe('false')
+  })
+
+  it('keeps capturing after the consumer unmounts', async () => {
+    const { unmount } = await renderSuspended(Harness)
+    unmount()
+
+    window.dispatchEvent(fakeInstallEvent())
+    await renderSuspended(Harness)
+
+    expect(text('can-install')).toBe('true')
   })
 })

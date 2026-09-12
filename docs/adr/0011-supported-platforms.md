@@ -26,6 +26,18 @@ Two differences drive real code:
   has two paths: capture `beforeinstallprompt` and drive a custom Install button on
   Android/desktop Chromium; show *instructions* ("Share → Add to Home Screen") on
   iOS; hide entirely when already running in `display-mode: standalone`.
+
+  **The capture runs at app boot, not at component mount** (issue #100). The browser
+  offers once per page load, before any route component mounts, and never repeats —
+  so a listener registered by whichever component renders the affordance only ever
+  catches the offer when that component's route was the one loaded from the network.
+  Reaching `/profile` the normal way, by SPA navigation, caught nothing. The offer is
+  therefore held in module scope in `usePwaInstall` and captured by a boot plugin,
+  `app/plugins/pwa-install.client.ts`. **Not `@vite-pwa/nuxt`'s `$pwa`**, which ships
+  the same capture behind its `pwa.installPrompt` key: that key also turns on a
+  `localStorage` "don't show me again" flow Tucker does not offer, and reading the
+  offer off a third-party reactive object would put an internal collaborator where
+  ADR 0013 rule 1 wants the browser event itself.
 - **iOS gates push on install; nobody else does.** On iOS the reminder toggle can
   only subscribe once the app is on the home screen — so on iOS the toggle shows an
   "add to home screen first" hint until installed. On Android and desktop the toggle

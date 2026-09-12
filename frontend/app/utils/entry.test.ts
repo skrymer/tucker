@@ -46,6 +46,21 @@ describe('formatEntryName', () => {
     ).toBe('Olive oil — 135 kcal · 0 g protein')
   })
 
+  it('names an entry the API could not resolve a Food name for', () => {
+    expect(
+      formatEntryName(
+        weighedEntry({
+          id: 5,
+          calories: 200,
+          protein: 4,
+          foodId: 7,
+          foodName: null,
+          grams: 90,
+        }),
+      ),
+    ).toBe('Unknown food — 200 kcal · 4 g protein')
+  })
+
   it('omits protein when the entry carries no figure', () => {
     expect(
       formatEntryName(

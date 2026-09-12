@@ -86,19 +86,21 @@ Four properties of that are deliberate:
 
 - **The words are the row's words.** The description is `formatEntryName(response)`,
   the same helper the Today row and the delete confirm use, so the toast cannot
-  drift from the row the user is about to read. It also names both arms without a
-  branch: it reads `foodName ?? label`, so an Estimated Entry is named by its
-  label for free. Keeping one string for all three surfaces is the point — the
+  drift from the row the user is about to read. It names both arms without a
+  branch because it reads the `EntryResponse`'s own `name`, which the backend
+  states per arm. Keeping one string for all three surfaces is the point — the
   cost is that a test asserting an entry's name must scope itself to the surface
   it means, because while the toast is up the words genuinely appear twice.
-- **The figures are the server's.** The description is composed from the
-  `EntryResponse` the POST returns, never re-derived client-side: computing
+- **The name and the figures are the server's.** The description is composed from
+  the `EntryResponse` the POST returns, never re-derived client-side: computing
   `grams ÷ 100 × caloriesPer100g` in the UI is exactly the business logic
   [0002](0002-business-logic-belongs-in-the-backend.md) keeps in the backend, and
   a client that recomputed it could "confirm" a save with figures the save never
   produced. `useApiMutation` threads the mutation's result through to a
   `successDescription(result)` hook for this reason, rather than each call site
-  composing a title from state it happens to hold.
+  composing a title from state it happens to hold. The name goes the same way:
+  reassembling it client-side from `foodName ?? label` made an Entry with neither
+  render the literal string `null`, so the wire carries one required `name`.
 - **Unknown protein is omitted; a known one is always shown.** An Estimated
   Entry's protein is optional (`EstimatedEntry.protein: Double?`), so the clause
   appears only when there is a figure: `Cafe lunch — 600 kcal`. Rendering

@@ -3,6 +3,13 @@ import type { components } from '#open-fetch-schemas/api'
 type EntryResponse = components['schemas']['EntryResponse']
 
 /**
+ * The name the backend gives a weighed Entry whose Food it could not resolve
+ * (`EntryController.UNRESOLVED_FOOD_NAME`). Mirrored here so a fixture built
+ * without a `foodName` carries the name the wire would.
+ */
+const UNRESOLVED_FOOD_NAME = 'Unknown food'
+
+/**
  * A Weighed Entry as the API sends it — a Food, weighed in grams.
  *
  * There are two factories rather than one with a `kind` argument because an
@@ -18,11 +25,16 @@ type EntryResponse = components['schemas']['EntryResponse']
  * `EntryController.toResponse` writes them together, so a disagreeing pair is
  * unrepresentable in production — and should be unwritable here.
  *
- * `foodName` and `protein` are required alongside `foodId` even though the wire
- * types them nullable: nothing renders a weighed Entry without naming it
- * (`formatEntryName` would print the string "null"), deleting a Food an Entry
- * references is refused, and protein is computed from the Food. Neither null arm
- * belongs to a flow a test currently has. Widen them when one appears.
+ * `protein` is required alongside `foodId` even though the wire types it
+ * nullable, because protein is computed from the Food and so a weighed Entry
+ * always carries a figure. `foodName` stays nullable, matching the wire: the
+ * server sends `null` for a Food it could not resolve a name for.
+ *
+ * `name` is derived rather than accepted, for the same reason as `kind`: the
+ * backend states it (`EntryController.toResponse`) from the Food's name, falling
+ * back when there is none, so a fixture that let a caller set it independently
+ * could build an Entry named one thing and shown as another — a row the wire
+ * cannot produce.
  *
  * Absent fields default to `null` rather than being left out, because that is
  * what the wire carries — Tucker serializes an absent value as an explicit
@@ -40,12 +52,15 @@ type EntryResponse = components['schemas']['EntryResponse']
  * come after, so it can't.
  */
 export function weighedEntry(
-  partial: Omit<Partial<EntryResponse>, 'kind' | 'isEstimate' | 'label'> & {
+  partial: Omit<
+    Partial<EntryResponse>,
+    'kind' | 'isEstimate' | 'label' | 'name'
+  > & {
     id: number
     calories: number
     protein: number
     foodId: number
-    foodName: string
+    foodName: string | null
     grams: number
   },
 ): Required<EntryResponse> {
@@ -55,6 +70,7 @@ export function weighedEntry(
     kind: 'WEIGHED',
     isEstimate: false,
     label: null,
+    name: partial.foodName ?? UNRESOLVED_FOOD_NAME,
   }
 }
 
@@ -64,12 +80,13 @@ export function weighedEntry(
  *
  * The mirror of {@link weighedEntry}: `label` is required, and `foodId`,
  * `foodName` and `grams` are nulled here rather than accepted, so the arm can't
- * be built holding a Food it does not have.
+ * be built holding a Food it does not have. `name` is the label trimmed, which
+ * is what the backend sends for this arm.
  */
 export function estimatedEntry(
   partial: Omit<
     Partial<EntryResponse>,
-    'kind' | 'isEstimate' | 'foodId' | 'foodName' | 'grams'
+    'kind' | 'isEstimate' | 'foodId' | 'foodName' | 'grams' | 'name'
   > & {
     id: number
     calories: number
@@ -85,5 +102,6 @@ export function estimatedEntry(
     foodId: null,
     foodName: null,
     grams: null,
+    name: partial.label.trim(),
   }
 }

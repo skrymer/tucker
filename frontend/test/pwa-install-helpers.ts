@@ -1,4 +1,5 @@
 import { vi } from 'vitest'
+import { INSTALL_OFFER_EVENT } from '../app/utils/installEvents'
 
 // Shared browser-boundary stubs for the PWA install tests (usePwaInstall and
 // InstallPrompt). These are the *true external boundary* the install code reacts
@@ -6,14 +7,16 @@ import { vi } from 'vitest'
 // both the composable test and the component test that composes it drive the
 // same fakes rather than each redefining them.
 
-/** A fake browser `beforeinstallprompt` event, carrying the prompt() it offers. */
+/**
+ * A fake browser `beforeinstallprompt` event, carrying the prompt() it offers.
+ * The Playwright twin is `offerInstall` in `e2e/support/install-offer.ts`, a copy
+ * because a `page.evaluate` body cannot import one; keep the two in sync.
+ */
 export function fakeInstallEvent() {
-  const event = new Event('beforeinstallprompt') as Event & {
+  const event = new Event(INSTALL_OFFER_EVENT) as Event & {
     prompt: ReturnType<typeof vi.fn>
-    userChoice: Promise<{ outcome: string }>
   }
   event.prompt = vi.fn(async () => {})
-  event.userChoice = Promise.resolve({ outcome: 'accepted' })
   return event
 }
 

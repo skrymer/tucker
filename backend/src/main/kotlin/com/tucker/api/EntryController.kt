@@ -8,6 +8,7 @@ import com.tucker.domain.WeighedEntry
 import com.tucker.persistence.EntryRepository
 import com.tucker.persistence.FoodRepository
 import com.tucker.service.WeeklyReviewService
+import org.slf4j.LoggerFactory
 import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.DeleteMapping
@@ -43,6 +44,13 @@ data class EntryResponse(
     val foodName: String?,
     val grams: Double?,
     val label: String?,
+    /**
+     * What the User recognises this Entry by (CONTEXT.md) — its Food's name when
+     * weighed, its label when estimated. Stated here rather than reassembled by
+     * the client from the nullable pair above, so the guarantee that an Entry
+     * always has a name lives in the type (ADR 0002).
+     */
+    val name: String,
 )
 
 /** Request to log a weighed Entry — a Food eaten at a measured weight. */
@@ -72,27 +80,73 @@ data class BudgetProjectionResponse(
     val overByKcal: Double?,
 )
 
-internal fun Entry.toResponse(foodName: String? = null): EntryResponse = when (this) {
+private val logger = LoggerFactory.getLogger(EntryController::class.java)
+
+/**
+ * What a weighed Entry is called when its Food's name could not be resolved.
+ * Named rather than blank so the rest of the day still reads. The Intake
+ * Breakdown refuses the same state instead (`IntakeBreakdown.sliceName`), and the
+ * split is deliberate: an invented label on a slice misstates a share, while a
+ * day that will not render states nothing at all.
+ */
+private const val UNRESOLVED_FOOD_NAME = "Unknown food"
+
+/**
+ * [foodName] is the name of the Food a weighed Entry ate, and is ignored by the
+ * estimated arm, which names itself. It has no default: the one caller that can
+ * fail to resolve it is [toResponses], and a name omitted anywhere else would
+ * reach [UNRESOLVED_FOOD_NAME] without anything having gone wrong.
+ */
+internal fun Entry.toResponse(foodName: String?): EntryResponse = when (this) {
     is WeighedEntry -> EntryResponse(
         id = persistedId(id),
         loggedOn = loggedOn, kind = EntryKind.WEIGHED, calories = calories, protein = protein,
         isEstimate = false, foodId = foodId, foodName = foodName, grams = grams, label = null,
+        name = foodName ?: UNRESOLVED_FOOD_NAME,
     )
     is EstimatedEntry -> EntryResponse(
         id = persistedId(id),
         loggedOn = loggedOn, kind = EntryKind.ESTIMATED, calories = calories, protein = protein,
         isEstimate = true, foodId = null, foodName = null, grams = null, label = label,
+        // Trimmed, as `IntakeBreakdown.sliceName` already names the same Entry on
+        // /review: nothing trims a label on write, so an untrimmed name here would
+        // have one Entry reading two ways on two surfaces.
+        name = label.trim(),
     )
 }
 
 /** Map Entries to responses, resolving every weighed Entry's Food name in one query. */
 internal fun List<Entry>.toResponses(foods: FoodRepository): List<EntryResponse> {
     val namesById = foods.namesOf(this)
+    warnUnresolved(namesById)
     return map { entry ->
         when (entry) {
-            is WeighedEntry -> entry.toResponse(namesById[entry.foodId])
-            is EstimatedEntry -> entry.toResponse()
+            is WeighedEntry -> entry.toResponse(foodName = namesById[entry.foodId])
+            is EstimatedEntry -> entry.toResponse(foodName = null)
         }
+    }
+}
+
+/**
+ * The Foods these Entries name that [namesById] did not resolve, each once. An
+ * Entry's Food always exists ([foodsOf]), so a non-empty answer means either an
+ * invariant breach or a Food deleted between the two reads that produced the
+ * arguments.
+ */
+internal fun List<Entry>.unresolvedFoodIds(namesById: Map<Long, String>): List<Long> =
+    filterIsInstance<WeighedEntry>()
+        .map { it.foodId }
+        .distinct()
+        .filterNot { namesById.containsKey(it) }
+
+/**
+ * One line for a whole read rather than one per Entry, so a day whose Entries all
+ * name the same unresolved Food reports it once per load instead of once each.
+ */
+private fun List<Entry>.warnUnresolved(namesById: Map<Long, String>) {
+    val unresolved = unresolvedFoodIds(namesById)
+    if (unresolved.isNotEmpty()) {
+        logger.warn("Foods {} named by Entries could not be resolved to a name", unresolved)
     }
 }
 
@@ -115,7 +169,7 @@ class EntryController(
         val food = foods.findById(request.foodId)
             ?: throw NotFoundException("no Food with id ${request.foodId}")
         return entries.insert(WeighedEntry.log(request.date, food, request.grams))
-            .toResponse(food.name)
+            .toResponse(foodName = food.name)
     }
 
     /**
@@ -151,7 +205,7 @@ class EntryController(
     fun logEstimated(@RequestBody request: LogEstimatedEntryRequest): EntryResponse =
         entries.insert(
             EstimatedEntry(null, request.date, request.label, request.calories, request.protein),
-        ).toResponse()
+        ).toResponse(foodName = null)
 
     /**
      * A non-persisting Budget Projection: would logging this estimated Entry push the

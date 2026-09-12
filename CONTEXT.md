@@ -287,6 +287,13 @@ deleted to undo it — in practice only the current day's, so deletion never
 rewrites intake a Weekly Review has already counted (a review is irreversible).
 _Avoid_: log, record
 
+An Entry's **name** is what the user recognises it by: its **Food**'s name when
+it was weighed, its own label when it was estimated. The backend states it — a
+client that reassembled it from the two would have to answer what an Entry with
+neither is called, and an Entry always has a name. It is the same idea an
+**Intake Breakdown** slice states, under the same word.
+_Avoid_: display name, title, description
+
 **Weighed Entry**:
 An Entry whose quantity is a mass in grams, measured on a kitchen scale. The
 precise, default case. Calories = grams ÷ 100 × the Food's calories-per-100g.

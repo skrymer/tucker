@@ -7,6 +7,7 @@ import {
 } from '@nuxt/test-utils/runtime'
 import { createError, readBody } from 'h3'
 import { openGate } from '~~/test/async-gate'
+import { estimatedEntry, weighedEntry } from '~~/test/entry-fixtures'
 import userEvent from '@testing-library/user-event'
 import { screen } from '@testing-library/vue'
 import { useEstimatedEntryLog, useWeighedEntryLog } from './useEntryLogging'
@@ -21,6 +22,15 @@ const previewed: Record<string, unknown>[] = []
 let overBudget = false
 let held: Promise<void> | null = null
 let saveFails = false
+
+/** What a log request carries; each arm below reads only the keys its own kind sends. */
+type LoggedBody = {
+  foodId: number
+  grams: number
+  label: string
+  calories: number
+  protein: number | null
+}
 
 for (const kind of ['weighed', 'estimated']) {
   registerEndpoint(`/api/entries/${kind}/preview`, {
@@ -37,10 +47,28 @@ for (const kind of ['weighed', 'estimated']) {
   registerEndpoint(`/api/entries/${kind}`, {
     method: 'POST',
     handler: async (event) => {
-      logged.push((await readBody(event)) as Record<string, unknown>)
+      const sent = (await readBody(event)) as LoggedBody
+      logged.push(sent)
       if (held) await held
       if (saveFails) throw createError({ statusCode: 500 })
-      return { id: 1, kind: kind.toUpperCase(), label: 'Oats', calories: 300 }
+      // The estimated arm echoes what it was sent: its label, calories and
+      // protein are the request's, so the toast cannot name an Entry the caller
+      // never logged.
+      return kind === 'weighed'
+        ? weighedEntry({
+            id: 1,
+            foodId: sent.foodId,
+            foodName: 'Oats',
+            grams: sent.grams,
+            calories: 300,
+            protein: 10,
+          })
+        : estimatedEntry({
+            id: 1,
+            label: sent.label,
+            calories: sent.calories,
+            protein: sent.protein ?? null,
+          })
     },
   })
 }
@@ -131,7 +159,7 @@ describe('useEntryLogging', () => {
     await vi.waitFor(() => expect(toastAdd).toHaveBeenCalled())
     expect(toastAdd.mock.calls.at(-1)![0]).toMatchObject({
       title: 'Entry logged',
-      description: 'Oats — 300 kcal',
+      description: 'Oats — 300 kcal · 10 g protein',
     })
   })
 
