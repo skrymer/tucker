@@ -56,6 +56,26 @@ describe('DateField', () => {
     expect(screen.getByRole('button', { name: /20 May 2026/i })).toBeVisible()
   })
 
+  it('refuses a day before the earliest allowed date', async () => {
+    const onUpdate = vi.fn()
+    await renderSuspended(DateField, {
+      props: {
+        modelValue: '2026-05-20',
+        min: '2026-05-15',
+        'onUpdate:modelValue': onUpdate,
+      },
+    })
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole('button', { name: /20 May 2026/i }))
+    const before = await screen.findByRole('button', { name: /May 12, 2026/ })
+
+    expect(before).toHaveAttribute('aria-disabled', 'true')
+    await user.click(before)
+    expect(onUpdate).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: /20 May 2026/i })).toBeVisible()
+  })
+
   it('reaches a year decades back through the heading, never stepping months', async () => {
     const onUpdate = vi.fn()
     await renderSuspended(DateField, {

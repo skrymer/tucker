@@ -19,14 +19,18 @@ future where every user has their own local day.
 ## Decision
 
 **The client owns "today." The server never stamps a domain date on its own wall
-clock.** Any endpoint that *stamps or recomputes* a domain date takes the client's
-local date and acts on it:
+clock.** Any endpoint that *stamps or recomputes* a domain date — or *judges* one
+against today — takes the client's local date and acts on it:
 
 - `POST /api/goal` (create/replace) and `DELETE /api/goal` (deactivate) — the forced
   Weekly-Review recompute (#61) is stamped on the client's day, so the lifted Budget
   lands on the user's today.
 - `POST /api/weekly-review` (manual run) — the minted review is stamped on the
   client's day.
+- `PUT /api/profile` — the birth date is judged against the client's day (#245). Not
+  a stamp but a comparison, and it needs the client's day for the same reason: at a
+  UTC offset the server's day and the user's differ, so the server's would refuse a
+  date the picker in front of them offers.
 
 The client date is carried as `clientToday` (request body for the POSTs, query param
 for the DELETE — and for `PUT /api/profile`, added by
@@ -88,7 +92,9 @@ the user's own zone is a move toward this ADR's model rather than away from it.
 - The `clientToday` contract is now uniform across `/weight`, `/goal`,
   `/weekly-review` and — since [0024](0024-a-weekly-review-carries-intake-targets-only-when-they-can-be-corrected.md)
   made a Calorie-Tracking change recompute today's review — `/profile`; the
-  frontend sends its `localToday()` on each.
+  frontend sends its `localToday()` on each. `/profile` has two writers and both
+  replace the whole Profile, so the stamp lives in one `useProfileWrite` composable
+  rather than at each call site.
 - The #84 UTC pin is retained as a safety net, not a crutch.
 
 ## References

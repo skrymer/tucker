@@ -28,17 +28,11 @@ const {
 // Persisting reminder prefs is a Profile write: merge the changed fields onto
 // the full profile so a save never clobbers the user's body stats or hour.
 function useReminderPrefs() {
-  const { $api } = useNuxtApp()
+  const write = useProfileWrite()
   const enabled = ref(props.profile.remindersEnabled)
   const hourForm = reactive({ reminderHour: props.profile.reminderHour })
 
-  // One Profile write that merges the changed prefs onto the full profile, so a
-  // save never clobbers the user's body stats or the fields it didn't touch.
-  const persist = (prefs: Partial<ProfileDto>) =>
-    $api('/api/profile', {
-      method: 'PUT',
-      body: { ...props.profile, ...prefs },
-    })
+  const persist = (prefs: Partial<ProfileDto>) => write(props.profile, prefs)
 
   // The toggle is the only place notification permission is requested — from
   // this gesture, never on load. Subscribing the device and saving the opt-in is

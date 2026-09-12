@@ -3,7 +3,7 @@ import { renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import ProfileForm from './ProfileForm.vue'
-import { localYesterday } from '~/utils/date'
+import { localYearsAgo, localYesterday } from '~/utils/date'
 
 const SAVED = { sex: 'MALE', birthDate: '1990-06-15', heightCm: 180 }
 
@@ -137,6 +137,13 @@ describe('ProfileForm', () => {
     expect(
       screen.queryByText('Birth date must be in the past'),
     ).not.toBeInTheDocument()
+    // A `min` issue does not abort the chain, so the schema raises the lifetime
+    // message here too — `''` sorts below every ISO date. The field shows the
+    // first issue only, which is the missing-value one, and that is what a blank
+    // field must say.
+    expect(
+      screen.queryByText('Birth date must be within the last 120 years'),
+    ).not.toBeInTheDocument()
     expect(
       screen.queryByText('Enter your height in cm'),
     ).not.toBeInTheDocument()
@@ -191,6 +198,43 @@ describe('ProfileForm', () => {
     })
   })
 
+  it('bounds the birth-date calendar at the earliest allowed day', async () => {
+    // Stated to the picker, not only to the schema: an out-of-range day is
+    // refused at the point of picking rather than on submit, so the calendar
+    // opened on the earliest allowed month has nothing before it to page to.
+    await renderSuspended(ProfileForm, {
+      props: { initial: { ...SAVED, birthDate: localYearsAgo(120) } },
+    })
+    const user = userEvent.setup()
+
+    await user.click(screen.getByLabelText(/birth date/i))
+
+    expect(
+      await screen.findByRole('button', { name: /previous month/i }),
+    ).toBeDisabled()
+  })
+
+  it('accepts a birth date exactly a lifetime ago, the earliest allowed', async () => {
+    const onSubmit = vi.fn()
+    const lifetimeAgo = localYearsAgo(120)
+    await renderSuspended(ProfileForm, {
+      props: { initial: { ...SAVED, birthDate: lifetimeAgo }, onSubmit },
+    })
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole('button', { name: /save profile/i }))
+
+    expect(
+      screen.queryByText('Birth date must be within the last 120 years'),
+    ).not.toBeInTheDocument()
+    expect(onSubmit).toHaveBeenCalledWith({
+      sex: SAVED.sex,
+      birthDate: lifetimeAgo,
+      heightCm: SAVED.heightCm,
+      tracksCalories: true,
+    })
+  })
+
   it('rejects a saved birth date that is today or in the future', async () => {
     // The picker cannot produce one — its latest selectable day is yesterday —
     // so this backstop only fires on a value that arrived from the API. Pick a
@@ -206,6 +250,38 @@ describe('ProfileForm', () => {
     expect(screen.getByText('Birth date must be in the past')).toBeVisible()
     expect(screen.queryByText('Choose your sex')).not.toBeInTheDocument()
     expect(screen.queryByText('Enter your birth date')).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('Enter your height in cm'),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('Height must be greater than 0'),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('Height must be less than 300'),
+    ).not.toBeInTheDocument()
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
+
+  it('rejects a saved birth date from before a human lifetime', async () => {
+    // The mirror of the future-date rule: the picker cannot produce one either,
+    // its earliest selectable day being 120 years back, so this too only fires
+    // on a value that arrived from the API.
+    const onSubmit = vi.fn()
+    await renderSuspended(ProfileForm, {
+      props: { initial: { ...SAVED, birthDate: '1850-01-01' }, onSubmit },
+    })
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole('button', { name: /save profile/i }))
+
+    expect(
+      screen.getByText('Birth date must be within the last 120 years'),
+    ).toBeVisible()
+    expect(screen.queryByText('Choose your sex')).not.toBeInTheDocument()
+    expect(screen.queryByText('Enter your birth date')).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('Birth date must be in the past'),
+    ).not.toBeInTheDocument()
     expect(
       screen.queryByText('Enter your height in cm'),
     ).not.toBeInTheDocument()

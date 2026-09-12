@@ -26,16 +26,18 @@ const trackingItems = [
   },
 ]
 
-// The one statement of "a birth date is strictly in the past": the schema's
-// backstop for an API-supplied value and the picker's bound are the same day.
-const latestBirthDate = () => localYesterday()
-
 const schema = z.object({
   sex: z.enum(['MALE', 'FEMALE'], { error: 'Choose your sex' }),
   birthDate: z
     .string()
     .min(1, 'Enter your birth date')
-    .refine((d) => d <= latestBirthDate(), 'Birth date must be in the past'),
+    // The picker's bounds and this backstop for an API-supplied value are the
+    // same days (`app/utils/birthDate.ts`).
+    .refine((d) => d <= latestBirthDate(), 'Birth date must be in the past')
+    .refine(
+      (d) => d >= earliestBirthDate(),
+      `Birth date must be within the last ${MAX_AGE_YEARS} years`,
+    ),
   heightCm: z
     .number({ error: 'Enter your height in cm' })
     .positive('Height must be greater than 0')
@@ -92,7 +94,11 @@ function onSubmit() {
     </UFormField>
 
     <UFormField label="Birth date" name="birthDate" required>
-      <DateField v-model="state.birthDate" :max="latestBirthDate()" />
+      <DateField
+        v-model="state.birthDate"
+        :min="earliestBirthDate()"
+        :max="latestBirthDate()"
+      />
     </UFormField>
 
     <UFormField label="Height (cm)" name="heightCm" required>

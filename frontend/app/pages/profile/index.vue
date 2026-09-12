@@ -32,18 +32,13 @@ function useProfileForm() {
     if (!error.value) readFrom(profile.value)
   }
 
+  // The day this write stamps is also what a change of Calorie Tracking
+  // force-recomputes today's review on, so the Budget leaves or returns on the
+  // user's own day.
+  const write = useProfileWrite()
+
   const { pending: saving, execute: save } = useApiMutation(
-    (payload: ProfileDetails) =>
-      // Merge the body stats onto the loaded profile so saving them never
-      // clobbers the user's reminder preferences (and vice-versa).
-      $api('/api/profile', {
-        method: 'PUT',
-        body: { ...profile.value, ...payload } as ProfileDto,
-        // The client owns "today" (ADR 0014): a change of Calorie Tracking
-        // force-recomputes today's review, and this is the day it lands on, so
-        // the Budget leaves or returns on the user's own day.
-        query: { clientToday: localToday() },
-      }),
+    (payload: ProfileDetails) => write(profile.value, payload),
     {
       // No success toast: the profile card below the form updates in place.
       errorTitle: 'Could not save profile',

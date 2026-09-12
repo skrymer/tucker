@@ -42,9 +42,15 @@ export function localDaysAgo(
 }
 
 /**
- * The day before the user's local today — the latest day a birth date may fall
- * on, since a `Profile` requires one strictly in the past.
+ * The same calendar day [years] whole years before the user's local today, as an
+ * ISO string — a count of calendar years, not a multiple of 365 days.
  */
+export function localYearsAgo(years: number): string {
+  const [y, m, d] = isoParts(localToday())
+  return new Date(y - years, m - 1, d).toLocaleDateString('en-CA')
+}
+
+/** The day before the user's local today, as an ISO string. */
 export function localYesterday(): string {
   return localDaysAgo(1)
 }
