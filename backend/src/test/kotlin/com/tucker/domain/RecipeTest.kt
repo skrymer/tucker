@@ -105,6 +105,23 @@ class RecipeTest {
     }
 
     @Test
+    fun `a Recipe Food with no cooked weight at all is rejected`() {
+        // Asked once, where the field lives. Every reader that slices a portion out
+        // of a batch needs this weight, and each one guarding for itself answers the
+        // same impossible row with a different status (ADR 0019).
+        assertThrows<IllegalArgumentException> {
+            Food(
+                id = 1L,
+                name = "Stew",
+                kind = FoodKind.RECIPE,
+                barcode = null,
+                nutrition = Nutrition(200.0, 20.0, null, null),
+                cookedWeightG = null,
+            )
+        }
+    }
+
+    @Test
     fun `a non-positive ingredient weight is rejected`() {
         assertThrows<IllegalArgumentException> {
             RecipeIngredient(food("Beef", 200.0, 20.0), grams = 0.0)

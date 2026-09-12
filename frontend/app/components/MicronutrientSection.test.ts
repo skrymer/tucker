@@ -436,23 +436,35 @@ describe('MicronutrientSection', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('names what the last of the window is, once nothing is left to match', async () => {
+  it('names estimated meals as the only rest a tap can never reach', async () => {
     await renderSuspended(MicronutrientSection, {
       props: {
         intake: micronutrientIntake({ coverage: 0.71, unmatched: [] }),
       },
     })
 
-    // Full coverage is unreachable, so an unexplained 29% reads as a chore
-    // undone. Once nothing is matchable the sentence names what remains and why
-    // no tap will move it (ADR 0027).
+    // A Recipe rolls up from whichever of its ingredients are matched, and an
+    // unmatched ingredient is itself a row in the queue — so an empty queue
+    // means every ingredient is matched and every recipe counts in full
+    // (ADR 0027). Naming recipes here would tell a User their dinners are
+    // unreadable at the moment they became readable.
     expect(
       screen.getByText(
-        /Nothing left to match\. The rest came from meals you estimated and from recipes/,
+        /Nothing left to match\. The rest came from meals you estimated, which have no food to borrow from\./,
       ),
     ).toBeVisible()
-    // And the disclosure goes with it: an empty one is a chore on display with
-    // nothing behind it.
+    expect(screen.queryByText(/from recipes/)).not.toBeInTheDocument()
+  })
+
+  it('drops the queue disclosure once nothing is left to match', async () => {
+    await renderSuspended(MicronutrientSection, {
+      props: {
+        intake: micronutrientIntake({ coverage: 0.71, unmatched: [] }),
+      },
+    })
+
+    // An empty disclosure is a chore on display with nothing behind it. What
+    // the remaining 29% *is* belongs to the test above.
     expect(
       screen.queryByRole('button', { name: /not matched yet/ }),
     ).not.toBeInTheDocument()

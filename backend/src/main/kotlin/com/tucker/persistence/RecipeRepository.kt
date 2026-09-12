@@ -79,28 +79,49 @@ class RecipeRepository(
     /** Load a Recipe with its ingredient Foods, or null if [id] is not a recipe. */
     fun findById(id: Long): Recipe? {
         val food = foods.findById(id)?.takeIf { it.kind == FoodKind.RECIPE } ?: return null
-
-        val ingredientRows = dsl.selectFrom(RECIPE_INGREDIENT)
-            .where(RECIPE_INGREDIENT.RECIPE_ID.eq(id.toInt()))
-            .orderBy(RECIPE_INGREDIENT.ID)
-            .fetch()
-        val ingredientFoods = foods
-            .findByIds(ingredientRows.map { it.ingredientFoodId.toLong() })
-            .associateBy { it.id }
-        val ingredients = ingredientRows.map { row ->
-            val ingredient = ingredientFoods[row.ingredientFoodId.toLong()]
-                ?: error("ingredient food ${row.ingredientFoodId} is missing")
-            RecipeIngredient(ingredient, row.grams)
-        }
-
         return Recipe(
             id = food.id,
             name = food.name,
-            ingredients = ingredients,
-            cookedWeightG = requireNotNull(food.cookedWeightG) {
-                "recipe food ${food.id} has no cooked weight"
-            },
+            // `orEmpty`, so a Recipe whose lines are gone is refused by `Recipe`'s own
+            // invariant, which says what is wrong, rather than by a missing-key throw.
+            ingredients = ingredientsOf(listOf(id))[id].orEmpty(),
+            // Non-null by `Food`'s invariant: a RECIPE is sliced out of its cooked weight.
+            cookedWeightG = food.cookedWeightG!!,
         )
+    }
+
+    /**
+     * The ingredient lines of every Recipe in [recipeIds], resolved to their Foods in
+     * one pass rather than one query per Recipe. A **Micronutrient Intake** reads a
+     * whole window's Recipes at once, which is what makes the N+1 worth avoiding.
+     *
+     * `recipe_ingredient` carries no `user_id` — a Recipe *is* a Food row, so its
+     * lines are owned through it (ADR 0021: eight owned tables, not nine) — so the
+     * ownership predicate sits on the Recipe's Food row. Belt-and-braces rather than
+     * a reachable guard, as in [recipesUsingIngredient]: both callers resolve their
+     * ids through a scoped read first, so a foreign Recipe never reaches here.
+     */
+    fun ingredientsOf(recipeIds: Collection<Long>): Map<Long, List<RecipeIngredient>> {
+        if (recipeIds.isEmpty()) return emptyMap()
+        val rows = dsl.select(
+            RECIPE_INGREDIENT.RECIPE_ID,
+            RECIPE_INGREDIENT.INGREDIENT_FOOD_ID,
+            RECIPE_INGREDIENT.GRAMS,
+        )
+            .from(RECIPE_INGREDIENT)
+            .join(FOOD).on(FOOD.ID.eq(RECIPE_INGREDIENT.RECIPE_ID))
+            .where(RECIPE_INGREDIENT.RECIPE_ID.`in`(recipeIds.map { it.toInt() }))
+            .and(FOOD.USER_ID.eq(currentUser.ownerId))
+            .orderBy(RECIPE_INGREDIENT.ID)
+            .fetch()
+        val ingredientFoods = foods
+            .findByIds(rows.map { it.value2().toLong() }.distinct())
+            .associateBy { it.id }
+        return rows.groupBy({ it.value1().toLong() }) { row ->
+            val ingredient = ingredientFoods[row.value2().toLong()]
+                ?: error("ingredient food ${row.value2()} is missing")
+            RecipeIngredient(ingredient, row.value3())
+        }
     }
 
     /**

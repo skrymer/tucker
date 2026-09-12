@@ -1119,7 +1119,8 @@ null` now means two things that earn opposite messages — the same trap
       The browser layers render it for real.
 
 - **F15** — **Micronutrient Intake**: the vitamins and minerals a week's food supplied
-  (PRD [#277](https://github.com/skrymer/tucker/issues/277)). Design pass **done**, see
+  (**shipped**, all three slices; PRD
+  [#277](https://github.com/skrymer/tucker/issues/277)). See
   [ADR 0027](docs/adr/0027-micronutrients-are-borrowed-bounded-and-never-a-target.md)
   and the `Reference Food` / `Reference Intake` / `Micronutrient Intake` terms in
   `CONTEXT.md`. A section on `/review` over the trailing seven days, stated as a day's
@@ -1210,6 +1211,49 @@ null` now means two things that earn opposite messages — the same trap
     `CONTEXT.md` already states for protein; and the queue's heading names the state
     a User can change ("2 foods are not matched yet") rather than what Tucker cannot
     read.
+
+  Slice 3 ([#280](https://github.com/skrymer/tucker/issues/280)) — **Recipes
+  contribute** — ✅ done, **and with it F15**. A **Recipe** is never matched; it rolls
+  its micronutrients up from whichever of its ingredients are, each weighed as added
+  and re-expressed over the cooked weight (ADR 0019). This **amends
+  [ADR 0026](docs/adr/0026-an-intake-breakdown-divides-what-was-eaten-never-the-budget.md)**,
+  which the ADR now says in the place the original rule is stated.
+  - **One decomposition, three reads.** The three things the slice asks for — the
+    roll-up, a partly-matched Recipe covering *fractionally*, and an ingredient
+    reaching the queue — are the same fact: an **Entry** on a Recipe divides into the
+    ingredients that made it. `BorrowedFood.divide` is that primitive, and the nutrient
+    figures, the coverage share and the queue all read its output, so AC4 and AC5 are
+    consequences rather than special cases. The alternative — keeping the queue as the
+    **Intake Breakdown** filtered to the unmatched and bolting a second ingredient pass
+    beside it — would have been two attributions of one window kept in agreement by hand.
+  - **The queue stops deriving from the breakdown, and keeps its denominator.** Its
+    unit is now *a Food contributing calories to the window, directly or through a
+    Recipe*, which the breakdown structurally cannot express — an ingredient may have no
+    Entry at all. `totalCalories` is still the breakdown's, so a queue row and a slice
+    are shares of one thing; what differs is the attribution, and an API test asserts
+    both endpoints over one window so that deviation is executable rather than prose in
+    two ADRs.
+  - **An ingredient takes a *share* of the calories the Entry snapshotted**, never the
+    calories its grams would cost today. The shares sum to one, so a Recipe's Entry is
+    redistributed exactly; re-deriving them would let a Recipe recalibrated since it was
+    logged put coverage over 100%. Written as `calories * (cost / batch)` rather than
+    `calories * cost / batch`, which rounds a sole ingredient's whole share of its own
+    batch off 1.0 — measured, not feared.
+  - **The composition rides on `BorrowedFood`**, checked in both directions like the
+    reference join it sits beside: a Recipe joined to no composition throws
+    `MisjoinedBorrowException` rather than quietly reading as a Food that borrows
+    nothing. That also keeps `MicronutrientIntake.of` at five parameters, and there is no
+    second map to disagree with the first — the ingredient's own borrow hangs off the
+    line that names it. `RecipeRepository.ingredientsOf` reads a whole window's
+    compositions in one pass rather than one query per Recipe, scoped through the Recipe's Food row because
+    `recipe_ingredient` carries no `user_id` of its own (ADR 0021).
+  - **The card stops naming recipes as unreadable.** An unmatched ingredient is itself a
+    queue row, so an empty queue now means every ingredient is matched and every Recipe
+    counts in full — leaving an **Estimated Entry** as the only rest a tap can never
+    reach. The old sentence would have told a User their dinners were unreadable at the
+    moment they became readable.
+  - AC2 was already met and already named: `Food`'s own invariant refuses to match a
+    Recipe, and `FoodReferenceFoodApiTest` says so. No second test was added for it.
   - **Out of scope:** any LLM in this path (the deterministic-core rule stands; an
     analysis adapter is an *output* adapter and a separate decision), a fallback source,
     grading a Food on its micronutrients, a per-Food micronutrient screen, any other

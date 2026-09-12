@@ -10,8 +10,10 @@ import kotlin.test.assertFailsWith
  * Tucker can claim from it, how much of the window could contribute at all, and what
  * is left to match (ADR 0027).
  *
- * The queue is the **Intake Breakdown** filtered to the unmatched, so it shares that
- * ranking and that denominator rather than inventing a second pair.
+ * The window divides into what each Food contributed — a **Recipe** into the
+ * ingredients that made it — so the figures, the coverage share and the queue read
+ * one set of food. The denominator stays the **Intake Breakdown**'s, so a queue row
+ * and a breakdown slice are shares of one thing.
  */
 class MicronutrientIntakeTest {
 
@@ -230,23 +232,222 @@ class MicronutrientIntakeTest {
     }
 
     @Test
-    fun `a Recipe is never queued, because it is never matched`() {
-        val bolognese = recipe(id = 3, name = "Bolognese")
-        val entries = listOf(WeighedEntry.log(day, bolognese, grams = 300.0))
+    fun `a Recipe supplies its ingredients' nutrients, re-expressed over the cooked weight`() {
+        val mince = food(id = 1, name = "Beef mince", referenceFoodId = 42)
+        val passata = food(id = 2, name = "Passata", referenceFoodId = 43)
+        val lines = listOf(RecipeIngredient(mince, grams = 600.0), RecipeIngredient(passata, grams = 300.0))
+        // 900 g of ingredients cooked down to 600 — so the cooked weight this test is
+        // named for is not the ingredient total, and dividing by the wrong one shows.
+        val bolognese = Recipe(id = 3, name = "Bolognese", ingredients = lines, cookedWeightG = 600.0)
+        val entries = listOf(WeighedEntry.log(day, bolognese.asFood(), grams = 200.0))
 
-        val read = intake(entries, mapOf(3L to bolognese))
+        val read = intake(
+            entries,
+            referenceFoods = mapOf(
+                42L to referenceFood("Beef, mince, regular, raw", Micronutrient.IRON to 3.0, id = 42),
+                43L to referenceFood("Tomato, puree, canned", Micronutrient.IRON to 1.0, id = 43),
+            ),
+            recipes = listOf(bolognese),
+        )
 
         assertEquals(
-            emptyList(),
+            1.0,
+            read.rows.single { it.nutrient == Micronutrient.IRON }.amount,
+            "the batch holds 18 mg of iron in its 600 g of mince and 3 mg in its 300 g of " +
+                "passata, and the 600 g it cooked down to re-expresses that (ADR 0019) — so " +
+                "a 200 g serve is a third of the batch, 7 mg across the window, 1 mg a day",
+        )
+    }
+
+    @Test
+    fun `a partly matched Recipe supplies what its matched ingredients hold, not nothing`() {
+        val lines = listOf(
+            RecipeIngredient(food(id = 1, name = "Beef mince", referenceFoodId = 42), grams = 400.0),
+            RecipeIngredient(food(id = 2, name = "Red lentils", referenceFoodId = 43), grams = 200.0),
+            RecipeIngredient(food(id = 3, name = "Passata", referenceFoodId = 44), grams = 500.0),
+            RecipeIngredient(food(id = 4, name = "Olive oil"), grams = 100.0),
+            RecipeIngredient(food(id = 5, name = "Brown onion"), grams = 200.0),
+        )
+        val chilli = Recipe(id = 6, name = "Chilli", ingredients = lines, cookedWeightG = 1000.0)
+        val entries = listOf(WeighedEntry.log(day, chilli.asFood(), grams = 500.0))
+
+        val read = intake(
+            entries,
+            referenceFoods = mapOf(
+                42L to referenceFood("Beef, mince, regular, raw", Micronutrient.IRON to 4.0, id = 42),
+                43L to referenceFood("Lentil, red, dried", Micronutrient.IRON to 3.5, id = 43),
+                44L to referenceFood("Tomato, puree, canned", Micronutrient.IRON to 1.0, id = 44),
+            ),
+            recipes = listOf(chilli),
+        )
+
+        assertEquals(
+            2.0,
+            read.rows.single { it.nutrient == Micronutrient.IRON }.amount,
+            "half the batch was eaten, so the three matched ingredients put 8, 3.5 and " +
+                "2.5 mg of iron into the window — all-or-none would report zero and throw " +
+                "away something measured (ADR 0027)",
+        )
+    }
+
+    @Test
+    fun `a partly matched Recipe covers the share of its calories that came from matched ingredients`() {
+        val chicken = food(
+            id = 1,
+            name = "Chicken thigh",
+            referenceFoodId = 42,
+            nutrition = perHundredGrams(100.0),
+        )
+        val oil = food(
+            id = 2,
+            name = "Olive oil",
+            nutrition = perHundredGrams(900.0),
+        )
+        val lines = listOf(RecipeIngredient(chicken, grams = 300.0), RecipeIngredient(oil, grams = 100.0))
+        val traybake = Recipe(id = 3, name = "Traybake", ingredients = lines, cookedWeightG = 1000.0)
+        val entries = listOf(WeighedEntry.log(day, traybake.asFood(), grams = 500.0))
+
+        val read = intake(entries, referenceFoods = aBorrow, recipes = listOf(traybake))
+
+        assertEquals(
+            0.25,
+            read.coverage,
+            "the chicken is 300 of the batch's 1200 calories and the oil the rest, so a " +
+                "quarter of every serve can contribute — measured in calories, not in the " +
+                "three grams-in-four the same batch would report",
+        )
+    }
+
+    @Test
+    fun `an ingredient is queued on what it contributed, even with no Entry of its own`() {
+        val mince = food(id = 1, name = "Beef mince", nutrition = perHundredGrams(300.0))
+        val passata = food(id = 2, name = "Passata", nutrition = perHundredGrams(100.0))
+        val yoghurt = food(id = 3, name = "Greek yoghurt", nutrition = perHundredGrams(100.0))
+        val lines = listOf(RecipeIngredient(mince, grams = 300.0), RecipeIngredient(passata, grams = 300.0))
+        val chilli = Recipe(id = 4, name = "Chilli", ingredients = lines, cookedWeightG = 500.0)
+        val entries = listOf(
+            WeighedEntry.log(day, chilli.asFood(), grams = 250.0),
+            WeighedEntry.log(day, yoghurt, grams = 200.0),
+        )
+
+        val read = intake(entries, mapOf(3L to yoghurt), recipes = listOf(chilli))
+
+        assertEquals(
+            listOf(
+                UnmatchedFood(foodId = 1, name = "Beef mince", share = 0.5625),
+                UnmatchedFood(foodId = 3, name = "Greek yoghurt", share = 0.25),
+                UnmatchedFood(foodId = 2, name = "Passata", share = 0.1875),
+            ),
             read.unmatched,
-            "a Recipe rolls its micronutrients up from whichever ingredients are matched " +
-                "(CONTEXT.md), so offering it as something to match would be an unusable tap",
+            "the mince is three quarters of the chilli's 600 calories and the passata the " +
+                "rest, so both outrank or trail the yoghurt eaten on its own — a Food is " +
+                "queued on what it contributed, through a Recipe or directly (ADR 0027)",
+        )
+    }
+
+    @Test
+    fun `matching an ingredient raises both the coverage share and the nutrients it holds`() {
+        val oil = food(id = 2, name = "Olive oil", nutrition = perHundredGrams(900.0))
+        fun weekOfCurry(mince: Food): MicronutrientIntake {
+            val lines = listOf(RecipeIngredient(mince, grams = 300.0), RecipeIngredient(oil, grams = 100.0))
+            val curry = Recipe(id = 3, name = "Keema curry", ingredients = lines, cookedWeightG = 350.0)
+            return intake(
+                listOf(WeighedEntry.log(day, curry.asFood(), grams = 350.0)),
+                referenceFoods = mapOf(
+                    42L to referenceFood("Beef, mince, regular, raw", Micronutrient.IRON to 3.5, id = 42),
+                ),
+                recipes = listOf(curry),
+            )
+        }
+
+        val mince = food(id = 1, name = "Beef mince", nutrition = perHundredGrams(200.0))
+        val before = weekOfCurry(mince)
+        val after = weekOfCurry(mince.copy(referenceFoodId = 42))
+
+        assertEquals(
+            0.0 to 0.0,
+            before.coverage to before.rows.single { it.nutrient == Micronutrient.IRON }.amount,
+            "nothing in the dish is matched yet, so it covers nothing and holds nothing",
         )
         assertEquals(
-            0.0,
+            0.4 to 1.5,
+            after.coverage to after.rows.single { it.nutrient == Micronutrient.IRON }.amount,
+            "one tap on an ingredient the User never logged on its own earns the 600 of " +
+                "the curry's 1500 calories that came from it, and the 10.5 mg of iron in " +
+                "the 300 g of mince eaten with the batch (ADR 0027)",
+        )
+    }
+
+    @Test
+    fun `a Recipe recalibrated to cost nothing still covers the calories its Entry recorded`() {
+        val leaves = food(id = 1, name = "Spinach", referenceFoodId = 42, nutrition = perHundredGrams(0.0))
+        val lines = listOf(RecipeIngredient(leaves, grams = 1000.0))
+        val broth = Recipe(id = 2, name = "Green broth", ingredients = lines, cookedWeightG = 1000.0)
+        // The Entry snapshotted 300 calories and the Recipe was edited afterwards, so
+        // today's ingredients no longer account for them: the borrow is live, the
+        // Entry is not.
+        val entries = listOf(
+            WeighedEntry(id = null, loggedOn = day, foodId = 2, grams = 500.0, calories = 300.0, protein = 0.0),
+        )
+
+        val read = intake(entries, referenceFoods = aBorrow, recipes = listOf(broth))
+
+        assertEquals(
+            1.0,
             read.coverage,
-            "and it contributes nothing to coverage either, until a later slice makes it " +
-                "count fractionally, by how much of it came from matched ingredients",
+            "the one ingredient is matched, so all of the window can contribute — " +
+                "calories today's composition cannot account for still have to be " +
+                "shared out, or they sit in the denominator with nothing in the " +
+                "numerator and read as a rest the card blames on estimated meals",
+        )
+    }
+
+    @Test
+    fun `a Food eaten both on its own and inside a Recipe is one row carrying both`() {
+        val rice = food(id = 1, name = "Jasmine rice", nutrition = perHundredGrams(100.0))
+        val lines = listOf(RecipeIngredient(rice, grams = 300.0))
+        val curry = Recipe(id = 2, name = "Curry", ingredients = lines, cookedWeightG = 300.0)
+        val entries = listOf(
+            WeighedEntry.log(day, rice, grams = 100.0),
+            WeighedEntry.log(day, curry.asFood(), grams = 300.0),
+        )
+
+        val read = intake(entries, mapOf(1L to rice), recipes = listOf(curry))
+
+        assertEquals(
+            listOf(UnmatchedFood(foodId = 1, name = "Jasmine rice", share = 1.0)),
+            read.unmatched,
+            "100 calories loose and 300 inside the curry are one tap, not two — two " +
+                "rows would each understate what matching the rice actually earns, and " +
+                "ask the User to do the same thing twice",
+        )
+    }
+
+    @Test
+    fun `an Entry naming a Food the caller did not supply is refused, not quietly dropped`() {
+        val chicken = food(id = 1, name = "Chicken breast")
+        val entries = listOf(WeighedEntry.log(day, chicken, grams = 200.0))
+
+        assertFailsWith<NoSuchElementException> {
+            MicronutrientIntake.of(weekStart, day, entries, eaten = emptyMap(), references = null)
+        }
+    }
+
+    @Test
+    fun `a Recipe is never queued, because it is never matched — its ingredients are`() {
+        val mince = food(id = 1, name = "Beef mince")
+        val lines = listOf(RecipeIngredient(mince, grams = 900.0))
+        val bolognese = Recipe(id = 3, name = "Bolognese", ingredients = lines, cookedWeightG = 900.0)
+        val entries = listOf(WeighedEntry.log(day, bolognese.asFood(), grams = 300.0))
+
+        val read = intake(entries, recipes = listOf(bolognese))
+
+        assertEquals(
+            listOf(UnmatchedFood(foodId = 1, name = "Beef mince", share = 1.0)),
+            read.unmatched,
+            "a Recipe rolls its micronutrients up from whichever ingredients are matched " +
+                "(CONTEXT.md), so offering the dish itself would be an unusable tap — the " +
+                "tap that can be taken is on the mince inside it",
         )
     }
 
@@ -341,23 +542,36 @@ class MicronutrientIntakeTest {
     ) = Food.plain(id = id, name = name, barcode = null, nutrition = nutrition)
         .copy(referenceFoodId = referenceFoodId)
 
-    private fun recipe(id: Long, name: String) = Food(
-        id = id,
-        name = name,
-        kind = FoodKind.RECIPE,
-        barcode = null,
-        nutrition = Nutrition.fromMacros(proteinPer100g = 8.0, carbsPer100g = 12.0, fatPer100g = 5.0),
-        cookedWeightG = 900.0,
-    )
-
     private fun intake(
         entries: List<Entry>,
-        foods: Map<Long, Food>,
+        foods: Map<Long, Food> = emptyMap(),
         referenceFoods: Map<Long, ReferenceFood> = emptyMap(),
         // Null, not an empty map: absent means there was no body to resolve lines
         // for, which is the state `hasReferenceIntakes` exists to tell apart.
         references: Map<Micronutrient, ReferenceIntake>? = null,
-    ) = MicronutrientIntake.of(weekStart, day, entries, joined(foods, referenceFoods), references)
+        // Whole Recipes rather than a Food map beside a composition map: a Recipe
+        // already knows its own id and its own lines, and stating either twice is an
+        // agreement the test has to keep by hand.
+        recipes: List<Recipe> = emptyList(),
+    ) = MicronutrientIntake.of(
+        weekStart,
+        day,
+        entries,
+        joined(
+            foods + recipes.associate { it.id!! to it.asFood() },
+            referenceFoods,
+            recipes.associate { it.id!! to it.ingredients },
+        ),
+        references,
+    )
+
+    /** Nutrition stated by its calories, where the macros behind them are beside the point. */
+    private fun perHundredGrams(calories: Double) = Nutrition(
+        caloriesPer100g = calories,
+        proteinPer100g = 0.0,
+        carbsPer100g = null,
+        fatPer100g = null,
+    )
 
     /** Something for a matched Food to point at where the figures are beside the point. */
     private val aBorrow = cheddarLikeIron(0.0)
@@ -366,8 +580,26 @@ class MicronutrientIntakeTest {
     private fun cheddarLikeIron(iron: Double) =
         mapOf(42L to referenceFood("Chicken, breast", Micronutrient.IRON to iron, id = 42))
 
-    /** The Foods a window ate, each joined to what it borrows — what `of` reads. */
-    private fun joined(foods: Map<Long, Food>, referenceFoods: Map<Long, ReferenceFood>) =
-        foods.mapValues { (_, food) -> BorrowedFood(food, referenceFoods[food.referenceFoodId]) }
+    /**
+     * The Foods a window ate, each joined to what it borrows — what `of` reads. A
+     * Recipe is joined to the composition it rolls up from, each ingredient line
+     * carrying its own borrow, the way the controller assembles one.
+     */
+    private fun joined(
+        foods: Map<Long, Food>,
+        referenceFoods: Map<Long, ReferenceFood>,
+        compositions: Map<Long, List<RecipeIngredient>> = emptyMap(),
+    ) = foods.mapValues { (id, food) ->
+        BorrowedFood(
+            food,
+            referenceFoods[food.referenceFoodId],
+            compositions[id].orEmpty().map { line ->
+                BorrowedIngredient(
+                    BorrowedFood(line.ingredient, referenceFoods[line.ingredient.referenceFoodId]),
+                    line.grams,
+                )
+            },
+        )
+    }
 
 }
