@@ -63,6 +63,18 @@ and a Recipe's ingredients and cooked weight can be edited afterwards
 attributing a past Entry through today's ingredient list would report a meal that
 was never eaten. The chilli is also the thing the User actually ate.
 
+**Amended for micronutrients by
+[0027](0027-micronutrients-are-borrowed-bounded-and-never-a-target.md).** A
+**Micronutrient Intake** does roll a past Recipe Entry up through today's
+ingredients, and the rule above does not reach it — it protects a **snapshot**
+from being contradicted. An Entry snapshotted its calories, so re-deriving those
+would make the slices disagree with the day's logged total; a micronutrient was
+never snapshotted at all, so the choice there is not *recorded figure against
+today's recipe* but *today's recipe against nothing*. The breakdown itself is
+unchanged, and the two reads therefore disagree about a Recipe on purpose: a
+slice is the dish that was eaten, where a match-queue row is a tap that can be
+taken.
+
 **An Estimated Entry slices by its label**, flagged as an estimate, rather than
 collapsing into one bucket. Eating out is a diet item: for a User who eats out
 three times a week, a lumped "Estimated" wedge would hide their single biggest
@@ -100,7 +112,10 @@ of a round-trip.
   exists to prevent.
 - **Exploding a Recipe into its ingredients.** More actionable for shopping, and
   it would merge mince eaten in the chilli with mince eaten alone. Rejected: it
-  re-derives history from a mutable definition.
+  re-derives history from a mutable definition. (Still rejected *here*, and
+  adopted for the micronutrient read by
+  [0027](0027-micronutrients-are-borrowed-bounded-and-never-a-target.md) — see
+  the amendment above for why the same objection does not land there.)
 - **A single lumped "Estimated" slice.** Honest about precision, immune to the
   typo-splitting that free-text labels invite. Rejected on the eating-out case.
 

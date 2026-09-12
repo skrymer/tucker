@@ -110,8 +110,9 @@ data class MicronutrientIntake(
         /**
          * Read the window [from]..[to], both bounds inclusive, as a Micronutrient
          * Intake. [eaten] must hold every Food the [entries] reference, each joined to
-         * what it borrows — an Entry naming none is an **Estimated Entry**, which has
-         * no Food and so can never contribute or be queued. [references] is the set of
+         * what it borrows — and a **Recipe** joined to the composition it rolls up
+         * from, each ingredient carrying its own borrow. An Entry naming no Food is an
+         * **Estimated Entry**, which can never contribute or be queued. [references] is the set of
          * lines to read the result against, and is null when there is no body to
          * resolve them for — which is a different thing from a body with no band open.
          */
@@ -129,21 +130,20 @@ data class MicronutrientIntake(
             require(ChronoUnit.DAYS.between(from, to) == WINDOW_DAYS - 1L) {
                 "a Micronutrient Intake is read over the trailing $WINDOW_DAYS days, was $from..$to"
             }
-            // The queue is the breakdown filtered to the unmatched, so both share one
-            // ranking and one denominator rather than inventing a second pair.
+            // Read for its denominator and its logged-day count, not for its slices:
+            // the queue attributes a Recipe to the ingredients that made it where the
+            // breakdown attributes it to the dish (ADR 0027 amending ADR 0026). Sharing
+            // the denominator is what keeps a queue row and a slice shares of one thing.
             val breakdown = IntakeBreakdown.of(from, to, entries, eaten.mapValues { it.value.food.name })
+            // What the window ate, with every Recipe opened up into the ingredients
+            // that made it — so the nutrient figures, the coverage share and the queue
+            // read one set of food rather than three kept in agreement by hand.
+            //
             // Partitioned rather than filtered twice: what covers and what is left to
             // do are the two halves of one split, so a state added later has to be
             // given a home here rather than falling through both predicates unnoticed.
-            // `contributes` is the same property `rowsOf` reads, which is what keeps
-            // this read's numerator and denominator describing one set of food.
-            val (covered, rest) = breakdown.items
-                .mapNotNull { item -> eaten[item.foodId]?.let { item to it } }
-                .partition { (_, borrowed) -> borrowed.contributes }
-            // A Recipe is in neither half. It covers nothing until its ingredients roll
-            // up (issue #280), and queueing it would be offering a tap that cannot be
-            // taken — a Recipe is never matched.
-            val queued = rest.filter { (_, borrowed) -> borrowed.food.kind == FoodKind.FOOD }
+            val (covered, queued) = contributionsOf(entries, eaten)
+                .partition { it.borrowed.contributes }
             return MicronutrientIntake(
                 from = from,
                 to = to,
@@ -151,43 +151,79 @@ data class MicronutrientIntake(
                 loggedDays = breakdown.loggedDays,
                 // A window that ate nothing has nothing to cover; the alternative is a
                 // NaN on the wire.
-                coverage = breakdown.totalCalories
-                    .takeIf { it > 0 }
-                    ?.let { total -> covered.sumOf { (item, _) -> item.calories } / total }
-                    ?: 0.0,
+                coverage = shareOfWindow(covered.sumOf { it.calories }, breakdown.totalCalories),
                 // Not `references != null`: a body below the youngest band published
                 // resolves nothing, and telling that User to match more food is advice
                 // no amount of matching can satisfy.
                 hasReferenceIntakes = !references.isNullOrEmpty(),
-                rows = rowsOf(entries, eaten, references.orEmpty()),
-                // The id is non-null by construction: a slice with none names no Food,
-                // so `eaten[item.foodId]` above dropped it.
-                unmatched = queued.map { (item, _) ->
-                    UnmatchedFood(item.foodId!!, item.name, item.share)
-                },
+                rows = rowsOf(covered, references.orEmpty()),
+                unmatched = queueOf(queued, breakdown.totalCalories),
             )
         }
 
         /**
-         * A row per nutrient: the window's lower bound, and what it can be read as.
+         * Every Food that supplied the window, with each **Recipe** opened into the
+         * ingredients that made it — matched or not, because the partition above is
+         * what splits those. An **Estimated Entry** names no Food and supplies none.
          *
-         * Only a **Weighed Entry** whose Food carries a match can contribute, and it
-         * contributes by the **grams eaten** — never by its calories or protein, which
-         * would compound the inevitable disagreement between a package label and a
-         * generic food (ADR 0027).
+         * `getValue`, not a lookup that can miss: a Food absent from [eaten] is a
+         * caller that broke `of`'s contract, and quietly dropping it would return a
+         * plausible coverage figure and a short queue with nothing saying why.
          */
-        private fun rowsOf(
+        private fun contributionsOf(
             entries: List<Entry>,
             eaten: Map<Long, BorrowedFood>,
+        ): List<FoodContribution> = entries
+            .filterIsInstance<WeighedEntry>()
+            .flatMap { entry -> eaten.getValue(entry.foodId).divide(entry.grams, entry.calories) }
+
+        /**
+         * What is left to match, biggest bite first: one row per Food, carrying
+         * everything it contributed — eaten on its own, or as an ingredient of a
+         * **Recipe**, or both.
+         *
+         * Ranked against the window's own [totalCalories], the denominator the
+         * **Intake Breakdown** states, so a queue row and a breakdown slice are shares
+         * of one thing. The two disagree about *what* a Recipe's calories belong to,
+         * and deliberately: a slice is the dish that was eaten, where a queue row is a
+         * tap that can be taken (ADR 0027 amending ADR 0026).
+         */
+        private fun queueOf(queued: List<FoodContribution>, totalCalories: Double): List<UnmatchedFood> =
+            queued
+                // Keyed by id rather than by the Food: the same ingredient read through
+                // two Recipes is two equal objects, and one of them may also have been
+                // eaten on its own — that is one row to tap, not two.
+                // The id is non-null by construction: every contribution's Food came
+                // out of a repository read, so it is a persisted row.
+                .groupBy { it.borrowed.food.id!! }
+                .map { (foodId, parts) ->
+                    UnmatchedFood(
+                        foodId = foodId,
+                        name = parts.first().borrowed.food.name,
+                        share = shareOfWindow(parts.sumOf { it.calories }, totalCalories),
+                    )
+                }
+                .sortedByDescending { it.share }
+
+        /**
+         * [calories] as a share of the window's [totalCalories], 0–1. A window that ate
+         * nothing shares out nothing — the alternative is a NaN on the wire.
+         */
+        private fun shareOfWindow(calories: Double, totalCalories: Double): Double =
+            if (totalCalories > 0) calories / totalCalories else 0.0
+
+        /**
+         * A row per nutrient: the window's lower bound, and what it can be read as.
+         *
+         * [covered] contributes by the **grams eaten** — never by its calories or
+         * protein, which would compound the inevitable disagreement between a package
+         * label and a generic food (ADR 0027).
+         */
+        private fun rowsOf(
+            covered: List<FoodContribution>,
             references: Map<Micronutrient, ReferenceIntake>,
         ): List<MicronutrientRow> {
-            val borrowed = entries
-                .filterIsInstance<WeighedEntry>()
-                .mapNotNull { entry ->
-                    eaten[entry.foodId]
-                        ?.takeIf { it.contributes }
-                        ?.let { entry.grams to it.reference!!.micronutrients }
-                }
+            val borrowed = covered.map { it.grams to it.borrowed.reference!!.micronutrients }
             return Micronutrient.entries.map { nutrient ->
                 // Divided by the window's whole width rather than by the days that were
                 // logged: a day nothing was logged on still happened, and averaging it

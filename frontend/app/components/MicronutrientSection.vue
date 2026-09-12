@@ -80,10 +80,12 @@ const saysNothing = computed(() => reading.value.groups.length === 0)
 const hasQueue = computed(() => props.intake.unmatched.length > 0)
 
 /**
- * Whether any of the window went unread by something no tap can fix — an estimate
- * or a Recipe. The only case in which there is a rest to attribute: a week of
- * nothing but matched weighed food leaves none, and naming estimates and recipes
- * as its cause would invent one.
+ * Whether any of the window went unread by something no tap can fix — which, once
+ * the queue is empty, is an Estimated Entry and nothing else: a Recipe rolls up
+ * from whichever of its ingredients are matched, and an unmatched ingredient is
+ * itself a row in the queue (ADR 0027). The only case in which there is a rest to
+ * attribute: a week of nothing but matched weighed food leaves none, and naming
+ * estimated meals as its cause would invent one.
  *
  * Read off the rounded percentage rather than compared to 1, so the sentence agrees
  * with the figure printed beside it. Coverage sums its numerator over grouped Foods
@@ -151,11 +153,11 @@ const queueLabel = computed(() => {
            along with why no tap will move it — otherwise it reads as a chore
            undone (ADR 0027). Only where there *is* one: a week of nothing but
            matched weighed food leaves no rest, and attributing an absent
-           remainder to estimates and recipes is a confident wrong answer. -->
+           remainder to estimated meals is a confident wrong answer. -->
       <p v-if="!hasQueue" class="mt-2 text-sm text-muted">
         Nothing left to match.<template v-if="hasUnreadableRest">
-          The rest came from meals you estimated and from recipes, which have no
-          single food to borrow from.</template
+          The rest came from meals you estimated, which have no food to borrow
+          from.</template
         >
       </p>
 

@@ -29,6 +29,12 @@ data class Food(
         require(kind == FoodKind.RECIPE || cookedWeightG == null) {
             "cookedWeightG only applies to a RECIPE"
         }
+        // And a Recipe always has one: it is how a portion is sliced out of the batch
+        // (ADR 0019), so every reader needs it. Asked here rather than by each of them,
+        // or one impossible row answers with a different status per reader.
+        require(kind != FoodKind.RECIPE || cookedWeightG != null) {
+            "a RECIPE is sliced out of its cooked weight, so it must have one"
+        }
         // A Recipe's composition is already known, so its micronutrients roll up from
         // whichever ingredients are matched — which always beats matching the finished
         // dish to a generic prepared one (CONTEXT.md, ADR 0027).

@@ -1,16 +1,21 @@
 package com.tucker.api
 
 import com.tucker.domain.BorrowedFood
+import com.tucker.domain.BorrowedIngredient
+import com.tucker.domain.FoodKind
 import com.tucker.domain.IntakeLimitKind
 import com.tucker.domain.Micronutrient
 import com.tucker.domain.MicronutrientClaim
 import com.tucker.domain.MicronutrientIntake
 import com.tucker.domain.MicronutrientRow
+import com.tucker.domain.RecipeIngredient
+import com.tucker.domain.ReferenceFood
 import com.tucker.domain.UnmatchedFood
 import com.tucker.persistence.EntryRepository
 import com.tucker.persistence.FoodRepository
 import com.tucker.persistence.NutrientReferenceValueRepository
 import com.tucker.persistence.ProfileRepository
+import com.tucker.persistence.RecipeRepository
 import com.tucker.persistence.ReferenceFoodRepository
 import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.transaction.annotation.Transactional
@@ -84,6 +89,10 @@ data class MicronutrientIntakeResponse(
     val unmatched: List<UnmatchedFoodResponse>,
 )
 
+/** One ingredient line joined to what its Food borrows, if anything. */
+private fun RecipeIngredient.borrow(references: Map<Long, ReferenceFood>) =
+    BorrowedIngredient(BorrowedFood(ingredient, references[ingredient.referenceFoodId]), grams)
+
 private fun UnmatchedFood.toResponse() =
     UnmatchedFoodResponse(foodId = foodId, name = name, share = share)
 
@@ -121,6 +130,7 @@ private fun MicronutrientIntake.toResponse() = MicronutrientIntakeResponse(
 class MicronutrientIntakeController(
     private val entries: EntryRepository,
     private val foods: FoodRepository,
+    private val recipes: RecipeRepository,
     private val referenceFoods: ReferenceFoodRepository,
     private val referenceValues: NutrientReferenceValueRepository,
     private val profiles: ProfileRepository,
@@ -143,8 +153,15 @@ class MicronutrientIntakeController(
     ): MicronutrientIntakeResponse {
         val logged = entries.findBetween(from, to)
         val catalog = foods.foodsOf(logged)
-        val borrowed = referenceFoods.findByIds(catalog.values.mapNotNull { it.referenceFoodId }.toSet())
-        val eaten = catalog.mapValues { (_, food) -> BorrowedFood(food, borrowed[food.referenceFoodId]) }
+        // A Recipe is never matched — it rolls up from whichever of its ingredients
+        // are (ADR 0027) — so its composition is read alongside the catalog, and its
+        // ingredients' own borrows are resolved in the same pass as the catalog's.
+        val compositions = recipes.ingredientsOf(catalog.filterValues { it.kind == FoodKind.RECIPE }.keys)
+        val eatenFoods = catalog.values + compositions.values.flatten().map { it.ingredient }
+        val borrowed = referenceFoods.findByIds(eatenFoods.mapNotNull { it.referenceFoodId }.toSet())
+        val eaten = catalog.mapValues { (id, food) ->
+            BorrowedFood(food, borrowed[food.referenceFoodId], compositions[id].orEmpty().map { it.borrow(borrowed) })
+        }
         // Resolved once, at the window's END date, so a window spanning a birthday
         // has one answer rather than a different line per day (CONTEXT.md). A User
         // who has not set a Profile up has no body to read against, and every

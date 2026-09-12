@@ -268,8 +268,12 @@ micronutrient screen out of scope.
 
 The obvious objection is the tap count — a user with sixty Foods facing sixty taps
 does none of them. That is solved by **ordering, not automation**. The match queue
-is the **Intake Breakdown** filtered to the unmatched: same denominator, same
-ranking, already built ([0026](0026-an-intake-breakdown-divides-what-was-eaten-never-the-budget.md)).
+ranks a Food by what it contributed to the window — directly, or as an ingredient
+of a **Recipe** — against the **Intake Breakdown**'s denominator
+([0026](0026-an-intake-breakdown-divides-what-was-eaten-never-the-budget.md)).
+Same denominator, a different attribution: a slice is the dish that was eaten,
+where a queue row is a tap that can be taken, so an ingredient with no **Entry**
+of its own is still offered while the dish itself never is.
 Diets are repetitive, so five taps is most of a week — measured at 21% → 76%
 coverage on a plausible seven-day log. There is **one** entry point, the queue; a
 match step in Add-Food was considered and cut, because a newly-created Food that

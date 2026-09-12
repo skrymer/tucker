@@ -224,6 +224,16 @@ up through the Recipe's *current* ingredients is deliberate and is not the thing
 **Intake Breakdown** refuses: that rule protects a figure the Entry snapshotted, and
 a micronutrient was never snapshotted at all, so the choice is today's composition
 or nothing.
+What is left to match is ranked by **what a Food contributed to the window,
+directly or through a Recipe** — so an ingredient with no **Entry** of its own is
+still offered, on the calories it carried inside the dishes it was cooked into. A
+Recipe is never offered, because it is never matched. That ranking shares the
+**Intake Breakdown**'s denominator but not its attribution, and deliberately: a
+slice is the dish that was eaten, where a queue row is a tap that can be taken.
+A Food eaten both on its own and inside a dish is **one** row carrying both, so a
+single tap earns every dish it appears in — and an ingredient is the kind of raw
+whole food the database describes well, where a branded packaged food often has no
+generic worth pointing at.
 The missing share is **never scaled up to fill the gap**. It looks like a neutral
 estimate and it is a biased one — what goes unmatched is disproportionately
 restaurant and packaged food, which differs systematically in micronutrient density
@@ -332,7 +342,10 @@ day under budget and a day over it. Calories are the measure, because an
 One slice per Food, merged across every **Entry** in the window. A **Recipe** is
 one slice under its own name, never its ingredients — an Entry snapshots its
 calories and a Recipe's definition can be edited afterwards, so attributing a past
-Entry through today's ingredient list would report a meal that was never eaten. An
+Entry through today's ingredient list would report a meal that was never eaten.
+(A **Micronutrient Intake** does attribute one that way, and the rule above does
+not reach it: what it protects is a figure the Entry *snapshotted*, and a
+micronutrient was never snapshotted at all.) An
 Estimated Entry has no Food, so it slices by its label and is flagged as an
 estimate: eating out is a diet item like any other, and how much of the window was
 guessed is a separate question (**Daily Log**'s estimated calorie share) that a

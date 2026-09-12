@@ -173,6 +173,105 @@ class MicronutrientIntakeApiTest {
         logWeighed(cheese, grams = 1400.0)
     }
 
+    @Test
+    fun `editing a Recipe's ingredients moves the current window, because the borrow is live`() {
+        val cheese = createFood("Tasty cheese")
+        val rice = createFood("Jasmine rice")
+        match(cheese, referenceFoodFor("Tasty cheese"))
+        val bake = createRecipe(
+            "Cheesy bake",
+            cookedWeightG = 200.0,
+            lines = listOf(cheese to 100.0, rice to 100.0),
+        )
+        logWeighed(bake, grams = 200.0)
+
+        readWindow().andExpect {
+            jsonPath("$.coverage") { value(0.5) }
+            // The length matters as much as the row: the rice is the only thing left
+            // to match, and a spurious second row would be invisible without it.
+            jsonPath("$.unmatched.length()") { value(1) }
+            jsonPath("$.unmatched[0].share") { value(0.5) }
+        }
+
+        // An **Intake Breakdown** refuses exactly this (ADR 0026): re-deriving a past
+        // Entry's calories through today's ingredients would report a meal that was
+        // never eaten. It protects a figure the Entry *snapshotted* — and a
+        // micronutrient was never snapshotted at all, so the choice here is today's
+        // composition or nothing (ADR 0027).
+        updateRecipe(
+            bake,
+            "Cheesy bake",
+            cookedWeightG = 200.0,
+            lines = listOf(cheese to 300.0, rice to 100.0),
+        )
+
+        readWindow().andExpect {
+            // The Entry still cost the 200 calories it recorded — what moved is how
+            // much of it came from the cheese, which is three quarters now.
+            jsonPath("$.totalCalories") { value(200.0) }
+            jsonPath("$.coverage") { value(0.75) }
+            jsonPath("$.unmatched.length()") { value(1) }
+            jsonPath("$.unmatched[0].name") { value("Jasmine rice") }
+            jsonPath("$.unmatched[0].share") { value(0.25) }
+        }
+    }
+
+    @Test
+    fun `a Recipe is one slice of the Intake Breakdown and none of the match queue`() {
+        val cheese = createFood("Tasty cheese")
+        val rice = createFood("Jasmine rice")
+        match(cheese, referenceFoodFor("Tasty cheese"))
+        val bake = createRecipe(
+            "Cheesy bake",
+            cookedWeightG = 200.0,
+            lines = listOf(cheese to 100.0, rice to 100.0),
+        )
+        logWeighed(bake, grams = 200.0)
+
+        // The two reads disagree about a Recipe, and that is the deviation ADR 0027
+        // argues for rather than an inconsistency: a slice is the dish that was
+        // eaten, where a queue row is a tap that can be taken.
+        mockMvc.get("/api/intake-breakdown") {
+            param("from", "$weekStart")
+            param("to", "$day")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.items.length()") { value(1) }
+            jsonPath("$.items[0].name") { value("Cheesy bake") }
+        }
+
+        readWindow().andExpect {
+            jsonPath("$.unmatched.length()") { value(1) }
+            jsonPath("$.unmatched[0].name") { value("Jasmine rice") }
+            jsonPath("$.unmatched[0].foodId") { value(rice) }
+        }
+    }
+
+    private fun readWindow() = mockMvc.get("/api/micronutrient-intake") {
+        param("from", "$weekStart")
+        param("to", "$day")
+    }.andExpect { status { isOk() } }
+
+    private fun createRecipe(name: String, cookedWeightG: Double, lines: List<Pair<Long, Double>>): Long {
+        val body = mockMvc.post("/api/recipes") {
+            contentType = MediaType.APPLICATION_JSON
+            content = recipeBody(name, cookedWeightG, lines)
+        }.andExpect { status { isCreated() } }.andReturn().response.contentAsString
+        return objectMapper.readTree(body).get("id").asLong()
+    }
+
+    private fun updateRecipe(id: Long, name: String, cookedWeightG: Double, lines: List<Pair<Long, Double>>) {
+        mockMvc.put("/api/recipes/$id") {
+            contentType = MediaType.APPLICATION_JSON
+            content = recipeBody(name, cookedWeightG, lines)
+        }.andExpect { status { isOk() } }
+    }
+
+    private fun recipeBody(name: String, cookedWeightG: Double, lines: List<Pair<Long, Double>>): String {
+        val ingredients = lines.joinToString(",") { (foodId, grams) -> """{"foodId":$foodId,"grams":$grams}""" }
+        return """{"name":"$name","cookedWeightG":$cookedWeightG,"ingredients":[$ingredients]}"""
+    }
+
     private fun seedProfile(sex: String, birthDate: String) {
         mockMvc.put("/api/profile") {
             contentType = MediaType.APPLICATION_JSON
