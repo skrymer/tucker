@@ -51,6 +51,36 @@ export default withNuxt(
       ],
     },
   },
+  {
+    // A focused test is never something to commit: `.only` silently reduces the
+    // suite to itself while every runner still reports green, so the gate keeps
+    // passing over code nothing ran against. `.skip` is deliberately NOT banned
+    // — Playwright's `test.skip(condition, reason)` is a legitimate runtime
+    // guard, and e2e/intake-breakdown.spec.ts uses it to hold a touch test to
+    // the Mobile Chrome project.
+    name: 'tucker/no-focused-tests',
+    files: ['**/*.test.ts', '**/*.spec.ts'],
+    languageOptions: {
+      parser: tsParser,
+    },
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            "CallExpression[callee.object.name=/^(test|it|describe|suite)$/][callee.property.name='only']",
+          message:
+            'Do not commit a focused test (.only) — it shrinks the suite to itself while CI still reports green.',
+        },
+        {
+          selector:
+            "CallExpression[callee.object.property.name='describe'][callee.property.name='only']",
+          message:
+            'Do not commit a focused test (test.describe.only) — it shrinks the suite to itself while CI still reports green.',
+        },
+      ],
+    },
+  },
   // Prettier owns formatting; switch off ESLint rules that would conflict.
   eslintConfigPrettier,
 )
