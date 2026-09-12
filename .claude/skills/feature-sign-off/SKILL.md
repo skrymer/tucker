@@ -1,12 +1,12 @@
 ---
 name: feature-sign-off
-description: The pre-commit/push sign-off gate for a finished feature or fix on the Tucker repo. Runs six quality gates in order — /verify twice (a cheap reachability pass first, the full two-viewport walk-through last, on the code that ships), with /simplify (apply cleanups), /mutation-test (do the tests actually catch bugs), /code-review (hunt correctness bugs) and /check-adrs (honour recorded decisions) in between — fixing what each surfaces before moving on, and only then commits and pushes. Use when a change is functionally complete and the user says "sign off", "ready to commit/push", "wrap up this feature", "run the gates", or before opening a PR.
+description: The pre-commit/push sign-off gate for a finished feature or fix on the Tucker repo. Runs seven quality gates in order — /verify twice (a cheap reachability pass first, the full two-viewport walk-through last, on the code that ships), with /simplify (apply cleanups), /mutation-test (do the tests actually catch bugs), /code-review (hunt correctness bugs), /check-adrs (honour recorded decisions) and a resolutions pass (nothing approves its own fix) in between — fixing what each surfaces before moving on, and only then commits and pushes. Use when a change is functionally complete and the user says "sign off", "ready to commit/push", "wrap up this feature", "run the gates", or before opening a PR.
 ---
 
 # Feature sign-off
 
 The gate a change passes through once it's functionally complete, *before* it's
-committed and pushed. It bundles the six checks this repo relies on into one
+committed and pushed. It bundles the seven checks this repo relies on into one
 ordered pass so nothing ships unverified, untested, unreviewed, or out of step
 with the project's recorded decisions. Each gate is a real skill — this skill is
 the conductor that runs them in the right order and acts on what they find.
@@ -14,7 +14,7 @@ the conductor that runs them in the right order and acts on what they find.
 Run it from a clean-enough working tree where the feature's behaviour is done.
 It does **not** replace TDD during the build; it's the final sweep after.
 
-## The six gates, in order
+## The seven gates, in order
 
 Run them in this sequence — the order is deliberate. Address what each surfaces
 *before* starting the next.
@@ -92,7 +92,34 @@ does not load, and the real one runs last, on the code that ships.
    reviews them — in the measured run it caught a vacuous assertion in a test
    gate 2 had just added. Overlapping those two hides exactly that.
 
-5. **`/verify` (the walk-through) — does the shipping code actually work?** Both
+5. **The resolutions pass — does anything approve its own fix?** Gates 1, 3 and 4
+   put the *finding* in a fresh context. What each finding then **means** is
+   decided here — which are real, which the fix addresses, which are dismissed and
+   on what grounds — and nothing reads that. So the code that ships carries the
+   least-reviewed changes in the whole diff, the fixes, written last and under the
+   most time pressure; and a set of dismissals whose only reader wrote them.
+
+   Hand a **fresh agent** the findings from gates 1–4 with the resolution recorded
+   against each, the current diff, and the same context pack the other agents got.
+   It answers two questions and nothing else:
+
+   - **Does each fix address the finding it cites, without introducing something
+     new?** A plausible-but-wrong fix is the failure mode here, and it lands at
+     exactly the moment nobody is still looking.
+   - **Does each dismissal hold?** "By design per ADR 00xx", "pre-existing", "out
+     of scope" are checkable claims, and the agent has the ADRs to check them
+     against.
+
+   It reports; it does not edit. A rejected fix or dismissal goes back to the gate
+   that owns it, and that gate's re-run is what closes it — not a second opinion
+   from here.
+
+   **It is not a second `/code-review`.** It hunts nothing: given a finding and a
+   resolution it judges that one pair, which is a far narrower question than gate
+   3's and costs accordingly. If gates 1–4 produced no findings at all, SKIP it
+   and say so — there is nothing to adjudicate.
+
+6. **`/verify` (the walk-through) — does the shipping code actually work?** Both
    viewports, the golden path, and the **input probes** the skill now names — the
    values a real user's data comes in, at their boundaries, not just the empty and
    error states. This is CLAUDE.md's PR walk-through gate and it is the last thing
@@ -101,7 +128,7 @@ does not load, and the real one runs last, on the code that ships.
 
 ## Spending the agents well
 
-Gates 1, 3 and 4 fan out to subagents, and they are the sign-off's critical path —
+Gates 1, 3, 4 and 5 fan out to subagents, and they are the sign-off's critical path —
 everything else is minutes, they are tens of minutes. Two things cut that without
 losing a finding:
 
@@ -118,7 +145,7 @@ losing a finding:
 
 ## After the gates
 
-Only once all six are green (or every non-green item is fixed or explicitly
+Only once all seven are green (or every non-green item is fixed or explicitly
 justified):
 
 1. Run the fast suites once more if any gate changed code — backend
@@ -153,7 +180,8 @@ Emit a short sign-off summary the user (and PR reviewer) can replay:
 2. /mutation-test  ⚠️ 27/29 killed on 2 files → 1 gap closed (new test), 1 equivalent
 3. /code-review md ⚠️ 2 findings → both fixed (double-render, banner copy); 4 by-design
 4. /check-adrs     ⚠️ 1 FAIL → fixed CONTEXT.md (stale auto-deactivate wording)
-5. /verify (walk)  ✅ desktop + phone; probes: 0 kg ✅ · 300 kg ✅ · goal already reached ✅
+5. resolutions     ⚠️ 7 judged → 6 upheld; 1 dismissal rejected ("pre-existing" — the diff moved that line) → fixed
+6. /verify (walk)  ✅ desktop + phone; probes: 0 kg ✅ · 300 kg ✅ · goal already reached ✅
 
 Suites green (detekt/build, lint/test). Committed + pushed to <branch>.
 ```
@@ -172,7 +200,7 @@ Suites green (detekt/build, lint/test). Committed + pushed to <branch>.
   `/code-review` found this list's two worst defects — both user-facing, both past
   759 tests and a 100% mutation score — and it runs fourth by design: it reads the
   simplified code and the tests gate 2 added (mutation-test). What that says is not "move it", it
-  is that the gates before it must stop handing it the same class of bug. Gate 0/5's
+  is that the gates before it must stop handing it the same class of bug. Gate 0/6's
   input probes and `mutation-test`'s recorded blind spots are how.
 - **A green mutation score is not a green test suite.** `/mutation-test` reaches
   the Vitest and fast-JUnit layers only. Fixture defaults that production can't
@@ -184,6 +212,12 @@ Suites green (detekt/build, lint/test). Committed + pushed to <branch>.
   correctness hunt and *reports* it. The overlap only appears if you run
   `/code-review` high (it re-adds the cleanup angles). Keep gate 3 at medium so
   each kind of work happens exactly once.
+- **Nothing approves its own fix.** Gates 1, 3 and 4 already put the *finding* in
+  a fresh context; gate 5 does the same for the *resolution*, the half this
+  context still settled alone. Its position is as load-bearing as its presence:
+  after every fix has landed, and before the walk-through, so gate 6 is the last
+  word on code some reviewer has actually read. Borrowed from oh-my-claudecode's
+  rule that an approval pass may not run in the context that authored the work.
 - **Don't rubber-stamp.** A gate that found nothing is a result worth stating;
   a gate skipped is a gap. If you skip one (e.g. `/verify` SKIP for a docs-only
   change), say which and why.

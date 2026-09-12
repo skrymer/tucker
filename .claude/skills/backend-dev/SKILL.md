@@ -88,7 +88,7 @@ not restate them.
 ## Exit
 
 When the change works and is tested, run **`feature-sign-off`** (verify → simplify →
-mutation-test → code-review → check-adrs → verify) before committing. Gate 2 is where the tests
+mutation-test → code-review → check-adrs → resolutions → verify) before committing. Gate 2 is where the tests
 themselves get tested: `mutation-test` scopes pitest to the classes the change touched,
 and every survivor gets one of its four verdicts.
 

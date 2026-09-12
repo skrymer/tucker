@@ -17,7 +17,7 @@ This runs **twice**, and they are not the same run:
 - **Reachability (gate 0)** — one viewport, the golden path, no edge probes. It answers
   "does the surface load and do the thing at all", so nobody reviews code that does not
   run. Two minutes. A FAIL here stops the sign-off before an agent is spawned.
-- **The walk-through (gate 5)** — both viewports, the golden path *and* the input probes
+- **The walk-through (gate 6)** — both viewports, the golden path *and* the input probes
   below. It runs **last**, on the code that ships.
 
 The split exists because `/simplify` and `/code-review` change behaviour, every time —
