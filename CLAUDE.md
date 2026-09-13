@@ -1265,6 +1265,24 @@ null` now means two things that earn opposite messages — the same trap
     grading a Food on its micronutrients, a per-Food micronutrient screen, any other
     window, and pregnancy/lactation values.
 
+  Follow-up [#289](https://github.com/skrymer/tucker/issues/289) — **a bound over its
+  line reads as over it** — ✅ done. Decimals by magnitude is a *floor* for a pair,
+  not the precision: every published limit is a whole number, so a sodium average
+  anywhere in `[2000, 2001)` floored to the very figure it had crossed and the tile
+  drew `≥ 2000 mg` over `Suggested target 2000 mg` — true, and unreadable as the one
+  claim ADR 0027 calls sound at any coverage. An **Over the limit** pair now shares
+  the fewest decimals that show the margin, and where none within four does, the
+  operator carries it (`> 2000 mg`). `CONTEXT.md` states both.
+  - **The precision is a decision about the pair**, so the template stopped formatting
+    and `micronutrientTiles` hands it two rendered figures. Which claim is *strict* is
+    the only thing that varies — over the limit is `>`, reaching a reference is `>=` —
+    so `STATED` carries `strict` as data rather than a per-claim renderer, and the
+    backend's `MicronutrientIntakeTest` pins both boundaries from the other side.
+  - **The shared precision is measured up from the finer of the two figures.** Reading
+    it off the bound alone would restate a published 1.7 mg line as `1 mg` the day
+    NHMRC publishes a fractional limit — the one direction a published figure may not
+    move, and the direction ADR 0027 already forbids for the bound.
+
 - **F16** — Logging is its own destination (PRD
   [#294](https://github.com/skrymer/tucker/issues/294)). Design pass **done**, see
   [ADR 0028](docs/adr/0028-logging-is-its-own-destination.md) and the `Frequent Foods`

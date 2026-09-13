@@ -7,16 +7,16 @@ type Claim = Row['claim']
  * One nutrient Tucker can state a figure for: what the window supplied, and the
  * published line that figure was read against.
  *
- * Both figures share one [unit] because they describe the same nutrient — 0.4 µg
- * of iodine and 490 mg of sodium are the same number and nothing else.
+ * Both arrive as a User reads them, unit and all, because the precision they
+ * render at is a decision about the *pair* — so it cannot be taken one figure at
+ * a time in the template.
  */
 export interface MicronutrientTile {
   nutrient: string
   label: string
-  unit: string
-  amount: number
-  againstLabel: string
-  againstAmount: number
+  bound: string
+  lineLabel: string
+  line: string
 }
 
 /** The tiles for one claim, under the heading that says which claim it is. */
@@ -49,13 +49,18 @@ export function micronutrientReading(rows: Row[]): MicronutrientReading {
         .filter((row) => row.claim === group.claim)
         .map((row) => {
           const against = group.against(row)
+          const figures = formatMicronutrientFigures(
+            row.amount!,
+            against.amount,
+            row.unit,
+            group.strict,
+          )
           return {
             nutrient: row.nutrient,
             label: row.label,
-            unit: row.unit,
-            amount: row.amount!,
-            againstLabel: against.label,
-            againstAmount: against.amount,
+            bound: figures.bound,
+            lineLabel: against.label,
+            line: figures.line,
           }
         }),
     })).filter((group) => group.tiles.length > 0),
@@ -76,22 +81,33 @@ export function micronutrientReading(rows: Row[]): MicronutrientReading {
  * one sound at *any* coverage — more data can only push the figure further over —
  * so it is the finding a barely-matched week can still carry (ADR 0027).
  */
-const STATED: { claim: Claim; heading: string; against: (row: Row) => Line }[] =
-  [
-    {
-      claim: 'OVER_LIMIT',
-      heading: 'Over the limit',
-      against: (row) => ({
-        label: LIMIT_NAMES[row.limit!.kind],
-        amount: row.limit!.amount,
-      }),
-    },
-    {
-      claim: 'CLEARS_REFERENCE',
-      heading: 'Reached the reference',
-      against: (row) => ({ label: 'Reference', amount: row.recommended! }),
-    },
-  ]
+const STATED: {
+  claim: Claim
+  heading: string
+  against: (row: Row) => Line
+  /**
+   * Whether the backend reached this claim on `>` rather than on `>=`, which is
+   * what decides whether its two figures may draw level. `MicronutrientIntakeTest`
+   * pins both boundaries from the other side.
+   */
+  strict: boolean
+}[] = [
+  {
+    claim: 'OVER_LIMIT',
+    heading: 'Over the limit',
+    against: (row) => ({
+      label: LIMIT_NAMES[row.limit!.kind],
+      amount: row.limit!.amount,
+    }),
+    strict: true,
+  },
+  {
+    claim: 'CLEARS_REFERENCE',
+    heading: 'Reached the reference',
+    against: (row) => ({ label: 'Reference', amount: row.recommended! }),
+    strict: false,
+  },
+]
 
 /**
  * Named for the figure each line actually is. Sodium's is a Suggested Dietary

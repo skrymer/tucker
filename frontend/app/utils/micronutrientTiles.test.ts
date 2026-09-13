@@ -47,10 +47,9 @@ describe('micronutrientReading', () => {
       {
         nutrient: 'SODIUM',
         label: 'Sodium',
-        unit: 'mg',
-        amount: 2430,
-        againstLabel: 'Suggested target',
-        againstAmount: 2000,
+        bound: '≥ 2430 mg',
+        lineLabel: 'Suggested target',
+        line: '2000 mg',
       },
     ])
   })
@@ -70,8 +69,8 @@ describe('micronutrientReading', () => {
     // The other eighteen nutrients read against an Upper Level, so naming it is
     // the ordinary case rather than sodium's exception.
     expect(reading.groups[0]?.tiles[0]).toMatchObject({
-      againstLabel: 'Upper Level',
-      againstAmount: 40,
+      lineLabel: 'Upper Level',
+      line: '40 mg',
     })
   })
 
@@ -95,13 +94,53 @@ describe('micronutrientReading', () => {
           {
             nutrient: 'IRON',
             label: 'Iron',
-            unit: 'mg',
-            amount: 21.4,
-            againstLabel: 'Reference',
-            againstAmount: 18,
+            bound: '≥ 21 mg',
+            lineLabel: 'Reference',
+            line: '18 mg',
           },
         ],
       },
     ])
+  })
+
+  it('draws an over-the-limit tile a bound that reads above its line', () => {
+    const reading = micronutrientReading([
+      micronutrientRow({
+        nutrient: 'SODIUM',
+        label: 'Sodium',
+        unit: 'mg',
+        amount: 2000.4,
+        recommended: null,
+        limit: { amount: 2000, kind: 'SUGGESTED_DIETARY_TARGET' },
+        claim: 'OVER_LIMIT',
+      }),
+    ])
+
+    // The paired rule is this claim's, and only this claim's.
+    expect(reading.groups[0]?.tiles[0]).toMatchObject({
+      bound: '≥ 2000.4 mg',
+      line: '2000.0 mg',
+    })
+  })
+
+  it('leaves a nutrient that just cleared its reference reading as a tie', () => {
+    const reading = micronutrientReading([
+      micronutrientRow({
+        nutrient: 'THIAMIN',
+        label: 'Thiamin',
+        unit: 'mg',
+        amount: 1.24,
+        recommended: 1.2,
+        limit: null,
+        claim: 'CLEARS_REFERENCE',
+      }),
+    ])
+
+    // Reaching a reference is not strict, so the pair is left level. Spending a
+    // decimal to separate them would say the week did something it did not.
+    expect(reading.groups[0]?.tiles[0]).toMatchObject({
+      bound: '≥ 1.2 mg',
+      line: '1.2 mg',
+    })
   })
 })
