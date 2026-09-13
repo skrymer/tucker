@@ -249,6 +249,13 @@ shortfall** — the unaccounted share could easily hold the rest — so the gap 
 as unknown and never as a deficit, and never as advice about what to eat. Two
 figures and a consequence; the user draws the conclusion, exactly as with a
 **Check**.
+A bound over its line has to **read** as over it. Both figures are floored, since a
+bound may never round up to something the food does not support, so a whole-number
+published line and a bound a whisker above it can land on the same digits — and
+`≥ 2000 mg` above `Suggested target 2000 mg` states reaching the line rather than
+crossing it. The pair is therefore spent whatever decimals it takes to show the
+margin, and where no readable precision shows one the operator carries it instead:
+`> 2000 mg`, true of every amount the claim admits.
 That leaves exactly three things Tucker can say about a nutrient, and the screen is
 grouped by them: it is over the line not to cross, it has reached its reference, or
 there is not enough matched to say. Only the first two are drawn as figures. The

@@ -175,11 +175,10 @@ const queueLabel = computed(() => {
           >
             <span class="block text-xs text-muted">{{ row.label }}</span>
             <span class="block font-semibold tabular-nums text-default">
-              ≥ {{ formatMicronutrientAmount(row.amount, row.unit) }}
+              {{ row.bound }}
             </span>
             <span class="block text-xs text-dimmed">
-              {{ row.againstLabel }}
-              {{ formatMicronutrientAmount(row.againstAmount, row.unit) }}
+              {{ row.lineLabel }} {{ row.line }}
             </span>
           </li>
         </ul>
