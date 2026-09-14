@@ -27,12 +27,28 @@ data class WeightTrend(val points: List<Point>) {
     fun latest(): Point? = points.lastOrNull()
 
     /**
-     * The latest trend point on or before [date], if any. With sparse weighing it can
-     * be far older than [date], and what it measures is only readable against the day
-     * it was actually taken — so it stays private, and callers ask for a [Change].
+     * Where the trend stands on [date]: the latest point on or before it, carried
+     * forward, because the trend moves only when the scale does. Null before the
+     * first reading.
+     *
+     * With sparse weighing the point can be far older than [date], so what it
+     * measures is only readable against the day it was actually taken — a caller
+     * asking "how far has it moved" wants a [Change] instead, whose both ends are
+     * days a reading was taken.
      */
-    private fun asOf(date: LocalDate): Point? =
+    fun standingOn(date: LocalDate): Point? =
         points.lastOrNull { !it.date.isAfter(date) }
+
+    /**
+     * Whether enough of the scale's evidence has accumulated to read the trend as a
+     * shape rather than as a handful of points — [MIN_HISTORY_DAYS] days carrying a
+     * Weight Measurement.
+     *
+     * Counted in readings, where [observedRateKgPerWeek] withholds on the *span* it
+     * would divide by. One threshold, two questions: a rate needs days to divide
+     * across, a drawn trend needs points to be a line.
+     */
+    fun isEstablished(): Boolean = points.size >= MIN_HISTORY_DAYS
 
     /**
      * How far the trend has moved since the latest point on or before [from], across
@@ -41,8 +57,8 @@ data class WeightTrend(val points: List<Point>) {
      * over days holding no evidence. Null when no point reaches back that far.
      */
     fun changeSince(from: LocalDate): Change? {
-        val anchor = asOf(from) ?: return null
-        // `asOf` found a point, so the list is non-empty and this is `latest()`'s
+        val anchor = standingOn(from) ?: return null
+        // A point was found, so the list is non-empty and this is `latest()`'s
         // far end — read directly rather than through a null check nothing can fail.
         val latest = points.last()
         return Change(
@@ -74,7 +90,7 @@ data class WeightTrend(val points: List<Point>) {
             return null
         }
         val currentTrendKg = points.last().trendKg
-        val anchor = asOf(today.minusDays(OBSERVED_WINDOW_DAYS)) ?: earliest
+        val anchor = standingOn(today.minusDays(OBSERVED_WINDOW_DAYS)) ?: earliest
         // Divides to [today], not to the anchor's far end as [changeSince] does. ADR 0018
         // rules that asymmetry out of scope here: this feeds Drift Status and goal pace,
         // which are read as "where the trend stands now", not a correction to an intake window.
@@ -89,7 +105,11 @@ data class WeightTrend(val points: List<Point>) {
         /** The trailing window the observed rate is measured over. */
         const val OBSERVED_WINDOW_DAYS = 28L
 
-        /** The observed rate is withheld until the trend spans at least this long. */
+        /**
+         * The least history a trend may be read from: the observed rate is withheld
+         * until the trend *spans* this long, and a drawn trend until this many days
+         * carry a reading (see [isEstablished]).
+         */
         const val MIN_HISTORY_DAYS = 14L
 
         /** Build the trend from measurements given in any order. */

@@ -164,7 +164,53 @@ reason a chart that did nothing on hover read as broken. Three things about it:
 This does **not** breach "spend boldness only on a ring" — it _is_ a ring, and it
 lives on `/review`, where neither the Day Ring nor the Goal Ring's calorie arc
 appears. The Goal Progress hero and the breakdown ring are the page's two loud
-things, exactly as Today's two are the Day Ring and the Goal ring.
+things, exactly as Today's two are the Day Ring and the Goal ring — and the
+Weight Timeline below is deliberately not a third, being a restrained 200px card
+in two subordinate strokes.
+
+---
+
+### The Weight Timeline — a line and the readings under it
+
+Tucker's second chart, and the one place it draws over **time** (`/review`,
+ADR 0029). Two series on one kilogram scale, and the whole point is that they are
+not the same kind of claim: the **Trend Weight** glides, the **Weight
+Measurements** scatter beneath it.
+
+| Series              | Token              | Mark                |
+| ------------------- | ------------------ | ------------------- |
+| Trend Weight        | `--ui-primary`     | 2px line, monotone  |
+| Weight Measurements | `--ui-text-dimmed` | 5px points, no line |
+
+**The key is load-bearing, for the same reason the ring's legend is.** Measured
+on the light card (`#ffffff`): the trend line is **2.38:1** and the points
+**2.55:1** — both under the 3:1 the categorical palette uses to declare a legend
+mandatory. (Dark clears it: 6.78:1 and 3.86:1.) The two strokes are therefore
+named in words beneath the chart — _Trend_ and _Weigh-ins_ — and the swatches are
+drawn from the same two constants the chart is, so a swatch cannot come to mean a
+line it no longer matches. The colours stay: the trend is the brand green because
+it is the figure Tucker computes, and a point darker than the line it explains
+would invert the hierarchy.
+
+**The readout stays decorative, as the ring's does.** It is an `<output>` — the
+result of asking, not a line of prose — but carries `aria-live="off"`: the chart
+above it is `aria-hidden`, so nothing but a pointer ever reaches it, and every
+line it can produce is in the visually-hidden list below, which is the surface
+the chart delegates to. Announcing each day a drag passes over would be chatter
+nobody asked for. It is sticky for the reason the ring's is — a tap has no hover
+to leave — and nothing on the card is reachable _only_ by pointing.
+
+**unovis is themed from a class, and `:root` is the trap.** It switches palettes
+on `html[data-theme="dark"]`, which Tucker's `html.dark` does not match, so its
+axis and crosshair variables are overridden from `--ui-*` tokens that already
+follow the theme. Those overrides must sit on the chart's own class, not on
+`:root`: unovis publishes its light defaults at `:root` at runtime — an emotion
+`<style>` appended to `<head>` when the chart chunk evaluates, after the static
+stylesheet — and two `:root` declarations of a custom property are settled by
+order, so the later one wins. A class wins regardless of order, because a custom
+property inherits from the nearest declaring ancestor and the chart is inside the
+class. `.intake-ring` above has the same shape for the same reason.
+`app/utils/weightTimeline.test.ts` fails on a `--vis-*` declaration at `:root`.
 
 ---
 

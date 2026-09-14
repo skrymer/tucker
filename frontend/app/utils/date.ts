@@ -17,12 +17,15 @@ export function localToday(): string {
  * non-UTC runtime/test timezone can't shift the day off the stored ISO date.
  */
 export function formatDateFromISO(iso: string): string {
-  const [y, m, d] = isoParts(iso)
-  return new Date(y, m - 1, d).toLocaleDateString('en-GB', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  })
+  return formatISO(iso, { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+/**
+ * Format an ISO `yyyy-mm-dd` date as e.g. `3 Jun`, for an axis tick where the
+ * year is the same on every one of them and only takes up room.
+ */
+export function formatDayMonthFromISO(iso: string): string {
+  return formatISO(iso, { day: 'numeric', month: 'short' })
 }
 
 /**
@@ -80,6 +83,12 @@ export function daysInWindow(from: string, to: string): number {
 }
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000
+
+/** The one place an ISO day is turned into words, so the locale is chosen once. */
+function formatISO(iso: string, options: Intl.DateTimeFormatOptions): string {
+  const [y, m, d] = isoParts(iso)
+  return new Date(y, m - 1, d).toLocaleDateString('en-GB', options)
+}
 
 function isoParts(iso: string): [number, number, number] {
   const [y, m, d] = iso.split('-').map(Number)

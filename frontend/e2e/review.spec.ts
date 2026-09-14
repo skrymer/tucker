@@ -3,6 +3,7 @@ import {
   mockIntakeBreakdown,
   mockMicronutrientIntake,
   mockNoActiveGoal,
+  mockWeightTimeline,
   mockReviewHistory,
   mockReviewHistoryError,
 } from './support/mock-api'
@@ -13,6 +14,7 @@ test('shows a retryable error instead of an empty ledger when the review history
   goto,
 }) => {
   await mockNoActiveGoal(page)
+  await mockWeightTimeline(page)
   await mockIntakeBreakdown(page)
   await mockMicronutrientIntake(page)
   await mockReviewHistoryError(page)
@@ -33,6 +35,7 @@ test('a mixed history keeps its calorie columns and em-dashes the weeks without 
   goto,
 }) => {
   await mockNoActiveGoal(page)
+  await mockWeightTimeline(page)
   await mockIntakeBreakdown(page)
   await mockMicronutrientIntake(page)
   await mockReviewHistory(page, [
@@ -56,6 +59,7 @@ test('a history with no targets at all is a dated trend, not four empty columns'
   goto,
 }) => {
   await mockNoActiveGoal(page)
+  await mockWeightTimeline(page)
   await mockIntakeBreakdown(page)
   await mockMicronutrientIntake(page)
   await mockReviewHistory(page, [

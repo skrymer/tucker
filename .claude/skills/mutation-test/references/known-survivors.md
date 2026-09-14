@@ -1020,6 +1020,35 @@ block is the same caching wall, not an unasserted DTO field.
 Data-class accessors, the category `domain` and "What the score still cannot ask for"
 already settle.
 
+### Weight Timeline, frontend — 60 of 63, then 100% on the two files that owed tests
+
+Swept scoped to the F17 slice-1 frontend files. Three survivors, all real gaps, all
+closed and re-swept clean: `weightTimelineSeries`' `at` and `kgTick` accessors (only
+ever asserted through the chart's props, which is the *component's* seam, not the
+util's) and `useWindowedFetch`'s `{ mode: 'latest' }` — that last one because the
+supersede test asserted only *which answer wins*, which the stale-run guard delivers
+without the abort. The mutant `{ mode: "" }` keeps the guard and loses the abort, so
+the missing assertion was the superseded run's `signal`.
+
+The 109 `NoCoverage` mutants in the same run are the `.vue` and page files, which
+Stryker attributes to no test even though their component tests import them directly.
+Hand-mutation settles it, per this file's standing rule: the scatter's `y` swapped to
+the trend's, the crosshair handler made a no-op, and `SectionTabs`' `role="group"`
+removed each fail the component tests. Tooling blind spot, not a gap.
+
+### Weight Timeline — 63 of 68, and the one new report is a `MEMORY_ERROR`
+
+Swept scoped to the F17 slice-1 classes (`WeightTimeline`, `WeightTrend`,
+`WeightTimelineController` and its DTOs). Four of the five non-killed are the
+`WeightTrend` entries already recorded above — the stdlib overflow guards and the
+body Kotlin inlines from `Iterable.count`, none of which the slice moved.
+
+The fifth is new and is **not a survivor**: `WeightTimeline$Companion.of$lambda$2`
+is the `takeWhile { !it.isAfter(to) }` that bounds the day sequence, and
+`BooleanTrueReturnVals` makes it never stop — `generateSequence` then runs until the
+JVM dies, so pitest reports `MEMORY_ERROR` rather than `SURVIVED`. That is the
+memory-shaped version of a timeout verdict: the mutant is detected, loudly.
+
 ### Noise removed at the source
 
 Four `getLog()` companion accessors (`MartijndwarsWebPushSender`, `RecordingWebPushSender`,

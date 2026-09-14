@@ -559,6 +559,27 @@ class CrossUserIsolationTest {
     }
 
     @Test
+    fun `a Weight Timeline is drawn from its own User's readings alone`() {
+        // Alice has been weighing in a fortnight longer than Bob and weighs a great
+        // deal less, so her readings would both start his window earlier — it is cut
+        // to where the readings begin — and pull every trend figure off his body.
+        (0..27).forEach { back -> weighIn(alice, day.minusDays(back.toLong()), weightKg = aliceKg) }
+        (0..13).forEach { back -> weighIn(bob, day.minusDays(back.toLong()), weightKg = bobKg) }
+
+        mockMvc.get("/api/weight-timeline") {
+            header(ACCESS_ASSERTION_HEADER, bob)
+            param("from", "${day.minusDays(27)}")
+            param("to", "$day")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.from") { value("${day.minusDays(13)}") }
+            jsonPath("$.days.length()") { value(14) }
+            jsonPath("$.days[0].weightKg") { value(bobKg) }
+            jsonPath("$.days[13].trendKg") { value(bobKg) }
+        }
+    }
+
+    @Test
     fun `a User with no Profile of their own has none, whoever else has one`() {
         completeProfile(alice)
 

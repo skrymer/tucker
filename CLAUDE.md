@@ -1498,6 +1498,92 @@ null` now means two things that earn opposite messages — the same trap
   [#322](https://github.com/skrymer/tucker/issues/322) the intake half,
   [#323](https://github.com/skrymer/tucker/issues/323) the planned trajectory and
   the 2 kg domain clamp.
+  Slice 1 ([#321](https://github.com/skrymer/tucker/issues/321)) — **the weight half,
+  end-to-end** — ✅ done. `GET /api/weight-timeline?from=&to=` returns the per-day
+  series and a `WeightTimeline` domain module owns the rules, following
+  `IntakeBreakdown`, `MicronutrientIntake` and `FrequentFoods`; the prototype is
+  deleted. It serves both **Calorie Tracking** settings identically, which is why it
+  went first — a weight-only User has their whole feature already.
+  - **Withheld is a 404, and the section is then simply absent** — the idiom
+    **Goal Progress** already uses, so `useOptionalFetch` renders nothing and reports
+    no error. What the response carries is the window it _drew_, not the one it was
+    asked for: a window reaching past the User's first reading is cut to where the
+    readings start, so `from` moves. No caption states that, and does not need to —
+    unlike a donut, the chart has a **time axis**, which is where a 90-day window cut
+    to forty days says so. A window that closes *before* the readings begin is withheld
+    too: a device whose clock ran fast stamps every reading after `to`, and cutting the
+    start forward regardless would return a timeline beginning after it ends.
+  - **The trend is carried forward across a day nobody weighed in on**, because the
+    trend moves only when the scale does; the reading is an explicit `null` and unovis
+    drops a point with a missing value, which is what keeps that day off the chart
+    rather than on the floor. `WeightTrend`'s as-of lookup was private, on the
+    argument that a stale point "is only readable against the day it was actually
+    taken" — which is the caveat this chart is *built* around, so the timeline is the
+    caller that legitimates the seam rather than a reason to copy it. It is public as
+    `standingOn`, beside a named `isEstablished` that carries the withholding rule.
+    That threshold is **one number answering two questions**, not one rule: a drawn
+    trend needs fourteen days *carrying a reading*, the observed pace needs the trend
+    to *span* fourteen days, which is what it divides by. ADR 0029 and `CONTEXT.md`
+    say so now; they claimed one rule, and the code was the honest half.
+  - **`@unovis/vue` direct is not a cost, measured**: `/review`'s chart chunk went
+    233.1 KB → 230.9 KB gzip (−2.1 KB) and the reported total was unchanged. The
+    chunk already carried unovis through `vue-chrts`' `DonutChart`, so the line,
+    scatter, axes and crosshair arrived for less than nothing.
+  - **`VisCrosshair` declares no props**, so every binding reaches it through `attrs`
+    in the casing the template wrote — and a hyphenated key is one its config silently
+    ignores. `vue/attribute-hyphenation` rewrote `:onCrosshairMove` on a format pass
+    and the readout stopped working with the whole Vitest suite green, because the
+    component test's own stub camelizes what it records. It is bound through a
+    `v-bind` object now, which no formatter can rewrite, and the **browser** layer is
+    what pins it: the e2e goes red on the hyphenated form.
+  - **No `VisTooltip` at all.** `onCrosshairMove` reports the nearest datum directly,
+    so the readout is fed without a tooltip box to make invisible in `main.css` — the
+    thing F14 had to do for the ring. `duration: 0` rides along on both the container
+    _and_ the crosshair: a pointer move is a render the crosshair drives itself, and
+    that one reads its own config rather than the cascading one, so without it the
+    crosshair sits at 6% opacity whenever the tab is not the focused window.
+  - **The readout is held as a date and looked up again**, so a window that no longer
+    draws that day drops it instead of naming a day the chart has left behind — which
+    is what `IntakeBreakdownSection` does by looking its slice up, and what storing
+    the datum quietly stopped doing.
+  - **The chart's theming is scoped to a class, and `:root` is the trap.** unovis
+    switches palettes on `html[data-theme="dark"]`, which Tucker's `html.dark` does
+    not match, so its axis and crosshair variables are overridden from `--ui-*`
+    tokens that already follow the theme. Hoisting that to `:root` — the obvious
+    tidy-up, since the mismatch is a fact about every chart — makes the whole block
+    **dead**: unovis publishes its own defaults at `:root` at runtime, appending an
+    emotion `<style>` after the static sheet is parsed, and two `:root` declarations
+    of one custom property are settled by order. On a class they win whatever the
+    order — not by outranking `:root`, whose specificity a class merely matches, but
+    because a custom property inherits from the *nearest* declaring ancestor, which
+    is why `.intake-ring` never had the problem.
+    `weightTimeline.test.ts` now fails on a `--vis-*` declaration at `:root` as well
+    as on a missing block.
+  - **Neither stroke is identified by colour alone.** Measured on the light card, the
+    trend line is 2.38:1 and the points 2.55:1 — under the 3:1 that made the Intake
+    Breakdown's legend load-bearing — so the two are named in words beneath the chart,
+    drawn from the same constants the chart is handed. The readout carries
+    `aria-live="off"`, decorative like the ring's: the chart is `aria-hidden`, so only
+    a pointer ever reaches it, and every line it can produce is in the list below.
+    Both recorded in `DESIGN.md`.
+  - **A day is read out only while the crosshair is marking it.** unovis reports the
+    nearest datum even when the crosshair is *hidden* — the pointer being outside the
+    plotted range, which the axis strip along the bottom of the card is — and says so
+    by passing no position. Taking the datum alone named a day nothing on the chart was
+    pointing at, most easily on a phone, where that strip is a fat target.
+  - **Reading the endpoint advances nothing** — no due review, no last-seen stamp —
+    and the test says so with a `/api/summary` read straight afterwards that _does_
+    both, so the absence is a fact about the endpoint rather than about the fixture.
+  - **A one-shot 500 is not a failure the client shows.** ofetch retries a failed GET
+    of its own accord, so the retry e2e holds the refusal until told otherwise; a
+    single refusal is answered by a retry nobody asked for and the error state never
+    appears.
+  - **Two extractions came out of it, both second-consumer** (ADR 0004):
+    `useWindowedFetch` — a read whose question is a selection the User changes, which
+    the **Intake Breakdown** had been doing by hand in the same file — and
+    `SectionTabs`, the pill switcher and the Reka aria note both `/review` sections
+    were carrying a copy of.
+
   **Out of scope:** any window but 28 or 90 days, inferring a relationship (no
   scatter, no regression, no fitted maintenance line), a rolling intake average, a
   horizontal Goal target line, stacked panes, the trajectory when tracking is on,

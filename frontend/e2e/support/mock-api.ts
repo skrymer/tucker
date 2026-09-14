@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test'
+import type { Page, Route } from '@playwright/test'
 import { micronutrientIntake } from '../../test/micronutrient-fixtures'
 import { weighedEntry } from '../../test/entry-fixtures'
 
@@ -60,24 +60,36 @@ export async function mockIntakeBreakdown(
 }
 
 /**
- * Stub `GET /api/intake-breakdown` per window, recording every window asked for.
- * The returned array is appended to as requests arrive.
+ * Record every window asked for at `pattern` and let `respond` answer each. The
+ * returned array is appended to as requests arrive — so a spec can assert which
+ * windows were requested, which is the one thing a stubbed payload cannot say.
  */
-export async function mockIntakeBreakdownByWindow(
+export async function recordWindows(
   page: Page,
-  answer: (from: string, to: string) => Json,
+  pattern: string,
+  respond: (from: string, to: string, route: Route) => unknown,
 ): Promise<{ from: string; to: string }[]> {
   const asked: { from: string; to: string }[] = []
-  await page.route('**/api/intake-breakdown**', (route) => {
+  await page.route(pattern, (route) => {
     const params = new URL(route.request().url()).searchParams
     const from = params.get('from') ?? ''
     const to = params.get('to') ?? ''
     asked.push({ from, to })
-    // The window is echoed back over whatever the payload carried, as the real
-    // endpoint does: a breakdown states the bounds it was asked about.
-    return route.fulfill({ json: { ...answer(from, to), from, to } })
+    return respond(from, to, route)
   })
   return asked
+}
+
+/** Stub `GET /api/intake-breakdown` per window, recording every window asked for. */
+export async function mockIntakeBreakdownByWindow(
+  page: Page,
+  answer: (from: string, to: string) => Json,
+): Promise<{ from: string; to: string }[]> {
+  return recordWindows(page, '**/api/intake-breakdown**', (from, to, route) =>
+    // The window is echoed back over whatever the payload carried, as the real
+    // endpoint does: a breakdown states the bounds it was asked about.
+    route.fulfill({ json: { ...answer(from, to), from, to } }),
+  )
 }
 
 /** A week with nothing logged — what a spec that is not about matching wants. */
@@ -165,6 +177,36 @@ export async function mockReferenceFoods(
   })
 
   return matched
+}
+
+/**
+ * Stub `GET /api/weight-timeline` per window, recording every window asked for.
+ * `answer` returning null is the withheld state — under a fortnight of readings
+ * the backend has no timeline to give.
+ */
+export async function mockWeightTimelineByWindow(
+  page: Page,
+  answer: (from: string, to: string) => Json | null,
+): Promise<{ from: string; to: string }[]> {
+  return recordWindows(page, '**/api/weight-timeline**', (from, to, route) => {
+    const timeline = answer(from, to)
+    return timeline === null
+      ? route.fulfill({ status: 404, json: { message: 'not enough readings' } })
+      : route.fulfill({ json: timeline })
+  })
+}
+
+/**
+ * Stub `GET /api/weight-timeline`; defaults to the withheld state, which is what
+ * a spec that is not about the timeline wants. Every `/review` spec needs it —
+ * the section loads on that page whether or not the spec is about it, and unlike
+ * the two below it, whatever the User's Calorie Tracking setting.
+ */
+export async function mockWeightTimeline(
+  page: Page,
+  timeline: Json | null = null,
+) {
+  await mockWeightTimelineByWindow(page, () => timeline)
 }
 
 /** Stub `GET /api/intake-breakdown` failing with a real server error. */
