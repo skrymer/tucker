@@ -624,6 +624,38 @@ Intentional weight gain (a bulk) is *not* drift — but Tucker has no surplus Go
 yet, so today a deliberate gain reads as *drifting up*.
 _Avoid_: drift alert, weight alarm
 
+**Weight Timeline**:
+What the user's weight did over a window, and what they were eating while it did
+— one day per entry over the trailing 28 or 90 days, and nothing else. It carries
+every **Weight Measurement** in the window alongside the **Trend Weight**: the raw
+readings are *shown* but never read against, the same rule **Goal Progress** and
+the adaptive **Maintenance** correction already follow, so the scatter is there to
+make the smoothing legible rather than to be a second answer.
+Weight is the premise and intake the addition. With **Calorie Tracking** on it
+also carries each day's calories and the **Calorie Budget** in force on that day;
+with it off those are simply **absent** — never zero, because a day the user
+didn't log is not a day they ate nothing (the distinction ADR 0018 already turns
+on), and never hidden client-side. An unlogged day is likewise absent rather than
+zero *within* a tracking window.
+With Calorie Tracking off it instead carries the active **Goal**'s *planned
+trajectory* — the line from the Goal's start weight at its chosen rate. That
+appears only there, and deliberately: with tracking on, "am I on track" is
+answered by intake against the Budget, and with it off there is no mechanism to
+show. In **Maintenance Mode** there is no trajectory at all, because Tucker
+defends no target weight (ADR 0008).
+The window is 28 or 90 days and nothing else — 28 being the span the observed
+pace and **Pace Status** are already classified over. The Trend Weight at a
+window's start depends on readings from *before* it, so the series is always built
+over the user's whole history and then sliced. A window reaching further back than
+the user's first reading is cut to where their readings start: empty space before
+it would claim weight data is missing rather than absent.
+Like the observed pace it sits beside, a Weight Timeline is **withheld until at
+least 14 days of Weight Measurements exist** — the same threshold and the same
+reason, that a trend built from a handful of readings understates its own
+movement, so drawing it invites reading a slope that is not there.
+_Avoid_: weight chart, weight graph (these name a rendering; the timeline is the
+data), weight log
+
 ### Reminders
 
 **Weekly-Review Reminder**:
