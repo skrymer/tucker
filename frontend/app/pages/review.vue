@@ -13,6 +13,9 @@ const {
 const isDesktop = useIsDesktop()
 const { $api } = useNuxtApp()
 
+// PROTOTYPE — throwaway, dev-only. Delete with the block in the template.
+const isDev = import.meta.dev
+
 // Goal Progress hero sits above the ledger. 404 (no active Goal) is an expected
 // state — the hero is simply omitted, as on /today's glance tile.
 const {
@@ -152,6 +155,10 @@ const { pending, execute: runReview } = useApiMutation(
     >
       <GoalProgressHero v-if="goalProgress" :progress="goalProgress" />
     </LoadErrorState>
+
+    <!-- PROTOTYPE — throwaway, dev-only. Delete this block and
+         components/PrototypeWeightCalories.{vue,NOTES.md} once answered. -->
+    <PrototypeWeightCalories v-if="isDev" />
 
     <!-- One gate, in setup: with Calorie Tracking off nothing was fetched, so
          there is neither a breakdown to render nor an error to report. -->

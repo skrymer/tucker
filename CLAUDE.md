@@ -1465,6 +1465,47 @@ null` now means two things that earn opposite messages — the same trap
     tree first matched, so *removing an assertion above it* was enough to make the error
     panel appear. `mockNoActiveGoal` states the intended state instead.
 
+- **F17** — the **Weight Timeline**: what a User's weight did over a window, and
+  what they were eating while it did (PRD
+  [#320](https://github.com/skrymer/tucker/issues/320)). Design pass **done**, see
+  [ADR 0029](docs/adr/0029-a-weight-timeline-shows-the-body-and-the-intake-behind-it.md)
+  and the `Weight Timeline` term in `CONTEXT.md`; the visual questions were settled
+  against a throwaway three-round prototype driven on the real `/review` page at a
+  phone viewport. A section on `/review` over the trailing **28 or 90 days**: every
+  **Weight Measurement** as a point, the **Trend Weight** as the line through them,
+  and with **Calorie Tracking** on each day's calories as a bar against the
+  **Calorie Budget** in force on that day.
+  **It describes; it never infers.** Tucker already computes the relationship
+  between weight and calories — that is what **Maintenance** is — so a scatter or a
+  regression would be a second answer to a question the engine already answers, kept
+  in agreement by hand. Raw readings are **points, never a second line**: two lines
+  read as two comparable trends, which is the claim `CONTEXT.md` and ADR 0016 refuse.
+  Three consequences worth stating: the section is **not gated on Calorie Tracking**
+  the way the **Intake Breakdown** and **Micronutrient Intake** are — weight is the
+  premise and intake the addition, so it degrades rather than disappearing, and a
+  weight-only User gets the only chart of their own body in the app; an **unlogged
+  day is absent, never zero** (a floor-height bar is the reading ADR 0018 exists to
+  refuse) and draws a baseline tick, with the **Calorie Budget** line *spanning* it,
+  because a Budget holds all week and did not lapse because the User stopped
+  recording; and the **Goal**'s planned trajectory appears *only* with tracking
+  **off**, because with it on the calorie half already answers "am I on track" —
+  in **Maintenance Mode** there is no trajectory at all (ADR 0008 defends no target
+  weight). `@unovis/vue` becomes a direct dependency: `/review` already ships unovis
+  (`vue-chrts`' `DonutChart` wraps `VisDonut`), so every alternative would be a
+  *second* rendering engine on one page. Three slices, each vertical with a
+  real-stack smoke: [#321](https://github.com/skrymer/tucker/issues/321) the weight
+  half end-to-end (serving both settings, and deleting the prototype),
+  [#322](https://github.com/skrymer/tucker/issues/322) the intake half,
+  [#323](https://github.com/skrymer/tucker/issues/323) the planned trajectory and
+  the 2 kg domain clamp.
+  **Out of scope:** any window but 28 or 90 days, inferring a relationship (no
+  scatter, no regression, no fitted maintenance line), a rolling intake average, a
+  horizontal Goal target line, stacked panes, the trajectory when tracking is on,
+  macros or micronutrients on the timeline, zoom/pan/brush, annotating Goal or
+  review events, any change to `/profile/weight` (the existing reading list, titled
+  "Weight history" — a different thing, deliberately named apart), and widening what
+  advances the review cadence ([#192](https://github.com/skrymer/tucker/issues/192)).
+
 ## Architecture
 
 - **Frontend** — Nuxt + Nuxt UI, TypeScript, SPA mode (`ssr: false`). A
