@@ -42,11 +42,36 @@ scrolls away, and is exactly what phone toasts use — see Positioning below.
 The active sheet/overlay stays **open** on error (it closes only in the success
 path, which doesn't run on failure), so Retry replays against the still-populated
 form and no input is lost. The mutation's arguments are captured in the error
-path's closure, so "the same arguments" is literal — Retry re-invokes
-`execute(...args)` with the failed call's payload. Re-entry is already guarded by
+path's closure, so "the same arguments" is literal — Retry replays the failed
+call with its own payload (see the id rule below). Re-entry is already guarded by
 the `pending` flag, so a double-tap on Retry (or on the form) can't fire two
 mutations. The toast carries a stable `id`, so repeated failures of the same
 mutation pulse the existing toast rather than stacking.
+
+That id is stable for as long as the toast is, and no longer. Tapping one of a
+toast's actions **closes** it — Nuxt UI's action API offers no way to opt out —
+and a closed toast is deleted a fraction of a second afterwards, a deletion that
+re-`add`ing under the same id is *merged into* rather than cancels. A Retry that
+failed again inside that window would therefore raise its toast onto the dying one
+and be swept away with it, leaving the user nothing at all: the exact silence this
+ADR exists to prevent, reached through the one control it hands them *for* a
+failure. The window is short and easy to hit — an unreachable backend rejects in
+single-digit milliseconds — so this is a race the user loses most times. So the
+failure a retry raises carries an id of its own. Stacking is unaffected —
+`toaster.max` is what forbids that, not the id — and the repeat-failure pulse is
+untouched, since a repeat that was never retried still meets a live toast.
+
+A toast Tucker takes down itself — on a successful save, or on a 400 routed to a
+form field — gives its id up for the same reason. The close **X**, a swipe and
+Escape do not: Tucker never learns those happened. That residue is accepted
+rather than solved, because reaching it needs a second deliberate action *and* a
+failed round-trip inside the window, where a Retry is the one path on which the
+close and the re-raise are the same event.
+
+**Rejected: let Nuxt UI mint every id** and hold the one `add` hands back. No id
+is ever reused, so every close path closes at once and the announcement
+limitation below goes with them — but so does the pulse, since a repeat failure
+would no longer have a toast to merge into.
 
 ## Success — only when the result isn't visible at the point of focus
 
@@ -212,8 +237,9 @@ own Retry click.
 
 - The error/success behaviour lives in `useApiMutation`. The error path emits a
   toast with `duration: Infinity` (the Reka value that disables the auto-dismiss
-  timer), `close: true`, a stable `id`, and a Retry action bound to
-  `() => execute(...args)`. The success path stays optional via `successTitle`.
+  timer), `close: true`, an `id` held until the toast it names is closed (see
+  above), and a Retry action that replays the same call. The success path stays
+  optional via `successTitle`.
 - Adding a `successTitle` to a flow whose result is already visible is a
   regression — the default is silent. Only entry-log mutations pass one
   ("Entry logged"), and since [ADR 0028](0028-logging-is-its-own-destination.md)
@@ -229,7 +255,10 @@ own Retry click.
   logged"). What turns that choice into an actual announcement is the wrapper
   above, not Reka. A known limitation: re-`add`ing a stable-`id` error pulses in place
   rather than re-announcing, so a repeated identical failure may not re-fire the
-  assertive announcement.
+  assertive announcement. That does not reach a failure raised by **Retry**, which
+  has an id of its own (see above) and so mounts a new row rather than pulsing an
+  existing one — the precondition for a re-announcement, though no suite asserts
+  the announcement itself.
 - **One toast at a time:** `toaster.max` is `1` on `<UApp>`, satisfying the
   issue's "cap concurrent toasts at 1 on phone" so the slot never stacks. Nuxt
   UI's `max` keeps the **newest** toast (it removes the oldest on overflow) — it

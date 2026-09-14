@@ -263,6 +263,7 @@ describe('useApiMutation', () => {
           data: { message: 'a target below your trend' },
         }),
       )
+      .mockRejectedValueOnce(new Error('boom'))
     const { execute } = useApiMutation(mutate, {
       errorTitle: 'Could not set goal',
       onValidationError,
@@ -277,6 +278,12 @@ describe('useApiMutation', () => {
     // replay the call the form has just been told is wrong.
     expect(onValidationError).toHaveBeenCalled()
     expect(toastRemove).toHaveBeenCalledWith(errorId)
+
+    await execute()
+
+    // And the id goes down with it, or the next failure would be merged into the
+    // toast just taken down and deleted along with it.
+    expect(toastAdd.mock.calls.at(-1)![0].id).not.toBe(errorId)
   })
 
   it('says nothing at all when a mutation naming no successTitle lands', async () => {
@@ -305,6 +312,86 @@ describe('useApiMutation', () => {
     const ids = toastAdd.mock.calls.map((call) => call[0].id)
     expect(ids[0]).toBeTruthy()
     expect(ids[0]).toBe(ids[1])
+  })
+
+  it('gives each mutation a toast id of its own, so one failure never replaces another', async () => {
+    const reject = () => Promise.reject(new Error('x'))
+    const { execute: saveGoal } = useApiMutation(reject, {
+      errorTitle: 'Could not set goal',
+    })
+    const { execute: saveWeight } = useApiMutation(reject, {
+      errorTitle: 'Could not save weight',
+    })
+
+    await saveGoal()
+    const goal = toastAdd.mock.calls.at(-1)![0]
+    await saveWeight()
+
+    expect(toastAdd.mock.calls.at(-1)![0].id).not.toBe(goal.id)
+  })
+
+  it('raises a failed retry under an id of its own, clear of the toast the tap closed', async () => {
+    const { execute } = useApiMutation(() => Promise.reject(new Error('x')), {
+      errorTitle: 'Could not save',
+    })
+
+    await execute()
+    const first = toastAdd.mock.calls.at(-1)![0]
+
+    await first.actions[0].onClick()
+    const second = toastAdd.mock.calls.at(-1)![0]
+
+    await second.actions[0].onClick()
+    const third = toastAdd.mock.calls.at(-1)![0]
+
+    // Tapping an action closes the toast it sits on, and a closing toast's id
+    // is unusable: a failure re-raised under it is merged into the dying toast
+    // and deleted with it, leaving the user nothing. So every retry's failure
+    // gets an id of its own — and the Retry that makes it worth leaving up.
+    expect(second.id).not.toBe(first.id)
+    expect(third.id).not.toBe(second.id)
+    expect(third.title).toBe('Could not save')
+    expect(third.actions[0].label).toBe('Retry')
+  })
+
+  it('gives up an id once it has dismissed it, so a later failure is not swept away with it', async () => {
+    const mutate = vi
+      .fn<() => Promise<void>>()
+      .mockRejectedValueOnce(new Error('boom'))
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error('boom'))
+    const { execute } = useApiMutation(mutate, { errorTitle: 'Could not save' })
+
+    await execute()
+    const failed = toastAdd.mock.calls.at(-1)![0]
+    await execute()
+    await execute()
+    const afterDismissal = toastAdd.mock.calls.at(-1)![0]
+
+    // Dismissing a toast leaves its id deleted a fraction of a second later, and
+    // a re-`add` under it in the meantime is merged into the dying toast rather
+    // than mounting a new one — so the dismissal spends the id too.
+    expect(afterDismissal.id).not.toBe(failed.id)
+  })
+
+  it('dismisses a toast an earlier instance of the same mutation left up', async () => {
+    const { execute: before } = useApiMutation(
+      () => Promise.reject(new Error('x')),
+      { errorTitle: 'Could not save' },
+    )
+    await before()
+    await toastAdd.mock.calls.at(-1)![0].actions[0].onClick()
+    const live = toastAdd.mock.calls.at(-1)![0]
+
+    // The page was left and come back to, so this is a second instance of the
+    // same mutation. The toast list is the app's rather than the component's, so
+    // the failure is still up — and it is this instance that has to take it down.
+    const { execute: after } = useApiMutation(() => Promise.resolve(), {
+      errorTitle: 'Could not save',
+    })
+    await after()
+
+    expect(toastRemove).toHaveBeenCalledWith(live.id)
   })
 
   it('dismisses the persistent error toast once a later attempt succeeds', async () => {

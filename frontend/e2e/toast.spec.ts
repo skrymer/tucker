@@ -1,6 +1,11 @@
 import type { Page, TestType } from '@playwright/test'
 import { expect, test } from './support/test'
-import { toast, toastLiveRegion, toastRegion } from './support/toast'
+import {
+  TOAST_DELETION_MS,
+  toast,
+  toastLiveRegion,
+  toastRegion,
+} from './support/toast'
 import {
   mockFoods,
   mockFrequentFoods,
@@ -21,22 +26,36 @@ type Goto =
 const PHONE = { width: 375, height: 812 }
 const DESKTOP = { width: 1280, height: 800 }
 
-// A saved profile so the form loads populated; tests override the PUT per-case.
+// The profile the stub below hands back, so the form loads populated.
 const SAVED = { sex: 'MALE', birthDate: '1990-06-15', heightCm: 180 }
+
+/**
+ * Stub `/api/profile`: GET hands back the saved profile so the form loads
+ * populated, and every PUT fails until the one numbered [succeedFrom]. Returns
+ * the counter of PUTs that reached it, so a caller can tell a Retry that fired
+ * from one that didn't.
+ */
+async function failProfileSaves(page: Page, { succeedFrom = Infinity } = {}) {
+  const puts = { count: 0 }
+  await page.route('**/api/profile*', async (route) => {
+    const req = route.request()
+    if (req.method() === 'GET') return route.fulfill({ json: SAVED })
+    if (req.method() !== 'PUT') return route.fallback()
+    puts.count += 1
+    if (puts.count >= succeedFrom)
+      return route.fulfill({ json: req.postDataJSON() })
+    return route.fulfill({ status: 500, json: { message: 'boom' } })
+  })
+  return puts
+}
 
 test('at phone width a failed save anchors the error toast to the top, clear of the sheet and keyboard zone', async ({
   page,
   goto,
 }) => {
-  // GET returns the saved profile; PUT fails so the save surfaces the
-  // persistent error toast instead of dismissing silently.
-  await page.route('**/api/profile*', async (route) => {
-    const req = route.request()
-    if (req.method() === 'GET') return route.fulfill({ json: SAVED })
-    if (req.method() === 'PUT')
-      return route.fulfill({ status: 500, json: { message: 'boom' } })
-    return route.fallback()
-  })
+  // The save fails, so it surfaces the persistent error toast instead of
+  // dismissing silently.
+  await failProfileSaves(page)
 
   await page.setViewportSize(PHONE)
   await goto('/profile', { waitUntil: 'hydration' })
@@ -44,19 +63,17 @@ test('at phone width a failed save anchors the error toast to the top, clear of 
   await page.getByLabel(/height/i).fill('182')
   await page.getByRole('button', { name: /save profile/i }).click()
 
-  const toast = toastRegion(page)
-    .getByRole('listitem')
-    .filter({ hasText: 'Could not save profile' })
-  await expect(toast).toBeVisible()
+  const failure = toast(page, 'Could not save profile')
+  await expect(failure).toBeVisible()
   // It carries a Retry affordance and persists (no auto-dismiss to count down).
-  await expect(toast.getByRole('button', { name: /retry/i })).toBeVisible()
+  await expect(failure.getByRole('button', { name: /retry/i })).toBeVisible()
 
   // On a phone the bottom belt is owned by the open sheet's inputs and submit
   // button, the FAB/tab bar, and — whenever a field is focused — the software
   // keyboard. So the toast is anchored to the top: its whole body sits in the
   // top half of the viewport, never over the input the user was filling.
   await expect(async () => {
-    const toastBox = await toast.boundingBox()
+    const toastBox = await failure.boundingBox()
     expect(toastBox).not.toBeNull()
     expect(toastBox!.y + toastBox!.height).toBeLessThanOrEqual(PHONE.height / 2)
   }).toPass()
@@ -66,13 +83,7 @@ test('at desktop width the error toast stays at the bottom, where nothing compet
   page,
   goto,
 }) => {
-  await page.route('**/api/profile*', async (route) => {
-    const req = route.request()
-    if (req.method() === 'GET') return route.fulfill({ json: SAVED })
-    if (req.method() === 'PUT')
-      return route.fulfill({ status: 500, json: { message: 'boom' } })
-    return route.fallback()
-  })
+  await failProfileSaves(page)
 
   await page.setViewportSize(DESKTOP)
   await goto('/profile', { waitUntil: 'hydration' })
@@ -80,10 +91,8 @@ test('at desktop width the error toast stays at the bottom, where nothing compet
   await page.getByLabel(/height/i).fill('182')
   await page.getByRole('button', { name: /save profile/i }).click()
 
-  const toast = toastRegion(page)
-    .getByRole('listitem')
-    .filter({ hasText: 'Could not save profile' })
-  await expect(toast).toBeVisible()
+  const failure = toast(page, 'Could not save profile')
+  await expect(failure).toBeVisible()
 
   // Desktop has no keyboard to dodge and the form is a page, not a bottom
   // sheet, so the toast keeps the conventional bottom-right corner: its top
@@ -92,7 +101,7 @@ test('at desktop width the error toast stays at the bottom, where nothing compet
   // and desktop assertions specify genuinely different anchors, so an inverted
   // breakpoint or a phone override leaking to desktop fails here.
   await expect(async () => {
-    const toastBox = await toast.boundingBox()
+    const toastBox = await failure.boundingBox()
     expect(toastBox).not.toBeNull()
     expect(toastBox!.y).toBeGreaterThanOrEqual(DESKTOP.height / 2)
     expect(toastBox!.x).toBeGreaterThanOrEqual(DESKTOP.width / 2)
@@ -103,35 +112,64 @@ test('the error toast Retry re-submits the save and dismisses once it succeeds',
   page,
   goto,
 }) => {
-  // First PUT fails, the next succeeds — so Retry drives failure → success.
-  let putAttempts = 0
-  await page.route('**/api/profile*', async (route) => {
-    const req = route.request()
-    if (req.method() === 'GET') return route.fulfill({ json: SAVED })
-    if (req.method() === 'PUT') {
-      putAttempts += 1
-      if (putAttempts === 1)
-        return route.fulfill({ status: 500, json: { message: 'boom' } })
-      return route.fulfill({ json: req.postDataJSON() })
-    }
-    return route.fallback()
-  })
+  // The first PUT fails and the second succeeds, so Retry drives failure →
+  // success.
+  const puts = await failProfileSaves(page, { succeedFrom: 2 })
 
   await goto('/profile', { waitUntil: 'hydration' })
 
   await page.getByLabel(/height/i).fill('182')
   await page.getByRole('button', { name: /save profile/i }).click()
 
-  const toast = toastRegion(page)
-    .getByRole('listitem')
-    .filter({ hasText: 'Could not save profile' })
-  await expect(toast).toBeVisible()
+  const failure = toast(page, 'Could not save profile')
+  await expect(failure).toBeVisible()
 
-  await toast.getByRole('button', { name: /retry/i }).click()
+  await failure.getByRole('button', { name: /retry/i }).click()
 
   // The retried save succeeds, so the persistent error toast is dismissed.
-  await expect(toast).toHaveCount(0)
-  expect(putAttempts).toBe(2)
+  await expect(failure).toHaveCount(0)
+  expect(puts.count).toBe(2)
+})
+
+test('a Retry that fails again leaves the error toast up, ready to retry once more', async ({
+  page,
+  goto,
+}) => {
+  // Every PUT fails, so Retry drives failure → failure.
+  const puts = await failProfileSaves(page)
+
+  await goto('/profile', { waitUntil: 'hydration' })
+
+  await page.getByLabel(/height/i).fill('182')
+  await page.getByRole('button', { name: /save profile/i }).click()
+
+  const failure = toast(page, 'Could not save profile')
+  await expect(failure).toBeVisible()
+
+  await failure.getByRole('button', { name: /retry/i }).click()
+  await expect.poll(() => puts.count).toBe(2)
+
+  // Tapping an action closes the toast it sits on, and a closed toast is deleted
+  // a fraction of a second afterwards — so the replacement has to *outlive* that
+  // deletion, not merely appear before it. Waiting past the window is what
+  // separates a toast that is on screen from one already on its way out.
+  //
+  // This end of it is deterministic; the other end is a race the test does not
+  // control. The bug only bites when the retried failure lands *inside* the
+  // deletion window, so on a machine slow enough to spend longer than that on a
+  // mocked round trip, a broken build would still pass here. The deterministic
+  // half of the cover is `useApiMutation.test.ts` › *raises a failed retry under
+  // an id of its own*, which pins the mechanism with no clock in it; this one
+  // pins the symptom, and was observed red against the unfixed code.
+  await page.waitForTimeout(3 * TOAST_DELETION_MS)
+
+  await expect(failure).toBeVisible()
+  // One at a time, as ever: the toast the retry raises replaces the one it was
+  // tapped on rather than stacking on it.
+  await expect(toastRegion(page).getByRole('listitem')).toHaveCount(1)
+  // And the Retry on it still fires, which is the whole reason to leave it up.
+  await failure.getByRole('button', { name: /retry/i }).click()
+  await expect.poll(() => puts.count).toBe(3)
 })
 
 /**

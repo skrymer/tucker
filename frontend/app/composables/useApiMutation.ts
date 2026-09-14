@@ -32,6 +32,17 @@ function validationMessage(error: unknown): string | null {
 }
 
 /**
+ * How many error toasts each mutation has had closed, keyed by the id it raises
+ * them under. Held in app state beside the toast list itself, not in the
+ * factory's closure: a persistent failure outlives the component that raised it,
+ * so a counter reborn on remount would forget which id the live toast occupies
+ * and leave nothing able to take it down.
+ */
+function useSpentErrorToasts() {
+  return useState<Record<string, number>>('spent-error-toasts', () => ({}))
+}
+
+/**
  * Wraps a `$api` mutation with the boilerplate every form shares: a `pending`
  * flag, a re-entry guard, a failure toast, and post-success side effects.
  *
@@ -62,9 +73,42 @@ export function useApiMutation<TArgs extends unknown[], TResult>(
     },
   )
 
-  // Stable per-mutation id so a repeated identical failure pulses the existing
-  // toast instead of stacking, and a later success can dismiss it by id.
-  const errorToastId = `mutation-error:${options.errorTitle}`
+  // One id per mutation, so a repeated identical failure pulses the existing
+  // toast instead of stacking — held until the toast it names is closed, and
+  // replaced then (see [spendErrorToastId]).
+  const errorToastBaseId = `mutation-error:${options.errorTitle}`
+  const spent = useSpentErrorToasts()
+
+  /** The id this mutation's error toast currently occupies. */
+  function errorToastId() {
+    return `${errorToastBaseId}#${spent.value[errorToastBaseId] ?? 0}`
+  }
+
+  /**
+   * Give up the id of a toast that has been closed. Nuxt UI deletes a closed
+   * toast a fraction of a second later, and a re-`add` under its id in the
+   * meantime is merged into the dying toast rather than mounting a new one — so
+   * the next failure would be swept away with it. See ADR 0005, "Errors — a
+   * persistent retryable snackbar".
+   */
+  function spendErrorToastId() {
+    spent.value[errorToastBaseId] = (spent.value[errorToastBaseId] ?? 0) + 1
+  }
+
+  /** Take down this mutation's error toast, if it still has one up. */
+  function dismissErrorToast() {
+    toast.remove(errorToastId())
+    spendErrorToastId()
+  }
+
+  /**
+   * Replay the failed call from the Retry on its own error toast. Tapping an
+   * action is itself a close, which Nuxt UI gives no way to opt out of.
+   */
+  function retry(...args: TArgs) {
+    spendErrorToastId()
+    return execute(...args)
+  }
 
   /**
    * ADR 0005's failure toast: persistent, assertive, and carrying a Retry that
@@ -72,7 +116,7 @@ export function useApiMutation<TArgs extends unknown[], TResult>(
    */
   function announceFailure(...args: TArgs) {
     toast.add({
-      id: errorToastId,
+      id: errorToastId(),
       title: options.errorTitle,
       description: CONNECTION_ERROR_MESSAGE,
       color: 'error',
@@ -86,7 +130,7 @@ export function useApiMutation<TArgs extends unknown[], TResult>(
       // Retry replays the same call — `args` is captured from this attempt,
       // so no re-entry of the form is needed. The pending guard stops a
       // double-tap from firing two mutations.
-      actions: [{ label: 'Retry', onClick: () => execute(...args) }],
+      actions: [{ label: 'Retry', onClick: () => retry(...args) }],
     })
   }
 
@@ -106,7 +150,7 @@ export function useApiMutation<TArgs extends unknown[], TResult>(
       if (message && options.onValidationError) {
         // A wrong input, not a flaky connection: hand it to the form and clear
         // any stale transient toast rather than offering a pointless retry.
-        toast.remove(errorToastId)
+        dismissErrorToast()
         options.onValidationError(message)
         return
       }
@@ -129,7 +173,7 @@ export function useApiMutation<TArgs extends unknown[], TResult>(
     }
     // A successful (re)try clears any persistent failure toast for this
     // mutation — the snackbar is dismissed only by success or by the user.
-    toast.remove(errorToastId)
+    dismissErrorToast()
     if (options.successTitle) {
       // Polite live region (Reka defaults to assertive) — a confirmation
       // should never interrupt.
