@@ -99,6 +99,31 @@
   --vis-tooltip-padding: 0;
 }
 
+/* The Weight Timeline's axes and crosshair, drawn in Tucker's own tokens. unovis
+   themes off `html[data-theme="dark"]`, which Tucker's `html.dark` does not match,
+   so the chart is styled once from variables that already follow the theme.
+
+   Scoped to a class, and that is load-bearing rather than tidy. unovis publishes
+   its own light defaults at `:root` at runtime — `injectGlobalCssVariables` appends
+   an emotion `<style>` to `<head>` when the chart chunk evaluates, which is *after*
+   the static stylesheet is parsed. Two `:root` declarations of one custom property
+   are settled by order, so the same declarations there are dead: near-white grid
+   lines and `#6c778c` tick labels on the dark card, which is the exact failure this
+   block exists to prevent. On a class they win whatever the order — not by
+   outranking `:root`, whose specificity a class merely matches, but because a custom
+   property inherits from the *nearest* declaring ancestor and the chart is inside
+   this one. `.intake-ring` above has the same shape for the same reason.
+
+   Deleting the block, renaming the class, or hard-coding one mode's colour are all
+   silent, so app/utils/weightTimeline.test.ts asserts the pairing. */
+.weight-timeline {
+  --vis-axis-grid-color: var(--ui-border);
+  --vis-axis-tick-label-color: var(--ui-text-dimmed);
+  --vis-axis-tick-label-font-size: 11px;
+  --vis-axis-font-family: inherit;
+  --vis-crosshair-line-stroke-color: var(--ui-text-dimmed);
+}
+
 /* The app canvas carries a faint green wash so white cards lift off it. Keep
    this in sync with `pwa.manifest.background_color` in nuxt.config.ts so the
    PWA launch splash matches the in-app wash. */

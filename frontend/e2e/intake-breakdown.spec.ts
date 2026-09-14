@@ -5,6 +5,7 @@ import {
   mockIntakeBreakdownError,
   mockMicronutrientIntake,
   mockNoActiveGoal,
+  mockWeightTimeline,
   mockProfile,
   mockReviewHistory,
 } from './support/mock-api'
@@ -142,6 +143,7 @@ test.describe('with Calorie Tracking on', () => {
   test.beforeEach(async ({ page }) => {
     await mockProfile(page, TRACKING)
     await mockNoActiveGoal(page)
+    await mockWeightTimeline(page)
     await mockReviewHistory(page, HISTORY)
     // The Vitamins and minerals section loads on this page too, and an unmocked
     // read would put a second Retry on it and make every one below ambiguous.
@@ -347,6 +349,7 @@ test('with Calorie Tracking off the section is absent and never asked for', asyn
 }) => {
   await mockProfile(page, WEIGHT_ONLY)
   await mockNoActiveGoal(page)
+  await mockWeightTimeline(page)
   await mockReviewHistory(page, HISTORY)
 
   const asked = await mockIntakeBreakdownByWindow(page, () => A_FULL_DAY)

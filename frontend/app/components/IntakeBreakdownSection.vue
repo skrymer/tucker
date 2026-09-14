@@ -133,19 +133,7 @@ const { data: ringData, categories: ringCategories } = useRing()
     <div
       class="mt-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1"
     >
-      <!-- `role`/`aria-label` land on the root, not on the tablist Reka renders
-           inside it, so the name is carried by a group around the tabs rather
-           than by the tablist itself. -->
-      <UTabs
-        v-model="period"
-        :items="periodItems"
-        :content="false"
-        variant="pill"
-        size="xs"
-        color="primary"
-        role="group"
-        aria-label="Period"
-      />
+      <SectionTabs v-model="period" :items="periodItems" label="Period" />
       <span v-if="coverage" class="text-sm text-muted">{{ coverage }}</span>
     </div>
 

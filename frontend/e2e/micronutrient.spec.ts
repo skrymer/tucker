@@ -3,6 +3,7 @@ import {
   mockIntakeBreakdown,
   mockMicronutrientIntake,
   mockNoActiveGoal,
+  mockWeightTimeline,
   mockProfile,
   mockReferenceFoods,
   mockReviewHistory,
@@ -29,6 +30,7 @@ test('states the week’s coverage and folds what is left to match into one disc
   goto,
 }) => {
   await mockNoActiveGoal(page)
+  await mockWeightTimeline(page)
   await mockIntakeBreakdown(page)
   await mockReviewHistory(page, [])
   await mockMicronutrientIntake(page, {
@@ -62,6 +64,7 @@ test('reads the week per nutrient, tiling what it can claim and only naming what
   goto,
 }) => {
   await mockNoActiveGoal(page)
+  await mockWeightTimeline(page)
   await mockIntakeBreakdown(page)
   await mockReviewHistory(page, [])
   await mockMicronutrientIntake(page, {
@@ -127,6 +130,7 @@ test('with Calorie Tracking off the section is absent and never asked for', asyn
     tracksCalories: false,
   })
   await mockNoActiveGoal(page)
+  await mockWeightTimeline(page)
   await mockIntakeBreakdown(page)
   // A review in the ledger, so "Run review now" is the settled-page marker below
   // rather than the empty state's own call to action.
@@ -237,6 +241,7 @@ test('matching a queued food from the picker moves the coverage figure', async (
   goto,
 }) => {
   await mockNoActiveGoal(page)
+  await mockWeightTimeline(page)
   await mockIntakeBreakdown(page)
   await mockReviewHistory(page, [])
   await mockReferenceFoods(page, [chickenBreast])

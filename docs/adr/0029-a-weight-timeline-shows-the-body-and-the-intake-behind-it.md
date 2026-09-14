@@ -82,7 +82,14 @@ to talk the User out of reading.
 **Withheld under 14 days of Weight Measurements**, the same threshold and the same
 reason as the observed pace it sits beside: a trend built from a handful of
 readings understates its own movement, so drawing it invites reading a slope that
-is not there. One rule, not a second number.
+is not there. One number, not a second — and it answers two questions, because the
+two readings of it are not the same measurement. A drawn trend needs fourteen days
+**carrying a reading**, since what is thin is the evidence the line is drawn from;
+the observed pace needs the trend to **span** fourteen days, since that span is
+what it divides by. They therefore disagree at the edge, in both directions: a
+fortnight of daily weighing draws a chart while the pace is still gathering, and a
+sparse weigher of two months has a pace and no chart. That is the threshold
+meaning the same thing to two different consumers, not two thresholds.
 
 ## Considered options
 

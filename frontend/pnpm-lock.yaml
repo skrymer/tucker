@@ -14,6 +14,9 @@ importers:
       '@nuxt/ui':
         specifier: ^4.11.0
         version: 4.11.0(33db4def148a748372c585dce93a73d4)
+      '@unovis/vue':
+        specifier: 1.6.7
+        version: 1.6.7(@unovis/ts@1.6.7)(vue@3.5.34(typescript@6.0.3))
       '@vite-pwa/nuxt':
         specifier: ^1.1.1
         version: 1.1.1(magicast@0.5.3)(vite@7.3.3(@types/node@25.9.1)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.48.0)(yaml@2.9.0))(workbox-build@7.4.1)(workbox-window@7.4.1)

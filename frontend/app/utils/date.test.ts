@@ -2,12 +2,19 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   daysInWindow,
   formatDateFromISO,
+  formatDayMonthFromISO,
   localDaysAgo,
   localToday,
   localYearsAgo,
   localYesterday,
   trailingWindow,
 } from './date'
+
+describe('formatDayMonthFromISO', () => {
+  it('drops the year, which every tick on one axis shares', () => {
+    expect(formatDayMonthFromISO('2026-06-03')).toBe('3 Jun')
+  })
+})
 
 describe('formatDateFromISO', () => {
   it('formats an ISO date as day, short month, and full year', () => {

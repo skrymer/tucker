@@ -4,7 +4,9 @@ import org.junit.jupiter.api.Test
 import java.time.LocalDate
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class WeightTrendTest {
 
@@ -159,5 +161,35 @@ class WeightTrendTest {
         val trend = trendFalling(fromKg = 86.5, toKg = 86.0, overDays = 10)
 
         assertNull(trend.observedRateKgPerWeek(today))
+    }
+
+    @Test
+    fun `the trend stands where the last reading left it until the next one`() {
+        // It moves only when the scale does, so the days between two weigh-ins carry
+        // the figure the earlier one produced rather than a gap.
+        val trend = trendFalling(fromKg = 87.0, toKg = 86.0, overDays = 10)
+
+        assertEquals(87.0, trend.standingOn(today.minusDays(3))!!.trendKg, 1e-9)
+        assertEquals(today.minusDays(10), trend.standingOn(today.minusDays(3))!!.date)
+        assertEquals(86.0, trend.standingOn(today)!!.trendKg, 1e-9)
+    }
+
+    @Test
+    fun `nothing stands before the first reading`() {
+        val trend = trendFalling(fromKg = 87.0, toKg = 86.0, overDays = 10)
+
+        assertNull(trend.standingOn(today.minusDays(11)))
+    }
+
+    @Test
+    fun `a trend is established once fourteen days carry a reading`() {
+        // The threshold the observed rate is withheld under, counted in readings here:
+        // a line needs points, where a rate needs a span to divide across.
+        fun readings(days: Int) = WeightTrend(
+            (1..days).map { WeightTrend.Point(today.minusDays(days - it.toLong()), 86.0) },
+        )
+
+        assertFalse(readings(13).isEstablished())
+        assertTrue(readings(14).isEstablished())
     }
 }

@@ -1,5 +1,43 @@
 <script setup lang="ts">
+import type { components } from '#open-fetch-schemas/api'
 import type { Matchable } from '~/components/ReferenceFoodPicker.vue'
+
+type TimelineResponse = components['schemas']['WeightTimelineResponse']
+type BreakdownResponse = components['schemas']['IntakeBreakdownResponse']
+
+const isDesktop = useIsDesktop()
+const { $api } = useNuxtApp()
+
+// Goal Progress hero sits above the ledger. 404 (no active Goal) is an expected
+// state — the hero is simply omitted, as on /today's glance tile.
+const {
+  data: goalProgress,
+  error: goalProgressError,
+  load: refreshGoalProgress,
+} = useOptionalFetch(() => $api('/api/goal/progress'))
+
+/**
+ * What the User's weight has done over the trailing 28 or 90 days (ADR 0029).
+ * Deliberately **not** gated on Calorie Tracking the way the two sections below
+ * it are: weight is the premise and intake the addition, so this degrades rather
+ * than disappearing. A 404 — under a fortnight of readings, where a trend
+ * understates its own movement — is an expected state, and the section is simply
+ * absent.
+ */
+const {
+  selection: timelineWindow,
+  data: timeline,
+  error: timelineError,
+  pending: timelinePending,
+  load: refreshTimeline,
+} = useWindowedFetch<TimelineWindow, TimelineResponse>(28, (days, signal) =>
+  $api('/api/weight-timeline', { query: trailingWindow(days), signal }),
+)
+
+// Both reads above are ungated and depend on nothing else, so they go out
+// alongside the ledger rather than behind it: the await below suspends setup,
+// and a section that waits on a read it does not need appears a round trip late.
+const openingReads = Promise.all([refreshGoalProgress(), refreshTimeline()])
 
 // The Weekly Review ledger: the history of the adaptive engine's recomputes,
 // newest-first, plus a manual "run review now" trigger. Reuses the existing
@@ -10,20 +48,6 @@ const {
   refresh,
 } = await useApi('/api/weekly-review/history')
 
-const isDesktop = useIsDesktop()
-const { $api } = useNuxtApp()
-
-// PROTOTYPE — throwaway, dev-only. Delete with the block in the template.
-const isDev = import.meta.dev
-
-// Goal Progress hero sits above the ledger. 404 (no active Goal) is an expected
-// state — the hero is simply omitted, as on /today's glance tile.
-const {
-  data: goalProgress,
-  error: goalProgressError,
-  load: refreshGoalProgress,
-} = useOptionalFetch(() => $api('/api/goal/progress'))
-
 // The Intake Breakdown over the window the User picked — the local day or the
 // trailing seven days (ADR 0014, ADR 0026), both bounds inclusive. Absent — and
 // unrequested — with Calorie Tracking off, gated explicitly rather than left to
@@ -31,35 +55,19 @@ const {
 // window is not reliably empty, and the seven-day one survives a flip-off for a
 // whole week.
 const { tracksCalories, ready: trackingSettled } = useCalorieTracking()
-function useIntakeBreakdown() {
-  const period = ref<BreakdownPeriod>('today')
-  const { data, error, pending, load } = useOptionalFetch(
-    (signal) =>
-      // Derived per load, not captured once at setup: a page left open over
-      // midnight whose Retry is tapped at 00:03 must ask about the day it is
-      // now, not the one it was when the page opened. Same reason `runReview`
-      // re-derives it below.
-      $api('/api/intake-breakdown', {
-        query: breakdownWindow(period.value),
-        signal,
-      }),
-    // `latest`, not the default `guard`: each call asks about a different
-    // window, so a load issued while one is in flight is a new question rather
-    // than a repeat of the one being answered, and dropping it would leave the
-    // section describing the window the User has just left.
-    { mode: 'latest' },
-  )
-
-  watch(period, load)
-  return { period, breakdown: data, error, pending, load }
-}
 const {
-  period,
-  breakdown,
+  selection: period,
+  data: breakdown,
   error: breakdownError,
   pending: breakdownPending,
   load: refreshBreakdown,
-} = useIntakeBreakdown()
+} = useWindowedFetch<BreakdownPeriod, BreakdownResponse>(
+  'today',
+  // `runReview` below re-derives its day for the same reason the window is
+  // derived per load rather than captured at setup.
+  (chosen, signal) =>
+    $api('/api/intake-breakdown', { query: breakdownWindow(chosen), signal }),
+)
 
 /**
  * How much of the week's food can say anything about its vitamins and minerals,
@@ -95,7 +103,7 @@ const {
 // in-app navigation that read has settled and it returns at once.
 await trackingSettled()
 await Promise.all([
-  refreshGoalProgress(),
+  openingReads,
   ...(tracksCalories.value
     ? [refreshBreakdown(), refreshMicronutrients()]
     : []),
@@ -156,9 +164,18 @@ const { pending, execute: runReview } = useApiMutation(
       <GoalProgressHero v-if="goalProgress" :progress="goalProgress" />
     </LoadErrorState>
 
-    <!-- PROTOTYPE — throwaway, dev-only. Delete this block and
-         components/PrototypeWeightCalories.{vue,NOTES.md} once answered. -->
-    <PrototypeWeightCalories v-if="isDev" />
+    <LoadErrorState
+      :error="timelineError"
+      title="Couldn't load your weight"
+      @retry="refreshTimeline"
+    >
+      <WeightTimelineSection
+        v-if="timeline"
+        v-model:window-days="timelineWindow"
+        :timeline="timeline"
+        :pending="timelinePending"
+      />
+    </LoadErrorState>
 
     <!-- One gate, in setup: with Calorie Tracking off nothing was fetched, so
          there is neither a breakdown to render nor an error to report. -->

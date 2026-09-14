@@ -652,7 +652,12 @@ it would claim weight data is missing rather than absent.
 Like the observed pace it sits beside, a Weight Timeline is **withheld until at
 least 14 days of Weight Measurements exist** — the same threshold and the same
 reason, that a trend built from a handful of readings understates its own
-movement, so drawing it invites reading a slope that is not there.
+movement, so drawing it invites reading a slope that is not there. The same
+*number* answers two questions rather than one: a drawn trend is withheld until
+fourteen days **carry a reading**, where the observed pace is withheld until the
+trend **spans** fourteen days, which is what it divides by. So the two can
+disagree at the edge — a fortnight of daily weighing draws a chart while the pace
+is still gathering — and that is one threshold read by two consumers, not two.
 _Avoid_: weight chart, weight graph (these name a rendering; the timeline is the
 data), weight log
 
