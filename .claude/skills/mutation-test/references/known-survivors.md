@@ -38,6 +38,14 @@ Frontend, `app/utils/` (`pnpm exec stryker run --mutate "app/utils/exits.ts,app/
 | `reviewLedger.ts` | 85.00     | 85.00  |
 | **all**           | **89.74** | 75.64  |
 
+Frontend, the async pair (`pnpm exec stryker run --mutate "app/composables/useAsyncAction.ts,app/composables/useApiMutation.ts"`, ~7 min):
+
+| file                | score     | before |
+| ------------------- | --------- | ------ |
+| `useApiMutation.ts` | 84.75     | 76.27  |
+| `useAsyncAction.ts` | 84.85     | 72.73  |
+| **all**             | **84.81** | 74.05  |
+
 `security` and `config` moved most because 28 mutants left `--targetClasses` and two
 new test classes made 43 of the rest killable; `domain` moved because 30 boundary
 mutants got the tests they were owed.
@@ -643,6 +651,88 @@ mutations — the paths, the methods, the bodies and the two `onSuccess` blocks 
 no Vitest test reaches at all. Each is **killed by an out-of-scope layer**, by the same
 smoke named above for its mutation: a blanked path or method fails the request the smoke
 asserts the result of.
+
+### `composables/useAsyncAction.ts` + `composables/useApiMutation.ts` — 24 of 158
+
+The shared async primitive ([0007](../../../../docs/adr/0007-async-in-flight-state.md))
+and the mutation factory ([0005](../../../../docs/adr/0005-notifications-persistent-errors-quiet-success.md))
+that composes it. First swept closing [#222](https://github.com/skrymer/tucker/issues/222)
+and [#197](https://github.com/skrymer/tucker/issues/197): **34 survivors + 7 no-cov →
+19 + 5**, 74.05% → 84.81%, with 17 killed by nine new tests. **Every one of the 24
+left is an equivalent mutant** — no gaps, no out-of-scope kills, no false survivors.
+Ten of the seventeen were gaps a read-only triage agent found; the rest came out of the
+sign-off's review gates, which is worth knowing: the sweep's own verdicts were not the
+last word on it.
+
+**`settle()`'s abort guard, and only that one (3).** `:76`'s `signal.aborted` and both
+literals of its return. `run()` races the action against `rejectOnAbort`, which rejects
+**synchronously** the moment the signal aborts, so an abort that beats the action sends
+the run to the `catch` and never to `settle`. Reaching `settle` with `aborted` true
+therefore needs the action to have resolved *first* — and then the only abort that does
+not also bump `activeRunId` is the timeout, which is a macrotask and cannot interleave
+between the race latching and the `await` continuation. Don't delete it: it is the
+defence for an action that resolves and times out in one tick.
+
+`:75`'s `isStale()` beside it looked like the same verdict and **is not** — it was
+recorded as equivalent on the argument above and that argument is wrong for supersession.
+Once the action has resolved the race has latched on its value, and a later `abort()`
+cannot unseat it, so a same-tick supersede *does* reach `settle` with the run stale. It
+is killed now, by `discards a result that landed in the same tick as the run replacing
+it` — four lines, no fake timers. Production cannot produce that tick (both `latest`
+consumers start a look-up from a user gesture or a decode event), but the mutant is real:
+without the guard a same-tick supersede reports `timedOut`, which on `/check` is an
+**Inconclusive Lookup** with a "Try again" raised over a screen the newer look-up owns.
+
+**`rejectOnAbort`'s own internals (6).** `:140`'s two string literals — since
+[#222](https://github.com/skrymer/tucker/issues/222) nothing reads the error's name or
+message, because a rejection from here always implies `signal.aborted` and so returns
+`timedOut` rather than being rethrown. `:141`'s `if (signal.aborted) fail()` (and its
+`no cov` call) guards a controller created four lines earlier that nothing can have
+aborted yet. `:142`'s `{ once: true }` → `{}` / `false`: an `AbortController` dispatches
+`abort` at most once, so `once` governs listener cleanup and never a second call.
+
+**The timeout timer's clear (3).** `:82` in all three forms. `clearTimeout(undefined)` is
+a no-op, and an uncleared 8 s timer aborts a controller whose run has already settled and
+which no newer run uses — a timer leak, not a behaviour change.
+
+**Three one-liners, each a no-op (3).** `:49`'s `mode === 'latest'` → `true`: in `guard`
+mode a new run only starts once the prior one is fully settled, so aborting its controller
+does nothing and the race has already handled the late rejection. `:58`'s `isStale()` →
+`false`: every path that makes a run stale aborts its signal first, so `settleLifecycle`
+clears `delayTimer` microtasks later and the callback can never fire stale. `:89`'s
+`appearedAt !== null` → `true`: `400 - (Date.now() - null)` goes hugely negative, so
+`releaseBusy()` sets an already-null `shownAt` to null. (`:96`'s `> 0` → `>= 0` was
+the fourth and is killed: at exactly zero the original releases synchronously and the
+mutant defers a macrotask, which is visible if the test settles the action at precisely
+`delayMs + minBusyMs` rather than at a round number past it.)
+
+**`useApiMutation`'s two unreachable statuses (6).** `:125`–`:127`, both branches and the
+`no cov` block behind `timedOut`. `superseded` is ruled out three times over — `:94`
+bounces re-entry before `run` is called, `guard` mode, and no `cancel` exposed — and
+`timedOut` needs a `timeoutMs` this factory never passes. They are kept *split* rather
+than merged deliberately: the two are opposites under
+[0007](../../../../docs/adr/0007-async-in-flight-state.md), and a single silent `return`
+would pre-bless the wrong answer for a timeout the day someone adds the option.
+
+**The redundant re-entry guard (1).** `:94`'s `if (pending.value) return` → `false`. The
+primitive's own guard returns `superseded` for the same re-entry and `:125` then returns
+silently, so behaviour is byte-identical either way. Belt-and-braces, not a gap.
+
+**Optional chaining on a shape no layer produces (2).** `:30`'s `e?.status` and `:31`'s
+`e.data?.message`. `$api` always throws a `FetchError`, nothing rejects with `null`, and
+reaching `:31` requires `status === 400`, which requires a response. ofetch assigns
+`response._data` only when the response has a body, so `error.data` *can* be undefined in
+principle — but not from a browser, where a `Content-Length: 0` response still carries a
+non-null empty stream and `destr('')` yields `''`.
+
+What the nine new tests bought, worth keeping in view when this file next moves: a
+spinner that appeared 150 ms *after* a fast call finished and never came down
+(`clearTimeout(delayTimer)`), a spinner never released on the ordinary >550 ms call
+(`else releaseBusy()`), `pending` cleared out from under a run still in flight, a
+cancelled run resurfacing as a *timeout* over the screen that replaced it (either
+`activeRunId` update operator), a failed save routed to a form field with no toast
+(the 400 guard and its `&&`), and ADR 0005's quiet success — which **nothing** pinned,
+so every mutation in the app would have popped a titleless toast.
 
 ## Backend — pitest
 

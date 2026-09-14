@@ -852,11 +852,27 @@ email)`. **Nothing is scoped yet**: queries still ignore `user_id`, which is saf
   [#196](https://github.com/skrymer/tucker/pull/196), and
   [#182](https://github.com/skrymer/tucker/issues/182) closed the retry
   asymmetry — **both barcode look-ups now pass `retry: 0`**; ADR 0007 records why
-  the earlier Check-only scope did not survive. Still open:
+  the earlier Check-only scope did not survive.
   [#197](https://github.com/skrymer/tucker/issues/197) — a newer `useAsyncAction`
-  run that inherits a _visible_ spinner tears it down with no hold, because
-  `shownAt` is scoped to a run while `busy` is scoped to the episode (pre-existing,
-  unchanged by #183, most reachable on `/check`).
+  run inheriting a _visible_ spinner tore it down with no hold — shipped alongside
+  [#222](https://github.com/skrymer/tucker/issues/222), the two being the same
+  confusion in one file: **what belongs to a run versus what belongs to the
+  episode**. The spinner's clock is now the episode's single piece of state
+  (`busy` is derived from it rather than kept beside it), and the floor is
+  measured from when the User first saw the spinner in _either_ re-entry mode.
+  The mode-independence is a contract rather than an observed symptom: `busy`
+  outlives `pending`, so a `guard` run starting during that linger inherits the
+  spinner too — no mutation form renders it today, because ADR 0007 has them
+  bind `pending`, and a test per mode is what keeps the rule from quietly
+  narrowing to the two look-ups that do.
+  #222 is the other half: `useAsyncAction` classified an `AbortError` by the
+  error's **name**, so a mutation that raised one for its own reasons was reported
+  as a cancellation and said nothing at all. An unreachable push service rejects
+  `pushManager.subscribe()` with exactly that, so **Enable reminders** could fail
+  in total silence — the one outcome ADR 0005 exists to prevent, and the worst
+  place for it, since the only other way to notice is never being reminded. A
+  cancellation is now identified by this run's own lifecycle rather than by a
+  string, and ADR 0007 says so.
 
 - **F12** — Calorie Tracking is optional: use Tucker as a goal and weight tracker
   (**shipped**, PRD [#246](https://github.com/skrymer/tucker/issues/246)). Some

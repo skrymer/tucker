@@ -132,7 +132,15 @@ in-flight work with an `AbortController` rather than reconciling on resolve:
 starting a **new** look-up aborts the prior one (`mode: 'latest'`), and dismissing
 the sheet cancels whatever is in flight. Cancellation frees the connection on a
 constrained cellular link *and* structurally prevents a stale result landing. An
-`AbortError` is not an application failure and is swallowed.
+`AbortError` *that cancellation raised* is not an application failure: it is
+reported as a lifecycle outcome — `superseded` or `timedOut` — rather than
+thrown. The test for one is **this run's own lifecycle** — its id first, then its
+signal, so a stale run reads as superseded before it can read as timed out —
+never the error's name. An action that rejects with an `AbortError` of its own
+has failed: an unreachable push service rejects `pushManager.subscribe()` with
+exactly that, and reading it as a cancellation is a mutation that fails in total
+silence, which
+[0005](0005-notifications-persistent-errors-quiet-success.md) exists to prevent.
 
 Note we deliberately **do not** abort the look-up when the user merely edits a
 field. Aborting on the first keystroke would throw away the candidate's *other*
@@ -146,10 +154,15 @@ look-up (a different barcode) supersedes it.
 A spinner waits **150 ms** before showing (a cached/LAN hit completes under this;
 a flashed 80 ms spinner reads as a glitch — the re-entry guard still engages
 immediately so a double-tap is blocked without *rendering* the spinner) and, once
-shown, stays **≥ 400 ms** (so a borderline-fast call doesn't strobe). A hung
-request aborts at **8 s** — at the shop, if nothing has landed in 8 s the
-connection has effectively failed and the user should be unblocked to type
-manually. Skeletons get the same 150 ms delay; the persistent-error toast
+shown, stays **≥ 400 ms** (so a borderline-fast call doesn't strobe). That floor
+belongs to the **spinner**, not to the run that raised it, and that holds in
+either mode: the spinner outlives `pending` by up to those 400 ms — the linger
+the dead-control exception below is about — so any run starting while one is on
+screen inherits it rather than raising a second, and the remainder is measured
+from when the user first saw it. A hung request aborts at **8 s** — at the shop,
+if nothing has landed in 8 s the connection has effectively failed and the user
+should be unblocked to type manually. Skeletons get the same 150 ms delay; the
+persistent-error toast
 ([0005](0005-notifications-persistent-errors-quiet-success.md)) has no threshold —
 it appears when the call actually fails.
 

@@ -127,9 +127,41 @@ describe('useApiMutation', () => {
         type: 'foreground',
         duration: Infinity,
         close: true,
+        progress: false,
       }),
     )
     expect(pending.value).toBe(false)
+  })
+
+  it('surfaces the same retry toast when a mutation fails with an AbortError', async () => {
+    // An unreachable push service rejects `pushManager.subscribe()` with a bare
+    // AbortError. Nothing cancelled the save, so it is an ordinary failure — and
+    // this mutation raises no success toast, so reading it as a cancellation
+    // would leave the user with nothing at all (ADR 0005).
+    const { execute } = useApiMutation(
+      () =>
+        Promise.reject(
+          new DOMException(
+            'Registration failed - push service error',
+            'AbortError',
+          ),
+        ),
+      { errorTitle: 'Could not update reminders' },
+    )
+
+    await execute()
+
+    // Only the rejection's *type* is new here — the toast's persistence and its
+    // Retry are the shared contract the tests above and below already own. What
+    // this cannot see is the classification: an `AbortError` read as a
+    // cancellation reaches `announceFailure` by the other branch and raises the
+    // same toast, so `useAsyncAction`'s own suite is what pins that.
+    expect(toastAdd).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'Could not update reminders',
+        description: CONNECTION_ERROR_MESSAGE,
+      }),
+    )
   })
 
   it('offers a Retry action that re-runs the failed mutation with the same args', async () => {
@@ -176,6 +208,89 @@ describe('useApiMutation', () => {
     expect(onValidationError).toHaveBeenCalledWith(
       'a weight-loss Goal needs a target below your trend',
     )
+    expect(toastAdd).not.toHaveBeenCalled()
+  })
+
+  it('shows the retry toast for a non-validation failure even when the form can route one', async () => {
+    // Only a 400 means the input is wrong. Every other status is transient and
+    // owes the persistent toast (ADR 0005) — routing one to a field would leave
+    // a failed save saying nothing a Retry could recover.
+    const onValidationError = vi.fn()
+    const rejection = Object.assign(new Error('Conflict'), {
+      status: 409,
+      data: { message: 'that goal is already active' },
+    })
+    const { execute } = useApiMutation(() => Promise.reject(rejection), {
+      errorTitle: 'Could not set goal',
+      onValidationError,
+    })
+
+    await execute()
+
+    expect(onValidationError).not.toHaveBeenCalled()
+    expect(toastAdd).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'Could not set goal' }),
+    )
+  })
+
+  it('falls back to the retry toast when a form has nowhere to put a validation error', async () => {
+    // A backstop, not the designed path: ADR 0005 routes a domain rejection
+    // through `onValidationError` and the rest are guarded by Zod before they
+    // are sent. A form that opted into neither still owes the user a sentence.
+    const rejection = Object.assign(new Error('Bad Request'), {
+      status: 400,
+      data: { message: 'grams must be positive' },
+    })
+    const { execute } = useApiMutation(() => Promise.reject(rejection), {
+      errorTitle: 'Could not log entry',
+    })
+
+    await execute()
+
+    expect(toastAdd).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'Could not log entry' }),
+    )
+  })
+
+  it('clears a stale retry toast when the next attempt is refused as invalid', async () => {
+    const onValidationError = vi.fn()
+    const mutate = vi
+      .fn<() => Promise<void>>()
+      .mockRejectedValueOnce(new Error('boom'))
+      .mockRejectedValueOnce(
+        Object.assign(new Error('Bad Request'), {
+          status: 400,
+          data: { message: 'a target below your trend' },
+        }),
+      )
+    const { execute } = useApiMutation(mutate, {
+      errorTitle: 'Could not set goal',
+      onValidationError,
+    })
+
+    await execute()
+    const errorId = toastAdd.mock.calls.at(-1)![0].id
+
+    await execute()
+
+    // The transient failure is over, and leaving its Retry up would offer to
+    // replay the call the form has just been told is wrong.
+    expect(onValidationError).toHaveBeenCalled()
+    expect(toastRemove).toHaveBeenCalledWith(errorId)
+  })
+
+  it('says nothing at all when a mutation naming no successTitle lands', async () => {
+    // ADR 0005's quiet success: the result is already visible at the point of
+    // focus, so the great majority of mutations raise no toast on the way out.
+    const onSuccess = vi.fn()
+    const { execute } = useApiMutation(() => Promise.resolve(), {
+      errorTitle: 'Could not save',
+      onSuccess,
+    })
+
+    await execute()
+
+    expect(onSuccess).toHaveBeenCalledOnce()
     expect(toastAdd).not.toHaveBeenCalled()
   })
 

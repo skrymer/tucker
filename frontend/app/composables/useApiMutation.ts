@@ -66,6 +66,30 @@ export function useApiMutation<TArgs extends unknown[], TResult>(
   // toast instead of stacking, and a later success can dismiss it by id.
   const errorToastId = `mutation-error:${options.errorTitle}`
 
+  /**
+   * ADR 0005's failure toast: persistent, assertive, and carrying a Retry that
+   * replays this attempt's own arguments.
+   */
+  function announceFailure(...args: TArgs) {
+    toast.add({
+      id: errorToastId,
+      title: options.errorTitle,
+      description: CONNECTION_ERROR_MESSAGE,
+      color: 'error',
+      // A failed save is high-stakes on a phone: persist until the user
+      // acknowledges it, with an assertive live region and an explicit close.
+      type: 'foreground',
+      duration: Infinity,
+      close: true,
+      // No countdown bar — there's no auto-dismiss to count down to.
+      progress: false,
+      // Retry replays the same call — `args` is captured from this attempt,
+      // so no re-entry of the form is needed. The pending guard stops a
+      // double-tap from firing two mutations.
+      actions: [{ label: 'Retry', onClick: () => execute(...args) }],
+    })
+  }
+
   async function execute(...args: TArgs) {
     if (pending.value) return
     let outcome: AsyncOutcome<TResult>
@@ -86,39 +110,23 @@ export function useApiMutation<TArgs extends unknown[], TResult>(
         options.onValidationError(message)
         return
       }
-      toast.add({
-        id: errorToastId,
-        title: options.errorTitle,
-        description: CONNECTION_ERROR_MESSAGE,
-        color: 'error',
-        // A failed save is high-stakes on a phone: persist until the user
-        // acknowledges it, with an assertive live region and an explicit close.
-        type: 'foreground',
-        duration: Infinity,
-        close: true,
-        // No countdown bar — there's no auto-dismiss to count down to.
-        progress: false,
-        // Retry replays the same call — `args` is captured from this attempt,
-        // so no re-entry of the form is needed. The pending guard stops a
-        // double-tap from firing two mutations.
-        actions: [{ label: 'Retry', onClick: () => execute(...args) }],
-      })
+      announceFailure(...args)
       return
     }
-    // A run that didn't finish owns nothing to announce, so it may neither clear
-    // a failure it never resolved nor confirm a save that may not have landed.
-    //
-    // `superseded` is unreachable from here — `guard` mode, no `cancel` exposed,
-    // and `execute` bounces re-entry before `run` is ever called. `timedOut` is
-    // *not*: this factory passes no `timeoutMs`, but useAsyncAction also
-    // classifies an `AbortError` DOMException thrown by the action itself as a
-    // timeout, and the reminder toggle's mutation calls `pushManager.subscribe()`
-    // — spec'd to reject with exactly that when the push service is unreachable.
-    // Without this guard that run falls through and silently *dismisses* the
-    // retry toast a previous failure left up, telling the user a subscribe that
-    // never happened had succeeded.
-    if (outcome.status !== 'ok') return
     if (useAuthGate().isSignedOut.value) return
+    // Neither unfinished outcome may clear a failure it never resolved or
+    // confirm a save that may not have landed — but they are opposites past
+    // that (ADR 0007). Something newer owns the screen after a supersede, so
+    // this one says nothing; after a timeout nothing does, and the caller is
+    // the only one who can explain the silence — which for a mutation is
+    // ADR 0005's failure toast. Neither is reachable as this factory stands
+    // (`guard` mode with no `cancel` rules out one, no `timeoutMs` the other),
+    // so each states what it would owe rather than sharing an answer.
+    if (outcome.status === 'superseded') return
+    if (outcome.status === 'timedOut') {
+      announceFailure(...args)
+      return
+    }
     // A successful (re)try clears any persistent failure toast for this
     // mutation — the snackbar is dismissed only by success or by the user.
     toast.remove(errorToastId)
