@@ -139,9 +139,6 @@ class RecipeRepository(
             .associate { (recipeId, count) -> recipeId!!.toLong() to count }
     }
 
-    /** Delete a recipe; its ingredient rows cascade away with the Food row. */
-    fun delete(id: Long) = foods.delete(id)
-
     /**
      * The distinct names of Recipes that use the Food [foodId] as an ingredient,
      * ordered for a stable message. Empty when the Food is not an ingredient of any
