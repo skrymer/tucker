@@ -34,3 +34,10 @@ export function toast(page: Page, title: string) {
 export function toastLiveRegion(page: Page) {
   return page.locator('[aria-live]').filter({ has: toastRegion(page) })
 }
+
+/**
+ * How long Nuxt UI leaves a closed toast in its list before deleting it. An
+ * `add` under that id in the meantime is merged into the dying toast rather than
+ * mounting a new one, so proving a replacement survived means waiting past this.
+ */
+export const TOAST_DELETION_MS = 200
