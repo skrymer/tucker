@@ -42,9 +42,9 @@ Frontend, the async pair (`pnpm exec stryker run --mutate "app/composables/useAs
 
 | file                | score     | before |
 | ------------------- | --------- | ------ |
-| `useApiMutation.ts` | 84.75     | 76.27  |
-| `useAsyncAction.ts` | 84.85     | 72.73  |
-| **all**             | **84.81** | 74.05  |
+| `useApiMutation.ts` | 86.30     | 84.75  |
+| `useAsyncAction.ts` | 84.85     | 84.85  |
+| **all**             | **85.47** | 84.81  |
 
 `security` and `config` moved most because 28 mutants left `--targetClasses` and two
 new test classes made 43 of the rest killable; `domain` moved because 30 boundary
@@ -706,17 +706,23 @@ the fourth and is killed: at exactly zero the original releases synchronously an
 mutant defers a macrotask, which is visible if the test settles the action at precisely
 `delayMs + minBusyMs` rather than at a round number past it.)
 
-**`useApiMutation`'s two unreachable statuses (6).** `:125`–`:127`, both branches and the
-`no cov` block behind `timedOut`. `superseded` is ruled out three times over — `:94`
+**`useApiMutation`'s two unreachable statuses (6).** `:169`–`:173`, both branches and the
+`no cov` block behind `timedOut`. `superseded` is ruled out three times over — `:138`
 bounces re-entry before `run` is called, `guard` mode, and no `cancel` exposed — and
 `timedOut` needs a `timeoutMs` this factory never passes. They are kept *split* rather
 than merged deliberately: the two are opposites under
 [0007](../../../../docs/adr/0007-async-in-flight-state.md), and a single silent `return`
 would pre-bless the wrong answer for a timeout the day someone adds the option.
 
-**The redundant re-entry guard (1).** `:94`'s `if (pending.value) return` → `false`. The
-primitive's own guard returns `superseded` for the same re-entry and `:125` then returns
+**The redundant re-entry guard (1).** `:138`'s `if (pending.value) return` → `false`. The
+primitive's own guard returns `superseded` for the same re-entry and `:169` then returns
 silently, so behaviour is byte-identical either way. Belt-and-braces, not a gap.
+
+**The spend counter's direction (1).** `:95`'s `(… ?? 0) + 1` → `- 1`. A closed toast's
+id is given up by moving the counter (#324); *which way* it moves is not a property the
+id has to have, since `- 1` yields `0, -1, -2, …` — every bit as distinct, never
+revisited, and `?? 0` is reached only on the undefined case either way. Equivalent
+mutant.
 
 **Optional chaining on a shape no layer produces (2).** `:30`'s `e?.status` and `:31`'s
 `e.data?.message`. `$api` always throws a `FetchError`, nothing rejects with `null`, and
@@ -970,6 +976,46 @@ which reads the same poorly-matched window with and without a Profile.
 `ReferenceFood.getPublicFoodKey`, `ReferenceFoodRepository$Companion.getRANKED`. Data-class
 accessors and constants, the categories the section above and "What the score still cannot
 ask for" already settle.
+
+### Micronutrient Intake, Recipes contributing — 107 of 115
+
+Swept scoped to the F15 slice-3 classes (`BorrowedFood`, `BorrowedIngredient`,
+`FoodContribution`, `MicronutrientClaim`, `MicronutrientIntake`, `MicronutrientRow`,
+`Micronutrients`, `ReferenceFood`, `UnmatchedFood`, `RecipeRepository`). **`divide`'s
+boundary is killed** — the slice's own tests reach it — and the sweep leaves 3
+`SURVIVED` plus 5 `NO_COVERAGE`.
+
+**All three `SURVIVED` are false survivors**, each settled by hand-mutation, and it is
+the same bad selection the slice-2 section above records: these classes are covered by
+`@SpringBootTest` tests, which a scoped sweep does not pick.
+
+| Hand mutation                                                     | Tests it fails |
+| ------------------------------------------------------------------ | -------------- |
+| `MicronutrientIntake.of` `!references.isNullOrEmpty()` negated      | 3              |
+| `RecipeRepository.ingredientsOf` → always `emptyMap()`              | 7              |
+| `RecipeRepository.ingredientCounts` → always `emptyMap()`           | 3              |
+
+Do not write tests for these. `MicronutrientIntakeTest`, `MicronutrientIntakeApiTest`,
+`RecipeApiTest`, `RepositoryRoundTripTest`, `CrossUserIsolationTest` and
+`FoodFrequentApiTest` already pin them between them.
+
+**`RecipeRepository.delete` is not a survivor — it is dead code.** `VoidMethodCallMutator`
+strips `foods.delete(id)` from it and nothing notices because **nothing calls it**:
+deleting a Recipe goes `FoodController.delete` → `FoodService.delete` → `foods.delete(id)`,
+and no test calls it either. The verdict is "remove the function", not "write a test";
+recorded here so the next sweep does not re-triage it as coverage.
+
+**Correction to the section above: `Micronutrients$Companion.getALL` is a false survivor,
+not an accepted accessor gap.** It is a hoisted `Micronutrient.entries.toSet()` behind
+`Micronutrients`' own `require(amounts.keys == ALL)`, so blanking it to `emptySet()` makes
+every `Micronutrients` construction wrong and fails 5+ tests across `CrossUserIsolationTest`
+and `FoodReferenceFoodApiTest`. `NO_COVERAGE` on a *constant* read only from an `init`
+block is the same caching wall, not an unasserted DTO field.
+
+**The remaining 4 `NO_COVERAGE`** — `BorrowedFood.getIngredients` plus
+`Micronutrients.getAmounts`, `ReferenceFood.getPublicFoodKey` (both already listed above).
+Data-class accessors, the category `domain` and "What the score still cannot ask for"
+already settle.
 
 ### Noise removed at the source
 
