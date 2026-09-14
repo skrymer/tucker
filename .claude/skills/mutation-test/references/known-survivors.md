@@ -999,11 +999,14 @@ Do not write tests for these. `MicronutrientIntakeTest`, `MicronutrientIntakeApi
 `RecipeApiTest`, `RepositoryRoundTripTest`, `CrossUserIsolationTest` and
 `FoodFrequentApiTest` already pin them between them.
 
-**`RecipeRepository.delete` is not a survivor — it is dead code.** `VoidMethodCallMutator`
-strips `foods.delete(id)` from it and nothing notices because **nothing calls it**:
-deleting a Recipe goes `FoodController.delete` → `FoodService.delete` → `foods.delete(id)`,
-and no test calls it either. The verdict is "remove the function", not "write a test";
-recorded here so the next sweep does not re-triage it as coverage.
+**`RecipeRepository.delete` was not a survivor — it was dead code, and is now gone.**
+`VoidMethodCallMutator` stripped `foods.delete(id)` from it and nothing noticed because
+nothing called it: deleting a Recipe goes `FoodController.delete` → `FoodService.delete`
+→ `foods.delete(id)`, and no test called it either. It was also a bypass — the refusal
+rules that guard the delete live in the service — so the answer to its `no cov` was to
+delete the function rather than to write a test for it. Kept here as the worked example:
+`no cov` on a one-line delegation is worth checking for callers before it is worth
+checking for tests.
 
 **Correction to the section above: `Micronutrients$Companion.getALL` is a false survivor,
 not an accepted accessor gap.** It is a hoisted `Micronutrient.entries.toSet()` behind
