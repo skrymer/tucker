@@ -565,6 +565,13 @@ class CrossUserIsolationTest {
         // to where the readings begin — and pull every trend figure off his body.
         (0..27).forEach { back -> weighIn(alice, day.minusDays(back.toLong()), weightKg = aliceKg) }
         (0..13).forEach { back -> weighIn(bob, day.minusDays(back.toLong()), weightKg = bobKg) }
+        // And Alice ate today, where Bob did not: the intake half is drawn from the
+        // same log, so her dinner would show up as a bar under his own weight.
+        logEstimated(alice, calories = 2200.0, protein = 90.0, label = "her dinner")
+        // Alice also has a Weekly Review, which the timeline reads for the Budget in
+        // force on each day — an unscoped read would draw her Budget across his chart.
+        completeProfile(alice)
+        setGoal(alice, targetWeightKg = aliceKg - 4)
 
         mockMvc.get("/api/weight-timeline") {
             header(ACCESS_ASSERTION_HEADER, bob)
@@ -576,6 +583,9 @@ class CrossUserIsolationTest {
             jsonPath("$.days.length()") { value(14) }
             jsonPath("$.days[0].weightKg") { value(bobKg) }
             jsonPath("$.days[13].trendKg") { value(bobKg) }
+            jsonPath("$.loggedDays") { value(0) }
+            jsonPath("$.days[13].caloriesKcal") { value(null) }
+            jsonPath("$.days[13].calorieBudgetKcal") { value(null) }
         }
     }
 

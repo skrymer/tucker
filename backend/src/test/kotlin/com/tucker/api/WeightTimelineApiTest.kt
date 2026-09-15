@@ -1,6 +1,10 @@
 package com.tucker.api
 
+import com.tucker.domain.IntakeTargets
+import com.tucker.domain.Maintenance
+import com.tucker.domain.WeeklyReview
 import com.tucker.persistence.ReminderStateRepository
+import com.tucker.persistence.WeeklyReviewRepository
 import com.tucker.security.WithTuckerUser
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -28,6 +32,7 @@ class WeightTimelineApiTest {
 
     @Autowired lateinit var mockMvc: MockMvc
     @Autowired lateinit var reminderState: ReminderStateRepository
+    @Autowired lateinit var reviews: WeeklyReviewRepository
 
     private val day = LocalDate.of(2026, 9, 6)
     private val from = day.minusDays(27)
@@ -49,6 +54,37 @@ class WeightTimelineApiTest {
             .filter { it != day.minusDays(7) }
             .forEach { weighIn(it) }
         weighIn(day, kg = 79.0)
+    }
+
+    /** A review dated [on] whose week was to be eaten at [budgetKcal]. */
+    private fun reviewed(on: LocalDate, budgetKcal: Double) {
+        reviews.insert(
+            WeeklyReview(
+                id = null,
+                reviewedOn = on,
+                trendWeightKg = 80.0,
+                intakeTargets = IntakeTargets(
+                    maintenance = Maintenance(budgetKcal + 500, Maintenance.Basis.FORMULA_SEED),
+                    calorieBudgetKcal = budgetKcal,
+                    proteinFloorG = 160.0,
+                ),
+            ),
+        )
+    }
+
+    private fun ate(on: LocalDate, calories: Double) {
+        mockMvc.post("/api/entries/estimated") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"date":"$on","label":"dinner","calories":$calories,"protein":40.0}"""
+        }.andExpect { status { isCreated() } }
+    }
+
+    /** Setup completed as a weight-only User — the whole of what F12 asks Tucker to respect. */
+    private fun tracksWeightOnly() {
+        mockMvc.put("/api/profile") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"sex":"MALE","birthDate":"1986-05-22","heightCm":180.0,"tracksCalories":false}"""
+        }.andExpect { status { isOk() } }
     }
 
     private fun timeline(from: LocalDate = this.from, to: LocalDate = day) =
@@ -76,6 +112,51 @@ class WeightTimelineApiTest {
             // The trend moves a tenth of the way toward the new reading, so the last
             // day's is neither the reading nor the 80.0 every day before it carries.
             jsonPath("$.days[14].trendKg") { value(79.9) }
+        }
+    }
+
+    @Test
+    fun `a day carries what was logged on it and the Budget in force that day`() {
+        aFortnightOnTheScale()
+        reviewed(day.minusDays(14), budgetKcal = 1800.0)
+        reviewed(day.minusDays(3), budgetKcal = 1750.0)
+        ate(day.minusDays(14), calories = 2000.0)
+        ate(day, calories = 1600.0)
+
+        timeline().andExpect {
+            status { isOk() }
+            jsonPath("$.loggedDays") { value(2) }
+            jsonPath("$.days[0].caloriesKcal") { value(2000.0) }
+            jsonPath("$.days[0].calorieBudgetKcal") { value(1800.0) }
+            // Absent, never zero: a floor-height bar would read as a day of eating
+            // nothing, which is the reading ADR 0018 exists to refuse.
+            jsonPath("$.days[1].caloriesKcal") { value(null) }
+            // The Budget spans it — it was set by a review and held all week.
+            jsonPath("$.days[1].calorieBudgetKcal") { value(1800.0) }
+            jsonPath("$.days[14].caloriesKcal") { value(1600.0) }
+            jsonPath("$.days[14].calorieBudgetKcal") { value(1750.0) }
+            // The verdict is stated, not left to the client to derive (ADR 0002).
+            jsonPath("$.days[0].overBudget") { value(true) }
+            jsonPath("$.days[14].overBudget") { value(false) }
+            jsonPath("$.days[1].overBudget") { value(null) }
+        }
+    }
+
+    @Test
+    fun `with Calorie Tracking off the intake half never reaches the wire`() {
+        // Absent server-side, so the client has nothing to hide: weight is the
+        // premise and intake the addition, and only the addition goes.
+        tracksWeightOnly()
+        aFortnightOnTheScale()
+        reviewed(day.minusDays(3), budgetKcal = 1750.0)
+        ate(day, calories = 1600.0)
+
+        timeline().andExpect {
+            status { isOk() }
+            jsonPath("$.loggedDays") { value(null) }
+            jsonPath("$.days[14].caloriesKcal") { value(null) }
+            jsonPath("$.days[14].calorieBudgetKcal") { value(null) }
+            jsonPath("$.days[14].overBudget") { value(null) }
         }
     }
 

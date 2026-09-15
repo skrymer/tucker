@@ -73,25 +73,22 @@ class EntryRepository(
                 )
             }
 
-    /** Total calories across every Entry logged from [start] to [endInclusive], in one query. */
-    fun totalCaloriesBetween(start: LocalDate, endInclusive: LocalDate): Double =
-        dsl.select(DSL.sum(ENTRY.CALORIES))
-            .from(ENTRY)
-            .where(ENTRY.LOGGED_ON.between(start.toString(), endInclusive.toString()))
-            .and(ENTRY.USER_ID.eq(currentUser.ownerId))
-            .fetchOne(0, Double::class.java) ?: 0.0
-
     /**
-     * Number of distinct calendar days from [start] to [endInclusive] that carry at
-     * least one Entry — the divisor the adaptive engine averages intake over, so an
-     * unlogged day isn't counted as a zero-calorie day (ADR 0018).
+     * Calories logged per day from [start] to [endInclusive], in one query.
+     *
+     * A day with no Entry is **absent from the map** rather than present as a zero —
+     * the distinction the adaptive engine averages over (ADR 0018) and the Weight
+     * Timeline draws (ADR 0029). So the map's size is the window's logged-day count
+     * and its values are the window's intake; neither is a query of its own.
      */
-    fun loggedDayCount(start: LocalDate, endInclusive: LocalDate): Int =
-        dsl.select(DSL.countDistinct(ENTRY.LOGGED_ON))
+    fun caloriesByDay(start: LocalDate, endInclusive: LocalDate): Map<LocalDate, Double> =
+        dsl.select(ENTRY.LOGGED_ON, DSL.sum(ENTRY.CALORIES))
             .from(ENTRY)
             .where(ENTRY.LOGGED_ON.between(start.toString(), endInclusive.toString()))
             .and(ENTRY.USER_ID.eq(currentUser.ownerId))
-            .fetchOne(0, Int::class.java) ?: 0
+            .groupBy(ENTRY.LOGGED_ON)
+            .fetch { (loggedOn, calories) -> LocalDate.parse(loggedOn) to calories!!.toDouble() }
+            .toMap()
 
     fun insert(entry: Entry): Entry {
         val rec = dsl.newRecord(ENTRY)

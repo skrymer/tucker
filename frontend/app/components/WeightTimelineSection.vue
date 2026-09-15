@@ -5,6 +5,7 @@ import {
   VisCrosshair,
   VisLine,
   VisScatter,
+  VisStackedBar,
   VisXYContainer,
 } from '@unovis/vue'
 import type { components } from '#open-fetch-schemas/api'
@@ -27,13 +28,41 @@ const windowItems: TabsItem[] = TIMELINE_WINDOWS.map((days) => ({
   value: days,
 }))
 
-/** Both series on one kilogram scale, which the container shares between them. */
-const { at, trendKg, readingKg, dayTick, kgTick } = weightTimelineSeries(
-  () => props.timeline.days,
+/**
+ * How the chart reads a day, and the scale it reads it on — one object, so the
+ * bars and the axis they are placed against cannot be derived apart.
+ */
+const scale = computed(() => weightTimelineScale(props.timeline))
+const {
+  at,
+  trendKg,
+  readingKg,
+  dayTick,
+  kgTick,
+  intakeKg,
+  intakeColor,
+  budgetKg,
+} = weightTimelineSeries(
+  () => props.timeline,
+  () => scale.value,
+)
+
+/** Whether there is an intake half at all, which is Calorie Tracking's to decide. */
+const tracksIntake = computed(() => timelineTracksIntake(props.timeline))
+
+/** How far the bars can be trusted: how many of the days drawn carry an Entry. */
+const coverage = computed(() =>
+  tracksIntake.value
+    ? loggedDaysCaption(
+        props.timeline.loggedDays!,
+        props.timeline.from,
+        props.timeline.to,
+      )
+    : null,
 )
 
 /** Each day in words — the chart is decorative, so this is what states it. */
-const readouts = computed(() => weightTimelineReadouts(props.timeline.days))
+const readouts = computed(() => weightTimelineReadouts(props.timeline))
 
 /**
  * The day under the pointer, read out beneath the chart.
@@ -94,7 +123,31 @@ const { focusOn, readout } = useFocus()
           :height="200"
           :duration="0"
           :margin="{ top: 8, right: 4, bottom: 4, left: 4 }"
+          :y-domain="scale?.kgDomain"
         >
+          <!-- The intake half, drawn first so the weight reads over it. Every
+               bar is stacked from zero, which sits far below the kilogram domain
+               and so clips to the plot floor — and the series is kept out of the
+               domain calculation, or that zero would flatten the trend. -->
+          <VisStackedBar
+            :x="at"
+            :y="intakeKg"
+            :color="intakeColor"
+            :bar-padding="0.25"
+            :rounded-corners="1"
+            :exclude-from-domain-calculation="true"
+          />
+          <!-- What each bar is read against, and the only thing that gives one
+               a meaning on its own: under the line or over it. -->
+          <VisLine
+            :x="at"
+            :y="budgetKg"
+            :color="BUDGET_COLOR"
+            :curve-type="BUDGET_CURVE"
+            :line-width="1"
+            :line-dash-array="[3, 3]"
+            :exclude-from-domain-calculation="true"
+          />
           <VisLine :x="at" :y="trendKg" :color="TREND_COLOR" />
           <VisScatter :x="at" :y="readingKg" :color="READING_COLOR" :size="5" />
           <!-- Horizontal rules only, and none of unovis' default chrome: a
@@ -108,9 +161,13 @@ const { focusOn, readout } = useFocus()
             :tick-line="false"
             :domain-line="false"
           />
+          <!-- Labelled at chosen values only once there are bars, the domain
+               then reaching well below the readings: left to itself the axis
+               would mark kilograms down among the bars that nobody ever weighed. -->
           <VisAxis
             type="y"
             :tick-format="kgTick"
+            :tick-values="scale?.kgTicks"
             :num-ticks="4"
             :tick-line="false"
             :domain-line="false"
@@ -133,29 +190,53 @@ const { focusOn, readout } = useFocus()
         </VisXYContainer>
       </div>
 
-      <!-- Which stroke is which, said in words: the chart's whole point is that a
-           gliding line is not the same claim as the readings under it, and colour
-           alone never carries an identity (frontend/DESIGN.md). -->
-      <p
-        class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted"
+      <div
+        class="mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-xs text-muted"
       >
-        <span class="flex items-center gap-1.5">
-          <span
-            aria-hidden="true"
-            class="h-0.5 w-4 rounded-full"
-            :style="{ backgroundColor: TREND_COLOR }"
-          />
-          Trend
-        </span>
-        <span class="flex items-center gap-1.5">
-          <span
-            aria-hidden="true"
-            class="size-1.5 rounded-full"
-            :style="{ backgroundColor: READING_COLOR }"
-          />
-          Weigh-ins
-        </span>
-      </p>
+        <!-- Which stroke is which, said in words: the chart's whole point is that
+             a gliding line is not the same claim as the readings under it, and
+             colour alone never carries an identity (frontend/DESIGN.md). -->
+        <p class="flex flex-wrap items-center gap-x-4 gap-y-1">
+          <span class="flex items-center gap-1.5">
+            <span
+              aria-hidden="true"
+              class="h-0.5 w-4 rounded-full"
+              :style="{ backgroundColor: TREND_COLOR }"
+            />
+            Trend
+          </span>
+          <span class="flex items-center gap-1.5">
+            <span
+              aria-hidden="true"
+              class="size-1.5 rounded-full"
+              :style="{ backgroundColor: READING_COLOR }"
+            />
+            Weigh-ins
+          </span>
+          <!-- Only once there are bars to name: with Calorie Tracking off the
+             card is the weight half alone, and names the weight half alone. -->
+          <template v-if="tracksIntake">
+            <span class="flex items-center gap-1.5">
+              <span
+                aria-hidden="true"
+                class="h-2 w-1.5 rounded-xs"
+                :style="{ backgroundColor: INTAKE_COLOR }"
+              />
+              Calories
+            </span>
+            <span class="flex items-center gap-1.5">
+              <span
+                aria-hidden="true"
+                class="h-0.5 w-4 rounded-full border-t-2 border-dashed"
+                :style="{ borderColor: BUDGET_COLOR }"
+              />
+              Budget
+            </span>
+          </template>
+        </p>
+
+        <span v-if="coverage">{{ coverage }}</span>
+      </div>
 
       <!-- An `output`, the result of asking rather than another line of prose —
            but not a live region: the chart is `aria-hidden`, so only a pointer

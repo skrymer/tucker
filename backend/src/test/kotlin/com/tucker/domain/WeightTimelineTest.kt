@@ -26,6 +26,156 @@ class WeightTimelineTest {
             )
         }
 
+    /** A review dated [on] carrying [budgetKcal] as that week's Calorie Budget. */
+    private fun review(on: LocalDate, budgetKcal: Double) = WeeklyReview(
+        id = null,
+        reviewedOn = on,
+        trendWeightKg = 80.0,
+        intakeTargets = IntakeTargets(
+            maintenance = Maintenance(kcal = budgetKcal + 500, basis = Maintenance.Basis.FORMULA_SEED),
+            calorieBudgetKcal = budgetKcal,
+            proteinFloorG = 160.0,
+        ),
+    )
+
+    @Test
+    fun `a day carries the calories logged on it and the Budget in force that day`() {
+        val intake = TimelineIntake(
+            caloriesByDay = mapOf(to to 1750.0),
+            reviews = listOf(review(from, budgetKcal = 1800.0)),
+        )
+
+        val timeline = WeightTimeline.of(from, to, daily(*DoubleArray(28) { 80.0 })) { intake }!!
+
+        assertEquals(1750.0, timeline.days.last().caloriesKcal)
+        assertEquals(1800.0, timeline.days.last().calorieBudgetKcal)
+    }
+
+    @Test
+    fun `a day is read against the Budget in force on it, not the latest review's`() {
+        // A Budget is set by a Weekly Review and holds until the next one, so a
+        // window spanning a change carries both figures, each on its own days.
+        val raised = to.minusDays(6)
+        val intake = TimelineIntake(
+            caloriesByDay = emptyMap(),
+            reviews = listOf(review(from, budgetKcal = 1800.0), review(raised, budgetKcal = 1750.0)),
+        )
+
+        val timeline = WeightTimeline.of(from, to, daily(*DoubleArray(28) { 80.0 })) { intake }!!
+
+        val budgets = timeline.days.associate { it.date to it.calorieBudgetKcal }
+        assertEquals(1800.0, budgets[raised.minusDays(1)])
+        assertEquals(1750.0, budgets[raised])
+        assertEquals(1750.0, budgets[to])
+    }
+
+    @Test
+    fun `a timeline counts the days it drew that carry an Entry`() {
+        // Twenty days of readings, so the window is cut back to them — and a day
+        // logged before that start is a day the timeline does not draw, so counting
+        // the log rather than the drawn days would over-state its own coverage.
+        val twentyDays = daily(*DoubleArray(20) { 80.0 })
+        val intake = TimelineIntake(
+            caloriesByDay = mapOf(
+                to.minusDays(25) to 2100.0,
+                to.minusDays(1) to 1900.0,
+                to to 1750.0,
+            ),
+            reviews = listOf(review(from, budgetKcal = 1800.0)),
+        )
+
+        val timeline = WeightTimeline.of(from, to, twentyDays) { intake }!!
+
+        assertEquals(2, timeline.loggedDays)
+    }
+
+    @Test
+    fun `a day with no Entry carries no calories rather than none eaten`() {
+        // A missing bar and a floor-height bar are the same picture, and "you ate
+        // nothing" is the reading ADR 0018 exists to refuse — the engine averages
+        // over the days actually logged so a gap cannot drag Maintenance down.
+        val intake = TimelineIntake(
+            caloriesByDay = mapOf(to to 1750.0),
+            reviews = listOf(review(from, budgetKcal = 1800.0)),
+        )
+
+        val timeline = WeightTimeline.of(from, to, daily(*DoubleArray(28) { 80.0 })) { intake }!!
+
+        assertNull(timeline.days[timeline.days.size - 2].caloriesKcal)
+        // The Budget still stands on it: it was set by a review and holds all week,
+        // so it applied that day exactly as on the days either side.
+        assertEquals(1800.0, timeline.days[timeline.days.size - 2].calorieBudgetKcal)
+    }
+
+    @Test
+    fun `with Calorie Tracking off the intake half is absent, not empty`() {
+        // Weight is the premise and intake the addition, so the addition is simply
+        // not there — the client is never left hiding a half it was handed.
+        val timeline = WeightTimeline.of(from, to, daily(*DoubleArray(28) { 80.0 }))!!
+
+        assertNull(timeline.loggedDays)
+        assertEquals(emptyList<Double>(), timeline.days.mapNotNull { it.caloriesKcal })
+        assertEquals(emptyList<Double>(), timeline.days.mapNotNull { it.calorieBudgetKcal })
+    }
+
+    @Test
+    fun `a day whose review carried no targets has no Budget, not the last one that did`() {
+        // A week reviewed with Calorie Tracking off carries no Intake Targets
+        // (ADR 0024), so no Budget was in force then — reaching back past it would
+        // draw a line the User was never held to.
+        val trackingOff = to.minusDays(6)
+        val intake = TimelineIntake(
+            caloriesByDay = emptyMap(),
+            reviews = listOf(
+                review(from, budgetKcal = 1800.0),
+                WeeklyReview(id = null, reviewedOn = trackingOff, trendWeightKg = 80.0, intakeTargets = null),
+            ),
+        )
+
+        val timeline = WeightTimeline.of(from, to, daily(*DoubleArray(28) { 80.0 })) { intake }!!
+
+        val budgets = timeline.days.associate { it.date to it.calorieBudgetKcal }
+        assertEquals(1800.0, budgets[trackingOff.minusDays(1)])
+        assertNull(budgets[trackingOff])
+        assertNull(budgets[to])
+    }
+
+    @Test
+    fun `a day before the first review has no Budget yet`() {
+        // A window opens where the readings start, which can be before the User was
+        // ever given a figure to eat to.
+        val firstReview = to.minusDays(20)
+        val intake = TimelineIntake(
+            caloriesByDay = mapOf(from to 2000.0),
+            reviews = listOf(review(firstReview, budgetKcal = 1800.0)),
+        )
+
+        val timeline = WeightTimeline.of(from, to, daily(*DoubleArray(28) { 80.0 })) { intake }!!
+
+        val budgets = timeline.days.associate { it.date to it.calorieBudgetKcal }
+        assertNull(budgets[from])
+        assertEquals(1800.0, budgets[firstReview])
+    }
+
+    @Test
+    fun `a day says whether it went over the Budget it was read against`() {
+        // The verdict is the backend's, on the unrounded rule DailyLog already uses
+        // for a day's own DayStatus, so the chart and Today cannot disagree about
+        // the same day.
+        val intake = TimelineIntake(
+            caloriesByDay = mapOf(to to 1800.4, to.minusDays(1) to 1800.0),
+            reviews = listOf(review(from, budgetKcal = 1800.0)),
+        )
+
+        val timeline = WeightTimeline.of(from, to, daily(*DoubleArray(28) { 80.0 })) { intake }!!
+
+        val verdicts = timeline.days.associate { it.date to it.overBudget }
+        assertEquals(true, verdicts[to])
+        assertEquals(false, verdicts[to.minusDays(1)])
+        // There is nothing to have exceeded on a day with no Entry.
+        assertNull(verdicts[to.minusDays(2)])
+    }
+
     @Test
     fun `a day carries the reading taken on it and the trend through it`() {
         // Twenty-seven steady days and one spike: the trend moves a tenth of the way

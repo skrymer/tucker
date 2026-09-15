@@ -93,7 +93,11 @@ weight term:        −Δtrend × 7700 / 14  (unchanged — full calendar span; 
   pre-divided by the service. (Since
   [#291](https://github.com/skrymer/tucker/issues/291) the change and its span are one
   `WeightTrend.Change` and `windowDays` is the window being corrected rather than that
-  span; the principle is unchanged — the service still pre-divides nothing.)
+  span; the principle is unchanged — the service still pre-divides nothing.) Since
+  [#322](https://github.com/skrymer/tucker/issues/322) those two are **one** read:
+  calories grouped by day, whose size is the logged-day count and whose values are
+  the window's intake, so "a logged day" has one definition instead of two queries
+  that had to agree about it.
 - A new engine fallback path (hold the prior review's Maintenance) and a
   `Maintenance.Basis.HELD` value, surfaced alongside `FORMULA_SEED` / `ADAPTIVE`
   as the review's basis. (Originally stamped into the review's free-text `note`;

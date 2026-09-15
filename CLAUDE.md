@@ -1584,6 +1584,65 @@ null` now means two things that earn opposite messages — the same trap
     `SectionTabs`, the pill switcher and the Reka aria note both `/review` sections
     were carrying a copy of.
 
+  Slice 2 ([#322](https://github.com/skrymer/tucker/issues/322)) — **the intake
+  half** — ✅ done. With **Calorie Tracking** on each day gains the calories logged
+  on it, drawn as a bar, and the **Calorie Budget** in force on that date, drawn as
+  a dashed step line across the window.
+  - **The Budget is the review standing on the day, not the latest one.** A window
+    spanning a change carries both figures, each on its own days — and a day whose
+    in-force review carried no **Intake Targets** has *no* Budget rather than the
+    last one that did: ADR 0024 withdrew that figure for the weeks tracking was
+    off, so reaching past it would draw a line the User was never held to. Before
+    a first review there is none either.
+  - **Whether a day went over its Budget is stated, not derived.** The chart drew the
+    verdict itself at first, on the rounded figures its readout shows — and the backend's
+    rule is unrounded, so a day at 1800.4 kcal against an 1800 kcal Budget was
+    `OVER_BUDGET` on Today and green on the timeline. `WeightTimelineDay.overBudget`
+    carries the same comparison `DailyLog.dayStatus` makes; null where there is nothing
+    to exceed. ADR 0002's rule, and the reason it has one.
+  - **`TimelineIntake` is one value object, not two parameters.** It holds the
+    calories map and the reviews, so the whole half is present or absent together —
+    the `BorrowedFood` move `MicronutrientIntake` already makes, and what keeps
+    `WeightTimeline.of` inside detekt's six-parameter cap. `loggedDays` is null with
+    tracking off, which is what makes the half *absent* rather than empty, and the
+    one signal the client reads to know there is one.
+  - **Three window aggregates became one read**, which detekt's function cap forced
+    and which is a fix rather than a workaround: `loggedDayCount` *is* the map's
+    size and `totalCaloriesBetween` *is* its values summed, so the adaptive engine
+    now takes both off a single `caloriesByDay` — one definition of "a logged day"
+    instead of two queries that must agree about it.
+  - **unovis shares one y domain across an `XYContainer`**, and a per-component
+    `yScale` is no escape: the container calls `setScaleDomain` on *every*
+    component each render, including those excluded from the domain calculation.
+    So a calorie figure is placed on the **kilogram** domain — the weights keep the
+    top 55%, the bars are mapped into the bottom 40%, and the gap between them
+    keeps the tallest day clear of the lowest reading. A bar is stacked from zero,
+    which sits far below that domain, so each clips to the plot floor and its
+    visible height *is* its calories.
+  - **Which makes the y-axis' own ticks wrong**, and silently: left to itself it
+    labels kilograms down among the bars that nobody ever weighed. The axis is
+    handed explicit values within the weight band instead — with the one case that
+    band can be narrower than the finest step (80.02..80.06 contains no round tenth)
+    falling back to its midpoint, because an axis given no ticks draws no labels at
+    all. None of it applies with tracking off, where the weight keeps the whole card
+    on the auto-scaled axis slice 1 gave it, which is what AC 11 asks for.
+  - **The scale is derived once and passed in.** `weightTimelineSeries` briefly held
+    its own `computed`, which put reactivity in `app/utils/` against ADR 0004 and
+    falsified its own "pure" docstring; the SFC owns the `computed` and hands the
+    accessors a getter, so there is still exactly one `TimelineScale` behind both the
+    bars and the axis they are placed against.
+  - **"Not logged" is the timeline's fact, not the day's.** A tracking day before
+    the first review carries neither figure and is still a day the User did not
+    log, so the readout takes it from `loggedDays` rather than from the two nulls —
+    which is also the only thing that tells it apart from a weight-only day.
+  - **The smoke cannot date a review directly**: `POST /api/weekly-review` refuses a
+    `clientToday` more than a day off the server's (ADR 0014), so the earlier review
+    is minted by *reading that day's summary*, which is what runs a due one. That is
+    how a real Budget step gets into a 28-day window over the API alone.
+  - `BUDGET_CURVE` is cast from the literal rather than imported as unovis'
+    `CurveType`: that enum lives behind `@unovis/ts`'s barrel, whose TopoJSON
+    re-exports are the 221 KB F14 measured and going direct exists to avoid.
+
   **Out of scope:** any window but 28 or 90 days, inferring a relationship (no
   scatter, no regression, no fitted maintenance line), a rolling intake average, a
   horizontal Goal target line, stacked panes, the trajectory when tracking is on,

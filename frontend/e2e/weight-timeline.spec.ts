@@ -38,9 +38,29 @@ function aTimeline(days: number, openingKg: number) {
 const FOUR_WEEKS = aTimeline(28, 88)
 const THREE_MONTHS = aTimeline(90, 95)
 
+/**
+ * The same four weeks with an intake half: one Budget throughout, the opening day
+ * over it, the second never logged, the rest comfortably under.
+ */
+const BUDGET_KCAL = 1800
+const TRACKED = {
+  ...FOUR_WEEKS,
+  loggedDays: FOUR_WEEKS.days.length - 1,
+  days: FOUR_WEEKS.days.map((day, index) => {
+    const caloriesKcal = index === 1 ? null : index === 0 ? 2100 : 1700
+    return {
+      ...day,
+      caloriesKcal,
+      calorieBudgetKcal: BUDGET_KCAL,
+      // Stated by the backend, never derived here (ADR 0002).
+      overBudget: caloriesKcal == null ? null : caloriesKcal > BUDGET_KCAL,
+    }
+  }),
+}
+
 /** The line the sr-only list carries for a window's opening day. */
 function openingLine(timeline: ReturnType<typeof aTimeline>) {
-  return timelineLine(timeline.days[0]!)
+  return timelineLine(timeline.days[0]!, false)
 }
 
 test.beforeEach(async ({ page }) => {
@@ -153,6 +173,31 @@ test('under a fortnight of readings there is no timeline, and no error where it 
   ).toBeHidden()
 })
 
+test('each day states what it cost against the Budget, and an unlogged one says so', async ({
+  page,
+  goto,
+}) => {
+  await mockWeightTimeline(page, TRACKED)
+
+  await goto('/review', { waitUntil: 'hydration' })
+
+  // The chart is aria-hidden, so this list is where its figures are readable.
+  await expect(
+    page.getByText(timelineLine(TRACKED.days[0]!, true)),
+  ).toBeAttached()
+  await expect(
+    page.getByText(timelineLine(TRACKED.days[1]!, true)),
+  ).toBeAttached()
+  // Scoped to the section: `/review` renders two other calorie cards, so a
+  // page-wide match would not stay unambiguous.
+  const section = page.getByRole('region', { name: 'Your weight' })
+  // How far the bars can be trusted, measured off the window the response drew.
+  await expect(section.getByText('27 of 28 days logged')).toBeVisible()
+  // Neither calorie mark is identified by its colour alone.
+  await expect(section.getByText('Calories')).toBeVisible()
+  await expect(section.getByText('Budget', { exact: true })).toBeVisible()
+})
+
 test('the timeline is drawn with Calorie Tracking off, where the calorie sections are not', async ({
   page,
   goto,
@@ -176,6 +221,12 @@ test('the timeline is drawn with Calorie Tracking off, where the calorie section
   await expect(
     page.getByRole('heading', { name: 'Vitamins and minerals' }),
   ).toBeHidden()
+  // And the intake half of the chart goes with them: absent server-side, so
+  // there is nothing here to hide. The heading and the opening line asserted
+  // above are what rule out the section having failed to render entirely.
+  const section = page.getByRole('region', { name: 'Your weight' })
+  await expect(section.getByText(/days logged/)).toBeHidden()
+  await expect(section.getByText('Calories')).toBeHidden()
 })
 
 test('pointing at the chart reads out the day under the pointer', async ({

@@ -15,6 +15,9 @@ export function timelineDay(
     date: '2026-06-03',
     weightKg: 80.4,
     trendKg: 80.2,
+    caloriesKcal: null,
+    calorieBudgetKcal: null,
+    overBudget: null,
     ...overrides,
   }
 }
@@ -49,7 +52,32 @@ export function weightTimeline(
   return {
     from: days[0]!.date,
     to: days[days.length - 1]!.date,
+    loggedDays: null,
     ...overrides,
     days,
   }
+}
+
+/**
+ * The same days given an intake half: [calories] positionally, null where nothing
+ * was logged, all read against one [budgetKcal].
+ */
+export function withIntake(
+  days: Required<WeightTimelineDayResponse>[],
+  calories: (number | null)[],
+  budgetKcal: number | null = 1800,
+): Required<WeightTimelineDayResponse>[] {
+  return days.map((day, index) => {
+    const caloriesKcal = calories[index] ?? null
+    return {
+      ...day,
+      caloriesKcal,
+      calorieBudgetKcal: budgetKcal,
+      // The backend states the verdict (ADR 0002); the fixture mirrors its rule.
+      overBudget:
+        caloriesKcal != null && budgetKcal != null
+          ? caloriesKcal > budgetKcal
+          : null,
+    }
+  })
 }

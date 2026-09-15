@@ -44,6 +44,7 @@
     "@testing-library/user-event": "^14.6.1",
     "@testing-library/vue": "^8.1.0",
     "@typescript-eslint/parser": "8.59.4",
+    "@unovis/ts": "1.6.7",
     "@vue/test-utils": "^2.4.10",
     "eslint": "^10.4.0",
     "eslint-config-prettier": "^10.1.8",
