@@ -1049,6 +1049,59 @@ is the `takeWhile { !it.isAfter(to) }` that bounds the day sequence, and
 JVM dies, so pitest reports `MEMORY_ERROR` rather than `SURVIVED`. That is the
 memory-shaped version of a timeout verdict: the mutant is detected, loudly.
 
+### Weight Timeline, the intake half — `weightTimeline.ts` 128 of 131
+
+Three left, none of them a gap:
+
+- **`kgTicksBetween`'s `?? KG_TICK_STEPS[length - 1]`** reports `NoCoverage`: the
+  `find` only fails for a weight range wider than **20 kg**, which a 28- or 90-day
+  window cannot hold. Unreachable, not untested.
+- **`tick <= high + step / 2 ** 10` → `<`** is equivalent. The epsilon exists so a
+  tick landing exactly on `high` survives floating-point accumulation, and it is
+  wider than any value the loop produces, so the two comparisons admit the same
+  ticks.
+- **`if (day.caloriesKcal == null) return current.unloggedKg` → `false`** is
+  equivalent for a subtle reason worth writing down: the fall-through computes
+  `toKg(null)`, and `null / ceilingKcal` is **0** in JavaScript, so it returns
+  `floor` — which `Math.max(…, current.unloggedKg)` then raises back to exactly the
+  tick the branch would have returned.
+
+Everything else the first sweep left alive was a real gap and is closed: the scale's
+whole geometry (the 55/40 split, the headroom over the tallest of calories *and*
+Budget, the flat-window padding, a no-reading day's carried trend contributing to the
+band), the kilogram tick step at two widths, the readout and colour of a day logged
+before the first review, and the five colour constants — which the component test
+could never kill, because it compared each constant against itself.
+
+### `date.ts`'s cached `Intl.DateTimeFormat` — 7 false survivors, settled by hand
+
+Every mutant of the two module-level formatters' arguments survives
+(`'en-GB'` → `""`, `month: 'short'` → `""`, …). They are **false survivors**: a
+module-level initialiser runs at import, before Stryker sets the active mutant, so
+the mutated literal is never the one the formatter was built from. Hand-mutating
+`month: 'short'` → `'long'` fails **7 tests** across `date.test.ts` and
+`weightTimeline.test.ts`.
+
+The same wall as the backend's Spring-context entries above, in a different engine:
+suspect anything evaluated once at load time. The cache is worth its blind spot —
+`toLocaleDateString` with an options object rebuilds an ICU formatter per call, ~70x
+the cost, which a 90-day timeline paid ninety times over.
+
+### Weight Timeline, the intake half — backend 87 of 90
+
+Four non-killed, all already-recorded categories:
+
+- Three are the **`Iterable.count` body Kotlin inlines** into `WeightTimeline.of`
+  for `days.count { … }` — a `NegateConditionals`, a `ConditionalsBoundary` and the
+  `throwCountOverflow` call, all reported against line numbers past the end of the
+  file. The same stdlib noise `WeightTrend` already carries here.
+- The fourth is the `MEMORY_ERROR` on `of$lambda$2` recorded above; it did not move.
+
+`TimelineIntake`'s two constructor properties used to add a pair of `NoCoverage`
+accessors. They are gone rather than filtered: nothing outside the class reads the
+map or the list — it answers `caloriesOn` and `budgetOn` — so they are `private`,
+and Kotlin emits no accessor to mutate.
+
 ### Noise removed at the source
 
 Four `getLog()` companion accessors (`MartijndwarsWebPushSender`, `RecordingWebPushSender`,
