@@ -141,9 +141,11 @@ class WeeklyReviewService(
         val windowEnd = on.minusDays(1)
         val trendChange = trend.changeSince(windowStart)
         val weighedDays = trend.weighedDaysSince(windowStart)
-        val loggedDays = entries.loggedDayCount(windowStart, windowEnd)
-        val totalIntake =
-            if (loggedDays >= MIN_LOGGED_DAYS) entries.totalCaloriesBetween(windowStart, windowEnd) else 0.0
+        // One read, so the days counted and the calories averaged are the same rows:
+        // a day absent from the map is a day with no Entry, never a zero-calorie one.
+        val intakeByDay = entries.caloriesByDay(windowStart, windowEnd)
+        val loggedDays = intakeByDay.size
+        val totalIntake = intakeByDay.values.sum()
 
         // One floor per term, read together because the estimate is one energy balance
         // and either term alone is not it (ADR 0018): enough logging that the average

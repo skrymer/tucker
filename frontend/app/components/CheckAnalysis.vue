@@ -83,7 +83,11 @@ function useRings() {
     {
       key: 'cost',
       label: 'Costs',
-      line: `${Math.round(inPortion(props.check.caloriesPer100g))} / ${Math.round(props.check.calorieBudgetKcal)} kcal`,
+      line: formatAgainstTarget(
+        inPortion(props.check.caloriesPer100g),
+        props.check.calorieBudgetKcal,
+        'kcal',
+      ),
       ...ring(inPortion(props.check.costSharePer100g), 'var(--ui-primary)'),
     },
     {

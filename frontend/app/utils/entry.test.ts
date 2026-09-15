@@ -74,3 +74,13 @@ describe('formatEntryName', () => {
     ).toBe('Cafe lunch — 600 kcal')
   })
 })
+
+describe('formatAgainstTarget', () => {
+  it('states what was taken over what was allowed, both rounded', () => {
+    expect(formatAgainstTarget(1748.6, 1800.2, 'kcal')).toBe('1749 / 1800 kcal')
+  })
+
+  it('carries whatever unit the pair is measured in', () => {
+    expect(formatAgainstTarget(120, 160, 'g')).toBe('120 / 160 g')
+  })
+})

@@ -633,10 +633,20 @@ the adaptive **Maintenance** correction already follow, so the scatter is there 
 make the smoothing legible rather than to be a second answer.
 Weight is the premise and intake the addition. With **Calorie Tracking** on it
 also carries each day's calories and the **Calorie Budget** in force on that day;
+and whether the day went over it — the verdict, on the same unrounded comparison
+a **Day Status** makes, so the chart and the day's own status cannot disagree;
 with it off those are simply **absent** — never zero, because a day the user
 didn't log is not a day they ate nothing (the distinction ADR 0018 already turns
 on), and never hidden client-side. An unlogged day is likewise absent rather than
-zero *within* a tracking window.
+zero *within* a tracking window — and the Budget still stands on it, because a
+Budget is set by a **Weekly Review** and holds until the next one: it applied on
+that day exactly as on the days either side, and did not lapse because the user
+stopped recording. The figure is the one in force on *that date* rather than the
+latest, so a window spanning a change carries both; before a user's first review,
+and on a day whose review carried no **Intake Targets**, there is none.
+Like an **Intake Breakdown**, a tracking timeline also states how many of the days
+it draws carry an **Entry** — the width of a window being no evidence it was
+logged.
 With Calorie Tracking off it instead carries the active **Goal**'s *planned
 trajectory* — the line from the Goal's start weight at its chosen rate. That
 appears only there, and deliberately: with tracking on, "am I on track" is

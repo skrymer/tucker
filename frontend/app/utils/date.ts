@@ -17,7 +17,7 @@ export function localToday(): string {
  * non-UTC runtime/test timezone can't shift the day off the stored ISO date.
  */
 export function formatDateFromISO(iso: string): string {
-  return formatISO(iso, { day: 'numeric', month: 'short', year: 'numeric' })
+  return formatISO(iso, DAY_MONTH_YEAR)
 }
 
 /**
@@ -25,7 +25,7 @@ export function formatDateFromISO(iso: string): string {
  * year is the same on every one of them and only takes up room.
  */
 export function formatDayMonthFromISO(iso: string): string {
-  return formatISO(iso, { day: 'numeric', month: 'short' })
+  return formatISO(iso, DAY_MONTH)
 }
 
 /**
@@ -84,10 +84,25 @@ export function daysInWindow(from: string, to: string): number {
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000
 
+/**
+ * The shapes an ISO day is turned into words in, built once each rather than per
+ * call: `toLocaleDateString` with an options object builds a fresh ICU formatter
+ * every time, which is ~70x the cost and which a 90-day chart pays ninety times.
+ */
+const DAY_MONTH_YEAR = new Intl.DateTimeFormat('en-GB', {
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+})
+const DAY_MONTH = new Intl.DateTimeFormat('en-GB', {
+  day: 'numeric',
+  month: 'short',
+})
+
 /** The one place an ISO day is turned into words, so the locale is chosen once. */
-function formatISO(iso: string, options: Intl.DateTimeFormatOptions): string {
+function formatISO(iso: string, formatter: Intl.DateTimeFormat): string {
   const [y, m, d] = isoParts(iso)
-  return new Date(y, m - 1, d).toLocaleDateString('en-GB', options)
+  return formatter.format(new Date(y, m - 1, d))
 }
 
 function isoParts(iso: string): [number, number, number] {

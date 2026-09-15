@@ -54,13 +54,11 @@ const { centreValue, centreLabel } = useCentre()
 // The accessible legend beside the ring: the figures as text plus meters capped
 // at their target so an over-target day shows a full bar, not an overflow.
 function useLegend() {
-  const caloriesLegend = computed(
-    () =>
-      `${Math.round(props.caloriesConsumed)} / ${Math.round(props.calorieBudget)} kcal`,
+  const caloriesLegend = computed(() =>
+    formatAgainstTarget(props.caloriesConsumed, props.calorieBudget, 'kcal'),
   )
-  const proteinLegend = computed(
-    () =>
-      `${Math.round(props.proteinConsumed)} / ${Math.round(props.proteinFloor)} g`,
+  const proteinLegend = computed(() =>
+    formatAgainstTarget(props.proteinConsumed, props.proteinFloor, 'g'),
   )
   const caloriesBar = computed(() =>
     Math.min(props.caloriesConsumed, props.calorieBudget),

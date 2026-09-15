@@ -4699,6 +4699,11 @@
             "items": {
               "$ref": "#/components/schemas/WeightTimelineDayResponse"
             }
+          },
+          "loggedDays": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
           }
         }
       },
@@ -4721,6 +4726,20 @@
           "trendKg": {
             "type": "number",
             "format": "double"
+          },
+          "caloriesKcal": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "calorieBudgetKcal": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "overBudget": {
+            "type": "boolean",
+            "nullable": true
           }
         }
       }

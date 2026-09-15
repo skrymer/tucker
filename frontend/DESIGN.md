@@ -177,10 +177,17 @@ ADR 0029). Two series on one kilogram scale, and the whole point is that they ar
 not the same kind of claim: the **Trend Weight** glides, the **Weight
 Measurements** scatter beneath it.
 
-| Series              | Token              | Mark                |
-| ------------------- | ------------------ | ------------------- |
-| Trend Weight        | `--ui-primary`     | 2px line, monotone  |
-| Weight Measurements | `--ui-text-dimmed` | 5px points, no line |
+With **Calorie Tracking** on the same plot carries a second pair beneath them —
+what the user was eating while their weight did that.
+
+| Series              | Token                      | Mark                       |
+| ------------------- | -------------------------- | -------------------------- |
+| Trend Weight        | `--ui-primary`             | 2px line, monotone         |
+| Weight Measurements | `--ui-text-dimmed`         | 5px points, no line        |
+| Calories            | `--tucker-timeline-intake` | bar, from the plot floor   |
+| — over the Budget   | `--ui-error`               | the same bar, in error red |
+| — no **Entry**      | `--ui-text-dimmed`         | a 4% baseline tick         |
+| Calorie Budget      | `--ui-text-muted`          | 1px dashed step line       |
 
 **The key is load-bearing, for the same reason the ring's legend is.** Measured
 on the light card (`#ffffff`): the trend line is **2.38:1** and the points
@@ -191,6 +198,32 @@ drawn from the same two constants the chart is, so a swatch cannot come to mean 
 line it no longer matches. The colours stay: the trend is the brand green because
 it is the figure Tucker computes, and a point darker than the line it explains
 would invert the hierarchy.
+
+**The bars keep Tucker's calorie green, a step back from the brand.** A calorie
+figure is green wherever it appears and turns error red once over the Budget —
+the Day Ring's convention for this very figure — so the bars follow it in
+`--tucker-timeline-intake` rather than inventing a hue. A step back so the bars
+stay subordinate to the trend line drawn in `--ui-primary` above them: the card
+is titled _Your weight_, and intake is the addition. Over the Budget is not
+carried by colour alone — the bar stands above the Budget line, and the readout
+states both figures.
+
+**Only four things are named in the key, and the other two on purpose are not.**
+_Trend_, _Weigh-ins_, _Calories_ and _Budget_ — the series. Over-budget is a
+_state_ of a bar rather than a series, and an unlogged day's tick marks an
+absence; both have a second signal of their own (position against the Budget
+line; the readout's "not logged" and the logged-days caption), so naming them
+would put six chips of meta under a 200px card for nothing.
+
+**Two scales share one plot, and the bars never reach the weights.** unovis
+shares a single y domain across an `XYContainer` — a per-component domain is
+overwritten on every render — so a calorie figure is placed on the _kilogram_
+domain: the weights keep the top 55% and the bars are mapped into the bottom 40%,
+with the gap between them keeping the tallest day clear of the lowest reading.
+The axis is therefore labelled at chosen values rather than left to itself, which
+would mark kilograms down among the bars that nobody ever weighed. With Calorie
+Tracking off none of that applies and the weight keeps the whole card, on the
+auto-scaled axis it has always had.
 
 **The readout stays decorative, as the ring's does.** It is an `<output>` — the
 result of asking, not a line of prose — but carries `aria-live="off"`: the chart

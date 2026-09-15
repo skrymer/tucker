@@ -25,3 +25,16 @@ export function formatIntakeFigures(
   const returned = protein == null ? '' : ` · ${Math.round(protein)} g protein`
   return `${Math.round(calories)} kcal${returned}`
 }
+
+/**
+ * What was taken against what was allowed: `1500 / 1800 kcal`. Both sides are
+ * rounded, so the pair a User reads is the pair an over-target verdict is decided
+ * on. Shared by the Day Ring, a Check and the Weight Timeline's readout.
+ */
+export function formatAgainstTarget(
+  consumed: number,
+  target: number,
+  unit: string,
+): string {
+  return `${Math.round(consumed)} / ${Math.round(target)} ${unit}`
+}

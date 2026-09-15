@@ -86,6 +86,16 @@
   --tucker-cat-other: #93a79b;
 }
 
+/* The Weight Timeline's calorie bars. Green because Tucker's calorie figure is
+   green wherever it appears, but a step back from the brand so the bars stay
+   subordinate to the Trend Weight line drawn in --ui-primary above them; over
+   the Calorie Budget a bar switches to --ui-error, the Day Ring's convention for
+   this same figure. Sub-3:1 like the rest of that chart, which is why its key
+   names the series in words (frontend/DESIGN.md). */
+:root {
+  --tucker-timeline-intake: #5cbf93;
+}
+
 /* The Intake Breakdown's ring reads the slice under the pointer out in its own
    centre rather than in a box beside the cursor. The chart's tooltip is the only
    place it reports which slice that is, so the tooltip stays mounted and is made
@@ -183,6 +193,10 @@
   --tucker-cat-7: #9085e9;
   --tucker-cat-8: #e66767;
   --tucker-cat-other: #7b8f84;
+
+  /* Re-selected against the dark card, not inherited: the light bar is a tint
+     and would glare. */
+  --tucker-timeline-intake: #2f7a59;
 }
 
 .dark .app-canvas {

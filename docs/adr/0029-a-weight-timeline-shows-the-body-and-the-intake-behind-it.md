@@ -48,6 +48,11 @@ through them*, which is the actual relationship — and is the only defence the
 chart has against a User reading Tuesday's intake spike as Wednesday's weight
 gain, which putting calories on the same axis actively invites.
 
+**Whether a day went over its Budget is the backend's verdict**, on the same
+unrounded comparison a day's own **Day Status** already makes, rather than a
+comparison the chart repeats — two answers to one question would sooner or later
+colour a bar green that Today calls over budget (ADR 0002).
+
 **An unlogged day is absent, never zero.** A missing bar and a floor-height bar
 are the same picture, and "you ate nothing" is the reading ADR 0018 exists to
 refuse — the engine averages over logged days so a gap cannot drag Maintenance
@@ -56,6 +61,14 @@ baseline tick: something has to distinguish it from a day at the floor. The
 **Calorie Budget** line **spans** it, because a Budget is set by a Weekly Review
 and holds all week — it applied on that day exactly as on the days either side,
 and breaking the line would assert it lapsed because the User stopped recording.
+
+**With Calorie Tracking off the intake half goes, including the days it could
+have drawn.** A **Weekly Review** ledger keeps a currently-off User's real history
+and picks its columns from the data (ADR 0024); a timeline is a *current-state*
+read and picks from the setting, so turning tracking off takes the bars with it
+even for the weeks whose reviews carried **Intake Targets**. The two differ
+because the ledger is a record of what the engine did and the chart is a picture
+of what the User is doing.
 
 **With Calorie Tracking off, the Goal's planned trajectory takes the intake
 half's place** — the sloped line from the Goal's start weight (itself the Trend
