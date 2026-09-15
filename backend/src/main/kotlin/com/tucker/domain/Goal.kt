@@ -1,6 +1,7 @@
 package com.tucker.domain
 
 import java.time.LocalDate
+import java.time.temporal.ChronoUnit
 
 /**
  * A weight-loss Goal: a target weight, pursued at a chosen rate of loss.
@@ -33,6 +34,21 @@ data class Goal(
 
     /** Whether [trendWeightKg] has reached (or passed) the target. */
     fun isReachedAt(trendWeightKg: Double): Boolean = trendWeightKg <= targetWeightKg
+
+    /**
+     * Where the plan puts the Trend Weight on [date] — from [startWeightKg] at
+     * [rateKgPerWeek], and flat at [targetWeightKg] once it gets there, the plan
+     * being to reach the target and nothing below it. Null on a day before the
+     * Goal was set, the plan not existing yet.
+     *
+     * Never rises: the init block above refuses a rate at or below zero and a
+     * target at or above the start weight.
+     */
+    fun plannedWeightOn(date: LocalDate): Double? {
+        if (date.isBefore(startedOn)) return null
+        val weeks = ChronoUnit.DAYS.between(startedOn, date) / DAYS_PER_WEEK
+        return maxOf(startWeightKg - rateKgPerWeek * weeks, targetWeightKg)
+    }
 
     /**
      * Stamp [reachedOn] iff the Goal just crossed its target — i.e. it isn't

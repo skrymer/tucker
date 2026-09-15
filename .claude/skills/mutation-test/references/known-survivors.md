@@ -1073,6 +1073,35 @@ band), the kilogram tick step at two widths, the readout and colour of a day log
 before the first review, and the five colour constants — which the component test
 could never kill, because it compared each constant against itself.
 
+### Weight Timeline, the plan — `weightTimeline.ts` + the section, 247 of 260
+
+The three intake-half entries above are unchanged. Five more, none a gap, plus three
+real ones that are closed:
+
+- **`exits`' and `enters`' predicates → `true`** are **false survivors**. Hand-mutating
+  `findIndex((kg) => kg != null && kg < low)` to `findIndex(() => true)` fails **8**
+  tests, and the same on `findLastIndex` fails **6** — Stryker lists the right covering
+  tests and still reports both alive. Hand-mutate before writing anything for a
+  survivor in this function.
+- **`if (kg == null) return []` → `false`** is equivalent, and JavaScript is why: the
+  fall-through then asks `null < low`, which coerces `null` to **0** and is therefore
+  true for any real kilogram, so the day takes the `exits` branch — and `exits` skips
+  nulls, so it never matches and the day returns `[]` either way.
+- **`planClipped`'s `plan.value?.clips` → `plan.value.clips`** is equivalent: a Vue
+  computed is lazy, and the template reads it only inside `v-if="plan"`, so the
+  optional call is unreachable rather than untested.
+- **`TimelineIntake.loggedDaysIn`'s negated conditional** is a **false survivor** —
+  `days.count { it.caloriesKcal == null }` by hand fails 4 tests. Its two siblings
+  (a `ConditionalsBoundaryMutator` and a `NO_COVERAGE` on `throwCountOverflow`) are
+  Kotlin's inlined `count` overflow check, which no assertion can reach.
+
+Closed rather than excused: the ceiling's `>` (two mutants — a plan peaking *within*
+the two-kilo stretch lands exactly on `high`, which `>` and `>=` disagree about, and
+no test had a plan above the weights but in reach), `clipKg`'s `?.` (nothing called
+the marker accessor on a timeline with no plan), and the section's `() => props.timeline`
+getter (no component test called `dayTick`, so the chart could have been wired to
+nothing and the day axis would simply have been blank).
+
 ### `date.ts`'s cached `Intl.DateTimeFormat` — 7 false survivors, settled by hand
 
 Every mutant of the two module-level formatters' arguments survives

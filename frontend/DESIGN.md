@@ -178,21 +178,26 @@ not the same kind of claim: the **Trend Weight** glides, the **Weight
 Measurements** scatter beneath it.
 
 With **Calorie Tracking** on the same plot carries a second pair beneath them —
-what the user was eating while their weight did that.
+what the user was eating while their weight did that. With it **off** and a
+**Goal** running, the Goal's planned trajectory takes their place: never both,
+which is what lets the plan and the Budget both be reference rules.
 
-| Series              | Token                      | Mark                       |
-| ------------------- | -------------------------- | -------------------------- |
-| Trend Weight        | `--ui-primary`             | 2px line, monotone         |
-| Weight Measurements | `--ui-text-dimmed`         | 5px points, no line        |
-| Calories            | `--tucker-timeline-intake` | bar, from the plot floor   |
-| — over the Budget   | `--ui-error`               | the same bar, in error red |
-| — no **Entry**      | `--ui-text-dimmed`         | a 4% baseline tick         |
-| Calorie Budget      | `--ui-text-muted`          | 1px dashed step line       |
+| Series              | Token                      | Mark                        |
+| ------------------- | -------------------------- | --------------------------- |
+| Trend Weight        | `--ui-primary`             | 2px line, monotone          |
+| Weight Measurements | `--ui-text-dimmed`         | 5px points, no line         |
+| Calories            | `--tucker-timeline-intake` | bar, from the plot floor    |
+| — over the Budget   | `--ui-error`               | the same bar, in error red  |
+| — no **Entry**      | `--ui-text-dimmed`         | a 4% baseline tick          |
+| Calorie Budget      | `--ui-text-muted`          | 1px dashed step line        |
+| Planned trajectory  | `--tucker-timeline-plan`   | 1.5px dashed line, straight |
+| — where it runs off | `--tucker-timeline-plan`   | a 7px diamond on the edge   |
 
 **The key is load-bearing, for the same reason the ring's legend is.** Measured
 on the light card (`#ffffff`): the trend line is **2.38:1** and the points
 **2.55:1** — both under the 3:1 the categorical palette uses to declare a legend
-mandatory. (Dark clears it: 6.78:1 and 3.86:1.) The two strokes are therefore
+mandatory. (Dark clears it: 8.86:1 and 3.86:1 — `--ui-primary` maps to primary-400
+there, not the brand `#00c16a`.) The two strokes are therefore
 named in words beneath the chart — _Trend_ and _Weigh-ins_ — and the swatches are
 drawn from the same two constants the chart is, so a swatch cannot come to mean a
 line it no longer matches. The colours stay: the trend is the brand green because
@@ -208,12 +213,42 @@ is titled _Your weight_, and intake is the addition. Over the Budget is not
 carried by colour alone — the bar stands above the Budget line, and the readout
 states both figures.
 
-**Only four things are named in the key, and the other two on purpose are not.**
-_Trend_, _Weigh-ins_, _Calories_ and _Budget_ — the series. Over-budget is a
-_state_ of a bar rather than a series, and an unlogged day's tick marks an
-absence; both have a second signal of their own (position against the Budget
-line; the readout's "not logged" and the logged-days caption), so naming them
-would put six chips of meta under a 200px card for nothing.
+**The plan is the one weight-axis stroke with a hue of its own.** A reference
+rule could have borrowed `--ui-text-muted` from the Budget line, and on screen
+nothing would collide — the two never share a card. It does not, for two reasons.
+Grey on grey is a lightness-only distinction, and at 1.5px the plan threads
+through up to ninety `--ui-text-dimmed` weigh-in dots. And in the source, two
+constants sharing one literal claim two roles for one value, so a later change to
+either silently moves both. `--tucker-timeline-plan` is a low-chroma indigo —
+**4.80:1** light, **6.39:1** dark, clearing 3:1 in both, while staying the
+quietest stroke on the card by being dashed and thinner than the trend. Not a
+`--tucker-cat-*` slot: those are the Intake Breakdown's identities and are not
+chosen for card contrast.
+
+**The plan is drawn straight, and that is a correctness rule.** It has a corner
+where it flattens at the target, and unovis' default monotone curve rounds that
+into a deceleration into the Goal — a claim the plan does not make, on a chart
+whose ADR is "it describes; it never infers". `PLAN_CURVE` is `linear`.
+
+**A clipped plan is marked, and its key chip says so rather than a second chip
+appearing.** The weight domain stretches at most 2 kg beyond the weight data, so
+a plan further away runs off an edge; a diamond sits where it leaves, and the
+chip reads _Plan off chart_ with the diamond added to its swatch. One chip whose
+swatch always shows everything the series draws — two chips both opening with
+"Plan" is repetition under a 200px card. A diamond rather than a triangle because
+the plan can leave by either edge and unovis' triangle only points up; the
+direction is carried by which edge it sits on. The plot's top and bottom margins
+carry room for it, or half the diamond would sit in the date strip.
+
+**The key names the series and nothing else** — four with Calorie Tracking on,
+three with it off and a **Goal** running — two on the Goal's first day, when the
+plan is one point and is not drawn at all — and two in **Maintenance Mode**, where
+ADR 0029 keeps the card deliberately bare. _Trend_, _Weigh-ins_ and then either
+_Calories_ + _Budget_ or _Plan_, the two halves never sharing a card. Over-budget is a _state_ of a bar
+rather than a series, and an unlogged day's tick marks an absence; both have a
+second signal of their own (position against the Budget line; the readout's
+"not logged" and the logged-days caption), so naming them would put six chips of
+meta under a 200px card for nothing.
 
 **Two scales share one plot, and the bars never reach the weights.** unovis
 shares a single y domain across an `XYContainer` — a per-component domain is
@@ -222,8 +257,10 @@ domain: the weights keep the top 55% and the bars are mapped into the bottom 40%
 with the gap between them keeping the tallest day clear of the lowest reading.
 The axis is therefore labelled at chosen values rather than left to itself, which
 would mark kilograms down among the bars that nobody ever weighed. With Calorie
-Tracking off none of that applies and the weight keeps the whole card, on the
-auto-scaled axis it has always had.
+Tracking off none of that applies: the weight keeps the whole card, on the
+auto-scaled axis it has always had — or, with a plan to hold, on a domain
+stretched at most 2 kg past the weights, every value of which is still a
+kilogram somebody could have weighed, so the axis labels itself.
 
 **The readout stays decorative, as the ring's does.** It is an `<output>` — the
 result of asking, not a line of prose — but carries `aria-live="off"`: the chart

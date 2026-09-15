@@ -4740,6 +4740,11 @@
           "overBudget": {
             "type": "boolean",
             "nullable": true
+          },
+          "trajectoryKg": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
           }
         }
       }

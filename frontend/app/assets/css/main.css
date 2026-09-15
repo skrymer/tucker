@@ -96,6 +96,14 @@
   --tucker-timeline-intake: #5cbf93;
 }
 
+/* The Weight Timeline's planned trajectory. A low-chroma indigo chosen against
+   both cards rather than borrowed from a --ui-* role, so it is unmistakably not
+   the green trend nor the grey weigh-ins it threads between; figures and the
+   reasoning are in frontend/DESIGN.md. */
+:root {
+  --tucker-timeline-plan: #62719e;
+}
+
 /* The Intake Breakdown's ring reads the slice under the pointer out in its own
    centre rather than in a box beside the cursor. The chart's tooltip is the only
    place it reports which slice that is, so the tooltip stays mounted and is made
@@ -197,6 +205,9 @@
   /* Re-selected against the dark card, not inherited: the light bar is a tint
      and would glare. */
   --tucker-timeline-intake: #2f7a59;
+
+  /* The same hue and chroma a step lighter, not a re-hue. */
+  --tucker-timeline-plan: #93a2d2;
 }
 
 .dark .app-canvas {

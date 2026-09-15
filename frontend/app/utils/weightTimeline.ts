@@ -22,6 +22,20 @@ export const BUDGET_COLOR = 'var(--ui-text-muted)'
 export const UNLOGGED_COLOR = 'var(--ui-text-dimmed)'
 
 /**
+ * The Goal's planned trajectory, and the diamond marking where it runs off the
+ * plot. A hue of the chart's own rather than a neutral role: the plan threads
+ * between the green trend and the grey weigh-ins, and grey on grey at 1.5px is a
+ * lightness-only distinction (frontend/DESIGN.md).
+ */
+export const TRAJECTORY_COLOR = 'var(--tucker-timeline-plan)'
+
+/**
+ * The diamond's circle-equivalent diameter. The plot's vertical margins hold a
+ * marker this size centred on a domain edge — keep them in step with it.
+ */
+export const CLIP_MARKER_PX = 7
+
+/**
  * A step, not a slope: a Calorie Budget changes on the day a Weekly Review sets
  * it and holds flat until the next one.
  *
@@ -30,6 +44,14 @@ export const UNLOGGED_COLOR = 'var(--ui-text-dimmed)'
  * keep off the chart chunk.
  */
 export const BUDGET_CURVE = 'stepAfter' as CurveType
+
+/**
+ * Straight, never smoothed. The plan has a corner where it flattens at the target,
+ * and unovis' default monotone curve rounds that into a deceleration into the Goal
+ * — a claim the plan does not make, on a chart that describes and never infers
+ * (ADR 0029). Cast from the literal for [BUDGET_CURVE]'s reason.
+ */
+export const PLAN_CURVE = 'linear' as CurveType
 
 /** The windows a Weight Timeline is offered over (CONTEXT.md — Weight Timeline). */
 export const TIMELINE_WINDOWS = [28, 90] as const
@@ -70,7 +92,12 @@ export function weightTimelineReadout(
   const reading =
     day.weightKg == null ? 'no weigh-in' : `${day.weightKg.toFixed(1)} kg`
   const body = `${formatDateFromISO(day.date)} · ${reading} · trend ${day.trendKg.toFixed(1)} kg`
-  return tracksIntake ? body + intakeReadout(day) : body
+  const withIntake = tracksIntake ? body + intakeReadout(day) : body
+  // The plan's own figure, never the edge the line was clipped at: the clamp is a
+  // rendering rule, and this is where the plan is readable at all.
+  return day.trajectoryKg == null
+    ? withIntake
+    : `${withIntake} · plan ${day.trajectoryKg.toFixed(1)} kg`
 }
 
 /** What the day's eating adds to a readout — the tick, said in words. */
@@ -178,15 +205,9 @@ export interface TimelineScale {
  */
 export function weightTimelineScale(timeline: Timeline): TimelineScale | null {
   if (!timelineTracksIntake(timeline)) return null
-  const weights = timeline.days.flatMap((day) =>
-    day.weightKg == null ? [day.trendKg] : [day.trendKg, day.weightKg],
-  )
-  const lowest = Math.min(...weights)
-  const highest = Math.max(...weights)
-  const padding = highest > lowest ? 0 : FLAT_WEIGHT_SPAN_KG / 2
   // The band the weights are drawn over, and the domain that gives it the top
   // WEIGHT_BAND of the plot with the bars beneath.
-  const [bandLow, bandHigh] = [lowest - padding, highest + padding]
+  const [bandLow, bandHigh] = weightExtent(timeline)
   const floor = bandHigh - (bandHigh - bandLow) / WEIGHT_BAND
   const ceilingKcal =
     KCAL_HEADROOM *
@@ -207,18 +228,121 @@ export function weightTimelineScale(timeline: Timeline): TimelineScale | null {
 }
 
 /**
+ * The band the weight half needs — the Trend Weight every day carries and the
+ * readings on the days that have one, widened to [FLAT_WEIGHT_SPAN_KG] when the
+ * weight did not move at all. The widening is part of the extent rather than the
+ * caller's, because a domain of no height is not drawable and every caller that
+ * supplies one needs the guard.
+ */
+function weightExtent(timeline: Timeline): [number, number] {
+  const weights = timeline.days.flatMap((day) =>
+    day.weightKg == null ? [day.trendKg] : [day.trendKg, day.weightKg],
+  )
+  const lowest = Math.min(...weights)
+  const highest = Math.max(...weights)
+  const padding = highest > lowest ? 0 : FLAT_WEIGHT_SPAN_KG / 2
+  return [lowest - padding, highest + padding]
+}
+
+/**
+ * How far the weight axis may stretch beyond the weights themselves to make room
+ * for the plan. A Weight Timeline exists to resolve one to two kilos of movement
+ * and a Goal lives five to seven kilos away, so an axis reaching the whole way
+ * flattens the User's own trend to a straight line (ADR 0029).
+ */
+const TRAJECTORY_STRETCH_KG = 2
+
+/**
+ * How the active Goal's planned trajectory is drawn into the plot.
+ *
+ * Every lookup is by **date**, never by a day's position: unovis hands a Scatter's
+ * y accessor the accessor-group index where a Line gets the row's, so a series
+ * keyed on position is read off row zero for every day and draws nothing at all.
+ */
+export interface TimelineTrajectory {
+  /** The container's y domain, in kilograms — the weights and the plan beside them. */
+  kgDomain: [number, number]
+  /** The plan on [date], or undefined where there is none to draw. */
+  kgOn(date: string): number | undefined
+  /** The edge the plan leaves the plot by on [date], or undefined on any other day. */
+  clipOn(date: string): number | undefined
+  /**
+   * The days the plan leaves the plot — one per edge it leaves by, empty while the
+   * whole plan is drawn. A clipped line saying nothing reads as a bug.
+   */
+  clips: { date: string; kg: number }[]
+}
+
+/**
+ * The planned trajectory drawn into the plot, or null when there is none — which
+ * is what Calorie Tracking and having an active Goal decide, server-side.
+ */
+export function weightTimelineTrajectory(
+  timeline: Timeline,
+): TimelineTrajectory | null {
+  const plan = timeline.days.map((day) => day.trajectoryKg)
+  const planned = plan.filter((kg) => kg != null)
+  if (planned.length === 0) return null
+  const [lowest, highest] = weightExtent(timeline)
+  const low = Math.max(
+    lowest - TRAJECTORY_STRETCH_KG,
+    Math.min(lowest, ...planned),
+  )
+  const high = Math.min(
+    highest + TRAJECTORY_STRETCH_KG,
+    Math.max(highest, ...planned),
+  )
+  // The days the plan is drawn on an edge rather than where it actually falls, so
+  // the line runs off the plot instead of stopping in mid-air; the rest of each
+  // run is dropped (ADR 0029). The plan never rises — `Goal` refuses a rate below
+  // 0.05 kg/week and a target above the start weight, and `GoalTest` pins that the
+  // plan follows — so the *first* day under the floor and the *last* over the
+  // ceiling are the ones nearest the plot.
+  const exits = plan.findIndex((kg) => kg != null && kg < low)
+  const enters = plan.findLastIndex((kg) => kg != null && kg > high)
+  const dateOf = (index: number) => timeline.days[index]!.date
+  const drawn = new Map(
+    plan.flatMap((kg, index) => {
+      if (kg == null) return []
+      if (kg < low)
+        return index === exits ? [[dateOf(index), low] as const] : []
+      if (kg > high)
+        return index === enters ? [[dateOf(index), high] as const] : []
+      return [[dateOf(index), kg] as const]
+    }),
+  )
+  const clips = [
+    ...(enters === -1 ? [] : [{ date: dateOf(enters), kg: high }]),
+    ...(exits === -1 ? [] : [{ date: dateOf(exits), kg: low }]),
+  ]
+  // Nothing a chart can show: a line needs two points, and a Goal is always
+  // started today (ADR 0016), so its first window carries exactly one planned
+  // day. Naming a series in the key that nothing draws is worse than the plain
+  // weight card the User had yesterday. A plan off the chart all window is not
+  // this case — its marker is a mark.
+  if (drawn.size < 2 && clips.length === 0) return null
+  return {
+    kgDomain: [low, high],
+    kgOn: (date) => drawn.get(date),
+    clipOn: (date) => clips.find((clip) => clip.date === date)?.kg,
+    clips,
+  }
+}
+
+/**
  * How the chart reads a day: the accessors each series is drawn through, and the
  * two tick formats. Pure, so the rules live here rather than in the SFC, where
  * an `aria-hidden` chart leaves them assertable only through its own props.
  *
- * Both arguments are getters: the accessors are made once and still read the
- * timeline being drawn now, and [scale] is the caller's single one — the same
- * object the container's domain and ticks come from, so the bars and the axis
- * they are placed against cannot be derived apart.
+ * Every argument is a getter: the accessors are made once and still read the
+ * timeline being drawn now, and [scale] and [plan] are the caller's single ones —
+ * the same objects the container's domain and ticks come from, so a series and the
+ * axis it is placed against cannot be derived apart.
  */
 export function weightTimelineSeries(
   timeline: () => Timeline,
   scale: () => TimelineScale | null,
+  plan: () => TimelineTrajectory | null,
 ) {
   const days = () => timeline().days
   return {
@@ -226,6 +350,14 @@ export function weightTimelineSeries(
     // is its x — which keeps the scatter and the line on the same footing.
     at: (_day: TimelineDay, index: number) => index,
     trendKg: (day: TimelineDay) => day.trendKg,
+    // The Goal's plan for the day, clamped into the plot and dropped past the edge
+    // it leaves by. Undefined throughout with Calorie Tracking on and in
+    // Maintenance Mode, so no plan is drawn at all.
+    trajectoryKg: (day: TimelineDay) => plan()?.kgOn(day.date),
+    // The edge the plan leaves the plot by, marked so a line that simply stops
+    // does not read as a bug. Undefined on every other day, and throughout while
+    // the whole plan is drawn.
+    clipKg: (day: TimelineDay) => plan()?.clipOn(day.date),
     // Undefined rather than null or zero: unovis drops a point with a missing
     // value, which is what keeps a day nobody weighed in on off the chart rather
     // than on the floor.

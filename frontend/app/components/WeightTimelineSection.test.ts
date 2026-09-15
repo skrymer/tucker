@@ -9,6 +9,7 @@ import {
   INTAKE_COLOR,
   OVER_BUDGET_COLOR,
   READING_COLOR,
+  TRAJECTORY_COLOR,
   TREND_COLOR,
 } from '~/utils/weightTimeline'
 import WeightTimelineSection from './WeightTimelineSection.vue'
@@ -16,6 +17,7 @@ import {
   timelineDays,
   weightTimeline,
   withIntake,
+  withPlan,
 } from '~~/test/weight-timeline-fixtures'
 
 /** A tracking window: two days logged, the middle one not, all at one Budget. */
@@ -25,6 +27,13 @@ const trackedDays = withIntake(timelineDays([80.4, null, 80.2]), [
   1000,
 ])
 const tracked = weightTimeline({ days: trackedDays, loggedDays: 2 })
+
+/** A weight-only window with an active Goal: the plan takes the intake half's place. */
+const plannedDays = withPlan(
+  timelineDays([80.4, null, 80.2]),
+  [80.0, 79.9, 79.8],
+)
+const planned = weightTimeline({ days: plannedDays })
 
 /**
  * The chart, mocked for the whole file. It is a third-party component with no
@@ -56,14 +65,20 @@ function chartPart(name: string) {
 }
 
 /**
- * The chart draws two lines, in this order: the Budget step across the bars, and
- * the Trend Weight over it.
+ * The chart draws three lines, in this order: the Budget step across the bars, the
+ * Goal's planned trajectory, and the Trend Weight over both — the reference marks
+ * beneath the User's own body.
  */
 const BUDGET_LINE = 0
-const TREND_LINE = 1
+const PLAN_LINE = 1
+const TREND_LINE = 2
 
 /** The chart draws the day axis first, then the kilogram one. */
+const DAY_AXIS = 0
 const KG_AXIS = 1
+
+/** The chart scatters the readings first, then the edges the plan leaves by. */
+const CLIP_MARKERS = 1
 
 /** What the [index]th [name] the chart drew was handed. */
 function part(name: string, index = 0): Record<string, unknown> {
@@ -150,6 +165,10 @@ describe('WeightTimelineSection', () => {
       day: TimelineDay,
     ) => number | undefined
     expect(days.map((day) => readingY(day))).toEqual([80.4, undefined, 80.2])
+    // And the axis beneath them is reading the same days: the accessors are made
+    // once from getters, so a getter wired to the wrong thing shows up here alone.
+    const dayAt = part('VisAxis', DAY_AXIS).tickFormat as (i: number) => string
+    expect(dayAt(1)).toBe('2 Jun')
   })
 
   it('draws each day as a bar, on a scale of its own beneath the weights', async () => {
@@ -305,6 +324,133 @@ describe('WeightTimelineSection', () => {
     expect(screen.queryByText('Calories')).not.toBeInTheDocument()
     expect(screen.queryByText('Budget')).not.toBeInTheDocument()
     expect(screen.queryByText(/days logged/)).not.toBeInTheDocument()
+  })
+
+  it("draws the Goal's plan as a line of its own, told apart from the trend", async () => {
+    await renderSuspended(WeightTimelineSection, {
+      props: { timeline: planned },
+    })
+
+    const plan = part('VisLine', PLAN_LINE)
+    // Called with the day alone: unovis hands a Scatter's y accessor the
+    // accessor-group index where a Line gets the row's, so an accessor that reads
+    // a position draws nothing at all on the marker beside this line.
+    const height = plan.y as (day: TimelineDay) => number
+    expect(plannedDays.map((day) => height(day))).toEqual([80.0, 79.9, 79.8])
+    expect(plan.color).toBe(TRAJECTORY_COLOR)
+    expect(plan.color).not.toBe(part('VisLine', TREND_LINE).color)
+    // Straight, never smoothed: the plan has a corner where it flattens at the
+    // target, and a monotone curve would round it into a deceleration into the
+    // Goal that the plan does not promise (ADR 0029 — it describes, never infers).
+    expect(plan.curveType).toBe('linear')
+    // Named in words, colour never carrying an identity on its own.
+    expect(screen.getByText('Plan')).toBeVisible()
+  })
+
+  it('marks where a plan too far below the weights leaves the chart', async () => {
+    // The plan ends five kilos under a User who has barely moved, so the axis
+    // stops two kilos down and the line runs off the bottom of the card.
+    const days = withPlan(timelineDays([80.4, null, 80.2]), [79.0, 77.0, 75.0])
+    await renderSuspended(WeightTimelineSection, {
+      props: { timeline: weightTimeline({ days }) },
+    })
+
+    const marker = part('VisScatter', CLIP_MARKERS)
+    const edge = marker.y as (day: TimelineDay) => number | undefined
+    expect(days.map((day) => edge(day))).toEqual([
+      undefined,
+      expect.closeTo(78.1, 10),
+      undefined,
+    ])
+    expect(marker.color).toBe(TRAJECTORY_COLOR)
+    // Said in words too, a mark on an aria-hidden chart being nothing on its own —
+    // and on the plan's own chip, so one entry always names everything it draws.
+    expect(screen.getByText('Plan off chart')).toBeVisible()
+    expect(screen.queryByText('Plan')).not.toBeInTheDocument()
+  })
+
+  it('draws no plan beside the bars, the two never sharing a card', async () => {
+    await renderSuspended(WeightTimelineSection, {
+      props: { timeline: tracked },
+    })
+
+    const height = part('VisLine', PLAN_LINE).y as (
+      day: TimelineDay,
+    ) => number | undefined
+    expect(trackedDays.map((day) => height(day))).toEqual([
+      undefined,
+      undefined,
+      undefined,
+    ])
+    // Nor an edge for it to have left by, there being no plot edge it could reach.
+    const edge = part('VisScatter', CLIP_MARKERS).y as (
+      day: TimelineDay,
+    ) => number | undefined
+    expect(trackedDays.map((day) => edge(day))).toEqual([
+      undefined,
+      undefined,
+      undefined,
+    ])
+    expect(screen.queryByText('Plan')).not.toBeInTheDocument()
+  })
+
+  it('draws the plan on a domain of its own, and marks the edge with a diamond', async () => {
+    const days = withPlan(timelineDays([80.4, null, 80.2]), [79.0, 77.0, 75.0])
+    await renderSuspended(WeightTimelineSection, {
+      props: { timeline: weightTimeline({ days }) },
+    })
+
+    // The weights alone span 80.1..80.4; the plot is stretched two kilos down to
+    // hold what it can of the plan, and no further.
+    expect(part('VisXYContainer').yDomain as [number, number]).toEqual([
+      expect.closeTo(78.1, 10),
+      80.4,
+    ])
+    // A diamond, the one shape unovis offers that is correct at either edge — its
+    // triangle only points up, and the plan can leave by the top. Neither this nor
+    // the size was pinned by anything: the e2e counts marks in the plan's colour,
+    // which a circle satisfies too.
+    const marker = part('VisScatter', CLIP_MARKERS)
+    expect(marker.shape).toBe('diamond')
+    expect(marker.size).toBe(CLIP_MARKER_PX)
+  })
+
+  it('names no edge while the whole plan is drawn', async () => {
+    await renderSuspended(WeightTimelineSection, {
+      props: { timeline: planned },
+    })
+
+    const edge = part('VisScatter', CLIP_MARKERS).y as (
+      day: TimelineDay,
+    ) => number | undefined
+    expect(plannedDays.map((day) => edge(day))).toEqual([
+      undefined,
+      undefined,
+      undefined,
+    ])
+    expect(screen.getByText('Plan')).toBeVisible()
+    expect(screen.queryByText('Plan off chart')).not.toBeInTheDocument()
+  })
+
+  it('reads the plan out beside the day, the chart being unable to say it', async () => {
+    await renderSuspended(WeightTimelineSection, {
+      props: { timeline: planned },
+    })
+    const pointAt = part('VisCrosshair').onCrosshairMove as (
+      x: number,
+      day: TimelineDay,
+    ) => void
+
+    pointAt(0, plannedDays[0]!)
+    await nextTick()
+
+    // The whole line, not a prefix of it: `toHaveTextContent` matches a substring,
+    // so asserting the day without the plan would pass while saying the opposite
+    // of what the readout does — and this is the plan's only accessible surface,
+    // the chart above it being `aria-hidden` (ADR 0029).
+    expect(screen.getByRole('status')).toHaveTextContent(
+      '1 Jun 2026 · 80.4 kg · trend 80.1 kg · plan 80.0 kg',
+    )
   })
 
   it('says a wider window is on its way rather than passing the old one off as it', async () => {

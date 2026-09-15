@@ -18,6 +18,7 @@ export function timelineDay(
     caloriesKcal: null,
     calorieBudgetKcal: null,
     overBudget: null,
+    trajectoryKg: null,
     ...overrides,
   }
 }
@@ -56,6 +57,21 @@ export function weightTimeline(
     ...overrides,
     days,
   }
+}
+
+/**
+ * The same days given the active Goal's planned trajectory: [plan] positionally,
+ * null on a day before the Goal was set. Never both this and [withIntake] — the
+ * plan takes the intake half's place (ADR 0029).
+ */
+export function withPlan(
+  days: Required<WeightTimelineDayResponse>[],
+  plan: (number | null)[],
+): Required<WeightTimelineDayResponse>[] {
+  return days.map((day, index) => ({
+    ...day,
+    trajectoryKg: plan[index] ?? null,
+  }))
 }
 
 /**

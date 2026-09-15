@@ -80,11 +80,31 @@ class WeightTimelineApiTest {
     }
 
     /** Setup completed as a weight-only User — the whole of what F12 asks Tucker to respect. */
-    private fun tracksWeightOnly() {
+    private fun tracksWeightOnly() = setUp(tracksCalories = false)
+
+    /** Setup completed with Calorie Tracking left on, which is the default. */
+    private fun tracksCalories() = setUp(tracksCalories = true)
+
+    private fun setUp(tracksCalories: Boolean) {
         mockMvc.put("/api/profile") {
             contentType = MediaType.APPLICATION_JSON
-            content = """{"sex":"MALE","birthDate":"1986-05-22","heightCm":180.0,"tracksCalories":false}"""
+            content = """
+                {"sex":"MALE","birthDate":"1986-05-22","heightCm":180.0,"tracksCalories":$tracksCalories}
+            """.trimIndent()
         }.andExpect { status { isOk() } }
+    }
+
+    /**
+     * An active Goal from [startedOn]. The start weight is not sent: it is the live
+     * Trend Weight at creation (ADR 0016), which is what anchors the plan.
+     */
+    private fun setGoal(startedOn: LocalDate, targetWeightKg: Double, rateKgPerWeek: Double) {
+        mockMvc.post("/api/goal") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """
+                {"startedOn":"$startedOn","targetWeightKg":$targetWeightKg,"rateKgPerWeek":$rateKgPerWeek}
+            """.trimIndent()
+        }.andExpect { status { isCreated() } }
     }
 
     private fun timeline(from: LocalDate = this.from, to: LocalDate = day) =
@@ -157,6 +177,61 @@ class WeightTimelineApiTest {
             jsonPath("$.days[14].caloriesKcal") { value(null) }
             jsonPath("$.days[14].calorieBudgetKcal") { value(null) }
             jsonPath("$.days[14].overBudget") { value(null) }
+        }
+    }
+
+    @Test
+    fun `with Calorie Tracking off a day carries where the Goal's plan puts it`() {
+        tracksWeightOnly()
+        aFortnightOnTheScale()
+        setGoal(startedOn = day.minusDays(14), targetWeightKg = 76.0, rateKgPerWeek = 0.5)
+
+        timeline().andExpect {
+            status { isOk() }
+            // 79.9 is the Trend Weight the Goal was derived from (ADR 0016), stamped
+            // on the day it says it started. Backdating is a fixture device to get a
+            // drawn run out of one window — the app always starts a Goal today, where
+            // the anchor and the trend beneath it are the same figure.
+            jsonPath("$.days[0].trajectoryKg") { value(79.9) }
+            jsonPath("$.days[7].trajectoryKg") { value(79.4) }
+            jsonPath("$.days[14].trajectoryKg") { value(78.9) }
+            // A plan is not a log, and the client reads this figure as "there is an
+            // intake half" — a count of none would draw a tracking window.
+            jsonPath("$.loggedDays") { value(null) }
+        }
+    }
+
+    @Test
+    fun `with Calorie Tracking on there is no plan, the calorie half answering that question`() {
+        // The absence is the decision (ADR 0029): both settings ask "am I on track",
+        // and with tracking on the bars under the Budget line answer it. This is what
+        // fails if the two branches are ever swapped.
+        tracksCalories()
+        aFortnightOnTheScale()
+        setGoal(startedOn = day.minusDays(14), targetWeightKg = 76.0, rateKgPerWeek = 0.5)
+
+        timeline().andExpect {
+            status { isOk() }
+            jsonPath("$.days[0].trajectoryKg") { value(null) }
+            jsonPath("$.days[14].trajectoryKg") { value(null) }
+            // And the half that did answer it is there, so what is absent is the plan
+            // rather than the whole of what the timeline draws beside the weight.
+            jsonPath("$.loggedDays") { value(0) }
+        }
+    }
+
+    @Test
+    fun `in Maintenance Mode there is no plan at all, only the weight`() {
+        // A decision rather than an omission: Tucker defends no target weight
+        // (ADR 0008), so with no active Goal there is nothing to plan against.
+        tracksWeightOnly()
+        aFortnightOnTheScale()
+
+        timeline().andExpect {
+            status { isOk() }
+            jsonPath("$.days[0].trajectoryKg") { value(null) }
+            jsonPath("$.days[14].trajectoryKg") { value(null) }
+            jsonPath("$.days[14].trendKg") { value(79.9) }
         }
     }
 

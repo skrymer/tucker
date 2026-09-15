@@ -648,11 +648,21 @@ Like an **Intake Breakdown**, a tracking timeline also states how many of the da
 it draws carry an **Entry** — the width of a window being no evidence it was
 logged.
 With Calorie Tracking off it instead carries the active **Goal**'s *planned
-trajectory* — the line from the Goal's start weight at its chosen rate. That
-appears only there, and deliberately: with tracking on, "am I on track" is
-answered by intake against the Budget, and with it off there is no mechanism to
-show. In **Maintenance Mode** there is no trajectory at all, because Tucker
-defends no target weight (ADR 0008).
+trajectory* — where the plan says the Trend Weight should stand on each day, from
+the Goal's start weight at its chosen rate, and **flat at the target** once the
+plan reaches it, there being no plan below what the user set out to reach. A day
+before the Goal was set carries none, the plan not existing yet. That appears
+only there, and deliberately: with tracking on, "am I on track" is answered by
+intake against the Budget, and with it off there is no mechanism to show. It is
+anchored where the Goal *began* and never moves, which is what makes falling
+behind visible as a gap — not to be confused with **Goal Progress**' planned
+finish date, which projects from *today's* trend and so slides along with the
+user. In
+**Maintenance Mode** there is no trajectory at all, because Tucker defends no
+target weight (ADR 0008). How much of it is *drawn* is the client's, not the
+timeline's: a Goal lives five to seven kilos away and this chart resolves one to
+two, so the weight axis stretches at most two kilos past the weights and the plan
+is clipped past that, marked at the edge it left by.
 The window is 28 or 90 days and nothing else — 28 being the span the observed
 pace and **Pace Status** are already classified over. The Trend Weight at a
 window's start depends on readings from *before* it, so the series is always built

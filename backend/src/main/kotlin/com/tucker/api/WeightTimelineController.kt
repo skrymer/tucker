@@ -1,9 +1,12 @@
 package com.tucker.api
 
+import com.tucker.domain.GoalTrajectory
+import com.tucker.domain.TimelineEvidence
 import com.tucker.domain.TimelineIntake
 import com.tucker.domain.WeightTimeline
 import com.tucker.domain.WeightTimelineDay
 import com.tucker.persistence.EntryRepository
+import com.tucker.persistence.GoalRepository
 import com.tucker.persistence.ProfileRepository
 import com.tucker.persistence.WeeklyReviewRepository
 import com.tucker.persistence.WeightMeasurementRepository
@@ -30,6 +33,10 @@ import java.time.LocalDate
  * [overBudget] is the verdict rather than the comparison, so a client cannot
  * disagree with the same day's DayStatus (ADR 0002); it is null when there is
  * nothing to exceed.
+ *
+ * [trajectoryKg] is where the active Goal's plan puts the Trend Weight on the day,
+ * and takes the intake half's place: it is null throughout with Calorie Tracking
+ * on and in Maintenance Mode, and on a day before the Goal was set.
  */
 data class WeightTimelineDayResponse(
     val date: LocalDate,
@@ -38,6 +45,7 @@ data class WeightTimelineDayResponse(
     val caloriesKcal: Double?,
     val calorieBudgetKcal: Double?,
     val overBudget: Boolean?,
+    val trajectoryKg: Double?,
 )
 
 /**
@@ -64,6 +72,7 @@ private fun WeightTimelineDay.toResponse() = WeightTimelineDayResponse(
     caloriesKcal = caloriesKcal,
     calorieBudgetKcal = calorieBudgetKcal,
     overBudget = overBudget,
+    trajectoryKg = trajectoryKg,
 )
 
 private fun WeightTimeline.toResponse() = WeightTimelineResponse(
@@ -80,6 +89,7 @@ class WeightTimelineController(
     private val entries: EntryRepository,
     private val reviews: WeeklyReviewRepository,
     private val profiles: ProfileRepository,
+    private val goals: GoalRepository,
 ) {
 
     /**
@@ -101,17 +111,21 @@ class WeightTimelineController(
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) from: LocalDate,
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) to: LocalDate,
     ): WeightTimelineResponse =
-        WeightTimeline.of(from, to, weights.findAll()) { intakeOver(from, to) }?.toResponse()
+        WeightTimeline.of(from, to, weights.findAll()) { evidenceOver(from, to) }?.toResponse()
             ?: throw NotFoundException("a Weight Timeline needs at least a fortnight of readings")
 
     /**
-     * What the intake half is drawn from, or null with Calorie Tracking off — read
-     * as "not off" rather than "on", so a User who has yet to complete setup is
-     * treated as the default the Profile would give them (ADR 0024).
+     * What the timeline draws beside the weight — the intake half, or with Calorie
+     * Tracking off the active Goal's planned trajectory, which takes its place
+     * (ADR 0029). Null in Maintenance Mode, where Tucker defends no target weight
+     * and so has no plan to draw (ADR 0008).
+     *
+     * The setting is read as "not off" rather than "on", so a User who has yet to
+     * complete setup is treated as the default the Profile would give them (ADR 0024).
      */
-    private fun intakeOver(from: LocalDate, to: LocalDate): TimelineIntake? =
+    private fun evidenceOver(from: LocalDate, to: LocalDate): TimelineEvidence? =
         if (profiles.get()?.tracksCalories == false) {
-            null
+            goals.findActive()?.let { GoalTrajectory(it) }
         } else {
             TimelineIntake(
                 caloriesByDay = entries.caloriesByDay(from, to),

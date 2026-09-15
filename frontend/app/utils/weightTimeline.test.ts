@@ -6,23 +6,39 @@ import {
   INTAKE_COLOR,
   OVER_BUDGET_COLOR,
   READING_COLOR,
+  TRAJECTORY_COLOR,
   TREND_COLOR,
   UNLOGGED_COLOR,
   weightTimelineReadout,
   weightTimelineReadouts,
   weightTimelineScale,
   weightTimelineSeries,
+  weightTimelineTrajectory,
 } from './weightTimeline'
+import type { Timeline } from './weightTimeline'
 import {
   timelineDay,
   timelineDays,
   weightTimeline,
   withIntake,
+  withPlan,
 } from '~~/test/weight-timeline-fixtures'
 
 // The stylesheet is read off disk rather than imported: under the Nuxt test
 // environment a `?raw` import resolves to the empty string, which would make the
 // assertions pass by finding nothing (see intakeBreakdownPalette.test.ts).
+
+/**
+ * The accessors for [timeline], wired the way the section wires them — one place
+ * for the three getters, so a fourth lands here rather than in five tests.
+ */
+function seriesFor(timeline: Timeline) {
+  return weightTimelineSeries(
+    () => timeline,
+    () => weightTimelineScale(timeline),
+    () => weightTimelineTrajectory(timeline),
+  )
+}
 
 describe('weightTimelineReadout', () => {
   it('names the day, what the scale said, and where the trend stood', () => {
@@ -70,6 +86,23 @@ describe('weightTimelineReadout', () => {
     ).toBe('3 Jun 2026 · 80.4 kg · trend 80.2 kg · not logged')
   })
 
+  it("states the Goal's plan for the day, which the chart draws and cannot say", () => {
+    // The chart is aria-hidden, so this list is the plan's only accessible
+    // surface — and the figure is the plan's own, never the clipped edge the
+    // line was drawn at.
+    expect(
+      weightTimelineReadout(
+        {
+          date: '2026-06-03',
+          weightKg: 80.42,
+          trendKg: 80.18,
+          trajectoryKg: 78.14,
+        },
+        false,
+      ),
+    ).toBe('3 Jun 2026 · 80.4 kg · trend 80.2 kg · plan 78.1 kg')
+  })
+
   it('says a day nobody weighed in on had no reading, never a figure', () => {
     // The trend still stands through it — it moves only when the scale does — so
     // the day is not silent, it just has nothing of its own to report.
@@ -89,10 +122,7 @@ describe('weightTimelineReadout', () => {
 describe('weightTimelineSeries', () => {
   const days = timelineDays([80.4, null, 80.2])
   const timeline = weightTimeline({ days })
-  const series = weightTimelineSeries(
-    () => timeline,
-    () => weightTimelineScale(timeline),
-  )
+  const series = seriesFor(timeline)
 
   it('leaves a day nobody weighed in on off the scatter entirely', () => {
     // Undefined, not null and not zero: unovis drops a point with a missing value,
@@ -128,10 +158,7 @@ describe('weightTimelineSeries', () => {
 describe('weightTimelineSeries — the intake half', () => {
   const days = withIntake(timelineDays([80.4, null, 80.2]), [2000, null, 1000])
   const tracked = weightTimeline({ days, loggedDays: 2 })
-  const series = weightTimelineSeries(
-    () => tracked,
-    () => weightTimelineScale(tracked),
-  )
+  const series = seriesFor(tracked)
 
   it('starts a bar at the floor of the plot and the weights well above them', () => {
     const scale = weightTimelineScale(weightTimeline({ days, loggedDays: 2 }))!
@@ -311,10 +338,7 @@ describe('weightTimelineSeries — the intake half', () => {
     // ever given a figure to eat to — and a day with no Budget is not over one.
     const unbudgeted = withIntake(timelineDays([80.4]), [2600], null)
     const earlyTimeline = weightTimeline({ days: unbudgeted, loggedDays: 1 })
-    const early = weightTimelineSeries(
-      () => earlyTimeline,
-      () => weightTimelineScale(earlyTimeline),
-    )
+    const early = seriesFor(earlyTimeline)
 
     expect(weightTimelineReadout(unbudgeted[0]!, true)).toBe(
       '3 Jun 2026 · 80.4 kg · trend 80.1 kg · 2600 kcal',
@@ -342,10 +366,7 @@ describe('weightTimelineSeries — the intake half', () => {
       20,
     ])
     const sparseTimeline = weightTimeline({ days: barelyLogged, loggedDays: 2 })
-    const sparse = weightTimelineSeries(
-      () => sparseTimeline,
-      () => weightTimelineScale(sparseTimeline),
-    )
+    const sparse = seriesFor(sparseTimeline)
 
     expect(sparse.intakeKg(barelyLogged[2]!)!).toBeGreaterThanOrEqual(
       sparse.intakeKg(barelyLogged[1]!)!,
@@ -364,10 +385,7 @@ describe('weightTimelineSeries — the intake half', () => {
       }),
     ]
     const timeline = weightTimeline({ days: stated, loggedDays: 1 })
-    const series = weightTimelineSeries(
-      () => timeline,
-      () => weightTimelineScale(timeline),
-    )
+    const series = seriesFor(timeline)
 
     expect(series.intakeColor(stated[0]!)).toBe(OVER_BUDGET_COLOR)
   })
@@ -379,6 +397,205 @@ describe('weightTimelineSeries — the intake half', () => {
 
     expect(big).toBeGreaterThan(small!)
     expect(big).toBeLessThan(Math.min(...days.map((day) => day.trendKg)))
+  })
+})
+
+describe('weightTimelineTrajectory', () => {
+  it('draws the plan as given while it stays within reach of the weight data', () => {
+    const days = withPlan(timelineDays([80.4, null, 80.2]), [80.0, 79.9, 79.8])
+
+    const plan = weightTimelineTrajectory(weightTimeline({ days }))!
+
+    expect(days.map((day) => plan.kgOn(day.date))).toEqual([80.0, 79.9, 79.8])
+  })
+
+  it('makes room for a plan within reach, so it and the weight share one axis', () => {
+    // The weights span 80.1..80.4 — the trend and the readings together — and the
+    // plan reaches 79.8, which is well inside the two kilos it may stretch by.
+    const days = withPlan(timelineDays([80.4, null, 80.2]), [80.0, 79.9, 79.8])
+
+    const plan = weightTimelineTrajectory(weightTimeline({ days }))!
+
+    expect(plan.kgDomain).toEqual([79.8, 80.4])
+  })
+
+  it('stretches at most two kilos beyond the weight data, however far the plan runs', () => {
+    // The weights span 80.1..80.4 and the plan ends five kilos under them. Left to
+    // reach, the axis would flatten four weeks of real movement into a straight
+    // line across the top of the card — the tax the clamp bounds.
+    const days = withPlan(timelineDays([80.4, null, 80.2]), [79.0, 77.0, 75.0])
+
+    const plan = weightTimelineTrajectory(weightTimeline({ days }))!
+
+    expect(plan.kgDomain[0]).toBeCloseTo(78.1, 10)
+    expect(plan.kgDomain[1]).toBe(80.4)
+  })
+
+  it('runs the plan off the edge it left by rather than along the floor', () => {
+    const days = withPlan(timelineDays([80.4, null, 80.2]), [79.0, 77.0, 75.0])
+
+    const plan = weightTimelineTrajectory(weightTimeline({ days }))!
+
+    expect(plan.kgOn(days[0]!.date)).toBe(79.0)
+    // The day it crossed sits on the floor, so the line reaches the edge...
+    expect(plan.kgOn(days[1]!.date)).toBeCloseTo(78.1, 10)
+    // ...and every day past it is dropped: a line lying along the floor reads as a
+    // plan that levelled off, which is the one thing a plan never does.
+    expect(plan.kgOn(days[2]!.date)).toBeUndefined()
+  })
+
+  it('marks the edge the plan left by, a line that just stops reading as a bug', () => {
+    const days = withPlan(timelineDays([80.4, null, 80.2]), [79.0, 77.0, 75.0])
+
+    const plan = weightTimelineTrajectory(weightTimeline({ days }))!
+
+    expect(plan.clips).toHaveLength(1)
+    expect(plan.clips[0]!.date).toBe(days[1]!.date)
+    expect(plan.clips[0]!.kg).toBeCloseTo(78.1, 10)
+  })
+
+  it('comes in over the top edge when the User is far ahead of the plan', () => {
+    // The plan opens four kilos above a User who has outrun it, so the window's
+    // first days are off the top rather than off the bottom.
+    const days = withPlan(timelineDays([80.4, null, 80.2]), [84.0, 83.0, 82.0])
+
+    const plan = weightTimelineTrajectory(weightTimeline({ days }))!
+
+    expect(plan.kgDomain[1]).toBeCloseTo(82.4, 10)
+    expect(plan.kgOn(days[0]!.date)).toBeUndefined()
+    // The last day above the ceiling sits on it, so the line descends from the edge
+    // rather than appearing out of nowhere mid-chart.
+    expect(plan.kgOn(days[1]!.date)).toBeCloseTo(82.4, 10)
+    expect(plan.kgOn(days[2]!.date)).toBe(82.0)
+    expect(plan.clips).toEqual([{ date: days[1]!.date, kg: plan.kgDomain[1] }])
+  })
+
+  it('marks no edge while the whole plan is drawn', () => {
+    const days = withPlan(timelineDays([80.4, null, 80.2]), [80.0, 79.9, 79.8])
+
+    expect(weightTimelineTrajectory(weightTimeline({ days }))!.clips).toEqual(
+      [],
+    )
+  })
+
+  it('draws no point on a day before the Goal was set', () => {
+    // The plan did not exist yet, so there is nothing to have been on track with.
+    const days = withPlan(timelineDays([80.4, null, 80.2]), [null, 79.9, 79.8])
+
+    const plan = weightTimelineTrajectory(weightTimeline({ days }))!
+
+    expect(plan.kgOn(days[0]!.date)).toBeUndefined()
+    expect(plan.kgOn(days[1]!.date)).toBe(79.9)
+  })
+
+  it("keeps the User's own trend readable however far behind plan they fall", () => {
+    // The failure the clamp exists to prevent, asserted rather than assumed: left
+    // to reach, the axis would compress the weights without bound, and the further
+    // behind plan a User falls the flatter their own trend draws.
+    const weights = timelineDays([80.4, null, 80.2])
+    const behind = weightTimelineTrajectory(
+      weightTimeline({ days: withPlan(weights, [79.0, 77.0, 75.0]) }),
+    )!
+    const hopeless = weightTimelineTrajectory(
+      weightTimeline({ days: withPlan(weights, [79.0, 60.0, 40.0]) }),
+    )!
+
+    expect(hopeless.kgDomain).toEqual(behind.kgDomain)
+    // And the plot is the weights plus the stretch and nothing more, measured off
+    // the fixture rather than restated: a bound loose enough to pass at any span
+    // under three kilos would let the stretch grow without noticing.
+    const spread = (days: typeof weights) => {
+      const kg = days.flatMap((day) => [
+        day.trendKg,
+        day.weightKg ?? day.trendKg,
+      ])
+      return Math.max(...kg) - Math.min(...kg)
+    }
+    const [low, high] = hopeless.kgDomain
+    expect(high - low).toBeCloseTo(spread(weights) + 2, 10)
+  })
+
+  it('finds a day by its date, a chart telling one of its series no position', () => {
+    // unovis hands a Scatter's y accessor the *accessor-group* index rather than
+    // the row's, where a Line gets the row's — so anything looked up by position
+    // is read off row zero for every day, and a marker drawn that way never
+    // renders at all. A date is the same under either convention.
+    const days = withPlan(timelineDays([80.4, null, 80.2]), [79.0, 77.0, 75.0])
+
+    const plan = weightTimelineTrajectory(weightTimeline({ days }))!
+
+    expect(plan.kgOn(days[0]!.date)).toBe(79.0)
+    expect(plan.clipOn(days[1]!.date)).toBeCloseTo(78.1, 10)
+    expect(plan.clipOn(days[0]!.date)).toBeUndefined()
+  })
+
+  it('still has a band to draw when the weight and the plan sit on one figure', () => {
+    // A User weighing the same figure every day sets a Goal today: the start
+    // weight *is* the live Trend Weight (ADR 0016), so the plan opens exactly
+    // where they are and the raw extent has no height at all.
+    const flat = [
+      timelineDay({ date: '2026-06-01', weightKg: 80, trendKg: 80 }),
+      timelineDay({
+        date: '2026-06-02',
+        weightKg: 80,
+        trendKg: 80,
+        trajectoryKg: 80,
+      }),
+      timelineDay({
+        date: '2026-06-03',
+        weightKg: 80,
+        trendKg: 80,
+        trajectoryKg: 80,
+      }),
+    ]
+
+    const plan = weightTimelineTrajectory(weightTimeline({ days: flat }))!
+
+    expect(plan.kgDomain[1] - plan.kgDomain[0]).toBeGreaterThan(0)
+    expect(plan.kgOn('2026-06-03')).toBe(80)
+  })
+
+  it('draws a plan that peaks within reach above the weights, and marks no edge', () => {
+    // A User a kilo ahead of plan: the domain takes its ceiling from the plan's own
+    // topmost day, so that day sits exactly on the edge without having left by it.
+    const days = withPlan(timelineDays([80.4, null, 80.2]), [81.0, 80.5, 80.0])
+
+    const plan = weightTimelineTrajectory(weightTimeline({ days }))!
+
+    expect(plan.kgDomain[1]).toBe(81.0)
+    expect(days.map((day) => plan.kgOn(day.date))).toEqual([81.0, 80.5, 80.0])
+    expect(plan.clips).toEqual([])
+  })
+
+  it('has nothing to draw on the day a Goal is set, one point being no line', () => {
+    // A Goal is always started today — ADR 0016 anchors it on the live Trend
+    // Weight — so its first window carries exactly one planned day. A chip naming
+    // a line the chart cannot draw is worse than the plain weight card, and
+    // tomorrow there are two points to draw between.
+    const days = withPlan(timelineDays([80.4, null, 80.2]), [null, null, 80.0])
+
+    expect(weightTimelineTrajectory(weightTimeline({ days }))).toBeNull()
+  })
+
+  it('still draws a plan that is off the chart all window, the marker being the mark', () => {
+    // The other side of the guard above, and what keeps it from being "one planned
+    // day is never drawn": one planned day ten kilos under the weights is clipped,
+    // and the diamond says where it went. That is a mark; a lone in-domain point
+    // is nothing.
+    const days = withPlan(timelineDays([80.4, null, 80.2]), [null, null, 70.0])
+
+    const plan = weightTimelineTrajectory(weightTimeline({ days }))!
+
+    expect(plan.clips).toHaveLength(1)
+    expect(plan.clipOn(days[2]!.date)).toBeCloseTo(78.1, 10)
+  })
+
+  it('has nothing to draw when the response carries no plan', () => {
+    // Calorie Tracking on, or Maintenance Mode: either way the card is the weight
+    // half alone, on the auto-scaled axis it has without a second series.
+    const days = timelineDays([80.4, null, 80.2])
+
+    expect(weightTimelineTrajectory(weightTimeline({ days }))).toBeNull()
   })
 })
 
@@ -474,24 +691,28 @@ describe('the unovis chart theming', () => {
       OVER_BUDGET_COLOR,
       BUDGET_COLOR,
       UNLOGGED_COLOR,
+      TRAJECTORY_COLOR,
     ]) {
       expect(colour).toMatch(/^var\(--[a-z0-9-]+\)$/)
     }
   })
 
-  it("declares the calorie bar's own hue for both themes", () => {
-    // No `--ui-*` role means "a calorie bar", so this one hue is the chart\'s own —
-    // and a hue declared once would be the light card\'s, inherited on to the dark.
-    const token = INTAKE_COLOR.match(/^var\((--[a-z0-9-]+)\)$/)?.[1]
-    expect(token, `${INTAKE_COLOR} is not a var() reference`).toBeDefined()
-    for (const selector of [':root', '\\.dark']) {
-      const blocks =
-        css.match(new RegExp(`${selector}\\s*\\{[^}]*\\}`, 'g')) ?? []
-      expect(
-        blocks.some((block) => block.includes(`${token}:`)),
-        `${token} is referenced by weightTimeline.ts but declared nowhere in ` +
-          `main.css's ${selector}, so every calorie bar would render unfilled`,
-      ).toBe(true)
+  it("declares the chart's own hues for both themes", () => {
+    // No `--ui-*` role means "a calorie bar" or "a planned trajectory", so these
+    // hues are the chart's own — and a hue declared once would be the light card's,
+    // inherited on to the dark.
+    for (const colour of [INTAKE_COLOR, TRAJECTORY_COLOR]) {
+      const token = colour.match(/^var\((--[a-z0-9-]+)\)$/)?.[1]
+      expect(token, `${colour} is not a var() reference`).toBeDefined()
+      for (const selector of [':root', '\\.dark']) {
+        const blocks =
+          css.match(new RegExp(`${selector}\\s*\\{[^}]*\\}`, 'g')) ?? []
+        expect(
+          blocks.some((block) => block.includes(`${token}:`)),
+          `${token} is referenced by weightTimeline.ts but declared nowhere in ` +
+            `main.css's ${selector}, so the mark it names would render unfilled`,
+        ).toBe(true)
+      }
     }
   })
 

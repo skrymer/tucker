@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import java.time.LocalDate
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 class GoalTest {
 
@@ -147,6 +148,32 @@ class GoalTest {
         }
         assert(ex.message!!.contains("below the start weight", ignoreCase = true)) {
             "expected message to mention the target-below-start rule, was '${ex.message}'"
+        }
+    }
+
+    @Test
+    fun `the plan runs from the start weight at the chosen rate, and stops at the target`() {
+        val goal = goalWithRate(0.5)
+
+        assertEquals(90.0, goal.plannedWeightOn(startedOn))
+        assertEquals(89.5, goal.plannedWeightOn(startedOn.plusDays(7)))
+        // Twenty kilos at half a kilo a week is twenty weeks; the plan is to reach
+        // the target, and there is none below it.
+        assertEquals(80.0, goal.plannedWeightOn(startedOn.plusWeeks(20)))
+        assertEquals(80.0, goal.plannedWeightOn(startedOn.plusWeeks(52)))
+        assertNull(goal.plannedWeightOn(startedOn.minusDays(1)))
+    }
+
+    @Test
+    fun `a plan never rises, whatever rate the Goal was set at`() {
+        // The Weight Timeline's clamp takes the first day under the plot's floor and
+        // the last over its ceiling as the ones nearest the plot, which holds only
+        // for a plan that never turns back. What makes it hold is the init block: a
+        // rate above zero, and a target below the start weight.
+        for (rate in listOf(Goal.MIN_RATE_KG_PER_WEEK, 0.5, Goal.MAX_RATE_KG_PER_WEEK)) {
+            val plan = (0L..200L).map { goalWithRate(rate).plannedWeightOn(startedOn.plusDays(it))!! }
+
+            assertEquals(plan.sortedDescending(), plan, "a plan at $rate kg/week turned back")
         }
     }
 }

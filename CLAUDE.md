@@ -1643,6 +1643,86 @@ null` now means two things that earn opposite messages — the same trap
     `CurveType`: that enum lives behind `@unovis/ts`'s barrel, whose TopoJSON
     re-exports are the 221 KB F14 measured and going direct exists to avoid.
 
+  Slice 3 ([#323](https://github.com/skrymer/tucker/issues/323)) — **the Goal's
+  planned trajectory** — ✅ done, **and with it F17**. With **Calorie Tracking**
+  off and a **Goal** running, each day carries where the plan says the Trend
+  Weight should stand, drawn as a dashed line the User's own trend is read
+  against; the client clamps how much of it fits.
+  - **The plan and the intake half are one value object, never two nullable
+    parameters.** ADR 0029 says the trajectory *takes the intake half's place*, so
+    a timeline carrying both would answer "am I on track" twice on an axis with
+    room for neither. `WeightTimeline.of` takes a single `TimelineEvidence` — a
+    `TimelineIntake` or a `GoalTrajectory`, or nothing at all in **Maintenance
+    Mode** — and `WeightTimelineController` then reads as the ADR's own sentence.
+    Each member *fills its own fields* (`drawOn`) rather than being unpacked by
+    `of`: a sealed type consumed by two `as?` buys mutual exclusion and throws the
+    exhaustiveness away, so a third kind would compile green and draw nothing.
+    Weight is then literally the premise — a day is built from the scale and handed
+    to whatever is drawn beside it.
+  - **The plan flattens at the target**, which the issue did not say and the domain
+    needs: four kilos at half a kilo a week is reached on the 56th day, and a
+    90-day window would otherwise slope on to a figure the User never set. Not
+    hypothetical — reaching *latches* and a reached Goal stays active until the
+    fork on `/today` resolves it (ADR 0008). A day before the Goal was set carries
+    none, the plan not existing yet. It is `Goal.plannedWeightOn`, beside
+    `isReachedAt` and `dailyDeficitKcal` — the `init` block that refuses a rate at
+    or below zero and a target at or above the start weight is what makes the plan
+    monotone, and the client's clamp relies on that three tiers away, so the rule
+    and its guarantee live together. `GoalTrajectory` is the adapter alone.
+  - **It is a per-day series, where AC1 asked for the Goal's start weight, start
+    date and rate.** `startWeight − rate × weeks`, floored at the target, is
+    derived state and so the backend's (ADR 0002); the three parameters would have
+    put that arithmetic in a `.vue` file and left the clamp operating on figures
+    the client had just invented. Recorded in ADR 0029 rather than left as a
+    silent deviation.
+  - **A Goal's first day drew a chip and no line.** A Goal is always started
+    *today* — ADR 0016 anchors it on the live Trend Weight — so its first window
+    carries exactly one planned day, and a `VisLine` given one point draws nothing
+    while the key still names a *Plan*. The backdated `startedOn` in the tests is
+    what hid it; found at gate 3 by reading what the UI actually posts. A plan with
+    nothing to show is now withheld like the timeline itself, and tomorrow there are
+    two points to draw between. A plan off the chart *all* window is not that case —
+    its marker is a mark — and both sides are pinned. The visually-hidden day list
+    still states that one day's figure, deliberately: withholding is a constraint on
+    *drawing a line*, and a list does not draw. So a screen reader gets one true
+    figure the card has nothing to show for, which is the right way round.
+  - **The marker did not render, and only the browser could see it.** unovis hands
+    a **Scatter**'s y accessor the *accessor-group* index where a **Line** gets the
+    row's — so the diamond, looked up by a day's position, was read off row zero for
+    every day and drew nothing at all, with the whole Vitest suite and the key chip
+    beside it green. Every plan lookup is keyed on the **date** now, which is the
+    same under either convention, and `weight-timeline.spec.ts` counts the marks in
+    the plan's own colour inside the SVG — the one assertion in the slice that a
+    unit test structurally cannot make, on an `aria-hidden` chart.
+  - **The clamp is two kilos per *edge*, not one direction.** A plan far *above*
+    the weights — a User well ahead of it — compresses their trend exactly as much
+    as one far below, and without handling it those points render outside the
+    domain entirely. The day the plan leaves by is drawn *on* the edge so the line
+    runs off it, and every day past that is dropped: a flat line along the floor
+    reads as a plan that levelled off, the one thing a plan never does. A 7px
+    diamond marks the crossing, and the plot's margins carry room for it or half
+    of it sits in the date strip.
+  - **The plan is in the readout too, against AC10 as written.** The chart is
+    `aria-hidden`, so the visually-hidden day list is the plan's only accessible
+    surface, and the trend, the readings, the calories and the Budget are all
+    already in it — the plan alone being absent would put a series on the card no
+    screen reader could reach. It states the plan's **own** figure, never the edge
+    it was clipped at, the clamp being a rendering rule.
+  - **The plan is drawn straight, and that is correctness rather than taste.** It
+    has a corner where it flattens at the target, and unovis' default monotone
+    curve rounds that into a deceleration into the Goal — a claim the plan does not
+    make, on a chart whose ADR is "it describes; it never infers".
+  - **`--tucker-timeline-plan` is a hue of the chart's own**, not the Budget line's
+    `--ui-text-muted`. On screen the two never collide (they never share a card),
+    but grey on grey is a lightness-only distinction against ninety dimmed weigh-in
+    dots, and in the source two constants sharing one literal claim two roles for
+    one value. A low-chroma indigo at 4.80:1 light and 6.39:1 dark — the only
+    weight-axis stroke clearing 3:1 in both, while staying the quietest by being
+    dashed and thinner than the trend.
+  - One stale figure fixed alongside: `DESIGN.md` gave the dark trend as 6.78:1,
+    which is the brand `#00c16a`; `--ui-primary` maps to primary-400 in dark, so it
+    is **8.86:1**.
+
   **Out of scope:** any window but 28 or 90 days, inferring a relationship (no
   scatter, no regression, no fitted maintenance line), a rolling intake average, a
   horizontal Goal target line, stacked panes, the trajectory when tracking is on,

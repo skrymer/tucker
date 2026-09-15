@@ -19,6 +19,7 @@ type TimelineDay = {
   trendKg: number
   caloriesKcal: number | null
   calorieBudgetKcal: number | null
+  trajectoryKg: number | null
 }
 
 async function weighIn(
@@ -122,6 +123,76 @@ test('the timeline draws the readings behind the trend, and widens to 90 days', 
   await expect(
     section.getByText(timelineLine(threeMonths.days[0]!, true)),
   ).toBeAttached()
+})
+
+test('a weight-only User is shown the plan they set, and none once they drop it', async ({
+  page,
+  goto,
+  request,
+}) => {
+  const today = todayIso()
+  const SET_ON = isoShiftDays(today, -14)
+
+  await request.put(`${API}/profile`, {
+    data: {
+      sex: 'MALE',
+      birthDate: '1990-06-15',
+      heightCm: 180,
+      tracksCalories: false,
+    },
+  })
+  // The skipped day sits outside the 28-day window: this test is about the plan.
+  await fortyDaysOnTheScale(request, today, isoShiftDays(today, -35))
+
+  const goal = await request.post(`${API}/goal`, {
+    data: {
+      startedOn: SET_ON,
+      targetWeightKg: 76,
+      rateKgPerWeek: 0.5,
+      clientToday: today,
+    },
+  })
+  expect(goal.status()).toBe(201)
+  // Never sent: the backend derives it as the live Trend Weight at creation
+  // (ADR 0016), which is what the plan is anchored on.
+  const { startWeightKg } = (await goal.json()) as { startWeightKg: number }
+
+  const drawn = await timeline(request, 28, today)
+  const dayOn = (date: string) => drawn.days.find((day) => day.date === date)!
+  // No intake half at all, and the plan in its place (ADR 0029).
+  expect(drawn.loggedDays).toBeNull()
+  // Nothing on a day the Goal did not yet cover.
+  expect(dayOn(isoShiftDays(today, -15)).trajectoryKg).toBeNull()
+  expect(dayOn(SET_ON).trajectoryKg).toBeCloseTo(startWeightKg, 5)
+  // A fortnight at half a kilo a week is a kilo down.
+  expect(dayOn(today).trajectoryKg!).toBeCloseTo(startWeightKg - 1, 5)
+
+  await goto('/review', { waitUntil: 'hydration' })
+
+  const section = page.getByRole('region', { name: 'Your weight' })
+  await expect(section.getByText('Plan', { exact: true })).toBeVisible()
+  // The chart is aria-hidden, so this line is where the plan is readable — and it
+  // is the endpoint's own figure, never re-derived here.
+  await expect(
+    section.getByText(timelineLine(dayOn(today), false)),
+  ).toBeAttached()
+
+  // Maintenance Mode: Tucker defends no target weight (ADR 0008), so dropping the
+  // Goal leaves the plain weight timeline rather than a plan with nothing behind it.
+  const dropped = await request.delete(
+    `${API}/goal?clientToday=${encodeURIComponent(today)}`,
+  )
+  expect(dropped.status()).toBe(204)
+
+  const plain = await timeline(request, 28, today)
+  expect(plain.days.every((day) => day.trajectoryKg === null)).toBe(true)
+
+  await page.reload()
+
+  await expect(
+    section.getByRole('heading', { name: 'Your weight' }),
+  ).toBeVisible()
+  await expect(section.getByText('Plan', { exact: true })).toBeHidden()
 })
 
 test('each day is drawn against the Budget in force on it, and an unlogged one is marked', async ({
