@@ -38,6 +38,16 @@ class WeightTimelineTest {
         ),
     )
 
+    /** An active weight-loss Goal, targeting four kilos below wherever it started. */
+    private fun goal(startedOn: LocalDate, startWeightKg: Double, rateKgPerWeek: Double) = Goal(
+        id = 1,
+        startedOn = startedOn,
+        startWeightKg = startWeightKg,
+        targetWeightKg = startWeightKg - 4.0,
+        rateKgPerWeek = rateKgPerWeek,
+        active = true,
+    )
+
     @Test
     fun `a day carries the calories logged on it and the Budget in force that day`() {
         val intake = TimelineIntake(
@@ -275,6 +285,49 @@ class WeightTimelineTest {
         val timeline = WeightTimeline.of(from, to, fourteenDays)!!
 
         assertEquals(14, timeline.days.size)
+    }
+
+    @Test
+    fun `a day carries where the Goal's plan says the trend should stand`() {
+        val plan = GoalTrajectory(goal(startedOn = from, startWeightKg = 82.0, rateKgPerWeek = 0.5))
+
+        val timeline = WeightTimeline.of(from, to, daily(*DoubleArray(28) { 80.0 })) { plan }!!
+
+        val planned = timeline.days.associate { it.date to it.trajectoryKg }
+        assertEquals(82.0, planned[from])
+        assertEquals(81.5, planned[from.plusDays(7)])
+        assertEquals(81.0, planned[from.plusDays(14)])
+        // A plan is not a log, and a count of none would read as a tracking window
+        // with nothing in it — which is what the client takes this figure to mean.
+        assertNull(timeline.loggedDays)
+    }
+
+    @Test
+    fun `a day before the Goal was set carries no plan, the plan not existing yet`() {
+        val setMidway = from.plusDays(14)
+        val plan = GoalTrajectory(goal(startedOn = setMidway, startWeightKg = 82.0, rateKgPerWeek = 0.5))
+
+        val timeline = WeightTimeline.of(from, to, daily(*DoubleArray(28) { 80.0 })) { plan }!!
+
+        val planned = timeline.days.associate { it.date to it.trajectoryKg }
+        assertNull(planned[from])
+        assertNull(planned[setMidway.minusDays(1)])
+        assertEquals(82.0, planned[setMidway])
+    }
+
+    @Test
+    fun `the plan flattens at the target rather than carrying on below it`() {
+        // Four kilos at half a kilo a week is reached on the 56th day; there is no
+        // plan past it, and a line sloping on would draw one the User never made.
+        val start = to.minusDays(89)
+        val plan = GoalTrajectory(goal(startedOn = start, startWeightKg = 82.0, rateKgPerWeek = 0.5))
+
+        val timeline = WeightTimeline.of(start, to, daily(*DoubleArray(90) { 80.0 })) { plan }!!
+
+        val planned = timeline.days.associate { it.date to it.trajectoryKg }
+        assertEquals(78.5, planned[start.plusDays(49)])
+        assertEquals(78.0, planned[start.plusDays(56)])
+        assertEquals(78.0, planned[to])
     }
 
     @Test

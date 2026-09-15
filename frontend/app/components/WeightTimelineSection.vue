@@ -29,10 +29,19 @@ const windowItems: TabsItem[] = TIMELINE_WINDOWS.map((days) => ({
 }))
 
 /**
- * How the chart reads a day, and the scale it reads it on — one object, so the
- * bars and the axis they are placed against cannot be derived apart.
+ * How the chart reads a day, and the two things it can be read against — the
+ * intake half's scale, or the Goal's plan. Never both: the plan takes the intake
+ * half's place rather than joining it (ADR 0029), so exactly one of them decides
+ * the domain, and each is one object so a series and the axis it is placed
+ * against cannot be derived apart.
  */
 const scale = computed(() => weightTimelineScale(props.timeline))
+const plan = computed(() => weightTimelineTrajectory(props.timeline))
+// Whichever of the two exists, never a fallback between them: the wire cannot
+// carry both halves, so at most one of these is non-null.
+const kgDomain = computed(() => scale.value?.kgDomain ?? plan.value?.kgDomain)
+/** Whether the plan runs past an edge of the plot, which changes what the key says. */
+const planClipped = computed(() => (plan.value?.clips.length ?? 0) > 0)
 const {
   at,
   trendKg,
@@ -42,9 +51,12 @@ const {
   intakeKg,
   intakeColor,
   budgetKg,
+  trajectoryKg,
+  clipKg,
 } = weightTimelineSeries(
   () => props.timeline,
   () => scale.value,
+  () => plan.value,
 )
 
 /** Whether there is an intake half at all, which is Calorie Tracking's to decide. */
@@ -117,13 +129,18 @@ const { focusOn, readout } = useFocus()
              d3 transition, and a transition freezes part-way through whenever
              the tab is not the focused window — which leaves the crosshair at a
              few percent opacity and the chart half-drawn (the Intake Breakdown
-             ring pays the same tax). -->
+             ring pays the same tax).
+
+             The floor and ceiling carry room for the diamond marking where the
+             plan runs off them: centred on a domain edge, half of it would
+             otherwise sit in the date strip, and insetting the marker instead
+             would part it from the line it terminates. -->
         <VisXYContainer
           :data="timeline.days"
           :height="200"
           :duration="0"
-          :margin="{ top: 8, right: 4, bottom: 4, left: 4 }"
-          :y-domain="scale?.kgDomain"
+          :margin="{ top: 10, right: 4, bottom: 8, left: 4 }"
+          :y-domain="kgDomain"
         >
           <!-- The intake half, drawn first so the weight reads over it. Every
                bar is stacked from zero, which sits far below the kilogram domain
@@ -148,8 +165,32 @@ const { focusOn, readout } = useFocus()
             :line-dash-array="[3, 3]"
             :exclude-from-domain-calculation="true"
           />
+          <!-- Where the Goal's plan says the trend should stand, beneath the
+               trend itself: a reference is read against the body, not over it.
+               Off the domain calculation like every overlay — the domain is the
+               clamped one the plan was drawn into, not the one it would ask for. -->
+          <VisLine
+            :x="at"
+            :y="trajectoryKg"
+            :color="TRAJECTORY_COLOR"
+            :curve-type="PLAN_CURVE"
+            :line-width="1.5"
+            :line-dash-array="[6, 4]"
+            :exclude-from-domain-calculation="true"
+          />
           <VisLine :x="at" :y="trendKg" :color="TREND_COLOR" />
           <VisScatter :x="at" :y="readingKg" :color="READING_COLOR" :size="5" />
+          <!-- Where the plan runs off the plot. Drawn over everything, because it
+               sits on the edge and is the one mark saying the line continues past
+               it; a diamond rather than a triangle, unovis' pointing only up. -->
+          <VisScatter
+            :x="at"
+            :y="clipKg"
+            :color="TRAJECTORY_COLOR"
+            shape="diamond"
+            :size="CLIP_MARKER_PX"
+            :exclude-from-domain-calculation="true"
+          />
           <!-- Horizontal rules only, and none of unovis' default chrome: a
                kilogram grid is what a reading is measured against, where a
                vertical rule per date is a box drawn round the data. -->
@@ -212,6 +253,25 @@ const { focusOn, readout } = useFocus()
               :style="{ backgroundColor: READING_COLOR }"
             />
             Weigh-ins
+          </span>
+          <!-- Only once there is a plan to name, which is Calorie Tracking off
+               and a Goal running. One entry, whose swatch gains the diamond once
+               the plan runs off the plot: a swatch must show everything the series
+               draws, and two chips both opening with "Plan" would be the longest
+               thing on a card that otherwise names three strokes in one word. -->
+          <span v-if="plan" class="flex items-center gap-1.5">
+            <span
+              aria-hidden="true"
+              class="h-0.5 w-4 rounded-full border-t-2 border-dashed"
+              :style="{ borderColor: TRAJECTORY_COLOR }"
+            />
+            <span
+              v-if="planClipped"
+              aria-hidden="true"
+              class="-ml-1 size-1.5 rotate-45"
+              :style="{ backgroundColor: TRAJECTORY_COLOR }"
+            />
+            {{ planClipped ? 'Plan off chart' : 'Plan' }}
           </span>
           <!-- Only once there are bars to name: with Calorie Tracking off the
              card is the weight half alone, and names the weight half alone. -->

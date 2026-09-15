@@ -58,6 +58,33 @@ const TRACKED = {
   }),
 }
 
+/**
+ * The same four weeks for a weight-only User pursuing a Goal: the plan takes the
+ * intake half's place, opening where the trend was and running half a kilo a week
+ * below it, which stays within reach of the weights throughout.
+ */
+const PLANNED = {
+  ...FOUR_WEEKS,
+  days: FOUR_WEEKS.days.map((day, index) => ({
+    ...day,
+    trajectoryKg: 88 - (index * 0.5) / 7,
+  })),
+}
+
+/**
+ * Four weeks of the same User falling behind: steady at 80 kg while the plan runs
+ * a kilo a week below them, so it leaves the plot two kilos down and the rest of
+ * it is off the bottom of the card.
+ */
+const STEADY = aTimeline(28, 80)
+const BEHIND_PLAN = {
+  ...STEADY,
+  days: STEADY.days.map((day, index) => ({
+    ...day,
+    trajectoryKg: 80 - index / 7,
+  })),
+}
+
 /** The line the sr-only list carries for a window's opening day. */
 function openingLine(timeline: ReturnType<typeof aTimeline>) {
   return timelineLine(timeline.days[0]!, false)
@@ -227,6 +254,69 @@ test('the timeline is drawn with Calorie Tracking off, where the calorie section
   const section = page.getByRole('region', { name: 'Your weight' })
   await expect(section.getByText(/days logged/)).toBeHidden()
   await expect(section.getByText('Calories')).toBeHidden()
+})
+
+test("with Calorie Tracking off the Goal's plan is drawn beside the weight", async ({
+  page,
+  goto,
+}) => {
+  await mockProfile(page, {
+    sex: 'MALE',
+    birthDate: '1990-06-15',
+    heightCm: 180,
+    tracksCalories: false,
+  })
+  await mockWeightTimeline(page, PLANNED)
+
+  await goto('/review', { waitUntil: 'hydration' })
+
+  const section = page.getByRole('region', { name: 'Your weight' })
+  await expect(section.getByText('Plan', { exact: true })).toBeVisible()
+  // Drawn within reach, so nothing says it left the plot.
+  await expect(section.getByText('Plan off chart')).toBeHidden()
+  // The chart is aria-hidden, so the list is where the plan is readable at all.
+  await expect(page.getByText(openingLine(PLANNED))).toBeAttached()
+})
+
+test('a plan below the chart is marked rather than silently cut short', async ({
+  page,
+  goto,
+}) => {
+  await mockProfile(page, {
+    sex: 'MALE',
+    birthDate: '1990-06-15',
+    heightCm: 180,
+    tracksCalories: false,
+  })
+  await mockWeightTimeline(page, BEHIND_PLAN)
+
+  await goto('/review', { waitUntil: 'hydration' })
+
+  const section = page.getByRole('region', { name: 'Your weight' })
+  await expect(section.getByText('Plan off chart')).toBeVisible()
+  // And the plan's own figure is still stated, the clamp being a rendering rule:
+  // the last day is five kilos under a chart that stops two kilos down.
+  await expect(
+    page.getByText(timelineLine(BEHIND_PLAN.days.at(-1)!, false)),
+  ).toBeAttached()
+
+  // The mark itself, which only this layer can see: the chart is `aria-hidden`,
+  // and unovis hands a Scatter's y accessor the accessor-group index where a Line
+  // gets the row's — so a marker keyed on a day's position draws nothing at all
+  // while every unit test, and the chip above, still pass.
+  await expect
+    .poll(() =>
+      section.locator('svg path').evaluateAll((paths) => {
+        const hex = getComputedStyle(document.documentElement)
+          .getPropertyValue('--tucker-timeline-plan')
+          .trim()
+        const rgb = parseInt(hex.slice(1), 16)
+        const filled = `rgb(${(rgb >> 16) & 255}, ${(rgb >> 8) & 255}, ${rgb & 255})`
+        return paths.filter((path) => getComputedStyle(path).fill === filled)
+          .length
+      }),
+    )
+    .toBe(1)
 })
 
 test('pointing at the chart reads out the day under the pointer', async ({

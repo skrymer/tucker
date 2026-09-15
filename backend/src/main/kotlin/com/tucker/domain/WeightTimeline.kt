@@ -15,16 +15,41 @@ data class WeightTimelineDay(
     val date: LocalDate,
     val weightKg: Double?,
     val trendKg: Double,
-    val caloriesKcal: Double?,
-    val calorieBudgetKcal: Double?,
+    val caloriesKcal: Double? = null,
+    val calorieBudgetKcal: Double? = null,
     /**
      * Whether the day's calories went past the Budget it was read against — the
      * verdict, not the comparison, because a client that derived it could disagree
      * with the same day's DayStatus (ADR 0002). Null when there is nothing to
      * exceed: no Entry, or no Budget in force.
      */
-    val overBudget: Boolean?,
+    val overBudget: Boolean? = null,
+    /**
+     * Where the active Goal's plan says the Trend Weight should stand on this day.
+     * Null throughout with Calorie Tracking on and in Maintenance Mode, and on a
+     * day before the Goal was set.
+     */
+    val trajectoryKg: Double? = null,
 )
+
+/**
+ * What a [WeightTimeline] draws beside the weight, which is one thing or the other
+ * and never both: with Calorie Tracking on the intake half, with it off the active
+ * Goal's planned trajectory (ADR 0029). Both answer "am I on track?", so a timeline
+ * carrying both would answer it twice — and on an axis that has room for neither.
+ *
+ * Each member fills its own fields rather than being unpacked by [WeightTimeline.of],
+ * so weight stays the premise every day is built from and a third kind has to say
+ * what it adds instead of being silently ignored.
+ */
+sealed interface TimelineEvidence {
+
+    /** [day] with whatever this evidence adds to it. */
+    fun drawOn(day: WeightTimelineDay): WeightTimelineDay
+
+    /** How many of [days] carry an Entry, or null where nothing counts days. */
+    fun loggedDaysIn(days: List<WeightTimelineDay>): Int?
+}
 
 /**
  * What the intake half of a [WeightTimeline] is drawn from: the calories logged
@@ -37,7 +62,7 @@ data class WeightTimelineDay(
 class TimelineIntake(
     private val caloriesByDay: Map<LocalDate, Double>,
     reviews: List<WeeklyReview>,
-) {
+) : TimelineEvidence {
     /** Oldest first, so [budgetOn] is a scan back rather than a filtered copy per day. */
     private val inOrder = reviews.sortedBy { it.reviewedOn }
 
@@ -68,6 +93,33 @@ class TimelineIntake(
         val budget = budgetOn(date)
         return if (budget == null) null else caloriesOn(date)?.let { it > budget }
     }
+
+    override fun drawOn(day: WeightTimelineDay) = day.copy(
+        caloriesKcal = caloriesOn(day.date),
+        calorieBudgetKcal = budgetOn(day.date),
+        overBudget = overBudgetOn(day.date),
+    )
+
+    /**
+     * Off the days actually drawn rather than off the log: a day logged before the
+     * timeline starts is not one of the days it is a count of.
+     */
+    override fun loggedDaysIn(days: List<WeightTimelineDay>): Int =
+        days.count { it.caloriesKcal != null }
+}
+
+/**
+ * An active [Goal]'s plan, as something a [WeightTimeline] can draw. The plan
+ * itself is the Goal's ([Goal.plannedWeightOn]) — this only says a timeline may
+ * carry it in place of the intake half.
+ */
+class GoalTrajectory(private val goal: Goal) : TimelineEvidence {
+
+    override fun drawOn(day: WeightTimelineDay) =
+        day.copy(trajectoryKg = goal.plannedWeightOn(day.date))
+
+    /** A plan is not a log, so it counts no days. */
+    override fun loggedDaysIn(days: List<WeightTimelineDay>): Int? = null
 }
 
 /**
@@ -113,24 +165,27 @@ data class WeightTimeline(
          * no shape worth drawing, only a handful of points — and likewise when the
          * window closes before the readings begin.
          *
-         * [intake] is a supplier because it is three more reads, and a withheld
-         * timeline has nothing to spend them on.
+         * [evidence] is a supplier because it is more reads, and a withheld timeline
+         * has nothing to spend them on.
          */
         fun of(
             from: LocalDate,
             to: LocalDate,
             measurements: List<WeightMeasurement>,
-            intake: () -> TimelineIntake? = { null },
+            evidence: () -> TimelineEvidence? = { null },
         ): WeightTimeline? {
             requireWindow(from, to)
             val trend = WeightTrend.from(measurements)
             val start = drawableStart(from, to, trend) ?: return null
-            val logged = intake()
+            val drawn = evidence()
             val readings = measurements.associateBy { it.measuredOn }
             val days = generateSequence(start) { it.plusDays(1) }
                 .takeWhile { !it.isAfter(to) }
                 .map { day ->
-                    WeightTimelineDay(
+                    // Weight is the premise and the rest is the addition, so a day
+                    // is built from the scale and then handed to whatever the
+                    // timeline draws beside it (ADR 0029).
+                    val weighed = WeightTimelineDay(
                         date = day,
                         weightKg = readings[day]?.weightKg,
                         // Never null: the window starts no earlier than the first
@@ -138,19 +193,15 @@ data class WeightTimeline(
                         // through it — carried forward from the last weigh-in,
                         // because the trend moves only when the scale does.
                         trendKg = trend.standingOn(day)!!.trendKg,
-                        caloriesKcal = logged?.caloriesOn(day),
-                        calorieBudgetKcal = logged?.budgetOn(day),
-                        overBudget = logged?.overBudgetOn(day),
                     )
+                    drawn?.drawOn(weighed) ?: weighed
                 }
                 .toList()
             return WeightTimeline(
                 from = start,
                 to = to,
                 days = days,
-                // Off the days actually drawn rather than off the log: a day logged
-                // before the timeline starts is not one of the days it is a count of.
-                loggedDays = logged?.let { days.count { day -> day.caloriesKcal != null } },
+                loggedDays = drawn?.loggedDaysIn(days),
             )
         }
 

@@ -80,6 +80,37 @@ tracking off there is no mechanism to show, so the trajectory is the only thing
 that can answer. A tracking User therefore never sees their plan spatially and the
 Goal Progress hero above remains their only source; that cost is accepted.
 
+Because they take one another's place, the two are **one value object and never
+two nullable parameters**: a timeline carrying both would answer one question
+twice, on an axis with room for neither. The domain therefore takes a single
+`TimelineEvidence` — a `TimelineIntake` or a `GoalTrajectory`, or nothing at all
+in Maintenance Mode — and the controller's choice reads as the sentence above.
+
+**The plan flattens at the target rather than sloping on below it.** The plan is
+to reach the target; there is none past it, and a 90-day window over a 56-day plan
+would otherwise draw a line the User never set. The state is reachable rather than
+hypothetical: reaching *latches* and a reached Goal stays active until the fork on
+`/today` resolves it (ADR 0008). A day before the Goal was set carries no plan at
+all, the plan not existing yet.
+
+That does make a reached Goal's plan **horizontal at the target** for part of a
+90-day window — the shape rejected further down as a target line. It is not the
+same claim: what that rejection is about is *distance*, a target five to seven
+kilos away flattening the trend to make room for itself. This line is flat
+*because the User got there*, and the clamp bounds the axis either way.
+
+**A plan of one day is not drawn at all**, and that is the common case rather than
+an edge: a Goal is always started today, so its first window carries exactly one
+planned day. A line needs two points, and naming a series in the key that nothing
+draws is worse than the plain weight card the User had yesterday. A plan that is
+off the chart *all* window is not this case — its marker is a mark.
+
+**The trajectory is a per-day series like every other**, not the Goal's start
+weight, start date and rate for the client to project from. `startWeight − rate ×
+weeks`, floored at the target, is derived state and so the backend's (ADR 0002);
+sending the three parameters instead would put that arithmetic in a `.vue` file
+and leave the clamp below operating on figures the client had just invented.
+
 **In Maintenance Mode there is no trajectory at all**, because Tucker defends no
 target weight — ADR 0008 puts a defended target and guard band out of scope. That
 state renders the plain weight chart by decision, not by omission.
@@ -151,6 +182,22 @@ nothing reads as a bug. Without the clamp, the further behind plan a User falls
 the flatter their own trend draws, which is exactly the User the chart matters
 most to. The clamp is a rendering rule and so belongs to the client; the series
 stay the backend's.
+
+Two kilograms **per edge**, because the plan can also be far *above* the weights —
+a User well ahead of it — and that compresses the trend exactly as much. The day
+the plan leaves by is drawn *on* the edge, so the line runs off it rather than
+stopping in mid-air, and every day past that is **dropped** rather than laid along
+the edge: a flat line at the floor reads as a plan that levelled off, which is the
+one thing a plan never does. The marker is the plan's only statement that it
+continues, so it is also said in words — the key chip reads *Plan off chart* —
+because the chart is `aria-hidden` and a mark on it is nothing on its own.
+
+**The plan is in the readout too**, on every day that carries one and at its own
+figure rather than the edge it was clipped at. The chart being `aria-hidden` makes
+the visually-hidden day list the plan's only accessible surface, and every other
+drawn series — the trend, the readings, the calories, the Budget — is already
+there; the plan being the exception would put a series on the card that a screen
+reader could not reach at all.
 
 **One endpoint, not a client-side join.** `GET /api/weight-timeline?from=&to=`
 returns the per-day series. The rules above are domain rules — absent-not-zero,
