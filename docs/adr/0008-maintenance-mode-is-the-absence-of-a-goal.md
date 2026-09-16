@@ -17,6 +17,12 @@ Status** live in [`CONTEXT.md`](../../CONTEXT.md).
 When no Goal is active, the user is *maintaining*. There is no deficit to chase:
 
 - **Calorie Budget** = **Maintenance** (the deficit subtraction is skipped).
+  Note that Budget = Maintenance no longer *implies* Maintenance Mode:
+  [ADR 0030](0030-a-deficit-maintenance-cannot-supply-is-suspended-never-floored.md)
+  skips the same subtraction for an **active** Goal whose rate demands more deficit
+  than Maintenance can supply. The two states read identically in the figures and
+  are told apart by whether a Goal is active — which is the same question this ADR
+  makes Maintenance Mode out of.
 - **Protein Floor** still applies — `2 g/kg × Trend Weight` — now computed
   directly from the trend, **decoupled from the Goal** that used to carry it.
 

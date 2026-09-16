@@ -32,6 +32,18 @@ const DAY = {
   trendWeightKg: 86,
   entries: [],
 }
+/**
+ * A day whose Goal rate outran Maintenance: the Budget *is* Maintenance, so the
+ * remaining figure has to follow it or the fixture describes a day the backend
+ * cannot send.
+ */
+const suspendedDay = () => ({
+  ...DAY,
+  calorieBudget: 1595,
+  caloriesRemaining: 95,
+  deficitSuspended: true,
+})
+
 let summary: Record<string, unknown> = DAY
 registerEndpoint('/api/summary', () => summary)
 // Deliberately not today's date, whatever today is: the tile then offers its
@@ -128,6 +140,53 @@ describe('/ wherever there is an active Goal', () => {
       expect(screen.getByText(/Trend weight/)).toHaveTextContent('86.0 kg')
     },
   )
+})
+
+describe("/ when the Goal's rate outruns Maintenance", () => {
+  it('explains why no deficit is being applied, beside the budget it explains', async () => {
+    activeGoal = goalProgress({ plannedRateKgPerWeek: 1.5 })
+    summary = suspendedDay()
+
+    await renderToday()
+
+    const banner = screen.getByText(/No deficit is being applied/i)
+    expect(banner).toBeVisible()
+    // The sentence ADR 0030 decision 5 rests on: the card states no figure of its
+    // own and points at the Budget below, which is what makes naming one wrong.
+    expect(
+      screen.getByText(/calorie budget below is your full maintenance/i),
+    ).toBeVisible()
+    // Off the summary alone: it must not be gated on a second read that could
+    // fail while the deficit really is suspended.
+    const budget = screen.getByText('1500 / 1595 kcal')
+    expect(budget).toBeVisible()
+    // "below" is the decision, not a turn of phrase (decision 7) — it explains
+    // the Budget, so it precedes the card stating it.
+    expect(
+      banner.compareDocumentPosition(budget) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+  })
+
+  it('stays out of the way while the deficit is being applied', async () => {
+    activeGoal = goalProgress()
+    summary = { ...DAY, deficitSuspended: false }
+
+    await renderToday()
+
+    expect(screen.queryByText(/No deficit is being applied/i)).toBeNull()
+  })
+
+  it('says nothing to a User with Calorie Tracking off', async () => {
+    // Its copy points at a calorie budget "below", and with tracking off there
+    // is no day summary on the page for it to point at.
+    tracking.tracksCalories = false
+    activeGoal = goalProgress({ plannedRateKgPerWeek: 1.5 })
+    summary = suspendedDay()
+
+    await renderToday()
+
+    expect(screen.queryByText(/No deficit is being applied/i)).toBeNull()
+  })
 })
 
 describe('/ in Maintenance Mode', () => {

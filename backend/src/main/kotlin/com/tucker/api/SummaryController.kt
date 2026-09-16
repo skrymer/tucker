@@ -56,6 +56,13 @@ data class DailySummaryResponse(
     val driftStatus: DriftStatus?,
     /** The trailing 28-day Trend-Weight slope (kg/week); null outside Maintenance Mode or before 14 days. */
     val observedRateKgPerWeek: Double?,
+    /**
+     * Whether the active Goal's rate demands more daily deficit than Maintenance can
+     * supply, so none is applied and the Calorie Budget *is* Maintenance (ADR 0030).
+     * Null where the question does not arise — no active Goal, or no Intake Targets
+     * to have a Budget in.
+     */
+    val deficitSuspended: Boolean?,
 )
 
 /**
@@ -136,7 +143,8 @@ class SummaryController(
         // Maintenance Mode (ADR 0008): with no active Goal, the trend is paced
         // against a zero rate. While a Goal is active the pace lives on the Goal,
         // so the summary leaves these null.
-        val trend = if (goals.findActive() == null) WeightTrend.from(weights.findAll()) else null
+        val activeGoal = goals.findActive()
+        val trend = if (activeGoal == null) WeightTrend.from(weights.findAll()) else null
         // One walk of the trend feeds both fields: the raw rate and its classification.
         val observedRateKgPerWeek = trend?.observedRateKgPerWeek(date)
         val driftStatus = trend?.let { DriftStatus.forRate(observedRateKgPerWeek) }
@@ -178,6 +186,14 @@ class SummaryController(
             budgetChange = budgetChange,
             driftStatus = driftStatus,
             observedRateKgPerWeek = observedRateKgPerWeek,
+            // Derived on read, never stored: a suspension lifts by itself the week
+            // Maintenance recovers, so latching it into the review would leave a
+            // historical claim the live state contradicts (ADR 0030).
+            deficitSuspended = if (activeGoal != null && targets != null) {
+                targets.appliesNoDeficit
+            } else {
+                null
+            },
         )
     }
 }

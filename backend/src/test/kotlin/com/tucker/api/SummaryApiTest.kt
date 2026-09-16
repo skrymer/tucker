@@ -1,11 +1,14 @@
 package com.tucker.api
 
+import com.tucker.domain.Goal
 import com.tucker.domain.IntakeTargets
 import com.tucker.domain.Maintenance
 import com.tucker.domain.WeeklyReview
+import com.tucker.persistence.GoalRepository
 import com.tucker.persistence.ReminderStateRepository
 import com.tucker.persistence.WeeklyReviewRepository
 import com.tucker.security.WithTuckerUser
+import org.hamcrest.Matchers.closeTo
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
@@ -29,6 +32,7 @@ class SummaryApiTest {
     @Autowired lateinit var mockMvc: MockMvc
     @Autowired lateinit var reviews: WeeklyReviewRepository
     @Autowired lateinit var reminderState: ReminderStateRepository
+    @Autowired lateinit var goals: GoalRepository
 
     /** A review inserted directly, standing in for one the adaptive engine ran. */
     private fun seedReview(
@@ -350,6 +354,67 @@ class SummaryApiTest {
         }.andExpect { status { isOk() } }
 
         assertEquals(day, reminderState.lastSeenOn())
+    }
+
+    @Test
+    fun `the summary stays up and reports a Suspended Deficit when the rate outruns Maintenance`() {
+        // The outage (issue #305): a 50 kg, 160 cm, 40-year-old woman maintains on
+        // 1594.6 kcal while a 1.5 kg/week Goal demands 1650, and GET /api/summary —
+        // which runs the lazy catch-up — used to 400 every day it lasted.
+        // The Goal is inserted directly because POST /api/goal now refuses this rate;
+        // reaching the state means a Goal set back when Maintenance was higher.
+        val day = LocalDate.of(2026, 6, 10)
+        mockMvc.put("/api/profile") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"sex":"FEMALE","birthDate":"1986-05-22","heightCm":160.0}"""
+        }.andExpect { status { isOk() } }
+        mockMvc.post("/api/weight") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"date":"$day","weightKg":50.0}"""
+        }.andExpect { status { isOk() } }
+        goals.insert(Goal(null, day.minusMonths(2), 50.0, 45.0, 1.5, active = true))
+
+        mockMvc.get("/api/summary") {
+            param("date", "$day")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.deficitSuspended") { value(true) }
+            // No deficit is applied at all, so the Budget is the Maintenance the
+            // engine derived — never a floor, and never last week's figure.
+            jsonPath("$.calorieBudget") { value(closeTo(1594.6, 1e-6)) }
+        }
+    }
+
+    @Test
+    fun `a Goal whose deficit fits reports no Suspended Deficit`() {
+        // 86 kg on the seeded body maintains well above the 550 kcal a 0.5 kg/week
+        // Goal asks for, so the deficit is applied and the question is answered no
+        // rather than not arising.
+        val day = LocalDate.of(2026, 6, 10)
+        completeSetup(day)
+
+        mockMvc.get("/api/summary") {
+            param("date", "$day")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.deficitSuspended") { value(false) }
+        }
+    }
+
+    @Test
+    fun `Maintenance Mode has no Suspended Deficit to report`() {
+        // No Goal, so no deficit and no rate for Maintenance to outrun. The field is
+        // an explicit null rather than a false (ADR 0023): the question does not
+        // arise, which is not the same as arising and being answered no.
+        val day = LocalDate.of(2026, 6, 10)
+        maintenanceSetup(day)
+
+        mockMvc.get("/api/summary") {
+            param("date", "$day")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.deficitSuspended") { value(null) }
+        }
     }
 
     @Test

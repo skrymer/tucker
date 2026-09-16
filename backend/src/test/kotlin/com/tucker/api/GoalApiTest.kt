@@ -32,6 +32,26 @@ class GoalApiTest {
         }.andExpect { status { isOk() } }
     }
 
+    /**
+     * A 50 kg, 160 cm, 40-year-old woman: Maintenance seeds at 1594.6 kcal, which
+     * the maximum 1.5 kg/week rate (1650 kcal a day) outruns (ADR 0030).
+     */
+    private fun seedSmallBodyAndWeight(tracksCalories: Boolean = true) {
+        // Birth date relative to today, not a literal: an absolute one makes the
+        // seeded age tick over on its own anniversary and the 1595 the assertions
+        // quote becomes 1588, with no code change.
+        val birthDate = java.time.LocalDate.now().minusYears(40)
+        mockMvc.put("/api/profile") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"sex":"FEMALE","birthDate":"$birthDate","heightCm":160.0,
+                          "tracksCalories":$tracksCalories}"""
+        }.andExpect { status { isOk() } }
+        mockMvc.post("/api/weight") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"date":"${java.time.LocalDate.now()}","weightKg":50.0}"""
+        }.andExpect { status { isOk() } }
+    }
+
     private fun postGoal(startedOn: String, targetWeightKg: Double) {
         // The start weight is derived from the live trend (ADR 0016), not sent.
         mockMvc.post("/api/goal") {
@@ -57,6 +77,64 @@ class GoalApiTest {
     }
 
     @Test
+    fun `POST goal refuses a rate whose deficit outruns Maintenance, naming both figures`() {
+        // A 50 kg, 160 cm, 40-year-old woman seeds Maintenance at 1594.6 kcal
+        // (ADR 0030); 1.5 kg/week demands 1650. The Goal cannot be pursued, so it
+        // is refused while the User still has the rate control in their hand —
+        // rather than accepted and immediately suspended.
+        seedSmallBodyAndWeight()
+
+        mockMvc.post("/api/goal") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"startedOn":"${java.time.LocalDate.now()}",
+                          "targetWeightKg":45.0,"rateKgPerWeek":1.5}"""
+        }.andExpect {
+            status { isBadRequest() }
+            // Both figures, and no suggested rate: the fastest that would fit leaves
+            // 0.4 kcal, so naming it would be the invented floor arriving as copy.
+            jsonPath("$.message") { value(org.hamcrest.Matchers.containsString("1595")) }
+            jsonPath("$.message") { value(org.hamcrest.Matchers.containsString("1.5 kg")) }
+            jsonPath("$.message") { value(org.hamcrest.Matchers.containsString("slower rate")) }
+            // Which field the caller got wrong, so a form shows it in place rather
+            // than under whichever input the client happens to route 400s to.
+            jsonPath("$.field") { value("rateKgPerWeek") }
+        }
+
+        // And nothing was written: createGoal is transactional, so a refusal must
+        // leave the User with no active Goal rather than a half-applied one.
+        mockMvc.get("/api/goal").andExpect { status { isNotFound() } }
+    }
+
+    @Test
+    fun `POST goal accepts any rate for a User with Calorie Tracking off`() {
+        // The same body and rate the test above refuses. With tracking off a review
+        // derives no Intake Targets at all (ADR 0024), so there is no Calorie Budget
+        // for the rate to outrun and nothing to refuse — the Goal and the weight
+        // trend are exactly what this User came for (ADR 0030).
+        seedSmallBodyAndWeight(tracksCalories = false)
+
+        mockMvc.post("/api/goal") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"startedOn":"${java.time.LocalDate.now()}",
+                          "targetWeightKg":45.0,"rateKgPerWeek":1.5}"""
+        }.andExpect { status { isCreated() } }
+
+        mockMvc.get("/api/goal").andExpect {
+            status { isOk() }
+            jsonPath("$.rateKgPerWeek") { value(1.5) }
+        }
+
+        // An active Goal and no Intake Targets to have a Budget in: the question
+        // does not arise, and null is the only arm not reachable without a Goal.
+        mockMvc.get("/api/summary") {
+            param("date", "${java.time.LocalDate.now()}")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.deficitSuspended") { value(null) }
+        }
+    }
+
+    @Test
     fun `POST goal rejects a target not below the current trend weight with a 400 naming the rule`() {
         // The start weight is the live trend (ADR 0016): the seeded reading is 90.0,
         // so the trend — and the derived start — is 90.0. A target of 90.0 isn't below
@@ -70,6 +148,9 @@ class GoalApiTest {
         }.andExpect {
             status { isBadRequest() }
             jsonPath("$.message") { value(org.hamcrest.Matchers.containsString("trend")) }
+            // Named, like the rate refusal beside it: a form routes on the field
+            // rather than treating every unlabelled 400 as this one.
+            jsonPath("$.field") { value("targetWeightKg") }
         }
     }
 

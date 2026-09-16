@@ -205,10 +205,73 @@ describe('useApiMutation', () => {
 
     await execute()
 
+    // Most refusals name no field — the form falls back to wherever it shows one.
     expect(onValidationError).toHaveBeenCalledWith(
       'a weight-loss Goal needs a target below your trend',
+      null,
     )
     expect(toastAdd).not.toHaveBeenCalled()
+  })
+
+  it('hands on the field a 400 names, so a form can show it in place', async () => {
+    // Two inputs on one form can each be refused, and the message alone cannot
+    // say which — an unrouted one lands under whichever field the client picked.
+    const onValidationError = vi.fn()
+    const rejection = Object.assign(new Error('Bad Request'), {
+      status: 400,
+      data: {
+        message: '1.5 kg a week would leave you nothing to eat',
+        field: 'rateKgPerWeek',
+      },
+    })
+    const { execute } = useApiMutation(() => Promise.reject(rejection), {
+      errorTitle: 'Could not set goal',
+      onValidationError,
+    })
+
+    await execute()
+
+    expect(onValidationError).toHaveBeenCalledWith(
+      '1.5 kg a week would leave you nothing to eat',
+      'rateKgPerWeek',
+    )
+  })
+
+  it('shows the retry toast for a 400 that carries no message to route', async () => {
+    // A 400 is only routable to a form if it says something a field can show.
+    // Without a body there is nothing to put under an input, and the failure
+    // still owes the persistent toast (ADR 0005) rather than silence.
+    const onValidationError = vi.fn()
+    const rejection = Object.assign(new Error('Bad Request'), { status: 400 })
+    const { execute } = useApiMutation(() => Promise.reject(rejection), {
+      errorTitle: 'Could not set goal',
+      onValidationError,
+    })
+
+    await execute()
+
+    expect(onValidationError).not.toHaveBeenCalled()
+    expect(toastAdd).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'Could not set goal' }),
+    )
+  })
+
+  it('shows the retry toast when the rejection is not an object at all', async () => {
+    // The factory wraps any mutation function, so it cannot assume the shape of
+    // what one rejects with. A bare rejection must reach the toast, not throw
+    // inside the handler and lose the failure entirely.
+    const onValidationError = vi.fn()
+    const { execute } = useApiMutation(() => Promise.reject(null), {
+      errorTitle: 'Could not set goal',
+      onValidationError,
+    })
+
+    await execute()
+
+    expect(onValidationError).not.toHaveBeenCalled()
+    expect(toastAdd).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'Could not set goal' }),
+    )
   })
 
   it('shows the retry toast for a non-validation failure even when the form can route one', async () => {

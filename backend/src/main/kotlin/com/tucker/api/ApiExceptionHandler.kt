@@ -24,8 +24,22 @@ class UnprocessableException(message: String) : RuntimeException(message)
  */
 class ServiceUnavailableException(message: String) : RuntimeException(message)
 
-/** The error body returned to API clients. */
-data class ApiError(val message: String)
+/**
+ * The request names a field the caller can correct — 400, like any other domain
+ * refusal, but carrying [field] so a form can show it against the input that is
+ * wrong rather than against whichever one it routes 400s to by default.
+ *
+ * An [IllegalArgumentException] because that is what it is: one family for caller
+ * error, so nothing that already handles the general case changes behaviour. The
+ * more specific handler below is what puts [field] on the wire.
+ */
+class InvalidFieldException(val field: String, message: String) : IllegalArgumentException(message)
+
+/**
+ * The error body returned to API clients. [field] is the request field at fault
+ * where one can be named, and null otherwise — which is most refusals.
+ */
+data class ApiError(val message: String, val field: String? = null)
 
 /**
  * Translates exceptions into HTTP responses. Domain invariant violations surface
@@ -41,6 +55,11 @@ class ApiExceptionHandler {
     @ExceptionHandler(IllegalArgumentException::class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     fun handleBadRequest(e: IllegalArgumentException) = ApiError(e.message ?: "bad request")
+
+    @ExceptionHandler(InvalidFieldException::class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    fun handleInvalidField(e: InvalidFieldException) =
+        ApiError(e.message ?: "bad request", e.field)
 
     /** A precondition isn't met (e.g. running a weekly review with no Goal set). */
     @ExceptionHandler(IllegalStateException::class)

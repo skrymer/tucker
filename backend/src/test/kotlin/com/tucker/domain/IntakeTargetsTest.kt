@@ -4,6 +4,8 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import java.time.LocalDate
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class IntakeTargetsTest {
 
@@ -67,6 +69,59 @@ class IntakeTargetsTest {
         )
 
         assertEquals(2400.0, targets.calorieBudgetKcal, 1e-9)
+    }
+
+    @Test
+    fun `a deficit that would leave no calories does not apply`() {
+        // 1.5 kg/week is 1650 kcal a day off Maintenance. A Maintenance at or below
+        // that leaves nothing to eat, so there is no Budget to derive (ADR 0030) —
+        // and the line is exactly where the figure stops existing, which is what
+        // the init block above refuses. Not a kinder one.
+        val goal = Goal(null, LocalDate.of(2026, 5, 1), 60.0, 50.0, 1.5, active = true)
+        fun applies(kcal: Double) =
+            IntakeTargets.deficitApplies(Maintenance(kcal, Maintenance.Basis.ADAPTIVE), goal)
+
+        assertFalse(applies(1594.6), "a deficit above Maintenance cannot apply")
+        assertFalse(applies(1650.0), "a deficit equal to Maintenance leaves a zero Budget")
+        assertTrue(applies(1650.1), "a deficit below Maintenance applies")
+    }
+
+    @Test
+    fun `targets record whether any deficit was applied, without consulting a Goal`() {
+        // What the daily summary reports, and it is read off the record rather than
+        // re-derived: the Goal live when the summary is read may not be the one the
+        // review was run against, and then the answer would contradict the Budget
+        // it is printed beside.
+        val steep = Goal(null, LocalDate.of(2026, 5, 1), 60.0, 50.0, 1.5, active = true)
+        val gentle = steep.copy(rateKgPerWeek = 0.5)
+        val maintenance = Maintenance(1594.6, Maintenance.Basis.FORMULA_SEED)
+
+        assertTrue(IntakeTargets.from(maintenance, steep, 55.0).appliesNoDeficit)
+        assertFalse(IntakeTargets.from(maintenance, gentle, 55.0).appliesNoDeficit)
+        // Maintenance Mode reaches it too, and correctly: there is no deficit
+        // there either. An active Goal is what makes it a Suspended Deficit.
+        assertTrue(IntakeTargets.from(maintenance, null, 55.0).appliesNoDeficit)
+    }
+
+    @Test
+    fun `a deficit Maintenance cannot supply is suspended, leaving the Budget at Maintenance`() {
+        // 1.5 kg/week demands 1650 kcal a day, which a 1594.6 kcal Maintenance
+        // cannot supply. Tucker applies no deficit at all rather than inventing a
+        // floor (ADR 0030) — so the review is still writable, and the figure it
+        // publishes is one the engine derived.
+        val targets = IntakeTargets.from(
+            maintenance = Maintenance(1594.6, Maintenance.Basis.FORMULA_SEED),
+            goal = Goal(null, LocalDate.of(2026, 5, 1), 60.0, 50.0, 1.5, active = true),
+            trendWeightKg = 55.0,
+        )
+
+        assertEquals(1594.6, targets.calorieBudgetKcal, 1e-9)
+        // Only the Budget moves. The Floor is 2 g/kg of the trend and has nothing
+        // to do with the Goal (ADR 0008), so suspension does not take it with it —
+        // which is also what keeps the value object out of the Floor-without-a-Budget
+        // state it exists to forbid.
+        assertEquals(110.0, targets.proteinFloorG, 1e-9)
+        assertEquals(Maintenance.Basis.FORMULA_SEED, targets.maintenance.basis)
     }
 
     @Test

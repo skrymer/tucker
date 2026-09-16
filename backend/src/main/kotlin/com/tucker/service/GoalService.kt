@@ -1,6 +1,8 @@
 package com.tucker.service
 
+import com.tucker.api.InvalidFieldException
 import com.tucker.domain.Goal
+import com.tucker.domain.IntakeTargets
 import com.tucker.domain.WeightTrend
 import com.tucker.persistence.GoalRepository
 import com.tucker.persistence.WeightMeasurementRepository
@@ -45,10 +47,7 @@ class GoalService(
     ): Goal {
         val trendKg = currentTrendKg()
             ?: throw IllegalArgumentException("log your weight before setting a goal")
-        require(targetWeightKg < trendKg) {
-            "a weight-loss Goal needs a target below your current trend weight " +
-                "(${"%.1f".format(trendKg)} kg)"
-        }
+        refuseTargetNotBelowTrend(targetWeightKg, trendKg)
         val goal = Goal(
             id = null,
             startedOn = startedOn,
@@ -57,10 +56,43 @@ class GoalService(
             rateKgPerWeek = rateKgPerWeek,
             active = true,
         )
+        refuseRateOutrunningMaintenance(goal, today)
         goals.deactivateAll()
         val saved = goals.insert(goal)
         weeklyReview.recomputeFor(today)
         return saved
+    }
+
+    /** The target sits below the live trend the Goal anchors its start on (ADR 0016). */
+    private fun refuseTargetNotBelowTrend(targetWeightKg: Double, trendKg: Double) {
+        if (targetWeightKg >= trendKg) {
+            throw InvalidFieldException(
+                field = "targetWeightKg",
+                message = "a weight-loss Goal needs a target below your current trend weight " +
+                    "(${"%.1f".format(trendKg)} kg)",
+            )
+        }
+    }
+
+    /**
+     * A rate is refused while the User still has the control in their hand
+     * (ADR 0030) — a running Goal that Maintenance later falls under has its deficit
+     * suspended instead. No Maintenance is a User whose reviews derive none, so
+     * there is no Calorie Budget for a rate to outrun.
+     *
+     * It suggests no rate: the fastest that would fit leaves a fraction of a
+     * calorie, so naming it would be the invented floor arriving as copy.
+     */
+    private fun refuseRateOutrunningMaintenance(goal: Goal, today: LocalDate) {
+        val maintenance = weeklyReview.maintenanceFor(today) ?: return
+        if (IntakeTargets.deficitApplies(maintenance, goal)) return
+        throw InvalidFieldException(
+            field = "rateKgPerWeek",
+            message = "at your current maintenance of " +
+                "${"%.0f".format(maintenance.kcal)} kcal a day, " +
+                "${plainRate(goal.rateKgPerWeek)} kg a week would leave you nothing to eat " +
+                "— choose a slower rate",
+        )
     }
 
     /**
@@ -79,6 +111,13 @@ class GoalService(
             goals.updateReachedOn(requireNotNull(goal.id), stamped.reachedOn)
         }
     }
+
+    /**
+     * A rate as the User typed it — "1.5", not "1.50" — so the refusal quotes their
+     * own figure back rather than a re-decimalised one.
+     */
+    private fun plainRate(rateKgPerWeek: Double): String =
+        "%.2f".format(rateKgPerWeek).trimEnd('0').trimEnd('.')
 
     /** The live Trend Weight — the latest EWMA point, or null before any reading. */
     private fun currentTrendKg(): Double? =

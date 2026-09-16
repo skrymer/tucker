@@ -420,14 +420,23 @@ A Goal is **reached** when the Trend Weight first meets its target. Reaching
 recorded as the date it happened. A reached Goal is not resolved automatically:
 the user either switches to **Maintenance Mode** (deactivating it) or replaces it
 with a lower Goal; until they choose, the Goal stays active and reached.
+A Goal is refused at the moment it is set if its rate would demand more daily
+deficit than the user's **Maintenance** can supply — there would be no calories
+left to eat — and the refusal names both figures rather than suggesting a rate.
+A user with **Calorie Tracking** off is never refused: they have no Maintenance
+and no Calorie Budget for a rate to outrun.
+A Goal already running whose Maintenance later falls that far is not refused; its
+deficit is suspended instead (see **Suspended Deficit**).
 _Avoid_: target
 
 **Calorie Budget**:
 The app-derived daily calorie target the user logs against. Equals Maintenance
 minus the deficit implied by the active Goal's rate — or Maintenance itself when
-no Goal is active (see **Maintenance Mode**). Recomputed once a week and held
-steady in between, so it stays a stable habit. A User with **Calorie Tracking**
-off has none at all — see **Intake Targets**.
+no Goal is active (see **Maintenance Mode**), and also when that rate demands more
+deficit than Maintenance can supply (see **Suspended Deficit**). Recomputed once a
+week and held steady in between, so it stays a stable habit. A User with
+**Calorie Tracking** off has none at all — see **Intake Targets**. It is never
+floored: the only Budget Tucker publishes is one it derived.
 _Avoid_: limit, allowance
 
 **Protein Floor**:
@@ -445,7 +454,8 @@ the **Calorie Budget** — `Protein Floor ÷ Calorie Budget × 100`. A Food *abo
 pace carries its own protein weight; one *below* pace spends calories faster than
 it returns protein, so the rest of the day has to make up the difference. Pace is
 derived from the user's own two targets and moves with them: a deeper Goal deficit
-tightens it (fewer calories, same floor), and **Maintenance Mode** eases it. This
+tightens it (fewer calories, same floor), while **Maintenance Mode** and a
+**Suspended Deficit** both ease it by lifting the Budget to Maintenance. This
 is deliberate — when calories are scarce each one must work harder for protein —
 and it has a visible consequence: the same product's figures can change after a
 **Weekly Review** moves the Budget, without the product changing. The answer is
@@ -503,6 +513,24 @@ ending an unreached Goal manually, or by never setting one. A Goal is the
 temporary weight-change campaign layered over this baseline; ending one — or
 switching out of a reached one — drops back to Maintenance Mode.
 _Avoid_: maintenance goal, rate-zero goal, rest mode
+
+**Suspended Deficit**:
+The state of an active **Goal** whose rate demands a bigger daily deficit than
+the user's **Maintenance** can supply. Tucker applies none at all: the **Calorie
+Budget** is Maintenance, the **Protein Floor** is unaffected, and the Goal stays
+active — nothing is switched and no figure is invented, because a floored Budget
+would be a number the engine did not derive and one the adaptive correction could
+never move. It is a *derived* condition, not a stored one, and it is not a fork:
+it lifts by itself the week Maintenance recovers, so demanding a decision about it
+would be asking the user to resolve something that may evaporate. It is surfaced
+on `/` beside the calorie figures, because a user eating at Maintenance while
+believing they are cutting is the harm it exists to prevent.
+A rate that does not fit **at the moment it is chosen** is a different thing:
+there the Goal is refused outright, naming the Maintenance and what the rate would
+leave, because the user still has the rate in their hand. See
+[ADR 0030](docs/adr/0030-a-deficit-maintenance-cannot-supply-is-suspended-never-floored.md).
+_Avoid_: unreachable goal (**reached** is about the target weight, not the rate),
+paused goal, budget floor
 
 **Intake Targets**:
 The intake half of a **Weekly Review**: the **Maintenance** it was derived from
@@ -753,7 +781,8 @@ _Avoid_: device token, push token, registration
 - A day's protein consumed is the sum of protein across that day's **Entries**,
   counting an Entry with no protein figure as zero
 - The **Calorie Budget** equals **Maintenance** minus the active **Goal**'s deficit,
-  or **Maintenance** itself when no Goal is active (**Maintenance Mode**)
+  or **Maintenance** itself when no Goal is active (**Maintenance Mode**) — and also
+  when that deficit is more than Maintenance can supply (**Suspended Deficit**)
 - The **Protein Floor** scales from the current **Trend Weight** independent of any
   **Goal**, so it still applies in **Maintenance Mode**
 - A **Weekly Review** carries **Intake Targets** only when the **User** has

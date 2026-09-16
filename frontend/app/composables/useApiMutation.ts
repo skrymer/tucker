@@ -16,19 +16,26 @@ interface ApiMutationOptions<TResult> {
   /**
    * Handle a 400 validation rejection (a bad input, not a transient failure).
    * When provided, the backend's message is routed here — to a form field —
-   * instead of the "check your connection" retry toast.
+   * instead of the "check your connection" retry toast. `field` names the input
+   * at fault where the backend could name one, so a form with more than one
+   * refusable input shows it against the right one.
    */
-  onValidationError?: (message: string) => void
+  onValidationError?: (message: string, field: string | null) => void
 }
 
 /**
- * The backend's `{ message }` body for an [IllegalArgumentException] → 400, or
- * null when the rejection isn't a validation error a form should surface.
+ * The backend's `{ message, field }` body for an `IllegalArgumentException` → 400,
+ * or null when the rejection isn't a validation error a form should surface.
  */
-function validationMessage(error: unknown): string | null {
-  const e = error as { status?: number; data?: { message?: string } }
-  if (e?.status !== 400) return null
-  return e.data?.message ?? null
+function validationRejection(
+  error: unknown,
+): { message: string; field: string | null } | null {
+  const e = error as {
+    status?: number
+    data?: { message?: string; field?: string | null }
+  }
+  if (e?.status !== 400 || e.data?.message == null) return null
+  return { message: e.data.message, field: e.data.field ?? null }
 }
 
 /**
@@ -146,12 +153,12 @@ export function useApiMutation<TArgs extends unknown[], TResult>(
       // states section warns against layering on top of it, and Retry would
       // just repeat the same expired-session failure forever.
       if (useAuthGate().isSignedOut.value) return
-      const message = validationMessage(error)
-      if (message && options.onValidationError) {
+      const rejection = validationRejection(error)
+      if (rejection && options.onValidationError) {
         // A wrong input, not a flaky connection: hand it to the form and clear
         // any stale transient toast rather than offering a pointless retry.
         dismissErrorToast()
-        options.onValidationError(message)
+        options.onValidationError(rejection.message, rejection.field)
         return
       }
       announceFailure(...args)

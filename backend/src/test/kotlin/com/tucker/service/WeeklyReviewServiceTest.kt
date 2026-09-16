@@ -527,6 +527,26 @@ class WeeklyReviewServiceTest {
     }
 
     @Test
+    fun `a review is still written when the Goal's rate outruns Maintenance`() {
+        // The day-one case (ADR 0030): a 50 kg, 160 cm, 40-year-old woman seeds at
+        // (10x50 + 6.25x160 - 5x40 - 161) x 1.4 = 1594.6 kcal, while 1.5 kg/week
+        // demands 1650. This used to refuse the review outright and take
+        // GET /api/summary down with it.
+        profiles.save(Profile(Sex.FEMALE, LocalDate.of(1986, 5, 22), 160.0))
+        weights.save(WeightMeasurement(null, today, 50.0))
+        goals.insert(Goal(null, today.minusMonths(1), 50.0, 45.0, 1.5, active = true))
+
+        service.catchUpIfDue(today)
+
+        val review = reviews.latest()!!
+        assertEquals(today, review.reviewedOn)
+        // The deficit is suspended, so the Budget is the Maintenance the engine
+        // derived — not a floor, and not last week's figure.
+        assertEquals(1594.6, review.targets.maintenance.kcal, 1e-9)
+        assertEquals(1594.6, review.targets.calorieBudgetKcal, 1e-9)
+    }
+
+    @Test
     fun `catch-up is a no-op and does not throw when setup is incomplete`() {
         // A due review on paper, but no active Goal / Profile / weight to run it on.
         seedReviewOn(today.minusDays(21))
