@@ -4,7 +4,9 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import java.time.LocalDate
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class GoalTest {
 
@@ -45,6 +47,18 @@ class GoalTest {
     fun `accepts the 1_5 kg per week ceiling`() {
         val goal = goalWithRate(1.5)
         assertEquals(1.5, goal.rateKgPerWeek)
+    }
+
+    @Test
+    fun `a deficit that would leave no calories does not fit within Maintenance`() {
+        // 1.5 kg/week is 1650 kcal a day off Maintenance. A Maintenance at or below
+        // that leaves nothing to eat, so there is no Budget to derive (ADR 0030).
+        // The line is exactly where the figure stops existing, not a kinder one.
+        val goal = goalWithRate(1.5)
+
+        assertFalse(goal.deficitFitsWithin(1594.6), "a deficit above Maintenance cannot fit")
+        assertFalse(goal.deficitFitsWithin(1650.0), "a deficit equal to Maintenance leaves a zero Budget")
+        assertTrue(goal.deficitFitsWithin(1650.1), "a deficit below Maintenance fits")
     }
 
     @Test

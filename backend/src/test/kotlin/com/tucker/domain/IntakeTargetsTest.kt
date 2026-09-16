@@ -70,6 +70,27 @@ class IntakeTargetsTest {
     }
 
     @Test
+    fun `a deficit Maintenance cannot supply is suspended, leaving the Budget at Maintenance`() {
+        // 1.5 kg/week demands 1650 kcal a day, which a 1594.6 kcal Maintenance
+        // cannot supply. Tucker applies no deficit at all rather than inventing a
+        // floor (ADR 0030) — so the review is still writable, and the figure it
+        // publishes is one the engine derived.
+        val targets = IntakeTargets.from(
+            maintenance = Maintenance(1594.6, Maintenance.Basis.FORMULA_SEED),
+            goal = Goal(null, LocalDate.of(2026, 5, 1), 60.0, 50.0, 1.5, active = true),
+            trendWeightKg = 55.0,
+        )
+
+        assertEquals(1594.6, targets.calorieBudgetKcal, 1e-9)
+        // Only the Budget moves. The Floor is 2 g/kg of the trend and has nothing
+        // to do with the Goal (ADR 0008), so suspension does not take it with it —
+        // which is also what keeps the value object out of the Floor-without-a-Budget
+        // state it exists to forbid.
+        assertEquals(110.0, targets.proteinFloorG, 1e-9)
+        assertEquals(Maintenance.Basis.FORMULA_SEED, targets.maintenance.basis)
+    }
+
+    @Test
     fun `the Protein Floor comes off the trend, with or without a Goal`() {
         // Decoupled from the Goal (ADR 0008), so it is 2 g/kg either way.
         val maintenance = Maintenance(2400.0, Maintenance.Basis.ADAPTIVE)

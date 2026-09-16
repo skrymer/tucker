@@ -214,7 +214,11 @@ where the fixed 14 kept them above it, and `GET /api/summary` 400s until they lo
 weigh in, or ease the Goal. This widens a hole rather than opening one — a genuinely
 flat trend produced the same refusal before — and the fix is a policy about what a
 Budget does when the arithmetic runs it to zero, which is a decision of its own rather
-than part of correcting a divisor.
+than part of correcting a divisor. **Now fixed**, and by a decision of exactly that
+shape: [ADR 0030](0030-a-deficit-maintenance-cannot-supply-is-suspended-never-floored.md)
+refuses a rate that does not fit at the moment it is chosen, and **suspends** the
+deficit — publishing Maintenance as the Budget — when Maintenance drifts under a Goal
+already running. No floor is invented in either direction.
 
 **Out of scope, deliberately:** whether the window was weighed *often enough* for the
 term to mean anything at all ([#292](https://github.com/skrymer/tucker/issues/292));

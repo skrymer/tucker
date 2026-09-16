@@ -57,6 +57,17 @@ class GoalService(
             rateKgPerWeek = rateKgPerWeek,
             active = true,
         )
+        // A rate is refused while the User still has the control in their hand
+        // (ADR 0030) — a running Goal that Maintenance later falls under has its
+        // deficit suspended instead. Null Maintenance is a User whose reviews derive
+        // none, so there is no Budget for the rate to outrun.
+        weeklyReview.maintenanceFor(today)?.let { maintenance ->
+            require(goal.deficitFitsWithin(maintenance.kcal)) {
+                "at your current maintenance of ${"%.0f".format(maintenance.kcal)} kcal a day, " +
+                    "${plainRate(rateKgPerWeek)} kg a week would leave you nothing to eat " +
+                    "— choose a slower rate"
+            }
+        }
         goals.deactivateAll()
         val saved = goals.insert(goal)
         weeklyReview.recomputeFor(today)
@@ -79,6 +90,13 @@ class GoalService(
             goals.updateReachedOn(requireNotNull(goal.id), stamped.reachedOn)
         }
     }
+
+    /**
+     * A rate as the User typed it — "1.5", not "1.50" — so the refusal quotes their
+     * own figure back rather than a re-decimalised one.
+     */
+    private fun plainRate(rateKgPerWeek: Double): String =
+        "%.2f".format(rateKgPerWeek).trimEnd('0').trimEnd('.')
 
     /** The live Trend Weight — the latest EWMA point, or null before any reading. */
     private fun currentTrendKg(): Double? =

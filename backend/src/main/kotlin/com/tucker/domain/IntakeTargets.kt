@@ -26,8 +26,17 @@ data class IntakeTargets(
          */
         fun from(maintenance: Maintenance, goal: Goal?, trendWeightKg: Double) = IntakeTargets(
             maintenance = maintenance,
-            calorieBudgetKcal = maintenance.kcal - (goal?.dailyDeficitKcal() ?: 0.0),
+            calorieBudgetKcal = maintenance.kcal - deficitToApply(maintenance, goal),
             proteinFloorG = ProteinFloor.forTrendWeight(trendWeightKg),
         )
+
+        /**
+         * The deficit actually applied: the Goal's, or **none** where its rate
+         * demands more than [maintenance] can supply — a Suspended Deficit
+         * (ADR 0030). Tucker publishes no Budget it did not derive, so the
+         * alternative to the Goal's deficit is zero and never an invented floor.
+         */
+        private fun deficitToApply(maintenance: Maintenance, goal: Goal?): Double =
+            goal?.takeIf { it.deficitFitsWithin(maintenance.kcal) }?.dailyDeficitKcal() ?: 0.0
     }
 }
