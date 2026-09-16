@@ -60,6 +60,7 @@ function useGoalSubmission(onSubmitted: () => void | Promise<void>) {
   // the field it names rather than assumed to be about the target.
   const targetError = ref<string | undefined>(undefined)
   const rateError = ref<string | undefined>(undefined)
+  const formError = ref<string | undefined>(undefined)
 
   const { pending, execute } = useApiMutation(
     (payload: {
@@ -78,10 +79,12 @@ function useGoalSubmission(onSubmitted: () => void | Promise<void>) {
       errorTitle: 'Could not set goal',
       onSuccess: onSubmitted,
       onValidationError: (message, field) => {
-        // An unnamed field is the target: the only refusal that predates the
-        // field being on the wire, and the only input it could be about.
+        // Each refusal lands on the input it names. One that names none is not
+        // about an input at all — a skewed client clock, or no weight logged —
+        // so it goes above the submit rather than under a field the user got right.
         if (field === 'rateKgPerWeek') rateError.value = message
-        else targetError.value = message
+        else if (field === 'targetWeightKg') targetError.value = message
+        else formError.value = message
       },
     },
   )
@@ -96,10 +99,11 @@ function useGoalSubmission(onSubmitted: () => void | Promise<void>) {
     // resubmit may fix either and be refused on the other.
     targetError.value = undefined
     rateError.value = undefined
+    formError.value = undefined
     await execute(payload)
   }
 
-  return { submit, targetError, rateError, pending }
+  return { submit, targetError, rateError, formError, pending }
 }
 
 const {
@@ -174,6 +178,7 @@ const {
   submit: submitGoal,
   targetError: goalTargetError,
   rateError: goalRateError,
+  formError: goalFormError,
   pending: savingGoal,
 } = useGoalSubmission(refreshGoals)
 
@@ -205,6 +210,7 @@ await Promise.all([loadProfile(), refreshCurrentTrend()])
         :current-trend="currentTrend"
         :target-error="goalTargetError"
         :rate-error="goalRateError"
+        :form-error="goalFormError"
         :pending="savingGoal"
         :disabled="!gating.goalEnabled"
         @submit="submitGoal"

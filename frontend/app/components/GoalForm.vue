@@ -20,6 +20,10 @@ const props = defineProps<{
   // (ADR 0030) — a rule only the backend can apply, since only it holds
   // Maintenance. Routed here by the field the refusal names.
   rateError?: string
+  // A refusal that names no field, so it is about neither input — a skewed
+  // client clock, or no weight logged yet. Shown above the submit rather than
+  // under whichever field the client would otherwise have to guess.
+  formError?: string
   /** The create mutation's in-flight flag — shows on the submit (ADR 0007). */
   pending?: boolean
 }>()
@@ -45,6 +49,43 @@ const state = reactive({
   targetWeightKg: undefined as number | undefined,
   rateKgPerWeek: undefined as number | undefined,
 })
+
+// A server refusal quotes the value that was sent, and Nuxt UI resolves a field's
+// message as `error || schemaError` — so a standing one outranks the schema and
+// would go on naming a figure the user has since changed. Each is held locally
+// and dropped the moment its own input moves; editing the other says nothing
+// about it. `formError` is about neither input, so nothing local clears it.
+function useServerRefusals() {
+  const refusals = reactive({
+    targetWeightKg: undefined as string | undefined,
+    rateKgPerWeek: undefined as string | undefined,
+  })
+
+  watch(
+    () => [props.targetError, props.rateError] as const,
+    ([target, rate]) => {
+      refusals.targetWeightKg = target
+      refusals.rateKgPerWeek = rate
+    },
+    { immediate: true },
+  )
+  watch(
+    () => state.targetWeightKg,
+    () => {
+      refusals.targetWeightKg = undefined
+    },
+  )
+  watch(
+    () => state.rateKgPerWeek,
+    () => {
+      refusals.rateKgPerWeek = undefined
+    },
+  )
+
+  return refusals
+}
+
+const refusals = useServerRefusals()
 
 // The start weight isn't sent: the backend anchors it on the live Trend Weight at
 // creation (ADR 0016), so a fresh Goal reads 0% (start == now).
@@ -74,7 +115,7 @@ function onSubmit() {
     <UFormField
       label="Target weight (kg)"
       name="targetWeightKg"
-      :error="props.targetError"
+      :error="refusals.targetWeightKg"
       required
     >
       <NumberField v-model="state.targetWeightKg" :step="0.1" class="w-full" />
@@ -83,7 +124,7 @@ function onSubmit() {
     <UFormField
       label="Rate (kg/week)"
       name="rateKgPerWeek"
-      :error="props.rateError"
+      :error="refusals.rateKgPerWeek"
       required
     >
       <NumberField
@@ -93,6 +134,10 @@ function onSubmit() {
         class="w-full"
       />
     </UFormField>
+
+    <p v-if="props.formError" role="alert" class="text-sm text-error">
+      {{ props.formError }}
+    </p>
 
     <UButton type="submit" color="primary" class="w-full" :loading="pending">
       Set goal

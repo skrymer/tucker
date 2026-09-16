@@ -237,6 +237,43 @@ describe('useApiMutation', () => {
     )
   })
 
+  it('shows the retry toast for a 400 that carries no message to route', async () => {
+    // A 400 is only routable to a form if it says something a field can show.
+    // Without a body there is nothing to put under an input, and the failure
+    // still owes the persistent toast (ADR 0005) rather than silence.
+    const onValidationError = vi.fn()
+    const rejection = Object.assign(new Error('Bad Request'), { status: 400 })
+    const { execute } = useApiMutation(() => Promise.reject(rejection), {
+      errorTitle: 'Could not set goal',
+      onValidationError,
+    })
+
+    await execute()
+
+    expect(onValidationError).not.toHaveBeenCalled()
+    expect(toastAdd).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'Could not set goal' }),
+    )
+  })
+
+  it('shows the retry toast when the rejection is not an object at all', async () => {
+    // The factory wraps any mutation function, so it cannot assume the shape of
+    // what one rejects with. A bare rejection must reach the toast, not throw
+    // inside the handler and lose the failure entirely.
+    const onValidationError = vi.fn()
+    const { execute } = useApiMutation(() => Promise.reject(null), {
+      errorTitle: 'Could not set goal',
+      onValidationError,
+    })
+
+    await execute()
+
+    expect(onValidationError).not.toHaveBeenCalled()
+    expect(toastAdd).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'Could not set goal' }),
+    )
+  })
+
   it('shows the retry toast for a non-validation failure even when the form can route one', async () => {
     // Only a 400 means the input is wrong. Every other status is transient and
     // owes the persistent toast (ADR 0005) — routing one to a field would leave

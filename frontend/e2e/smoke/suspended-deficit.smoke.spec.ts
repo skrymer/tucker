@@ -1,5 +1,6 @@
 import { test, expect } from './support/smoke-test'
 import { todayIso, isoShiftDays } from '../support/date'
+import { expectCreated, expectStatus } from './support/seeding'
 
 // A deficit Maintenance cannot supply is suspended, never floored (ADR 0030).
 //
@@ -16,7 +17,13 @@ const API = 'http://localhost:8080/api'
 
 // 160 cm and 40 years old: a small body, so the seed Maintenance carries a
 // 1.5 kg/week deficit at 70 kg and nothing like it once the engine corrects.
-const BODY_STATS = { sex: 'FEMALE', birthDate: '1986-05-22', heightCm: 160 }
+// The birth date is relative — an absolute one ticks the seeded age over on its
+// own anniversary, and the Budget this asserts moves with no code change.
+const bodyStats = () => ({
+  sex: 'FEMALE',
+  birthDate: isoShiftDays(todayIso(), -40 * 365 - 10),
+  heightCm: 160,
+})
 
 /** The window the adaptive correction reads, and the coverage it needs (ADR 0018). */
 const LOGGED_DAYS = 10
@@ -29,35 +36,36 @@ test('a deficit the engine can no longer supply is suspended, and Today says so'
 }) => {
   const today = todayIso()
 
-  await expect(
-    (await request.put(`${API}/profile`, { data: BODY_STATS })).ok(),
-  ).toBe(true)
+  await expectStatus(request.put(`${API}/profile`, { data: bodyStats() }), 200)
 
   // A flat trend across the window: two equal readings, so the weight term
   // contributes nothing and Maintenance lands on the intake average exactly.
   for (const days of [-14, -1]) {
-    const res = await request.post(`${API}/weight`, {
-      data: {
-        date: isoShiftDays(today, days),
-        weightKg: 70,
-        clientToday: today,
-      },
-    })
-    expect(res.ok()).toBe(true)
+    await expectStatus(
+      request.post(`${API}/weight`, {
+        data: {
+          date: isoShiftDays(today, days),
+          weightKg: 70,
+          clientToday: today,
+        },
+      }),
+      200,
+    )
   }
 
   // Set while it still fits: at 70 kg the seed is 1874.6 kcal and 1.5 kg/week
   // demands 1650. Ordering matters — logging first would refuse this outright,
   // which is the *other* half of the rule and has its own coverage.
-  const goal = await request.post(`${API}/goal`, {
-    data: {
-      startedOn: today,
-      targetWeightKg: 60,
-      rateKgPerWeek: 1.5,
-      clientToday: today,
-    },
-  })
-  expect(goal.status()).toBe(201)
+  await expectCreated(
+    request.post(`${API}/goal`, {
+      data: {
+        startedOn: today,
+        targetWeightKg: 60,
+        rateKgPerWeek: 1.5,
+        clientToday: today,
+      },
+    }),
+  )
 
   const before = await (
     await request.get(`${API}/summary`, { params: { date: today } })
@@ -68,15 +76,16 @@ test('a deficit the engine can no longer supply is suspended, and Today says so'
   // Ten logged days at 800 kcal clears the coverage floor, so the engine adapts
   // to an intake far below the deficit the Goal is still asking for.
   for (let day = 1; day <= LOGGED_DAYS; day++) {
-    const res = await request.post(`${API}/entries/estimated`, {
-      data: {
-        date: isoShiftDays(today, -day),
-        label: `day -${day}`,
-        calories: DAILY_KCAL,
-        protein: 60,
-      },
-    })
-    expect(res.ok()).toBe(true)
+    await expectCreated(
+      request.post(`${API}/entries/estimated`, {
+        data: {
+          date: isoShiftDays(today, -day),
+          label: `day -${day}`,
+          calories: DAILY_KCAL,
+          protein: 60,
+        },
+      }),
+    )
   }
 
   // Toggling Calorie Tracking recomputes today's review (ADR 0024), which is
@@ -84,10 +93,12 @@ test('a deficit the engine can no longer supply is suspended, and Today says so'
   // It is also one of the two endpoints the refusal used to roll back: this PUT
   // itself 400'd and silently failed to save the setting.
   for (const tracksCalories of [false, true]) {
-    const res = await request.put(`${API}/profile`, {
-      data: { ...BODY_STATS, tracksCalories, clientToday: today },
-    })
-    expect(res.ok()).toBe(true)
+    await expectStatus(
+      request.put(`${API}/profile`, {
+        data: { ...bodyStats(), tracksCalories, clientToday: today },
+      }),
+      200,
+    )
   }
 
   const after = await (
@@ -103,7 +114,7 @@ test('a deficit the engine can no longer supply is suspended, and Today says so'
   await goto('/', { waitUntil: 'hydration' })
 
   await expect(page.getByText(/No deficit is being applied/i)).toBeVisible()
-  await expect(page.getByText(/1\.5 kg a week/)).toBeVisible()
+  await expect(page.getByText(/holding steady, not losing/)).toBeVisible()
   await expect(
     page.getByRole('link', { name: /ease your goal/i }),
   ).toBeVisible()

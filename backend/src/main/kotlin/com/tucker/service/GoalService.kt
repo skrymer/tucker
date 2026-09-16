@@ -2,6 +2,7 @@ package com.tucker.service
 
 import com.tucker.api.InvalidFieldException
 import com.tucker.domain.Goal
+import com.tucker.domain.IntakeTargets
 import com.tucker.domain.WeightTrend
 import com.tucker.persistence.GoalRepository
 import com.tucker.persistence.WeightMeasurementRepository
@@ -84,7 +85,7 @@ class GoalService(
      */
     private fun refuseRateOutrunningMaintenance(goal: Goal, today: LocalDate) {
         val maintenance = weeklyReview.maintenanceFor(today) ?: return
-        if (goal.deficitFitsWithin(maintenance.kcal)) return
+        if (IntakeTargets.deficitApplies(maintenance, goal)) return
         throw InvalidFieldException(
             field = "rateKgPerWeek",
             message = "at your current maintenance of " +

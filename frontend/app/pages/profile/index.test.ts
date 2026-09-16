@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { renderSuspended, registerEndpoint } from '@nuxt/test-utils/runtime'
 import { screen, within } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
-import { createError, getQuery, readBody } from 'h3'
+import { createError, getQuery, readBody, setResponseStatus } from 'h3'
 import { openGate } from '~~/test/async-gate'
 import Profile from './index.vue'
 
@@ -331,6 +331,75 @@ describe('/profile setting a goal', () => {
     // And it hands the control back rather than leaving a dead button behind.
     release()
     await vi.waitFor(() => expect(setGoal()).toBeEnabled())
+  })
+})
+
+describe('/profile when the backend refuses a goal', () => {
+  /** Open the Goal form on a set-up profile whose POST refuses with [refusal]. */
+  async function submitGoalRefusedWith(refusal: Record<string, unknown>) {
+    mockApi({
+      profile: { sex: 'MALE', birthDate: '1990-06-15', heightCm: 180 },
+      weights: [{ id: 1, measuredOn: '2026-05-29', weightKg: 86 }],
+      goals: [],
+    })
+    registerEndpoint('/api/weight/trend', () => ({
+      trendKg: 86,
+      asOf: '2026-05-29',
+    }))
+    registerEndpoint('/api/goal', {
+      method: 'POST',
+      // The body IS the refusal, as ApiError serialises it — createError would
+      // nest it under `data` and the client would read no message at all.
+      handler: (event) => {
+        setResponseStatus(event, 400)
+        return refusal
+      },
+    })
+    await renderSuspended(Profile)
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole('button', { name: /start a goal/i }))
+    await user.type(screen.getByLabelText(/target weight/i), '80')
+    await user.type(screen.getByLabelText(/rate/i), '0.5')
+    // A number field commits its model on blur, so leave it before submitting.
+    await user.tab()
+    await user.click(screen.getByRole('button', { name: /set.*goal/i }))
+  }
+
+  it('puts a refusal on the input it names', async () => {
+    await submitGoalRefusedWith({
+      message: '1.5 kg a week would leave you nothing to eat',
+      field: 'rateKgPerWeek',
+    })
+
+    await vi.waitFor(() =>
+      expect(screen.getByLabelText(/rate/i)).toHaveAccessibleDescription(
+        /nothing to eat/,
+      ),
+    )
+    expect(screen.getByLabelText(/target weight/i)).toHaveAttribute(
+      'aria-invalid',
+      'false',
+    )
+  })
+
+  it('puts a refusal that names no field above the submit, on no input', async () => {
+    // A skewed client clock and a missing weight are both 400s about neither
+    // input. Attributing them to one is what the field mechanism exists to stop.
+    await submitGoalRefusedWith({
+      message:
+        'clientToday 2026-09-19 is implausible relative to the server date',
+    })
+
+    await vi.waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent(/implausible/),
+    )
+    for (const name of [/target weight/i, /rate/i]) {
+      expect(screen.getByLabelText(name)).toHaveAttribute(
+        'aria-invalid',
+        'false',
+      )
+    }
   })
 })
 

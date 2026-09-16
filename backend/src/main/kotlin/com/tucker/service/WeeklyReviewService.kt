@@ -111,16 +111,11 @@ class WeeklyReviewService(
                 trendWeightKg = trendWeightKg,
                 // The review's second job, and the only optional one: with Calorie
                 // Tracking off there is no intake to correct against, so a Budget
-                // would be a target that can never become true (ADR 0024).
-                intakeTargets = if (profile.tracksCalories) {
-                    IntakeTargets.from(
-                        estimateMaintenance(on, profile, trend, trendWeightKg),
-                        goal,
-                        trendWeightKg,
-                    )
-                } else {
-                    null
-                },
+                // would be a target that can never become true (ADR 0024). Asked
+                // through the same method the Goal gate asks, so the figure a Goal
+                // is measured against is the figure its review then records.
+                intakeTargets = maintenanceFor(on, profile, trend, trendWeightKg)
+                    ?.let { IntakeTargets.from(it, goal, trendWeightKg) },
             ),
         )
     }
@@ -135,10 +130,19 @@ class WeeklyReviewService(
      * so have no Budget for a rate to outrun.
      */
     fun maintenanceFor(on: LocalDate): Maintenance? {
-        val profile = profiles.get()?.takeIf { it.tracksCalories } ?: return null
+        val profile = profiles.get() ?: return null
         val trend = WeightTrend.from(weights.findAll())
-        return trend.latest()?.let { estimateMaintenance(on, profile, trend, it.trendKg) }
+        return trend.latest()?.let { maintenanceFor(on, profile, trend, it.trendKg) }
     }
+
+    /** [maintenanceFor] against inputs a caller has already loaded. */
+    private fun maintenanceFor(
+        on: LocalDate,
+        profile: Profile,
+        trend: WeightTrend,
+        trendWeightKg: Double,
+    ): Maintenance? =
+        if (profile.tracksCalories) estimateMaintenance(on, profile, trend, trendWeightKg) else null
 
     /**
      * Adaptive with a trend anchor and both coverage floors cleared — at least

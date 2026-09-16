@@ -32,6 +32,26 @@ class GoalApiTest {
         }.andExpect { status { isOk() } }
     }
 
+    /**
+     * A 50 kg, 160 cm, 40-year-old woman: Maintenance seeds at 1594.6 kcal, which
+     * the maximum 1.5 kg/week rate (1650 kcal a day) outruns (ADR 0030).
+     */
+    private fun seedSmallBodyAndWeight(tracksCalories: Boolean = true) {
+        // Birth date relative to today, not a literal: an absolute one makes the
+        // seeded age tick over on its own anniversary and the 1595 the assertions
+        // quote becomes 1588, with no code change.
+        val birthDate = java.time.LocalDate.now().minusYears(40)
+        mockMvc.put("/api/profile") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"sex":"FEMALE","birthDate":"$birthDate","heightCm":160.0,
+                          "tracksCalories":$tracksCalories}"""
+        }.andExpect { status { isOk() } }
+        mockMvc.post("/api/weight") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"date":"${java.time.LocalDate.now()}","weightKg":50.0}"""
+        }.andExpect { status { isOk() } }
+    }
+
     private fun postGoal(startedOn: String, targetWeightKg: Double) {
         // The start weight is derived from the live trend (ADR 0016), not sent.
         mockMvc.post("/api/goal") {
@@ -62,14 +82,7 @@ class GoalApiTest {
         // (ADR 0030); 1.5 kg/week demands 1650. The Goal cannot be pursued, so it
         // is refused while the User still has the rate control in their hand —
         // rather than accepted and immediately suspended.
-        mockMvc.put("/api/profile") {
-            contentType = MediaType.APPLICATION_JSON
-            content = """{"sex":"FEMALE","birthDate":"1986-05-22","heightCm":160.0}"""
-        }.andExpect { status { isOk() } }
-        mockMvc.post("/api/weight") {
-            contentType = MediaType.APPLICATION_JSON
-            content = """{"date":"${java.time.LocalDate.now()}","weightKg":50.0}"""
-        }.andExpect { status { isOk() } }
+        seedSmallBodyAndWeight()
 
         mockMvc.post("/api/goal") {
             contentType = MediaType.APPLICATION_JSON
@@ -98,15 +111,7 @@ class GoalApiTest {
         // derives no Intake Targets at all (ADR 0024), so there is no Calorie Budget
         // for the rate to outrun and nothing to refuse — the Goal and the weight
         // trend are exactly what this User came for (ADR 0030).
-        mockMvc.put("/api/profile") {
-            contentType = MediaType.APPLICATION_JSON
-            content = """{"sex":"FEMALE","birthDate":"1986-05-22","heightCm":160.0,
-                          "tracksCalories":false}"""
-        }.andExpect { status { isOk() } }
-        mockMvc.post("/api/weight") {
-            contentType = MediaType.APPLICATION_JSON
-            content = """{"date":"${java.time.LocalDate.now()}","weightKg":50.0}"""
-        }.andExpect { status { isOk() } }
+        seedSmallBodyAndWeight(tracksCalories = false)
 
         mockMvc.post("/api/goal") {
             contentType = MediaType.APPLICATION_JSON
@@ -117,6 +122,15 @@ class GoalApiTest {
         mockMvc.get("/api/goal").andExpect {
             status { isOk() }
             jsonPath("$.rateKgPerWeek") { value(1.5) }
+        }
+
+        // An active Goal and no Intake Targets to have a Budget in: the question
+        // does not arise, and null is the only arm not reachable without a Goal.
+        mockMvc.get("/api/summary") {
+            param("date", "${java.time.LocalDate.now()}")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.deficitSuspended") { value(null) }
         }
     }
 

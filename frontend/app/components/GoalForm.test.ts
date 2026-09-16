@@ -132,6 +132,65 @@ describe('GoalForm', () => {
     ).toHaveAttribute('aria-invalid', 'false')
   })
 
+  it('shows a refusal that names no field above the submit, not under an input', async () => {
+    // POST /api/goal refuses more than the two inputs: a skewed client clock and
+    // a missing weight are both 400s about neither field. Routing them to a field
+    // by default is the mis-attribution the whole field mechanism exists to stop.
+    await renderSuspended(GoalForm, {
+      props: {
+        currentTrend,
+        formError:
+          'clientToday 2026-09-19 is implausible relative to the server date (2026-09-16)',
+      },
+    })
+
+    expect(screen.getByRole('alert')).toHaveTextContent(/implausible/)
+    for (const name of [/target weight/i, /rate/i]) {
+      expect(screen.getByRole('spinbutton', { name })).toHaveAttribute(
+        'aria-invalid',
+        'false',
+      )
+    }
+  })
+
+  it('drops a server refusal once the user changes the input it named', async () => {
+    // A refusal quotes the value that was sent, and Nuxt UI's `error` prop
+    // outranks the schema's own message — so a standing one would swallow
+    // "Rate must be at most 1.5 kg/week" while naming a rate no longer on screen.
+    const user = userEvent.setup()
+    await renderSuspended(GoalForm, {
+      props: {
+        currentTrend,
+        rateError: '1.5 kg a week would leave you nothing to eat',
+      },
+    })
+    expect(screen.getByText(/nothing to eat/)).toBeVisible()
+
+    await user.type(screen.getByLabelText(/rate/i), '0.5')
+    await user.tab()
+
+    await vi.waitFor(() =>
+      expect(screen.queryByText(/nothing to eat/)).toBeNull(),
+    )
+  })
+
+  it('leaves a server refusal standing while the other input is edited', async () => {
+    // Only the input the refusal names clears it: editing the target says
+    // nothing about whether the rate is still the one that was refused.
+    const user = userEvent.setup()
+    await renderSuspended(GoalForm, {
+      props: {
+        currentTrend,
+        rateError: '1.5 kg a week would leave you nothing to eat',
+      },
+    })
+
+    await user.type(screen.getByLabelText(/target weight/i), '80')
+    await user.tab()
+
+    expect(screen.getByText(/nothing to eat/)).toBeVisible()
+  })
+
   it('rejects a rate below the 0.05 kg/week floor', async () => {
     const onSubmit = vi.fn()
     await renderSuspended(GoalForm, { props: { currentTrend, onSubmit } })

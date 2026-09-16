@@ -452,6 +452,10 @@ export async function mockGoals(
         },
       })
     }
+    // Only what GoalService refuses. It does NOT model the gate's early return
+    // for a User with Calorie Tracking off (ADR 0030 decision 9), so pairing
+    // `maintenanceKcal` with a weight-only profile would refuse a rate the real
+    // backend accepts.
     const maintenance = options.maintenanceKcal
     if (
       maintenance !== undefined &&

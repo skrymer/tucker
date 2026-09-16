@@ -71,10 +71,21 @@ both.
 
 1. **Two moments, two rules.** The same predicate — *does this Goal's deficit fit
    within this Maintenance?* — produces a refusal at the gate and a suspension
-   after it. It lives in **one place**, `Goal.deficitFitsWithin(maintenanceKcal)`,
-   called by `GoalService.createGoal` and by `IntakeTargets.from`. Not two copies
-   of `maintenance − deficit <= 0`: that is F17 slice 2's trap, where the chart
-   derived `overBudget` itself and disagreed with the backend it was drawing.
+   after it. It lives in **one place**, `IntakeTargets.deficitApplies(maintenance,
+   goal)`, called by `IntakeTargets.from` and by the gate in
+   `GoalService.createGoal`. Not two copies of `maintenance − deficit <= 0`: that
+   is F17 slice 2's trap, where the chart derived `overBudget` itself and
+   disagreed with the backend it was drawing.
+
+   The daily summary is deliberately **not** a third caller — see decision 5.
+
+   It sits on `IntakeTargets` rather than on `Goal` because the strictness is not
+   its own: the predicate is `<` and not `<=` only because `IntakeTargets.init`
+   refuses a Budget of exactly zero. On `Goal` those two would agree by comment —
+   loosen the `require` and the predicate is silently wrong with `IntakeTargets`
+   still green. `IntakeTargets` is also the only type that already holds both a
+   Maintenance and a Calorie Budget, so the predicate, the invariant it protects
+   and the derivation it guards are one file.
 
 2. **At the gate, the Goal is refused** — `POST /api/goal`, a 400 like the two
    refusals already beside it in `createGoal` ("log your weight before setting a
@@ -105,17 +116,30 @@ both.
    lifts by itself the week Maintenance recovers.
 
 5. **A Suspended Deficit is a live status, derived on read, never stored.** It is
-   a sibling of **Pace Status** and **Drift Status** — a classification of the
-   active Goal against the current Maintenance, computed in `SummaryController`,
-   which already holds both. Not a column on `IntakeTargets` beside the
+   a sibling of **Pace Status** and **Drift Status**, computed in
+   `SummaryController` from the two things it already holds — whether a Goal is
+   active, and the latest review's **Intake Targets**.
+
+   What it asks of those targets is `appliesNoDeficit` — *did the Budget come out
+   equal to the Maintenance it was derived from* — and **not** whether the live
+   Goal's rate outruns that Maintenance. The two differ whenever the review predates
+   a Goal change, and only the first is a fact about figures in the same response:
+   it reads what the review recorded, so the boolean and the Budget printed beside
+   it structurally cannot contradict each other. A Goal's rate always implies a
+   deficit, so with one active, "no deficit applied" can only mean suspension.
+
+   Not a column on `IntakeTargets` beside the
    **Maintenance Basis** it superficially resembles: a basis is a fact about how a
    figure *was derived* and is true forever, while a suspension is a condition
    that resolves itself, and a latched historical claim the live state can
    contradict is worse than no claim.
 
-   It reaches the client as one boolean on `DailySummaryResponse`. No second
-   figure is needed: when the deficit is suspended, `calorieBudget` **is**
-   Maintenance, so the copy has what it needs already.
+   It reaches the client as one boolean on `DailySummaryResponse`, and that is
+   the **whole** of what the card reads. No second figure is needed: when the
+   deficit is suspended, `calorieBudget` **is** Maintenance, and that figure is on
+   the card directly below. Naming the Goal's rate would have been a second figure
+   off a second endpoint (`/api/goal/progress`), and a failed read of it would then
+   silence the card in exactly the state decision 6 says must not be quiet.
 
 6. **Surfaced prominently, not a fork.** Reaching a Goal is a milestone you
    cannot sensibly continue past, which is why ADR 0008 latches it and gives it no
@@ -130,10 +154,24 @@ both.
    will have and the Budget is the figure that visibly moved. The Goal ring is
    untouched — progress toward the target is still real.
 
+   **Goal Progress** goes on stating the *planned* finish date at the Goal's
+   chosen rate, which no deficit is currently supporting. That is not a wrong
+   figure: the plan is what the User set, not a prediction, and Tucker already
+   states it for anybody eating over budget. **Pace Status** is the reading that
+   answers "am I actually getting there", and a suspended week makes it `BEHIND`
+   or `STALLED` on its own evidence.
+
 8. **The `require(> 0)` invariants stay**, in `IntakeTargets` and in `Check.of`.
    Under this rule neither is reachable through the engine, which is what a guard
    should be; `Check.of`'s own comment already says it exists for a hand-written
    row rather than for anything the engine produces.
+
+   `Maintenance`'s own `require(kcal > 0)` is **not** in that set, and this ADR does
+   not close it: `adaptive` subtracts the energy of a rising trend from the intake
+   average with nothing clamping it, so the same endpoint can still 400 with the
+   same blast radius. That is a question about the engine's energy balance rather
+   than about what a Budget does, and is tracked in
+   [#332](https://github.com/skrymer/tucker/issues/332).
 
 9. **A weight-only User is none of this rule's business.** With **Calorie
    Tracking** off a review carries no **Intake Targets** at all (ADR 0024), so
@@ -145,11 +183,12 @@ both.
 ## Considered and rejected
 
 - **Floor the Budget at a minimum and record that it was floored** — the issue's
-  first candidate. Every floor is a number Tucker invents, and a daily calorie
-  minimum is a stronger opinion than labelling a Food good or bad, which
-  ADR 0022 already refuses on the grounds that Tucker is diet-agnostic. It is
-  also pinned: the adaptive correction can never move a Budget sitting on a
-  floor, so it is precisely the uncorrectable target ADR 0024 exists to refuse.
+  first candidate. Every floor is a number Tucker invents, which is the objection
+  ADR 0022 already raises against a threshold of its own — *"any fixed number
+  would be invented"* — and answers by deriving **Pace** from the User's own two
+  targets. There is nothing here to derive a floor from. It is also pinned: the
+  adaptive correction can never move a Budget sitting on a floor, so it is
+  precisely the uncorrectable target ADR 0024 exists to refuse.
   And it *hides* the impossibility — the User sees a plausible figure and goes on
   chasing a rate their body cannot support.
 - **Hold the previous review's targets** — the issue's third candidate, and the
@@ -191,7 +230,8 @@ both.
   backwards and is the truth: the deficit was never deliverable, and Maintenance
   is the only figure the engine derived. `BudgetChange` fires on that week — a
   jump from a near-zero figure to Maintenance — so the banner announces it, which
-  is exactly what that banner is for.
+  is exactly what that banner is for — no new rule, just `BudgetChange.between`'s
+  existing one meeting a Budget that moved a long way.
 - **Pace eases**, because **Pace** is `Floor ÷ Budget × 100` and the Budget rose.
   Same direction as **Maintenance Mode**, same reason, and `GET
   /api/check/{barcode}` goes on working rather than 409ing on an absent Budget.
@@ -213,8 +253,13 @@ both.
   `InvalidFieldException(field, message)` — an `IllegalArgumentException`, because
   that is what it is: one family for caller error, so nothing already handling the
   general case changes behaviour, and only the more specific handler puts the field
-  on the wire. **Both** Goal refusals name their field, so the form routes on what
-  the backend said rather than on "everything unlabelled is about the target".
+  on the wire. **Both refusals `GoalService` raises** name their field, so the form
+  routes on what the backend said rather than on "everything unlabelled is about
+  the target". `Goal`'s own `init` refuses a rate outside 0.05–1.5 and does *not*
+  name one, so the mechanism is deliberately not total: `InvalidFieldException` is
+  an API type and the domain does not depend on the API. That refusal is
+  unreachable through the form, whose Zod schema carries the same two bounds
+  (ADR 0003), and a direct POST gets it above the submit like any other unnamed one.
   Rejected: sniffing the message for the word "rate" (fragile, and breaks silently
   when copy moves); giving the rate refusal a different status (422 says *never*
   processable, and this becomes processable the week Maintenance rises); validating
@@ -222,10 +267,27 @@ both.
   target rule already uses but would put a rule about Maintenance in Vue for more
   than ADR 0002's preview carve-out; and one form-level error for both, which is a
   downgrade for the target refusal that lands on its own field today.
-- **`Goal` gains a method that takes a Maintenance**, which is the first time the
-  Goal aggregate has had to know that Maintenance exists. It takes a `Double`
-  rather than a `Maintenance`, so the dependency is on the figure and not on the
-  type, and the aggregate stays free of the engine.
+
+  **An unnamed 400 is not field-attributable, and stops pretending to be.**
+  `POST /api/goal` also refuses a skewed `clientToday` (ADR 0014) and a User with
+  no weight logged — neither about an input — and the pre-existing handler put
+  *every* 400 under the target-weight field, so a clock-skewed phone read
+  "clientToday … is implausible" beneath a target the User got right. Those now
+  render above the submit instead. The alternative — routing only *named* 400s to
+  `onValidationError` and letting the rest take the retry toast — is cleaner in
+  the abstract and wrong here: `/foods` handles its own unnamed 400 with a
+  deliberate no-Retry toast, and would lose it.
+- **`Goal` gains nothing**, deliberately. An earlier shape put the predicate there
+  as `deficitFitsWithin(maintenanceKcal: Double)`, on the argument that a `Double`
+  keeps the aggregate free of the engine. It does not pay: `Maintenance` already
+  depends on `Goal` (`Maintenance.adaptive` uses `Goal.KCAL_PER_KG_FAT`), so that
+  placement adds a net-new reverse edge and makes the two mutually aware, for a
+  rule whose strictness `Goal` cannot see.
+- **`WeeklyReviewService.runReview` derives its Maintenance *through*
+  `maintenanceFor`**, rather than beside it. Two spellings of "what Maintenance
+  would a review for this day derive" is decision 1's trap one level up: a
+  precondition added to one and not the other fails *open*, and the symptom is a
+  Goal accepted at the gate and suspended the same instant.
 - **`GoalService` needs the Maintenance the review would use**, before the review
   runs and therefore before the Goal exists. `WeeklyReviewService` exposes the
   estimate it already computes privately; it references no Goal (ADR 0008 —

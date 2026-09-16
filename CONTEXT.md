@@ -423,6 +423,8 @@ with a lower Goal; until they choose, the Goal stays active and reached.
 A Goal is refused at the moment it is set if its rate would demand more daily
 deficit than the user's **Maintenance** can supply — there would be no calories
 left to eat — and the refusal names both figures rather than suggesting a rate.
+A user with **Calorie Tracking** off is never refused: they have no Maintenance
+and no Calorie Budget for a rate to outrun.
 A Goal already running whose Maintenance later falls that far is not refused; its
 deficit is suspended instead (see **Suspended Deficit**).
 _Avoid_: target
@@ -452,7 +454,8 @@ the **Calorie Budget** — `Protein Floor ÷ Calorie Budget × 100`. A Food *abo
 pace carries its own protein weight; one *below* pace spends calories faster than
 it returns protein, so the rest of the day has to make up the difference. Pace is
 derived from the user's own two targets and moves with them: a deeper Goal deficit
-tightens it (fewer calories, same floor), and **Maintenance Mode** eases it. This
+tightens it (fewer calories, same floor), while **Maintenance Mode** and a
+**Suspended Deficit** both ease it by lifting the Budget to Maintenance. This
 is deliberate — when calories are scarce each one must work harder for protein —
 and it has a visible consequence: the same product's figures can change after a
 **Weekly Review** moves the Budget, without the product changing. The answer is
@@ -778,7 +781,8 @@ _Avoid_: device token, push token, registration
 - A day's protein consumed is the sum of protein across that day's **Entries**,
   counting an Entry with no protein figure as zero
 - The **Calorie Budget** equals **Maintenance** minus the active **Goal**'s deficit,
-  or **Maintenance** itself when no Goal is active (**Maintenance Mode**)
+  or **Maintenance** itself when no Goal is active (**Maintenance Mode**) — and also
+  when that deficit is more than Maintenance can supply (**Suspended Deficit**)
 - The **Protein Floor** scales from the current **Trend Weight** independent of any
   **Goal**, so it still applies in **Maintenance Mode**
 - A **Weekly Review** carries **Intake Targets** only when the **User** has

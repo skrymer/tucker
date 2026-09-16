@@ -20,7 +20,7 @@ interface ApiMutationOptions<TResult> {
    * at fault where the backend could name one, so a form with more than one
    * refusable input shows it against the right one.
    */
-  onValidationError?: (message: string, field?: string | null) => void
+  onValidationError?: (message: string, field: string | null) => void
 }
 
 /**

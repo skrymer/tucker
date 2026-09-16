@@ -189,8 +189,10 @@ class SummaryController(
             // Derived on read, never stored: a suspension lifts by itself the week
             // Maintenance recovers, so latching it into the review would leave a
             // historical claim the live state contradicts (ADR 0030).
-            deficitSuspended = activeGoal?.let { goal ->
-                targets?.let { !goal.deficitFitsWithin(it.maintenance.kcal) }
+            deficitSuspended = if (activeGoal != null && targets != null) {
+                targets.appliesNoDeficit
+            } else {
+                null
             },
         )
     }

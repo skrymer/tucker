@@ -21,6 +21,8 @@ const props = defineProps<{
   // A backend rejection of the rate (it outruns Maintenance, ADR 0030), shown on
   // the form's rate field.
   rateError?: string
+  // A backend rejection naming no field, shown above the form's submit.
+  formError?: string
   pending?: boolean
   disabled?: boolean
 }>()
@@ -47,8 +49,8 @@ const formOpen = ref(false)
 
 // Close the replacement form on success, not optimistically on submit: success
 // is signalled by the parent swapping in a new active Goal (a new id), whereas a
-// rejected submit leaves the Goal unchanged so the form must stay open for its
-// targetError to surface instead of vanishing silently.
+// rejected submit leaves the Goal unchanged so the form must stay open for the
+// refusal to surface instead of vanishing silently.
 watch(
   () => activeGoal.value?.id,
   (id, previous) => {
@@ -101,6 +103,7 @@ watch(
         :current-trend="props.currentTrend"
         :target-error="props.targetError"
         :rate-error="props.rateError"
+        :form-error="props.formError"
         :pending="props.pending"
         @submit="emit('submit', $event)"
       />

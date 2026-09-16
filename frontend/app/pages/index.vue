@@ -139,10 +139,11 @@ const {
       <!-- Explains the Budget rather than flagging the Goal (ADR 0030): the
            Budget is the figure that visibly moved, and "why is my budget my
            maintenance?" is the question it answers — so it sits directly above
-           the card that states it. -->
+           the card that states it, and reads off the same summary that card does.
+           A second endpoint here would let a failed goal read silence the one
+           state that must not be quiet. -->
       <SuspendedDeficitBanner
-        v-if="summary?.deficitSuspended && goalProgress"
-        :rate-kg-per-week="goalProgress.plannedRateKgPerWeek"
+        v-if="summary?.deficitSuspended && tracksCalories"
       />
       <DaySummary
         v-if="summary && tracksCalories"

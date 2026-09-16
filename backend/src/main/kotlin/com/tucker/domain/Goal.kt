@@ -32,14 +32,6 @@ data class Goal(
     /** The daily calorie deficit implied by the rate (1 kg of body fat ≈ 7700 kcal). */
     fun dailyDeficitKcal(): Double = rateKgPerWeek * KCAL_PER_KG_FAT / DAYS_PER_WEEK
 
-    /**
-     * Whether the deficit this rate implies still leaves a Calorie Budget to
-     * publish at [maintenanceKcal]. The one predicate behind both refusing a new
-     * Goal and suspending a running one's deficit (ADR 0030) — strict, because a
-     * Budget of exactly zero is a figure [IntakeTargets] refuses.
-     */
-    fun deficitFitsWithin(maintenanceKcal: Double): Boolean = dailyDeficitKcal() < maintenanceKcal
-
     /** Whether [trendWeightKg] has reached (or passed) the target. */
     fun isReachedAt(trendWeightKg: Double): Boolean = trendWeightKg <= targetWeightKg
 
