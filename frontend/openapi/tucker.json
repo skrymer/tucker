@@ -29,6 +29,26 @@
           }
         ],
         "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Unprocessable Entity",
             "content": {
@@ -51,26 +71,6 @@
           },
           "404": {
             "description": "Not Found",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict",
             "content": {
               "*/*": {
                 "schema": {
@@ -118,6 +118,26 @@
           "required": true
         },
         "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Unprocessable Entity",
             "content": {
@@ -140,26 +160,6 @@
           },
           "404": {
             "description": "Not Found",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict",
             "content": {
               "*/*": {
                 "schema": {
@@ -188,6 +188,26 @@
         ],
         "operationId": "get",
         "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Unprocessable Entity",
             "content": {
@@ -210,26 +230,6 @@
           },
           "404": {
             "description": "Not Found",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict",
             "content": {
               "*/*": {
                 "schema": {
@@ -277,6 +277,26 @@
           "required": true
         },
         "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Unprocessable Entity",
             "content": {
@@ -299,26 +319,6 @@
           },
           "404": {
             "description": "Not Found",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict",
             "content": {
               "*/*": {
                 "schema": {
@@ -368,6 +368,26 @@
           "required": true
         },
         "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Unprocessable Entity",
             "content": {
@@ -390,26 +410,6 @@
           },
           "404": {
             "description": "Not Found",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict",
             "content": {
               "*/*": {
                 "schema": {
@@ -447,6 +447,26 @@
           }
         ],
         "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Unprocessable Entity",
             "content": {
@@ -469,26 +489,6 @@
           },
           "404": {
             "description": "Not Found",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict",
             "content": {
               "*/*": {
                 "schema": {
@@ -510,6 +510,26 @@
         ],
         "operationId": "list",
         "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Unprocessable Entity",
             "content": {
@@ -532,26 +552,6 @@
           },
           "404": {
             "description": "Not Found",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict",
             "content": {
               "*/*": {
                 "schema": {
@@ -591,6 +591,26 @@
           "required": true
         },
         "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Unprocessable Entity",
             "content": {
@@ -613,26 +633,6 @@
           },
           "404": {
             "description": "Not Found",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict",
             "content": {
               "*/*": {
                 "schema": {
@@ -661,6 +661,26 @@
         ],
         "operationId": "latest",
         "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Unprocessable Entity",
             "content": {
@@ -683,26 +703,6 @@
           },
           "404": {
             "description": "Not Found",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict",
             "content": {
               "*/*": {
                 "schema": {
@@ -740,6 +740,26 @@
           }
         ],
         "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Unprocessable Entity",
             "content": {
@@ -762,26 +782,6 @@
           },
           "404": {
             "description": "Not Found",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict",
             "content": {
               "*/*": {
                 "schema": {
@@ -820,6 +820,26 @@
           "required": true
         },
         "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Unprocessable Entity",
             "content": {
@@ -842,26 +862,6 @@
           },
           "404": {
             "description": "Not Found",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict",
             "content": {
               "*/*": {
                 "schema": {
@@ -900,6 +900,26 @@
           "required": true
         },
         "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Unprocessable Entity",
             "content": {
@@ -922,26 +942,6 @@
           },
           "404": {
             "description": "Not Found",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict",
             "content": {
               "*/*": {
                 "schema": {
@@ -971,6 +971,26 @@
           "required": true
         },
         "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Unprocessable Entity",
             "content": {
@@ -993,26 +1013,6 @@
           },
           "404": {
             "description": "Not Found",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict",
             "content": {
               "*/*": {
                 "schema": {
@@ -1034,6 +1034,26 @@
         ],
         "operationId": "active",
         "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Unprocessable Entity",
             "content": {
@@ -1056,26 +1076,6 @@
           },
           "404": {
             "description": "Not Found",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict",
             "content": {
               "*/*": {
                 "schema": {
@@ -1112,6 +1112,26 @@
           "required": true
         },
         "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Unprocessable Entity",
             "content": {
@@ -1134,26 +1154,6 @@
           },
           "404": {
             "description": "Not Found",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict",
             "content": {
               "*/*": {
                 "schema": {
@@ -1191,6 +1191,26 @@
           }
         ],
         "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Unprocessable Entity",
             "content": {
@@ -1213,26 +1233,6 @@
           },
           "404": {
             "description": "Not Found",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict",
             "content": {
               "*/*": {
                 "schema": {
@@ -1254,6 +1254,26 @@
         ],
         "operationId": "list_1",
         "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Unprocessable Entity",
             "content": {
@@ -1276,26 +1296,6 @@
           },
           "404": {
             "description": "Not Found",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict",
             "content": {
               "*/*": {
                 "schema": {
@@ -1335,6 +1335,26 @@
           "required": true
         },
         "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Unprocessable Entity",
             "content": {
@@ -1357,26 +1377,6 @@
           },
           "404": {
             "description": "Not Found",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict",
             "content": {
               "*/*": {
                 "schema": {
@@ -1415,6 +1415,26 @@
           "required": true
         },
         "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Unprocessable Entity",
             "content": {
@@ -1437,26 +1457,6 @@
           },
           "404": {
             "description": "Not Found",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict",
             "content": {
               "*/*": {
                 "schema": {
@@ -1495,6 +1495,26 @@
           "required": true
         },
         "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Unprocessable Entity",
             "content": {
@@ -1517,26 +1537,6 @@
           },
           "404": {
             "description": "Not Found",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict",
             "content": {
               "*/*": {
                 "schema": {
@@ -1575,6 +1575,26 @@
           "required": true
         },
         "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Unprocessable Entity",
             "content": {
@@ -1597,26 +1617,6 @@
           },
           "404": {
             "description": "Not Found",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict",
             "content": {
               "*/*": {
                 "schema": {
@@ -1655,6 +1655,26 @@
           "required": true
         },
         "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Unprocessable Entity",
             "content": {
@@ -1677,26 +1697,6 @@
           },
           "404": {
             "description": "Not Found",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict",
             "content": {
               "*/*": {
                 "schema": {
@@ -1725,6 +1725,26 @@
         ],
         "operationId": "trend",
         "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Unprocessable Entity",
             "content": {
@@ -1747,26 +1767,6 @@
           },
           "404": {
             "description": "Not Found",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict",
             "content": {
               "*/*": {
                 "schema": {
@@ -1795,6 +1795,26 @@
         ],
         "operationId": "latest_1",
         "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Unprocessable Entity",
             "content": {
@@ -1817,26 +1837,6 @@
           },
           "404": {
             "description": "Not Found",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict",
             "content": {
               "*/*": {
                 "schema": {
@@ -1885,6 +1885,26 @@
           }
         ],
         "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Unprocessable Entity",
             "content": {
@@ -1907,26 +1927,6 @@
           },
           "404": {
             "description": "Not Found",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict",
             "content": {
               "*/*": {
                 "schema": {
@@ -1955,6 +1955,26 @@
         ],
         "operationId": "history",
         "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Unprocessable Entity",
             "content": {
@@ -1977,26 +1997,6 @@
           },
           "404": {
             "description": "Not Found",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict",
             "content": {
               "*/*": {
                 "schema": {
@@ -2028,6 +2028,26 @@
         ],
         "operationId": "version",
         "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Unprocessable Entity",
             "content": {
@@ -2050,26 +2070,6 @@
           },
           "404": {
             "description": "Not Found",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict",
             "content": {
               "*/*": {
                 "schema": {
@@ -2109,6 +2109,26 @@
           }
         ],
         "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Unprocessable Entity",
             "content": {
@@ -2131,26 +2151,6 @@
           },
           "404": {
             "description": "Not Found",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict",
             "content": {
               "*/*": {
                 "schema": {
@@ -2189,6 +2189,26 @@
           }
         ],
         "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Unprocessable Entity",
             "content": {
@@ -2211,26 +2231,6 @@
           },
           "404": {
             "description": "Not Found",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict",
             "content": {
               "*/*": {
                 "schema": {
@@ -2259,6 +2259,26 @@
         ],
         "operationId": "vapidPublicKey",
         "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Unprocessable Entity",
             "content": {
@@ -2281,26 +2301,6 @@
           },
           "404": {
             "description": "Not Found",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict",
             "content": {
               "*/*": {
                 "schema": {
@@ -2349,6 +2349,26 @@
           }
         ],
         "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Unprocessable Entity",
             "content": {
@@ -2371,26 +2391,6 @@
           },
           "404": {
             "description": "Not Found",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict",
             "content": {
               "*/*": {
                 "schema": {
@@ -2419,6 +2419,26 @@
         ],
         "operationId": "me",
         "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Unprocessable Entity",
             "content": {
@@ -2441,26 +2461,6 @@
           },
           "404": {
             "description": "Not Found",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict",
             "content": {
               "*/*": {
                 "schema": {
@@ -2509,6 +2509,26 @@
           }
         ],
         "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Unprocessable Entity",
             "content": {
@@ -2531,26 +2551,6 @@
           },
           "404": {
             "description": "Not Found",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict",
             "content": {
               "*/*": {
                 "schema": {
@@ -2579,6 +2579,26 @@
         ],
         "operationId": "history_1",
         "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Unprocessable Entity",
             "content": {
@@ -2601,26 +2621,6 @@
           },
           "404": {
             "description": "Not Found",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict",
             "content": {
               "*/*": {
                 "schema": {
@@ -2652,6 +2652,26 @@
         ],
         "operationId": "progress",
         "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Unprocessable Entity",
             "content": {
@@ -2674,26 +2694,6 @@
           },
           "404": {
             "description": "Not Found",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict",
             "content": {
               "*/*": {
                 "schema": {
@@ -2733,6 +2733,26 @@
           }
         ],
         "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Unprocessable Entity",
             "content": {
@@ -2755,26 +2775,6 @@
           },
           "404": {
             "description": "Not Found",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict",
             "content": {
               "*/*": {
                 "schema": {
@@ -2812,6 +2812,26 @@
           }
         ],
         "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Unprocessable Entity",
             "content": {
@@ -2834,26 +2854,6 @@
           },
           "404": {
             "description": "Not Found",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict",
             "content": {
               "*/*": {
                 "schema": {
@@ -2895,6 +2895,26 @@
           }
         ],
         "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Unprocessable Entity",
             "content": {
@@ -2917,26 +2937,6 @@
           },
           "404": {
             "description": "Not Found",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict",
             "content": {
               "*/*": {
                 "schema": {
@@ -2978,6 +2978,26 @@
           }
         ],
         "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Unprocessable Entity",
             "content": {
@@ -3000,26 +3020,6 @@
           },
           "404": {
             "description": "Not Found",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict",
             "content": {
               "*/*": {
                 "schema": {
@@ -3059,6 +3059,26 @@
           }
         ],
         "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Unprocessable Entity",
             "content": {
@@ -3081,26 +3101,6 @@
           },
           "404": {
             "description": "Not Found",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict",
             "content": {
               "*/*": {
                 "schema": {
@@ -3142,6 +3142,26 @@
           }
         ],
         "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Unprocessable Entity",
             "content": {
@@ -3164,26 +3184,6 @@
           },
           "404": {
             "description": "Not Found",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict",
             "content": {
               "*/*": {
                 "schema": {
@@ -3223,6 +3223,26 @@
           }
         ],
         "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Unprocessable Entity",
             "content": {
@@ -3245,26 +3265,6 @@
           },
           "404": {
             "description": "Not Found",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict",
             "content": {
               "*/*": {
                 "schema": {
@@ -3297,6 +3297,26 @@
           }
         ],
         "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Unprocessable Entity",
             "content": {
@@ -3327,26 +3347,6 @@
               }
             }
           },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
           "204": {
             "description": "No Content"
           }
@@ -3364,6 +3364,10 @@
         "properties": {
           "message": {
             "type": "string"
+          },
+          "field": {
+            "type": "string",
+            "nullable": true
           }
         }
       },

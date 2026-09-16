@@ -127,3 +127,42 @@ test('a backend-rejected target keeps the replacement form open and shows the er
   await expect(goal.getByText(/below your current trend weight/i)).toBeVisible()
   await expect(goal.getByLabel(/target weight/i)).toBeVisible()
 })
+
+test('a rate the user cannot afford is refused under the rate field, not the target', async ({
+  page,
+  goto,
+}) => {
+  // A 50 kg, 160 cm woman maintains on ~1595 kcal, while 1.5 kg/week demands
+  // 1650 — refused at creation (ADR 0030) while the rate control is still in
+  // her hand. Two inputs on this form can each be refused, so the message has
+  // to land on the one that is wrong.
+  await mockProfile(page, {
+    sex: 'FEMALE',
+    birthDate: '1986-05-22',
+    heightCm: 160,
+  })
+  await mockWeightList(page, [
+    { id: 1, measuredOn: '2026-05-28', weightKg: 50.0 },
+  ])
+  await mockWeightTrend(page, { trendKg: 50.0, asOf: '2026-05-28' })
+  await mockGoals(page, [], { currentTrendKg: 50.0, maintenanceKcal: 1594.6 })
+
+  await goto('/profile', { waitUntil: 'hydration' })
+
+  const goal = page.getByRole('region', { name: /^goal$/i })
+
+  await goal.getByRole('button', { name: /start a goal/i }).click()
+  await goal.getByLabel(/target weight/i).fill('45')
+  await goal.getByLabel(/rate/i).fill('1.5')
+  await goal.getByRole('button', { name: /^set goal$/i }).click()
+
+  // Described by the refusal, so it reads out with the input it is about.
+  await expect(goal.getByLabel(/rate/i)).toHaveAccessibleDescription(
+    /choose a slower rate/,
+  )
+  // No rate is suggested: the fastest that would fit leaves a fraction of a
+  // calorie, so naming one would be an invented floor arriving as copy.
+  await expect(goal.getByText(/1595 kcal a day/)).toBeVisible()
+  // And the form stays open, as it must for the refusal to have anywhere to go.
+  await expect(goal.getByLabel(/target weight/i)).toBeVisible()
+})

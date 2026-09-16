@@ -419,7 +419,7 @@ export async function mockWeightTrend(
 export async function mockGoals(
   page: Page,
   initial: GoalSeed[] = [],
-  options: { currentTrendKg?: number } = {},
+  options: { currentTrendKg?: number; maintenanceKcal?: number } = {},
 ) {
   const goals = [...initial]
   let nextId = Math.max(0, ...goals.map((g) => g.id)) + 1
@@ -448,6 +448,23 @@ export async function mockGoals(
           // Mirror the real backend's rejection (GoalService.createGoal), so the
           // e2e exercises the actual message the SPA renders, not an invented one.
           message: `a weight-loss Goal needs a target below your current trend weight (${trendKg.toFixed(1)} kg)`,
+          field: 'targetWeightKg',
+        },
+      })
+    }
+    const maintenance = options.maintenanceKcal
+    if (
+      maintenance !== undefined &&
+      (body.rateKgPerWeek * 7700) / 7 >= maintenance
+    ) {
+      return route.fulfill({
+        status: 400,
+        json: {
+          message:
+            `at your current maintenance of ${maintenance.toFixed(0)} kcal a day, ` +
+            `${body.rateKgPerWeek} kg a week would leave you nothing to eat ` +
+            `— choose a slower rate`,
+          field: 'rateKgPerWeek',
         },
       })
     }

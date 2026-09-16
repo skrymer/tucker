@@ -16,6 +16,10 @@ const props = defineProps<{
   // re-derives the live trend at creation and is authoritative (ADR 0016); a 400
   // is fed back here as a field error.
   targetError?: string
+  // A rate the user's Maintenance cannot supply is refused at creation
+  // (ADR 0030) — a rule only the backend can apply, since only it holds
+  // Maintenance. Routed here by the field the refusal names.
+  rateError?: string
   /** The create mutation's in-flight flag — shows on the submit (ADR 0007). */
   pending?: boolean
 }>()
@@ -76,7 +80,12 @@ function onSubmit() {
       <NumberField v-model="state.targetWeightKg" :step="0.1" class="w-full" />
     </UFormField>
 
-    <UFormField label="Rate (kg/week)" name="rateKgPerWeek" required>
+    <UFormField
+      label="Rate (kg/week)"
+      name="rateKgPerWeek"
+      :error="props.rateError"
+      required
+    >
       <NumberField
         v-model="state.rateKgPerWeek"
         :min="0"

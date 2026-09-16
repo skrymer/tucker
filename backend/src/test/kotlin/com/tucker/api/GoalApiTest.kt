@@ -82,6 +82,9 @@ class GoalApiTest {
             jsonPath("$.message") { value(org.hamcrest.Matchers.containsString("1595")) }
             jsonPath("$.message") { value(org.hamcrest.Matchers.containsString("1.5 kg")) }
             jsonPath("$.message") { value(org.hamcrest.Matchers.containsString("slower rate")) }
+            // Which field the caller got wrong, so a form shows it in place rather
+            // than under whichever input the client happens to route 400s to.
+            jsonPath("$.field") { value("rateKgPerWeek") }
         }
 
         // And nothing was written: createGoal is transactional, so a refusal must
@@ -131,6 +134,9 @@ class GoalApiTest {
         }.andExpect {
             status { isBadRequest() }
             jsonPath("$.message") { value(org.hamcrest.Matchers.containsString("trend")) }
+            // Named, like the rate refusal beside it: a form routes on the field
+            // rather than treating every unlabelled 400 as this one.
+            jsonPath("$.field") { value("targetWeightKg") }
         }
     }
 

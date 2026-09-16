@@ -205,10 +205,36 @@ describe('useApiMutation', () => {
 
     await execute()
 
+    // Most refusals name no field — the form falls back to wherever it shows one.
     expect(onValidationError).toHaveBeenCalledWith(
       'a weight-loss Goal needs a target below your trend',
+      null,
     )
     expect(toastAdd).not.toHaveBeenCalled()
+  })
+
+  it('hands on the field a 400 names, so a form can show it in place', async () => {
+    // Two inputs on one form can each be refused, and the message alone cannot
+    // say which — an unrouted one lands under whichever field the client picked.
+    const onValidationError = vi.fn()
+    const rejection = Object.assign(new Error('Bad Request'), {
+      status: 400,
+      data: {
+        message: '1.5 kg a week would leave you nothing to eat',
+        field: 'rateKgPerWeek',
+      },
+    })
+    const { execute } = useApiMutation(() => Promise.reject(rejection), {
+      errorTitle: 'Could not set goal',
+      onValidationError,
+    })
+
+    await execute()
+
+    expect(onValidationError).toHaveBeenCalledWith(
+      '1.5 kg a week would leave you nothing to eat',
+      'rateKgPerWeek',
+    )
   })
 
   it('shows the retry toast for a non-validation failure even when the form can route one', async () => {

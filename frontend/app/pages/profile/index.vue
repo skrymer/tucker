@@ -55,8 +55,11 @@ function useGoalSubmission(onSubmitted: () => void | Promise<void>) {
 
   // The start weight isn't sent — the backend anchors it on the live Trend Weight
   // at creation (ADR 0016) and re-checks the target against it; its 400 lands here
-  // and feeds the form.
+  // and feeds the form. The rate has a rule of its own that only the backend can
+  // apply, since only it holds Maintenance (ADR 0030), so the refusal is routed by
+  // the field it names rather than assumed to be about the target.
   const targetError = ref<string | undefined>(undefined)
+  const rateError = ref<string | undefined>(undefined)
 
   const { pending, execute } = useApiMutation(
     (payload: {
@@ -74,8 +77,11 @@ function useGoalSubmission(onSubmitted: () => void | Promise<void>) {
       // No success toast: the goal card updates in place.
       errorTitle: 'Could not set goal',
       onSuccess: onSubmitted,
-      onValidationError: (message) => {
-        targetError.value = message
+      onValidationError: (message, field) => {
+        // An unnamed field is the target: the only refusal that predates the
+        // field being on the wire, and the only input it could be about.
+        if (field === 'rateKgPerWeek') rateError.value = message
+        else targetError.value = message
       },
     },
   )
@@ -85,13 +91,15 @@ function useGoalSubmission(onSubmitted: () => void | Promise<void>) {
     targetWeightKg: number
     rateKgPerWeek: number
   }) {
-    // Drop any prior rejection before re-attempting, so a corrected target that
-    // now succeeds doesn't leave a stale error behind.
+    // Drop any prior rejection before re-attempting, so a corrected input that
+    // now succeeds doesn't leave a stale error behind — both of them, since a
+    // resubmit may fix either and be refused on the other.
     targetError.value = undefined
+    rateError.value = undefined
     await execute(payload)
   }
 
-  return { submit, targetError, pending }
+  return { submit, targetError, rateError, pending }
 }
 
 const {
@@ -165,6 +173,7 @@ const {
 const {
   submit: submitGoal,
   targetError: goalTargetError,
+  rateError: goalRateError,
   pending: savingGoal,
 } = useGoalSubmission(refreshGoals)
 
@@ -195,6 +204,7 @@ await Promise.all([loadProfile(), refreshCurrentTrend()])
         :goals="goals ?? []"
         :current-trend="currentTrend"
         :target-error="goalTargetError"
+        :rate-error="goalRateError"
         :pending="savingGoal"
         :disabled="!gating.goalEnabled"
         @submit="submitGoal"

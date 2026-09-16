@@ -18,6 +18,9 @@ const props = defineProps<{
   // A backend rejection of the target (the trend-weight rule, ADR 0016), shown
   // on the form's target field.
   targetError?: string
+  // A backend rejection of the rate (it outruns Maintenance, ADR 0030), shown on
+  // the form's rate field.
+  rateError?: string
   pending?: boolean
   disabled?: boolean
 }>()
@@ -97,6 +100,7 @@ watch(
         v-if="formOpen && props.currentTrend"
         :current-trend="props.currentTrend"
         :target-error="props.targetError"
+        :rate-error="props.rateError"
         :pending="props.pending"
         @submit="emit('submit', $event)"
       />

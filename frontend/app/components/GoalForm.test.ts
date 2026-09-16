@@ -110,6 +110,28 @@ describe('GoalForm', () => {
     ).toBeVisible()
   })
 
+  it('surfaces a server-rejected rate under the rate field, not the target', async () => {
+    // A rate the user's Maintenance cannot supply is refused at creation
+    // (ADR 0030). Two inputs can each be refused, so the message has to land on
+    // the one that is wrong — under the target it would be actively misleading.
+    await renderSuspended(GoalForm, {
+      props: {
+        currentTrend,
+        rateError:
+          'at your current maintenance of 1595 kcal a day, 1.5 kg a week would leave you nothing to eat — choose a slower rate',
+      },
+    })
+
+    // Described by the error, so it reads out with the input a screen reader is
+    // on — and the target stays valid, which is the other half of the claim.
+    expect(
+      screen.getByRole('spinbutton', { name: /rate/i }),
+    ).toHaveAccessibleDescription(/choose a slower rate/)
+    expect(
+      screen.getByRole('spinbutton', { name: /target weight/i }),
+    ).toHaveAttribute('aria-invalid', 'false')
+  })
+
   it('rejects a rate below the 0.05 kg/week floor', async () => {
     const onSubmit = vi.fn()
     await renderSuspended(GoalForm, { props: { currentTrend, onSubmit } })

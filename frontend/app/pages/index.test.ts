@@ -130,6 +130,27 @@ describe('/ wherever there is an active Goal', () => {
   )
 })
 
+describe("/ when the Goal's rate outruns Maintenance", () => {
+  it('explains why no deficit is being applied, beside the budget it explains', async () => {
+    activeGoal = goalProgress({ plannedRateKgPerWeek: 1.5 })
+    summary = { ...DAY, calorieBudget: 1595, deficitSuspended: true }
+
+    await renderToday()
+
+    expect(screen.getByText(/No deficit is being applied/i)).toBeVisible()
+    expect(screen.getByText(/1\.5 kg a week/)).toBeVisible()
+  })
+
+  it('stays out of the way while the deficit is being applied', async () => {
+    activeGoal = goalProgress()
+    summary = { ...DAY, deficitSuspended: false }
+
+    await renderToday()
+
+    expect(screen.queryByText(/No deficit is being applied/i)).toBeNull()
+  })
+})
+
 describe('/ in Maintenance Mode', () => {
   it.each([true, false])(
     'keeps the Maintaining card and rings nothing with Calorie Tracking %s',

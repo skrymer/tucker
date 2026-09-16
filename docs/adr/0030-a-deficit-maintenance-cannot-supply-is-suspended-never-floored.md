@@ -201,9 +201,27 @@ both.
   both weeks genuinely had a Budget equal to Maintenance. The ledger already does
   not distinguish "Maintenance Mode because I reached my goal" from "because I
   never set one".
-- **`POST /api/goal` gains a refusal a client has to render.** The Goal form must
-  surface it as a field-level message on the rate, not a generic toast — it is a
-  validation the User can act on in one tap.
+- **`POST /api/goal` gains a refusal a client has to render**, as a field-level
+  message on the rate rather than a generic toast — it is a validation the User can
+  act on in one tap. That took a mechanism the API did not have: `ApiError` was
+  `{ message }` and `useApiMutation` routed *every* 400 to the one field a form
+  nominated, which for this form is the target weight. A rate refusal rendered
+  under "Target weight (kg)" is worse than a toast, and the message alone cannot
+  say otherwise.
+
+  So `ApiError` gains a nullable `field`, set by a new
+  `InvalidFieldException(field, message)` — an `IllegalArgumentException`, because
+  that is what it is: one family for caller error, so nothing already handling the
+  general case changes behaviour, and only the more specific handler puts the field
+  on the wire. **Both** Goal refusals name their field, so the form routes on what
+  the backend said rather than on "everything unlabelled is about the target".
+  Rejected: sniffing the message for the word "rate" (fragile, and breaks silently
+  when copy moves); giving the rate refusal a different status (422 says *never*
+  processable, and this becomes processable the week Maintenance rises); validating
+  the rate in Zod against a Maintenance handed to the form, which is the pattern the
+  target rule already uses but would put a rule about Maintenance in Vue for more
+  than ADR 0002's preview carve-out; and one form-level error for both, which is a
+  downgrade for the target refusal that lands on its own field today.
 - **`Goal` gains a method that takes a Maintenance**, which is the first time the
   Goal aggregate has had to know that Maintenance exists. It takes a `Double`
   rather than a `Maintenance`, so the dependency is on the figure and not on the
