@@ -72,7 +72,7 @@ of what the User is doing.
 
 **With Calorie Tracking off, the Goal's planned trajectory takes the intake
 half's place** — the sloped line from the Goal's start weight (itself the Trend
-Weight when it was set, ADR 0016) at its chosen rate. It appears *only* there, and
+Weight standing on the Goal's start date, ADR 0016) at its chosen rate. It appears *only* there, and
 that asymmetry is the point rather than an oversight: both settings ask "am I on
 track?", and with tracking on the **calorie half answers it** — intake under the
 Budget line is the mechanism and the falling trend is the confirmation. With
@@ -104,6 +104,26 @@ an edge: a Goal is always started today, so its first window carries exactly one
 planned day. A line needs two points, and naming a series in the key that nothing
 draws is worse than the plain weight card the User had yesterday. A plan that is
 off the chart *all* window is not this case — its marker is a mark.
+
+**A plan that is absent all window is indistinguishable from Maintenance Mode**, and
+that is the failure mode to watch: `trajectoryKg` is null on every day and
+`loggedDays` is null under a plan too, so the responses match byte for byte — the
+plan, its key chip and its readout line all go with nothing saying why.
+
+`Goal.started` closes one way in: it refuses a start date in the *writing* User's
+future, measured against ADR 0014's resolved today, so a client legitimately a day
+ahead of the server still passes. That bounds an unbounded gap, and it is the whole
+of what it does — **it does not close the case the plan actually goes missing in**,
+which is a relation between `startedOn` and the window's `to`, not between
+`startedOn` and the writer's own today. Tucker's client reads its clock twice on one
+submit and `clientToday` is the *later* read, so `startedOn <= clientToday` holds
+whatever happens in between; but `to` comes from whichever device is *reading*
+(`trailingWindow`), and a Goal set on a phone at UTC+10 in the morning is a day
+ahead of a desktop reading in UTC. Two timezones, no broken clock.
+ADR 0014's ±1 tolerance bounds it to two days and hydration is deliberately
+unguarded, so rows already written keep it. Closing it means a read-side change —
+clamping `to`, or saying on the wire that a plan exists but does not reach this
+window — and that is its own decision, not this one.
 
 **The trajectory is a per-day series like every other**, not the Goal's start
 weight, start date and rate for the client to project from. `startWeight − rate ×
