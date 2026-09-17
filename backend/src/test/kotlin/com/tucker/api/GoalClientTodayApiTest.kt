@@ -1,5 +1,6 @@
 package com.tucker.api
 
+import org.hamcrest.Matchers.containsString
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
@@ -119,6 +120,46 @@ class GoalClientTodayApiTest {
     }
 
     @Test
+    fun `a start date the server calls today is refused while the client is still on yesterday`() {
+        seedProfileAndWeight(CLIENT_TODAY)
+
+        // The server's own date is the client's tomorrow, so a Goal started on it
+        // starts in the User's future. Judged against the server clock it would be
+        // accepted. The message is asserted because createGoal has four ways to
+        // answer 400, and only one of them is this rule.
+        mockMvc.post("/api/goal") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"startedOn":"$SERVER_TODAY",
+                          "targetWeightKg":80.0,"rateKgPerWeek":0.5,"clientToday":"$CLIENT_TODAY"}"""
+        }.andExpect {
+            status { isBadRequest() }
+            jsonPath("$.message") { value(containsString("cannot start in the future")) }
+        }
+    }
+
+    @Test
+    fun `a start date on a client day ahead of the server is accepted, and reads back`() {
+        seedProfileAndWeight(CLIENT_AHEAD)
+
+        // A guard measured against the server clock would refuse a Goal the User is
+        // setting on their own today.
+        mockMvc.post("/api/goal") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"startedOn":"$CLIENT_AHEAD",
+                          "targetWeightKg":80.0,"rateKgPerWeek":0.5,"clientToday":"$CLIENT_AHEAD"}"""
+        }.andExpect { status { isCreated() } }
+
+        // The row now sits a day in the *server's* future, so reading it back is the
+        // one path that hydrates a Goal through the constructor with a start date no
+        // factory would accept — the exemption Goal.started's KDoc carves out, so that
+        // a row already written loads whatever it says.
+        mockMvc.get("/api/goal").andExpect {
+            status { isOk() }
+            jsonPath("$.startedOn") { value(CLIENT_AHEAD.toString()) }
+        }
+    }
+
+    @Test
     fun `a birth date is judged past against the client's day, not the server's`() {
         // The client's own day is the server's yesterday, so a birth date of the
         // client's today already reads as past on the server clock. Judged there it
@@ -133,5 +174,6 @@ class GoalClientTodayApiTest {
     companion object {
         private val SERVER_TODAY = LocalDate.of(2026, 6, 6)
         private val CLIENT_TODAY = SERVER_TODAY.minusDays(1) // the client's local "yesterday"
+        private val CLIENT_AHEAD = SERVER_TODAY.plusDays(1) // morning east of UTC
     }
 }

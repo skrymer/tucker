@@ -12,7 +12,7 @@ type GoalPayload = {
 
 const props = defineProps<{
   goals: GoalResponse[]
-  // The live Trend Weight the new Goal anchors its start on (ADR 0016); null until
+  // The live Trend Weight a Goal started today anchors its start on (ADR 0016); null until
   // a weight is logged, which also gates the form.
   currentTrend: CurrentTrend | null
   // A backend rejection of the target (the trend-weight rule, ADR 0016), shown

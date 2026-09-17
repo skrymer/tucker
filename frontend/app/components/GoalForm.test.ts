@@ -94,7 +94,7 @@ describe('GoalForm', () => {
 
   it('surfaces a server-rejected target as an error under the target field', async () => {
     // The client validates target < the trend it was given, but the backend
-    // re-derives the live trend and is authoritative (ADR 0016); its 400 is fed
+    // re-derives the anchor and is authoritative (ADR 0016); its 400 is fed
     // back in as targetError.
     await renderSuspended(GoalForm, {
       props: {

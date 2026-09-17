@@ -8,7 +8,8 @@ import kotlin.test.assertNull
 
 class GoalTest {
 
-    private val startedOn = LocalDate.of(2026, 5, 1)
+    private val today = LocalDate.of(2026, 5, 1)
+    private val startedOn = today
 
     private fun goalWithRate(rateKgPerWeek: Double) = Goal(
         id = null,
@@ -18,6 +19,40 @@ class GoalTest {
         rateKgPerWeek = rateKgPerWeek,
         active = true,
     )
+
+    @Test
+    fun `started rejects a start date in the future`() {
+        val ex = assertThrows<IllegalArgumentException> {
+            Goal.started(
+                startedOn = today.plusDays(1),
+                startWeightKg = 90.0,
+                targetWeightKg = 80.0,
+                rateKgPerWeek = 0.5,
+                today = today,
+            )
+        }
+        assert(ex.message!!.contains("future", ignoreCase = true)) {
+            "expected message to mention future, was '${ex.message}'"
+        }
+    }
+
+    @Test
+    fun `started makes an unsaved, active, never-reached Goal from today`() {
+        val goal = Goal.started(
+            startedOn = today,
+            startWeightKg = 90.0,
+            targetWeightKg = 80.0,
+            rateKgPerWeek = 0.5,
+            today = today,
+        )
+        assertEquals(today, goal.startedOn)
+        assert(goal.active) { "a Goal being set now is the active one" }
+        assertNull(goal.id, "a Goal being set now is not yet saved")
+        assertEquals(90.0, goal.startWeightKg)
+        assertEquals(80.0, goal.targetWeightKg)
+        assertEquals(0.5, goal.rateKgPerWeek)
+        assertNull(goal.reachedOn, "a Goal being set now has not been reached")
+    }
 
     @Test
     fun `rejects a rate below the 0_05 kg per week floor`() {

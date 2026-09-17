@@ -409,8 +409,9 @@ export async function mockWeightTrend(
  * prior active goal and prepends the new active one, mirroring the backend's
  * replacement semantics; `dailyDeficitKcal` is derived as the real domain does.
  *
- * The start weight is *not* sent — the backend anchors it on the live Trend
- * Weight at creation (ADR 0016), passed here as `currentTrendKg`: the created
+ * The start weight is *not* sent — the backend anchors it on the trend standing
+ * on the start date (ADR 0016), which for a Goal started today is the live one
+ * passed here as `currentTrendKg`: the created
  * goal's start is that trend, and a target at or above it is already-reached and
  * rejected with the backend's start-weight 400. (The client validates against the
  * trend it fetched; a `currentTrendKg` below that models the stale-trend window

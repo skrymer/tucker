@@ -59,8 +59,11 @@ data class Profile(
      * [ProfileRepository] reads a row through the constructor, because a row already
      * written is history and must load whatever it says.
      *
-     * A member rather than a `WeightMeasurement.recorded`-style companion factory:
-     * the rule concerns one field, and a factory would restate all seven to reach it.
+     * A member rather than a `WeightMeasurement.recorded`-style companion factory,
+     * on what the guarded moment *owns*: a Profile has no id and no lifecycle flag,
+     * so there is nothing for a factory to decide — it would restate all seven
+     * fields, plus [today], to reach a rule about one of them. And this is a
+     * re-judgement rather than a creation, which is why it returns `this`.
      */
     fun capturedOn(today: LocalDate): Profile {
         require(birthDate.isBefore(today)) {

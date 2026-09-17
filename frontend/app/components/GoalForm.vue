@@ -13,8 +13,8 @@ type GoalPayload = {
 const props = defineProps<{
   currentTrend: CurrentTrend
   // The client validates against the trend it was handed, but the backend
-  // re-derives the live trend at creation and is authoritative (ADR 0016); a 400
-  // is fed back here as a field error.
+  // re-derives the anchor at creation and is authoritative (ADR 0016); a 400 is
+  // fed back here as a field error.
   targetError?: string
   // A rate the user's Maintenance cannot supply is refused at creation
   // (ADR 0030) — a rule only the backend can apply, since only it holds
@@ -87,8 +87,10 @@ function useServerRefusals() {
 
 const refusals = useServerRefusals()
 
-// The start weight isn't sent: the backend anchors it on the live Trend Weight at
-// creation (ADR 0016), so a fresh Goal reads 0% (start == now).
+// The start weight isn't sent: the backend anchors it on the Trend Weight standing
+// on the start date (ADR 0016) — which is today, so a fresh Goal reads 0%
+// (start == now) and, with nothing weighed since, the anchor is the trend
+// previewed above.
 function onSubmit() {
   emit('submit', {
     startedOn: today(),

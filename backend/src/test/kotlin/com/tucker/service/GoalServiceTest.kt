@@ -1,5 +1,6 @@
 package com.tucker.service
 
+import com.tucker.api.InvalidFieldException
 import com.tucker.domain.Goal
 import com.tucker.domain.Profile
 import com.tucker.domain.Sex
@@ -50,6 +51,86 @@ class GoalServiceTest {
     private fun seedActiveGoalWithTrendAbove(trendAbove: Double, target: Double): Goal {
         weights.save(WeightMeasurement.recorded(today.minusDays(1), trendAbove, today))
         return goals.insert(Goal(null, today, 90.0, target, 0.5, active = true))
+    }
+
+    @Test
+    fun `a backdated goal anchors on the trend standing on its start date`() {
+        profiles.save(Profile(Sex.MALE, LocalDate.of(1986, 5, 22), 180.0))
+        // A fortnight of 90 kg, then a fortnight of 80 kg: the trend a fortnight
+        // back is far above the live one, so anchoring on the wrong day is visible.
+        (14L..28L).forEach { weights.save(WeightMeasurement.recorded(today.minusDays(it), 90.0, today)) }
+        (0L..13L).forEach { weights.save(WeightMeasurement.recorded(today.minusDays(it), 80.0, today)) }
+        val goal = service.createGoal(today.minusDays(14), 70.0, 0.5, today)
+
+        // The plan runs from where the User stood when it started, not from where
+        // they stand now — otherwise it claims a fortnight of loss already banked.
+        // 90.0 because the EWMA seeds on the oldest reading and fifteen identical
+        // ones hold it there; the live trend by now is 82.3.
+        assertEquals(90.0, goal.startWeightKg, 1e-9)
+    }
+
+    @Test
+    fun `a goal started the day before a reading anchors on the older point, not the reading`() {
+        profiles.save(Profile(Sex.MALE, LocalDate.of(1986, 5, 22), 180.0))
+        // The shape two timezones produce and the app really reaches: a phone east
+        // of UTC stamps a weigh-in on its own today, and the Goal is then set from a
+        // device still on the previous day, which ADR 0014's +/-1 tolerance admits.
+        weights.save(WeightMeasurement.recorded(today.minusDays(5), 90.0, today))
+        weights.save(WeightMeasurement.recorded(today, 80.0, today))
+
+        val goal = service.createGoal(today.minusDays(1), 70.0, 0.5, today.minusDays(1))
+
+        // 90.0 is the trend on the day the Goal says it began; the live trend is
+        // 89.0, which is the figure a reading dated after the start must not supply.
+        assertEquals(90.0, goal.startWeightKg, 1e-9)
+    }
+
+    @Test
+    fun `a goal backdated before the first reading anchors on the earliest trend point`() {
+        profiles.save(Profile(Sex.MALE, LocalDate.of(1986, 5, 22), 180.0))
+        (0L..13L).forEach { weights.save(WeightMeasurement.recorded(today.minusDays(it), 80.0, today)) }
+        weights.save(WeightMeasurement.recorded(today.minusDays(20), 90.0, today))
+
+        // Starts a day before anything was weighed, so the trend stands nowhere on it.
+        val goal = service.createGoal(today.minusDays(21), 70.0, 0.5, today)
+
+        // 90.0 is the oldest reading, which the EWMA seeds its first point to — the
+        // first thing known about this body. The latest would put the plan's start
+        // below where they were and above where they are.
+        assertEquals(90.0, goal.startWeightKg, 1e-9)
+    }
+
+    @Test
+    fun `a target above the weight the goal starts from is refused on the target field`() {
+        profiles.save(Profile(Sex.MALE, LocalDate.of(1986, 5, 22), 180.0))
+        weights.save(WeightMeasurement.recorded(today.minusDays(20), 70.0, today))
+        (0L..13L).forEach { weights.save(WeightMeasurement.recorded(today.minusDays(it), 80.0, today)) }
+
+        // 75 is below the live trend (~77.7), so the already-reached guard lets it by,
+        // and at or above the 70.0 the Goal starts from. The two guards are one figure
+        // only when the anchor is the live trend (ADR 0016), and the User typed this
+        // into the target input either way — so the refusal has to name it, or the
+        // form shows it above the submit as though no input were at fault.
+        val ex = assertThrows<InvalidFieldException> {
+            service.createGoal(today.minusDays(20), 75.0, 0.5, today)
+        }
+        assertEquals("targetWeightKg", ex.field)
+        assertTrue(ex.message!!.contains("70.0"), "expected the anchor quoted, was '${ex.message}'")
+    }
+
+    @Test
+    fun `a target exactly at the weight the goal starts from is refused`() {
+        profiles.save(Profile(Sex.MALE, LocalDate.of(1986, 5, 22), 180.0))
+        weights.save(WeightMeasurement.recorded(today.minusDays(20), 70.0, today))
+        (0L..13L).forEach { weights.save(WeightMeasurement.recorded(today.minusDays(it), 80.0, today)) }
+
+        // Equal is not below: a plan from 70.0 to 70.0 loses nothing, and the Goal's
+        // own invariant would refuse it anyway — with no field for the form to hang it
+        // on, which is the whole reason this guard sits in front of it.
+        val ex = assertThrows<InvalidFieldException> {
+            service.createGoal(today.minusDays(20), 70.0, 0.5, today)
+        }
+        assertEquals("targetWeightKg", ex.field)
     }
 
     @Test

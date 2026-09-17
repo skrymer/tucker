@@ -24,7 +24,9 @@ against today — takes the client's local date and acts on it:
 
 - `POST /api/goal` (create/replace) and `DELETE /api/goal` (deactivate) — the forced
   Weekly-Review recompute (#61) is stamped on the client's day, so the lifted Budget
-  lands on the user's today.
+  lands on the user's today. `POST` also *judges* the Goal's `startedOn` against it
+  (#331): a Goal cannot start in the user's future, and at a UTC offset the server's
+  day would refuse the very day the user is setting it on.
 - `POST /api/weekly-review` (manual run) — the minted review is stamped on the
   client's day.
 - `PUT /api/profile` — the birth date is judged against the client's day (#245). Not

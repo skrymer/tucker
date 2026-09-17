@@ -1,8 +1,9 @@
 import { test, expect } from './support/smoke-test'
 import { todayIso, isoShiftDays } from '../support/date'
 
-// ADR 0016 smoke: a Goal's start weight is the live Trend Weight at creation,
-// derived by the backend — not the raw scale reading. We log two readings a day
+// ADR 0016 smoke: a Goal's start weight is the Trend Weight standing on its start
+// date — today here, and nothing is weighed after it, so the anchor is the
+// live trend — derived by the backend, not the raw scale reading. We log two readings a day
 // apart so the smoothed trend (107.1) lags the latest raw reading (108.0), set the
 // Goal through the UI, and prove the form, the Goal card, and Goal progress all use
 // the trend (107.1) — so a fresh Goal reads 0%, never the raw-anchored "already

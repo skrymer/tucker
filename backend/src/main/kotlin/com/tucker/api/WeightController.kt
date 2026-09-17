@@ -24,8 +24,9 @@ data class WeightMeasurementResponse(
 
 /**
  * The live Trend Weight — the latest EWMA point over every reading, dated by the
- * latest reading. A Goal's start weight is anchored on this (ADR 0016), so the
- * Goal form reads it to preview the start and validate the target against it.
+ * latest reading. A Goal is anchored on the trend standing on its start date
+ * (ADR 0016), which is this one for a Goal started today with nothing weighed
+ * since, so the Goal form reads it to preview the start and validate the target.
  */
 data class WeightTrendResponse(
     val trendKg: Double,

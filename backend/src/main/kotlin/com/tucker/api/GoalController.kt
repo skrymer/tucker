@@ -55,9 +55,9 @@ data class GoalProgressResponse(
 /**
  * Request to set a new weight-loss Goal.
  *
- * The start weight is *not* sent: it's the live Trend Weight at creation, derived
- * by the backend (ADR 0016), so a fresh Goal reads 0% (start == now) and the
- * client never has to compute the EWMA.
+ * The start weight is *not* sent: it's the Trend Weight standing on [startedOn],
+ * derived by the backend (ADR 0016), so a fresh Goal reads 0% (start == now) and
+ * the client never has to compute the EWMA.
  *
  * [clientToday] is the user's *local* date (ADR 0014): the day the forced review
  * recompute is stamped on, so the lifted Budget lands on the user's today rather

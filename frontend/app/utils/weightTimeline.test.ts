@@ -531,8 +531,9 @@ describe('weightTimelineTrajectory', () => {
 
   it('still has a band to draw when the weight and the plan sit on one figure', () => {
     // A User weighing the same figure every day sets a Goal today: the start
-    // weight *is* the live Trend Weight (ADR 0016), so the plan opens exactly
-    // where they are and the raw extent has no height at all.
+    // weight is the trend standing on that day (ADR 0016), which here is the live
+    // one, so the plan opens exactly where they are and the raw extent has no
+    // height at all.
     const flat = [
       timelineDay({ date: '2026-06-01', weightKg: 80, trendKg: 80 }),
       timelineDay({
@@ -568,8 +569,8 @@ describe('weightTimelineTrajectory', () => {
   })
 
   it('has nothing to draw on the day a Goal is set, one point being no line', () => {
-    // A Goal is always started today — ADR 0016 anchors it on the live Trend
-    // Weight — so its first window carries exactly one planned day. A chip naming
+    // A Goal is always started today — ADR 0016 anchors it on the trend standing
+    // on that day — so its first window carries exactly one planned day. A chip naming
     // a line the chart cannot draw is worse than the plain weight card, and
     // tomorrow there are two points to draw between.
     const days = withPlan(timelineDays([80.4, null, 80.2]), [null, null, 80.0])

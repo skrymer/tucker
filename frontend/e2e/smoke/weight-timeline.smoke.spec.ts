@@ -153,8 +153,8 @@ test('a weight-only User is shown the plan they set, and none once they drop it'
     },
   })
   expect(goal.status()).toBe(201)
-  // Never sent: the backend derives it as the live Trend Weight at creation
-  // (ADR 0016), which is what the plan is anchored on.
+  // Never sent: the backend derives it as the Trend Weight standing on the start
+  // date (ADR 0016), which is what the plan is anchored on.
   const { startWeightKg } = (await goal.json()) as { startWeightKg: number }
 
   const drawn = await timeline(request, 28, today)

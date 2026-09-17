@@ -60,6 +60,42 @@ data class Goal(
         if (reachedOn == null && isReachedAt(trendWeightKg)) copy(reachedOn = on) else this
 
     companion object {
+        /**
+         * A Goal being set now: active, unsaved, and started no later than [today]
+         * — a plan has no day to stand on before the Goal exists. [today] is the
+         * User's own date (ADR 0014), so a client legitimately a day ahead of the
+         * server still passes. Only hydration is exempt: [GoalRepository] reads a
+         * row through the constructor, because a row already written is history
+         * and must load whatever it says.
+         *
+         * A factory rather than a `Profile.capturedOn`-style judging member, on
+         * what the guarded moment *owns* rather than on how many fields the rule
+         * touches: `active` and the absent id are the creation moment's own
+         * decisions, and `active` is load-bearing — [GoalRepository] writes it
+         * verbatim, so a caller passing `false` inserts dead history nothing
+         * refuses. A Goal is never edited either (a change replaces it), so
+         * creation is a moment rather than a re-judgement.
+         */
+        fun started(
+            startedOn: LocalDate,
+            startWeightKg: Double,
+            targetWeightKg: Double,
+            rateKgPerWeek: Double,
+            today: LocalDate,
+        ): Goal {
+            require(!startedOn.isAfter(today)) {
+                "a Goal cannot start in the future (was $startedOn, today is $today)"
+            }
+            return Goal(
+                id = null,
+                startedOn = startedOn,
+                startWeightKg = startWeightKg,
+                targetWeightKg = targetWeightKg,
+                rateKgPerWeek = rateKgPerWeek,
+                active = true,
+            )
+        }
+
         /** Energy density of body fat — the basis for rate → deficit. */
         const val KCAL_PER_KG_FAT = 7700.0
 

@@ -182,6 +182,22 @@ class WeightTrendTest {
     }
 
     @Test
+    fun `the earliest point is the oldest reading, not the newest`() {
+        // What a Goal anchors on when it starts before anything was weighed, so the
+        // two ends have to be told apart: a trend that fell makes them different
+        // figures as well as different days.
+        val trend = trendFalling(fromKg = 87.0, toKg = 86.0, overDays = 10)
+
+        assertEquals(87.0, trend.earliest()!!.trendKg, 1e-9)
+        assertEquals(today.minusDays(10), trend.earliest()!!.date)
+    }
+
+    @Test
+    fun `there is no earliest point before anything is weighed`() {
+        assertNull(WeightTrend(emptyList()).earliest())
+    }
+
+    @Test
     fun `a trend is established once fourteen days carry a reading`() {
         // The threshold the observed rate is withheld under, counted in readings here:
         // a line needs points, where a rate needs a span to divide across.

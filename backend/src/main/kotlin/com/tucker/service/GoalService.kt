@@ -24,12 +24,21 @@ class GoalService(
      * Budget and Protein Floor) takes effect immediately rather than waiting up to a
      * week for the next review cadence.
      *
-     * The **start weight is derived here** as the live Trend Weight at creation
-     * (ADR 0016) — the client can't compute the EWMA, and anchoring on the trend
-     * makes a fresh Goal read 0% (start == now). It's computed once and reused as
-     * both the anchor and the target guard: a target at or above the trend is
-     * already-reached and rejected. With no reading there is no trend, so the Goal
-     * can't be anchored and is rejected.
+     * The **start weight is derived here** as the Trend Weight standing on
+     * [startedOn] (ADR 0016) — the client can't compute the EWMA, and anchoring on
+     * the trend makes a fresh Goal read 0% (start == now). For a Goal started today
+     * that is normally the live trend; it differs for a backdated start — where
+     * anchoring on today's would hand the plan a run of loss already banked, so it
+     * reads as near-target from its first day — and for a reading dated ahead of
+     * the start, which ADR 0014's ±1 tolerance admits across two devices.
+     * A start before the first reading anchors on the earliest point instead, the
+     * first thing known about this body; with no reading at all there is no trend,
+     * so the Goal can't be anchored and is rejected.
+     *
+     * The **target** is guarded twice, because the two figures part exactly when the
+     * anchor does: at or above the **live** trend the Goal is already reached, and at
+     * or above the **anchor** the plan would run upward from where it began. Both name
+     * `targetWeightKg`, so whichever refuses reaches the input the User typed it into.
      *
      * A deliberate Goal change is one of the few moments the Budget is allowed to
      * move mid-week — clock-driven ticks still hold it steady. The recompute
@@ -45,16 +54,20 @@ class GoalService(
         rateKgPerWeek: Double,
         today: LocalDate,
     ): Goal {
-        val trendKg = currentTrendKg()
+        val trend = WeightTrend.from(weights.findAll())
+        val trendKg = trend.latest()?.trendKg
             ?: throw IllegalArgumentException("log your weight before setting a goal")
         refuseTargetNotBelowTrend(targetWeightKg, trendKg)
-        val goal = Goal(
-            id = null,
+        // standingOn is null only for a start before the first reading, and latest()
+        // above proved there is one, so earliest() always answers.
+        val anchorKg = requireNotNull(trend.standingOn(startedOn) ?: trend.earliest()).trendKg
+        refuseTargetNotBelowAnchor(targetWeightKg, anchorKg)
+        val goal = Goal.started(
             startedOn = startedOn,
-            startWeightKg = trendKg,
+            startWeightKg = anchorKg,
             targetWeightKg = targetWeightKg,
             rateKgPerWeek = rateKgPerWeek,
-            active = true,
+            today = today,
         )
         refuseRateOutrunningMaintenance(goal, today)
         goals.deactivateAll()
@@ -63,7 +76,26 @@ class GoalService(
         return saved
     }
 
-    /** The target sits below the live trend the Goal anchors its start on (ADR 0016). */
+    /**
+     * The target sits below the weight the Goal starts from — the same rule [Goal]'s
+     * own invariant states, said here so the refusal names the input the User typed
+     * it into. The two guards are one figure whenever the anchor is the live trend,
+     * which is the usual case and not a guarantee: a reading dated after the start
+     * parts them with no backdating at all (ADR 0014's ±1 across two devices). A
+     * bare invariant failure would then reach the form as though no field were at
+     * fault, having just previewed a start weight the User was never refused against.
+     */
+    private fun refuseTargetNotBelowAnchor(targetWeightKg: Double, anchorKg: Double) {
+        if (targetWeightKg >= anchorKg) {
+            throw InvalidFieldException(
+                field = "targetWeightKg",
+                message = "a weight-loss Goal needs a target below the weight it starts from " +
+                    "(${"%.1f".format(anchorKg)} kg)",
+            )
+        }
+    }
+
+    /** The target sits below the live trend, or the Goal is already reached (ADR 0016). */
     private fun refuseTargetNotBelowTrend(targetWeightKg: Double, trendKg: Double) {
         if (targetWeightKg >= trendKg) {
             throw InvalidFieldException(

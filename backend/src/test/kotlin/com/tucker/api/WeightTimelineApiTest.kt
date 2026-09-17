@@ -34,6 +34,9 @@ class WeightTimelineApiTest {
     @Autowired lateinit var reminderState: ReminderStateRepository
     @Autowired lateinit var reviews: WeeklyReviewRepository
 
+    // Must stay in the past: none of the seeding helpers sends a `clientToday`, so
+    // the server resolves its own date, and `weighIn` is refused first — a reading
+    // may not be in the future. Only ever recedes, so it cannot start failing.
     private val day = LocalDate.of(2026, 9, 6)
     private val from = day.minusDays(27)
 
@@ -95,8 +98,8 @@ class WeightTimelineApiTest {
     }
 
     /**
-     * An active Goal from [startedOn]. The start weight is not sent: it is the live
-     * Trend Weight at creation (ADR 0016), which is what anchors the plan.
+     * An active Goal from [startedOn]. The start weight is not sent: it is the Trend
+     * Weight standing on [startedOn] (ADR 0016), which is what anchors the plan.
      */
     private fun setGoal(startedOn: LocalDate, targetWeightKg: Double, rateKgPerWeek: Double) {
         mockMvc.post("/api/goal") {
@@ -188,13 +191,13 @@ class WeightTimelineApiTest {
 
         timeline().andExpect {
             status { isOk() }
-            // 79.9 is the Trend Weight the Goal was derived from (ADR 0016), stamped
-            // on the day it says it started. Backdating is a fixture device to get a
-            // drawn run out of one window — the app always starts a Goal today, where
-            // the anchor and the trend beneath it are the same figure.
-            jsonPath("$.days[0].trajectoryKg") { value(79.9) }
-            jsonPath("$.days[7].trajectoryKg") { value(79.4) }
-            jsonPath("$.days[14].trajectoryKg") { value(78.9) }
+            // The plan starts from the Trend Weight standing on the day it says it
+            // started (ADR 0016), which on the first reading is that reading itself,
+            // and falls half a kilo a week from there. Backdating is a fixture device
+            // to get a drawn run out of one window; the app always starts a Goal today.
+            jsonPath("$.days[0].trajectoryKg") { value(80.0) }
+            jsonPath("$.days[7].trajectoryKg") { value(79.5) }
+            jsonPath("$.days[14].trajectoryKg") { value(79.0) }
             // A plan is not a log, and the client reads this figure as "there is an
             // intake half" — a count of none would draw a tracking window.
             jsonPath("$.loggedDays") { value(null) }

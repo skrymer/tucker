@@ -53,7 +53,8 @@ class GoalApiTest {
     }
 
     private fun postGoal(startedOn: String, targetWeightKg: Double) {
-        // The start weight is derived from the live trend (ADR 0016), not sent.
+        // The start weight is derived, not sent: the trend standing on [startedOn]
+        // (ADR 0016), which for these backdated dates is the earliest point.
         mockMvc.post("/api/goal") {
             contentType = MediaType.APPLICATION_JSON
             content = """{"startedOn":"$startedOn","targetWeightKg":$targetWeightKg,"rateKgPerWeek":0.5}"""
@@ -186,7 +187,7 @@ class GoalApiTest {
     }
 
     @Test
-    fun `POST goal derives the start weight from the live trend, not a client value`() {
+    fun `POST goal derives the start weight from the trend, not a client value`() {
         // Two readings a day apart: the trend lags the latest reading.
         // EWMA (α = 0.10): 0.1·107.5 + 0.9·107.0 = 107.05.
         val today = java.time.LocalDate.now()
