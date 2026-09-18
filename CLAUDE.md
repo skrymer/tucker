@@ -152,7 +152,9 @@ single-viewport walk-through misses half the layout. Automated tests
 can't catch UX regressions like an overlapping toast or a broken
 responsive layout; the walk-through can. Invoke it via the `/verify`
 skill, which wraps the protocol and emits a verdict the reviewer can
-replay. It runs **twice** in `/feature-sign-off` — a one-viewport
+replay — and then has an agent **audit that verdict against the diff**,
+since the person choosing the probes is otherwise the person scoring
+them. It runs **twice** in `/feature-sign-off` — a one-viewport
 reachability pass before the other gates, and this walk-through last,
 on the code that ships, because the gates in between change behaviour
 every time.
@@ -166,7 +168,11 @@ ruling, boundary rule, domain term) and emitting a per-constraint
 pass/fail/uncertain verdict that cites both the doc line and the code.
 The three gates are complementary: `/verify` checks runtime behaviour,
 `/code-review` checks correctness, and `/check-adrs` checks that the
-implementation honours the decisions already made.
+implementation honours the decisions already made. All three presume the
+change is wanted, so `/feature-sign-off` adds a fourth voice that does
+not — one agent per run is briefed to argue the change should **not**
+merge; see *Keeping the fan-out independent* in that skill for the two
+rules that keep the rest of the fan-out independent of the author.
 
 Linting and formatting are also enforced locally. ESLint + Prettier run on
 staged frontend files via a pre-commit hook — enable it once per clone with

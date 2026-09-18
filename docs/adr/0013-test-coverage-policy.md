@@ -61,7 +61,7 @@ glue's failing red simply lives in the integrated test, not in a unit test.
 This ADR answers *which units get a test*; it does not answer *whether those tests
 assert enough*. Mutation testing answers the second question by rewriting the
 source one mutant at a time — a mutant no test notices is a line no assertion
-pins. Both stacks run it, driven by the `/mutation-test` skill as gate 3 of
+pins. Both stacks run it, driven by the `/mutation-test` skill as gate 2 of
 `/feature-sign-off`: **StrykerJS** over the Vitest suite (`pnpm test:mutation`)
 and **pitest** over the fast JUnit suite (`./gradlew mutationTest`).
 
