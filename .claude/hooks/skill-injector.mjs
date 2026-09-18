@@ -96,7 +96,7 @@ export const RULES = [
     skill: 'feature-sign-off',
     scope: 'project',
     pattern: /\bsign[- ]?off\b|\bsigned[- ]?off\b|ready to (commit|push|ship)|\b(open|raise) (a|the) pr\b|\brun the gates\b|\bwrap (this |it )?up\b/i,
-    why: 'run the six gates in order — not the gates ad hoc, and not after the commit.',
+    why: 'run the seven gates in order — not the gates ad hoc, and not after the commit.',
   },
   {
     id: 'frontend-design',

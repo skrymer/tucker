@@ -10,7 +10,7 @@
 
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { execFileSync } from 'node:child_process'
@@ -46,6 +46,20 @@ test('every rule declares a scope the test knows how to treat', () => {
 
 test('a prompt about committing is reminded to run the sign-off gates', () => {
   assert.ok(skillsOf('this is done, ready to push').includes('feature-sign-off'))
+})
+
+test("the sign-off reminder names as many gates as the skill has", () => {
+  const skill = readFileSync(
+    join(repoRoot, '.claude', 'skills', 'feature-sign-off', 'SKILL.md'),
+    'utf8',
+  )
+  const declared = skill.match(/Runs (\w+) quality gates/)?.[1]
+  assert.ok(declared, 'feature-sign-off/SKILL.md no longer declares a gate count')
+  const why = RULES.find((r) => r.id === 'feature-sign-off').why
+  assert.ok(
+    why.includes(`${declared} gates`),
+    `the reminder says "${why}" while the skill runs ${declared} gates`,
+  )
 })
 
 test('a prompt about a Playwright spec is reminded of both testing skills', () => {

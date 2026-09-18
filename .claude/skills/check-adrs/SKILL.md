@@ -20,8 +20,25 @@ is the user's call, surfaced as a finding.
 
 ## Workflow
 
-1. **Get the diff.** `git diff main...HEAD` (or the diff the user names). List the
-   changed files and the feature/issue under review.
+1. **Get the diff.** Anchor it on the merge base, not a branch name:
+
+   ```bash
+   git fetch -q origin
+   git diff $(git merge-base origin/main HEAD)
+   ```
+
+   Or the diff the user names. Why this base rather than a branch name, and why an
+   empty result is a STOP rather than a clean bill, is measured in
+   [`mutation-test`](../mutation-test/SKILL.md)'s step 1.
+
+   **Two-dot, not `...HEAD`.** This gate runs before the commit, so a three-dot
+   range ends at `HEAD` and omits everything still in the working tree. Measured in
+   this worktree, against the change being reviewed: the documented form returned 9
+   files, `$(git merge-base origin/main HEAD)...HEAD` returned **0**, and the old
+   `main...HEAD` returned **132** — the last of those being the stale branch name
+   rather than the three dots, since `main..HEAD` returns 132 too.
+
+   List the changed files and the feature/issue under review.
 
 2. **Map the diff to decisions.** Read `docs/adr/` filenames (they're descriptive)
    and the CONTEXT.md term list. Select every ADR and CONTEXT.md section the change

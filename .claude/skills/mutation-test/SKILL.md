@@ -78,11 +78,58 @@ Identical for both stacks; only step 1 and 2's commands differ.
 
 1. **Scope from the diff.** Mutating untouched source reports old debt as if this
    change caused it. Run the scoping command for the stack (below) **from the repo
-   root**. Diff against `main` **without** `...`, plus untracked files: sign-off
+   root**, after establishing the base commit:
+
+   ```bash
+   git fetch -q origin
+   git merge-base origin/main HEAD || echo "STOP: base unresolved — did the fetch run?"
+   ```
+
+   **The base is substituted inline in the scoping commands below, never carried in
+   a variable.** A shell variable does not survive between tool calls, and the two
+   scoping commands sit under their own headings, so they get run separately: with
+   `BASE` unset, `git diff --name-only ""` fatals to stderr while
+   `git ls-files --others` beside it in the same brace group still emits — so the
+   pipeline returns a list built from untracked files alone, or an empty one, at
+   **exit status 0**. That is the silent zero-scope this step exists to prevent, and
+   it is measured, not feared.
+
+   **The base is the merge base, not a branch name** — Tucker's worktrees keep
+   `main` checked out elsewhere, so local `main` lags by however long this worktree
+   has been open, and `origin/main` moves under you. Both are wrong, in opposite
+   directions. Measured by replaying one branch (`fix-331-goal-future-start-date`,
+   backend main source only):
+
+   | base | files returned |
+   | --- | --- |
+   | `main` (local, stale) | **20** — nearly all untouched by the change |
+   | `origin/main` (after that branch merged) | **0** — silently reported SKIP, which is what the rule below now STOPs |
+   | `$(git merge-base origin/main HEAD)` | **6** |
+
+   Those 6 are byte-identical to what the squash-merge landed. The `git fetch` is
+   not optional: an unfetched `origin/main` anchors the merge base to wherever this
+   clone last looked, which reproduces both failures.
+
+   Diff against the merge base **without** `...`, plus untracked files: sign-off
    usually runs before the commit, so a three-dot range against `HEAD` reports
    nothing and the gate silently passes having mutated zero files.
 
-   Empty list → that stack's source is untouched. Report **SKIP** for it.
+   **An empty list is two different facts, and the gate must say which.** Compare it
+   against the same union with the stack filter removed — untracked files included,
+   because the scoping commands count those and a branch whose whole change is a new
+   untracked doc would otherwise read as no change at all:
+
+   ```bash
+   { git diff --name-only "$(git merge-base origin/main HEAD)"
+     git ls-files --others --exclude-standard; } | sort -u
+   ```
+
+   - Non-empty → the change genuinely touches no mutable source in this stack
+     (docs, config, tests only). Report **SKIP**, naming the file count that
+     justified it.
+   - Empty, or `git merge-base` reported no commit → **STOP**. The branch holds no
+     change at all, or the base is wrong. This is not a SKIP, and reporting one
+     passes a gate that measured nothing.
 
 2. **Run** the engine over that scope.
 
@@ -123,7 +170,7 @@ Identical for both stacks; only step 1 and 2's commands differ.
 Scope (from the repo root):
 
 ```bash
-{ git diff --name-only main -- frontend/app frontend/server
+{ git diff --name-only "$(git merge-base origin/main HEAD)" -- frontend/app frontend/server
   git ls-files --others --exclude-standard -- frontend/app frontend/server
 } | grep -E '\.(ts|vue)$' | grep -vE '\.(test|spec)\.ts$' \
   | sed 's|^frontend/||' | sort -u | paste -sd,
@@ -201,7 +248,7 @@ name — `Entry.kt` holds `WeighedEntry` and `EstimatedEntry` — so the globs a
 read out of the files rather than derived from their paths:
 
 ```bash
-{ git diff --name-only main -- backend/src/main/kotlin
+{ git diff --name-only "$(git merge-base origin/main HEAD)" -- backend/src/main/kotlin
   git ls-files --others --exclude-standard -- backend/src/main/kotlin
 } | grep '\.kt$' | sort -u | while read -r f; do
     pkg=$(sed -n '/^package /{s///p;q}' "$f")
