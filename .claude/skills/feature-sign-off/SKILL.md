@@ -1,6 +1,6 @@
 ---
 name: feature-sign-off
-description: The pre-commit/push sign-off gate for a finished feature or fix on the Tucker repo. Runs seven quality gates in order — /verify twice (a cheap reachability pass first, the full two-viewport walk-through last, on the code that ships), with /simplify (apply cleanups), /mutation-test (do the tests actually catch bugs), /code-review (hunt correctness bugs), /check-adrs (honour recorded decisions) and a resolutions pass (nothing approves its own fix) in between — fixing what each surfaces before moving on, and only then commits and pushes. Use when a change is functionally complete and the user says "sign off", "ready to commit/push", "wrap up this feature", "run the gates", or before opening a PR.
+description: The pre-commit/push sign-off gate for a finished feature or fix on the Tucker repo. Runs seven quality gates in order — /verify twice (a cheap reachability pass first, the full two-viewport walk-through last, on the code that ships), with /simplify (apply cleanups), /mutation-test (do the tests actually catch bugs), /code-review (hunt correctness bugs), /check-adrs (honour recorded decisions) and a resolutions pass (nothing approves its own fix) in between — fixing what each surfaces before moving on, and only then commits and pushes. Every agent is briefed to a neutrality contract, one argues against merging, and a split between two agents is settled blind rather than by the author. Use when a change is functionally complete and the user says "sign off", "ready to commit/push", "wrap up this feature", "run the gates", or before opening a PR.
 ---
 
 # Feature sign-off
@@ -26,6 +26,11 @@ written from, `/simplify` changed an error state and `/code-review` changed the
 feature's own matching rule, and the walk-through had to be redone anyway. So the
 cheap half runs first, to stop the expensive gates being spent on a surface that
 does not load, and the real one runs last, on the code that ships.
+
+**Record every agent's `output_file` path as you spawn it.** Gate 5 reads those
+transcripts, and a path not written down when the agent ran is a directory hunt
+later — so this one instruction has to be obeyed several gates before the gate that
+needs it.
 
 0. **`/verify` (reachability) — does it run at all?** One viewport, the golden
    path, no probes. Two minutes. A FAIL or BLOCKED here stops the sign-off before
@@ -62,7 +67,8 @@ does not load, and the real one runs last, on the code that ships.
    unanchored aria-snapshot regex and a substring `getByText` both pass a change
    they should have caught). Budget roughly a minute for a frontend scope and a
    few for a backend one. SKIP the stack with a note if the diff touches no
-   mutable source there (docs, config, tests only).
+   mutable source there (docs, config, tests only); that skill's step 1 owns the
+   base, the command and the SKIP-vs-STOP rule.
 
 3. **`/code-review medium` — hunt correctness bugs.** Review the (now-simplified)
    diff for real bugs. **Run it at `medium` effort**, not the default high: at
@@ -75,13 +81,18 @@ does not load, and the real one runs last, on the code that ships.
    unexplained finding through. (Bump to high only if the diff is large or
    security-sensitive and you want the broader net despite the redundancy.)
 
+   **Launch the adversary (Brief A) in this same message.** `/code-review` runs
+   inline, so the adversary is a background agent alongside it and gate 4. See
+   *Keeping the fan-out independent* below for what it is and why it is not a
+   fourth reviewer.
+
 4. **`/check-adrs` — honour the recorded decisions.** Verify the diff against the
    ADRs in `docs/adr/` and the ubiquitous language in `CONTEXT.md`. A FAIL is
    either a code fix or a same-PR doc fix (per `[[prefer-source-fix-over-adr]]`)
    — the user's call, surfaced.
 
-   **Launch it in the same message as gate 3.** Both are pure read-and-report —
-   neither edits the tree, and you apply both sets of findings afterwards — so
+   **Launch it in the same message as gate 3.** All three are pure read-and-report —
+   none edits the tree, and you apply all three sets of findings afterwards — so
    running them back to back spends the shorter one's wall-clock for nothing
    (4–7 min against code-review's 12 in the run this was measured on). The cost
    is that it judges pre-fix code: when code-review's fixes land, re-check **only
@@ -100,8 +111,10 @@ does not load, and the real one runs last, on the code that ships.
    most time pressure; and a set of dismissals whose only reader wrote them.
 
    Hand a **fresh agent** the findings from gates 1–4 with the resolution recorded
-   against each, the current diff, and the same context pack the other agents got.
-   It answers two questions and nothing else:
+   against each, the current diff, the same context pack the other agents got,
+   [`references/agent-briefs.md`](references/agent-briefs.md), and **the transcript
+   path of every agent the run spawned**. It answers three
+   questions and nothing else:
 
    - **Does each fix address the finding it cites, without introducing something
      new?** A plausible-but-wrong fix is the failure mode here, and it lands at
@@ -109,6 +122,41 @@ does not load, and the real one runs last, on the code that ships.
    - **Does each dismissal hold?** "By design per ADR 00xx", "pre-existing", "out
      of scope" are checkable claims, and the agent has the ADRs to check them
      against.
+   - **Is the pack faithful to the transcripts?** Both halves of every pair above
+     are written by the author from memory of the agent output, so this gate would
+     otherwise adjudicate the author's account of a finding against the author's
+     reason for dismissing it. Check for findings that were softened, merged into
+     another, or dropped on the way in, and check each brief against the prompt
+     contract while the file is open. Two of those checks are about **absence**:
+     - the adversary has a transcript at all — it is marked *Fires: every
+       sign-off* — and so does the blind arbiter if any two agents split;
+     - the adversary's brief carries all six angles Brief A names.
+
+     A contract that only forbids things catches a smuggled defence and misses an
+     adversary quietly cut from six angles to two, or one that never ran at all.
+     The **verdict auditor** is the one mandated agent this gate cannot check: it
+     fires inside gate 6, after this one. Nothing in the run can catch its absence,
+     so gate 6's own line in the report is what makes it visible.
+
+   **Reading the transcripts.** The paths are the `output_file`s you recorded above.
+   Failing that they are in `/tmp/claude-*/<project-slug>/<session-id>/tasks/`, where
+   the **symlinks** are agent transcripts and the regular `.output` files are
+   backgrounded shell output. Either way a transcript runs to hundreds of KB of JSONL
+   and occasionally past 4 MB, so read it with these rather than opening it:
+
+   ```bash
+   head -n 1 <transcript> | jq -r '.message.content'   # the brief it was sent
+   jq -r 'select(.type=="assistant") | .message.content[]?
+          | select(.type=="text") | .text' <transcript>   # what it reported
+   ```
+
+   **Don't bound the second one with `tail`.** An extracted report runs to tens of
+   lines, not hundreds, and agents here routinely put the verdict *first* — a
+   `tail -40` over a 73-line report silently drops the conclusion gate 5 exists to
+   compare against. These two extractions are also the standing exception to the
+   harness's "do not read a transcript via the shell" warning, which is about
+   opening the raw JSONL: both are bounded, and the second is the only way to see
+   what an agent actually said.
 
    It reports; it does not edit. A rejected fix or dismissal goes back to the gate
    that owns it, and that gate's re-run is what closes it — not a second opinion
@@ -116,8 +164,11 @@ does not load, and the real one runs last, on the code that ships.
 
    **It is not a second `/code-review`.** It hunts nothing: given a finding and a
    resolution it judges that one pair, which is a far narrower question than gate
-   3's and costs accordingly. If gates 1–4 produced no findings at all, SKIP it
-   and say so — there is nothing to adjudicate.
+   3's and costs accordingly. **If any gate spawned an agent, this gate runs** —
+   the old condition was "if gates 1–4 produced no findings", which the interested
+   party decided, about their own run. A run with no findings still has briefs to
+   check against the contract, which is work this gate owes whatever the ledger
+   says.
 
 6. **`/verify` (the walk-through) — does the shipping code actually work?** Both
    viewports, the golden path, and the **input probes** the skill now names — the
@@ -126,9 +177,66 @@ does not load, and the real one runs last, on the code that ships.
    before the commit, so nothing changes under it. A FAIL sends you back to
    whichever gate owns the fix, and then back here.
 
+   The walk-through pass ends with an agent **auditing the verdict against the
+   diff**; that step belongs to `/verify` and is defined there, because a verdict
+   means the same thing whoever asked for it.
+
+## Keeping the fan-out independent
+
+The fan-out buys fresh **context**, not an independent **position**, unless three
+things hold — none of them automatic.
+
+**1. Briefs are neutral, by contract.** The author writes every agent's prompt, so a
+brief is where the author's conclusion leaks into the review. The contract — what a
+brief carries, what it never carries, and how to present a justification that has to
+be *tested* rather than confirmed — is in
+[`references/agent-briefs.md`](references/agent-briefs.md). The line it draws is
+**description against defence**, with the pair of real briefs that fell either side
+of it.
+
+**2. One agent per run argues against merging.** Every other gate presumes the change
+is wanted: gate 1 cleans it, gate 3 hunts bugs *within* it, gate 4 checks it against
+recorded decisions. Nothing asks whether it should exist. The adversary does, and it
+is scoped to the **premise and the choice of fix** — not line-level bugs, which gate
+3 owns and which a duplicate agent would only find again. Brief A in the reference.
+
+Its findings enter fix-or-justify like any other, so gate 5 judges the dismissal
+against the transcript. The one escalation: **an attack you cannot answer from the
+repo's own recorded decisions stops the sign-off and goes to the user.** "Should this
+change exist" is a product call, and no agent in this list owns it — the same routing
+`/check-adrs` already uses for a FAIL. "It is sound, and here is the attack that came
+closest" is a complete result; the brief says so explicitly, because an adversary that
+must produce a kill will invent one.
+
+**3. Splits are settled blind, not by the author.** When two agents in the run reach
+opposing conclusions **on the same question**, you do not arbitrate. Spawn the blind
+arbiter (Brief B), which states its own rules of evidence — including that it may
+answer "the precedents point both ways" and pick nothing, a real finding meaning the
+repo owes a written criterion it does not have.
+
+Gate 1's three-agent fan-out is where this happens most, but the rule is not scoped
+there: gate 3 and gate 4 can split the same way, when a correctness fix runs into a
+recorded constraint. The trigger is narrow — *opposing answers to one question*, not
+two findings you have to prioritise. **The arbiter's pick is what lands.** If you
+override it, that override goes into gate 5's pack as its own finding-and-resolution
+pair; a rule that forbade the override outright would be unenforceable, since you
+write the code either way.
+
+### What this costs
+
+| Addition | Agents | Wall-clock |
+| --- | --- | --- |
+| The adversary | +1 | **none** — it rides in gate 3's message and finishes inside the longest gate |
+| The verdict auditor (`/verify`, gate 6) | +1 | serial, a few minutes, after the browser work |
+| The blind arbiter | +1 *when a split fires* | serial, on the critical path — most runs never spawn it |
+| Gate 5 reading transcripts | none | a handful of extra tool calls inside an agent that already runs |
+
+For scale: the session that carried gates 3–6 of the #331 sign-off spawned three
+agents. The two standing additions take a run of that shape from three to five.
+
 ## Spending the agents well
 
-Gates 1, 3, 4 and 5 fan out to subagents, and they are the sign-off's critical path —
+Gates 1, 3, 4, 5 and 6 fan out to subagents, and they are the sign-off's critical path —
 everything else is minutes, they are tens of minutes. Two things cut that without
 losing a finding:
 
@@ -137,7 +245,8 @@ losing a finding:
   read `log.vue`, `catalog.ts` and the ADRs, at ~15–35 tool calls apiece. Write the
   diff to a scratch file *and* inline the three-to-five files the angle actually
   needs, then say which further reading is expected. Naming the files it will need
-  is also what stops it wandering.
+  is also what stops it wandering — and it must carry the contract's
+  read-anything-else sentence, so the pack cannot double as a fence.
 - **Batch the fixes, not one test run each.** Findings arrive in groups and most are
   independent. Apply a whole gate's worth, then run the touched spec once. The
   exception is a fix you intend to prove by hand-mutation — those stay one at a
@@ -179,9 +288,13 @@ Emit a short sign-off summary the user (and PR reviewer) can replay:
 1. /simplify       ✅ applied 1 cleanup (consolidated kg formatter)
 2. /mutation-test  ⚠️ 27/29 killed on 2 files → 1 gap closed (new test), 1 equivalent
 3. /code-review md ⚠️ 2 findings → both fixed (double-render, banner copy); 4 by-design
+   adversary       ✅ SHOULD MERGE — closest attack: "unreachable from the UI" (it isn't; /log posts it)
+   blind arbiter   — not spawned (no split)
 4. /check-adrs     ⚠️ 1 FAIL → fixed CONTEXT.md (stale auto-deactivate wording)
 5. resolutions     ⚠️ 7 judged → 6 upheld; 1 dismissal rejected ("pre-existing" — the diff moved that line) → fixed
+                   pack faithful to 5 transcripts; briefs clean
 6. /verify (walk)  ✅ desktop + phone; probes: 0 kg ✅ · 300 kg ✅ · goal already reached ✅
+   verdict audit   ⚠️ 1 UNCOVERED (start date = today) → drove it ✅
 
 Suites green (detekt/build, lint/test). Committed + pushed to <branch>.
 ```
@@ -218,6 +331,14 @@ Suites green (detekt/build, lint/test). Committed + pushed to <branch>.
   after every fix has landed, and before the walk-through, so gate 6 is the last
   word on code some reviewer has actually read. Borrowed from oh-my-claudecode's
   rule that an approval pass may not run in the context that authored the work.
+- **A briefed agent is not an independent one.** Fresh context is not a fresh
+  position — but the evidence for that is weaker than it first looked, and the
+  transcripts are what weakened it. The framed agent in the run this was written
+  from did *not* simply agree: it tested the claim and called its stated reason
+  circular, and both agents found the same counter-precedent. What the framing
+  bought was a narrower question, asked in the author's terms. That is a milder
+  defect than agreement, and it is still the defect the contract exists for — a
+  claim to test beats a claim to check.
 - **Don't rubber-stamp.** A gate that found nothing is a result worth stating;
   a gate skipped is a gap. If you skip one (e.g. `/verify` SKIP for a docs-only
   change), say which and why.

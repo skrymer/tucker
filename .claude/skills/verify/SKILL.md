@@ -1,11 +1,11 @@
 ---
 name: verify
-description: The runtime walk-through gate for Tucker — drive the real app in a real browser with the claude-in-chrome MCP tools, at both phone and desktop viewports, and emit a verdict a reviewer can replay. Runs twice in feature-sign-off: a one-viewport reachability pass before the other gates, and the full walk-through last, on the code that ships. Use when a change is functionally complete and you need runtime evidence it actually works, when the user says "verify this", "walk it through", "does it actually work", or before opening a PR that touches a user-facing surface. This is runtime behaviour only — /code-review checks correctness and /check-adrs checks recorded decisions.
+description: The runtime walk-through gate for Tucker — drive the real app in a real browser with the claude-in-chrome MCP tools, at both phone and desktop viewports, emit a verdict a reviewer can replay, and have that verdict audited against the diff by an agent. Runs twice in feature-sign-off: a one-viewport reachability pass before the other gates, and the full walk-through last, on the code that ships. Use when a change is functionally complete and you need runtime evidence it actually works, when the user says "verify this", "walk it through", "does it actually work", or before opening a PR that touches a user-facing surface. This is runtime behaviour only — /code-review checks correctness and /check-adrs checks recorded decisions.
 ---
 
 # Verify (Tucker)
 
-**Gates 0 and 5 of [`feature-sign-off`](../feature-sign-off/SKILL.md).** Tests prove the
+**Gates 0 and 6 of [`feature-sign-off`](../feature-sign-off/SKILL.md).** Tests prove the
 code does what you told it to; this proves the *app* does what the user needs. Automated
 tests can't catch an overlapping toast, a broken responsive layout, a focus trap, or a
 control that's unreachable one-handed — a walk-through can.
@@ -44,7 +44,8 @@ explicitly in the verdict.
 4. **Probe the input space, then the states.** See below — this is the step that earns
    the gate, and the one most easily reduced to nothing.
 5. **Emit the verdict** (below).
-6. **Clean up**: stop the dev server you started and delete any scratch asset you
+6. **Audit the verdict** — walk-through pass only. See below.
+7. **Clean up**: stop the dev server you started and delete any scratch asset you
    dropped into the repo. Confirm with `git status --short`.
 
 ## Probing — inputs first, states second
@@ -141,6 +142,25 @@ label the verdict `PASS (Playwright fallback — claude-in-chrome unavailable)`.
 
 Gate 0's verdict is one line: `reachability ✅ — <surface> loads and <the one action>
 works at <width>`.
+
+## Auditing the verdict — the prober is also the scorer
+
+You choose which probes to drive and then write the verdict that says they were
+enough. Nothing in that loop checks the verdict **against the diff** — whether the
+values you drove reach the inputs the change accepts.
+
+So the walk-through pass ends by handing one agent the verdict verbatim and the diff,
+and asking exactly one question: do these probes cover the inputs this change accepts,
+at their boundaries? The brief is **Brief C** in
+[`feature-sign-off/references/agent-briefs.md`](../feature-sign-off/references/agent-briefs.md).
+It drives no browser and re-verifies nothing — it enumerates the inputs from the diff
+and checks each against a concrete value in the verdict.
+
+- **UNCOVERED or WEAK sends you back into the browser**, not into a justification.
+  Drive the values it names, then extend the verdict.
+- **The reachability pass is exempt** — it has no probes to audit.
+- Append the result to the verdict, so a reviewer sees what was checked:
+  `verdict audit: 4 inputs — 3 COVERED, 1 UNCOVERED (start date = today) → drove it ✅`
 
 ## Notes
 
