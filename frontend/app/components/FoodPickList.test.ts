@@ -13,6 +13,14 @@ const oats = food({
 })
 
 describe('FoodPickList', () => {
+  it('states a row name in sentence case however it was typed', async () => {
+    await renderSuspended(FoodPickList, {
+      props: { foods: [food({ id: 3, name: 'LIGHT MILK' })] },
+    })
+
+    expect(screen.getByText('Light milk')).toBeVisible()
+  })
+
   it('states what a row costs and returns per 100 g, beside its name', async () => {
     await renderSuspended(FoodPickList, { props: { foods: [oats] } })
 

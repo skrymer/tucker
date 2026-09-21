@@ -223,12 +223,12 @@ const queueLabel = computed(() => {
             <li v-for="item in intake.unmatched" :key="item.foodId">
               <button
                 type="button"
-                :aria-label="`Match ${item.name}`"
+                :aria-label="`Match ${formatName(item.name)}`"
                 class="flex w-full items-baseline justify-between gap-3 rounded-md py-2.5 text-left hover:bg-elevated active:bg-elevated"
                 @click="emit('match', item)"
               >
                 <span class="min-w-0 truncate font-medium text-default">
-                  {{ item.name }}
+                  {{ formatName(item.name) }}
                 </span>
                 <!-- Its share of the window, which is why it sorts where it does:
                    the first few taps are most of a week (ADR 0027). -->

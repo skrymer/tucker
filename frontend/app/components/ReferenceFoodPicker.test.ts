@@ -32,6 +32,34 @@ describe('ReferenceFoodPicker', () => {
     ).toBeVisible()
   })
 
+  it('states the Food in sentence case and the candidate as FSANZ published it', async () => {
+    registerEndpoint('/api/reference-foods', () =>
+      referenceFoodSearch({
+        candidates: [
+          referenceFoodCandidate({
+            id: 101,
+            name: 'Soft drink, energy drink, Red Bull',
+          }),
+        ],
+      }),
+    )
+
+    await renderSuspended(ReferenceFoodPicker, {
+      props: { food: { id: 3, name: 'LIGHT MILK', referenceFoodName: null } },
+    })
+
+    // The qualifier is the whole of what a User reads when they tap to confirm a
+    // match, and it is already sentence case as published — stating it would
+    // lowercase `Red Bull` and leave them choosing between forty entries that
+    // differ only there (ADR 0027).
+    expect(
+      await screen.findByText('Soft drink, energy drink, Red Bull'),
+    ).toBeVisible()
+    expect(
+      screen.getByRole('dialog', { name: 'Match Light milk' }),
+    ).toBeVisible()
+  })
+
   it('shows the figures that tell the candidates apart, under each name', async () => {
     registerEndpoint('/api/reference-foods', () =>
       referenceFoodSearch({

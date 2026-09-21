@@ -110,12 +110,16 @@ grams, so a bare gram figure beside a Food name reads as a portion weight.
 Four properties of that are deliberate:
 
 - **The words are the row's words.** The description is `formatEntryName(response)`,
-  the same helper the Today row and the delete confirm use, so the toast cannot
-  drift from the row the user is about to read. It names both arms without a
-  branch because it reads the `EntryResponse`'s own `name`, which the backend
-  states per arm. Keeping one string for all three surfaces is the point — the
-  cost is that a test asserting an entry's name must scope itself to the surface
-  it means, because while the toast is up the words genuinely appear twice.
+  so the toast cannot drift from the row the user is about to read. It names both
+  arms without a branch because it reads the `EntryResponse`'s own `name`, which
+  the backend states per arm. The **words** are shared and the **shape** is not:
+  the toast and the delete confirm are prose with nowhere to put a second line,
+  so they run the name and the figures together, while the Today row states the
+  same pair over two lines through `FigureRow` (frontend/DESIGN.md → Figure row)
+  and keeps `formatEntryName` only for its delete button's accessible name. The
+  cost is unchanged — a test asserting an entry's name must still scope itself to
+  the surface it means, because while the toast is up the words genuinely appear
+  twice.
 - **The name and the figures are the server's.** The description is composed from
   the `EntryResponse` the POST returns, never re-derived client-side: computing
   `grams ÷ 100 × caloriesPer100g` in the UI is exactly the business logic
@@ -138,24 +142,24 @@ Four properties of that are deliberate:
   didn't type one"; that is accepted, and recorded against **Estimated Entry** in
   `CONTEXT.md` rather than fixed with a "not logged" clause the user who left the
   field blank already knows.
-- **A long name wraps; it is not truncated.** Nothing in Tucker bounds a Food
-  name — not Zod, not the domain, not the column — and provider-sourced ones run
-  long. But the figures sit at the *end* of the string, so clamping the
-  description would drop precisely the part that confirms the log. The Today row
-  already wraps a long name, and the toast matches it.
+- **A long name wraps in the toast; it is truncated in the row.** Nothing in
+  Tucker bounds a Food name — not Zod, not the domain, not the column — and
+  provider-sourced ones run long. In the toast the figures sit at the *end* of the
+  string, so clamping the description would drop precisely the part that confirms
+  the log: it wraps. That reason does not reach the row, where the figures have a
+  line of their own and the name can be clipped without losing them, so the row
+  truncates (`FigureRow`). The Frequent-Foods tile is the third answer — it wraps
+  to two lines, having no room to the side (frontend/DESIGN.md).
 
   Measured at a 320px column (the real CSS chain: `main p-4` → 288px, `UCard
-  p-4` → 256px, name span 212px), adding the protein clause takes a *short*
-  weighed row from one line to two; a long name already wrapped to three and
-  absorbs the clause without gaining a line, and a protein-less row is unchanged.
-  The row's 36px delete button already sets its height floor, so the second line
-  costs **+12px**, not a full line — a three-entry ledger card grows 254px →
-  266px. That is why the flowing single string is kept and the ledger's
-  three-row cap stands. A two-column row (name left, figures right) was rejected
-  for the phone: it stays compact only by abbreviating to `11 g`, which is the
-  ambiguity the spelled-out unit exists to avoid. `pages/design.vue` mocked that
-  shape and was brought onto the shipped one, so the gallery and the app can't
-  disagree about the row.
+  p-4` → 256px, name span 212px), the second line costs **+12px** and not a full
+  one, because the row's 36px delete button already sets its height floor — which
+  is why the ledger's three-row cap still stands now that *every* row is two
+  lines. A two-column row (name left, figures right) stays rejected for the
+  phone: it is compact only by abbreviating to `11 g`, the ambiguity the
+  spelled-out unit exists to avoid. Two *rows* are not that — the pair gets the
+  full width and the far end carries only the action. `pages/design.vue` is kept
+  on the shipped shape, so the gallery and the app can't disagree about the row.
 
 Validation errors (bad input) are **not** toasts and never were — they stay
 inline next to the field via the Zod `UForm` setup ([0003](0003-validate-forms-with-zod.md)).

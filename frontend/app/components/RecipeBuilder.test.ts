@@ -47,6 +47,24 @@ describe('RecipeBuilder', () => {
     expect(row).toHaveTextContent('510 kcal')
   })
 
+  it('names a Food in sentence case at every step of adding it', async () => {
+    const user = userEvent.setup()
+    await renderSuspended(RecipeBuilder, {
+      props: { foods: [food({ id: 3, name: 'LIGHT MILK' })] },
+    })
+
+    await user.click(screen.getByRole('button', { name: /add ingredient/i }))
+    // The pick list, then the grams step it leads to, then the ingredient row.
+    expect(screen.getByText('Light milk')).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: /Light milk/ }))
+    expect(screen.getByText('Light milk')).toBeVisible()
+
+    await user.type(screen.getByLabelText(/grams/i), '250')
+    await user.click(screen.getByRole('button', { name: /^add$/i }))
+    expect(screen.getByText('Light milk')).toBeVisible()
+  })
+
   /** Pick a Food, weigh it in, and return to the build step. */
   async function addIngredient(
     user: ReturnType<typeof userEvent.setup>,

@@ -25,8 +25,9 @@ test('user logs a Weighed entry from Log and the toast names it', async ({
   const grams = 100
   const expectedKcal = 383
   const expectedProtein = 13
-  // How the Entry reads once the backend has derived both figures — the same
-  // string the toast and the Today row must show (ADR 0005).
+  // How the Entry reads once the backend has derived both figures — the string
+  // the toast shows. Today states the same words over two lines (ADR 0005), so
+  // the row is reached by name rather than by this.
   const expectedName = `${foodName} — ${expectedKcal} kcal · ${expectedProtein} g protein`
 
   // Setup: seed a food in the catalog.

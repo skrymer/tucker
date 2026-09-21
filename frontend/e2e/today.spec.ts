@@ -1,4 +1,4 @@
-import { weighedEntry } from '../test/entry-fixtures'
+import { estimatedEntry, weighedEntry } from '../test/entry-fixtures'
 import { goalProgress } from '../test/goal-fixtures'
 import { expect, test } from './support/test'
 import {
@@ -173,4 +173,42 @@ test('the day ring and the goal ring are peers at the same size', async ({
 
   // And they stack rather than collide, at whichever viewport this project runs.
   expect(goal.y).toBeGreaterThanOrEqual(day.y + day.height)
+})
+
+test('a name long enough to clip never squeezes the flag beside it', async ({
+  page,
+  goto,
+}) => {
+  await mockWeightApi(page)
+  await mockNoActiveGoal(page)
+  await mockSummary(page, {
+    ...DAY_WITH_AN_ENTRY,
+    entries: [
+      estimatedEntry({ id: 1, calories: 240, protein: 8, label: 'Toast' }),
+      estimatedEntry({
+        id: 2,
+        calories: 240,
+        protein: 8,
+        // Longer than any phone column, so the name must clip rather than push
+        // the flag off the row.
+        label: 'RECONSTITUTED LONG LIFE FULL CREAM DAIRY MILK BEVERAGE',
+      }),
+    ],
+  })
+
+  await goto('/', { waitUntil: 'hydration' })
+
+  const rows = page.getByRole('main').getByRole('listitem')
+  const shortFlag = rows.filter({ hasText: 'Toast' }).getByText('est.')
+  const longFlag = rows
+    .filter({ hasText: 'Reconstituted long life' })
+    .getByText('est.')
+
+  // The marker qualifies the name, so it has to survive beside one of any
+  // length — it is `shrink-0` for this reason, and without it the flex line
+  // takes the width back from the badge rather than from the name.
+  await expect(longFlag).toBeVisible()
+  const short = await shortFlag.boundingBox()
+  const long = await longFlag.boundingBox()
+  expect(long!.width).toBeCloseTo(short!.width, 0)
 })

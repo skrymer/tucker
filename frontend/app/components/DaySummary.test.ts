@@ -161,12 +161,10 @@ describe('DaySummary', () => {
 
     // Entries arrive oldest-first; the most recent three stay visible.
     expect(screen.getAllByRole('listitem')).toHaveLength(3)
-    expect(screen.getByText('Dinner — 500 kcal')).toBeVisible()
-    expect(screen.getByText('Lunch — 300 kcal')).toBeVisible()
-    expect(screen.queryByText('Breakfast — 100 kcal')).not.toBeInTheDocument()
-    expect(
-      screen.queryByText('Morning snack — 200 kcal'),
-    ).not.toBeInTheDocument()
+    expect(screen.getByText('Dinner')).toBeVisible()
+    expect(screen.getByText('Lunch')).toBeVisible()
+    expect(screen.queryByText('Breakfast')).not.toBeInTheDocument()
+    expect(screen.queryByText('Morning snack')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /show all 5/i })).toBeVisible()
   })
 
@@ -177,8 +175,8 @@ describe('DaySummary', () => {
     await user.click(screen.getByRole('button', { name: /show all 5/i }))
 
     expect(screen.getAllByRole('listitem')).toHaveLength(5)
-    expect(screen.getByText('Breakfast — 100 kcal')).toBeVisible()
-    expect(screen.getByText('Morning snack — 200 kcal')).toBeVisible()
+    expect(screen.getByText('Breakfast')).toBeVisible()
+    expect(screen.getByText('Morning snack')).toBeVisible()
     expect(
       screen.queryByRole('button', { name: /show all/i }),
     ).not.toBeInTheDocument()
@@ -192,7 +190,7 @@ describe('DaySummary', () => {
     await user.click(screen.getByRole('button', { name: /show less/i }))
 
     expect(screen.getAllByRole('listitem')).toHaveLength(3)
-    expect(screen.queryByText('Breakfast — 100 kcal')).not.toBeInTheDocument()
+    expect(screen.queryByText('Breakfast')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /show all 5/i })).toBeVisible()
   })
 
@@ -231,12 +229,23 @@ describe('DaySummary', () => {
     await renderSuspended(DaySummary, { props: { summary: withEntries } })
 
     expect(screen.getAllByRole('listitem')).toHaveLength(2)
-    expect(screen.getByText('Banana — 107 kcal · 12 g protein')).toBeVisible()
-    expect(screen.getByText('Cafe lunch — 600 kcal')).toBeVisible()
+    expect(screen.getByText('Banana')).toBeVisible()
+    expect(screen.getByText('Cafe lunch')).toBeVisible()
     // At or below the cap, the whole ledger shows — no expander.
     expect(
       screen.queryByRole('button', { name: /show all/i }),
     ).not.toBeInTheDocument()
+  })
+
+  it('states an entry as a name over its figures, as every other list does', async () => {
+    await renderSuspended(DaySummary, { props: { summary: withEntries } })
+
+    // The Intake Breakdown legend's shape (frontend/DESIGN.md): the Food is what
+    // the eye lands on, and what it cost sits under it in quieter type. Both
+    // located inside the one row and in that order, or the assertion passes on a
+    // page that merely holds the two strings somewhere.
+    const [banana] = screen.getAllByRole('listitem')
+    expect(banana).toHaveTextContent(/^Banana\s*107 kcal · 12 g protein$/)
   })
 
   it('offers a delete control naming each Weighed and Estimated entry', async () => {

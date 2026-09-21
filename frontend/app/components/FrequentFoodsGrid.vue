@@ -20,7 +20,7 @@ const emit = defineEmits<{ pick: [FoodResponse] }>()
       >
         <span class="flex items-start gap-1.5">
           <span class="line-clamp-2 font-medium text-default">{{
-            food.name
+            formatName(food.name)
           }}</span>
           <UIcon
             v-if="food.kind === 'RECIPE'"

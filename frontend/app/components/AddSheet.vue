@@ -263,7 +263,7 @@ const existingFood = computed<Food | null>(() =>
           color="success"
           variant="subtle"
           title="Already in your catalog"
-          :description="existingFood.name"
+          :description="formatName(existingFood.name)"
         />
         <UButton
           type="button"

@@ -23,6 +23,8 @@ const emit = defineEmits<{
 
 const isRecipe = computed(() => props.food.kind === 'RECIPE')
 
+const name = computed(() => formatName(props.food.name))
+
 // The recipe row's meta subline, e.g. "5 ingredients · makes 1,400 g".
 const recipeSubline = computed(() => {
   const count = props.food.ingredientCount ?? 0
@@ -36,47 +38,35 @@ const recipeSubline = computed(() => {
        own destination (ADR 0028). Beside it the list icon views a recipe's
        composition, the pencil changes a borrow and the trash deletes. -->
   <div class="flex items-center gap-1">
-    <div class="min-w-0 flex-1 py-3">
-      <div class="flex min-w-0 items-center gap-2">
-        <p class="truncate font-medium text-default">{{ food.name }}</p>
-        <UBadge
-          v-if="isRecipe"
-          color="primary"
-          variant="subtle"
-          size="sm"
-          class="shrink-0"
-        >
-          <UIcon name="i-lucide-cooking-pot" class="size-3" />
-          Recipe
-        </UBadge>
-      </div>
-
-      <!-- Nutrition subline: identical for plain foods and recipes, so a
-             recipe reads as "a food, plus more". -->
-      <p class="mt-0.5 text-sm text-muted">
-        {{ formatPer100g(food) }}
-      </p>
+    <FigureRow
+      class="flex-1 py-3"
+      :name="food.name"
+      :figures="formatPer100g(food)"
+    >
+      <template #marker>
+        <RecipeBadge v-if="isRecipe" />
+      </template>
 
       <!-- Recipe-only meta line, quieter than the nutrition line. -->
-      <p v-if="isRecipe" class="mt-0.5 text-xs text-dimmed">
+      <span v-if="isRecipe" class="mt-0.5 block text-xs text-dimmed">
         {{ recipeSubline }}
-      </p>
+      </span>
 
       <!-- What this Food borrows its micronutrients from, named rather than
              ticked: a tick is unverifiable, and there is nothing on an unmatched
              row at all — a marker there would decorate a Food with a status it
              did not earn (ADR 0027). -->
-      <p
+      <span
         v-if="tracksCalories && food.referenceFoodName"
-        class="mt-0.5 truncate text-xs text-dimmed"
+        class="mt-0.5 block truncate text-xs text-dimmed"
       >
         Vitamins and minerals from {{ food.referenceFoodName }}
-      </p>
-    </div>
+      </span>
+    </FigureRow>
 
     <UButton
       v-if="isRecipe"
-      :aria-label="`View ingredients in ${food.name}`"
+      :aria-label="`View ingredients in ${name}`"
       icon="i-lucide-list"
       color="neutral"
       variant="ghost"
@@ -91,7 +81,7 @@ const recipeSubline = computed(() => {
          clearing it lives beside the subline that names it. -->
     <UButton
       v-if="tracksCalories && food.referenceFoodName"
-      :aria-label="`Change what ${food.name} borrows vitamins and minerals from`"
+      :aria-label="`Change what ${name} borrows vitamins and minerals from`"
       icon="i-lucide-pencil"
       color="neutral"
       variant="ghost"
@@ -102,7 +92,7 @@ const recipeSubline = computed(() => {
     />
 
     <UButton
-      :aria-label="`Delete ${food.name}`"
+      :aria-label="`Delete ${name}`"
       icon="i-lucide-trash-2"
       color="neutral"
       variant="ghost"

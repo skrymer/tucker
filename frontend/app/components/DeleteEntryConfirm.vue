@@ -10,8 +10,9 @@ const emit = defineEmits<{
   cancel: []
 }>()
 
-// Name the entry exactly as the Today row reads it (shared formatter), so the
-// confirm is unambiguous about which line it removes.
+// The entry named with its figures, so the confirm is unambiguous about which
+// line it removes. One string, where the Today row lays the same words over two:
+// a dialog's prose has nowhere to put a second line.
 const entryName = computed(() =>
   props.entry ? formatEntryName(props.entry) : '',
 )

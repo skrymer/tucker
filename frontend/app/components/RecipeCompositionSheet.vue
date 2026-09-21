@@ -130,7 +130,7 @@ function useEditMode() {
 const { editing, start: startEditing, editInitial } = useEditMode()
 
 const title = computed(() => {
-  const name = props.recipe?.name ?? ''
+  const name = formatName(props.recipe?.name ?? '')
   return editing.value ? `Edit ${name}` : name
 })
 
@@ -175,7 +175,9 @@ const round = (n: number) => Math.round(n)
               :key="index"
               class="flex items-center justify-between gap-3 px-3 py-2.5"
             >
-              <span class="min-w-0 truncate text-default">{{ ing.name }}</span>
+              <span class="min-w-0 truncate text-default">{{
+                formatName(ing.name)
+              }}</span>
               <span class="shrink-0 tabular-nums text-muted">
                 {{ formatGrams(ing.grams) }}
               </span>

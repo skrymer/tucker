@@ -6,48 +6,16 @@
             - tab "Today" [selected]
             - tab "Last 7 days"
     - list:
+        - listitem: /Chicken breast \d+ kcal · \d+ g protein \d+%/
+        - listitem: /Work canteen est\. \d+ kcal \d+%/
+        - listitem: /Basmati rice \d+ kcal · 8 g protein \d+%/
+        - listitem: /Cottage pie \d+ kcal · \d+ g protein \d+%/
+        - listitem: /Skyr \d+ kcal · \d+ g protein 6%/
+        - listitem: /Banana \d+ kcal · 1 g protein 5%/
+        - listitem: /Olive oil \d+ kcal · 0 g protein 5%/
+        - listitem: /Almonds \d+ kcal · 2 g protein 3%/
         - listitem:
-            - paragraph: Chicken breast
-            - paragraph: /\d+ kcal · \d+ g protein/
-            - text: /\d+%/
-        - listitem:
-            - paragraph: Work canteen est.
-            - paragraph: /\d+ kcal/
-            - text: /\d+%/
-        - listitem:
-            - paragraph: Basmati rice
-            - paragraph: /\d+ kcal · 8 g protein/
-            - text: /\d+%/
-        - listitem:
-            - paragraph: Cottage pie
-            - paragraph: /\d+ kcal · \d+ g protein/
-            - text: /\d+%/
-        - listitem:
-            - paragraph: Skyr
-            - paragraph: /\d+ kcal · \d+ g protein/
-            - text: 6%
-        - listitem:
-            - paragraph: Banana
-            - paragraph: /\d+ kcal · 1 g protein/
-            - text: 5%
-        - listitem:
-            - paragraph: Olive oil
-            - paragraph: /\d+ kcal · 0 g protein/
-            - text: 5%
-        - listitem:
-            - paragraph: Almonds
-            - paragraph: /\d+ kcal · 2 g protein/
-            - text: 3%
-        - listitem:
-            - paragraph: Other 2 items
-            - paragraph: /\d+ kcal · 0 g protein/
-            - text: 2%
+            - text: /Other 2 items \d+ kcal · 0 g protein 2%/
             - button "Show less" [expanded]
-        - listitem:
-            - paragraph: Blueberries
-            - paragraph: /\d+ kcal · 0 g protein/
-            - text: 1%
-        - listitem:
-            - paragraph: Black coffee
-            - paragraph: /\d+ kcal · 0 g protein/
-            - text: 1%
+        - listitem: /Blueberries \d+ kcal · 0 g protein 1%/
+        - listitem: /Black coffee \d+ kcal · 0 g protein 1%/

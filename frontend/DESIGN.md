@@ -358,6 +358,53 @@ the ring, so type is friendly-but-quiet.
 
 Headings get `text-wrap: balance`; body copy stays near a 65-character measure.
 
+### Case
+
+Tucker's own copy is **sentence case** — headings, buttons, labels, toasts. Only
+the eyebrow is uppercase, and it earns that by being the one kicker in a card.
+Title Case is never used: it shouts a little at every word, and Tucker's voice is
+quiet.
+
+A **name a User typed** is held to the same rule, because a catalog is a column of
+them and the eye reads the column, not the row. `Free Range Eggs`, `rolled oats`
+and `LIGHT MILK` are all things people type, and a list carrying all three reads
+as three different apps. Every surface that _states_ one — a **Food**, a
+**Recipe**, an **Estimated Entry**'s label, a product a **Check** resolved —
+passes it through `formatName` (`app/utils/name.ts`).
+
+A **published** name goes through it only where its own source is inconsistent. A
+product name from a **Nutrition Provider** does: Open Food Facts is crowd-typed and
+shouts as often as not, so `Coles SMOOTH PEANUT BUTTER` is exactly what the rule is
+for. A **Reference Food**'s does not — it is AFCD's own
+text, in the shape `Head, qualifier, qualifier, state`, and it is already sentence
+case — of the 1,588 seeded rows none is shouted and none is Title Case, so the
+rule has nothing to fix there and only destroys: it lowercases 101 of them on
+exactly the qualifier that separates near-identical entries (`Soft drink, energy
+drink, Red Bull`, `Biscuit, sweet, Anzac style`, and `… & folate & Fe, Mg & Zn`,
+where `Mg` is magnesium and `mg` is milligrams). That qualifier is the whole of
+what a User reads when they tap to confirm a match, which
+[ADR 0027](../docs/adr/0027-micronutrients-are-borrowed-bounded-and-never-a-target.md)
+makes the one thing Tucker will not decide for them.
+
+Three things that rule is not:
+
+- **Not a rewrite.** It is display only. What a User typed stays stored, so the
+  rule can change without a migration, and the catalog's sort (already
+  case-insensitive) is untouched.
+- **Not applied to input.** A form seed, a search box's query and the payload a
+  form saves all carry the raw name; formatting there would quietly edit a User's
+  Food the next time they opened it.
+- **Not a dictionary.** A token carrying a digit is always left as typed
+  (`Bulla A2 milk`, `Greek yoghurt 4%`), and so is an initialism of three letters
+  or fewer — but only where it stands out against lower-case neighbours. In a
+  wholly shouted name nothing stands out, so `UHT milk` keeps its initialism
+  while `LOW FAT MILK` reads `Low fat milk` rather than `LOW FAT milk`. The costs
+  are an initialism in a name that was itself shouted (`UHT MILK` → `Uht milk`),
+  a longer one nobody writes (`BCAA powder` → `Bcaa powder`), and any interior
+  proper noun (`Plain GREEK yoghurt` → `Plain greek yoghurt`) — all accepted,
+  because the alternative is a half-calmed row, which is the very thing this rule
+  exists to stop.
+
 ---
 
 ## Shape & elevation
@@ -515,6 +562,33 @@ kcal`) sits beneath its own ring, so no arc is ever colour-alone. Calorie
   **More** (ADR 0028). On phone that is a fourth tab opening a sheet; on desktop
   the rail has the room, so the same set is laid out in place under a `More`
   label, and there is no button to press. One set of destinations, two shapes.
+- **Figure row** (`FigureRow`) — the one shape a list states a Food or an Entry
+  in: its **name** in `font-medium text-default`, and under it in `text-sm
+text-muted` what it cost and returned — `153 kcal · 13 g protein`, with
+  `/100g` appended only where the figures are a _rate_ rather than something
+  eaten. The name is what the eye lands on; the figures are read second, on
+  purpose. A marker that qualifies the thing — the estimate flag, the Recipe
+  badge, an item count — sits inline **after the name**, never down among the
+  figures; a hue that identifies it (the Intake Breakdown ring's) leads it.
+  Whatever closes the row — a share, an action, a weight — belongs to the caller,
+  which is also what owns the flex: only it knows whether the row is a button.
+  The **Intake Breakdown legend** set this shape and `/review` is where to look
+  at it.
+  It applies where a list states a **Food** or an **Entry** and what it cost and
+  returned. That criterion is the rule — not an inventory of today's callers, so
+  three things fall outside it and none is a grandfathered exception: the
+  Frequent-Foods cell below (a tile, whose name wraps to two lines rather than
+  truncating), the ring's centre readout (a chart annotation sized by the donut
+  hole, with no lead, no marker and no row), and the **Reference Food** picker's
+  candidate rows, whose second line is the nutrients that tell two AFCD entries
+  apart — not a cost and a return, and not a Food's figures at all.
+  The recipe builder's two lists are inside the criterion and not yet on it: its
+  ingredient rows state `g · kcal` and its Food picker `kcal /100g`, both
+  hand-rolled. Those are a **Recipe** being assembled rather than a list being
+  read, and converting them is a change to the builder, not to this rule.
+  The row never runs name and figures together on one line — that reading is kept
+  for a **toast** and a **confirm dialog**, where the words are prose and there is
+  nowhere to put a second line.
 - **Frequent-Foods cell** — a two-column grid of bordered `rounded-xl` cards, the
   Food's name over its `kcal · g protein /100g` in `text-xs`. The nutrient is
   named, as on every other Food surface: everything in Tucker is weighed in
@@ -525,9 +599,8 @@ kcal`) sits beneath its own ring, so no arc is ever colour-alone. Calorie
   beside the name **and** in the cell's accessible name — the icon is nothing at
   all to a screen reader, and this grid is a phone's whole logging surface.
 - **Food pick row** — the Frequent-Foods cell's full-width sibling, for the whole
-  catalog under it: name over the same `kcal · g protein /100g` line, divided
-  rules rather than borders, the Recipe badge that `/foods` uses, and the same
-  accessible name. A row where the grid has a card because this list is scanned
+  catalog under it: the **Figure row** above, divided rules rather than borders,
+  the Recipe badge that `/foods` uses, and the same accessible name. A row where the grid has a card because this list is scanned
   and scrolled rather than fitted to a screen — and it carries **no** catalog
   controls (delete, ingredients, reference food), because on the Log destination
   the row _is_ the action.
@@ -538,8 +611,12 @@ kcal`) sits beneath its own ring, so no arc is ever colour-alone. Calorie
   while it holds a query — the way back cannot be holding backspace on a phone —
   and it is absent, not disabled, where there is nothing to narrow.
 - **Chip / badge** — pill, subtle tint of its colour (`primary/10`, `coral/10`,
-  `warning/15`). The estimate flag is icon **+** text in warning, never colour
-  alone.
+  `warning/15`). The estimate flag (`EstimateBadge`) is the word `est.` in
+  warning — text **and** colour, never colour alone; it carries no icon, because
+  at `xs` beside a truncating name the glyph costs width the name needs and adds
+  nothing a screen reader can use. The Recipe mark (`RecipeBadge`) does carry
+  one, and is the exception that shows the rule: its icon is what a User scanning
+  the Log grid reads, so it is paired with the word rather than replacing it.
 - **Progress / meter** — fully rounded track on `--ui-bg-muted`, fill in the
   series colour. Kept where it echoes an arc a reader cannot compare by eye — the
   Day Ring's two nested arcs — and for the goal hero on `/review`, which has no
@@ -663,6 +740,19 @@ through icon and colour, never through colour alone.
   `caloriesRemaining`, and the protein pair); the day verdict comes from
   `dayStatus`. It never re-derives on-target rules. Arc _fractions_ and the
   rounded over/under split are pure presentation.
+- **One shape for a name and its figures** (see
+  [Component treatments](#component-treatments)): a list that states a Food or an
+  Entry with what it cost and returned renders the pair through `FigureRow` —
+  name emphasised, figures quieter beneath, markers inline after the name. It owns
+  the **pair**, not the row: the flex, the padding and whatever closes the row stay
+  the caller's, so those still differ between surfaces by design. A list that
+  renders the pair itself has drifted, and nothing executable notices — review is
+  the only guard on the _shape_. `nameCase.test.ts` guards the narrower rule: that
+  a name is stated in sentence case wherever a template renders one.
+- **One voice for case** (see [Case](#case)): Tucker writes in sentence case, and
+  a name a User typed is _stated_ in it too, via `formatName` — never Title Case,
+  never as typed. Display only: the stored name is never rewritten, and neither a
+  form seed nor a search query goes through it.
 - **Dark mode is an extension, not a fork** (see [Dark mode](#dark-mode)): the
   `green-*`/`coral-*` brand ramps are identical across modes; only the neutral
   `--ui-*` tokens + `.app-canvas` flip. Theme is a local (cookie) preference,

@@ -124,6 +124,18 @@ describe('IntakeBreakdownSection', () => {
     expect(chicken).toHaveTextContent('45%')
   })
 
+  it('states a legend row in sentence case however the Food was typed', async () => {
+    await renderSuspended(IntakeBreakdownSection, {
+      props: {
+        breakdown: intakeBreakdown({
+          items: [breakdownItem({ name: 'LIGHT MILK' })],
+        }),
+      },
+    })
+
+    expect(screen.getByText('Light milk')).toBeVisible()
+  })
+
   it('flags a slice that came from an estimate, and leaves a weighed one unflagged', async () => {
     await renderSuspended(IntakeBreakdownSection, {
       props: {

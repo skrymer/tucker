@@ -55,7 +55,7 @@ function onSubmit() {
 <template>
   <ResponsiveOverlay
     :open="food !== null"
-    :title="food ? `Log ${food.name}` : ''"
+    :title="food ? `Log ${formatName(food.name)}` : ''"
     @update:open="(value) => !value && emit('close')"
   >
     <!-- Keyed per food so each open mounts a fresh form — a number field keeps

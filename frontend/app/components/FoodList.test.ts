@@ -47,7 +47,7 @@ describe('FoodList', () => {
     await userEvent
       .setup()
       .click(
-        screen.getByRole('button', { name: 'View ingredients in Cottage Pie' }),
+        screen.getByRole('button', { name: 'View ingredients in Cottage pie' }),
       )
 
     expect(onView).toHaveBeenCalledWith(cottagePie)

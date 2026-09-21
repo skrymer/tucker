@@ -22,6 +22,14 @@ describe('FrequentFoodsGrid', () => {
     expect(cell).toHaveTextContent('13 g protein /100g')
   })
 
+  it('states a cell name in sentence case however it was typed', async () => {
+    await renderSuspended(FrequentFoodsGrid, {
+      props: { foods: [food({ id: 3, name: 'LIGHT MILK' })] },
+    })
+
+    expect(screen.getByText('Light milk')).toBeVisible()
+  })
+
   it('marks a Recipe as one in the cell accessible name', async () => {
     await renderSuspended(FrequentFoodsGrid, {
       props: {

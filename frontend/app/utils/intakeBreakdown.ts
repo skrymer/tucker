@@ -165,7 +165,10 @@ function rowOf(
     key,
     kind,
     color,
-    name: item.name,
+    // Stated here rather than by each consumer: the ring is fed this name and
+    // reports it back under the pointer, where it is matched against this same
+    // field, so formatting one of the two alone makes them disagree.
+    name: formatName(item.name),
     calories: item.calories,
     protein: item.protein,
     share: item.share,

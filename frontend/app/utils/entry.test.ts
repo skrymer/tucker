@@ -61,6 +61,21 @@ describe('formatEntryName', () => {
     ).toBe('Unknown food — 200 kcal · 4 g protein')
   })
 
+  it('states the name in sentence case however it was typed', () => {
+    expect(
+      formatEntryName(
+        weighedEntry({
+          id: 6,
+          calories: 240,
+          protein: 8,
+          foodId: 11,
+          foodName: 'LIGHT MILK',
+          grams: 250,
+        }),
+      ),
+    ).toBe('Light milk — 240 kcal · 8 g protein')
+  })
+
   it('omits protein when the entry carries no figure', () => {
     expect(
       formatEntryName(

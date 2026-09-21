@@ -3,6 +3,7 @@ import { test, expect } from './support/smoke-test'
 import { todayIso, isoShiftDays, formatDmy } from '../support/date'
 import { tickAt } from './support/reminder-tick'
 import { expectCreated, expectStatus } from './support/seeding'
+import { entryRow } from '../support/entry-row'
 
 const API = 'http://localhost:8080/api'
 
@@ -88,9 +89,7 @@ test('a User sees only their own catalog and their own day', async ({
   await expect(page.getByText('Their almonds')).toHaveCount(0)
 
   await goto('/', { waitUntil: 'hydration' })
-  await expect(
-    page.getByRole('main').getByText('My porridge — 250 kcal'),
-  ).toBeVisible()
+  await expect(entryRow(page, 'My porridge')).toContainText('250 kcal')
   await expect(page.getByText('Their lunch out')).toHaveCount(0)
 
   // The totals matter as much as the rows: a leak here shows no other name,

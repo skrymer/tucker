@@ -57,9 +57,8 @@ function fold(text: string): string {
 export function logFoodLabel(
   food: Pick<FoodResponse, 'name' | 'kind'>,
 ): string {
-  return food.kind === 'RECIPE'
-    ? `Log ${food.name}, a recipe`
-    : `Log ${food.name}`
+  const name = formatName(food.name)
+  return food.kind === 'RECIPE' ? `Log ${name}, a recipe` : `Log ${name}`
 }
 
 /**

@@ -804,6 +804,13 @@ _Avoid_: device token, push token, registration
   **Upper Level** — without Tucker taking a dietary position. Sugar and saturated fat stay
   out because they are macros, and the rule above already settles Tucker's position
   on those: protein alone
+- **A name is stored as it was written and stated in sentence case.** The text a
+  user types for a **Food**, a **Recipe** or an **Estimated Entry**'s label is
+  what Tucker keeps — nothing normalises it on the way in, so search, the catalog
+  sort and every stored row see it verbatim. How it is *displayed* is a
+  presentation rule and lives in `frontend/DESIGN.md`; the one thing the domain
+  fixes is that a **Reference Food**'s name is FSANZ's published text and is
+  never restated, because its qualifier is what a user confirms a match on
 - **No Food is good or bad.** Tucker never labels, grades, or scores a Food — no
   verdict word, no letter, no traffic light. It states what a Food *costs* against
   the **Calorie Budget** and what it *returns* against the **Protein Floor**, and
