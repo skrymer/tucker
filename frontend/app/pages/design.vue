@@ -173,9 +173,9 @@ const grams = ref(80)
         class="flex flex-col gap-3 rounded-2xl border border-default bg-default p-5"
       >
         <p
-          class="font-display text-5xl font-extrabold tabular-nums text-highlighted"
+          class="font-display text-4xl font-extrabold tabular-nums text-highlighted"
         >
-          1,136
+          1702
         </p>
         <p class="text-xs text-dimmed">Ring figure · Nunito 800 · tabular</p>
         <hr class="border-default" />

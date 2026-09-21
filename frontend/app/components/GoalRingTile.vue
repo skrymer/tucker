@@ -5,13 +5,13 @@ const props = defineProps<{
   progress: components['schemas']['GoalProgressResponse']
 }>()
 
-// The arc the ring draws — one, at the Day Ring's own radius, so RingGauge makes
-// the two peers by construction (DESIGN.md).
+// The arc the ring draws — one, at the shared outer radius, so the two rings are
+// peers by construction (DESIGN.md).
 function useGoalArc() {
   const percent = computed(() => Math.round(props.progress.percentComplete))
   const arcs = computed(() => [
     {
-      radius: 72,
+      radius: RING_RADIUS_OUTER,
       stroke: 'var(--ui-primary)',
       consumed: percent.value,
       target: 100,

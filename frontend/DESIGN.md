@@ -348,7 +348,7 @@ the ring, so type is friendly-but-quiet.
 
 | Token        | Size / line                  | Weight  | Use                                |
 | ------------ | ---------------------------- | ------- | ---------------------------------- |
-| Ring figure  | 40px / 1                     | 800     | kcal remaining, centre of the ring |
+| Ring figure  | 36px / 1.11                  | 800     | kcal remaining, centre of the ring |
 | Display / h1 | 30px / 1.05                  | 800     | page title ("Today")               |
 | Stat         | 22px / 1.1                   | 800     | ring-legend values, tile figures   |
 | h2           | 18px / 1.3                   | 700     | card headings                      |
@@ -440,12 +440,28 @@ Calorie Budget exists. Replaces the twin progress-bar block it grew out of.
 - **Centre** = calories remaining as the big Nunito-800 figure + a quiet
   `kcal left` label. Over budget → the figure and the calorie arc switch to
   **error red** and the label reads `kcal over`.
-- **Legend** beside (desktop) / below (phone): two rows — Calories `1,004 / 2,140`
-  and Protein `86 / 186 g` — each with its keyed colour swatch and a slim
-  rounded meter echoing the arc.
-- **Geometry:** 160px viz, 15px stroke, `stroke-linecap: round`, outer r 72 /
-  inner r 52 in a 176 viewBox, rotated −90° so both start at 12 o'clock. Owned by
-  `RingGauge.vue`, which both rings draw through.
+- **Legend** beside (desktop) / below (phone): two rows — Calories and Protein —
+  each one **swatch, title and meter on a single line**, with the figures
+  (`1004 / 2140 kcal`, `86 / 186 g`) on their own line beneath. The titles are
+  short and fixed, so the row has width going spare, and the line it gives back
+  is vertical room where the phone needs it. The figures are not squeezed onto
+  the end of that line: the spelled-out unit is what keeps them unambiguous.
+  **One shape at both viewports** — the row reads well wide, and two shapes would
+  need a reason.
+- **Geometry:** 15 stroke, `stroke-linecap: round`, outer r 72 / inner r 52 in a
+  176 viewBox, rotated −90° so both start at 12 o'clock. Those are viewBox units,
+  not px. The box is **12rem**, and the SVG fills it — **rem, not px**, because
+  the centre figure is rem too and a ring pinned to px spends the margin that
+  makes four digits fit the moment a User enlarges their text. Owned by
+  `app/utils/ring.ts`, which `RingGauge.vue` — and so both rings — draws through.
+- **The ring is sized around its hole**, which is what sets 12rem. The hole is the
+  innermost arc's inner edge — 97px on the Day Ring at a 16px root, wider on the
+  Goal ring, which draws one arc — and four digits of the 2.25rem figure measure
+  ~86px. Four digits is the **resting state of a fresh day**: a
+  1702 kcal Budget with nothing logged reads `1702 kcal left` every morning, so it
+  is the ordinary case, not the edge. **Nothing clamps the figure's width** — a
+  wider one would overflow the arcs again, so the guard is the browser measurement
+  in `e2e/day-ring.spec.ts`, which reads rendered ink against the drawn hole.
 - **Accessibility:** the ring is decorative SVG (`aria-hidden`); the legend rows
   are the accessible text equivalent (real numbers, labelled). Never colour-alone
   — every arc has its number beside it. Honour `prefers-reduced-motion` (no
@@ -468,7 +484,10 @@ Same geometry as the Day Ring, one arc instead of two.
   the **Trend Weight** and **Target** below a rule — the denominator the
   percentage is a share of. The pace badge is **omitted** while the backend
   withholds `paceStatus`; an empty badge would claim a verdict there isn't one.
-- **Geometry:** identical to the Day Ring, deliberately (see Thesis).
+- **Geometry:** identical to the Day Ring, deliberately (see Thesis). Its own
+  hole is the wider of the two — one arc, at the outer radius — so `3.3` sits
+  well inside a hole sized for four digits: the shared geometry decides the size,
+  not this ring's own figure.
 - **Whole card is a link** to `/review`, carrying its own `aria-label` so the
   link announces as one rather than as every figure on the card read aloud.
 - **No ring in Maintenance Mode.** Maintenance Mode _is_ the absence of a Goal
