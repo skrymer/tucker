@@ -4,11 +4,11 @@
     - paragraph: No weight logged today.
     - button "Log weight"
     - text: /\d+ kcal left Calories/
+    - progressbar /\d+%/
     - paragraph: /\d+ \/ \d+ kcal/
-    - progressbar /\d+%/
     - text: Protein
-    - paragraph: /\d+ \/ \d+ g/
     - progressbar /\d+%/
+    - paragraph: /\d+ \/ \d+ g/
     - paragraph: On target
     - heading "Today's entries" [level=2]
     - list:

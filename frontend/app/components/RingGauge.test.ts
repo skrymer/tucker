@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { renderSuspended } from '@nuxt/test-utils/runtime'
+import { RING_RADIUS_INNER, RING_RADIUS_OUTER } from '~/utils/ring'
 import RingGauge from './RingGauge.vue'
 
 // The gauge is decorative by design (DESIGN.md): the SVG is `aria-hidden` and the
@@ -10,8 +11,8 @@ import RingGauge from './RingGauge.vue'
 const circles = (container: Element) =>
   Array.from(container.querySelectorAll('circle'))
 
-const OUTER = { radius: 72, stroke: 'var(--ui-primary)' }
-const INNER = { radius: 52, stroke: 'var(--ui-secondary)' }
+const OUTER = { radius: RING_RADIUS_OUTER, stroke: 'var(--ui-primary)' }
+const INNER = { radius: RING_RADIUS_INNER, stroke: 'var(--ui-secondary)' }
 
 describe('RingGauge', () => {
   it('draws a track and a swept arc for every arc it is given', async () => {
@@ -75,9 +76,38 @@ describe('RingGauge', () => {
     })
 
     const svg = container.querySelector('svg')!
-    expect(svg.getAttribute('width')).toBe('160')
-    expect(svg.getAttribute('height')).toBe('160')
+    // The SVG fills its box rather than stating a size of its own, so the ring
+    // scales with the box — which is in rem, like the figure it has to hold.
+    expect(svg.getAttribute('width')).toBe('100%')
+    expect(svg.getAttribute('height')).toBe('100%')
     expect(svg.getAttribute('viewBox')).toBe('0 0 176 176')
     expect(circles(container)[0]!.getAttribute('stroke-width')).toBe('15')
+  })
+
+  it('reserves a box of its own for the ring to be positioned against', async () => {
+    const { container } = await renderSuspended(RingGauge, {
+      props: { arcs: [{ ...OUTER, consumed: 1, target: 2 }] },
+    })
+
+    // The centre is absolutely positioned against this box, so without it the
+    // figure is centred on whatever the parent happens to be. In rem, not px:
+    // the figure is rem too, and a ring that did not scale with it would spend
+    // the margin that makes four digits fit (DESIGN.md).
+    const gauge = container.querySelector('svg')!.parentElement!
+    expect(gauge.style.width).toBe('12rem')
+    expect(gauge.style.height).toBe('12rem')
+  })
+
+  it('draws every arc about the middle of the viewBox', async () => {
+    const { container } = await renderSuspended(RingGauge, {
+      props: { arcs: [{ ...OUTER, consumed: 1, target: 2 }] },
+    })
+
+    // Off-centre, the ring leaves the box entirely — and it is `aria-hidden`, so
+    // nothing else in the suite would notice.
+    for (const circle of circles(container)) {
+      expect(circle.getAttribute('cx')).toBe('88')
+      expect(circle.getAttribute('cy')).toBe('88')
+    }
   })
 })

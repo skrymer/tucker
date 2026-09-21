@@ -6,26 +6,21 @@ import type { RingArc } from '~/utils/ring'
 // whole component then fails to render under mutation testing.
 const props = defineProps<{ arcs: RingArc[] }>()
 
-// Tucker's ring geometry (DESIGN.md): 160x160 drawn in a 176 viewBox, rotated so
-// every arc starts at 12 o'clock. Owned here rather than restated per component,
-// which is what makes "the two rings are peers, drawn at the same geometry" true
-// by construction: the Day Ring passes two arcs and the Goal ring one, and
-// neither can size itself differently. The Check pair is deliberately not one of
-// them — it draws its own smaller, equal-radius pair (ADR 0022).
-const SIZE = 160
-const VIEW_BOX = '0 0 176 176'
-const CENTRE = 88
-const STROKE_WIDTH = 15
+// The geometry lives in `app/utils/ring.ts`, shared so that neither ring can size
+// itself differently. Rotated -90° so every arc starts at 12 o'clock.
+const VIEW_BOX = `0 0 ${RING_VIEW_BOX_UNITS} ${RING_VIEW_BOX_UNITS}`
+const CENTRE = RING_VIEW_BOX_UNITS / 2
+const gaugeBox = { width: `${RING_SIZE_REM}rem`, height: `${RING_SIZE_REM}rem` }
 </script>
 
 <template>
-  <div class="relative size-40 shrink-0">
+  <div class="relative shrink-0" :style="gaugeBox">
     <!-- Decorative: the legend beside it is the accessible equivalent, and every
          arc's figure sits beside or inside it, so nothing is colour-alone. -->
     <svg
       class="-rotate-90"
-      :width="SIZE"
-      :height="SIZE"
+      width="100%"
+      height="100%"
       :viewBox="VIEW_BOX"
       aria-hidden="true"
     >
@@ -36,7 +31,7 @@ const STROKE_WIDTH = 15
           :r="arc.radius"
           fill="none"
           :stroke="ringTrack(arc.stroke)"
-          :stroke-width="STROKE_WIDTH"
+          :stroke-width="RING_STROKE_WIDTH"
         />
         <circle
           :cx="CENTRE"
@@ -44,7 +39,7 @@ const STROKE_WIDTH = 15
           :r="arc.radius"
           fill="none"
           :stroke="arc.stroke"
-          :stroke-width="STROKE_WIDTH"
+          :stroke-width="RING_STROKE_WIDTH"
           stroke-linecap="round"
           :stroke-dasharray="ringCircumference(arc.radius)"
           :stroke-dashoffset="
@@ -53,6 +48,8 @@ const STROKE_WIDTH = 15
         />
       </template>
     </svg>
+    <!-- Centred on the gauge, and so on the hole. Nothing clamps the figure's
+         width: the ring is sized so that a four-digit one clears the arcs. -->
     <div class="absolute inset-0 grid place-content-center text-center">
       <slot />
     </div>

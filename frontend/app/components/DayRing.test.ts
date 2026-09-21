@@ -41,6 +41,13 @@ describe('DayRing', () => {
     expect(screen.getByText('1004 / 2140 kcal')).toBeVisible()
   })
 
+  it('names each legend row', async () => {
+    await renderSuspended(DayRing, { props: underBudget })
+
+    expect(screen.getByText('Calories')).toBeVisible()
+    expect(screen.getByText('Protein')).toBeVisible()
+  })
+
   it('renders the protein legend as consumed against the floor', async () => {
     await renderSuspended(DayRing, { props: underBudget })
 
@@ -77,6 +84,34 @@ describe('DayRing', () => {
       ['72', 'var(--ui-primary)'],
       ['52', 'var(--ui-secondary)'],
     ])
+  })
+
+  // The swatch is what keys a legend row to its arc, and it is a bare decorative
+  // span — so, like the arcs themselves, the alternative to reading the class is
+  // leaving it unasserted, and a legend keyed to nothing ships green.
+  const swatches = (container: Element) =>
+    Array.from(container.querySelectorAll('span.size-2\\.5')).map(
+      (s) => s.className,
+    )
+
+  it('keys each legend row to the colour of its own arc', async () => {
+    const { container } = await renderSuspended(DayRing, { props: underBudget })
+
+    expect(swatches(container)[0]).toContain('bg-primary')
+    expect(swatches(container)[1]).toContain('bg-secondary')
+  })
+
+  it('turns the calorie swatch to the error role alongside its arc', async () => {
+    const { container } = await renderSuspended(DayRing, {
+      props: {
+        ...underBudget,
+        caloriesConsumed: 2500,
+        caloriesRemaining: -360,
+      },
+    })
+
+    expect(swatches(container)[0]).toContain('bg-error')
+    expect(swatches(container)[1]).toContain('bg-secondary')
   })
 
   it('turns the calorie arc to the error role once the day is over budget', async () => {

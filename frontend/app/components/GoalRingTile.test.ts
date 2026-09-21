@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen } from '@testing-library/vue'
 import { goalProgress } from '~~/test/goal-fixtures'
+import { RING_RADIUS_OUTER } from '~/utils/ring'
 import GoalRingTile from './GoalRingTile.vue'
 
 const progress = goalProgress()
@@ -67,7 +68,7 @@ describe('GoalRingTile', () => {
     expect(arcs[0]!.getAttribute('stroke')).toBe('var(--ui-primary)')
     // Half closed leaves half the circumference as offset.
     expect(Number(arcs[0]!.getAttribute('stroke-dashoffset'))).toBeCloseTo(
-      Math.PI * 72,
+      Math.PI * RING_RADIUS_OUTER,
       6,
     )
   })

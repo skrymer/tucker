@@ -8,6 +8,7 @@ import {
   mockSummaryError,
   mockWeightApi,
 } from './support/mock-api'
+import { rings } from './support/ring'
 
 /** An on-target day with one Entry on it — the resting shape Today renders. */
 const DAY_WITH_AN_ENTRY = {
@@ -162,12 +163,11 @@ test('the day ring and the goal ring are peers at the same size', async ({
   await expect(page.getByText('6.0', { exact: true })).toBeVisible()
 
   // DESIGN.md's two-ring rule is a rule about size, so it is checked as one:
-  // sizing either down would rank weight against calories. The rings are
-  // decorative SVG with no role of their own, hence the geometry locator.
-  const rings = page.getByRole('main').locator('svg[viewBox="0 0 176 176"]')
-  await expect(rings).toHaveCount(2)
-  const day = (await rings.nth(0).boundingBox())!
-  const goal = (await rings.nth(1).boundingBox())!
+  // sizing either down would rank weight against calories.
+  const gauges = rings(page)
+  await expect(gauges).toHaveCount(2)
+  const day = (await gauges.nth(0).boundingBox())!
+  const goal = (await gauges.nth(1).boundingBox())!
   expect(goal.width).toBe(day.width)
   expect(goal.height).toBe(day.height)
 

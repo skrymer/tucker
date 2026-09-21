@@ -15,25 +15,21 @@ const props = defineProps<{
   proteinFloor: number
 }>()
 
-// The two arcs, outer calories over inner protein, each drawn over a faint tint
-// of its own role. RingGauge owns the geometry the Goal ring shares.
-const R_OUTER = 72
-const R_INNER = 52
-
 // Over budget once the *rounded* remaining goes negative — deciding on the same
 // rounded figure the centre shows means a -0.3 kcal overage never flips the ring
 // to a red "0 kcal over". Drives the calorie arc + centre colour.
 const isOver = computed(() => Math.round(props.caloriesRemaining) < 0)
 
+// Calories outside protein, each arc drawn over a faint tint of its own role.
 const arcs = computed<RingArc[]>(() => [
   {
-    radius: R_OUTER,
+    radius: RING_RADIUS_OUTER,
     stroke: isOver.value ? 'var(--ui-error)' : 'var(--ui-primary)',
     consumed: props.caloriesConsumed,
     target: props.calorieBudget,
   },
   {
-    radius: R_INNER,
+    radius: RING_RADIUS_INNER,
     stroke: 'var(--ui-secondary)',
     consumed: props.proteinConsumed,
     target: props.proteinFloor,
@@ -51,24 +47,41 @@ function useCentre() {
 }
 const { centreValue, centreLabel } = useCentre()
 
-// The accessible legend beside the ring: the figures as text plus meters capped
-// at their target so an over-target day shows a full bar, not an overflow.
+// The accessible legend beside the ring, as rows rather than parallel values, so
+// the shape each row is drawn in is stated once. Meters are capped at their
+// target, so an over-target day shows a full bar rather than an overflow.
 function useLegend() {
-  const caloriesLegend = computed(() =>
-    formatAgainstTarget(props.caloriesConsumed, props.calorieBudget, 'kcal'),
-  )
-  const proteinLegend = computed(() =>
-    formatAgainstTarget(props.proteinConsumed, props.proteinFloor, 'g'),
-  )
-  const caloriesBar = computed(() =>
-    Math.min(props.caloriesConsumed, props.calorieBudget),
-  )
-  const proteinBar = computed(() =>
-    Math.min(props.proteinConsumed, props.proteinFloor),
-  )
-  return { caloriesLegend, proteinLegend, caloriesBar, proteinBar }
+  const rows = computed(() => [
+    {
+      title: 'Calories',
+      swatch: isOver.value ? 'bg-error' : 'bg-primary',
+      meter: isOver.value ? ('error' as const) : ('primary' as const),
+      label: 'Calories against the Calorie Budget',
+      figures: formatAgainstTarget(
+        props.caloriesConsumed,
+        props.calorieBudget,
+        'kcal',
+      ),
+      filled: Math.min(props.caloriesConsumed, props.calorieBudget),
+      target: props.calorieBudget,
+    },
+    {
+      title: 'Protein',
+      swatch: 'bg-secondary',
+      meter: 'secondary' as const,
+      label: 'Protein against the Protein Floor',
+      figures: formatAgainstTarget(
+        props.proteinConsumed,
+        props.proteinFloor,
+        'g',
+      ),
+      filled: Math.min(props.proteinConsumed, props.proteinFloor),
+      target: props.proteinFloor,
+    },
+  ])
+  return { rows }
 }
-const { caloriesLegend, proteinLegend, caloriesBar, proteinBar } = useLegend()
+const { rows } = useLegend()
 </script>
 
 <template>
@@ -83,37 +96,24 @@ const { caloriesLegend, proteinLegend, caloriesBar, proteinBar } = useLegend()
       <span class="text-xs font-semibold text-muted">{{ centreLabel }}</span>
     </RingGauge>
 
+    <!-- Swatch, title and meter share a line; the figures keep their own, so the
+         spelled-out unit is never squeezed (frontend/DESIGN.md). -->
     <div class="flex w-full flex-col gap-4">
-      <div>
-        <div class="mb-1 flex items-center gap-2">
-          <span
-            class="size-2.5 rounded"
-            :class="isOver ? 'bg-error' : 'bg-primary'"
+      <div v-for="row in rows" :key="row.title">
+        <div class="mb-1 flex items-center gap-3">
+          <span class="size-2.5 shrink-0 rounded" :class="row.swatch" />
+          <span class="shrink-0 text-sm font-semibold text-default">
+            {{ row.title }}
+          </span>
+          <UProgress
+            class="min-w-16 flex-1"
+            :model-value="row.filled"
+            :max="row.target"
+            :color="row.meter"
+            :aria-label="row.label"
           />
-          <span class="text-sm font-semibold text-default">Calories</span>
         </div>
-        <p class="text-sm text-muted">{{ caloriesLegend }}</p>
-        <UProgress
-          class="mt-2"
-          :model-value="caloriesBar"
-          :max="calorieBudget"
-          :color="isOver ? 'error' : 'primary'"
-          aria-label="Calories against the Calorie Budget"
-        />
-      </div>
-      <div>
-        <div class="mb-1 flex items-center gap-2">
-          <span class="size-2.5 rounded bg-secondary" />
-          <span class="text-sm font-semibold text-default">Protein</span>
-        </div>
-        <p class="text-sm text-muted">{{ proteinLegend }}</p>
-        <UProgress
-          class="mt-2"
-          :model-value="proteinBar"
-          :max="proteinFloor"
-          color="secondary"
-          aria-label="Protein against the Protein Floor"
-        />
+        <p class="text-sm tabular-nums text-muted">{{ row.figures }}</p>
       </div>
     </div>
   </div>

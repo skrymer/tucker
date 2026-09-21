@@ -1,6 +1,6 @@
 /** One arc of a ring: how much of [target] is filled, and in what colour. */
 export interface RingArc {
-  /** Radius within the shared 176 viewBox — 72 for an outer arc, 52 for an inner one. */
+  /** Radius in viewBox units — `RING_RADIUS_OUTER` or `RING_RADIUS_INNER`. */
   radius: number
   /** The filled sweep's colour, a `--ui-*` token reference. */
   stroke: string
@@ -18,6 +18,29 @@ export function ringFraction(consumed: number, target: number): number {
   if (target <= 0) return 0
   return Math.min(consumed / target, 1)
 }
+
+// Tucker's ring geometry (frontend/DESIGN.md), owned here rather than restated
+// per component — which is what makes "the two rings are peers, drawn at the same
+// geometry" true by construction: the Day Ring passes two arcs and the Goal ring
+// one, and neither can size itself differently. The Check pair draws the same
+// numbers without reading them from here — a side-by-side pair at its own size
+// rather than nested arcs (DESIGN.md, "The Check pair — peer rings").
+
+/**
+ * The drawn width and height, in **rem**. The centre figure is sized in rem too,
+ * so the ring has to scale with it — pinned to px, a User who enlarges their text
+ * spends the margin that makes a four-digit figure fit and it runs under the arcs
+ * again.
+ */
+export const RING_SIZE_REM = 12
+/** The viewBox the arcs are laid out in, in SVG user units — not px. */
+export const RING_VIEW_BOX_UNITS = 176
+/** Every arc's stroke, in viewBox units, straddling its radius. */
+export const RING_STROKE_WIDTH = 15
+/** The outer arc both rings draw, in viewBox units. */
+export const RING_RADIUS_OUTER = 72
+/** The inner arc, drawn only where a ring has a second figure to show. */
+export const RING_RADIUS_INNER = 52
 
 /** The circumference of a ring arc of [radius]. */
 export function ringCircumference(radius: number): number {
