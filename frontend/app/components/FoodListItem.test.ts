@@ -39,6 +39,17 @@ describe('FoodListItem', () => {
     expect(screen.getByText('Skyr')).toBeVisible()
   })
 
+  it('states the name in sentence case however it was typed', async () => {
+    await renderSuspended(FoodListItem, {
+      props: { food: food({ id: 3, name: 'LIGHT MILK' }) },
+    })
+
+    expect(screen.getByText('Light milk')).toBeVisible()
+    expect(
+      screen.getByRole('button', { name: 'Delete Light milk' }),
+    ).toBeVisible()
+  })
+
   it('marks a recipe with a Recipe chip and an "N ingredients · makes X g" subline', async () => {
     await renderSuspended(FoodListItem, { props: { food: cottagePie } })
 
@@ -142,7 +153,7 @@ describe('FoodListItem', () => {
     await userEvent
       .setup()
       .click(
-        screen.getByRole('button', { name: 'View ingredients in Cottage Pie' }),
+        screen.getByRole('button', { name: 'View ingredients in Cottage pie' }),
       )
 
     expect(onView).toHaveBeenCalledWith(cottagePie)

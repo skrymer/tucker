@@ -297,16 +297,19 @@ const grams = ref(80)
         <p class="text-xs font-semibold uppercase tracking-wider text-muted">
           Logged today
         </p>
-        <!-- One flowing string per entry, not a name/figures column pair: the
-             unit is spelled out, so a right-hand column leaves a phone almost no
-             room for the name (ADR 0005). The middle row shows an Estimated
-             entry logged without a protein figure — the clause is omitted, never
-             rendered as `0 g protein`. -->
+        <!-- The Figure row: the name is what the eye lands on, and what the
+             entry cost sits under it in quieter type. The unit is spelled out,
+             so the pair gets the row's whole width and the far end carries only
+             the action. The middle row shows an Estimated entry logged without a
+             protein figure — the clause is omitted, never rendered as
+             `0 g protein` — and wears the flag inline after its name. -->
         <ul class="mt-2 divide-y divide-default">
           <li class="flex items-center justify-between gap-2 py-2.5">
-            <span class="min-w-0 text-default"
-              >Rolled oats — 302 kcal · 11 g protein</span
-            >
+            <FigureRow
+              class="flex-1"
+              name="Rolled oats"
+              figures="302 kcal · 11 g protein"
+            />
             <UButton
               icon="i-lucide-trash-2"
               color="neutral"
@@ -317,26 +320,26 @@ const grams = ref(80)
             />
           </li>
           <li class="flex items-center justify-between gap-2 py-2.5">
-            <span class="min-w-0 text-default">Flat white — 90 kcal</span>
-            <div class="flex shrink-0 items-center gap-1">
-              <UBadge color="warning" variant="subtle" size="sm">
-                <UIcon name="i-lucide-triangle-alert" class="size-3" />
-                est.
-              </UBadge>
-              <UButton
-                icon="i-lucide-trash-2"
-                color="neutral"
-                variant="ghost"
-                square
-                class="size-9 text-muted"
-                aria-label="Delete Flat white — 90 kcal"
-              />
-            </div>
+            <FigureRow class="flex-1" name="Flat white" figures="90 kcal">
+              <template #marker>
+                <EstimateBadge />
+              </template>
+            </FigureRow>
+            <UButton
+              icon="i-lucide-trash-2"
+              color="neutral"
+              variant="ghost"
+              square
+              class="size-9 shrink-0 text-muted"
+              aria-label="Delete Flat white — 90 kcal"
+            />
           </li>
           <li class="flex items-center justify-between gap-2 py-2.5">
-            <span class="min-w-0 text-default"
-              >Kangaroo burger — 219 kcal · 33 g protein</span
-            >
+            <FigureRow
+              class="flex-1"
+              name="Kangaroo burger"
+              figures="219 kcal · 33 g protein"
+            />
             <UButton
               icon="i-lucide-trash-2"
               color="neutral"

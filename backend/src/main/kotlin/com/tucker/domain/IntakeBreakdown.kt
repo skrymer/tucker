@@ -97,8 +97,10 @@ data class IntakeBreakdown(
             val known = logged.mapNotNull { it.protein }
             return IntakeBreakdownItem(
                 foodId = foodId,
-                // The first label seen rather than the folded key, so the slice reads
-                // in the User's own capitalisation.
+                // The first label seen rather than the folded key: the key is lower-cased
+                // and trimmed to merge on, and a slice named from it would read as
+                // neither the Food nor the label. How the name is *stated* is the
+                // client's (frontend/DESIGN.md -> Case); what this owes is the text.
                 name = logged.first().sliceName(foodNames),
                 calories = calories,
                 protein = known.takeIf { it.isNotEmpty() }?.sum(),
@@ -108,7 +110,7 @@ data class IntakeBreakdown(
             )
         }
 
-        /** The slice's name as the User would recognise it, not the key it merged on. */
+        /** The slice's name as it was written, not the key it merged on. */
         private fun Entry.sliceName(foodNames: Map<Long, String>): String = when (this) {
             is WeighedEntry -> foodNames.getValue(foodId)
             is EstimatedEntry -> label.trim()

@@ -78,6 +78,12 @@ describe('naming the log action', () => {
       'Log Weekday chilli, a recipe',
     )
   })
+
+  it('names the Food in sentence case however it was typed', () => {
+    expect(logFoodLabel({ name: 'LIGHT MILK', kind: 'FOOD' })).toBe(
+      'Log Light milk',
+    )
+  })
 })
 
 describe('stating what a Food costs and returns', () => {

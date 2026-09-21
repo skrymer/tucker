@@ -1,6 +1,7 @@
 import type { APIRequestContext } from '@playwright/test'
 import { test, expect } from './support/smoke-test'
 import { isoShiftDays, todayIso } from '../support/date'
+import { entryRow } from '../support/entry-row'
 
 // F16 slice 1 smoke: the Log destination against the real backend. Seeds three
 // Foods and a rotation of Entries over the API, asserts the ranking *at the
@@ -92,7 +93,7 @@ test('the Log destination ranks a rotation and logs the food tapped in it', asyn
   // The Entry landed on Today, with the calories the backend derived from the
   // food's per-100g figures: 4×10 + 4×4 + 9×0.2 = 57.8 kcal/100 g, so 80 g is 46.
   await goto('/', { waitUntil: 'hydration' })
-  await expect(page.getByText(`Rolled oats ${stamp} — 46 kcal`)).toBeVisible()
+  await expect(entryRow(page, `Rolled oats ${stamp}`)).toContainText('46 kcal')
 })
 
 test('finds a food the ranking cannot hold, and logs it the same way', async ({
@@ -138,5 +139,5 @@ test('finds a food the ranking cannot hold, and logs it the same way', async ({
 
   // 57.8 kcal/100 g derived by the backend, so 120 g is 69.
   await goto('/', { waitUntil: 'hydration' })
-  await expect(page.getByText(`${tuna} — 69 kcal`)).toBeVisible()
+  await expect(entryRow(page, tuna)).toContainText('69 kcal')
 })

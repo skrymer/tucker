@@ -326,7 +326,7 @@ describe('AddSheet', () => {
     await user.click(screen.getByRole('button', { name: /look up/i }))
 
     expect(await screen.findByText(/already in your catalog/i)).toBeVisible()
-    expect(screen.getByText('Existing Skyr')).toBeVisible()
+    expect(screen.getByText('Existing skyr')).toBeVisible()
     // The add form gives way to the existing Food.
     expect(screen.queryByLabelText(/^name$/i)).not.toBeInTheDocument()
   })

@@ -349,7 +349,7 @@ const {
 
           <template v-else-if="check">
             <h2 class="text-center text-lg font-bold text-highlighted">
-              {{ check.name }}
+              {{ formatName(check.name) }}
             </h2>
             <CheckAnalysis :check="check" />
           </template>

@@ -17,7 +17,7 @@ test('user logs an Estimated entry from Log and the toast names it', async ({
 }) => {
   // Unique label so the assertion + cleanup is robust to other data in
   // the persisted dev volume.
-  const label = `smoke ${Date.now()}`
+  const label = `Smoke ${Date.now()}`
   const calories = 612
 
   await goto('/log', { waitUntil: 'hydration' })

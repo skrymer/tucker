@@ -1,6 +1,7 @@
 import { test, expect } from './support/smoke-test'
 import { todayIso } from '../support/date'
 import { enterGrams, pickFoodToLog } from '../support/log-page'
+import { entryRow } from '../support/entry-row'
 
 // F9 Slice 1 smoke: the full UI → API → DB path for creating a Recipe against
 // the real backend, then logging it like any other Food. Seeds one ingredient
@@ -112,13 +113,9 @@ test('user builds a recipe, saves it, and logs a portion onto Today', async ({
     await goto('/', { waitUntil: 'hydration' })
     // Scoped for the same reason as the sibling log smokes: the success toast
     // carries this exact string too (ADR 0005), so name the surface meant.
-    await expect(
-      page
-        .getByRole('main')
-        .getByText(
-          `${recipeName} — ${expectedKcal} kcal · ${expectedProtein} g protein`,
-        ),
-    ).toBeVisible()
+    await expect(entryRow(page, recipeName)).toContainText(
+      `${expectedKcal} kcal · ${expectedProtein} g protein`,
+    )
 
     // The saved recipe is in the catalog as a Food.
     const foodsList = await request.get('http://localhost:8080/api/foods')

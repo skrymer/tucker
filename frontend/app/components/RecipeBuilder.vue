@@ -317,7 +317,9 @@ function onSave() {
             class="flex w-full items-center justify-between gap-3 rounded-lg border border-default px-3 py-2 text-left"
             @click="edit(index)"
           >
-            <span class="font-medium text-default">{{ line.food.name }}</span>
+            <span class="font-medium text-default">{{
+              formatName(line.food.name)
+            }}</span>
             <span class="text-sm text-muted">
               {{ line.grams }} g ·
               {{
@@ -430,7 +432,9 @@ function onSave() {
             class="flex w-full items-center justify-between gap-3 rounded-lg border border-default px-3 py-2 text-left"
             @click="choose(food)"
           >
-            <span class="font-medium text-default">{{ food.name }}</span>
+            <span class="font-medium text-default">{{
+              formatName(food.name)
+            }}</span>
             <span class="text-sm text-muted">
               {{ round(food.caloriesPer100g) }} kcal /100g
             </span>
@@ -469,7 +473,9 @@ function onSave() {
       >
         Back
       </UButton>
-      <p class="font-medium text-default">{{ pickedFood?.name }}</p>
+      <p class="font-medium text-default">
+        {{ formatName(pickedFood?.name ?? '') }}
+      </p>
 
       <UFormField label="Grams" name="grams" required>
         <NumberField

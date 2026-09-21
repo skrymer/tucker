@@ -24,6 +24,14 @@ describe('DeleteFoodConfirm', () => {
     expect(screen.getByRole('button', { name: /cancel/i })).toBeVisible()
   })
 
+  it('names the food in sentence case however it was typed', async () => {
+    await renderSuspended(DeleteFoodConfirm, {
+      props: { food: food({ id: 8, name: 'LIGHT MILK' }) },
+    })
+
+    expect(screen.getByText('Light milk')).toBeVisible()
+  })
+
   it('warns that a food with logged entries cannot be deleted', async () => {
     await renderSuspended(DeleteFoodConfirm, { props: { food: oats } })
 

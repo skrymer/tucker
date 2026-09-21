@@ -77,29 +77,25 @@ const { visibleEntries, canExpand, expanderLabel, toggle } = useEntryLog()
           :key="entry.id"
           class="flex items-center justify-between gap-2 py-2"
         >
-          <span class="min-w-0 text-default">
-            {{ formatEntryName(entry) }}
-          </span>
-          <div class="flex shrink-0 items-center gap-1">
-            <UBadge
-              v-if="entry.isEstimate"
-              color="warning"
-              variant="subtle"
-              size="xs"
-            >
-              est.
-            </UBadge>
-            <UButton
-              :aria-label="`Delete ${formatEntryName(entry)}`"
-              icon="i-lucide-trash-2"
-              color="neutral"
-              variant="ghost"
-              square
-              class="size-9 text-muted hover:text-default"
-              :ui="{ base: 'justify-center' }"
-              @click="emit('delete', entry)"
-            />
-          </div>
+          <FigureRow
+            class="flex-1"
+            :name="entry.name"
+            :figures="formatIntakeFigures(entry.calories, entry.protein)"
+          >
+            <template #marker>
+              <EstimateBadge v-if="entry.isEstimate" />
+            </template>
+          </FigureRow>
+          <UButton
+            :aria-label="`Delete ${formatEntryName(entry)}`"
+            icon="i-lucide-trash-2"
+            color="neutral"
+            variant="ghost"
+            square
+            class="size-9 shrink-0 text-muted hover:text-default"
+            :ui="{ base: 'justify-center' }"
+            @click="emit('delete', entry)"
+          />
         </li>
       </ul>
 

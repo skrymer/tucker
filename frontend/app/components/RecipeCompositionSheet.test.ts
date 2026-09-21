@@ -70,6 +70,19 @@ describe('RecipeCompositionSheet', () => {
     expect(screen.getByText('900 g')).toBeVisible()
   })
 
+  it('names the recipe and its ingredients in sentence case', async () => {
+    registerEndpoint('/api/recipes/4', () => ({
+      ...composition,
+      ingredients: [{ foodId: 1, name: 'LIGHT MILK', grams: 500 }],
+    }))
+    await renderSuspended(RecipeCompositionSheet, {
+      props: { recipe: cottagePie },
+    })
+
+    expect(await screen.findByText('Light milk')).toBeVisible()
+    expect(screen.getByRole('dialog', { name: 'Cottage pie' })).toBeVisible()
+  })
+
   it('shows the cooked weight and the rolled-up per-100g from the recipe', async () => {
     registerEndpoint('/api/recipes/4', () => composition)
     await renderSuspended(RecipeCompositionSheet, {

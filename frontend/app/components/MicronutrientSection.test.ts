@@ -297,6 +297,24 @@ describe('MicronutrientSection', () => {
     expect(queued[1]).toHaveTextContent('11%')
   })
 
+  it('names a queued Food in sentence case however it was typed', async () => {
+    await renderSuspended(MicronutrientSection, {
+      props: {
+        intake: micronutrientIntake({
+          unmatched: [unmatchedFood({ foodId: 3, name: 'LIGHT MILK' })],
+        }),
+      },
+    })
+
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: /1 food is not matched yet/ }))
+
+    expect(
+      screen.getByRole('button', { name: 'Match Light milk' }),
+    ).toHaveTextContent('Light milk')
+  })
+
   it('asks to match the queued Food the user taps', async () => {
     const onMatch = vi.fn()
     const rice = unmatchedFood({ foodId: 2, name: 'Jasmine rice' })

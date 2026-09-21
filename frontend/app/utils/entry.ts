@@ -3,13 +3,17 @@ import type { components } from '#open-fetch-schemas/api'
 type EntryResponse = components['schemas']['EntryResponse']
 
 /**
- * How an Entry reads as one line — the name the API states for it, rounded
+ * An Entry as one run-on line — the name the API states for it, rounded
  * calories, and protein when it has a figure, omitted when it doesn't:
- * `Banana — 107 kcal · 12 g protein`. Shared by the Today row, the delete
- * confirm and the "Entry logged" toast so the wording can't drift (ADR 0005).
+ * `Banana — 107 kcal · 12 g protein`.
+ *
+ * For the places that have room for only one line: the delete confirm's prose,
+ * the "Entry logged" toast, and the accessible name of Today's delete button.
+ * Today's row itself states the same words through `FigureRow`, laid out over
+ * two — so the wording is shared and the shape is not (ADR 0005).
  */
 export function formatEntryName(entry: EntryResponse): string {
-  return `${entry.name} — ${formatIntakeFigures(entry.calories, entry.protein)}`
+  return `${formatName(entry.name)} — ${formatIntakeFigures(entry.calories, entry.protein)}`
 }
 
 /**

@@ -25,6 +25,14 @@ describe('LogGramsSheet', () => {
     viewport.desktop = true
   })
 
+  it('names the sheet in sentence case however the food was typed', async () => {
+    await renderSuspended(LogGramsSheet, {
+      props: { food: food({ id: 3, name: 'LIGHT MILK' }) },
+    })
+
+    expect(screen.getByText('Log Light milk')).toBeVisible()
+  })
+
   it('shows a sheet named for the food with a grams field when a food is set', async () => {
     await renderSuspended(LogGramsSheet, { props: { food: skyr } })
 

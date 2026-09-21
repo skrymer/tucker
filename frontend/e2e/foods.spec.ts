@@ -35,3 +35,28 @@ test('the Foods page shows the empty state when the catalog is empty', async ({
   // The toast region also renders a list — scope to <main>.
   await expect(page.getByRole('main').getByRole('list')).toHaveCount(0)
 })
+
+test('the catalog states every name in one voice, however each was typed', async ({
+  page,
+  goto,
+}) => {
+  await mockFoods(page, [
+    food({ id: 1, name: 'Free Range Eggs' }),
+    food({ id: 2, name: 'rolled oats' }),
+    food({ id: 3, name: 'LIGHT MILK' }),
+    // Short words inside a shouted name are words, not initialisms — the row
+    // that moves most, and the one a length rule alone gets wrong.
+    food({ id: 4, name: 'LOW FAT MILK' }),
+    // An initialism stands out against lower-case neighbours, so here it stays.
+    food({ id: 5, name: 'UHT milk' }),
+  ])
+
+  await goto('/foods', { waitUntil: 'hydration' })
+
+  const rows = page.getByRole('main').getByRole('listitem')
+  await expect(rows.nth(0)).toContainText('Free range eggs')
+  await expect(rows.nth(1)).toContainText('Rolled oats')
+  await expect(rows.nth(2)).toContainText('Light milk')
+  await expect(rows.nth(3)).toContainText('Low fat milk')
+  await expect(rows.nth(4)).toContainText('UHT milk')
+})

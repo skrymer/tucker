@@ -129,7 +129,7 @@ const willNotGuess = computed(
 <template>
   <ResponsiveOverlay
     :open="food !== null"
-    :title="food ? `Match ${food.name}` : ''"
+    :title="food ? `Match ${formatName(food.name)}` : ''"
     @update:open="(value) => !value && emit('close')"
   >
     <div class="flex flex-col gap-3">

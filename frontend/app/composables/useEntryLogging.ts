@@ -52,8 +52,9 @@ function useGatedEntryLog<TEntry extends object>(
     endpoints.commit,
     {
       // Kept, and named from the response: the Entry lands on Today, which is
-      // never the page that logged it, so the toast is the only sign it worked,
-      // and it says which entry in the words Today is about to use (ADR 0005).
+      // never the page that logged it, so the toast is the only sign it worked
+      // (ADR 0005). One run-on line, which is all a toast has room for — Today
+      // states the same name and figures, laid out over two.
       successTitle: 'Entry logged',
       successDescription: formatEntryName,
       errorTitle: 'Could not save entry',

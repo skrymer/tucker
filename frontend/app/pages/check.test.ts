@@ -68,6 +68,13 @@ registerEndpoint('/api/check/5708888888888', (event) => {
   }
 })
 
+// A product whose label shouts its own name, as many do.
+registerEndpoint('/api/check/5004444444444', () => ({
+  ...nutellaCheck,
+  name: 'LIGHT MILK',
+  barcode: '5004444444444',
+}))
+
 // The lookup itself failing, which says nothing about the product.
 registerEndpoint('/api/check/5001111111111', (event) => {
   setResponseStatus(event, 500)
@@ -132,6 +139,15 @@ describe('/check with a calorie budget', () => {
     expect(await screen.findByText('Nutella')).toBeVisible()
     expect(screen.getByText('21%')).toBeVisible()
     expect(screen.getByText('4%')).toBeVisible()
+  })
+
+  it('states the product in sentence case however the label shouts it', async () => {
+    await renderSuspended(Check)
+
+    scanner.barcode.value = '5004444444444'
+    scanner.state.value = 'decoded'
+
+    expect(await screen.findByText('Light milk')).toBeVisible()
   })
 
   it('offers no typed barcode or manual macros when the camera is blocked', async () => {

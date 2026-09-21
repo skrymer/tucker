@@ -185,34 +185,28 @@ const { data: ringData, categories: ringCategories } = useRing()
           class="flex items-baseline justify-between gap-3 py-2"
           :class="row.kind === 'folded' && 'pl-4'"
         >
-          <div class="min-w-0">
-            <p class="flex items-baseline gap-1.5 font-medium text-default">
+          <FigureRow
+            :name="row.name"
+            :figures="formatIntakeFigures(row.calories, row.protein)"
+          >
+            <template #lead>
               <span
                 v-if="row.color"
                 aria-hidden="true"
                 class="size-2.5 shrink-0 self-center rounded-full"
                 :style="{ backgroundColor: row.color }"
               />
-              <span class="truncate">{{ row.name }}</span>
+            </template>
+            <template #marker>
               <span
                 v-if="row.count"
                 class="shrink-0 text-sm font-normal text-muted"
               >
                 {{ row.count }} {{ row.count === 1 ? 'item' : 'items' }}
               </span>
-              <UBadge
-                v-if="row.isEstimate"
-                color="warning"
-                variant="subtle"
-                size="xs"
-              >
-                est.
-              </UBadge>
-            </p>
-            <p class="text-sm text-muted">
-              {{ formatIntakeFigures(row.calories, row.protein) }}
-            </p>
-          </div>
+              <EstimateBadge v-if="row.isEstimate" />
+            </template>
+          </FigureRow>
           <span class="flex shrink-0 items-baseline gap-2">
             <span class="font-semibold tabular-nums text-default">
               {{ Math.round(row.share * 100) }}%

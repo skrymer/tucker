@@ -53,7 +53,9 @@ class IntakeBreakdownTest {
 
         val canteen = breakdown.items.single()
         assertNull(canteen.foodId)
-        // The first label seen, trimmed — the User's own capitalisation, not a folded key.
+        // The first label seen, trimmed — not the lower-cased key it merged on. The
+        // client states it in sentence case (frontend/DESIGN.md → Case); what this
+        // owes is the text the User wrote.
         assertEquals("Work canteen", canteen.name)
         assertEquals(640.0, canteen.calories)
         assertEquals(31.0, canteen.protein)

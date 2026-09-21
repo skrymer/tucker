@@ -142,6 +142,15 @@ describe('intakeLegend', () => {
     expect(folded).toEqual([])
   })
 
+  it('states a row name in sentence case, so the ring and its legend agree', () => {
+    // The chart is fed `row.name` and reports it back under the pointer, which is
+    // matched against the same field — so formatting either consumer alone would
+    // make them disagree about one Food.
+    const { slices } = intakeLegend([item('LIGHT MILK', 240, 8)])
+
+    expect(slices[0]!.name).toBe('Light milk')
+  })
+
   it('gives the fold one grey Other naming how many Foods it stands for', () => {
     const { slices } = intakeLegend(ranked(11))
 

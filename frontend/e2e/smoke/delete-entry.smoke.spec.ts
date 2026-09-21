@@ -1,5 +1,6 @@
 import { test, expect } from './support/smoke-test'
 import { todayIso } from '../support/date'
+import { entryRow } from '../support/entry-row'
 
 // Issue #113 smoke: delete a mislogged Entry from Today through its row's trash
 // icon + the confirm, against the real backend. Seeds two Estimated entries on
@@ -16,8 +17,8 @@ test('user deletes a mislogged entry from Today and the day re-derives', async (
 }) => {
   const today = todayIso()
   const stamp = Date.now()
-  const keep = `keep ${stamp}`
-  const remove = `remove ${stamp}`
+  const keep = `Keep ${stamp}`
+  const remove = `Remove ${stamp}`
 
   for (const [label, calories, protein] of [
     [keep, 200, 10],
@@ -32,7 +33,7 @@ test('user deletes a mislogged entry from Today and the day re-derives', async (
   await goto('/', { waitUntil: 'hydration' })
 
   // Both entries are on the day, and the totals card sums them.
-  await expect(page.getByText(`${remove} — 612 kcal`)).toBeVisible()
+  await expect(entryRow(page, remove)).toContainText('612 kcal')
   await expect(page.getByText('812 kcal, 40 g protein')).toBeVisible()
 
   // Delete the mislogged one through its row's trash icon + the confirm.
@@ -45,8 +46,8 @@ test('user deletes a mislogged entry from Today and the day re-derives', async (
 
   // The row vanishes, the kept entry stays, and the total re-derives without it.
   await expect(confirm).toBeHidden()
-  await expect(page.getByText(`${remove} — 612 kcal`)).toBeHidden()
-  await expect(page.getByText(`${keep} — 200 kcal`)).toBeVisible()
+  await expect(entryRow(page, remove)).toBeHidden()
+  await expect(entryRow(page, keep)).toContainText('200 kcal')
   await expect(page.getByText('200 kcal, 10 g protein')).toBeVisible()
 
   // Deleting the last entry collapses the entries card entirely.
