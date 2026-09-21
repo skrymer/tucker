@@ -1,8 +1,10 @@
 package com.tucker.api
 
+import com.tucker.domain.Goal
 import com.tucker.domain.IntakeTargets
 import com.tucker.domain.Maintenance
 import com.tucker.domain.WeeklyReview
+import com.tucker.persistence.GoalRepository
 import com.tucker.persistence.ReminderStateRepository
 import com.tucker.persistence.WeeklyReviewRepository
 import com.tucker.security.WithTuckerUser
@@ -31,6 +33,7 @@ import kotlin.test.assertNull
 class WeightTimelineApiTest {
 
     @Autowired lateinit var mockMvc: MockMvc
+    @Autowired lateinit var goals: GoalRepository
     @Autowired lateinit var reminderState: ReminderStateRepository
     @Autowired lateinit var reviews: WeeklyReviewRepository
 
@@ -98,16 +101,29 @@ class WeightTimelineApiTest {
     }
 
     /**
-     * An active Goal from [startedOn]. The start weight is not sent: it is the Trend
-     * Weight standing on [startedOn] (ADR 0016), which is what anchors the plan.
+     * An active Goal running from [startedOn] at [startWeightKg] — written through
+     * the repository, not `POST /api/goal`. The API takes a past [startedOn] happily
+     * enough; what it will not do is anchor on a past weight (ADR 0016), so a Goal
+     * created there runs from a fortnight ago at *today's* trend. Backdating is a
+     * fixture device, to get a drawn run of plan out of one window, and it needs
+     * both ends to agree.
      */
-    private fun setGoal(startedOn: LocalDate, targetWeightKg: Double, rateKgPerWeek: Double) {
-        mockMvc.post("/api/goal") {
-            contentType = MediaType.APPLICATION_JSON
-            content = """
-                {"startedOn":"$startedOn","targetWeightKg":$targetWeightKg,"rateKgPerWeek":$rateKgPerWeek}
-            """.trimIndent()
-        }.andExpect { status { isCreated() } }
+    private fun setGoal(
+        startedOn: LocalDate,
+        startWeightKg: Double,
+        targetWeightKg: Double,
+        rateKgPerWeek: Double,
+    ) {
+        goals.insert(
+            Goal(
+                id = null,
+                startedOn = startedOn,
+                startWeightKg = startWeightKg,
+                targetWeightKg = targetWeightKg,
+                rateKgPerWeek = rateKgPerWeek,
+                active = true,
+            ),
+        )
     }
 
     private fun timeline(from: LocalDate = this.from, to: LocalDate = day) =
@@ -187,14 +203,19 @@ class WeightTimelineApiTest {
     fun `with Calorie Tracking off a day carries where the Goal's plan puts it`() {
         tracksWeightOnly()
         aFortnightOnTheScale()
-        setGoal(startedOn = day.minusDays(14), targetWeightKg = 76.0, rateKgPerWeek = 0.5)
+        setGoal(
+            startedOn = day.minusDays(14),
+            startWeightKg = 80.0,
+            targetWeightKg = 76.0,
+            rateKgPerWeek = 0.5,
+        )
 
         timeline().andExpect {
             status { isOk() }
-            // The plan starts from the Trend Weight standing on the day it says it
-            // started (ADR 0016), which on the first reading is that reading itself,
-            // and falls half a kilo a week from there. Backdating is a fixture device
-            // to get a drawn run out of one window; the app always starts a Goal today.
+            // The plan runs from the Goal's own start weight at its own rate — half a
+            // kilo a week from 80.0 — whatever the trend has done since. Seeded
+            // backdated through the repository: the app always starts a Goal today
+            // (ADR 0016), and one window has to hold a run of plan to draw.
             jsonPath("$.days[0].trajectoryKg") { value(80.0) }
             jsonPath("$.days[7].trajectoryKg") { value(79.5) }
             jsonPath("$.days[14].trajectoryKg") { value(79.0) }
@@ -211,7 +232,12 @@ class WeightTimelineApiTest {
         // fails if the two branches are ever swapped.
         tracksCalories()
         aFortnightOnTheScale()
-        setGoal(startedOn = day.minusDays(14), targetWeightKg = 76.0, rateKgPerWeek = 0.5)
+        setGoal(
+            startedOn = day.minusDays(14),
+            startWeightKg = 80.0,
+            targetWeightKg = 76.0,
+            rateKgPerWeek = 0.5,
+        )
 
         timeline().andExpect {
             status { isOk() }

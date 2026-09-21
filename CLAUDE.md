@@ -1682,7 +1682,7 @@ null` now means two things that earn opposite messages — the same trap
     the client had just invented. Recorded in ADR 0029 rather than left as a
     silent deviation.
   - **A Goal's first day drew a chip and no line.** A Goal is always started
-    *today* — ADR 0016 anchors it on the trend standing on that day — so its first window
+    *today* — ADR 0016 anchors it on the live trend — so its first window
     carries exactly one planned day, and a `VisLine` given one point draws nothing
     while the key still names a *Plan*. The backdated `startedOn` in the tests is
     what hid it; found at gate 3 by reading what the UI actually posts. A plan with

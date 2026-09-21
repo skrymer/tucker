@@ -63,9 +63,9 @@ class SetupApiTest {
 
     @Test
     fun `a goal whose target is above the start weight is rejected with 400`() {
-        // The start weight is the trend standing on the start date (ADR 0016) — the
-        // live one, the Goal starting today: a single reading of 86.0 makes it 86.0,
-        // and a target of 90.0 sits above it, so the loss Goal is rejected.
+        // The start weight is the live trend (ADR 0016): a single reading of 86.0
+        // makes it 86.0, and a target of 90.0 sits above it, so the loss Goal is
+        // rejected.
         val today = LocalDate.now()
         mockMvc.put("/api/profile") {
             contentType = MediaType.APPLICATION_JSON

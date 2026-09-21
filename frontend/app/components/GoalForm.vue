@@ -87,10 +87,10 @@ function useServerRefusals() {
 
 const refusals = useServerRefusals()
 
-// The start weight isn't sent: the backend anchors it on the Trend Weight standing
-// on the start date (ADR 0016) — which is today, so a fresh Goal reads 0%
-// (start == now) and, with nothing weighed since, the anchor is the trend
-// previewed above.
+// The start weight isn't sent: the backend anchors it on the live Trend Weight
+// (ADR 0016), which is the figure previewed above — so a fresh Goal reads 0%
+// (start == now). `startedOn` says when the plan runs from, and never selects
+// the anchor.
 function onSubmit() {
   emit('submit', {
     startedOn: today(),

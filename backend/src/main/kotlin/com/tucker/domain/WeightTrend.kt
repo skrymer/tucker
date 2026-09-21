@@ -26,9 +26,6 @@ data class WeightTrend(val points: List<Point>) {
     /** The most recent trend point, or null when there are no measurements. */
     fun latest(): Point? = points.lastOrNull()
 
-    /** The first trend point, or null when there are no measurements. */
-    fun earliest(): Point? = points.firstOrNull()
-
     /**
      * Where the trend stands on [date]: the latest point on or before it, carried
      * forward, because the trend moves only when the scale does. Null before the

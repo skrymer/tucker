@@ -53,8 +53,8 @@ class GoalApiTest {
     }
 
     private fun postGoal(startedOn: String, targetWeightKg: Double) {
-        // The start weight is derived, not sent: the trend standing on [startedOn]
-        // (ADR 0016), which for these backdated dates is the earliest point.
+        // The start weight is derived, not sent: the live trend (ADR 0016), whatever
+        // date the Goal is stamped with — this test is about the history, not the anchor.
         mockMvc.post("/api/goal") {
             contentType = MediaType.APPLICATION_JSON
             content = """{"startedOn":"$startedOn","targetWeightKg":$targetWeightKg,"rateKgPerWeek":0.5}"""
@@ -226,6 +226,74 @@ class GoalApiTest {
             // exactly zero — not merely small enough to round to 0%.
             jsonPath("$.percentComplete") { value(0.0) }
         }
+    }
+
+    @Test
+    fun `a goal stamped a day behind this morning's weigh-in anchors on the live trend`() {
+        // Two devices, one User: the phone logs the morning weigh-in on its own
+        // today, and the Goal is set from a desktop still on yesterday — a date
+        // ADR 0014's +/-1 tolerance admits with no backdating at all. Readings that
+        // rose, so the trend standing on the stamped date (107.0) sits *below* the
+        // live one (107.1); the start weight is the live trend (ADR 0016), which is
+        // the figure the form previewed.
+        val today = java.time.LocalDate.now()
+        val yesterday = today.minusDays(1)
+        mockMvc.put("/api/profile") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"sex":"MALE","birthDate":"1986-05-22","heightCm":180.0}"""
+        }.andExpect { status { isOk() } }
+        mockMvc.post("/api/weight") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"date":"$yesterday","weightKg":107.0}"""
+        }.andExpect { status { isOk() } }
+        mockMvc.post("/api/weight") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"date":"$today","weightKg":108.0}"""
+        }.andExpect { status { isOk() } }
+
+        mockMvc.post("/api/goal") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"startedOn":"$yesterday","targetWeightKg":88.0,
+                          "rateKgPerWeek":0.5,"clientToday":"$yesterday"}"""
+        }.andExpect {
+            status { isCreated() }
+            jsonPath("$.startWeightKg", closeTo(107.1, 1e-6))
+            // The stamped date is kept verbatim — it is the plan's origin, and the
+            // anchor is not looked up by it. This is what refuses the fix ADR 0016
+            // rejects: pulling the date forward onto the newest reading so the two
+            // ends agree by force. The start weight above cannot see that, being
+            // the same figure either way.
+            jsonPath("$.startedOn") { value("$yesterday") }
+        }
+    }
+
+    @Test
+    fun `a target between the stamped date's trend and the live one is accepted`() {
+        // The other half of the divergence, on the same shape of fixture: with the
+        // trend standing on the stamped date (107.0) below the live one (107.1),
+        // every target in between passed the form's own rule and was refused by the
+        // backend, naming a weight the UI never displayed.
+        val today = java.time.LocalDate.now()
+        val yesterday = today.minusDays(1)
+        mockMvc.put("/api/profile") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"sex":"MALE","birthDate":"1986-05-22","heightCm":180.0}"""
+        }.andExpect { status { isOk() } }
+        mockMvc.post("/api/weight") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"date":"$yesterday","weightKg":107.0}"""
+        }.andExpect { status { isOk() } }
+        mockMvc.post("/api/weight") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"date":"$today","weightKg":108.0}"""
+        }.andExpect { status { isOk() } }
+
+        // 107.05 is below the live trend, so the Goal is not already reached.
+        mockMvc.post("/api/goal") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"startedOn":"$yesterday","targetWeightKg":107.05,
+                          "rateKgPerWeek":0.5,"clientToday":"$yesterday"}"""
+        }.andExpect { status { isCreated() } }
     }
 
     @Test

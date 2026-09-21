@@ -72,7 +72,7 @@ of what the User is doing.
 
 **With Calorie Tracking off, the Goal's planned trajectory takes the intake
 half's place** — the sloped line from the Goal's start weight (itself the Trend
-Weight standing on the Goal's start date, ADR 0016) at its chosen rate. It appears *only* there, and
+Weight the Goal was set at, ADR 0016) at its chosen rate. It appears *only* there, and
 that asymmetry is the point rather than an oversight: both settings ask "am I on
 track?", and with tracking on the **calorie half answers it** — intake under the
 Budget line is the mechanism and the falling trend is the confirmation. With
