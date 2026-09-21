@@ -18,8 +18,7 @@ test('setting a goal on /profile replaces the form with the new goal card', asyn
   await mockWeightList(page, [
     { id: 1, measuredOn: '2026-05-28', weightKg: 84.2 },
   ])
-  // The start is anchored on the trend, not the raw reading (ADR 0016) — the live
-  // one here, the Goal being started today.
+  // The start is anchored on the live trend, not the raw reading (ADR 0016).
   await mockWeightTrend(page, { trendKg: 84.2, asOf: '2026-05-28' })
   await mockGoals(page, [], { currentTrendKg: 84.2 })
 

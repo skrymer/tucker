@@ -39,8 +39,8 @@ class GoalProgressApiTest {
     }
 
     private fun seedGoal(targetWeightKg: Double, rateKgPerWeek: Double) {
-        // The start weight is derived from the trend standing on the start date
-        // (ADR 0016), which for a Goal started today is the live one.
+        // The start weight is derived from the live trend (ADR 0016), which is what
+        // makes a fresh Goal read 0%.
         mockMvc.post("/api/goal") {
             contentType = MediaType.APPLICATION_JSON
             content = """{"startedOn":"$today","targetWeightKg":$targetWeightKg,"rateKgPerWeek":$rateKgPerWeek}"""

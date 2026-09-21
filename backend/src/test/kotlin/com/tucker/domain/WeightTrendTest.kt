@@ -175,26 +175,27 @@ class WeightTrendTest {
     }
 
     @Test
+    fun `the latest point is the newest reading, not the oldest`() {
+        // What a Goal anchors its start weight on (ADR 0016), and what every read of
+        // "where the trend stands now" resolves to — so the two ends of the series
+        // have to be told apart. A trend that fell makes them different figures as
+        // well as different days.
+        val trend = trendFalling(fromKg = 87.0, toKg = 86.0, overDays = 10)
+
+        assertEquals(86.0, trend.latest()!!.trendKg, 1e-9)
+        assertEquals(today, trend.latest()!!.date)
+    }
+
+    @Test
+    fun `there is no latest point before anything is weighed`() {
+        assertNull(WeightTrend(emptyList()).latest())
+    }
+
+    @Test
     fun `nothing stands before the first reading`() {
         val trend = trendFalling(fromKg = 87.0, toKg = 86.0, overDays = 10)
 
         assertNull(trend.standingOn(today.minusDays(11)))
-    }
-
-    @Test
-    fun `the earliest point is the oldest reading, not the newest`() {
-        // What a Goal anchors on when it starts before anything was weighed, so the
-        // two ends have to be told apart: a trend that fell makes them different
-        // figures as well as different days.
-        val trend = trendFalling(fromKg = 87.0, toKg = 86.0, overDays = 10)
-
-        assertEquals(87.0, trend.earliest()!!.trendKg, 1e-9)
-        assertEquals(today.minusDays(10), trend.earliest()!!.date)
-    }
-
-    @Test
-    fun `there is no earliest point before anything is weighed`() {
-        assertNull(WeightTrend(emptyList()).earliest())
     }
 
     @Test

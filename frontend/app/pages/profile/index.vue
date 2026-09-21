@@ -53,9 +53,9 @@ function useProfileForm() {
 function useGoalSubmission(onSubmitted: () => void | Promise<void>) {
   const { $api } = useNuxtApp()
 
-  // The start weight isn't sent — the backend anchors it on the Trend Weight
-  // standing on the start date (ADR 0016) and re-checks the target against both
-  // that and the live trend; either 400 names targetWeightKg and feeds the form.
+  // The start weight isn't sent — the backend anchors it on the live Trend Weight
+  // (ADR 0016) and re-checks the target against it; that 400 names targetWeightKg
+  // and feeds the form.
   // The rate has a rule of its own that only the backend can apply, since only it
   // holds Maintenance (ADR 0030), so the refusal is routed by the field it names
   // rather than assumed to be about the target.
@@ -126,8 +126,7 @@ const {
   refresh: refreshGoals,
 } = await useApi('/api/goals')
 
-// The live Trend Weight, which a Goal started today anchors on unless something was
-// weighed since (ADR 0016). Fetched,
+// The live Trend Weight, which a Goal anchors its start on (ADR 0016). Fetched,
 // never computed client-side (ADR 0002 — the EWMA is the backend's); 404 (no
 // readings yet) → null, which leaves the gated Goal section disabled.
 const { $api } = useNuxtApp()
