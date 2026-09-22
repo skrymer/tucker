@@ -3593,6 +3593,17 @@
               "HELD"
             ]
           },
+          "heldReason": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "THIN_LOG",
+              "UNWEIGHED_WINDOW",
+              "NO_WINDOW_ANCHOR",
+              "BELOW_BASAL_RATE",
+              null
+            ]
+          },
           "calorieBudgetKcal": {
             "type": "number",
             "format": "double"
@@ -4026,20 +4037,20 @@
             "format": "int64"
           },
           "previousBudgetKcal": {
-            "type": "number",
-            "format": "double"
+            "type": "integer",
+            "format": "int64"
           },
           "newBudgetKcal": {
-            "type": "number",
-            "format": "double"
+            "type": "integer",
+            "format": "int64"
           },
           "previousFloorG": {
-            "type": "number",
-            "format": "double"
+            "type": "integer",
+            "format": "int64"
           },
           "newFloorG": {
-            "type": "number",
-            "format": "double"
+            "type": "integer",
+            "format": "int64"
           }
         }
       },
@@ -4107,6 +4118,17 @@
             "type": "number",
             "format": "double",
             "nullable": true
+          },
+          "heldReason": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "THIN_LOG",
+              "UNWEIGHED_WINDOW",
+              "NO_WINDOW_ANCHOR",
+              "BELOW_BASAL_RATE",
+              null
+            ]
           },
           "entries": {
             "type": "array",

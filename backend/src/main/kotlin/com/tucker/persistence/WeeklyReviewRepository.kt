@@ -110,6 +110,9 @@ class WeeklyReviewRepository(
 private fun WeeklyReviewRecord.writeTargets(targets: IntakeTargets?) {
     maintenanceKcal = targets?.maintenance?.kcal
     maintenanceBasis = targets?.maintenance?.basis?.name
+    // Outside V15's CHECK and rightly so: it is null on every basis but HELD, and
+    // null on the HELD rows written before Tucker recorded it (ADR 0031).
+    heldReason = targets?.maintenance?.heldReason?.name
     calorieBudgetKcal = targets?.calorieBudgetKcal
     proteinFloorG = targets?.proteinFloorG
 }
@@ -128,7 +131,11 @@ private fun WeeklyReviewRecord.toDomain(): WeeklyReview = WeeklyReview(
 private fun WeeklyReviewRecord.readTargets(): IntakeTargets? {
     val kcal = maintenanceKcal ?: return null
     return IntakeTargets(
-        maintenance = Maintenance(kcal = kcal, basis = Maintenance.Basis.valueOf(maintenanceBasis)),
+        maintenance = Maintenance(
+            kcal = kcal,
+            basis = Maintenance.Basis.valueOf(maintenanceBasis),
+            heldReason = heldReason?.let { Maintenance.HeldReason.valueOf(it) },
+        ),
         calorieBudgetKcal = calorieBudgetKcal,
         proteinFloorG = proteinFloorG,
     )

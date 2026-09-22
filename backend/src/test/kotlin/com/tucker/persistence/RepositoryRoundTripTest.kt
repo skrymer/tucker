@@ -4,12 +4,15 @@ import com.tucker.domain.EstimatedEntry
 import com.tucker.domain.Food
 import com.tucker.domain.FoodKind
 import com.tucker.domain.Goal
+import com.tucker.domain.IntakeTargets
+import com.tucker.domain.Maintenance
 import com.tucker.domain.Nutrition
 import com.tucker.domain.Profile
 import com.tucker.domain.Recipe
 import com.tucker.domain.RecipeIngredient
 import com.tucker.domain.Sex
 import com.tucker.domain.WeighedEntry
+import com.tucker.domain.WeeklyReview
 import com.tucker.domain.WeightMeasurement
 import com.tucker.security.WithTuckerUser
 import org.junit.jupiter.api.Test
@@ -38,6 +41,7 @@ class RepositoryRoundTripTest {
     @Autowired lateinit var profiles: ProfileRepository
     @Autowired lateinit var recipes: RecipeRepository
     @Autowired lateinit var reminderState: ReminderStateRepository
+    @Autowired lateinit var reviews: WeeklyReviewRepository
 
     @Test
     fun `a Food round-trips`() {
@@ -159,6 +163,60 @@ class RepositoryRoundTripTest {
         // The two stamps share one row but must not clobber one another.
         assertEquals(sentOn, reminderState.lastReminderSentOn())
         assertEquals(LocalDate.of(2026, 6, 10), reminderState.lastSeenOn())
+    }
+
+    @Test
+    fun `a held review round-trips the reason it was held for`() {
+        // `insert` hands back the object it was given, so a reason the repository
+        // never wrote would still read correctly everywhere the engine is tested.
+        // Only a re-read proves the column.
+        val day = LocalDate.of(2026, 6, 10)
+        reviews.insert(
+            WeeklyReview(
+                id = null,
+                reviewedOn = day,
+                trendWeightKg = 86.0,
+                intakeTargets = IntakeTargets(
+                    maintenance = Maintenance.held(2400.0, Maintenance.HeldReason.BELOW_BASAL_RATE),
+                    calorieBudgetKcal = 1850.0,
+                    proteinFloorG = 172.0,
+                ),
+            ),
+        )
+
+        val reread = reviews.findByReviewedOn(day)
+
+        assertEquals(Maintenance.Basis.HELD, reread!!.intakeTargets!!.maintenance.basis)
+        assertEquals(
+            Maintenance.HeldReason.BELOW_BASAL_RATE,
+            reread.intakeTargets!!.maintenance.heldReason,
+        )
+    }
+
+    @Test
+    fun `a held review written before Tucker recorded a reason still loads`() {
+        // The side every existing production row sits on. `Maintenance`'s requirement
+        // is one-directional precisely so these hydrate; tightening it to bidirectional
+        // — the obvious tidy-up — passes the whole suite and then throws on every
+        // pre-V19 held row, which is `GET /api/summary` against the live database.
+        val day = LocalDate.of(2026, 6, 17)
+        reviews.insert(
+            WeeklyReview(
+                id = null,
+                reviewedOn = day,
+                trendWeightKg = 86.0,
+                intakeTargets = IntakeTargets(
+                    maintenance = Maintenance(2400.0, Maintenance.Basis.HELD),
+                    calorieBudgetKcal = 1850.0,
+                    proteinFloorG = 172.0,
+                ),
+            ),
+        )
+
+        val reread = reviews.findByReviewedOn(day)!!.intakeTargets!!.maintenance
+
+        assertEquals(Maintenance.Basis.HELD, reread.basis)
+        assertNull(reread.heldReason)
     }
 
     @Test

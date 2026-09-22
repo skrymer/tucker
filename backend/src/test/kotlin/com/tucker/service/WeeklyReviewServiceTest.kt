@@ -73,9 +73,9 @@ class WeeklyReviewServiceTest {
     }
 
     /** Log 2000 kcal on each window day in [offsets] (days before today). */
-    private fun logIntakeDays(offsets: IntProgression) {
+    private fun logIntakeDays(offsets: IntProgression, kcal: Double = 2000.0) {
         for (offset in offsets) {
-            entries.insert(EstimatedEntry(null, today.minusDays(offset.toLong()), "Day's intake", 2000.0, 130.0))
+            entries.insert(EstimatedEntry(null, today.minusDays(offset.toLong()), "Day's intake", kcal, 130.0))
         }
     }
 
@@ -284,6 +284,89 @@ class WeeklyReviewServiceTest {
     }
 
     @Test
+    fun `a window whose log the scale contradicts holds, naming the basal rate`() {
+        seedProfileAndGoal()
+        seedReviewOn(today.minusDays(7)) // the 2400 kcal there is to hold
+        // Both coverage floors are cleared — ten logged days and a weighed window — so
+        // nothing ADR 0018 checks refuses this, and neither floor's remedy applies. But
+        // the trend rose 2 kg while the log claims 800 kcal a day, and those cannot both
+        // be true: the balance comes out at 800 - 1100 = -300 kcal, against a body that
+        // burns 1810 at rest. Counting logged *days* cannot see a day logged only as far
+        // as breakfast; this contradiction is the only evidence of one the engine gets.
+        weights.save(WeightMeasurement(null, today.minusDays(14), 86.0))
+        weights.save(WeightMeasurement(null, today, 106.0))
+        logIntakeDays(14 downTo 5, kcal = 800.0)
+
+        val review = service.runReview(today)
+
+        // The basis and the reason are one fact (ADR 0031), so they are asserted
+        // together rather than over two identical set-ups.
+        assertEquals(Maintenance.Basis.HELD, review.targets.maintenance.basis)
+        assertEquals(2400.0, review.targets.maintenance.kcal, 0.5)
+        assertEquals(
+            Maintenance.HeldReason.BELOW_BASAL_RATE,
+            review.targets.maintenance.heldReason,
+        )
+    }
+
+    @Test
+    fun `a first-week hold names the wait, not the logging a new User cannot have done`() {
+        seedProfileAndGoal()
+        seedReviewOn(today.minusDays(7))
+        // Every User's second review. Set up a week ago and perfect ever since: weighed
+        // daily, logged daily. The window still holds only seven days, against a floor
+        // of ten, and no reading old enough to anchor a change — so *both* conditions
+        // fail, which is the case every new User meets and no single-cause test sees.
+        // "Log more of your days" is false here and cannot be acted on: the window
+        // cannot hold more days than the User has existed for. Only time lifts it.
+        for (offset in 7 downTo 0) {
+            weights.save(WeightMeasurement(null, today.minusDays(offset.toLong()), 86.0))
+        }
+        logIntakeDays(7 downTo 0)
+
+        val review = service.runReview(today)
+
+        assertEquals(
+            Maintenance.HeldReason.NO_WINDOW_ANCHOR,
+            review.targets.maintenance.heldReason,
+        )
+    }
+
+    @Test
+    fun `a hold with no reading before the window does not tell a daily weigher to weigh in`() {
+        seedProfileAndGoal()
+        seedReviewOn(today.minusDays(7))
+        // Weighed every day for a week — but the window opens a fortnight back, so
+        // there is no reading to measure a change *from*. Telling this User to weigh
+        // in is false: they cannot do anything, and next week the anchor arrives.
+        for (offset in 7 downTo 0) {
+            weights.save(WeightMeasurement(null, today.minusDays(offset.toLong()), 86.0))
+        }
+        logIntakeDays(14 downTo 5)
+
+        val review = service.runReview(today)
+
+        assertEquals(
+            Maintenance.HeldReason.NO_WINDOW_ANCHOR,
+            review.targets.maintenance.heldReason,
+        )
+    }
+
+    @Test
+    fun `a hold on a window the scale never saw names the unweighed window`() {
+        seedProfileAndGoal()
+        seedReviewOn(today.minusDays(7))
+        // The log is fine — ten of fourteen days — so "log more days" would be wrong
+        // advice. One weighing re-opens the adaptive path the same day.
+        weights.save(WeightMeasurement(null, today.minusDays(20), 86.0))
+        logIntakeDays(14 downTo 5)
+
+        val review = service.runReview(today)
+
+        assertEquals(Maintenance.HeldReason.UNWEIGHED_WINDOW, review.targets.maintenance.heldReason)
+    }
+
+    @Test
     fun `a thinly weighed window with nothing to hold seeds rather than adapting`() {
         seedProfileAndGoal()
         // The same window the scale never saw, but at cold start — no earlier review
@@ -317,6 +400,24 @@ class WeeklyReviewServiceTest {
     }
 
     @Test
+    fun `a window logged only as zero-calorie days never adapts to the weight term alone`() {
+        seedProfileAndGoal()
+        seedReviewOn(today.minusDays(7)) // 2400 to hold, so holding is visible
+        // Ten logged days carrying no calories, against a trend falling steeply enough
+        // that the weight term alone clears the basal rate. Without the zero-intake
+        // guard the estimate is that term by itself — Maintenance derived from the
+        // scale with nothing eaten to balance it against (ADR 0018).
+        weights.save(WeightMeasurement(null, today.minusDays(14), 86.0))
+        weights.save(WeightMeasurement(null, today, 46.0))
+        logIntakeDays(14 downTo 5, kcal = 0.0)
+
+        val review = service.runReview(today)
+
+        assertEquals(Maintenance.Basis.HELD, review.targets.maintenance.basis)
+        assertEquals(Maintenance.HeldReason.THIN_LOG, review.targets.maintenance.heldReason)
+    }
+
+    @Test
     fun `enough logged days but no calories falls back instead of computing a non-positive maintenance`() {
         seedProfileAndGoal()
         seedFlatTrend() // flat trend → zero weight-change term, so a zero intake would yield 0 kcal
@@ -346,6 +447,20 @@ class WeeklyReviewServiceTest {
 
         assertEquals(Maintenance.Basis.HELD, review.targets.maintenance.basis)
         assertEquals(prior.targets.maintenance.kcal, review.targets.maintenance.kcal, 1e-9)
+    }
+
+    @Test
+    fun `a hold below the logging-coverage floor names the thin log`() {
+        seedProfileAndGoal()
+        seedFlatTrend()
+        seedReviewOn(today.minusDays(7))
+        // Nine of fourteen days logged. The remedy is "log more days", and a badge
+        // that only says "Held" cannot tell the User that (ADR 0031).
+        logIntakeDays(14 downTo 6)
+
+        val review = service.runReview(today)
+
+        assertEquals(Maintenance.HeldReason.THIN_LOG, review.targets.maintenance.heldReason)
     }
 
     @Test

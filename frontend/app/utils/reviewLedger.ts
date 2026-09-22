@@ -1,4 +1,5 @@
 import type { components } from '#open-fetch-schemas/api'
+import { HELD_REASON_COPY, type HeldReason } from './heldReason'
 
 type WeeklyReview = components['schemas']['WeeklyReviewResponse']
 type IntakeTargets = NonNullable<WeeklyReview['intakeTargets']>
@@ -42,6 +43,30 @@ export const REVIEW_BASIS_BADGE: Record<
   ADAPTIVE: { label: 'Adaptive', color: 'primary' },
   HELD: { label: 'Held', color: 'info' },
   FORMULA_SEED: { label: 'Seed', color: 'neutral' },
+}
+
+/**
+ * The badge for a review's basis, qualified by which condition held it where the
+ * review records one — so every caller gets that answer from here rather than
+ * composing it. Null where there is no basis to badge.
+ *
+ * A held review written before Tucker recorded a reason keeps the bare label,
+ * which is the only way `REVIEW_BASIS_BADGE.HELD` is still reached.
+ */
+export function reviewBasisBadge(
+  basis: ReviewBasis | null | undefined,
+  heldReason?: HeldReason | null,
+): { label: string; color: 'primary' | 'info' | 'neutral' } | null {
+  // Both lookups tolerate a value this client does not know: the installed PWA serves
+  // a precached shell (ADR 0011), so a backend that gains a basis or a reason reaches
+  // a client built before it, and an unknown key must leave the badge plain rather
+  // than throw on the page it exists to explain.
+  const badge = basis ? REVIEW_BASIS_BADGE[basis] : null
+  if (!badge) return null
+  const reason = heldReason ? HELD_REASON_COPY[heldReason] : null
+  return reason
+    ? { ...badge, label: `${badge.label} · ${reason.qualifier}` }
+    : badge
 }
 
 export function toLedgerRows(history: WeeklyReview[]): LedgerRow[] {

@@ -220,14 +220,18 @@ refuses a rate that does not fit at the moment it is chosen, and **suspends** th
 deficit — publishing Maintenance as the Budget — when Maintenance drifts under a Goal
 already running. No floor is invented in either direction.
 
-That closes the `IntakeTargets` invariant only. `Maintenance`'s own
-`require(kcal > 0)` is a **second, still-open** way for the same endpoint to 400:
+That closed the `IntakeTargets` invariant only. `Maintenance`'s own
+`require(kcal > 0)` was a **second** way for the same endpoint to 400:
 `adaptive` subtracts the energy of a *rising* trend from the intake average with
 nothing clamping it, so a window that logs little and gains weight produces a
 negative figure — roughly 1.5 kg of trend rise against an 800 kcal average, or
-0.55 kg against 300. It is a different question (what the engine does when its own
-energy balance goes negative, which is decision 3's territory rather than a Budget
-policy) and is tracked in [#332](https://github.com/skrymer/tucker/issues/332).
+0.55 kg against 300. **Now closed too**, and by a decision of decision 3's shape
+rather than a Budget policy:
+[ADR 0031](0031-a-maintenance-below-the-bodys-basal-rate-is-not-a-measurement.md)
+holds whenever the estimate falls below the User's own basal metabolic rate, which
+is where it stops being a measurement of a body rather than merely where the
+arithmetic stops producing a number. The invariant stays and becomes unreachable
+through the engine.
 
 **Out of scope, deliberately:** whether the window was weighed *often enough* for the
 term to mean anything at all ([#292](https://github.com/skrymer/tucker/issues/292));
@@ -306,6 +310,15 @@ would rather be a week stale than confidently wrong. Tucker does **not** say whi
 held it: `HELD` stays one value, though the remedy differs (weigh once / log more), and
 a basis that explains itself is a surface decision this ADR does not take.
 
+**Reversed by [ADR 0031](0031-a-maintenance-below-the-bodys-basal-rate-is-not-a-measurement.md)**,
+on evidence this amendment did not have. Holding silently was defensible while both
+remedies — *weigh once*, *log more days* — were ones a User can guess from their own
+behaviour. ADR 0031 adds a third, `BELOW_BASAL_RATE`, whose remedy is *log your days
+completely*, and that one is unguessable: the User logged ten of fourteen days and weighed
+in, so by every signal available to them they did everything right and the Budget froze
+anyway. A `HELD` Maintenance therefore now records **which** condition held it, and `/`
+names the remedy beside the Budget it is holding.
+
 **Byte-for-byte unchanged** for every case that adapts today: the floor's negation is
 exactly the case where both ends of `changeSince` resolve to one point, which contributed
 a zero term before and produces a `HELD` review now.
@@ -326,6 +339,9 @@ they are separate decisions rather than parts of this one.
 - [#292](https://github.com/skrymer/tucker/issues/292) — the weight-coverage floor,
   amended above; [#293](https://github.com/skrymer/tucker/issues/293) and
   [#305](https://github.com/skrymer/tucker/issues/305) are what it deliberately leaves.
+- [0031 — a Maintenance below the body's basal rate is not a measurement](0031-a-maintenance-below-the-bodys-basal-rate-is-not-a-measurement.md)
+  — extends decision 3 with a third condition to hold on, and reverses the #292
+  amendment's ruling that a basis does not explain itself.
 - [0008 — Maintenance Mode is the absence of an active Goal](0008-maintenance-mode-is-the-absence-of-a-goal.md)
   — the adaptive engine this refines; keeps its weekly cadence and trend basis.
 - [0002 — business logic belongs in the backend](0002-business-logic-belongs-in-the-backend.md)

@@ -489,6 +489,18 @@ is the lower of the two because the terms fail differently: a thin intake sample
 makes the level swing, while a window the scale never saw contributes nothing at
 all, leaving Maintenance at the intake average exactly — which asserts that a user
 who is losing weight maintains on what they eat.
+A corrected figure **below the user's own basal metabolic rate is refused**, and
+held like either coverage floor. Total daily expenditure is the basal rate times an
+activity factor of at least 1.2, so a Maintenance beneath the resting cost of
+staying alive is not a low figure but an impossible one — the window's logged
+intake and the scale are contradicting each other, and only the log is
+self-reported. The line is the user's own body's, computed from their **Profile**
+by the same formula that seeds Maintenance, so it scales with them and is not a
+number Tucker picked. It is *not* zero: zero is where the arithmetic stops
+producing a number, not where it stops producing a credible one. Counting logged
+**days** cannot see how completely each of them was logged, so this contradiction
+is the only evidence of a partial log the app will ever have. See
+[ADR 0031](docs/adr/0031-a-maintenance-below-the-bodys-basal-rate-is-not-a-measurement.md).
 The BMR seed applies only when there is no figure to hold: at cold start, before
 any review exists, and again on the far side of a
 **Calorie Tracking** stretch — where the review before this one carries no
@@ -501,11 +513,34 @@ _Avoid_: TDEE, baseline
 **Maintenance Basis**:
 How a **Weekly Review**'s **Maintenance** was derived — `FORMULA_SEED` at cold
 start, `ADAPTIVE` when corrected from logged intake, or `HELD` when carried
-forward below the coverage floor. A structured field (not prose), surfaced to the
-user as the review's basis badge — carried inside a review's **Intake Targets**,
-so a review run with **Calorie Tracking** off has no basis, because it has no
-Maintenance to be the basis of.
-_Avoid_: maintenance source, derivation note
+forward because the correction could not be trusted. A structured field (not
+prose), surfaced to the user as the review's basis badge — carried inside a
+review's **Intake Targets**, so a review run with **Calorie Tracking** off has no
+basis, because it has no Maintenance to be the basis of.
+A `HELD` figure also carries its **Held Reason**, so the badge says which of the
+four conditions held it and the user is told what would lift it. Each names what
+the engine *found*, never what it concluded, and the copy beside it is held to the
+same rule: `THIN_LOG` (fewer than 10 of the 14 days carry an **Entry**, or the days
+that do carry no calories — log more of the food you eat), `UNWEIGHED_WINDOW` (no
+day in the window carries a **Weight Measurement** — weigh in once),
+`NO_WINDOW_ANCHOR` (no reading old enough to measure a change *from*, which a
+daily weigher still has until their history reaches back a fortnight — keep
+weighing) and `BELOW_BASAL_RATE` (the correction came out under the user's basal
+metabolic rate — the log and the scale do not line up). That last one is stated as
+the disagreement rather than as under-logging: an incomplete log is the likeliest
+cause and not the only one, since a trend built from few readings understates a
+real fall, so a diligent logger reaches it too.
+These conditions co-occur, so the badge names the **binding** one — the condition
+still unmet when the others are met. `NO_WINDOW_ANCHOR` leads the three floors
+because it is the only one no action reaches: every new user's second review fails
+the logging floor *and* has no anchor, and telling them to log more would be both
+false and impossible to act on.
+Only a `HELD` basis has one, and reviews written before the app recorded it carry
+none: they were derived under a rule that did not, which is honest history rather
+than something to backfill. The remedy is surfaced as a line beside the **Calorie
+Budget** on Today — history cannot tell anyone what to do now — and never as a
+card, a held Budget being stale rather than wrong.
+_Avoid_: maintenance source, derivation note, held flag
 
 **Maintenance Mode**:
 The app's resting state whenever no Goal is active. With no deficit to chase, the

@@ -1,21 +1,26 @@
 <script setup lang="ts">
-import { REVIEW_BASIS_BADGE, type ReviewBasis } from '~/utils/reviewLedger'
+import type { HeldReason } from '~/utils/heldReason'
+import { reviewBasisBadge, type ReviewBasis } from '~/utils/reviewLedger'
 
 // Stryker disable all: a compiler macro's arguments are hoisted out of setup()
 const props = withDefaults(
   defineProps<{
     /** The review's Maintenance Basis; absent for a review with no Intake Targets. */
     basis: ReviewBasis | null | undefined
+    /**
+     * Which condition held it, where the review records one. Absent on every basis
+     * but `HELD`, and on the held reviews written before Tucker recorded it — both
+     * of which fall back to the bare basis label.
+     */
+    heldReason?: HeldReason | null
     /** Show an em-dash when there is none (the desktop table) vs nothing. */
     placeholder?: boolean
   }>(),
-  { placeholder: false },
+  { heldReason: null, placeholder: false },
 )
 // Stryker restore all
 
-const badge = computed(() =>
-  props.basis ? REVIEW_BASIS_BADGE[props.basis] : null,
-)
+const badge = computed(() => reviewBasisBadge(props.basis, props.heldReason))
 </script>
 
 <template>

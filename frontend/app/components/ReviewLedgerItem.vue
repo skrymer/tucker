@@ -33,7 +33,10 @@ const headline = computed(() =>
       <p class="text-sm font-medium text-muted">
         {{ formatDateFromISO(row.review.reviewedOn) }}
       </p>
-      <LedgerBasisBadge :basis="targets?.maintenanceBasis" />
+      <LedgerBasisBadge
+        :basis="targets?.maintenanceBasis"
+        :held-reason="targets?.heldReason"
+      />
     </div>
 
     <div class="mt-1 flex items-baseline gap-2">

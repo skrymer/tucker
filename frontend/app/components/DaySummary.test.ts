@@ -29,6 +29,40 @@ describe('DaySummary', () => {
     expect(screen.getByText('1500 / 2000 kcal')).toBeVisible()
   })
 
+  it('says why a held budget did not move, beside the budget it is holding', async () => {
+    await renderSuspended(DaySummary, {
+      props: { summary: { ...summary, heldReason: 'BELOW_BASAL_RATE' } },
+    })
+
+    // States the finding — the log and the scale disagree — rather than accusing the
+    // User of under-logging, which the engine cannot know (ADR 0031).
+    expect(
+      screen.getByText(/Your logged food and your weight do not line up yet/),
+    ).toBeVisible()
+  })
+
+  it('says nothing rather than crashing on a hold reason it does not know', async () => {
+    // The precached shell outlives the backend that serves it, so a newly added
+    // reason reaches a client built before it. `/` is Tucker's primary screen: the
+    // line must go missing, not take the page with it.
+    await renderSuspended(DaySummary, {
+      props: {
+        summary: { ...summary, heldReason: 'SOMETHING_NEWER' as never },
+      },
+    })
+
+    expect(screen.getByText('1500 / 2000 kcal')).toBeVisible()
+    expect(screen.queryByText(/being held steady/)).not.toBeInTheDocument()
+  })
+
+  it('says nothing about a hold when the budget was freshly derived', async () => {
+    await renderSuspended(DaySummary, {
+      props: { summary: { ...summary, heldReason: null } },
+    })
+
+    expect(screen.queryByText(/being held steady/)).not.toBeInTheDocument()
+  })
+
   it('wires the calories remaining into the ring centre', async () => {
     await renderSuspended(DaySummary, {
       props: { summary: { ...summary, caloriesRemaining: 500 } },

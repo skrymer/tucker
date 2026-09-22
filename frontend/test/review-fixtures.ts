@@ -16,6 +16,7 @@ export function intakeTargets(
   return {
     maintenanceKcal: 2400,
     maintenanceBasis: 'ADAPTIVE',
+    heldReason: null,
     calorieBudgetKcal: 1900,
     proteinFloorG: 170,
     ...overrides,

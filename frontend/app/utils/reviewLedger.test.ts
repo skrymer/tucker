@@ -1,14 +1,20 @@
 import { describe, expect, it } from 'vitest'
-import { toLedgerRows } from './reviewLedger'
+import { reviewBasisBadge, toLedgerRows } from './reviewLedger'
+import type { HeldReason } from './heldReason'
+import type { ReviewBasis } from './reviewLedger'
 import { intakeTargets, weeklyReview } from '~~/test/review-fixtures'
 
-// REVIEW_BASIS_BADGE's labels and colours are deliberately unasserted here.
-// They are lookup data: a test naming 'Adaptive' or 'primary' pins the token a
-// designer is entitled to change, not a rule. What matters — that all three
-// bases are distinguishable, and that one map serves both the phone cards and
-// the desktop table — is structural, and is what the Record's key type enforces
-// at compile time. Mutation testing reports the three colours as survivors for
-// this reason; that is the intended verdict, not a gap.
+// REVIEW_BASIS_BADGE's labels and colours are lookup data: a test naming
+// 'Adaptive' or 'primary' pins the token a designer is entitled to change, not a
+// rule. What matters — that every basis is distinguishable, and that one map
+// serves both the phone cards and the desktop table — is structural, and is what
+// the Record's key type enforces at compile time. Mutation testing reports the
+// ADAPTIVE and FORMULA_SEED colours as survivors for this reason; that is the
+// intended verdict, not a gap.
+//
+// HELD's pair is the exception, and only incidentally: `reviewBasisBadge` composes
+// the qualifier onto that label, so the tests below name both halves to assert the
+// composition rather than the token.
 
 // The history endpoint returns reviews oldest-first; the ledger shows them
 // newest-first with each row's delta measured against the older one beneath it.
@@ -81,5 +87,38 @@ describe('toLedgerRows', () => {
     const resumed = rows.find((r) => r.review.id === 2)
     expect(resumed?.trendDelta).toBe(-1)
     expect(resumed?.targetsDelta).toBeNull()
+  })
+})
+
+describe('reviewBasisBadge', () => {
+  it('qualifies a held badge with the condition, spelling "Held" once', () => {
+    // The qualifier is appended to the basis label rather than replacing it, so
+    // rewording the HELD badge cannot leave stale copies behind.
+    expect(reviewBasisBadge('HELD', 'NO_WINDOW_ANCHOR')).toEqual({
+      label: 'Held · short history',
+      color: 'info',
+    })
+  })
+
+  it('badges nothing rather than throwing on a basis it does not know', () => {
+    // The installed PWA serves a precached shell, so a backend that gains a basis or a
+    // reason reaches a client built before it. An unknown basis used to render nothing;
+    // qualifying the label would reach into `undefined` and take the page down with it.
+    const unknownBasis = 'SOMETHING_NEWER' as ReviewBasis
+
+    expect(reviewBasisBadge(unknownBasis, 'THIN_LOG')).toBeNull()
+    // The mirror: a basis this client knows, qualified by a reason it does not.
+    expect(reviewBasisBadge('HELD', 'SOMETHING_NEWER' as HeldReason)).toEqual({
+      label: 'Held',
+      color: 'info',
+    })
+  })
+
+  it('badges nothing for a review that has no basis to badge', () => {
+    // A review run with Calorie Tracking off carries no Maintenance, so there is
+    // nothing for a basis to be the basis of. Answered here rather than left to each
+    // caller to check, which is what the guard is for.
+    expect(reviewBasisBadge(null)).toBeNull()
+    expect(reviewBasisBadge(undefined, 'THIN_LOG')).toBeNull()
   })
 })

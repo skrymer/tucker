@@ -68,6 +68,7 @@ const columns = computed(() =>
       <LedgerBasisBadge
         placeholder
         :basis="row.original.review.intakeTargets?.maintenanceBasis"
+        :held-reason="row.original.review.intakeTargets?.heldReason"
       />
     </template>
 

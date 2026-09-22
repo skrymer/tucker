@@ -121,6 +121,20 @@ describe('ReviewLedgerItem', () => {
     expect(screen.queryByText('Adaptive')).not.toBeInTheDocument()
   })
 
+  it('badges which condition held a review, so the remedy is nameable', async () => {
+    const [latest] = rows({
+      intakeTargets: intakeTargets({
+        maintenanceBasis: 'HELD',
+        heldReason: 'UNWEIGHED_WINDOW',
+      }),
+    })
+    await renderSuspended(ReviewLedgerItem, { props: { row: latest } })
+
+    // "Held" alone cannot say whether to log more or step on the scale, and this
+    // user's log was fine.
+    expect(screen.getByText('Held · no weigh-in')).toBeVisible()
+  })
+
   it('leads a review run with Calorie Tracking off with the Trend Weight', async () => {
     const [latest] = rows(
       { trendWeightKg: 84, intakeTargets: null },

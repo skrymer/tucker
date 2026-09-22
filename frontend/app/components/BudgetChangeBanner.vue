@@ -30,8 +30,6 @@ function useBudgetChangeDismissal() {
 
 const { dismissed, dismiss } = useBudgetChangeDismissal()
 const visible = computed(() => props.budgetChange != null && !dismissed.value)
-
-const round = (n: number) => Math.round(n)
 </script>
 
 <template>
@@ -54,12 +52,12 @@ const round = (n: number) => Math.round(n)
   >
     <template #description>
       <p>
-        Calorie Budget: {{ round(budgetChange.previousBudgetKcal) }} →
-        {{ round(budgetChange.newBudgetKcal) }} kcal
+        Calorie Budget: {{ budgetChange.previousBudgetKcal }} →
+        {{ budgetChange.newBudgetKcal }} kcal
       </p>
       <p>
-        Protein Floor: {{ round(budgetChange.previousFloorG) }} →
-        {{ round(budgetChange.newFloorG) }} g
+        Protein Floor: {{ budgetChange.previousFloorG }} →
+        {{ budgetChange.newFloorG }} g
       </p>
     </template>
   </UAlert>
