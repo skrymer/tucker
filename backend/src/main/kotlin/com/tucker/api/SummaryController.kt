@@ -3,6 +3,7 @@ package com.tucker.api
 import com.tucker.domain.DailyLog
 import com.tucker.domain.DayStatus
 import com.tucker.domain.DriftStatus
+import com.tucker.domain.Maintenance
 import com.tucker.domain.WeeklyReview
 import com.tucker.domain.WeightTrend
 import com.tucker.persistence.EntryRepository
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import java.time.LocalDate
+import kotlin.math.roundToLong
 
 /**
  * The dashboard view of one day: intake against the Calorie Budget and Protein
@@ -46,6 +48,13 @@ data class DailySummaryResponse(
     val dayStatus: DayStatus?,
     /** The smoothed Trend Weight from the latest review; null until the first runs. */
     val trendWeightKg: Double?,
+    /**
+     * Why the latest review carried its Maintenance forward instead of correcting it,
+     * so `/` can name the one thing that would lift the Budget (ADR 0031). Null
+     * whenever there is nothing to explain — the figure was measured or seeded, there
+     * is no review yet, or the review was held before Tucker recorded a reason.
+     */
+    val heldReason: Maintenance.HeldReason?,
     val entries: List<EntryResponse>,
     val budgetChange: BudgetChange?,
     /**
@@ -74,34 +83,37 @@ data class DailySummaryResponse(
  */
 data class BudgetChange(
     val reviewId: Long,
-    val previousBudgetKcal: Double,
-    val newBudgetKcal: Double,
-    val previousFloorG: Double,
-    val newFloorG: Double,
+    val previousBudgetKcal: Long,
+    val newBudgetKcal: Long,
+    val previousFloorG: Long,
+    val newFloorG: Long,
 ) {
     companion object {
         /**
          * The change from [previous] to [latest] — null if neither figure moved, and
          * null if either review carries no targets: a Budget that was never published
          * cannot have moved, and stating a jump across the gap would invent one.
+         *
+         * "Moved" is asked of the figures the User is *shown*, not of the raw doubles,
+         * which is why this publishes whole numbers: a sub-unit drift renders the same
+         * on both rows, and a banner announcing it would contradict its own headline.
+         * Rounding is ordinarily the client's, and here the decision depends on it — so
+         * the rule lives here alone and the banner has none to disagree with (ADR 0002).
          */
         fun between(previous: WeeklyReview, latest: WeeklyReview): BudgetChange? {
             val before = previous.intakeTargets
             val after = latest.intakeTargets
             if (before == null || after == null) return null
-            val moved = after.calorieBudgetKcal != before.calorieBudgetKcal ||
-                after.proteinFloorG != before.proteinFloorG
-            return if (moved) {
-                BudgetChange(
-                    reviewId = latest.id!!,
-                    previousBudgetKcal = before.calorieBudgetKcal,
-                    newBudgetKcal = after.calorieBudgetKcal,
-                    previousFloorG = before.proteinFloorG,
-                    newFloorG = after.proteinFloorG,
-                )
-            } else {
-                null
-            }
+            val change = BudgetChange(
+                reviewId = latest.id!!,
+                previousBudgetKcal = before.calorieBudgetKcal.roundToLong(),
+                newBudgetKcal = after.calorieBudgetKcal.roundToLong(),
+                previousFloorG = before.proteinFloorG.roundToLong(),
+                newFloorG = after.proteinFloorG.roundToLong(),
+            )
+            val moved = change.newBudgetKcal != change.previousBudgetKcal ||
+                change.newFloorG != change.previousFloorG
+            return change.takeIf { moved }
         }
     }
 }
@@ -182,6 +194,7 @@ class SummaryController(
             proteinRemaining = targets?.let { it.proteinFloorG - proteinConsumed },
             dayStatus = targets?.let { log.dayStatus(it.calorieBudgetKcal, it.proteinFloorG) },
             trendWeightKg = review?.trendWeightKg,
+            heldReason = targets?.maintenance?.heldReason,
             entries = log.entries.toResponses(foods),
             budgetChange = budgetChange,
             driftStatus = driftStatus,

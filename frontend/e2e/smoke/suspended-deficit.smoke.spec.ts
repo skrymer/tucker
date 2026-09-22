@@ -27,7 +27,16 @@ const bodyStats = () => ({
 
 /** The window the adaptive correction reads, and the coverage it needs (ADR 0018). */
 const LOGGED_DAYS = 10
-const DAILY_KCAL = 800
+
+/**
+ * Low enough that the 1650 kcal deficit cannot fit inside it, and high enough to be
+ * a figure a body could actually run on: this trend's basal rate is 1339 kcal
+ * (`10x70 + 6.25x160 - 5x40 - 161`), and a balance under that is refused as a
+ * contradiction between the log and the scale rather than adapted to (ADR 0031).
+ * Suspension is still reached the same way — by the engine correcting Maintenance
+ * down — only now from an intake that is credible rather than an impossible one.
+ */
+const DAILY_KCAL = 1400
 
 test('a deficit the engine can no longer supply is suspended, and Today says so', async ({
   page,
@@ -73,8 +82,8 @@ test('a deficit the engine can no longer supply is suspended, and Today says so'
   expect(before.deficitSuspended).toBe(false)
   expect(before.calorieBudget).toBeCloseTo(1874.6 - 1650, 1)
 
-  // Ten logged days at 800 kcal clears the coverage floor, so the engine adapts
-  // to an intake far below the deficit the Goal is still asking for.
+  // Ten logged days clears the coverage floor, so the engine adapts to an intake
+  // below the deficit the Goal is still asking for.
   for (let day = 1; day <= LOGGED_DAYS; day++) {
     await expectCreated(
       request.post(`${API}/entries/estimated`, {

@@ -33,6 +33,12 @@ data class WeeklyReviewResponse(
 data class IntakeTargetsResponse(
     val maintenanceKcal: Double,
     val maintenanceBasis: Maintenance.Basis,
+    /**
+     * Why a `HELD` basis was carried forward, so the badge can name the one thing
+     * that would lift it. Null on every other basis, and on the held reviews
+     * written before Tucker recorded it (ADR 0031).
+     */
+    val heldReason: Maintenance.HeldReason?,
     val calorieBudgetKcal: Double,
     val proteinFloorG: Double,
 )
@@ -45,6 +51,7 @@ private fun WeeklyReview.toResponse() = WeeklyReviewResponse(
         IntakeTargetsResponse(
             maintenanceKcal = it.maintenance.kcal,
             maintenanceBasis = it.maintenance.basis,
+            heldReason = it.maintenance.heldReason,
             calorieBudgetKcal = it.calorieBudgetKcal,
             proteinFloorG = it.proteinFloorG,
         )

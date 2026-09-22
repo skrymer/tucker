@@ -33,6 +33,18 @@ function useEntryLog() {
 }
 
 const { visibleEntries, canExpand, expanderLabel, toggle } = useEntryLog()
+
+// A budget carried forward rather than corrected, and the one thing that would
+// let the engine correct it. Quiet by design (ADR 0031): a held budget is stale
+// rather than wrong-direction, and it recurs every week a user logs thinly.
+// The lookup tolerates a reason this client does not know: the precached shell
+// (ADR 0011) outlives the backend that serves it, and `/` must lose the line rather
+// than the page. `reviewBasisBadge` reads the same map the same way.
+const heldNote = computed(() =>
+  props.summary.heldReason
+    ? (HELD_REASON_COPY[props.summary.heldReason]?.remedy ?? null)
+    : null,
+)
 </script>
 
 <template>
@@ -57,6 +69,20 @@ const { visibleEntries, canExpand, expanderLabel, toggle } = useEntryLog()
           {{ verdict.label }}
         </p>
       </div>
+
+      <p
+        v-if="heldNote"
+        class="mt-3 flex items-start gap-2 border-t border-default pt-3 text-sm text-muted"
+      >
+        <!-- Not a pause glyph: SuspendedDeficitBanner carries one on this same
+             page, and both states can be live at once. -->
+        <UIcon
+          name="i-lucide-history"
+          class="mt-0.5 size-4 shrink-0"
+          aria-hidden
+        />
+        <span>Your calorie budget is being held steady. {{ heldNote }}</span>
+      </p>
     </UCard>
 
     <UCard v-else>

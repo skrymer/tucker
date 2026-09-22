@@ -5,6 +5,7 @@ import java.time.LocalDate
 import kotlin.math.round
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /** Pure-domain tests for the adaptive engine's arithmetic. */
@@ -54,9 +55,82 @@ class AdaptiveEngineTest {
             loggedDays = 10,
             trendChange = WeightTrend.Change(kg = -0.5, overDays = 14),
             windowDays = 14,
-        )
+            basalMetabolicRateKcal = 1730.0,
+        )!!
         assertEquals(2275.0, adaptive.kcal, 0.01)
         assertEquals(Maintenance.Basis.ADAPTIVE, adaptive.basis)
+    }
+
+    @Test
+    fun `the adaptive estimate is refused below the basal metabolic rate`() {
+        // 10 days logged at 800 kcal against a trend that rose 0.5 kg over 13 days:
+        // the divisor floors at the window, so the weight term is
+        // -0.5 x 7700 / 14 = -275 and the balance comes out at 525 kcal. Positive, so
+        // the `kcal > 0` invariant waves it through — and far under the 1139 kcal this
+        // body burns at rest, which no amount of inactivity reaches. The window's log
+        // and its scale are contradicting each other (ADR 0031).
+        val refused = Maintenance.adaptive(
+            totalIntakeKcal = 8000.0,
+            loggedDays = 10,
+            trendChange = WeightTrend.Change(kg = 0.5, overDays = 13),
+            windowDays = 14,
+            basalMetabolicRateKcal = 1139.0,
+        )
+
+        assertNull(refused)
+    }
+
+    @Test
+    fun `a balance exactly at the basal rate is a measurement`() {
+        // The line is "below the basal rate is not a measurement" (ADR 0031), so the
+        // rate itself is still one — a body burning exactly its resting cost and no
+        // more. The strictness is the whole rule, and nothing else drives its edge.
+        val exactly = Maintenance.adaptive(
+            totalIntakeKcal = 18100.0,
+            loggedDays = 10,
+            trendChange = WeightTrend.Change(kg = 0.0, overDays = 14),
+            windowDays = 14,
+            basalMetabolicRateKcal = 1810.0,
+        )
+
+        assertEquals(1810.0, exactly!!.kcal, 0.01)
+    }
+
+    @Test
+    fun `a non-positive balance is refused even where the basal rate is itself absurd`() {
+        // Nothing bounds Mifflin-St Jeor from below: a height entered in metres rather
+        // than centimetres yields a negative basal rate, and a gate that only asks
+        // "is the balance above it" then admits a negative Maintenance — the very
+        // figure `require(kcal > 0)` refuses, which is issue #332's outage reopened.
+        // A 0.0004 kg rise is -0.22 kcal/day of balance, which sits *above* a basal
+        // rate of -0.375 and so passes a gate that asks only about the rate.
+        val refused = Maintenance.adaptive(
+            totalIntakeKcal = 0.0,
+            loggedDays = 10,
+            trendChange = WeightTrend.Change(kg = 0.0004, overDays = 14),
+            windowDays = 14,
+            basalMetabolicRateKcal = -0.375,
+        )
+
+        assertNull(refused)
+    }
+
+    @Test
+    fun `a held Maintenance records which condition held it`() {
+        val held = Maintenance.held(2400.0, Maintenance.HeldReason.BELOW_BASAL_RATE)
+
+        assertEquals(Maintenance.Basis.HELD, held.basis)
+        assertEquals(Maintenance.HeldReason.BELOW_BASAL_RATE, held.heldReason)
+    }
+
+    @Test
+    fun `a Maintenance that was not held cannot carry a held reason`() {
+        // The basis and the reason are one fact, so they are constructed as one thing
+        // and cannot drift: `held` is the only way to acquire a reason, and a figure
+        // the engine measured or seeded has nothing to explain (ADR 0031).
+        assertFailsWith<IllegalArgumentException> {
+            Maintenance(2400.0, Maintenance.Basis.ADAPTIVE, Maintenance.HeldReason.THIN_LOG)
+        }
     }
 
     @Test
@@ -64,7 +138,9 @@ class AdaptiveEngineTest {
         // The Calorie Budget is Maintenance less the Goal's deficit, so a zero
         // here is a negative Budget — and `held` carries whatever it is given
         // forward week after week without re-deriving it.
-        assertFailsWith<IllegalArgumentException> { Maintenance.held(0.0) }
+        assertFailsWith<IllegalArgumentException> {
+            Maintenance.held(0.0, Maintenance.HeldReason.BELOW_BASAL_RATE)
+        }
     }
 
     @Test
@@ -77,6 +153,7 @@ class AdaptiveEngineTest {
                 loggedDays = 0,
                 trendChange = WeightTrend.Change(kg = -0.5, overDays = 14),
                 windowDays = 14,
+                basalMetabolicRateKcal = 1730.0,
             )
         }
     }
@@ -93,6 +170,7 @@ class AdaptiveEngineTest {
                 loggedDays = 10,
                 trendChange = WeightTrend.Change(kg = -0.5, overDays = 14),
                 windowDays = 0,
+                basalMetabolicRateKcal = 1730.0,
             )
         }
     }
@@ -107,7 +185,8 @@ class AdaptiveEngineTest {
             loggedDays = 10,
             trendChange = WeightTrend.Change(kg = -0.2, overDays = 20),
             windowDays = 14,
-        )
+            basalMetabolicRateKcal = 1730.0,
+        )!!
 
         assertEquals(2077.0, adaptive.kcal, 0.01)
     }
@@ -123,7 +202,8 @@ class AdaptiveEngineTest {
             loggedDays = 10,
             trendChange = WeightTrend.Change(kg = -0.2, overDays = 1),
             windowDays = 14,
-        )
+            basalMetabolicRateKcal = 1730.0,
+        )!!
 
         assertEquals(2110.0, adaptive.kcal, 0.01)
     }
@@ -142,7 +222,8 @@ class AdaptiveEngineTest {
             loggedDays = 10,
             trendChange = WeightTrend.Change(kg = 0.0, overDays = 0),
             windowDays = 14,
-        )
+            basalMetabolicRateKcal = 1730.0,
+        )!!
 
         assertEquals(2000.0, adaptive.kcal, 0.01)
     }

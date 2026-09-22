@@ -331,6 +331,47 @@ class SummaryApiTest {
     }
 
     @Test
+    fun `the summary reports no budget change when both figures render identically`() {
+        // A real payload, seeded directly rather than produced by the engine: a held
+        // review carries Maintenance forward so the Budget cannot move, while the
+        // Protein Floor re-derives from a trend that drifted 200 g. Both figures here
+        // render "143 g", and the banner announced "your weekly review changed your
+        // targets" over two lines that read the same on both sides.
+        val prev = LocalDate.of(2026, 5, 15)
+        val latest = prev.plusWeeks(1)
+        seedReview(prev, budgetKcal = 1702.166680161943, floorG = 142.638)
+        seedReview(latest, budgetKcal = 1702.166680161943, floorG = 143.02)
+
+        mockMvc.get("/api/summary") {
+            param("date", "$latest")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.budgetChange") { value(null) }
+        }
+    }
+
+    @Test
+    fun `the summary reports a budget change when only the Protein Floor moved visibly`() {
+        // The other side of the rounding rule: an unchanged Budget is not a reason to
+        // stay quiet. The Floor crosses a whole gram here, so the banner's body has
+        // something to show and the headline is true.
+        val prev = LocalDate.of(2026, 5, 15)
+        val latest = prev.plusWeeks(1)
+        seedReview(prev, budgetKcal = 1702.166680161943, floorG = 142.4)
+        seedReview(latest, budgetKcal = 1702.166680161943, floorG = 143.6)
+
+        mockMvc.get("/api/summary") {
+            param("date", "$latest")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.budgetChange.previousFloorG") { value(142) }
+            jsonPath("$.budgetChange.newFloorG") { value(144) }
+            jsonPath("$.budgetChange.previousBudgetKcal") { value(1702) }
+            jsonPath("$.budgetChange.newBudgetKcal") { value(1702) }
+        }
+    }
+
+    @Test
     fun `the summary reports no budget change when a review left the budget and floor unchanged`() {
         val prev = LocalDate.of(2026, 5, 15)
         val latest = prev.plusWeeks(1)
@@ -382,6 +423,69 @@ class SummaryApiTest {
             // No deficit is applied at all, so the Budget is the Maintenance the
             // engine derived — never a floor, and never last week's figure.
             jsonPath("$.calorieBudget") { value(closeTo(1594.6, 1e-6)) }
+        }
+    }
+
+    @Test
+    fun `the summary stays up when a window's log is contradicted by its scale`() {
+        // The second outage (issue #332), reached with no Goal at all, so ADR 0030's
+        // suspension cannot be what saves it. Ten logged days at 800 kcal against a
+        // trend the scale says rose 2 kg: the balance is -300 kcal, Maintenance's own
+        // `require(kcal > 0)` refused it, and this read 400'd every day the window
+        // held. The review is now HELD, and the endpoint answers.
+        val day = LocalDate.of(2026, 6, 10)
+        savedProfile()
+        mockMvc.post("/api/weight") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"date":"${day.minusDays(14)}","weightKg":86.0}"""
+        }.andExpect { status { isOk() } }
+        mockMvc.post("/api/weight") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"date":"$day","weightKg":106.0}"""
+        }.andExpect { status { isOk() } }
+        for (offset in 14 downTo 5) {
+            mockMvc.post("/api/entries/estimated") {
+                contentType = MediaType.APPLICATION_JSON
+                content = """{"date":"${day.minusDays(offset.toLong())}",
+                              "label":"Breakfast","calories":800.0,"protein":40.0}"""
+            }.andExpect { status { isCreated() } }
+        }
+
+        mockMvc.get("/api/summary") {
+            param("date", "$day")
+        }.andExpect {
+            status { isOk() }
+            // Cold start, so there is no earlier Maintenance to hold and the seed is
+            // what stands: the trend is 88.0 kg, whose BMR is 1810, x 1.4 = 2534. In
+            // Maintenance Mode the Budget is that figure — never the -300 the window
+            // computed, and never a floor.
+            jsonPath("$.calorieBudget") { value(closeTo(2534.0, 1e-6)) }
+        }
+    }
+
+    @Test
+    fun `the summary names why a held Budget did not move`() {
+        // The Budget the User is being held to is on `/`, so that is where the remedy
+        // belongs — a badge on /review is history, and history does not tell anybody
+        // what to do today (ADR 0031).
+        val day = LocalDate.of(2026, 6, 10)
+        savedProfile()
+        seedReview(day.minusDays(8), budgetKcal = 1850.0, floorG = 172.0)
+        // An anchor at the window's open and a reading inside it, so the weighing
+        // floor is cleared and nothing logged is what held this review. Both are
+        // needed: the anchor alone measures the days *before* the window.
+        for ((offset, kg) in listOf(16L to 86.4, 10L to 86.0)) {
+            mockMvc.post("/api/weight") {
+                contentType = MediaType.APPLICATION_JSON
+                content = """{"date":"${day.minusDays(offset)}","weightKg":$kg}"""
+            }.andExpect { status { isOk() } }
+        }
+
+        mockMvc.get("/api/summary") {
+            param("date", "$day")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.heldReason") { value("THIN_LOG") }
         }
     }
 

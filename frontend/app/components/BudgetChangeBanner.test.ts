@@ -38,6 +38,20 @@ describe('BudgetChangeBanner', () => {
     expect(screen.queryByText(/Calorie Budget/)).not.toBeInTheDocument()
   })
 
+  it('presents the figures verbatim, holding no rounding rule of its own', async () => {
+    // The backend decides whether a change is visible, which it can only do against
+    // the figures the User is shown — so it publishes those, and this component has
+    // no second rule to disagree with (ADR 0002, issue #306). A fractional figure is
+    // not a payload the API produces; it is the only way to observe the absence.
+    await renderSuspended(BudgetChangeBanner, {
+      props: {
+        budgetChange: aChange({ previousFloorG: 142.5, newFloorG: 144.5 }),
+      },
+    })
+
+    expect(screen.getByText(/Protein Floor: 142.5 → 144.5 g/)).toBeVisible()
+  })
+
   it('links through to the weekly review', async () => {
     await renderSuspended(BudgetChangeBanner, {
       props: { budgetChange: aChange() },

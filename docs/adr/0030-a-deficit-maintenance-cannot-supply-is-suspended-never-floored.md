@@ -171,7 +171,10 @@ both.
    average with nothing clamping it, so the same endpoint can still 400 with the
    same blast radius. That is a question about the engine's energy balance rather
    than about what a Budget does, and is tracked in
-   [#332](https://github.com/skrymer/tucker/issues/332).
+   [#332](https://github.com/skrymer/tucker/issues/332). **Closed by
+   [ADR 0031](0031-a-maintenance-below-the-bodys-basal-rate-is-not-a-measurement.md)**,
+   which puts that invariant in this set too: the engine refuses its own estimate
+   below the User's basal metabolic rate, so no engine path reaches the `require`.
 
 9. **A weight-only User is none of this rule's business.** With **Calorie
    Tracking** off a review carries no **Intake Targets** at all (ADR 0024), so

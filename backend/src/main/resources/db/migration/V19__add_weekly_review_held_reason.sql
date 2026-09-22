@@ -1,0 +1,26 @@
+-- Issue #348 (ADR 0031): a HELD Maintenance records which condition held it, so
+-- the basis badge can name the one thing that would lift it and Today can state
+-- the remedy. Held for a thin log, an unweighed window, a window with no reading
+-- old enough to anchor a change, or a balance that came out under the body's
+-- basal rate -- four different remedies behind what was one two-word badge.
+--
+-- Nullable, and never backfilled. Reviews written before this column existed were
+-- derived under a rule that did not record a reason, and the window each was
+-- computed from is long gone -- so null says the true thing about them, which is
+-- that Tucker does not know. ADR 0018's stance on its own history: past reviews
+-- remain honest history under the old rule.
+--
+-- No table rebuild, unlike V15 which last touched this table: SQLite accepts a
+-- plain ADD COLUMN on a populated table, and refuses only NOT NULL together with
+-- a REFERENCES clause (V14's note has the full rule -- NOT NULL alone is fine
+-- with a constant default, which is what V14 itself does). This column is
+-- nullable because there is no honest default, not because SQLite insists.
+--
+-- Deliberately no CHECK tying this column to maintenance_basis = 'HELD'. SQLite
+-- refuses a CHECK inside ADD COLUMN, so expressing it would mean rebuilding the
+-- table for a constraint the app cannot violate: Maintenance's init block refuses
+-- a reason on any other basis, and every write goes through it. V15's table-level
+-- CHECK exists because four columns arriving in parts is a state the *domain*
+-- could not otherwise rule out. The deliberately open direction is the other one
+-- -- a HELD row with no reason, which is what every pre-V19 row is.
+ALTER TABLE weekly_review ADD COLUMN held_reason TEXT;
