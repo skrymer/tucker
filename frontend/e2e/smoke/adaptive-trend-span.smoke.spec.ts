@@ -37,8 +37,9 @@ test('the Calorie Budget spreads a trend change over the days its anchor spans',
     200,
   )
 
-  // Two readings 20 days apart. The EWMA seeds at 86.0 and the second moves it a
-  // tenth of the way, to 85.8 — a 0.2 kg fall across those 20 days.
+  // Two readings 20 days apart, 2 kg apart. The smoothing shows less of that fall
+  // than happened and its own shrinkage is divided back out, so the change reports
+  // the 2 kg across those 20 days (ADR 0032).
   await expectStatus(
     request.post(`${API}/weight`, {
       data: { date: daysAgo(ANCHOR_DAYS_AGO), weightKg: 86 },
@@ -72,15 +73,15 @@ test('the Calorie Budget spreads a trend change over the days its anchor spans',
   const review = await (await request.get(`${API}/weekly-review`)).json()
   expect(review.reviewedOn, 'the run crossed UTC midnight').toBe(today)
 
-  // 2000 kcal averaged over the 10 logged days, plus 0.2 kg x 7700 / 20 days =
-  // 77 kcal/day of shortfall. Nothing eaten today, so the ring reads 0 against it.
-  // Over a fixed 14 days the same change would read 2110.
-  await expect(page.getByText('0 / 2077 kcal')).toBeVisible()
+  // 2000 kcal averaged over the 10 logged days, plus 2.0 kg x 7700 / 20 days =
+  // 770 kcal/day of shortfall. Nothing eaten today, so the ring reads 0 against it.
+  // Over a fixed 14 days the same change would read 3100.
+  await expect(page.getByText('0 / 2770 kcal')).toBeVisible()
 
   // The adaptive path is what produced it, not a seed that landed nearby — and the
   // unrounded figure, which the page's rounding would have let through. The floor and
   // the span's far end are pinned by WeeklyReviewServiceTest: with the anchor already
   // past the window and the last reading dated today, neither moves this figure.
   expect(review.intakeTargets.maintenanceBasis).toBe('ADAPTIVE')
-  expect(review.intakeTargets.calorieBudgetKcal).toBeCloseTo(2077, 1)
+  expect(review.intakeTargets.calorieBudgetKcal).toBeCloseTo(2770, 1)
 })

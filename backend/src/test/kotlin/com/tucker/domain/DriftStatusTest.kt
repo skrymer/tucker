@@ -11,12 +11,17 @@ class DriftStatusTest {
     /**
      * A 28-day trend ending at 86 kg whose observed rate is exactly [ratePerWeek]
      * (loss-positive: a positive rate falls, a negative rate rises).
+     *
+     * Weighed rather than hand-placed, because the rate divides the smoothing's own
+     * shrinkage back out (ADR 0032) and can only divide it out of something it
+     * actually shrank — so these are the readings, and the fall between them is the
+     * rate. Two hand-placed points 28 days apart would read 5.5% fast.
      */
     private fun trendAtRate(ratePerWeek: Double) =
-        WeightTrend(
+        WeightTrend.from(
             listOf(
-                WeightTrend.Point(today.minusDays(28), 86.0 + ratePerWeek * 4),
-                WeightTrend.Point(today, 86.0),
+                weighed(today.minusDays(28), 86.0 + ratePerWeek * 4),
+                weighed(today, 86.0),
             ),
         )
 
@@ -62,10 +67,10 @@ class DriftStatusTest {
     @Test
     fun `drift reads as gathering data until 14 days of measurements exist`() {
         // Only 10 days of trend history — too little to read drift from yet.
-        val trend = WeightTrend(
+        val trend = WeightTrend.from(
             listOf(
-                WeightTrend.Point(today.minusDays(10), 86.5),
-                WeightTrend.Point(today, 86.0),
+                weighed(today.minusDays(10), 86.5),
+                weighed(today, 86.0),
             ),
         )
 

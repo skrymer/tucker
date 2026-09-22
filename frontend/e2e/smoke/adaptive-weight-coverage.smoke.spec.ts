@@ -43,8 +43,9 @@ test('a Calorie Budget holds when the window carries no weighing', async ({
     200,
   )
 
-  // Two readings. The EWMA seeds at 86.0 and the second moves it a tenth of the
-  // way, to 85.8 — a 0.2 kg fall across the six days between them.
+  // Two readings 2 kg apart, six days between them. Six days of smoothing show
+  // under half of any movement, so the correction that divides that shrinkage back
+  // out is capped at double and recovers 1.874 of the 2 kg (ADR 0032).
   await expectStatus(
     request.post(`${API}/weight`, {
       data: { date: daysAgo(ANCHOR_DAYS_AGO), weightKg: 86 },
@@ -73,7 +74,7 @@ test('a Calorie Budget holds when the window carries no weighing', async ({
 
   // Yesterday's window opened a day earlier, so the last reading falls *inside* it
   // and there is a change to correct with: 2000 kcal averaged over the 12 logged
-  // days, plus 0.2 kg x 7700 / 14 = 110 kcal/day of shortfall.
+  // days, plus 1.874 kg x 7700 / 14 = 1030.8 kcal/day of shortfall.
   const yesterdayReview = await (
     await request.post(`${API}/weekly-review?clientToday=${yesterday}`)
   ).json()
@@ -81,10 +82,10 @@ test('a Calorie Budget holds when the window carries no weighing', async ({
     yesterday,
   )
   expect(yesterdayReview.intakeTargets.maintenanceBasis).toBe('ADAPTIVE')
-  expect(yesterdayReview.intakeTargets.calorieBudgetKcal).toBeCloseTo(2110, 1)
+  expect(yesterdayReview.intakeTargets.calorieBudgetKcal).toBeCloseTo(3030.8, 1)
 
   // Today's window opens on that same reading, so the anchor and the far end are one
-  // point and the scale has seen nothing since. Yesterday's 2110 is carried forward.
+  // point and the scale has seen nothing since. Yesterday's 3030.8 is carried forward.
   const review = await (
     await request.post(`${API}/weekly-review?clientToday=${today}`)
   ).json()
@@ -95,10 +96,10 @@ test('a Calorie Budget holds when the window carries no weighing', async ({
   // Nothing eaten today, so the ring reads 0 against the held figure. Without the
   // weighing floor this reads 2000 — the average intake to the cent, telling a User
   // who is losing weight that they maintain on what they eat.
-  await expect(page.getByText('0 / 2110 kcal')).toBeVisible()
+  await expect(page.getByText('0 / 3031 kcal')).toBeVisible()
 
   // The basis is what says it was carried rather than measured, and the unrounded
   // figure is what the page's rounding would otherwise have let through.
   expect(review.intakeTargets.maintenanceBasis).toBe('HELD')
-  expect(review.intakeTargets.calorieBudgetKcal).toBeCloseTo(2110, 1)
+  expect(review.intakeTargets.calorieBudgetKcal).toBeCloseTo(3030.8, 1)
 })

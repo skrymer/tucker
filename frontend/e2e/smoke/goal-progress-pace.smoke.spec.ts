@@ -47,8 +47,14 @@ test('the Goal Progress hero shows planned vs observed finish and the pace', asy
   // Seed a steadily-falling 28-day trend that keeps the current weight clearly
   // above the target, so the observed pace is real and not stalled. The drop is
   // a fraction of the remaining gap, so it works for any reused Goal.
+  //
+  // It outruns the Goal's own rate deliberately. The observed pace reports the
+  // movement the scale actually saw rather than a shrunken one (ADR 0032), so a
+  // trend falling at exactly the planned rate now projects the *same* finish date
+  // as the plan — and "planned vs observed, side by side" is the thing this spec
+  // exists to show.
   const start = activeGoal.startWeightKg
-  const drop = Math.min(2, (start - activeGoal.targetWeightKg) * 0.4)
+  const drop = Math.min(3, (start - activeGoal.targetWeightKg) * 0.6)
   const window = 28
   const seeded: Array<{ date: string; weightKg: number }> = []
   for (let day = 0; day <= window; day++) {

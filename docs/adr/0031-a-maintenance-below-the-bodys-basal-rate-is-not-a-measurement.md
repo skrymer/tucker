@@ -46,6 +46,13 @@ that this one stayed open. This ADR closes it.
 readings 13 days apart with the trend up 1.5 kg: the divisor floors at 14, the
 energy term is `−1.5 × 7700 ÷ 14 = −825`, and the estimate is **−25 kcal**.
 
+*Since [0032](0032-the-trend-weight-smooths-in-days-and-a-change-read-from-it-is-un-shrunk.md)
+that arithmetic is unchanged and **more easily reached**. The figures here are stated in
+**trend** movement, and a trend that now reports the real movement rather than a fraction
+of it reaches 1.5 kg off a real rise of about 1.5 kg where it used to need roughly 2.3 —
+so this refusal fires on a body movement about a third smaller. That is the clamp doing
+its job, which is why it had to land first.*
+
 ### The invariant is the symptom, and fixing only it would leave the defect
 
 Move that same User's trend rise from 1.5 kg to 0.5 kg and the estimate is **+525
@@ -287,10 +294,12 @@ reason)` is how the engine builds a `HELD`, and the `init` block refuses a
   see. After this batch that week produces no banner, and the Today line explains
   the frozen Budget instead — the two fixes are complementary rather than
   overlapping.
-- Still open and untouched: [#293](https://github.com/skrymer/tucker/issues/293),
+- **Since shipped**: [#293](https://github.com/skrymer/tucker/issues/293)
+  ([ADR 0032](0032-the-trend-weight-smooths-in-days-and-a-change-read-from-it-is-un-shrunk.md)),
   which stops the EWMA compressing trend deltas and so makes a real rise come out
   larger. It moves how often this refusal fires; it does not change what it does,
-  and #332 shipping first is what keeps that true.
+  and #332 shipping first is what keeps that true — see the note under *It is
+  reached by ordinary data* for the figures.
 
 ## References
 

@@ -56,8 +56,9 @@ class GoalServiceTest {
     @Test
     fun `a goal anchors on the live trend whatever date it is stamped with`() {
         profiles.save(Profile(Sex.MALE, LocalDate.of(1986, 5, 22), 180.0))
-        // 90 kg a fortnight back, 80 kg today, so the live trend is 89.0 and the
-        // first trend point is 90.0 — two figures a kilo apart to tell apart.
+        // 90 kg a fortnight back, 80 kg today. A fortnight of decay puts the live
+        // trend at 82.29 while the first trend point is still 90.0 — two figures far
+        // enough apart to tell apart.
         weights.save(WeightMeasurement.recorded(today.minusDays(14), 90.0, today))
         weights.save(WeightMeasurement.recorded(today, 80.0, today))
 
@@ -70,7 +71,7 @@ class GoalServiceTest {
         // what the anchor is looked up by — nothing in the product backdates a Goal,
         // and a date reached through ADR 0014's tolerance must not move the figure
         // the form previewed.
-        assertEquals(89.0, goal.startWeightKg, 1e-9)
+        assertEquals(82.2876792454961, goal.startWeightKg, 1e-9)
     }
 
     @Test
@@ -84,10 +85,10 @@ class GoalServiceTest {
 
         val goal = service.createGoal(today.minusDays(1), 70.0, 0.5, today.minusDays(1))
 
-        // 89.0 is the live trend, which is what the form previewed and validated
+        // 85.90 is the live trend, which is what the form previewed and validated
         // against (ADR 0016). The 90.0 standing on the stamped start date is a
         // figure the User was never shown, and would read as >0% done on day one.
-        assertEquals(89.0, goal.startWeightKg, 1e-9)
+        assertEquals(85.9049, goal.startWeightKg, 1e-9)
     }
 
     @Test
@@ -96,6 +97,21 @@ class GoalServiceTest {
         seedActiveGoalWithTrendAbove(trendAbove = 80.4, target = 80.0)
 
         weights.save(WeightMeasurement.recorded(today, 76.0, today))
+        service.stampReachedIfCrossed(today)
+
+        assertEquals(today, goals.findActive()!!.reachedOn)
+    }
+
+    @Test
+    fun `a weekly weigher reaches their goal when their body does`() {
+        // Weighed once at 80.4 and again a week later at 78.0, against an 80.0 target.
+        // A week of decay carries the trend to 79.14, so ADR 0008's fork on Today opens
+        // now. Decayed a tenth per *reading* it would stand at 80.16 and stay above the
+        // target for another two months of weighing (ADR 0032).
+        weights.save(WeightMeasurement.recorded(today.minusDays(7), 80.4, today))
+        goals.insert(Goal(null, today.minusDays(7), 90.0, 80.0, 0.5, active = true))
+
+        weights.save(WeightMeasurement.recorded(today, 78.0, today))
         service.stampReachedIfCrossed(today)
 
         assertEquals(today, goals.findActive()!!.reachedOn)
