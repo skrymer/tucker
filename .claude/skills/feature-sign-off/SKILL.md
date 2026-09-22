@@ -1,15 +1,16 @@
 ---
 name: feature-sign-off
-description: The pre-commit/push sign-off gate for a finished feature or fix on the Tucker repo. Runs seven quality gates in order — /verify twice (a cheap reachability pass first, the full two-viewport walk-through last, on the code that ships), with /simplify (apply cleanups), /mutation-test (do the tests actually catch bugs), /code-review (hunt correctness bugs), /check-adrs (honour recorded decisions) and a resolutions pass (nothing approves its own fix) in between — fixing what each surfaces before moving on, and only then commits and pushes. Every agent is briefed to a neutrality contract, one argues against merging, and a split between two agents is settled blind rather than by the author. Use when a change is functionally complete and the user says "sign off", "ready to commit/push", "wrap up this feature", "run the gates", or before opening a PR.
+description: The pre-commit/push sign-off gate for a finished feature or fix on the Tucker repo. Runs seven quality gates in order — /verify twice (a cheap reachability pass first, the full two-viewport walk-through last, on the code that ships), with /simplify (apply cleanups), /mutation-test (do the tests actually catch bugs), /code-review (hunt correctness bugs), /check-adrs (honour recorded decisions) and a resolutions pass (nothing approves its own fix) in between — fixing what each surfaces before moving on, and only then commits and pushes. Every agent is briefed to a neutrality contract, one argues against merging, one ledgers the diff against the issue's own acceptance criteria, and a split between two agents is settled blind rather than by the author. Use when a change is functionally complete and the user says "sign off", "ready to commit/push", "wrap up this feature", "run the gates", or before opening a PR.
 ---
 
 # Feature sign-off
 
 The gate a change passes through once it's functionally complete, *before* it's
 committed and pushed. It bundles the seven checks this repo relies on into one
-ordered pass so nothing ships unverified, untested, unreviewed, or out of step
-with the project's recorded decisions. Each gate is a real skill — this skill is
-the conductor that runs them in the right order and acts on what they find.
+ordered pass so nothing ships unverified, untested, unreviewed, short of what the
+issue asked for, or out of step with the project's recorded decisions. Each gate is
+a real skill — this skill is the conductor that runs them in the right order and
+acts on what they find.
 
 Run it from a clean-enough working tree where the feature's behaviour is done.
 It does **not** replace TDD during the build; it's the final sweep after.
@@ -86,18 +87,37 @@ needs it.
    *Keeping the fan-out independent* below for what it is and why it is not a
    fourth reviewer.
 
+   **Launch the acceptance ledger (Brief D) in this same message too.** It reads the
+   same issue the adversary does and asks the one question the adversary's angles do
+   not: not whether the change should exist, nor whether it is too much, but whether
+   it is enough. It emits one row per acceptance criterion, then once, at the end,
+   behaviour in the diff that no criterion asked for — and nothing else. See
+   *Nothing else asks whether it is finished* in the notes for why no other gate
+   asks this; Brief D in the reference for the rows it emits, what pins each, and
+   why it is not a fifth reviewer.
+
+   Two of its outcomes need handling here. An **UNSOUND** row — the criterion cannot
+   be satisfied, or the change answered a different one — **stops the sign-off and
+   goes to the user**, the same routing as an unanswerable attack from the adversary
+   and a `/check-adrs` FAIL: rewriting what was asked for is a product call. And a
+   **SKIPPED** ledger is a result, not a mis-launch. Plenty of issues here state no
+   criteria — bug reports and PRD umbrellas especially — and the answer to that is
+   the SKIP, never criteria you write yourself.
+
 4. **`/check-adrs` — honour the recorded decisions.** Verify the diff against the
    ADRs in `docs/adr/` and the ubiquitous language in `CONTEXT.md`. A FAIL is
    either a code fix or a same-PR doc fix (per `[[prefer-source-fix-over-adr]]`)
    — the user's call, surfaced.
 
-   **Launch it in the same message as gate 3.** All three are pure read-and-report —
-   none edits the tree, and you apply all three sets of findings afterwards — so
+   **Launch it in the same message as gate 3.** All four are pure read-and-report —
+   none edits the tree, and you apply all four sets of findings afterwards — so
    running them back to back spends the shorter one's wall-clock for nothing
    (4–7 min against code-review's 12 in the run this was measured on). The cost
-   is that it judges pre-fix code: when code-review's fixes land, re-check **only
-   the files they touched** against the constraints `/check-adrs` cited, which is
-   a read of a handful of lines rather than a second run.
+   is that the other three judge pre-fix code. When code-review's fixes land,
+   re-check **only the files they touched** against the constraints `/check-adrs`
+   cited and the rows the ledger returned — a read of a handful of lines rather
+   than a second run. The adversary needs no re-check: it argues the premise, and
+   a correctness fix does not move that.
 
    Gate 2 does **not** join them. It writes tests, and gate 3's test-quality pass
    reviews them — in the measured run it caught a vacuous assertion in a test
@@ -127,10 +147,23 @@ needs it.
      otherwise adjudicate the author's account of a finding against the author's
      reason for dismissing it. Check for findings that were softened, merged into
      another, or dropped on the way in, and check each brief against the prompt
-     contract while the file is open. Two of those checks are about **absence**:
-     - the adversary has a transcript at all — it is marked *Fires: every
-       sign-off* — and so does the blind arbiter if any two agents split;
-     - the adversary's brief carries all six angles Brief A names.
+     contract while the file is open. Three of those checks are about **absence**:
+     - the adversary and the **acceptance ledger** have transcripts at all — both
+       are marked *Fires: every sign-off*, and a SKIPPED ledger is a transcript,
+       not the lack of one — and so does the blind arbiter if any two agents split;
+     - the adversary's brief carries all six angles Brief A names, and the
+       ledger's still enumerates **verbatim, in the issue's order, from the whole
+       body** — a brief trimmed to something looser is the same failure as an
+       adversary cut to two angles, and shows up only in a hand diff;
+     - *a probe named without its value is not a probe* still says the same thing
+       in all **three** places it lives: the verdict auditor's template, the
+       ledger's, and `/verify`'s own Verdict block. Those two briefs are the only
+       ones that demand driven values, and each states the rule inside its own
+       fenced block because a brief is sent standalone and cannot cite its sibling.
+       The per-brief template check compares each to itself and is blind to them
+       drifting apart, so this is the line that holds the copies together — and it
+       reads the **files**, since the auditor's sent brief fires in gate 6 and is
+       out of reach here. Read only; the wording in `/verify` is `/verify`'s.
 
      A contract that only forbids things catches a smuggled defence and misses an
      adversary quietly cut from six angles to two, or one that never ran at all.
@@ -176,6 +209,17 @@ needs it.
    error states. This is CLAUDE.md's PR walk-through gate and it is the last thing
    before the commit, so nothing changes under it. A FAIL sends you back to
    whichever gate owns the fix, and then back here.
+
+   **The probe list starts with the ledger's.** Every `MET (probe: …)` row Brief D
+   returned is a criterion this diff delivers that nothing automated pins, with the
+   value to drive already named — so each one is a probe this pass owes, on top of
+   the ones the change's own inputs ask for. Those are the only rows to take: a
+   `MET (unpinned: …)` row is one nothing *can* drive, which is what puts it in
+   that row rather than this one. Re-read the rows against the code that
+   ships before driving them: the ledger judged the pre-fix diff, and gate 3's fixes
+   move values. Carry the list in yourself too, because nothing downstream catches a
+   criterion-probe you drop — the verdict auditor enumerates from the diff alone,
+   and gate 5 has already run.
 
    The walk-through pass ends with an agent **auditing the verdict against the
    diff**; that step belongs to `/verify` and is defined there, because a verdict
@@ -227,12 +271,13 @@ write the code either way.
 | Addition | Agents | Wall-clock |
 | --- | --- | --- |
 | The adversary | +1 | **none** — it rides in gate 3's message and finishes inside the longest gate |
+| The acceptance ledger | +1 | **none** — same message, same argument; it reads one issue and one diff |
 | The verdict auditor (`/verify`, gate 6) | +1 | serial, a few minutes, after the browser work |
 | The blind arbiter | +1 *when a split fires* | serial, on the critical path — most runs never spawn it |
 | Gate 5 reading transcripts | none | a handful of extra tool calls inside an agent that already runs |
 
 For scale: the session that carried gates 3–6 of the #331 sign-off spawned three
-agents. The two standing additions take a run of that shape from three to five.
+agents. The three standing additions take a run of that shape from three to six.
 
 ## Spending the agents well
 
@@ -289,11 +334,13 @@ Emit a short sign-off summary the user (and PR reviewer) can replay:
 2. /mutation-test  ⚠️ 27/29 killed on 2 files → 1 gap closed (new test), 1 equivalent
 3. /code-review md ⚠️ 2 findings → both fixed (double-render, banner copy); 4 by-design
    adversary       ✅ SHOULD MERGE — closest attack: "unreachable from the UI" (it isn't; /log posts it)
+   acceptance      ⚠️ 6 criteria: 4 MET (AC3 by probe only → gate 6) · 1 PARTIAL (holds only at the cap) → fixed
+                   1 MISSING (AC6) → test added; nothing in the diff outside the issue's scope
    blind arbiter   — not spawned (no split)
 4. /check-adrs     ⚠️ 1 FAIL → fixed CONTEXT.md (stale auto-deactivate wording)
-5. resolutions     ⚠️ 7 judged → 6 upheld; 1 dismissal rejected ("pre-existing" — the diff moved that line) → fixed
-                   pack faithful to 5 transcripts; briefs clean
-6. /verify (walk)  ✅ desktop + phone; probes: 0 kg ✅ · 300 kg ✅ · goal already reached ✅
+5. resolutions     ⚠️ 9 judged → 8 upheld; 1 dismissal rejected ("pre-existing" — the diff moved that line) → fixed
+                   pack faithful to 6 transcripts; briefs clean
+6. /verify (walk)  ✅ desktop + phone; probes: 0 kg ✅ · 300 kg ✅ · goal already reached ✅ · AC3 (ledger) ✅
    verdict audit   ⚠️ 1 UNCOVERED (start date = today) → drove it ✅
 
 Suites green (detekt/build, lint/test). Committed + pushed to <branch>.
@@ -331,6 +378,14 @@ Suites green (detekt/build, lint/test). Committed + pushed to <branch>.
   after every fix has landed, and before the walk-through, so gate 6 is the last
   word on code some reviewer has actually read. Borrowed from oh-my-claudecode's
   rule that an approval pass may not run in the context that authored the work.
+- **Nothing else asks whether it is finished.** The three gates *Keeping the fan-out
+  independent* lists are each scoped to the diff as the context that wrote the diff
+  understands it, and so is the adversary — which asks whether the change should
+  exist, and whether it is too much, but never whether it is enough. So a misread
+  criterion is invisible twice: the feature works, and gate 6 walks through the
+  wrong feature working. A change can be sound in premise, clean, well-tested,
+  ADR-compliant and deliver three of five criteria with every gate still green,
+  which is why the ledger enumerates its rows from the issue and not from the diff.
 - **A briefed agent is not an independent one.** Fresh context is not a fresh
   position — but the evidence for that is weaker than it first looked, and the
   transcripts are what weakened it. The framed agent in the run this was written
