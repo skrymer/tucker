@@ -172,7 +172,16 @@ implementation honours the decisions already made. All three presume the
 change is wanted, so `/feature-sign-off` adds a fourth voice that does
 not — one agent per run is briefed to argue the change should **not**
 merge; see *Keeping the fan-out independent* in that skill for the two
-rules that keep the rest of the fan-out independent of the author.
+rules that keep the rest of the fan-out independent of the author. A
+fifth voice asks the remaining question — not whether the change should
+exist, but whether it is **finished**: an **acceptance ledger** reads
+the issue and returns one MET / PARTIAL / MISSING / UNSOUND row per
+acceptance criterion, an UNSOUND one stopping the sign-off and going to
+the user and an issue stating no criteria coming back SKIPPED, which is
+a result rather than a failure. Every gate above it is scoped to the
+diff as the context that wrote the diff understands it, so a criterion
+misread while building is invisible to all of them — the walk-through
+included, which then proves the wrong feature works.
 
 Linting and formatting are also enforced locally. ESLint + Prettier run on
 staged frontend files via a pre-commit hook — enable it once per clone with

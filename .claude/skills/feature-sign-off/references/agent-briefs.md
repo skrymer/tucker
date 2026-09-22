@@ -1,7 +1,7 @@
 # Agent briefs
 
-The prompt contract every fan-out gate's agents are written to, and the three briefs
-that only exist to be adversarial. Copy the brief, fill the bracketed slots, send it.
+The prompt contract every fan-out gate's agents are written to, and the four briefs
+written out in full here. Copy the brief, fill the bracketed slots, send it.
 
 Why a file rather than prose in the skill: a brief that is a **template** can be
 checked. Gate 5 extracts the prompt an agent was actually sent (recipe in the skill's
@@ -14,7 +14,7 @@ author felt. The repo makes this move elsewhere: `app/utils/exits.ts` and
 
 Applies to **every** agent any gate spawns — the `/simplify` three, the agents
 `/code-review` fans out to (it runs inline itself), `/check-adrs`, the resolutions
-agent, and the three below.
+agent, and the four below.
 
 **A brief carries:**
 
@@ -194,3 +194,117 @@ Do not judge whether the feature is right, whether the code is good, or whether
 the verdict's PASS is correct in some larger sense. Only whether its evidence
 reaches the input space the diff opened.
 ```
+
+## Brief D — the acceptance ledger
+
+**Fires:** every sign-off, launched in the same message as gates 3 and 4 — including
+a run with no issue, or an issue with no acceptance criteria, which come back SKIPPED
+rather than as no agent at all. A condition whose falsity leaves no artefact is a
+condition gate 5 has to go hunting for; this way there is always a transcript.
+**Costs:** one agent, no wall-clock — it rides gate 3's message like the adversary.
+
+```
+Judge a change against the acceptance criteria of the issue it claims to deliver.
+You are NOT hunting bugs and NOT reviewing the code's quality. Read-only: do not
+edit, create, delete or move any file. Read-only shell commands only, apart from
+`git fetch`, which touches nothing but remote refs.
+
+Repo: <worktree path> (a git worktree — stay in it).
+The change: cd <worktree path> && git fetch -q origin &&
+  git diff $(git merge-base origin/main HEAD)
+The issue it claims to deliver: read it yourself with `gh issue view <n>` — do not
+take anyone's summary of it. Where the slot names several, there is an issue for
+each: ledger them in turn, under their own headings. Where it reads "none" there is
+no issue: report SKIPPED and stop.
+Already read by other agents, so start here: <context-pack files>
+You may read anything else in the repo, including the tests, docs/adr/ and
+CONTEXT.md.
+
+One question, asked once per criterion: does this diff deliver it, and what pins it?
+
+Method:
+1. From `gh issue view <n>` alone, enumerate every item the issue states as an
+   acceptance criterion, verbatim and in the issue's order. `## Acceptance
+   criteria` is the usual heading and not the only one — an issue may file more
+   under a second heading further down, so read the whole body and take every one
+   you find. Do not merge two, split one, or restate one in the diff's vocabulary:
+   a criterion rewritten to match the code is a criterion that cannot fail. If the
+   issue states none at all, report SKIPPED and stop. Do not write a substitute.
+2. For each, find what in the diff delivers it, and what pins it: a named test, or
+   a named walk-through probe. Code that appears to do the thing is not a pin.
+3. Read each criterion at the boundary it implies, not at its happy path. "Refuses
+   a value over the cap" is delivered at the cap, not near it.
+
+Report one row per criterion, in the issue's order, each quoting the criterion and
+citing a file:line, a test name, or both:
+- MET (test: <name>) — delivered, and that test fails if it stops being delivered.
+- MET (probe: <the exact value to drive>) — delivered, pinned by nothing automated,
+  and drivable in a browser. Name the value, not the field: a probe named without
+  its value is not a probe.
+- MET (unpinned: <file:line>) — delivered, and nothing *can* pin it: no test
+  reaches it and there is nothing to drive. A criterion satisfied by a document, an
+  ADR, a comment or a config line lives here. Cite where it is delivered, and say
+  plainly that a regression would be silent.
+- PARTIAL — delivered for the stated case, not at the boundary the criterion
+  implies. Say which case is missing.
+- MISSING — not delivered: no code at all, or code that does not do what the
+  criterion asks, or code a test could pin that none does. Say which of the three.
+- UNSOUND — the criterion as written cannot be satisfied, or the diff answers a
+  different criterion than the one filed. Say which one it answers.
+
+Then once, at the end: behaviour this diff adds that no criterion asked for. Check
+it against whatever the issue rules out — an `## Out of scope` section where there
+is one, or a sentence saying a thing is not part of this — and quote the ruling it
+crosses. Name it; do not judge whether it is good.
+
+A ledger whose every row is MET is a complete and valued answer. Do not manufacture
+an UNSOUND — it halts the sign-off and puts the question to a human, so a criterion
+you merely find ambiguous is one to read again, not one to reject.
+
+Do not report bugs, style, naming, test quality, or edge cases no criterion
+implies — other agents in this run own every one of those. Only whether what was
+asked for is here, and what says so.
+```
+
+**Brief C is the template, pointed at a different source.** The skeleton is the same
+one: enumerate items from a single source, demand a concrete piece of evidence per
+item, report the ones that have none. C enumerates from the inputs the diff widens
+and is handed a verdict to check them against; D enumerates from the issue and is
+handed the diff. Read C before adapting D.
+
+Their shared rule — *a probe named without its value is not a probe*, C's originally,
+and what makes a `MET (probe: …)` row something gate 6 can act on rather than a
+promise — is written out inside **both** fenced blocks rather than hoisted. A brief is
+copied and sent standalone, so D cannot cite C without handing an agent a dangling
+reference. That is the same call `exits.ts` and `RunAsCallSitesTest` made: neither
+deleted a copy, both linked the copies and added a check over the thing that can
+drift. The check here is gate 5's, which reads this file for the rule in both
+templates — because gate 5 compares each sent brief against its own template, which
+cannot see the two of them drifting together.
+
+**It hunts nothing.** Given a criterion and a diff it judges that one pair, exactly
+as the resolutions agent judges a finding-and-resolution pair. That is what keeps it
+off gate 3's ground and what makes it cheap.
+
+**Brief A's do-not-paste rule binds it harder than it binds A.** The issue is not one
+input among several here — it is the entire source of the ledger's rows, so a trimmed
+paste does not weaken the check, it silently decides the result. Both SKIPPED paths are
+the same rule as A's: do not write a substitute. Inventing the criteria and then scoring
+the change against them is the one move that makes a green ledger mean nothing.
+
+**UNSOUND stops the sign-off and goes to the user.** A criterion that cannot be
+satisfied, or that the change deliberately answered differently, is a change to what
+was asked for — which is the user's call and no agent's, the same routing Brief A's
+unanswerable attack and `/check-adrs`' FAIL already take. **PARTIAL, MISSING and the
+scope tail** enter fix-or-justify like any finding, so gate 5 adjudicates a waved-off
+PARTIAL against this agent's transcript rather than leaving it a private judgement. A
+MET row is not a finding and has no resolution to pair: a `MET (probe: …)` goes to
+gate 6 instead, and a `MET (unpinned: …)` is a fact about the change, recorded rather
+than resolved.
+
+**The scope tail overlaps Brief A's sixth angle, knowingly.** A asks whether the scope
+is wider than the issue *claims* and judges it; D reads what the issue *ruled out* and
+inventories it. They are launched in one message off one issue, so expect the same fact
+twice on a change that overreaches — the duplicate costs a line in the pack, and the
+alternative is that an out-of-scope ruling is checked by nobody, `/check-adrs` covering
+the ADRs' rulings and not the issue's.
