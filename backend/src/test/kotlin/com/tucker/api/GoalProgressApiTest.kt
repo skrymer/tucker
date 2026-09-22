@@ -103,15 +103,16 @@ class GoalProgressApiTest {
     @Test
     fun `progress reads the smoothed trend, not the latest raw measurement`() {
         seedProfile()
-        // A run of readings around 90 then a sharp drop to 80: the EWMA trend
-        // barely moves, so progress must report ~89, never the raw 80.
+        // 90 kg, then a sharp drop to 80 ten days later: ten days of decay carry the
+        // trend about two thirds of the way, so progress reports 83.49 — smoothed,
+        // and never the raw 80.
         seedWeight(today.minusDays(10), 90.0)
         seedWeight(today, 80.0)
         seedGoal(targetWeightKg = 75.0, rateKgPerWeek = 0.5)
 
         mockMvc.get("/api/goal/progress").andExpect {
             status { isOk() }
-            jsonPath("$.currentTrendKg") { value(closeTo(89.0, 1e-6)) }
+            jsonPath("$.currentTrendKg") { value(closeTo(83.4867844010, 1e-6)) }
             jsonPath("$.currentTrendKg") { value(not(closeTo(80.0, 0.5))) }
         }
     }

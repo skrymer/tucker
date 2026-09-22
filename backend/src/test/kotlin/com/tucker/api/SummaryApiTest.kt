@@ -433,6 +433,9 @@ class SummaryApiTest {
         // trend the scale says rose 2 kg: the balance is -300 kcal, Maintenance's own
         // `require(kcal > 0)` refused it, and this read 400'd every day the window
         // held. The review is now HELD, and the endpoint answers.
+        // Two readings 2 kg apart are the whole rise: the change divides the smoothing's
+        // own shrinkage back out (ADR 0032), so the balance here is a real 2 kg of gain
+        // rather than the much larger jump it would take to shift a shrunken figure.
         val day = LocalDate.of(2026, 6, 10)
         savedProfile()
         mockMvc.post("/api/weight") {
@@ -441,7 +444,7 @@ class SummaryApiTest {
         }.andExpect { status { isOk() } }
         mockMvc.post("/api/weight") {
             contentType = MediaType.APPLICATION_JSON
-            content = """{"date":"$day","weightKg":106.0}"""
+            content = """{"date":"$day","weightKg":88.0}"""
         }.andExpect { status { isOk() } }
         for (offset in 14 downTo 5) {
             mockMvc.post("/api/entries/estimated") {
@@ -456,10 +459,10 @@ class SummaryApiTest {
         }.andExpect {
             status { isOk() }
             // Cold start, so there is no earlier Maintenance to hold and the seed is
-            // what stands: the trend is 88.0 kg, whose BMR is 1810, x 1.4 = 2534. In
-            // Maintenance Mode the Budget is that figure — never the -300 the window
-            // computed, and never a floor.
-            jsonPath("$.calorieBudget") { value(closeTo(2534.0, 1e-6)) }
+            // what stands: the trend is 87.54 kg, whose BMR is 1805.42, x 1.4 =
+            // 2527.59. In Maintenance Mode the Budget is that figure — never the -300
+            // the window computed, and never a floor.
+            jsonPath("$.calorieBudget") { value(closeTo(2527.5944981126104, 1e-6)) }
         }
     }
 

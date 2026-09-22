@@ -528,8 +528,9 @@ daily weigher still has until their history reaches back a fortnight — keep
 weighing) and `BELOW_BASAL_RATE` (the correction came out under the user's basal
 metabolic rate — the log and the scale do not line up). That last one is stated as
 the disagreement rather than as under-logging: an incomplete log is the likeliest
-cause and not the only one, since a trend built from few readings understates a
-real fall, so a diligent logger reaches it too.
+cause and not the only one — a scale that reads high one week, a genuine swing in
+water or gut content, or a body that really is gaining — so a diligent logger
+reaches it too, and which of the two is wrong is not something Tucker can see.
 These conditions co-occur, so the badge names the **binding** one — the condition
 still unmet when the others are met. `NO_WINDOW_ANCHOR` leads the three floors
 because it is the only one no action reaches: every new user's second review fails
@@ -648,15 +649,26 @@ _Avoid_: weigh-in
 A smoothed, exponentially-weighted average of recent Weight Measurements. Goal
 progress and the adaptive Maintenance correction both run on the Trend Weight,
 never on a single raw measurement.
-The smoothing is **per reading, not per elapsed day**: each measurement moves the
-trend a tenth of the way toward itself, so it takes about seven readings to cover
-half the distance to a new level. That is calibrated for **daily weighing** — about
-a week to catch up. Weighing weekly, the same catch-up takes nearly two months, so
-the trend sits further behind the body; once it has settled it still falls at the
-rate the body does, but a trend built from a handful of readings understates its own
-movement. Weighing less often than the window being corrected leaves no evidence
-about that window at all, which is why the adaptive **Maintenance** correction needs
-at least one reading since the window opened and holds otherwise.
+The smoothing is **per elapsed day, not per reading**: the trend covers half the
+distance to a new level in about a week, whether that week held seven readings or
+one. So a gap decays like a gap — weighing weekly leaves the trend close to the
+body rather than months behind it, at the cost of a noisier trend, which is honest
+about how much the scale actually said. Weighing less often than the window being
+corrected still leaves no evidence about that window at all, which is why the
+adaptive **Maintenance** correction needs at least one reading since the window
+opened and holds otherwise.
+A **change** the adaptive engine reads between two Trend Weights is not their plain
+difference. A smoothed value lags the body, and early in a User's history it has not
+yet settled into a steady lag, so two points taken at different depths would report
+less movement than actually happened — always less, never more. Such a change is
+therefore divided by how much of a movement the smoothing would have shown between
+those two dates, which recovers the real figure; where less than half of it would
+have shown, the recovery stops at double rather than inventing the rest. That is the
+rule behind **Maintenance**'s weight term and the **observed pace**.
+Two figures a User is *shown* stay plain differences, and deliberately: **Goal
+Progress**'s percent complete, whose start weight is a stored figure whose depth is
+no longer recoverable, and the **Weekly Review** ledger's week-over-week kilograms,
+which state what two recorded Trend Weights were rather than what the body did.
 _Avoid_: average weight
 
 **Goal Progress**:

@@ -153,6 +153,14 @@ cannot be drawn at all.
   small non-zero percent rather than 0%.
   Nothing the product ships posts one: `GoalForm` posts `localToday()` and is the
   only `POST /api/goal` in the frontend.
+- **`percentComplete` still under-reads early in a Goal, and
+  [0032](0032-the-trend-weight-smooths-in-days-and-a-change-read-from-it-is-un-shrunk.md)
+  deliberately does not fix it.** It is a difference between a *stored* start weight and
+  the live trend, taken at two different depths in the smoothing, so it shows less
+  movement than happened for the same reason every other trend difference did. That ADR
+  divides the shortfall back out of the differences the domain *computes*; this one is
+  half-stored, and the depth its anchor was captured at is not recoverable from the row.
+  The remedy is the one below — replace the Goal — rather than rewriting history.
 - **No data migration.** Single-user, one row; existing Goals are honest history
   under the old rule and are re-anchored simply by *replacing* the active Goal
   through the fixed UI. Reconstructing "the EWMA as of the start date" in SQL is

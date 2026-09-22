@@ -236,7 +236,10 @@ through the engine.
 **Out of scope, deliberately:** whether the window was weighed *often enough* for the
 term to mean anything at all ([#292](https://github.com/skrymer/tucker/issues/292));
 how much of a real change two EWMA points capture between them
-([#293](https://github.com/skrymer/tucker/issues/293)); and
+([#293](https://github.com/skrymer/tucker/issues/293) — **now decided** by
+[ADR 0032](0032-the-trend-weight-smooths-in-days-and-a-change-read-from-it-is-un-shrunk.md),
+which divides that capture back out, so `trendChange.kg` is the real movement and no
+longer a fraction of it); and
 `WeightTrend.observedRateKgPerWeek`, which divides to `today` and so carries this
 same asymmetry — it feeds **Drift Status** and goal pace, not Maintenance, so it is
 a separate change to a separate surface.
@@ -285,6 +288,12 @@ transient of **short history**, not of sparse cadence: it bites while the anchor
 sits among a trend's first readings, and it is
 [#293](https://github.com/skrymer/tucker/issues/293)'s, deliberately left there. Telling
 the two apart is the whole reason this floor is one reading rather than seven.
+*(Both bottom rows are gone since
+[ADR 0032](0032-the-trend-weight-smooths-in-days-and-a-change-read-from-it-is-un-shrunk.md):
+the warm-up shortfall is divided back out, and the middle row's cadence gap closes too,
+because the decay is now measured in elapsed days. The table is the **before** figures
+this floor was decided on — and see the amendment below, because the paragraph after
+next is decided on a quantity ADR 0032 moved.)*
 
 **Why one reading is enough, and not merely the least that could be shipped.** The
 neighbouring worry is the mirror of decision 2's: a term resting on a single
@@ -293,6 +302,19 @@ floor already bounds it — α is 0.10, so a 1.5 kg water swing moves the trend 
 and read over the window rather than its own span that is 82 kcal/day. The one risk
 left for this floor to carry is *absence* of evidence, and one reading is exactly its
 negation.
+
+**That premise no longer holds, and the floor has not yet been re-priced.**
+[ADR 0032](0032-the-trend-weight-smooths-in-days-and-a-change-read-from-it-is-un-shrunk.md)
+divides the smoothing's own attenuation back out — and for a window whose anchor is the
+User's only prior reading, the divisor is *exactly* the factor the smoothing applied, so
+it cancels completely and the change becomes the plain difference of two scale readings.
+The same 1.5 kg water swing then moves the term by **825 kcal/day**, not 82. The
+paragraph above is the argument this floor was decided on; it is left standing as the
+record of that decision rather than quietly rewritten, and re-pricing
+`MIN_WEIGHED_DAYS` against the new figure is
+[#352](https://github.com/skrymer/tucker/issues/352). Note what does **not** change:
+one reading remains the exact negation of *absence* of evidence, which is the half of
+the argument ADR 0032 does not touch.
 
 **Why hold rather than seed**, where ADR 0024 seeds. Its carve-out fires when there is
 **nothing to hold** — the preceding review carries no **Intake Targets** after a
@@ -324,7 +346,9 @@ exactly the case where both ends of `changeSince` resolve to one point, which co
 a zero term before and produces a `HELD` review now.
 
 **Out of scope, still:** how much of a real change two EWMA points capture between them
-([#293](https://github.com/skrymer/tucker/issues/293)), and what a Calorie Budget does
+([#293](https://github.com/skrymer/tucker/issues/293) — **since decided** by
+[ADR 0032](0032-the-trend-weight-smooths-in-days-and-a-change-read-from-it-is-un-shrunk.md)),
+and what a Calorie Budget does
 when the arithmetic runs it to zero
 ([#305](https://github.com/skrymer/tucker/issues/305)). Both are about refusing to
 publish a figure that cannot be trusted, and both fire on evidence this floor reads as
@@ -338,7 +362,12 @@ they are separate decisions rather than parts of this one.
   amended above.
 - [#292](https://github.com/skrymer/tucker/issues/292) — the weight-coverage floor,
   amended above; [#293](https://github.com/skrymer/tucker/issues/293) and
-  [#305](https://github.com/skrymer/tucker/issues/305) are what it deliberately leaves.
+  [#305](https://github.com/skrymer/tucker/issues/305) are what it deliberately left,
+  both since shipped —
+  [0032](0032-the-trend-weight-smooths-in-days-and-a-change-read-from-it-is-un-shrunk.md)
+  and [0030](0030-a-deficit-maintenance-cannot-supply-is-suspended-never-floored.md).
+  0032 moved the quantity this floor was priced on; re-pricing it is
+  [#352](https://github.com/skrymer/tucker/issues/352).
 - [0031 — a Maintenance below the body's basal rate is not a measurement](0031-a-maintenance-below-the-bodys-basal-rate-is-not-a-measurement.md)
   — extends decision 3 with a third condition to hold on, and reverses the #292
   amendment's ruling that a basis does not explain itself.

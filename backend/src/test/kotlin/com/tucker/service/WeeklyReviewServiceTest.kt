@@ -56,6 +56,27 @@ class WeeklyReviewServiceTest {
         weights.save(WeightMeasurement(null, today, 85.8))
     }
 
+    @Test
+    fun `a weekly weigher's Protein Floor is 2 g per kg of a trend near their body`() {
+        // Six weeks of weighing, one reading a week, a kilo a week down from 90 to 84.
+        // Elapsed-day decay leaves the trend at 84.906 — 0.9 kg behind a body that is
+        // genuinely moving. Decayed a tenth per *reading* it would stand at 88.217, and
+        // the Floor would be 6.6 g of protein built on a body from a month earlier.
+        //
+        // Asserted as a figure rather than as `2 x review.trendWeightKg`, which is what
+        // the two assertions below it do: that form holds whatever the trend says, so
+        // it cannot fail on a trend that is wrong.
+        profiles.save(Profile(Sex.MALE, LocalDate.of(1986, 5, 22), 180.0))
+        for (week in 6 downTo 0) {
+            weights.save(WeightMeasurement(null, today.minusWeeks(week.toLong()), 84.0 + week))
+        }
+
+        val review = service.runReview(today)
+
+        assertEquals(84.905823, review.trendWeightKg, 1e-6)
+        assertEquals(169.811646, review.targets.proteinFloorG, 1e-6)
+    }
+
     /** A flat trend (every reading 86.0) so the adaptive weight-change term is zero. */
     private fun seedFlatTrend() {
         weights.save(WeightMeasurement(null, today.minusDays(14), 86.0))
@@ -206,9 +227,11 @@ class WeeklyReviewServiceTest {
 
         val review = service.runReview(today)
 
-        // 0.2 x 7700 / 14 = 110 kcal/day of shortfall on top of the 2000 average.
+        // The two readings are 2.0 kg apart and that is what the change measures, the
+        // smoothing's own shrinkage having been divided out (ADR 0032): 2.0 x 7700 /
+        // 14 = 1100 kcal/day of shortfall on top of the 2000 average.
         assertEquals(Maintenance.Basis.ADAPTIVE, review.targets.maintenance.basis)
-        assertEquals(2110.0, review.targets.maintenance.kcal, 0.5)
+        assertEquals(3100.0, review.targets.maintenance.kcal, 0.5)
     }
 
     @Test
@@ -222,11 +245,11 @@ class WeeklyReviewServiceTest {
 
         val review = service.runReview(today)
 
-        // The same 0.2 kg fall as the daily-weighing case, spread over 20 days
-        // instead of 14: 0.2 x 7700 / 20 = 77 kcal/day, not 110. Divided by the
-        // window it would read 2110 and overstate Maintenance - and the Budget - by 33.
+        // The same 2.0 kg fall as the daily-weighing case, spread over 20 days
+        // instead of 14: 2.0 x 7700 / 20 = 770 kcal/day, not 1100. Divided by the
+        // window it would read 3100 and overstate Maintenance - and the Budget - by 330.
         assertEquals(Maintenance.Basis.ADAPTIVE, review.targets.maintenance.basis)
-        assertEquals(2077.0, review.targets.maintenance.kcal, 0.5)
+        assertEquals(2770.0, review.targets.maintenance.kcal, 0.5)
     }
 
     @Test
@@ -240,11 +263,11 @@ class WeeklyReviewServiceTest {
 
         val review = service.runReview(today)
 
-        // 17 days between the two readings: 0.2 x 7700 / 17 = 90.6 kcal/day on top of
-        // the 2000 average. The span is what picks that out - a fixed 14 reads 2110,
-        // and measuring to the review date reads 2077 over 20 days.
+        // 17 days between the two readings: 2.0 x 7700 / 17 = 905.9 kcal/day on top of
+        // the 2000 average. The span is what picks that out - a fixed 14 reads 3100,
+        // and measuring to the review date reads 2770 over 20 days.
         assertEquals(Maintenance.Basis.ADAPTIVE, review.targets.maintenance.basis)
-        assertEquals(2090.6, review.targets.maintenance.kcal, 0.5)
+        assertEquals(2905.9, review.targets.maintenance.kcal, 0.5)
     }
 
     @Test
@@ -259,10 +282,12 @@ class WeeklyReviewServiceTest {
 
         val review = service.runReview(today)
 
-        // Spread over the window it corrects: 0.2 x 7700 / 14 = 110 kcal/day,
-        // not 0.2 x 7700 / 1.
+        // Both bounds hold it at once. A day shows barely a tenth of any movement, so
+        // the correction stops at double rather than claiming the whole 2 kg the two
+        // readings are apart (ADR 0032), and the divisor floor then spreads that 0.4 kg
+        // over the window it corrects: 0.4 x 7700 / 14 = 220 kcal/day, not / 1.
         assertEquals(Maintenance.Basis.ADAPTIVE, review.targets.maintenance.basis)
-        assertEquals(2110.0, review.targets.maintenance.kcal, 0.5)
+        assertEquals(2220.0, review.targets.maintenance.kcal, 0.5)
     }
 
     @Test
@@ -388,15 +413,15 @@ class WeeklyReviewServiceTest {
         seedReviewOn(today.minusDays(7)) // 2400 to hold, so holding would be visible
         // The anchor is six days older than the window and only one reading falls
         // inside it — a weekly weigher's fortnight. That is the floor exactly, and it
-        // adapts: the pair 0.2 kg over 7 days is real evidence, and the divisor floor
-        // is what keeps a single noisy reading from shouting (0.2 x 7700 / 14 = 110).
+        // adapts: the pair 2.0 kg over 7 days is real evidence, and the divisor floor
+        // is what keeps a single noisy reading from shouting (2.0 x 7700 / 14 = 1100).
         seedTrendFalling(anchorDaysAgo = 20, latestDaysAgo = 13)
         logIntakeDays(14 downTo 5)
 
         val review = service.runReview(today)
 
         assertEquals(Maintenance.Basis.ADAPTIVE, review.targets.maintenance.basis)
-        assertEquals(2110.0, review.targets.maintenance.kcal, 0.5)
+        assertEquals(3100.0, review.targets.maintenance.kcal, 0.5)
     }
 
     @Test

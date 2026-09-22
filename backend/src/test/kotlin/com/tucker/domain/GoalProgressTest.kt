@@ -46,14 +46,8 @@ class GoalProgressTest {
         assertEquals(0.5, progress.plannedRateKgPerWeek, 1e-9)
     }
 
-    /** A two-point trend whose slope over the trailing window is known exactly. */
     private fun trendFalling(fromKg: Double, toKg: Double, overDays: Long) =
-        WeightTrend(
-            listOf(
-                WeightTrend.Point(today.minusDays(overDays), fromKg),
-                WeightTrend.Point(today, toKg),
-            ),
-        )
+        trendFalling(fromKg, toKg, overDays, today)
 
     @Test
     fun `observed rate is the trend slope over the trailing 28 days`() {
@@ -105,24 +99,32 @@ class GoalProgressTest {
 
     @Test
     fun `a rate sitting exactly on a band edge is on pace, not outside it`() {
-        // The band is inclusive at both edges — falling *at* the edge is still
-        // keeping pace. The trend falls 2 kg over 28 days, an observed 0.5 kg/week,
-        // and the two goal rates put that 0.5 exactly on one edge and then the other:
-        // 0.625 x 0.8 = 0.5, and (0.5 / 1.2) x 1.2 = 0.5.
+        // The band is inclusive at both edges — falling *at* the edge is still keeping
+        // pace. The two goal rates are derived from the rate the trend actually
+        // reports, so each lands *on* an edge rather than a fifteenth decimal past it:
+        // the observed figure is a quotient (ADR 0032), not a round 0.5.
+        val trend = trendAtRate(0.5)
+        val observed = GoalProgress.forGoal(goal(), trend, today).observedRateKgPerWeek!!
+
         assertEquals(
             PaceStatus.ON_PACE,
-            GoalProgress.forGoal(goal(rateKgPerWeek = 0.625), trendAtRate(0.5), today).paceStatus,
+            GoalProgress.forGoal(goal(rateKgPerWeek = observed / 0.8), trend, today).paceStatus,
         )
         assertEquals(
             PaceStatus.ON_PACE,
-            GoalProgress.forGoal(goal(rateKgPerWeek = 0.5 / 1.2), trendAtRate(0.5), today).paceStatus,
+            GoalProgress.forGoal(goal(rateKgPerWeek = observed / 1.2), trend, today).paceStatus,
         )
     }
 
     @Test
     fun `the observed finish date projects the remaining loss at the observed rate`() {
-        // 6 kg to go at an observed 0.5 kg/week is 12 weeks — 84 days past today.
-        val progress = GoalProgress.forGoal(goal(), trendAtRate(0.5), today)
+        // 6 kg to go at an observed 0.5 kg/week is 12 weeks — 84 days past today. The
+        // target is set 6 kg under the trend rather than at a round 80, because the
+        // trend's latest point is a smoothed figure and not the reading taken today.
+        val trend = trendAtRate(0.5)
+        val target = trend.latest()!!.trendKg - 6.0
+
+        val progress = GoalProgress.forGoal(goal(targetWeightKg = target), trend, today)
 
         assertEquals(today.plusWeeks(12), progress.observedFinishDate)
     }

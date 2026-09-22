@@ -34,9 +34,9 @@ export const HELD_REASON_COPY: Record<
   BELOW_BASAL_RATE: {
     // Both halves state the finding rather than its cause. The engine knows only that
     // the log and the scale disagree; an incomplete log is much the likeliest reason
-    // but not the only one — a trend built from few readings understates a real fall
-    // (ADR 0018's #292 amendment measures it), so a diligent logger reaches this too,
-    // and accusing them would be exactly the inference ADR 0031 refuses to persist.
+    // but not the only one — a scale reading high, a swing in water or gut content, or
+    // a body that really is gaining reach it too — so accusing anyone would be exactly
+    // the inference ADR 0031 refuses to persist.
     qualifier: 'log and scale disagree',
     remedy:
       'Your logged food and your weight do not line up yet — keep logging and weighing, and Tucker can adapt it again.',
