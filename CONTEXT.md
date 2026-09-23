@@ -354,7 +354,9 @@ a Tag — so it is announced before it happens rather than refused. It sits on t
 the Food in this User's rotation — not "what did I eat at breakfast?".
 Choosing a Tag narrows the Foods on offer the way a typed query does: to one flat
 list of the Foods carrying it, in place of the **Frequent Foods** ranking — a Tag
-has stopped asking about the whole rotation. One Tag at a time.
+has stopped asking about the whole rotation. One Tag at a time. A Tag and a typed
+query narrow together — the Foods carrying the Tag whose names match — so neither
+quietly undoes the other.
 Only a Tag carrying at least one Food is offered to narrow by — one carrying none
 would narrow to nothing — though it stays wherever Tags are managed or attached.
 Tags are offered alphabetically: a User looking for a Tag is looking for it by

@@ -16,6 +16,11 @@ const tags = computed(() => carriedTags(props.foods))
 const narrowing = computed(
   () => tag.value !== null || props.query.trim().length > 0,
 )
+const heading = computed(() => {
+  const q = props.query.trim()
+  if (tag.value && q) return `${tag.value} foods matching “${q}”`
+  return tag.value ? `${tag.value} foods` : 'Matching foods'
+})
 const frequent = computed(() => rankFrequent(props.foods))
 const matches = computed(() =>
   alphabetical(
@@ -38,13 +43,17 @@ const matches = computed(() =>
         <h2
           class="mb-2 text-xs font-medium tracking-wide text-dimmed uppercase"
         >
-          {{ tag ? `${tag} foods` : 'Matching foods' }}
+          {{ heading }}
           <span class="text-muted normal-case">({{ matches.length }})</span>
         </h2>
         <FoodPickList
+          v-if="matches.length"
           :foods="matches as any"
           @pick="(f: any) => emit('pick', f)"
         />
+        <p v-else class="py-4 text-center text-sm text-muted">
+          No {{ tag ?? '' }} foods match “{{ query.trim() }}”.
+        </p>
       </section>
     </template>
 
