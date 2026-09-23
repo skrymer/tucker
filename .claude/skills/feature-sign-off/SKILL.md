@@ -1,6 +1,6 @@
 ---
 name: feature-sign-off
-description: The pre-commit/push sign-off gate for a finished feature or fix on the Tucker repo. Runs seven quality gates in order — /verify twice (a cheap reachability pass first, the full two-viewport walk-through last, on the code that ships), with /simplify (apply cleanups), /mutation-test (do the tests actually catch bugs), /code-review (hunt correctness bugs), /check-adrs (honour recorded decisions) and a resolutions pass (nothing approves its own fix) in between — fixing what each surfaces before moving on, and only then commits and pushes. Every agent is briefed to a neutrality contract, one argues against merging, one ledgers the diff against the issue's own acceptance criteria, and a split between two agents is settled blind rather than by the author. Use when a change is functionally complete and the user says "sign off", "ready to commit/push", "wrap up this feature", "run the gates", or before opening a PR.
+description: The pre-commit/push sign-off gate for a finished feature or fix on the Tucker repo. Runs seven quality gates in order — /verify twice (a cheap reachability pass first, the full two-viewport walk-through last, on the code that ships), with /simplify (apply cleanups), /mutation-test (do the tests actually catch bugs), /code-review (hunt correctness bugs), /check-adrs (honour recorded decisions) and a resolutions pass (nothing approves its own fix; re-run if the walk-through changes code) in between — fixing what each surfaces before moving on, and only then commits and pushes. Every agent is briefed to a neutrality contract, one argues against merging, one ledgers the diff against the issue's own acceptance criteria, and a split between two agents is settled blind rather than by the author. Use when a change is functionally complete and the user says "sign off", "ready to commit/push", "wrap up this feature", "run the gates", or before opening a PR.
 ---
 
 # Feature sign-off
@@ -210,6 +210,17 @@ needs it.
    before the commit, so nothing changes under it. A FAIL sends you back to
    whichever gate owns the fix, and then back here.
 
+   **If this gate changed code, gate 5 runs again before the commit** — the fixes
+   for the walk-through's FAILs, and for anything the verdict auditor turned up.
+   Those fixes are written after gate 5, last and under the most time pressure,
+   which is exactly the profile gate 5 exists for; skipping it ships them with no
+   reader but their author. Measured: F18 slice 1's walk-through found four real
+   bugs, and their fixes merged unreviewed, flagged only in the PR description.
+   Scope the re-run to what changed since gate 5 (`git diff <gate-5 commit>`), with
+   each walk-through finding as the finding and the fix as its resolution. Then
+   re-drive only the probes those fixes touch, not the whole walk-through. If
+   the walk-through changed nothing, there is nothing to re-run.
+
    **The probe list starts with the ledger's.** Every `MET (probe: …)` row Brief D
    returned is a criterion this diff delivers that nothing automated pins, with the
    value to drive already named — so each one is a probe this pass owes, on top of
@@ -342,6 +353,7 @@ Emit a short sign-off summary the user (and PR reviewer) can replay:
                    pack faithful to 6 transcripts; briefs clean
 6. /verify (walk)  ✅ desktop + phone; probes: 0 kg ✅ · 300 kg ✅ · goal already reached ✅ · AC3 (ledger) ✅
    verdict audit   ⚠️ 1 UNCOVERED (start date = today) → drove it ✅
+5′. resolutions    — not re-run (gate 6 changed no code); else "N fixes judged → …"
 
 Suites green (detekt/build, lint/test). Committed + pushed to <branch>.
 ```
@@ -376,7 +388,9 @@ Suites green (detekt/build, lint/test). Committed + pushed to <branch>.
   a fresh context; gate 5 does the same for the *resolution*, the half this
   context still settled alone. Its position is as load-bearing as its presence:
   after every fix has landed, and before the walk-through, so gate 6 is the last
-  word on code some reviewer has actually read. Borrowed from oh-my-claudecode's
+  word on code some reviewer has actually read — and when gate 6 itself changes
+  code, gate 5 runs again on that change, or the walk-through's fixes are the one
+  part of the diff nobody but its author read. Borrowed from oh-my-claudecode's
   rule that an approval pass may not run in the context that authored the work.
 - **Nothing else asks whether it is finished.** The three gates *Keeping the fan-out
   independent* lists are each scoped to the diff as the context that wrote the diff
