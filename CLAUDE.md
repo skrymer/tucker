@@ -1773,6 +1773,27 @@ null` now means two things that earn opposite messages — the same trap
   ranking within a Tag, more than one Tag at a time, remembering the chosen Tag,
   and sharing Tags between Users.
 
+  Slice 1 ([#361](https://github.com/skrymer/tucker/issues/361)) — **tag a Food from
+  its row** — ✅ done. V20 adds `tag` (unique per User, `COLLATE NOCASE`) and a
+  `food_tag` link owned through both ends; `GET`/`POST /api/tags`,
+  `PUT /api/foods/{id}/tags`, and `FoodResponse.tags` on every route a Food arrives by.
+  - **`Food` holds its Tag ids, and `FoodRepository` saves them with it** — one
+    repository per aggregate. A Recipe edit carries its Tags over from the stored row,
+    since `Recipe.asFood()` is rebuilt from the composition and knows none. The link
+    insert selects only the caller's own Tags, so ownership holds at the repository
+    rather than at the one controller that checks it today (ADR 0021, 0033).
+  - **Case identity is two layers.** `COLLATE NOCASE` folds ASCII alone; `TagName`
+    folds the whole of Unicode for equality *and* ordering, so the Tag list and a
+    Food's chips sort alike — SQLite's `lower()` would have put an accented capital
+    apart. A create that races another of the same name is settled by
+    `ON CONFLICT DO NOTHING` on the index and returns the existing Tag, not a 500.
+  - **The picker creates on type**, so forms send only ids. Save and the picker are
+    held while a create is in flight, and a Tag created for one Food never lands on
+    the next Food the sheet is reassigned to.
+  - **Found by the sign-off, not by design:** Probity silently skipped every write to
+    a worktree outside the session's cwd, and its 12-event window refused legitimate
+    REDs once a sign-off's agent reports filled it. `maxEvents` is now 20 (#354).
+
 ## Architecture
 
 - **Frontend** — Nuxt + Nuxt UI, TypeScript, SPA mode (`ssr: false`). A

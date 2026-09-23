@@ -1145,7 +1145,7 @@ Swept scoped to the F18 slice-1 classes (`Tag`, `TagName`, `Food`, `TagRepositor
 
   | Hand mutation                                  | Tests it fails |
   | ---------------------------------------------- | -------------- |
-  | `FoodRepository.wearingTags` → `emptyList()`   | 71             |
+  | `FoodRepository.carryingTags` → `emptyList()`  | 71             |
   | `TagRepository.findByIds` → `emptyList()`      | 7              |
   | `FoodResponse.tags` built as `emptyList()`     | 4              |
 

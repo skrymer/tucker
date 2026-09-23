@@ -311,7 +311,40 @@ describe('FoodTagsSheet', () => {
     expect(onSave).toHaveBeenCalledWith([7, 20])
   })
 
-  it('shows Save as busy while the page is saving', async () => {
+  it('keeps a Tag created for one Food off the next Food the sheet opens on', async () => {
+    let release!: () => void
+    const held = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    registerEndpoint('/api/tags', {
+      method: 'GET',
+      handler: () => [],
+    })
+    registerEndpoint('/api/tags', {
+      method: 'POST',
+      handler: async () => {
+        await held
+        return { id: 20, name: 'dinner', foodCount: 0 }
+      },
+    })
+    const onSave = vi.fn()
+    const { rerender } = await renderSuspended(FoodTagsSheet, {
+      props: { food: oats, onSave },
+    })
+    const user = userEvent.setup()
+    await user.type(screen.getByRole('combobox'), 'dinner')
+    await user.click(await screen.findByRole('option', { name: /dinner/ }))
+
+    await rerender({ food: { id: 2, name: 'Bread', tags: [] }, onSave })
+    release()
+    const save = screen.getByRole('button', { name: 'Save tags' })
+    await vi.waitFor(() => expect(save).toBeEnabled())
+    await user.click(save)
+
+    expect(onSave).toHaveBeenCalledWith([])
+  })
+
+  it('holds Save while the page is saving', async () => {
     registerEndpoint('/api/tags', () => [])
 
     await renderSuspended(FoodTagsSheet, {

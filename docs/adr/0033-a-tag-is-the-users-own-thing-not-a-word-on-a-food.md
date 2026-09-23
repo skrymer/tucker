@@ -36,9 +36,12 @@ and is owned per [ADR 0021](0021-every-row-is-owned-by-one-user.md).*
   Food ↔ Tag link is owned *through* both ends, the way `recipe_ingredient` is owned
   through its Recipe (ADR 0021): no `user_id` of its own to keep in agreement, and a
   foreign Food or Tag id answers exactly as an absent one.
-- **Case-insensitive identity is a database fact, not a UI convention.** "Breakfast"
+- **Case-insensitive identity is a backend fact, not a UI convention.** "Breakfast"
   typed against an existing "breakfast" resolves to the one that exists; the
-  existing spelling wins.
+  existing spelling wins. The database enforces it for ASCII (`COLLATE NOCASE`, which
+  folds nothing else); the domain's `TagName` folds the whole of Unicode, so an
+  accented name resolves to the Tag it already is — except when two requests create
+  its two spellings at the same instant, which the index cannot see.
 - **Renaming onto an existing name merges rather than refusing.** Refusing would make
   the cleanup the feature exists for a by-hand re-tag of every Food followed by a
   delete. The merge loses nothing — every Food still carries a Tag — and is announced

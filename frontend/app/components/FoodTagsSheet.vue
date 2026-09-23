@@ -50,7 +50,10 @@ watch(
 const { execute: create, pending: creating } = useApiMutation(
   async (name: string) => {
     refusal.value = null
+    const typedFor = props.food?.id
     const tag = await $api('/api/tags', { method: 'POST', body: { name } })
+    // The sheet may have moved to another Food while the create was in flight.
+    if (props.food?.id !== typedFor) return
     searchTerm.value = ''
     if (draft.value.some((held) => held.id === tag.id)) return
     draft.value = [...draft.value, { id: tag.id, name: tag.name }]
