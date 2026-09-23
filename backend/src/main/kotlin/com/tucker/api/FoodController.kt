@@ -6,9 +6,9 @@ import com.tucker.domain.FoodCandidate
 import com.tucker.domain.FoodKind
 import com.tucker.domain.FrequentFoods
 import com.tucker.domain.Nutrition
+import com.tucker.domain.Tag
 import com.tucker.persistence.EntryRepository
 import com.tucker.persistence.FoodRepository
-import com.tucker.persistence.RecipeRepository
 import com.tucker.persistence.ReferenceFoodRepository
 import com.tucker.service.BarcodeLookupService
 import com.tucker.service.FoodService
@@ -52,7 +52,12 @@ data class FoodResponse(
      */
     val referenceFoodId: Long?,
     val referenceFoodName: String?,
+    /** The **Tags** this Food carries, alphabetically ignoring case; empty, never null. */
+    val tags: List<FoodTagResponse>,
 )
+
+/** A Tag as a Food carries it: enough to draw a chip and to send the id back. */
+data class FoodTagResponse(val id: Long, val name: String)
 
 /**
  * Request to create a plain, manually-entered Food.
@@ -115,7 +120,12 @@ internal fun FoodCandidate.toResponse() = FoodCandidateResponse(
     source = source,
 )
 
+/**
+ * This Food on the wire. [tags] is required rather than defaulted: a Food's Tags live
+ * in another table, so a caller that forgot them would report a tagged Food as untagged.
+ */
 internal fun Food.toResponse(
+    tags: List<Tag>,
     ingredientCount: Int? = null,
     referenceFoodName: String? = null,
 ) = FoodResponse(
@@ -131,6 +141,7 @@ internal fun Food.toResponse(
     ingredientCount = ingredientCount,
     referenceFoodId = referenceFoodId,
     referenceFoodName = referenceFoodName,
+    tags = tags.sortedBy { it.name }.map { FoodTagResponse(persistedId(it.id), it.name.value) },
 )
 
 /** Which **Reference Food** a Food should borrow its micronutrients from. */
@@ -141,32 +152,14 @@ data class MatchReferenceFoodRequest(val referenceFoodId: Long)
 class FoodController(
     private val foods: FoodRepository,
     private val entries: EntryRepository,
-    private val recipes: RecipeRepository,
     private val foodService: FoodService,
     private val barcodeLookup: BarcodeLookupService,
     private val referenceFoods: ReferenceFoodRepository,
+    private val describer: FoodDescriber,
 ) {
 
     @GetMapping
-    fun list(): List<FoodResponse> = foods.findAll().describe()
-
-    /**
-     * These Foods on the wire, each carrying what only another table knows: a
-     * Recipe's ingredient count and the name of what a Food borrows its
-     * micronutrients from. Two queries however long the list, and one place that
-     * decides what a `FoodResponse` says, so a Food does not read differently for
-     * having arrived by a different route.
-     */
-    private fun List<Food>.describe(): List<FoodResponse> {
-        val counts = recipes.ingredientCounts(filter { it.kind == FoodKind.RECIPE }.mapNotNull { it.id })
-        val matched = referenceFoods.namesOf(mapNotNull { it.referenceFoodId }.distinct())
-        return map {
-            it.toResponse(
-                ingredientCount = counts[it.id],
-                referenceFoodName = matched[it.referenceFoodId],
-            )
-        }
-    }
+    fun list(): List<FoodResponse> = describer.describe(foods.findAll())
 
     /**
      * The caller's **Frequent Foods** (ADR 0028) over the window [from]..[to], both
@@ -190,13 +183,13 @@ class FoodController(
         // `getValue`, not a lookup that tolerates a miss: deleting a Food an Entry
         // names is refused, so a ranked id with no Food is a bug rather than a tile
         // to leave out.
-        return ranked.map { byId.getValue(it.foodId) }.describe()
+        return describer.describe(ranked.map { byId.getValue(it.foodId) })
     }
 
     @GetMapping("/{id}")
     fun byId(@PathVariable id: Long): FoodResponse {
         val food = foods.findById(id) ?: throw NotFoundException("no Food with id $id")
-        return listOf(food).describe().single()
+        return describer.describe(food)
     }
 
     /**
@@ -214,7 +207,7 @@ class FoodController(
             ?: throw NotFoundException("no Reference Food with id ${request.referenceFoodId}")
         val matched = food.matchedTo(reference)
         foods.update(matched)
-        return matched.toResponse(referenceFoodName = reference.name)
+        return describer.describe(matched)
     }
 
     /**
@@ -231,10 +224,6 @@ class FoodController(
         foods.update(food.unmatched())
     }
 
-    /** What [food] is matched to, as a User would recognise it, or null if nothing. */
-    private fun matchedName(food: Food): String? =
-        food.referenceFoodId?.let { referenceFoods.findById(it)?.name }
-
     /**
      * Resolve a barcode catalog-first, then through the operator-configured
      * Provider chain (ADR 0006): `200 EXISTING` (a saved Food), `200 CANDIDATE`
@@ -245,7 +234,7 @@ class FoodController(
         when (val result = barcodeLookup.lookup(barcode)) {
             is BarcodeLookup.Existing -> BarcodeLookupResponse(
                 BarcodeLookupOutcome.EXISTING,
-                food = result.food.toResponse(referenceFoodName = matchedName(result.food)),
+                food = describer.describe(result.food),
                 candidate = null,
             )
             is BarcodeLookup.Candidate -> BarcodeLookupResponse(
@@ -270,7 +259,7 @@ class FoodController(
                 fatPer100g = request.fatPer100g,
             ),
         )
-        return foods.insert(food).toResponse()
+        return describer.describe(foods.insert(food))
     }
 
     /**

@@ -14,6 +14,7 @@ const emit = defineEmits<{
   delete: [FoodResponse]
   view: [FoodResponse]
   match: [FoodResponse]
+  tag: [FoodResponse]
 }>()
 </script>
 
@@ -26,6 +27,7 @@ const emit = defineEmits<{
         @delete="(picked) => emit('delete', picked)"
         @view="(picked) => emit('view', picked)"
         @match="(picked) => emit('match', picked)"
+        @tag="(picked) => emit('tag', picked)"
       />
     </li>
   </ul>

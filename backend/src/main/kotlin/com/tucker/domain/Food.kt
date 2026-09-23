@@ -20,6 +20,7 @@ data class Food(
     val nutrition: Nutrition,
     val cookedWeightG: Double?,
     val referenceFoodId: Long? = null,
+    val tagIds: Set<Long> = emptySet(),
 ) {
     init {
         require(name.isNotBlank()) { "Food name must not be blank" }
@@ -60,6 +61,9 @@ data class Food(
 
     /** This Food borrowing nothing again. Idempotent, like the endpoint that calls it. */
     fun unmatched(): Food = copy(referenceFoodId = null)
+
+    /** This Food carrying exactly [tagIds]. */
+    fun retagged(tagIds: Collection<Long>): Food = copy(tagIds = tagIds.toSet())
 
     companion object {
         /** A plain (non-recipe) Food. */

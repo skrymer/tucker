@@ -1132,6 +1132,47 @@ accessors. They are gone rather than filtered: nothing outside the class reads t
 map or the list — it answers `caloriesOn` and `budgetOn` — so they are `private`,
 and Kotlin emits no accessor to mutate.
 
+### Tags, backend — 159 of 178
+
+Swept scoped to the F18 slice-1 classes (`Tag`, `TagName`, `Food`, `TagRepository`,
+`FoodRepository`, `RecipeRepository`, `TagController`, `FoodTagController`,
+`FoodDescriber`, `FoodController`, `RecipeController`). Nineteen non-killed:
+
+- **Three false survivors, settled by hand-mutating a throwaway copy of `backend/`**
+  (the worktree is gated by probity, and a hand-mutation is not a red step). The same
+  bad selection the Micronutrient sections record: a scoped sweep over
+  `@SpringBootTest`-covered classes picks the wrong tests.
+
+  | Hand mutation                                  | Tests it fails |
+  | ---------------------------------------------- | -------------- |
+  | `FoodRepository.carryingTags` → `emptyList()`  | 71             |
+  | `TagRepository.findByIds` → `emptyList()`      | 7              |
+  | `FoodResponse.tags` built as `emptyList()`     | 4              |
+
+- **`TagName.hashCode` → `0` — equivalent.** A constant hash keeps the contract, and
+  equality is what the tests pin. **`TagName.toString` `NO_COVERAGE` — equivalent**:
+  a debugging rendering nothing reads.
+- **`FoodController.frequent`'s `requireWindow` call removed — equivalent in outcome**:
+  `FrequentFoods.rank` refuses the same window, one query later.
+- The rest are already recorded above: the `FoodResponse` accessors (the `api`
+  section's accepted DTO class), `FoodRepository.applyFrom`'s two macro setters and
+  `findByIds`, and `RecipeRepository.ingredientCounts` / `ingredientsOf` (the
+  Micronutrient false survivors, which moved line but not verdict).
+
+### Tags, frontend — `FoodTagsSheet.vue` 35 of 39, `rowTags.ts` 10 of 10
+
+`FoodListItem.vue`'s one `NO_COVERAGE` (`props.food.tags ?? []`) and `FoodTagsSheet`'s
+`food?.tags ?? []` are **equivalent**: the wire always carries `tags` (ADR 0023), so
+the fallback is unreachable. The sheet's other three are equivalent too — the initial
+`draft` is overwritten by the immediate `watch`, the abort `signal` matters only on a
+cancellation no test drives, and the initial search term is cleared by Reka on open
+(the empty-field assertion passes under the mutant). The five real gaps the first
+sweep found — offering nothing before the Tags load, not fetching while closed, adding
+a created Tag to a Food wearing none, and the two `errorTitle` literals — are closed.
+`foods.vue`'s `useFoodTagging` request and option objects are **killed by
+`e2e/food-tags.spec.ts`**, which asserts the PUT body and the sheet closing;
+`if (target)` is equivalent, Save being reachable only from an open sheet.
+
 ### Noise removed at the source
 
 Four `getLog()` companion accessors (`MartijndwarsWebPushSender`, `RecordingWebPushSender`,

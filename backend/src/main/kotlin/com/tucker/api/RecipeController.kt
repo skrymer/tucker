@@ -70,6 +70,7 @@ private fun Recipe.toResponse() = RecipeResponse(
 class RecipeController(
     private val recipes: RecipeRepository,
     private val foods: FoodRepository,
+    private val describer: FoodDescriber,
 ) {
 
     /**
@@ -82,7 +83,7 @@ class RecipeController(
     @ResponseStatus(HttpStatus.CREATED)
     fun create(@RequestBody request: CreateRecipeRequest): FoodResponse {
         val recipe = request.toRecipe(id = null)
-        return recipes.insert(recipe).asFood().toResponse(ingredientCount = recipe.ingredients.size)
+        return describer.describe(recipes.insert(recipe).asFood())
     }
 
     /**
@@ -110,7 +111,7 @@ class RecipeController(
         recipes.findById(id) ?: throw NotFoundException("no recipe with id $id")
         val recipe = request.toRecipe(id = id)
         val updated = recipes.update(recipe) ?: throw NotFoundException("no recipe with id $id")
-        return updated.asFood().toResponse(ingredientCount = recipe.ingredients.size)
+        return describer.describe(updated)
     }
 
     /** Resolve this request's ingredient Foods and build a [Recipe] with the given [id]. */

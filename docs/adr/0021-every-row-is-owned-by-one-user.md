@@ -154,8 +154,8 @@ owner. `app_config` (the VAPID keypair) stays global — it is Tucker's, not a u
   that dropping the old table does not strand rows in tables that *reference* it — and
   nothing references `weight_measurement`, `goal`, `weekly_review`, `profile`,
   `reminder_state` or `push_subscription`. They are pure children of `user`; the only
-  `REFERENCES` clauses in the
-  schema point at `food` and at `user`. So foreign keys stay enforced throughout, and
+  `REFERENCES` clauses in the schema point at `food`, at `user`, and — from `food_tag`
+  (V20, ADR 0033) — at `tag`. So foreign keys stay enforced throughout, and
   since that `PRAGMA` (a no-op inside a transaction) was the only thing forcing
   `executeInTransaction=false`, the rebuild runs inside Flyway's transaction like any
   other migration — Flyway's `SQLiteDatabase.supportsDdlTransactions()` is `true`. V11
@@ -171,15 +171,16 @@ owner. `app_config` (the VAPID keypair) stays global — it is Tucker's, not a u
   constraint-free holding tables, drops them, and only then drops `food` — which by that
   point is a parent of nothing, so the six-table case above is reached rather than
   circumvented, and the children are rebuilt against the new table and re-checked against
-  it on the way back in.
+  it on the way back in. `food` has a third child since V20 — `food_tag`, cascading like
+  `recipe_ingredient` — which the next rebuild of `food` parks the same way.
 
   So **the rule is not "does anything reference this table?" but "can everything that
   references it be rebuilt alongside it?"** — the first was this ADR's wording through
   slices 4 and 5, and it is the same question wherever the answer is "nothing does", which
   is why V11's and V12's own comments remain true as written. No rebuild in this schema
   needs `executeInTransaction=false`. `PerUserUniquenessMigrationTest` asserts the whole
-  reference graph — every rebuilt table against the tables that reference it, `food`'s two
-  included — so the premise fails loudly the day a new table points at one of them rather
+  reference graph — every rebuilt table against the tables that reference it, `food`'s three
+  children included — so the premise fails loudly the day a new table points at one of them rather
   than being quietly assumed.
 - **`food` and `entry` were the last two to say it in the schema, and V13 closed that**
   ([#232](https://github.com/skrymer/tucker/issues/232)). `NOT NULL` had only ever been

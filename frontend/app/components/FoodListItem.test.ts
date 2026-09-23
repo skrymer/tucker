@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { renderSuspended } from '@nuxt/test-utils/runtime'
-import { screen } from '@testing-library/vue'
+import { screen, within } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import { food, recipe } from '~~/test/food-fixtures'
 import FoodListItem from './FoodListItem.vue'
@@ -157,6 +157,62 @@ describe('FoodListItem', () => {
       )
 
     expect(onView).toHaveBeenCalledWith(cottagePie)
+  })
+
+  it('lists the Tags a Food carries, each spelled as its User gave it', async () => {
+    await renderSuspended(FoodListItem, {
+      props: {
+        food: food({
+          id: 4,
+          name: 'Rolled oats',
+          tags: [
+            { id: 1, name: 'Breakfast' },
+            { id: 2, name: 'post-workout' },
+          ],
+        }),
+      },
+    })
+
+    const tags = screen.getByRole('list', { name: 'Tags on Rolled oats' })
+    expect(
+      within(tags)
+        .getAllByRole('listitem')
+        .map((item) => item.textContent?.trim()),
+    ).toEqual(['Breakfast', 'post-workout'])
+  })
+
+  it('shows four of six Tags and a "+2" that opens the Food’s Tags', async () => {
+    const oats = food({
+      id: 4,
+      name: 'Rolled oats',
+      tags: ['a', 'b', 'c', 'd', 'e', 'f'].map((name, i) => ({ id: i, name })),
+    })
+    const onTag = vi.fn()
+    await renderSuspended(FoodListItem, { props: { food: oats, onTag } })
+
+    const tags = screen.getByRole('list', { name: 'Tags on Rolled oats' })
+    expect(
+      within(tags)
+        .getAllByRole('listitem')
+        .map((item) => item.textContent?.trim()),
+    ).toEqual(['a', 'b', 'c', 'd', '+2'])
+
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: '2 more tags on Rolled oats' }))
+
+    expect(onTag).toHaveBeenCalledWith(oats)
+  })
+
+  it('emits tag when the user opens a Food’s Tags from its row', async () => {
+    const onTag = vi.fn()
+    await renderSuspended(FoodListItem, { props: { food: skyr, onTag } })
+
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: 'Tags for Skyr' }))
+
+    expect(onTag).toHaveBeenCalledWith(skyr)
   })
 
   it('emits delete when the user activates the delete button', async () => {

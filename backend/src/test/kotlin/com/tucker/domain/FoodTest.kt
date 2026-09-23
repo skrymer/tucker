@@ -30,7 +30,19 @@ class FoodTest {
                 "a wrong one is worse than none",
         )
     }
+
+    @Test
+    fun `a Food retagged carries exactly the Tags it was given, each once`() {
+        assertEquals(
+            setOf(SNACK, POST_WORKOUT),
+            CHEESE.retagged(listOf(BREAKFAST)).retagged(listOf(SNACK, POST_WORKOUT, SNACK)).tagIds,
+        )
+    }
 }
+
+private const val BREAKFAST = 3L
+private const val SNACK = 4L
+private const val POST_WORKOUT = 5L
 
 private val CHEESE = Food.plain(
     id = 1L,

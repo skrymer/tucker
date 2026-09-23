@@ -7,6 +7,7 @@ import com.tucker.jooq.Tables.PROFILE
 import com.tucker.jooq.Tables.PUSH_SUBSCRIPTION
 import com.tucker.jooq.Tables.RECIPE_INGREDIENT
 import com.tucker.jooq.Tables.REMINDER_STATE
+import com.tucker.jooq.Tables.TAG
 import com.tucker.jooq.Tables.USER
 import com.tucker.jooq.Tables.WEEKLY_REVIEW
 import com.tucker.jooq.Tables.WEIGHT_MEASUREMENT
@@ -61,6 +62,8 @@ class TestSupportController(
         dsl.deleteFrom(GOAL).execute()
         dsl.deleteFrom(WEIGHT_MEASUREMENT).execute()
         dsl.deleteFrom(FOOD).execute()
+        // After food, whose delete cascades food_tag away, so no Food carries a Tag.
+        dsl.deleteFrom(TAG).execute()
         dsl.deleteFrom(PUSH_SUBSCRIPTION).execute()
         dsl.deleteFrom(REMINDER_STATE).execute()
         dsl.deleteFrom(PROFILE).execute()

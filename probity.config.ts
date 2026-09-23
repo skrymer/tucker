@@ -28,6 +28,14 @@ import { defineConfig, enforceTdd } from '@nizos/probity'
  * report `BUILD FAILED`, and only the detail below it tells them apart, so anything
  * that filters or truncates the agent's command output silently degrades every
  * verdict that follows.
+ *
+ * The window is recency-bounded: the validator sees only the last `maxEvents` tool
+ * calls, so a test run has to stay inside it, not merely have happened. Every Read,
+ * Grep and subagent report takes a slot, and once a red run is pushed out the
+ * validator reasons without it — refusing a legitimate RED, and then the production
+ * write too, deadlocking both orders. Twenty gives about one TDD cycle of
+ * interleaved reads as headroom. Not higher: a crowded prompt risks the model
+ * missing recent events or the response format, which fails as a false *pass*.
  */
 export default defineConfig({
   rules: [
@@ -41,8 +49,9 @@ export default defineConfig({
         enforceTdd({
           // Gradle and Vitest runs are verbose, and the evidence the validator
           // needs is the assertion line buried in them. The defaults (10 / 6000)
-          // truncate a failing Gradle run before it reaches that line.
-          maxEvents: 12,
+          // truncate a failing Gradle run before it reaches that line. The event
+          // count is explained in the header.
+          maxEvents: 20,
           maxContentChars: 10000,
         }),
       ],

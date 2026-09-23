@@ -1,5 +1,6 @@
 package com.tucker.api
 
+import com.tucker.jooq.Tables.TAG
 import com.tucker.jooq.Tables.USER
 import com.tucker.security.ACCESS_ASSERTION_HEADER
 import com.tucker.security.AccessTokens
@@ -8,6 +9,7 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.http.MediaType
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
@@ -46,6 +48,21 @@ class TestSupportResetTest {
 
         mockMvc.post("/api/test/reset").andExpect { status { isNoContent() } }
 
+        assertEquals(0, dsl.fetchCount(USER), "a reset database holds no Users at all")
+    }
+
+    @Test
+    fun `resetting clears a User's Tags, so the User they belong to can go too`() {
+        val token = AccessTokens.mint(email = "tagger@tucker.invalid")
+        mockMvc.post("/api/tags") {
+            header(ACCESS_ASSERTION_HEADER, token)
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"name":"breakfast"}"""
+        }.andExpect { status { isCreated() } }
+
+        mockMvc.post("/api/test/reset").andExpect { status { isNoContent() } }
+
+        assertEquals(0, dsl.fetchCount(TAG), "a reset database holds no Tags")
         assertEquals(0, dsl.fetchCount(USER), "a reset database holds no Users at all")
     }
 }
