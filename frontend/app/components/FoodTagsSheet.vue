@@ -39,11 +39,13 @@ watch(
  * A typed name becomes a Tag at once, so the sheet only ever saves ids — and the
  * server, not this sheet, decides whether it names a Tag the User already has.
  */
+const searchTerm = ref('')
 const refusal = ref<string | null>(null)
 const { execute: create } = useApiMutation(
   async (name: string) => {
     refusal.value = null
     const tag = await $api('/api/tags', { method: 'POST', body: { name } })
+    searchTerm.value = ''
     if (draft.value.some((held) => held.id === tag.id)) return
     draft.value = [...draft.value, { id: tag.id, name: tag.name }]
   },
@@ -67,6 +69,7 @@ const { execute: create } = useApiMutation(
     <div class="flex flex-col gap-4">
       <UInputMenu
         v-model="draft"
+        v-model:search-term="searchTerm"
         :items="options"
         label-key="name"
         by="id"
@@ -74,6 +77,7 @@ const { execute: create } = useApiMutation(
         open-on-click
         create-item
         icon="i-lucide-tag"
+        aria-label="Tags"
         class="w-full"
         @create="create"
       />

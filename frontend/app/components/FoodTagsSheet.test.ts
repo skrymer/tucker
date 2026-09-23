@@ -24,6 +24,14 @@ describe('FoodTagsSheet', () => {
     expect(await screen.findByText('Breakfast')).toBeVisible()
   })
 
+  it('names its picker, so a screen reader knows what it is choosing', async () => {
+    registerEndpoint('/api/tags', () => [])
+
+    await renderSuspended(FoodTagsSheet, { props: { food: oats } })
+
+    expect(screen.getByRole('combobox', { name: 'Tags' })).toBeVisible()
+  })
+
   it('offers every Tag the User keeps, alphabetically as the server lists them', async () => {
     registerEndpoint('/api/tags', () => [
       { id: 7, name: 'Breakfast', foodCount: 1 },
@@ -83,6 +91,30 @@ describe('FoodTagsSheet', () => {
 
     expect(created).toEqual([{ name: 'post-workout' }])
     expect(onSave).toHaveBeenCalledWith([7, 20])
+  })
+
+  it('empties the field once a typed Tag is created, so it is not offered again', async () => {
+    registerEndpoint('/api/tags', {
+      method: 'GET',
+      handler: () => [],
+    })
+    registerEndpoint('/api/tags', {
+      method: 'POST',
+      handler: () => ({ id: 20, name: 'post-workout', foodCount: 0 }),
+    })
+    await renderSuspended(FoodTagsSheet, { props: { food: oats } })
+    const user = userEvent.setup()
+    const picker = screen.getByRole('combobox', { name: 'Tags' })
+
+    await user.type(picker, 'post-workout')
+    await user.click(
+      await screen.findByRole('option', { name: /post-workout/ }),
+    )
+
+    await vi.waitFor(() => expect(picker).toHaveValue(''))
+    expect(
+      screen.queryByRole('option', { name: /Create/ }),
+    ).not.toBeInTheDocument()
   })
 
   it('keeps one Tag when a typed name turns out to be one the Food already wears', async () => {
