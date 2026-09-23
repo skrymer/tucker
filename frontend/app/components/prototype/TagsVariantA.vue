@@ -3,7 +3,7 @@
 // ranked *within* the Tag (backend `?tag=`), the tail is the tagged catalog.
 import {
   alphabetical,
-  demoTags,
+  carriedTags,
   rankFrequent,
   type DemoFood,
 } from '~/prototype/foodTagsDemo'
@@ -12,7 +12,7 @@ const props = defineProps<{ foods: DemoFood[]; query: string }>()
 const emit = defineEmits<{ pick: [DemoFood] }>()
 
 const tag = ref<string | null>(null)
-const tags = computed(() => demoTags(props.foods))
+const tags = computed(() => carriedTags(props.foods))
 const inTag = computed(() =>
   tag.value
     ? props.foods.filter((f) => f.tags.includes(tag.value!))

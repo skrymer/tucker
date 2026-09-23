@@ -3,7 +3,7 @@
 // flat alphabetical list, exactly as typing does — the grid goes away.
 import {
   alphabetical,
-  demoTags,
+  carriedTags,
   rankFrequent,
   type DemoFood,
 } from '~/prototype/foodTagsDemo'
@@ -12,7 +12,7 @@ const props = defineProps<{ foods: DemoFood[]; query: string }>()
 const emit = defineEmits<{ pick: [DemoFood] }>()
 
 const tag = ref<string | null>(null)
-const tags = computed(() => demoTags(props.foods))
+const tags = computed(() => carriedTags(props.foods))
 const narrowing = computed(
   () => tag.value !== null || props.query.trim().length > 0,
 )

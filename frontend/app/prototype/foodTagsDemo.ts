@@ -79,6 +79,13 @@ export function demoTags(foods: DemoFood[]): string[] {
   )
 }
 
+/** The Tags that lead somewhere — carried by at least one Food — for /log. */
+export function carriedTags(foods: DemoFood[]): string[] {
+  return [...new Set(foods.flatMap((f) => f.tags))].sort((x, y) =>
+    x.localeCompare(y),
+  )
+}
+
 export function tagCount(tag: string): number {
   return demoFoods.filter((f) => f.tags.includes(tag)).length
 }

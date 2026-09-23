@@ -5,7 +5,7 @@
 // today's page unchanged.
 import {
   alphabetical,
-  demoTags,
+  carriedTags,
   rankFrequent,
   type DemoFood,
 } from '~/prototype/foodTagsDemo'
@@ -16,7 +16,7 @@ const emit = defineEmits<{ pick: [DemoFood] }>()
 const tag = ref<string>('all')
 const items = computed(() => [
   { label: 'All', value: 'all' },
-  ...demoTags(props.foods).map((t) => ({
+  ...carriedTags(props.foods).map((t) => ({
     label: t.charAt(0).toUpperCase() + t.slice(1),
     value: t,
   })),

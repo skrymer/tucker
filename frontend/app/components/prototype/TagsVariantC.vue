@@ -4,7 +4,7 @@
 // each group collapsible, untagged last. Scroll, don't choose.
 import {
   alphabetical,
-  demoTags,
+  carriedTags,
   rankFrequent,
   type DemoFood,
 } from '~/prototype/foodTagsDemo'
@@ -18,7 +18,7 @@ const shown = computed(
   () => filterFoods(props.foods, props.query) as DemoFood[],
 )
 const groups = computed(() => {
-  const g = demoTags(shown.value).map((tag) => ({
+  const g = carriedTags(shown.value).map((tag) => ({
     tag,
     foods: alphabetical(shown.value.filter((f) => f.tags.includes(tag))),
   }))

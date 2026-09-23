@@ -345,12 +345,18 @@ the User's own: nothing is suggested, derived or shared, and Tucker attaches no
 meaning to any particular Tag.
 A Tag is a thing in its own right, owned by its User, not merely a word repeated
 across Foods: renaming it renames it on every Food carrying it, deleting it takes
-it off every Food, and a Tag carrying no Foods still exists until it is deleted. It sits on the Food and not the
+it off every Food, and a Tag carrying no Foods still exists until it is deleted.
+Renaming a Tag to the name of another (in any case) **merges** them: every Food
+carrying either ends up carrying the one that already existed. That is what
+tidying "brekkie" into "breakfast" means, and it loses nothing — every Food keeps
+a Tag — so it is announced before it happens rather than refused. It sits on the Food and not the
 **Entry**, because it answers "what do I reach for at breakfast?" — a fact about
 the Food in this User's rotation — not "what did I eat at breakfast?".
 Choosing a Tag narrows the Foods on offer the way a typed query does: to one flat
 list of the Foods carrying it, in place of the **Frequent Foods** ranking — a Tag
 has stopped asking about the whole rotation. One Tag at a time.
+Only a Tag carrying at least one Food is offered to narrow by — one carrying none
+would narrow to nothing — though it stays wherever Tags are managed or attached.
 Tags are offered alphabetically: a User looking for a Tag is looking for it by
 name, and an order that moves with their logging would put it somewhere different
 each week.
