@@ -7,13 +7,13 @@ type Tag = { id: number; name: string }
 /**
  * A catalog of one Food and the User's Tags, kept in step the way the backend
  * keeps them: a created Tag joins the list, and a PUT replaces what the Food
- * wears, so the re-read catalog shows the save.
+ * carries, so the re-read catalog shows the save.
  */
 async function mockTaggableCatalog(page: Page, initial: Tag[] = []) {
   const known: Tag[] = [...initial]
-  let wears: Tag[] = []
+  let carries: Tag[] = []
   const saved: number[][] = []
-  const oats = () => food({ id: 1, name: 'Rolled oats', tags: wears })
+  const oats = () => food({ id: 1, name: 'Rolled oats', tags: carries })
 
   await page.route('**/api/foods', (route) => route.fulfill({ json: [oats()] }))
   await page.route('**/api/tags', async (route) => {
@@ -29,7 +29,7 @@ async function mockTaggableCatalog(page: Page, initial: Tag[] = []) {
   await page.route('**/api/foods/1/tags', async (route) => {
     const { tagIds } = route.request().postDataJSON() as { tagIds: number[] }
     saved.push(tagIds)
-    wears = known.filter((tag) => tagIds.includes(tag.id))
+    carries = known.filter((tag) => tagIds.includes(tag.id))
     return route.fulfill({ json: oats() })
   })
   return { saved }
@@ -57,7 +57,7 @@ test('a User tags a Food from its row, and the row shows the Tag', async ({
   expect(saved).toEqual([[100]])
 })
 
-test('a row wearing six Tags shows four and a "+2" that opens its Tags', async ({
+test('a row carrying six Tags shows four and a "+2" that opens its Tags', async ({
   page,
   goto,
 }) => {

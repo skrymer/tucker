@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RestController
 
-/** Exactly which Tags a Food should wear, by id. */
+/** Exactly which Tags a Food should carry, by id. */
 data class SetFoodTagsRequest(val tagIds: List<Long>)
 
 @RestController

@@ -52,11 +52,11 @@ data class FoodResponse(
      */
     val referenceFoodId: Long?,
     val referenceFoodName: String?,
-    /** The **Tags** this Food wears, alphabetically ignoring case; empty, never null. */
+    /** The **Tags** this Food carries, alphabetically ignoring case; empty, never null. */
     val tags: List<FoodTagResponse>,
 )
 
-/** A Tag as a Food wears it: enough to draw a chip and to send the id back. */
+/** A Tag as a Food carries it: enough to draw a chip and to send the id back. */
 data class FoodTagResponse(val id: Long, val name: String)
 
 /**

@@ -22,7 +22,7 @@ const oats = {
 }
 
 describe('FoodTagsSheet', () => {
-  it('opens on the Food, showing the Tags it already wears', async () => {
+  it('opens on the Food, showing the Tags it already carries', async () => {
     registerEndpoint('/api/tags', () => [
       { id: 7, name: 'Breakfast', foodCount: 1 },
     ])
@@ -152,7 +152,7 @@ describe('FoodTagsSheet', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('keeps one Tag when a typed name turns out to be one the Food already wears', async () => {
+  it('keeps one Tag when a typed name turns out to be one the Food already carries', async () => {
     // The list the sheet opened on may be stale; the server is what knows that
     // "BREAKFAST" is the User's "Breakfast", and answers with it (ADR 0033).
     registerEndpoint('/api/tags', {
@@ -249,7 +249,79 @@ describe('FoodTagsSheet', () => {
     )
   })
 
-  it('saves a Food with a Tag taken off as no longer wearing it', async () => {
+  it('forgets a refused name when it is opened on another Food', async () => {
+    registerEndpoint('/api/tags', {
+      method: 'GET',
+      handler: () => [],
+    })
+    registerEndpoint('/api/tags', {
+      method: 'POST',
+      handler: (event) => {
+        setResponseStatus(event, 400)
+        return { message: 'a Tag name must be at most 30 characters' }
+      },
+    })
+    const { rerender } = await renderSuspended(FoodTagsSheet, {
+      props: { food: oats },
+    })
+    const user = userEvent.setup()
+    await user.type(screen.getByRole('combobox'), 'a'.repeat(31))
+    await user.click(await screen.findByRole('option', { name: /a{31}/ }))
+    await screen.findByRole('alert')
+
+    await rerender({ food: { id: 2, name: 'Bread', tags: [] } })
+
+    await vi.waitFor(() =>
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument(),
+    )
+    expect(screen.getByRole('combobox', { name: 'Tags' })).toHaveValue('')
+  })
+
+  it('holds Save and the picker until a typed Tag has been created', async () => {
+    let release!: () => void
+    const held = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    registerEndpoint('/api/tags', {
+      method: 'GET',
+      handler: () => [],
+    })
+    registerEndpoint('/api/tags', {
+      method: 'POST',
+      handler: async () => {
+        await held
+        return { id: 20, name: 'dinner', foodCount: 0 }
+      },
+    })
+    const onSave = vi.fn()
+    await renderSuspended(FoodTagsSheet, { props: { food: oats, onSave } })
+    const user = userEvent.setup()
+    const picker = screen.getByRole('combobox', { name: 'Tags' })
+
+    await user.type(picker, 'dinner')
+    await user.click(await screen.findByRole('option', { name: /dinner/ }))
+
+    const save = screen.getByRole('button', { name: 'Save tags' })
+    await vi.waitFor(() => expect(save).toBeDisabled())
+    expect(picker).toBeDisabled()
+
+    release()
+    await vi.waitFor(() => expect(save).toBeEnabled())
+    await user.click(save)
+    expect(onSave).toHaveBeenCalledWith([7, 20])
+  })
+
+  it('shows Save as busy while the page is saving', async () => {
+    registerEndpoint('/api/tags', () => [])
+
+    await renderSuspended(FoodTagsSheet, {
+      props: { food: oats, saving: true },
+    })
+
+    expect(screen.getByRole('button', { name: 'Save tags' })).toBeDisabled()
+  })
+
+  it('saves a Food with a Tag taken off as no longer carrying it', async () => {
     registerEndpoint('/api/tags', () => [
       { id: 7, name: 'Breakfast', foodCount: 1 },
     ])

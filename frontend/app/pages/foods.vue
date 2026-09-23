@@ -196,12 +196,12 @@ const {
 } = useReferenceFoodMatch(foodToMatch, refresh)
 
 /**
- * Setting which Tags a Food wears (ADR 0033). [foodToTag] is the sheet's open state —
+ * Setting which Tags a Food carries (ADR 0033). [foodToTag] is the sheet's open state —
  * non-null is open — and clears only once the server answers.
  */
 function useFoodTagging(onChanged: () => Promise<void>) {
   const foodToTag = ref<FoodResponse | null>(null)
-  const { execute: saveTags } = useApiMutation(
+  const { execute: saveTags, pending: saving } = useApiMutation(
     (target: { foodId: number; tagIds: number[] }) =>
       $api('/api/foods/{id}/tags', {
         method: 'PUT',
@@ -223,9 +223,13 @@ function useFoodTagging(onChanged: () => Promise<void>) {
     const target = foodToTag.value
     if (target) saveTags({ foodId: target.id, tagIds })
   }
-  return { foodToTag, save }
+  return { foodToTag, save, saving }
 }
-const { foodToTag, save: handleSaveTags } = useFoodTagging(refresh)
+const {
+  foodToTag,
+  save: handleSaveTags,
+  saving: savingTags,
+} = useFoodTagging(refresh)
 
 function handleDeleteConfirm() {
   const food = selectedFood.value
@@ -310,6 +314,7 @@ function handleDeleteConfirm() {
 
     <FoodTagsSheet
       :food="foodToTag"
+      :saving="savingTags"
       @save="handleSaveTags"
       @close="foodToTag = null"
     />

@@ -159,7 +159,7 @@ describe('FoodListItem', () => {
     expect(onView).toHaveBeenCalledWith(cottagePie)
   })
 
-  it('lists the Tags a Food wears, each spelled as its User gave it', async () => {
+  it('lists the Tags a Food carries, each spelled as its User gave it', async () => {
     await renderSuspended(FoodListItem, {
       props: {
         food: food({

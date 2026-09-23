@@ -11,7 +11,11 @@ export interface Taggable {
 }
 
 // Stryker disable all: a compiler macro's arguments are hoisted out of setup()
-const props = defineProps<{ food: Taggable | null }>()
+const props = defineProps<{
+  food: Taggable | null
+  /** Whether the page's save is in flight (ADR 0007). */
+  saving?: boolean
+}>()
 // Stryker restore all
 const emit = defineEmits<{ close: []; save: [tagIds: number[]] }>()
 
@@ -24,10 +28,16 @@ const { data: known, load } = useOptionalFetch((signal) =>
 const options = computed<HeldTag[]>(() =>
   (known.value ?? []).map(({ id, name }) => ({ id, name })),
 )
+const searchTerm = ref('')
+const refusal = ref<string | null>(null)
+// One sheet is reassigned from Food to Food, so everything typed into it belongs
+// to the Food it was typed for.
 watch(
   () => props.food,
   (food) => {
     draft.value = [...(food?.tags ?? [])]
+    searchTerm.value = ''
+    refusal.value = null
     if (food) load()
   },
   { immediate: true },
@@ -37,9 +47,7 @@ watch(
  * A typed name becomes a Tag at once, so the sheet only ever saves ids — and the
  * server, not this sheet, decides whether it names a Tag the User already has.
  */
-const searchTerm = ref('')
-const refusal = ref<string | null>(null)
-const { execute: create } = useApiMutation(
+const { execute: create, pending: creating } = useApiMutation(
   async (name: string) => {
     refusal.value = null
     const tag = await $api('/api/tags', { method: 'POST', body: { name } })
@@ -76,6 +84,7 @@ const { execute: create } = useApiMutation(
         create-item
         icon="i-lucide-tag"
         aria-label="Tags"
+        :disabled="creating"
         class="w-full"
         @create="create"
       />
@@ -85,6 +94,8 @@ const { execute: create } = useApiMutation(
       <UButton
         color="primary"
         class="w-full justify-center"
+        :disabled="creating"
+        :loading="saving"
         @click="
           emit(
             'save',

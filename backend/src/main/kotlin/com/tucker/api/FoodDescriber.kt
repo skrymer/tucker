@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component
 /**
  * Foods on the wire, each carrying what only another table knows: a Recipe's
  * ingredient count, the name of what a Food borrows its micronutrients from, and the
- * Tags it wears. Three queries however long the list, and one place that decides what
+ * Tags it carries. Three queries however long the list, and one place that decides what
  * a `FoodResponse` says, so a Food does not read differently for having arrived by a
  * different route.
  */

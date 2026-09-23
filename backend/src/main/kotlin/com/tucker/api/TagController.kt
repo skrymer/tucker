@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 
-/** A **Tag** on the wire, with how many of the User's Foods wear it. */
+/** A **Tag** on the wire, with how many of the User's Foods carry it. */
 data class TagResponse(val id: Long, val name: String, val foodCount: Int)
 
 data class CreateTagRequest(val name: String)

@@ -9,7 +9,7 @@ import org.jooq.DSLContext
 import org.jooq.impl.DSL
 import org.springframework.stereotype.Repository
 
-/** A [Tag] and how many of the owner's Foods wear it. */
+/** A [Tag] and how many of the owner's Foods carry it. */
 data class TagWithFoodCount(val tag: Tag, val foodCount: Int)
 
 /** Persistence for [Tag], scoped to the current User like every owned row (ADR 0021). */
@@ -47,11 +47,17 @@ class TagRepository(
             .fetch { Tag(it.id!!.toLong(), TagName(it.name)) }
     }
 
+    /**
+     * Create the caller's Tag named [name], or return the one another request created
+     * under that name first. Two devices creating one name at once both miss a lookup,
+     * so the unique index settles the race here rather than failing the loser.
+     */
     fun insert(name: TagName): Tag {
-        val rec = dsl.newRecord(TAG)
-        rec.userId = currentUser.ownerId
-        rec.name = name.value
-        rec.store()
-        return Tag(rec.id!!.toLong(), name)
+        val id = dsl.insertInto(TAG, TAG.USER_ID, TAG.NAME)
+            .values(currentUser.ownerId, name.value)
+            .onConflictDoNothing()
+            .returning(TAG.ID)
+            .fetchOne()?.id
+        return id?.let { Tag(it.toLong(), name) } ?: checkNotNull(findByName(name)).tag
     }
 }

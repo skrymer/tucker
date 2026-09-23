@@ -60,7 +60,7 @@ class TagApiTest {
     }
 
     @Test
-    fun `a Tag reached by naming it again reports the Foods already wearing it`() {
+    fun `a Tag reached by naming it again reports the Foods already carrying it`() {
         val breakfast = createTag("breakfast")
         val oats = mockMvc.post("/api/foods") {
             contentType = MediaType.APPLICATION_JSON

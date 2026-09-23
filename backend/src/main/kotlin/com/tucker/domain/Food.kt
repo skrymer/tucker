@@ -62,7 +62,7 @@ data class Food(
     /** This Food borrowing nothing again. Idempotent, like the endpoint that calls it. */
     fun unmatched(): Food = copy(referenceFoodId = null)
 
-    /** This Food wearing exactly [tagIds]. */
+    /** This Food carrying exactly [tagIds]. */
     fun retagged(tagIds: Collection<Long>): Food = copy(tagIds = tagIds.toSet())
 
     companion object {

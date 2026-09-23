@@ -32,7 +32,7 @@ class FoodTest {
     }
 
     @Test
-    fun `a Food retagged wears exactly the Tags it was given, each once`() {
+    fun `a Food retagged carries exactly the Tags it was given, each once`() {
         assertEquals(
             setOf(SNACK, POST_WORKOUT),
             CHEESE.retagged(listOf(BREAKFAST)).retagged(listOf(SNACK, POST_WORKOUT, SNACK)).tagIds,

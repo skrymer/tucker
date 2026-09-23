@@ -14,7 +14,7 @@ import org.springframework.test.web.servlet.post
 import org.springframework.test.web.servlet.put
 import org.springframework.transaction.annotation.Transactional
 
-/** `PUT /api/foods/{id}/tags` — which **Tags** a Food wears (ADR 0033). */
+/** `PUT /api/foods/{id}/tags` — which **Tags** a Food carries (ADR 0033). */
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
@@ -25,7 +25,7 @@ class FoodTagsApiTest {
     @Autowired lateinit var objectMapper: ObjectMapper
 
     @Test
-    fun `a Food given Tags wears them, alphabetically`() {
+    fun `a Food given Tags carries them, alphabetically`() {
         val oats = createFood("Rolled oats")
         val snack = createTag("snack")
         val breakfast = createTag("Breakfast")
@@ -68,7 +68,7 @@ class FoodTagsApiTest {
     }
 
     @Test
-    fun `a Recipe edited keeps the Tags it wears, and says so`() {
+    fun `a Recipe edited keeps the Tags it carries, and says so`() {
         val mince = createFood("Beef mince")
         val recipe = objectMapper.readTree(
             mockMvc.post("/api/recipes") {
@@ -111,7 +111,7 @@ class FoodTagsApiTest {
     }
 
     @Test
-    fun `the User's Tags are listed alphabetically ignoring case, each counting the Foods wearing it`() {
+    fun `the User's Tags are listed alphabetically ignoring case, each counting the Foods carrying it`() {
         val oats = createFood("Rolled oats")
         val eggs = createFood("Eggs")
         val snack = createTag("snack")

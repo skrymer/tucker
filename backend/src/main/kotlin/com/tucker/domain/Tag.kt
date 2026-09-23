@@ -30,6 +30,6 @@ class TagName(given: String) : Comparable<TagName> {
 
 /**
  * A named grouping a User keeps of their own Foods (CONTEXT.md, **Tag**). A thing in
- * its own right rather than a word on a Food, so it outlives the last Food wearing it.
+ * its own right rather than a word on a Food, so it outlives the last Food carrying it.
  */
 data class Tag(val id: Long?, val name: TagName)

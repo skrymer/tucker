@@ -75,7 +75,7 @@ class FoodFrequentApiTest {
     }
 
     @Test
-    fun `a Frequent Food carries the Tags it wears, as the catalog does`() {
+    fun `a Frequent Food lists the Tags it carries, as the catalog does`() {
         val oats = createFood("Rolled oats")
         val breakfast = idOf(
             mockMvc.post("/api/tags") {
