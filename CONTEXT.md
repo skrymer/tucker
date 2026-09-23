@@ -350,6 +350,44 @@ disagree often and neither is wrong — a splash of olive oil is logged constant
 and contributes little; one big restaurant meal is the reverse.
 _Avoid_: top 10, favourites, recents, most used, top foods
 
+**Tag**:
+A named grouping a **User** keeps of their own **Foods**, so they can narrow the
+Foods on offer when logging — "breakfast", "post-workout", "snack". Free-form and
+the User's own: nothing is suggested, derived or shared, and Tucker attaches no
+meaning to any particular Tag. It sits on the Food and not the **Entry**, because
+it answers "what do I reach for at breakfast?" — a fact about the Food in this
+User's rotation — not "what did I eat at breakfast?".
+A Tag is a thing in its own right, owned by its User, not merely a word repeated
+across Foods: renaming it renames it on every Food carrying it, deleting it takes
+it off every Food (the Foods stay), and a Tag carrying no Foods still exists until
+it is deleted. Renaming a Tag to the name of another **merges** them: every Food
+carrying either ends up carrying the one that already existed. That is what
+tidying "brekkie" into "breakfast" means, and it loses nothing — every Food keeps
+a Tag — so it is announced before it happens rather than refused.
+A Tag's name is matched ignoring case: "Breakfast" and "breakfast" are one Tag,
+and a User typing a Tag they already have in another case gets the one they have.
+Tags are attached where Foods are managed — on a Food in the catalog, or while
+adding one — and never where they are picked to be logged. A **Recipe** is a Food
+and carries Tags the same way, from its row or while it is built or edited.
+Choosing a Tag narrows the Foods on offer the way a typed query does: to one flat
+list of the Foods carrying it, in place of the **Frequent Foods** ranking — a Tag
+has stopped asking about the whole rotation. One Tag at a time. A Tag and a typed
+query narrow together — the Foods carrying the Tag whose names match — so neither
+quietly undoes the other. A chosen Tag is not remembered: each visit starts on the
+whole rotation, because a Tag held over from the morning would hide lunch without
+saying so.
+Only a Tag carrying at least one Food is offered to narrow by — one carrying none
+would narrow to nothing — though it stays wherever Tags are managed or attached.
+Tags are offered alphabetically: a User looking for a Tag is looking for it by
+name, and an order that moves with their logging would put it somewhere different
+each week.
+A Tag is not a meal: there is no Meal object, and "breakfast" as a Tag says nothing
+about when a Food was eaten. Nor is it a verdict — a Tag is the User's word, and the
+no-good-or-bad rule governs what *Tucker* says about a Food, never what the User
+calls it.
+_Avoid_: label (a package's nutrition label, an **Estimated Entry**'s label, and the
+no-good-or-bad rule's sense are all taken), category, meal, meal slot
+
 **Intake Breakdown**:
 The share of a window's logged calories attributable to each **Food**, biggest
 first — the answer to "what takes up most of my diet?". Defined over two windows,
