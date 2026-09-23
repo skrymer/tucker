@@ -78,18 +78,21 @@ test('Save stays reachable while the Tag list is open, and saves only what was c
   expect(saved).toEqual([[]])
 })
 
-test('a name entered with its list closed is created, not held as a loose chip', async ({
+test('a name entered straight after a pick is created and saved beside it', async ({
   page,
   goto,
 }) => {
-  const { saved } = await mockTaggableCatalog(page)
+  const { saved } = await mockTaggableCatalog(page, [{ id: 1, name: 'snack' }])
   await goto('/foods', { waitUntil: 'hydration' })
 
   await page.getByRole('button', { name: 'Tags for Rolled oats' }).click()
   const sheet = page.getByRole('dialog', { name: 'Tags for Rolled oats' })
   const picker = sheet.getByRole('combobox', { name: 'Tags' })
-  await picker.fill('supper')
-  await picker.press('Escape')
+  await picker.click()
+  await page.getByRole('option', { name: 'snack' }).click()
+  await expect(page.getByRole('listbox')).toBeHidden()
+  // As a phone keyboard commits it: one input event, not a keystroke per letter.
+  await page.keyboard.insertText('supper')
   const created = page.waitForResponse(
     (response) =>
       response.url().endsWith('/api/tags') &&
@@ -100,7 +103,7 @@ test('a name entered with its list closed is created, not held as a loose chip',
   await sheet.getByRole('button', { name: 'Save tags' }).click()
 
   await expect(sheet).toBeHidden()
-  expect(saved).toEqual([[100]])
+  expect(saved).toEqual([[1, 101]])
 })
 
 test('a row carrying six Tags shows four and a "+2" that opens its Tags', async ({
