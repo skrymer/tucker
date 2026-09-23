@@ -55,6 +55,29 @@ test('a User tags a Food from its row, and the row shows the Tag', async ({
   expect(saved).toEqual([[100]])
 })
 
+test('Save stays reachable while the Tag list is open, and saves only what was chosen', async ({
+  page,
+  goto,
+}) => {
+  const { saved } = await mockTaggableCatalog(page, [
+    { id: 1, name: 'breakfast' },
+    { id: 2, name: 'dessert' },
+    { id: 3, name: 'snack' },
+  ])
+  await goto('/foods', { waitUntil: 'hydration' })
+
+  await page.getByRole('button', { name: 'Tags for Rolled oats' }).click()
+  const sheet = page.getByRole('dialog', { name: 'Tags for Rolled oats' })
+  await sheet.getByRole('combobox').click()
+  await expect(page.getByRole('listbox')).toBeVisible()
+  await sheet
+    .getByRole('button', { name: 'Save tags' })
+    .click({ timeout: 3000 })
+
+  await expect(sheet).toBeHidden()
+  expect(saved).toEqual([[]])
+})
+
 test('a row carrying six Tags shows four and a "+2" that opens its Tags', async ({
   page,
   goto,

@@ -88,6 +88,7 @@ const { execute: create, pending: creating } = useApiMutation(
         v-model="draft"
         v-model:search-term="searchTerm"
         v-model:open="menuOpen"
+        :content="{ side: 'top' }"
         :items="options"
         label-key="name"
         by="id"
