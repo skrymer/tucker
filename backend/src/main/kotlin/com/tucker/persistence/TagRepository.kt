@@ -27,8 +27,8 @@ class TagRepository(
             .leftJoin(FOOD_TAG).on(FOOD_TAG.TAG_ID.eq(TAG.ID))
             .where(TAG.USER_ID.eq(currentUser.ownerId))
             .groupBy(TAG.ID, TAG.NAME)
-            .orderBy(TAG.NAME.lower())
             .fetch { TagWithFoodCount(Tag(it[TAG.ID]!!.toLong(), TagName(it[TAG.NAME]!!)), it[foodCount]) }
+            .sortedBy { it.tag.name }
     }
 
     /**

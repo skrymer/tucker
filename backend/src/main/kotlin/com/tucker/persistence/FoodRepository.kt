@@ -9,6 +9,7 @@ import com.tucker.jooq.tables.records.FoodRecord
 import com.tucker.security.CurrentUser
 import org.jooq.DSLContext
 import org.springframework.stereotype.Repository
+import org.springframework.transaction.annotation.Transactional
 
 /**
  * Persistence for [Food] (plain foods and recipe foods alike).
@@ -76,8 +77,11 @@ class FoodRepository(
      *
      * The owner is in the WHERE, not merely implied by a scoped read upstream:
      * `applyFrom` writes `user_id`, so a key-only UPDATE would not just overwrite
-     * somebody else's Food, it would quietly re-own it.
+     * somebody else's Food, it would quietly re-own it. The Tags it wears are written
+     * only once that row is known to be the caller's, since the link carries no owner
+     * of its own (ADR 0021).
      */
+    @Transactional
     fun update(food: Food): Food? {
         val id = requireNotNull(food.id) { "cannot update a Food without an id" }
         val rec = dsl.newRecord(FOOD)
@@ -87,7 +91,9 @@ class FoodRepository(
             .where(FOOD.ID.eq(id.toInt()))
             .and(FOOD.USER_ID.eq(currentUser.ownerId))
             .execute()
-        return food.takeIf { rowsChanged > 0 }
+        if (rowsChanged == 0) return null
+        dsl.replaceTagsOf(id.toInt(), food.tagIds)
+        return food
     }
 
     /** Project a [Food]'s fields onto a [FoodRecord] (shared by insert and update). */
@@ -135,4 +141,13 @@ class FoodRepository(
         cookedWeightG = cookedWeightG,
         referenceFoodId = referenceFoodId?.toLong(),
     )
+}
+
+/** Make [tagIds] exactly the Tags the Food [foodId] wears, in two statements however many. */
+private fun DSLContext.replaceTagsOf(foodId: Int, tagIds: Set<Long>) {
+    deleteFrom(FOOD_TAG).where(FOOD_TAG.FOOD_ID.eq(foodId)).execute()
+    if (tagIds.isEmpty()) return
+    tagIds.fold(insertInto(FOOD_TAG, FOOD_TAG.FOOD_ID, FOOD_TAG.TAG_ID)) { rows, tagId ->
+        rows.values(foodId, tagId.toInt())
+    }.execute()
 }

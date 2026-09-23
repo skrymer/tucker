@@ -141,7 +141,7 @@ internal fun Food.toResponse(
     ingredientCount = ingredientCount,
     referenceFoodId = referenceFoodId,
     referenceFoodName = referenceFoodName,
-    tags = tags.sortedBy { it.name.value.lowercase() }.map { FoodTagResponse(persistedId(it.id), it.name.value) },
+    tags = tags.sortedBy { it.name }.map { FoodTagResponse(persistedId(it.id), it.name.value) },
 )
 
 /** Which **Reference Food** a Food should borrow its micronutrients from. */
@@ -259,7 +259,7 @@ class FoodController(
                 fatPer100g = request.fatPer100g,
             ),
         )
-        return foods.insert(food).toResponse(tags = emptyList())
+        return describer.describe(foods.insert(food))
     }
 
     /**

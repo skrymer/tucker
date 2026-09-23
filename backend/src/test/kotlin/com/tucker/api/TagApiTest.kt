@@ -1,5 +1,6 @@
 package com.tucker.api
 
+import com.fasterxml.jackson.databind.ObjectMapper
 import com.tucker.security.WithTuckerUser
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -20,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional
 class TagApiTest {
 
     @Autowired lateinit var mockMvc: MockMvc
+    @Autowired lateinit var objectMapper: ObjectMapper
 
     @Test
     fun `a created Tag is among the User's Tags`() {
@@ -64,7 +66,7 @@ class TagApiTest {
             contentType = MediaType.APPLICATION_JSON
             content = """{"name":"Rolled oats","barcode":null,
                           "proteinPer100g":13.0,"carbsPer100g":60.0,"fatPer100g":7.0}"""
-        }.andReturn().response.contentAsString.let { Regex(""""id":(\d+)""").find(it)!!.groupValues[1] }
+        }.andReturn().response.contentAsString.let(::idOf)
         mockMvc.put("/api/foods/$oats/tags") {
             contentType = MediaType.APPLICATION_JSON
             content = """{"tagIds":[$breakfast]}"""
@@ -97,6 +99,18 @@ class TagApiTest {
             contentType = MediaType.APPLICATION_JSON
             content = """{"name":"$name"}"""
         }.andReturn().response.contentAsString
-        return Regex(""""id":(\d+)""").find(body)!!.groupValues[1].toLong()
+        return idOf(body)
+    }
+
+    private fun idOf(json: String): Long = objectMapper.readTree(json).get("id").asLong()
+
+    @Test
+    fun `Tags are listed alphabetically ignoring case, accented capitals included`() {
+        createTag("Été")
+        createTag("éclair")
+
+        mockMvc.get("/api/tags").andExpect {
+            jsonPath("$[*].name") { value(org.hamcrest.Matchers.contains("éclair", "Été")) }
+        }
     }
 }

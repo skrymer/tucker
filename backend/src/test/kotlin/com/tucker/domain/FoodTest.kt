@@ -32,20 +32,10 @@ class FoodTest {
     }
 
     @Test
-    fun `a Food tagged with a Tag wears it beside the ones it already had`() {
-        assertEquals(setOf(BREAKFAST, SNACK), CHEESE.taggedWith(BREAKFAST).taggedWith(SNACK).tagIds)
-    }
-
-    @Test
-    fun `a Food a Tag is taken off keeps its other Tags`() {
-        assertEquals(setOf(SNACK), CHEESE.taggedWith(BREAKFAST).taggedWith(SNACK).untagged(BREAKFAST).tagIds)
-    }
-
-    @Test
     fun `a Food retagged wears exactly the Tags it was given, each once`() {
         assertEquals(
             setOf(SNACK, POST_WORKOUT),
-            CHEESE.taggedWith(BREAKFAST).retagged(listOf(SNACK, POST_WORKOUT, SNACK)).tagIds,
+            CHEESE.retagged(listOf(BREAKFAST)).retagged(listOf(SNACK, POST_WORKOUT, SNACK)).tagIds,
         )
     }
 }

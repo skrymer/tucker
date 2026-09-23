@@ -1,5 +1,6 @@
 package com.tucker.persistence
 
+import com.tucker.domain.Food
 import com.tucker.domain.FoodKind
 import com.tucker.domain.Recipe
 import com.tucker.domain.RecipeIngredient
@@ -52,14 +53,18 @@ class RecipeRepository(
      * asked elsewhere.
      */
     @Transactional
-    fun update(recipe: Recipe): Recipe? {
+    fun update(recipe: Recipe): Food? {
         val recipeId = requireNotNull(recipe.id) { "cannot update a Recipe without an id" }
-        foods.update(recipe.asFood()) ?: return null
+        // Editing a Recipe changes its composition, never the Tags it wears — and
+        // `asFood` knows only the composition — so they are carried over from the row.
+        val updated = foods.findById(recipeId)
+            ?.let { stored -> foods.update(recipe.asFood().retagged(stored.tagIds)) }
+            ?: return null
         dsl.deleteFrom(RECIPE_INGREDIENT)
             .where(RECIPE_INGREDIENT.RECIPE_ID.eq(recipeId.toInt()))
             .execute()
         writeIngredientLines(recipeId, recipe.ingredients)
-        return recipe
+        return updated
     }
 
     /** Insert a Recipe's ingredient lines (shared by insert and update). */

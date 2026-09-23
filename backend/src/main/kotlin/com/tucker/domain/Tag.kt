@@ -1,8 +1,11 @@
 package com.tucker.domain
 
-import java.util.Locale
-
-class TagName(given: String) {
+/**
+ * A Tag's name: trimmed, 1–30 characters, kept as the User spelled it. Equal to, and
+ * ordered with, another name ignoring case across the whole of Unicode — which SQLite's
+ * NOCASE and `lower()` do not, as they fold ASCII alone.
+ */
+class TagName(given: String) : Comparable<TagName> {
     val value: String = given.trim()
 
     init {
@@ -10,11 +13,13 @@ class TagName(given: String) {
         require(value.length <= MAX_LENGTH) { "a Tag name must be at most $MAX_LENGTH characters" }
     }
 
-    private val folded: String get() = value.lowercase(Locale.ROOT)
+    private val folded: String get() = value.lowercase()
 
     override fun equals(other: Any?): Boolean = other is TagName && other.folded == folded
 
     override fun hashCode(): Int = folded.hashCode()
+
+    override fun compareTo(other: TagName): Int = folded.compareTo(other.folded)
 
     override fun toString(): String = value
 

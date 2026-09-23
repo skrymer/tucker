@@ -1,9 +1,7 @@
 <script setup lang="ts">
-/** A Tag as the sheet holds it: enough to show a chip and send the id back. */
-export interface HeldTag {
-  id: number
-  name: string
-}
+import type { components } from '#open-fetch-schemas/api'
+
+type HeldTag = components['schemas']['FoodTagResponse']
 
 /** The Food whose Tags are being set — non-null opens the sheet. */
 export interface Taggable {

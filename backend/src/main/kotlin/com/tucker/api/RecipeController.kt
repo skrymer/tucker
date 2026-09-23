@@ -83,7 +83,7 @@ class RecipeController(
     @ResponseStatus(HttpStatus.CREATED)
     fun create(@RequestBody request: CreateRecipeRequest): FoodResponse {
         val recipe = request.toRecipe(id = null)
-        return recipes.insert(recipe).asFood().toResponse(tags = emptyList(), ingredientCount = recipe.ingredients.size)
+        return describer.describe(recipes.insert(recipe).asFood())
     }
 
     /**
@@ -110,10 +110,7 @@ class RecipeController(
         // caller's. Both answer 404, and neither is redundant.
         recipes.findById(id) ?: throw NotFoundException("no recipe with id $id")
         val recipe = request.toRecipe(id = id)
-        // Read back rather than built from `recipe`, which is rebuilt from its
-        // ingredients and knows nothing of the Tags editing leaves where they were.
-        val updated = recipes.update(recipe)?.let { foods.findById(id) }
-            ?: throw NotFoundException("no recipe with id $id")
+        val updated = recipes.update(recipe) ?: throw NotFoundException("no recipe with id $id")
         return describer.describe(updated)
     }
 

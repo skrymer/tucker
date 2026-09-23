@@ -67,7 +67,7 @@ const recipeSubline = computed(() => {
       <!-- Tags are the User's words, spelled as given; the +N opens the same
            sheet as the tag action (ADR 0033). -->
       <ul
-        v-if="food.tags?.length"
+        v-if="tags.shown.length"
         :aria-label="`Tags on ${name}`"
         class="mt-1 flex flex-wrap gap-1"
       >

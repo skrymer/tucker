@@ -62,13 +62,7 @@ data class Food(
     /** This Food borrowing nothing again. Idempotent, like the endpoint that calls it. */
     fun unmatched(): Food = copy(referenceFoodId = null)
 
-    /** This Food wearing the Tag [tagId] as well as the ones it already wears. */
-    fun taggedWith(tagId: Long): Food = copy(tagIds = tagIds + tagId)
-
-    /** This Food with the Tag [tagId] taken off, and its other Tags kept. */
-    fun untagged(tagId: Long): Food = copy(tagIds = tagIds - tagId)
-
-    /** This Food wearing exactly [tagIds] — what the Tags sheet saves. */
+    /** This Food wearing exactly [tagIds]. */
     fun retagged(tagIds: Collection<Long>): Food = copy(tagIds = tagIds.toSet())
 
     companion object {

@@ -335,9 +335,8 @@ class PerUserUniquenessMigrationTest {
          * makes it the one nobody would think to list). Guarded together, because a guard
          * that stopped at the tables already rebuilt would let the next slice inherit the
          * premise unchecked — which is how slice 5 found this list waiting for it. `food`
-         * is the only one with children. V13 parked `entry` and `recipe_ingredient`;
-         * `food_tag` arrived after it (V20, ADR 0033), so the next rebuild of `food` has
-         * a third child to park.
+         * is the only one with children — `entry`, `food_tag` and `recipe_ingredient` —
+         * and a rebuild of it has to park all three.
          */
         val REBUILT_TABLE_CHILDREN: Map<String, List<String>> =
             (REBUILT_TABLES + listOf("profile", "reminder_state", "push_subscription", "entry", "recipe_ingredient"))
