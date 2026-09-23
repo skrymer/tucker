@@ -84,11 +84,12 @@ Frontend commands (run in `frontend/`, package manager is pnpm):
 - `pnpm test:e2e` — Playwright browser e2e against a Nuxt build with
   `/api/*` mocked via `page.route` (see `e2e/support/mock-api.ts`); fast and
   deterministic. Every spec runs on two projects, **Desktop Chrome** and
-  **Mobile Chrome** (Pixel 7), to flush responsive bugs. Locally it runs **2
-  workers**, not Playwright's half-the-cores default: every worker is its own
-  Nuxt production build and server (~2.8 GB each), and the default OOM-killed
-  the session on a 14-core box (issue #355; the measurement sits beside the
-  number in `playwright.config.ts`). One-time setup:
+  **Mobile Chrome** (Pixel 7), to flush responsive bugs. The app is built
+  **once** per run and shared: a Playwright `webServer`
+  builds `nuxt.config.ts` into `.nuxt/e2e` (`scripts/build-e2e.mjs`) and serves
+  it, and every worker reaches it through `nuxt.host`, which switches off
+  `@nuxt/test-utils`' own build-per-worker. Locally it runs **4 workers**; the
+  before/after measurement sits beside the number in `playwright.config.ts`. One-time setup:
   `pnpm exec playwright install chromium`.
 - `pnpm test:smoke` — real-stack Playwright tests (no API mocks). A
   Playwright global setup starts the backend via `docker compose up`

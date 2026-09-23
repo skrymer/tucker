@@ -114,6 +114,6 @@ Then `git status --short` to prove it's gone. **Never commit the scratch PNG.**
   the same fake barcode — which makes it a free way to verify reset-on-new-product
   behaviour.
 - A stale `.nuxt` build can serve old markup; `rm -rf frontend/.nuxt/test` only affects
-  the Playwright build, not `pnpm dev`. If `pnpm dev` looks stale, restart it.
+  the smokes' Playwright build (the mocked e2e rebuilds `.nuxt/e2e` every run), not `pnpm dev`. If `pnpm dev` looks stale, restart it.
 - Reuse the same tab for both viewports — the stub lives in the page context and
   survives a resize, but not a reload.
