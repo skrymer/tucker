@@ -156,15 +156,16 @@ function main() {
     return // Fail open: a hook that cannot read its input must not block a prompt.
   }
 
-  const matched = selectSkills(payload?.user_prompt)
+  const matched = selectSkills(payload?.prompt)
   if (matched.length === 0) return
 
   process.stdout.write(
     JSON.stringify({
+      // A common output field, not a hook-specific one: nested, it is ignored.
+      systemMessage: `skill-injector: ${matched.map((rule) => rule.skill).join(', ')}`,
       hookSpecificOutput: {
         hookEventName: 'UserPromptSubmit',
         additionalContext: render(matched),
-        systemMessage: `skill-injector: ${matched.map((rule) => rule.skill).join(', ')}`,
       },
     }),
   )
