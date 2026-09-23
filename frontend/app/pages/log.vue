@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { components } from '#open-fetch-schemas/api'
 
+import { demoFoods } from '~/prototype/foodTagsDemo'
+
 type FoodResponse = components['schemas']['FoodResponse']
 
 const { $api } = useNuxtApp()
@@ -107,6 +109,25 @@ function useEstimate() {
 }
 const estimate = useEstimate()
 
+// PROTOTYPE — Tag filtering variants over an in-memory demo catalog, on
+// `?variant=`. Dev builds only. Delete with components/prototype/.
+const PROTO_VARIANTS = [
+  { key: 'A', name: 'Chips · ranked within the Tag' },
+  { key: 'B', name: 'Chips · a Tag is a query' },
+  { key: 'C', name: 'Grouped by Tag, no filter' },
+  { key: 'D', name: 'Tag tabs · the Tag is the grid' },
+]
+const protoRoute = useRoute()
+const proto = computed(() =>
+  import.meta.dev && protoRoute.query.variant
+    ? String(protoRoute.query.variant)
+    : null,
+)
+const protoToast = useToast()
+function protoPick(food: { name: string }) {
+  protoToast.add({ title: `Spike: would log ${food.name}`, duration: 1500 })
+}
+
 /**
  * Both reads failing is one fault and gets one message — the rule the layout
  * already applies to the signed-out shell (`default.vue`): two identical Retry
@@ -129,7 +150,7 @@ function retryBoth() {
          anything at all (ADR 0028). Absent only where there is nothing to
          narrow. -->
     <UInput
-      v-if="hasCatalog"
+      v-if="hasCatalog || proto"
       v-model="filter.query.value"
       icon="i-lucide-search"
       placeholder="Filter foods"
@@ -167,78 +188,110 @@ function retryBoth() {
       Log an estimate instead
     </UButton>
 
-    <LoadErrorState
-      v-if="bothFailed"
-      :error="frequentError"
-      title="Couldn't load your foods"
-      @retry="retryBoth"
-    />
+    <template v-if="proto">
+      <PrototypeTagsVariantA
+        v-if="proto === 'A'"
+        :foods="demoFoods"
+        :query="filter.query.value"
+        @pick="protoPick"
+      />
+      <PrototypeTagsVariantB
+        v-else-if="proto === 'B'"
+        :foods="demoFoods"
+        :query="filter.query.value"
+        @pick="protoPick"
+      />
+      <PrototypeTagsVariantC
+        v-else-if="proto === 'C'"
+        :foods="demoFoods"
+        :query="filter.query.value"
+        @pick="protoPick"
+      />
+      <PrototypeTagsVariantD
+        v-else
+        :foods="demoFoods"
+        :query="filter.query.value"
+        @pick="protoPick"
+      />
+      <div class="h-24" />
+      <PrototypeSwitcher :variants="PROTO_VARIANTS" />
+    </template>
 
-    <!-- A query has stopped asking about the rotation, so it collapses the two
+    <template v-else>
+      <LoadErrorState
+        v-if="bothFailed"
+        :error="frequentError"
+        title="Couldn't load your foods"
+        @retry="retryBoth"
+      />
+
+      <!-- A query has stopped asking about the rotation, so it collapses the two
          sections into one flat list of matches (ADR 0028) rather than leaving
          ten unrelated Foods above them. The guard takes the whole block, so a
          failed ranking's Retry goes with it: recovering a grid a query is
          hiding is worth nothing, and clearing brings both back. -->
-    <LoadErrorState
-      v-else-if="!filter.filtering.value && !catalogIsEmpty"
-      :error="frequentError"
-      title="Couldn't load your frequent foods"
-      @retry="refreshFrequent"
-    >
-      <!-- Absent, not empty, when the window holds nothing: a heading over an
+      <LoadErrorState
+        v-else-if="!filter.filtering.value && !catalogIsEmpty"
+        :error="frequentError"
+        title="Couldn't load your frequent foods"
+        @retry="refreshFrequent"
+      >
+        <!-- Absent, not empty, when the window holds nothing: a heading over an
            empty grid promises a rotation the User does not have. It is a named
            region rather than a bare heading because both sections offer a
            "Log <name>" control for a Food in each, so the section is what tells
            the two apart. -->
-      <section
-        v-if="frequent && frequent.length > 0"
-        aria-labelledby="frequent-foods-heading"
-      >
-        <h2
-          id="frequent-foods-heading"
-          class="mb-2 text-xs font-medium tracking-wide text-dimmed uppercase"
+        <section
+          v-if="frequent && frequent.length > 0"
+          aria-labelledby="frequent-foods-heading"
         >
-          Frequent foods
-        </h2>
-        <FrequentFoodsGrid :foods="frequent" @pick="weighed.pick" />
-      </section>
+          <h2
+            id="frequent-foods-heading"
+            class="mb-2 text-xs font-medium tracking-wide text-dimmed uppercase"
+          >
+            Frequent foods
+          </h2>
+          <FrequentFoodsGrid :foods="frequent" @pick="weighed.pick" />
+        </section>
 
-      <!-- A stocked catalog and a quiet month: not a dead end, and not a stale
+        <!-- A stocked catalog and a quiet month: not a dead end, and not a stale
            rotation either — so it says which, rather than leaving the gap above
            the catalog unexplained. -->
-      <p v-else-if="hasCatalog" class="py-4 text-center text-sm text-muted">
-        Nothing logged in the last 30 days, so there is no rotation to show yet.
-      </p>
-    </LoadErrorState>
+        <p v-else-if="hasCatalog" class="py-4 text-center text-sm text-muted">
+          Nothing logged in the last 30 days, so there is no rotation to show
+          yet.
+        </p>
+      </LoadErrorState>
 
-    <LoadErrorState
-      v-if="!bothFailed"
-      :error="catalogError"
-      title="Couldn't load your foods"
-      @retry="refreshCatalog"
-    >
-      <FoodEmptyState v-if="!hasCatalog" :to="CATALOG_ADD_ROUTE" />
-      <section v-else aria-labelledby="catalog-heading">
-        <h2
-          id="catalog-heading"
-          class="mb-2 text-xs font-medium tracking-wide text-dimmed uppercase"
-        >
-          {{ filter.filtering.value ? 'Matching foods' : 'All foods' }}
-        </h2>
-        <FoodPickList
-          v-if="filter.shown.value.length > 0"
-          :foods="filter.shown.value"
-          @pick="weighed.pick"
-        />
-        <!-- Reached only while filtering, since an empty query matches every
+      <LoadErrorState
+        v-if="!bothFailed"
+        :error="catalogError"
+        title="Couldn't load your foods"
+        @retry="refreshCatalog"
+      >
+        <FoodEmptyState v-if="!hasCatalog" :to="CATALOG_ADD_ROUTE" />
+        <section v-else aria-labelledby="catalog-heading">
+          <h2
+            id="catalog-heading"
+            class="mb-2 text-xs font-medium tracking-wide text-dimmed uppercase"
+          >
+            {{ filter.filtering.value ? 'Matching foods' : 'All foods' }}
+          </h2>
+          <FoodPickList
+            v-if="filter.shown.value.length > 0"
+            :foods="filter.shown.value"
+            @pick="weighed.pick"
+          />
+          <!-- Reached only while filtering, since an empty query matches every
              Food — and it names the query rather than saying a bare "nothing
              found", because on a page whose other section has just collapsed
              that is what says the emptiness came from what was typed. -->
-        <p v-else class="py-4 text-center text-sm text-muted">
-          No foods match “{{ filter.trimmed.value }}”.
-        </p>
-      </section>
-    </LoadErrorState>
+          <p v-else class="py-4 text-center text-sm text-muted">
+            No foods match “{{ filter.trimmed.value }}”.
+          </p>
+        </section>
+      </LoadErrorState>
+    </template>
 
     <LogGramsSheet
       :food="weighed.picked.value"

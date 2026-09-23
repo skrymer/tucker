@@ -338,6 +338,20 @@ disagree often and neither is wrong — a splash of olive oil is logged constant
 and contributes little; one big restaurant meal is the reverse.
 _Avoid_: top 10, favourites, recents, most used, top foods
 
+**Tag**:
+A word a **User** attaches to their own **Foods** so they can narrow the Foods on
+offer when logging — "breakfast", "post-workout", "snack". Free-form and the User's
+own, like the Food it sits on: nothing is suggested, derived or shared, and
+Tucker attaches no meaning to any particular Tag. It sits on the Food and not the
+**Entry**, because it answers "what do I reach for at breakfast?" — a fact about
+the Food in this User's rotation — not "what did I eat at breakfast?".
+A Tag is not a meal: there is no Meal object, and "breakfast" as a Tag says nothing
+about when a Food was eaten. Nor is it a verdict — a Tag is the User's word, and the
+no-good-or-bad rule governs what *Tucker* says about a Food, never what the User
+calls it.
+_Avoid_: label (a package's nutrition label, an **Estimated Entry**'s label, and the
+no-good-or-bad rule's sense are all taken), category, meal, meal slot
+
 **Intake Breakdown**:
 The share of a window's logged calories attributable to each **Food**, biggest
 first — the answer to "what takes up most of my diet?". Defined over two windows,
