@@ -16,7 +16,19 @@ export default defineConfig<ConfigOptions>({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  // Locally capped at 2, because every worker is a whole Nuxt app: the `nuxt`
+  // fixture is worker-scoped and runs its own production build and server, so
+  // peak memory is ~2.8 GB per worker and does not grow with suite length.
+  // Measured on a 14-core / 30 GB host inside scripts/bounded-run.sh, full suite:
+  //   workers  wall    peak memory  CPU
+  //   7        OOM-killed past 14 GB after 22 s, mid-build (Playwright's default)
+  //   4        101 s   11.5 GB      823 s
+  //   2        114 s    6.0 GB      489 s
+  //   1        158 s    3.2 GB      335 s
+  // Past 2 the extra builds buy 13 s for twice the memory. A worker restarts
+  // (and so rebuilds) after a failure, but only in its own slot, so this also
+  // caps the concurrent builds. CI's 1 is deliberate and stays.
+  workers: process.env.CI ? 1 : 2,
   reporter: [['list'], ['html', { open: 'never' }]],
   // Per-project snapshot files so Desktop Chrome and Mobile Chrome get
   // their own baselines (the responsive layouts differ — e.g. Add-food
