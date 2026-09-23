@@ -85,7 +85,7 @@ describe('FoodTagsSheet', () => {
     ])
   })
 
-  it('saves the Tags chosen, beside the ones the Food already wore', async () => {
+  it('saves the Tags chosen, beside the ones the Food already carried', async () => {
     registerEndpoint('/api/tags', () => [
       { id: 7, name: 'Breakfast', foodCount: 1 },
       { id: 9, name: 'snack', foodCount: 3 },
@@ -201,7 +201,7 @@ describe('FoodTagsSheet', () => {
     expect(onSave).toHaveBeenCalledWith([7])
   })
 
-  it('adds a created Tag to a Food that wore none', async () => {
+  it('adds a created Tag to a Food that carried none', async () => {
     registerEndpoint('/api/tags', {
       method: 'GET',
       handler: () => [],
