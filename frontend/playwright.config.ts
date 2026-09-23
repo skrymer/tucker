@@ -36,8 +36,8 @@ export default defineConfig<ConfigOptions>({
   //   2        82 s    2.7 GB       313 s   (114 s   6.0 GB  489 s)
   //   1        123 s   2.7 GB       259 s   (158 s   3.2 GB  335 s)
   // Past 4 the extra workers buy 9 s of CPU the host shares with the backend
-  // and mutation suites. CI's 1 is deliberate and stays.
-  workers: process.env.CI ? 1 : 4,
+  // and mutation suites. CI runs 2: a worker costs a browser, not a build.
+  workers: process.env.CI ? 2 : 4,
   reporter: [['list'], ['html', { open: 'never' }]],
   // Per-project snapshot files so Desktop Chrome and Mobile Chrome get
   // their own baselines (the responsive layouts differ — e.g. Add-food
