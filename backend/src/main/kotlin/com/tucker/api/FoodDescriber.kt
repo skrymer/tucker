@@ -24,10 +24,10 @@ class FoodDescriber(
     fun describe(foods: List<Food>): List<FoodResponse> {
         val counts = recipes.ingredientCounts(foods.filter { it.kind == FoodKind.RECIPE }.mapNotNull { it.id })
         val matched = referenceFoods.namesOf(foods.mapNotNull { it.referenceFoodId }.distinct())
-        val worn = tags.findByIds(foods.flatMap { it.tagIds }.distinct()).associateBy { it.id }
+        val carried = tags.findByIds(foods.flatMap { it.tagIds }.distinct()).associateBy { it.id }
         return foods.map {
             it.toResponse(
-                tags = it.tagIds.mapNotNull(worn::get),
+                tags = it.tagIds.mapNotNull(carried::get),
                 ingredientCount = counts[it.id],
                 referenceFoodName = matched[it.referenceFoodId],
             )

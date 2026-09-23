@@ -96,7 +96,7 @@ class FoodTagsApiTest {
     }
 
     @Test
-    fun `deleting a Food deletes none of the Tags it wore`() {
+    fun `deleting a Food deletes none of the Tags it carried`() {
         val oats = createFood("Rolled oats")
         val breakfast = createTag("breakfast")
         retag(oats, breakfast)

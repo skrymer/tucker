@@ -62,7 +62,7 @@ class TestSupportController(
         dsl.deleteFrom(GOAL).execute()
         dsl.deleteFrom(WEIGHT_MEASUREMENT).execute()
         dsl.deleteFrom(FOOD).execute()
-        // After food, whose delete cascades food_tag away, so a Tag is no longer worn.
+        // After food, whose delete cascades food_tag away, so no Food carries a Tag.
         dsl.deleteFrom(TAG).execute()
         dsl.deleteFrom(PUSH_SUBSCRIPTION).execute()
         dsl.deleteFrom(REMINDER_STATE).execute()
