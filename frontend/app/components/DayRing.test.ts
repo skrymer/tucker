@@ -48,6 +48,22 @@ describe('DayRing', () => {
     expect(screen.getByText('Protein')).toBeVisible()
   })
 
+  it('names each meter for what it measures, not for its percentage', async () => {
+    await renderSuspended(DayRing, { props: underBudget })
+
+    // Asserted through the accessible name rather than the `aria-label`
+    // attribute: Nuxt UI drops that on a root div with no role, while the
+    // element carrying `role="progressbar"` is named by its own percentage — so
+    // a screen reader met two bars called "47%" and "46%" with nothing saying
+    // which was which.
+    const [calories, protein] = screen.getAllByRole('progressbar')
+    expect(calories).toHaveAccessibleName('Calories against the Calorie Budget')
+    expect(protein).toHaveAccessibleName('Protein against the Protein Floor')
+    // The value is still the value, and is where the percentage belongs.
+    expect(calories).toHaveAttribute('aria-valuenow', '1004')
+    expect(calories).toHaveAttribute('aria-valuemax', '2140')
+  })
+
   it('renders the protein legend as consumed against the floor', async () => {
     await renderSuspended(DayRing, { props: underBudget })
 

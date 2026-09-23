@@ -17,6 +17,7 @@ import {
 } from './weightTimeline'
 import type { Timeline } from './weightTimeline'
 import {
+  intakeEvidence,
   timelineDay,
   timelineDays,
   weightTimeline,
@@ -157,11 +158,13 @@ describe('weightTimelineSeries', () => {
 
 describe('weightTimelineSeries — the intake half', () => {
   const days = withIntake(timelineDays([80.4, null, 80.2]), [2000, null, 1000])
-  const tracked = weightTimeline({ days, loggedDays: 2 })
+  const tracked = weightTimeline({ days, evidence: intakeEvidence(2) })
   const series = seriesFor(tracked)
 
   it('starts a bar at the floor of the plot and the weights well above them', () => {
-    const scale = weightTimelineScale(weightTimeline({ days, loggedDays: 2 }))!
+    const scale = weightTimelineScale(
+      weightTimeline({ days, evidence: intakeEvidence(2) }),
+    )!
     const [floor, ceiling] = scale.kgDomain
 
     // A day of no calories has no height, which is what makes a drawn bar's
@@ -176,7 +179,9 @@ describe('weightTimelineSeries — the intake half', () => {
   it('gives the weights the top of the plot and keeps the tallest bar off them', () => {
     // Two scales on one plot is what ADR 0029 accepts for not stacking panes; what
     // makes it readable is that the two never meet.
-    const scale = weightTimelineScale(weightTimeline({ days, loggedDays: 2 }))!
+    const scale = weightTimelineScale(
+      weightTimeline({ days, evidence: intakeEvidence(2) }),
+    )!
     const [floor, ceiling] = scale.kgDomain
     const plot = ceiling - floor
     const lowestWeight = Math.min(...days.map((day) => day.trendKg))
@@ -195,7 +200,7 @@ describe('weightTimelineSeries — the intake half', () => {
     // budget must not put the Budget itself up among the weights.
     const frugal = withIntake(timelineDays([80.4, 80.2]), [1200, 1400], 1800)
     const scale = weightTimelineScale(
-      weightTimeline({ days: frugal, loggedDays: 2 }),
+      weightTimeline({ days: frugal, evidence: intakeEvidence(2) }),
     )!
     const [floor, ceiling] = scale.kgDomain
 
@@ -226,7 +231,7 @@ describe('weightTimelineSeries — the intake half', () => {
     ]
 
     const scale = weightTimelineScale(
-      weightTimeline({ days: carried, loggedDays: 2 }),
+      weightTimeline({ days: carried, evidence: intakeEvidence(2) }),
     )!
 
     expect(scale.kgDomain[1]).toBe(81)
@@ -244,7 +249,7 @@ describe('weightTimelineSeries — the intake half', () => {
     )
 
     const scale = weightTimelineScale(
-      weightTimeline({ days: flat, loggedDays: 3 }),
+      weightTimeline({ days: flat, evidence: intakeEvidence(3) }),
     )!
 
     const [floor, ceiling] = scale.kgDomain
@@ -268,7 +273,7 @@ describe('weightTimelineSeries — the intake half', () => {
     )
 
     const scale = weightTimelineScale(
-      weightTimeline({ days: hairline, loggedDays: 2 }),
+      weightTimeline({ days: hairline, evidence: intakeEvidence(2) }),
     )!
 
     expect(scale.kgTicks).toHaveLength(1)
@@ -287,7 +292,7 @@ describe('weightTimelineSeries — the intake half', () => {
     )
 
     const scale = weightTimelineScale(
-      weightTimeline({ days: wide, loggedDays: 3 }),
+      weightTimeline({ days: wide, evidence: intakeEvidence(3) }),
     )!
 
     expect(scale.kgTicks).toEqual([79, 79.5, 80, 80.5, 81])
@@ -303,7 +308,7 @@ describe('weightTimelineSeries — the intake half', () => {
     // An absence rendered as nothing is indistinguishable from an absence rendered
     // as zero, and a User needs to know their own log has holes in it (ADR 0029).
     const [floor] = weightTimelineScale(
-      weightTimeline({ days, loggedDays: 2 }),
+      weightTimeline({ days, evidence: intakeEvidence(2) }),
     )!.kgDomain
     const tick = series.intakeKg(days[1]!)!
     const smallestBar = series.intakeKg(days[2]!)!
@@ -316,7 +321,9 @@ describe('weightTimelineSeries — the intake half', () => {
   it('labels the kilogram axis only where there are weights, never down among the bars', () => {
     // The domain reaches far below the readings to make room for the bars, and a
     // kilogram gridline among them would mark a weight nobody ever had.
-    const scale = weightTimelineScale(weightTimeline({ days, loggedDays: 2 }))!
+    const scale = weightTimelineScale(
+      weightTimeline({ days, evidence: intakeEvidence(2) }),
+    )!
 
     expect(scale.kgTicks).toEqual([80.1, 80.2, 80.3, 80.4])
   })
@@ -337,7 +344,10 @@ describe('weightTimelineSeries — the intake half', () => {
     // A window opens where the readings start, which can be before the User was
     // ever given a figure to eat to — and a day with no Budget is not over one.
     const unbudgeted = withIntake(timelineDays([80.4]), [2600], null)
-    const earlyTimeline = weightTimeline({ days: unbudgeted, loggedDays: 1 })
+    const earlyTimeline = weightTimeline({
+      days: unbudgeted,
+      evidence: intakeEvidence(1),
+    })
     const early = seriesFor(earlyTimeline)
 
     expect(weightTimelineReadout(unbudgeted[0]!, true)).toBe(
@@ -365,7 +375,10 @@ describe('weightTimelineSeries — the intake half', () => {
       null,
       20,
     ])
-    const sparseTimeline = weightTimeline({ days: barelyLogged, loggedDays: 2 })
+    const sparseTimeline = weightTimeline({
+      days: barelyLogged,
+      evidence: intakeEvidence(2),
+    })
     const sparse = seriesFor(sparseTimeline)
 
     expect(sparse.intakeKg(barelyLogged[2]!)!).toBeGreaterThanOrEqual(
@@ -384,7 +397,10 @@ describe('weightTimelineSeries — the intake half', () => {
         overBudget: true,
       }),
     ]
-    const timeline = weightTimeline({ days: stated, loggedDays: 1 })
+    const timeline = weightTimeline({
+      days: stated,
+      evidence: intakeEvidence(1),
+    })
     const series = seriesFor(timeline)
 
     expect(series.intakeColor(stated[0]!)).toBe(OVER_BUDGET_COLOR)
@@ -616,7 +632,7 @@ describe('weightTimelineReadouts', () => {
     // figure — unlogged, and before the first review — and is not a weight-only day.
     const days = timelineDays([80.4, null])
     const lines = weightTimelineReadouts(
-      weightTimeline({ days, loggedDays: 1 }),
+      weightTimeline({ days, evidence: intakeEvidence(1) }),
     )
 
     expect(lines.map((line) => line.text)).toEqual([

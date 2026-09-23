@@ -342,7 +342,8 @@ Coverage is structurally poor and always will be. An **Estimated Entry** has no 
 so can never contribute; an unmatched Food contributes nothing; some manufactured
 foods have no generic worth matching to. So the summed figure is *at least* what was
 eaten, and **the share of the window's calories that could contribute is stated
-alongside it, always**. Calories measure that share for
+alongside it whenever there are calories to measure it against** (amended by
+[#290](https://github.com/skrymer/tucker/issues/290), below). Calories measure that share for
 [0026](0026-an-intake-breakdown-divides-what-was-eaten-never-the-budget.md)'s reason:
 an Estimated Entry has no mass, so grams cannot measure the entries most likely to be
 missing.
@@ -410,6 +411,60 @@ is, the sentence names what remains and why it will never move. Showing the ceil
 earlier is a second denominator to understand on every read, for a problem that only
 exists at the end — the same *you can fix this* against *this will never resolve*
 distinction an **Inconclusive Lookup** draws.
+
+## Amended by [#290](https://github.com/skrymer/tucker/issues/290): a window that ate nothing has no coverage to state
+
+Coverage is *stated always* above. That is amended to **stated whenever there are
+calories to measure it against**, because a week whose only Entries are zero-calorie
+Foods — `Nutrition`'s own KDoc names a diet drink and black coffee — divides zero by
+zero, and the `0.0` the guard produced was reported as *0% of the last 7 days'
+calories came from food Tucker can read*. That sentence is false in the one direction
+that matters: a week of nothing but **matched** black coffee is fully readable and
+was being called unreadable. Coverage is therefore null on the wire in that window,
+the same withholding `amount` already gets on a row Tucker cannot state — a figure it
+does not have is absent, never zero (ADR 0023).
+
+The nutrient figures are unaffected and stay drawn: `rowsOf` sums by the **grams**
+eaten, so 500 g of matched black coffee really does supply potassium. Only the
+*share* is undefined, and only because calories are its measure — which they are for
+the reason stated above, and the reason has not changed.
+
+**An empty window is one nothing was logged in, not one nothing was eaten in.** The
+card keyed its whole empty state off `totalCalories == 0` and so replaced itself with
+*Nothing logged in the last 7 days*, hiding a match queue the backend had computed
+and offered. `loggedDays` is already on the response and says exactly what was meant,
+and is what this card now keys on. The **Intake Breakdown** reaches the same rule
+through its own item list, which `IntakeBreakdown.of` derives from the same Entries
+— so the two cannot come to disagree, and ADR 0026 records why the expression stays
+different there.
+
+## Amended by [#288](https://github.com/skrymer/tucker/issues/288): a claim ships with the line it was read against
+
+A row carried `recommended` and `limit` side by side and left the client to pick
+which one a tile was read against — `OVER_LIMIT` by the limit, `CLEARS_REFERENCE` by
+the recommended figure. That is `MicronutrientIntake.rowFor`'s own rule, restated where ADR 0002 says
+derived state does not live, and held together by three non-null assertions standing
+on an invariant the wire type does not express.
+
+The row now carries **`readAgainst`** instead: one `PublishedLine(amount, kind)`,
+present exactly when `amount` is, where `kind` is a `RECOMMENDED | UPPER_LEVEL |
+SUGGESTED_DIETARY_TARGET`. The pairing is made inside `rowFor`, which is where the
+claim is decided — one `when` producing both, so a claim and its line cannot drift
+apart. The client renders what it is given.
+
+`ReferenceLine` is a **superset** of `IntakeLimitKind` rather than the same enum
+widened. The two answer different questions of the same table: one is *which kind of
+line NHMRC published*, where a limit is the only thing it can be; the other is
+*which published figure this verdict stands on*, which includes the figure to reach.
+Folding them together would make `RECOMMENDED` representable as a line not to cross,
+a state the domain does not have — and the `asLine()` mapping between them stays
+exhaustive, so a fourth published figure breaks the build rather than sliding through.
+
+What each line is *called* stays client-side — mapping an enum to a display string is
+the `dayStatusVerdict` / `paceBadge` precedent — and so does which claim is strict.
+That is one bit per claim, beside that claim's heading, and both claims are on the
+wire; shipping the operator would put a field on the response whose only consumer is
+a formatter.
 
 ## Consequences
 

@@ -45,7 +45,11 @@ const THREE_MONTHS = aTimeline(90, 95)
 const BUDGET_KCAL = 1800
 const TRACKED = {
   ...FOUR_WEEKS,
-  loggedDays: FOUR_WEEKS.days.length - 1,
+  evidence: {
+    kind: 'INTAKE',
+    loggedDays: FOUR_WEEKS.days.length - 1,
+    planStartsOn: null,
+  },
   days: FOUR_WEEKS.days.map((day, index) => {
     const caloriesKcal = index === 1 ? null : index === 0 ? 2100 : 1700
     return {
@@ -65,6 +69,7 @@ const TRACKED = {
  */
 const PLANNED = {
   ...FOUR_WEEKS,
+  evidence: { kind: 'PLAN', loggedDays: null, planStartsOn: FOUR_WEEKS.from },
   days: FOUR_WEEKS.days.map((day, index) => ({
     ...day,
     trajectoryKg: 88 - (index * 0.5) / 7,
@@ -79,6 +84,7 @@ const PLANNED = {
 const STEADY = aTimeline(28, 80)
 const BEHIND_PLAN = {
   ...STEADY,
+  evidence: { kind: 'PLAN', loggedDays: null, planStartsOn: STEADY.from },
   days: STEADY.days.map((day, index) => ({
     ...day,
     trajectoryKg: 80 - index / 7,
@@ -276,6 +282,36 @@ test("with Calorie Tracking off the Goal's plan is drawn beside the weight", asy
   await expect(section.getByText('Plan off chart')).toBeHidden()
   // The chart is aria-hidden, so the list is where the plan is readable at all.
   await expect(page.getByText(openingLine(PLANNED))).toBeAttached()
+})
+
+test('a plan that does not reach the window says so, rather than looking like Maintenance Mode', async ({
+  page,
+  goto,
+}) => {
+  await mockProfile(page, {
+    sex: 'MALE',
+    birthDate: '1990-06-15',
+    heightCm: 180,
+    tracksCalories: false,
+  })
+  // A Goal started on a device already into tomorrow, read on one whose window
+  // closes today: no day carries a plan, which is exactly what Maintenance Mode
+  // sends too. Only the named evidence tells the card which it is looking at.
+  await mockWeightTimeline(page, {
+    ...FOUR_WEEKS,
+    evidence: {
+      kind: 'PLAN',
+      loggedDays: null,
+      planStartsOn: isoShiftDays(FOUR_WEEKS.to, 1),
+    },
+  })
+
+  await goto('/review', { waitUntil: 'hydration' })
+
+  const section = page.getByRole('region', { name: 'Your weight' })
+  await expect(section.getByText(/Your goal’s plan starts/)).toBeVisible()
+  // And no key chip, which would name a stroke the chart is not drawing.
+  await expect(section.getByText('Plan', { exact: true })).toBeHidden()
 })
 
 test('a plan below the chart is marked rather than silently cut short', async ({

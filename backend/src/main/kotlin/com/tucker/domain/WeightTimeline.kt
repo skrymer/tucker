@@ -41,14 +41,39 @@ data class WeightTimelineDay(
  * Each member fills its own fields rather than being unpacked by [WeightTimeline.of],
  * so weight stays the premise every day is built from and a third kind has to say
  * what it adds instead of being silently ignored.
+ *
+ * Each also *names itself* on the timeline through [summarise], whether or not it
+ * had anything to draw on the days in the window.
  */
 sealed interface TimelineEvidence {
 
     /** [day] with whatever this evidence adds to it. */
     fun drawOn(day: WeightTimelineDay): WeightTimelineDay
 
-    /** How many of [days] carry an Entry, or null where nothing counts days. */
-    fun loggedDaysIn(days: List<WeightTimelineDay>): Int?
+    /** What this evidence says about [days] as a whole. */
+    fun summarise(days: List<WeightTimelineDay>): TimelineEvidenceSummary
+}
+
+/**
+ * Which evidence a [WeightTimeline] drew beside the weight, and the one figure that
+ * evidence states about the window as a whole.
+ *
+ * One discriminated value rather than a nullable field per kind: two siblings admit
+ * a timeline claiming both halves, which is a state the domain does not have, and
+ * leave every consumer to re-establish that they agree (ADR 0024). A third kind has
+ * to say what it states here, instead of adding a field the others answer null to.
+ */
+sealed interface TimelineEvidenceSummary {
+
+    /** How many of the drawn days carry an Entry — how far to trust the intake half. */
+    data class Intake(val loggedDays: Int) : TimelineEvidenceSummary
+
+    /**
+     * The day the active Goal's plan begins, which may be after the window ends —
+     * said regardless, because that is the case where no day carries a figure and
+     * the response is otherwise indistinguishable from Maintenance Mode (ADR 0029).
+     */
+    data class Plan(val startsOn: LocalDate) : TimelineEvidenceSummary
 }
 
 /**
@@ -101,11 +126,11 @@ class TimelineIntake(
     )
 
     /**
-     * Off the days actually drawn rather than off the log: a day logged before the
-     * timeline starts is not one of the days it is a count of.
+     * Counted off the days actually drawn rather than off the log: a day logged
+     * before the timeline starts is not one of the days it is a count of.
      */
-    override fun loggedDaysIn(days: List<WeightTimelineDay>): Int =
-        days.count { it.caloriesKcal != null }
+    override fun summarise(days: List<WeightTimelineDay>) =
+        TimelineEvidenceSummary.Intake(days.count { it.caloriesKcal != null })
 }
 
 /**
@@ -118,8 +143,9 @@ class GoalTrajectory(private val goal: Goal) : TimelineEvidence {
     override fun drawOn(day: WeightTimelineDay) =
         day.copy(trajectoryKg = goal.plannedWeightOn(day.date))
 
-    /** A plan is not a log, so it counts no days. */
-    override fun loggedDaysIn(days: List<WeightTimelineDay>): Int? = null
+    /** A plan is not a log, so it counts no days — it names where it begins. */
+    override fun summarise(days: List<WeightTimelineDay>) =
+        TimelineEvidenceSummary.Plan(goal.startedOn)
 }
 
 /**
@@ -129,12 +155,16 @@ class GoalTrajectory(private val goal: Goal) : TimelineEvidence {
  *
  * [from] is where the timeline actually starts, which is not always where the
  * caller's window did — see [of].
+ *
+ * [evidence] says which of the two was drawn beside the weight, and is null when
+ * neither was — Maintenance Mode with Calorie Tracking off. That direction only:
+ * with tracking on, Maintenance Mode still counts logged days.
  */
 data class WeightTimeline(
     val from: LocalDate,
     val to: LocalDate,
     val days: List<WeightTimelineDay>,
-    val loggedDays: Int?,
+    val evidence: TimelineEvidenceSummary?,
 ) {
     companion object {
         /**
@@ -201,7 +231,7 @@ data class WeightTimeline(
                 from = start,
                 to = to,
                 days = days,
-                loggedDays = drawn?.loggedDaysIn(days),
+                evidence = drawn?.summarise(days),
             )
         }
 

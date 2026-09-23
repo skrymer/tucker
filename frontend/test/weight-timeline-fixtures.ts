@@ -45,6 +45,27 @@ export function timelineDays(
   })
 }
 
+/** What a timeline names as the half it drew, or null in Maintenance Mode. */
+type Evidence = Required<WeightTimelineResponse>['evidence']
+
+/** The intake half as the API names it, [loggedDays] of the drawn days logged. */
+export function intakeEvidence(loggedDays: number): Evidence {
+  return { kind: 'INTAKE', loggedDays, planStartsOn: null }
+}
+
+/** A plan as the API names it, beginning on [planStartsOn]. */
+export function planStartingOn(planStartsOn: string): Evidence {
+  return { kind: 'PLAN', loggedDays: null, planStartsOn }
+}
+
+/** A plan is the evidence whenever any drawn day carries one. */
+function planEvidence(days: WeightTimelineDayResponse[]): Evidence {
+  const startsOn = days.find((day) => day.trajectoryKg != null)?.date
+  return startsOn == null
+    ? null
+    : { kind: 'PLAN', loggedDays: null, planStartsOn: startsOn }
+}
+
 /** A Weight Timeline as the API sends it. */
 export function weightTimeline(
   overrides: Partial<WeightTimelineResponse> = {},
@@ -53,7 +74,12 @@ export function weightTimeline(
   return {
     from: days[0]!.date,
     to: days[days.length - 1]!.date,
-    loggedDays: null,
+    // No evidence named is Maintenance Mode — the shape a plain weight card is
+    // drawn from. A test wanting the intake half says so; a plan names itself
+    // from the days, so a fixture cannot express a drawn plan the response does
+    // not admit to drawing. Override it for the case where a plan is the
+    // evidence and no day in the window carries one (ADR 0029).
+    evidence: planEvidence(days),
     ...overrides,
     days,
   }

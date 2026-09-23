@@ -164,7 +164,8 @@ class WeightTimelineApiTest {
 
         timeline().andExpect {
             status { isOk() }
-            jsonPath("$.loggedDays") { value(2) }
+            jsonPath("$.evidence.kind") { value("INTAKE") }
+            jsonPath("$.evidence.loggedDays") { value(2) }
             jsonPath("$.days[0].caloriesKcal") { value(2000.0) }
             jsonPath("$.days[0].calorieBudgetKcal") { value(1800.0) }
             // Absent, never zero: a floor-height bar would read as a day of eating
@@ -192,7 +193,7 @@ class WeightTimelineApiTest {
 
         timeline().andExpect {
             status { isOk() }
-            jsonPath("$.loggedDays") { value(null) }
+            jsonPath("$.evidence") { value(null) }
             jsonPath("$.days[14].caloriesKcal") { value(null) }
             jsonPath("$.days[14].calorieBudgetKcal") { value(null) }
             jsonPath("$.days[14].overBudget") { value(null) }
@@ -219,9 +220,11 @@ class WeightTimelineApiTest {
             jsonPath("$.days[0].trajectoryKg") { value(80.0) }
             jsonPath("$.days[7].trajectoryKg") { value(79.5) }
             jsonPath("$.days[14].trajectoryKg") { value(79.0) }
-            // A plan is not a log, and the client reads this figure as "there is an
-            // intake half" — a count of none would draw a tracking window.
-            jsonPath("$.loggedDays") { value(null) }
+            // A plan is not a log, and a logged-day count is how a client knows the
+            // intake half is what it is looking at — a count of none would draw a
+            // tracking window with nothing in it.
+            jsonPath("$.evidence.kind") { value("PLAN") }
+            jsonPath("$.evidence.loggedDays") { value(null) }
         }
     }
 
@@ -245,7 +248,42 @@ class WeightTimelineApiTest {
             jsonPath("$.days[14].trajectoryKg") { value(null) }
             // And the half that did answer it is there, so what is absent is the plan
             // rather than the whole of what the timeline draws beside the weight.
-            jsonPath("$.loggedDays") { value(0) }
+            jsonPath("$.evidence.kind") { value("INTAKE") }
+            jsonPath("$.evidence.loggedDays") { value(0) }
+            jsonPath("$.evidence.planStartsOn") { value(null) }
+        }
+    }
+
+    @Test
+    fun `a window ending before the Goal started is told apart from Maintenance Mode`() {
+        // Two devices, no broken clock: a phone in Brisbane at 08:00 Tuesday sends
+        // `clientToday` a day ahead of the server's UTC Monday, ADR 0014's tolerance
+        // accepts it, and a desktop reading in UTC then asks for a window ending
+        // today. Every `trajectoryKg` is null — which is byte-for-byte what
+        // Maintenance Mode sends, no day carrying a plan either way.
+        tracksWeightOnly()
+        aFortnightOnTheScale()
+        // The reading device's window closes on the server's own day, and the Goal
+        // starts the day after it — the one-day gap ADR 0014's tolerance admits,
+        // and the whole of what makes the two devices disagree. Both dates come
+        // off the clock rather than off this class's fixed `day`, or the gap under
+        // test would be however long ago that date is.
+        val serverToday = LocalDate.now()
+        val tomorrow = serverToday.plusDays(1)
+        mockMvc.post("/api/goal") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"startedOn":"$tomorrow","clientToday":"$tomorrow",
+                          "targetWeightKg":76.0,"rateKgPerWeek":0.5}"""
+        }.andExpect { status { isCreated() } }
+
+        timeline(from = serverToday.minusDays(27), to = serverToday).andExpect {
+            status { isOk() }
+            jsonPath("$.days[0].trajectoryKg") { value(null) }
+            jsonPath("$.days[14].trajectoryKg") { value(null) }
+            // So the response has to say a plan is what it draws, or the card renders
+            // the Maintenance-Mode shape with nothing explaining why (ADR 0029).
+            jsonPath("$.evidence.kind") { value("PLAN") }
+            jsonPath("$.evidence.planStartsOn") { value("$tomorrow") }
         }
     }
 
@@ -261,6 +299,10 @@ class WeightTimelineApiTest {
             jsonPath("$.days[0].trajectoryKg") { value(null) }
             jsonPath("$.days[14].trajectoryKg") { value(null) }
             jsonPath("$.days[14].trendKg") { value(79.9) }
+            // Neither half named, which is what makes this state itself rather than
+            // the default every plan that draws nothing falls into. The test above
+            // sends the same days and says a plan starts tomorrow.
+            jsonPath("$.evidence") { value(null) }
         }
     }
 

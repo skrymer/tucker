@@ -28,14 +28,27 @@ const emit = defineEmits<{ match: [UnmatchedFood] }>()
 const days = computed(() => daysInWindow(props.intake.from, props.intake.to))
 
 /**
+ * The share, rounded once so every sentence built from it agrees with the figure
+ * printed beside it. Null where the window cost nothing to be a share of, which
+ * the backend withholds rather than reporting as 0%.
+ */
+const coveragePercent = computed(() =>
+  props.intake.coverage == null
+    ? null
+    : Math.round(props.intake.coverage * 100),
+)
+
+/**
  * What the window can be read for, as a sentence rather than a bar: the number is
  * the whole claim here, and a bar beside it would read as progress toward a full
- * ring that is unreachable by construction (frontend/DESIGN.md, ADR 0027).
+ * ring that is unreachable by construction (frontend/DESIGN.md, ADR 0027). A
+ * window with no share to state says what happened instead.
  */
-const coverage = computed(
-  () =>
-    `${Math.round(props.intake.coverage * 100)}% of the last ${days.value} days' ` +
-    `calories came from food Tucker can read vitamins and minerals for.`,
+const coverage = computed(() =>
+  coveragePercent.value == null
+    ? `Nothing you logged in the last ${days.value} days carried any calories.`
+    : `${coveragePercent.value}% of the last ${days.value} days' ` +
+      `calories came from food Tucker can read vitamins and minerals for.`,
 )
 
 /** How far the sentence above can be trusted, in the sibling card's own words. */
@@ -47,7 +60,12 @@ const loggedDays = computed(() =>
   ),
 )
 
-const isEmptyWindow = computed(() => props.intake.totalCalories === 0)
+/**
+ * Whether there is anything to show at all — *nothing was logged*, not *nothing
+ * was eaten*. A week of zero-calorie Foods costs nothing and was still lived in
+ * (ADR 0027).
+ */
+const isEmptyWindow = computed(() => props.intake.loggedDays === 0)
 
 /**
  * The window read as the two things this card draws — tiles for the claims Tucker
@@ -93,7 +111,7 @@ const hasQueue = computed(() => props.intake.unmatched.length > 0)
  * land on exactly 1.0, and a bare `< 1` would attribute a rest to a 99.999…% week.
  */
 const hasUnreadableRest = computed(
-  () => Math.round(props.intake.coverage * 100) < 100,
+  () => coveragePercent.value != null && coveragePercent.value < 100,
 )
 
 /**
@@ -140,8 +158,6 @@ const queueLabel = computed(() => {
     <h2 id="micronutrient-heading" class="text-sm font-medium text-muted">
       Vitamins and minerals
     </h2>
-    <!-- A 0% over a window that ate nothing is true and useless — it reads as a
-         failure to match rather than as a week with nothing in it. -->
     <p v-if="isEmptyWindow" class="mt-2 text-sm text-muted">
       Nothing logged in the last {{ days }} days.
     </p>

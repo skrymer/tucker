@@ -25,6 +25,21 @@ enum class IntakeLimitKind {
 /** The line a window's intake of a nutrient is not to cross. */
 data class IntakeLimit(val amount: Double, val kind: IntakeLimitKind)
 
+/** Which published figure a claim was read against. A superset of [IntakeLimitKind] (ADR 0027). */
+enum class ReferenceLine {
+    /** The figure to reach — an RDI, or an Adequate Intake where no RDI is set. */
+    RECOMMENDED,
+
+    /** An [IntakeLimitKind.UPPER_LEVEL]. */
+    UPPER_LEVEL,
+
+    /** A [IntakeLimitKind.SUGGESTED_DIETARY_TARGET]. */
+    SUGGESTED_DIETARY_TARGET,
+}
+
+/** The published line a [MicronutrientClaim] was read against, and which figure it is. */
+data class PublishedLine(val amount: Double, val kind: ReferenceLine)
+
 /**
  * What a body of a given age and sex is published as needing of one nutrient: a
  * figure to reach, a line not to cross, or — for sodium — only the second.

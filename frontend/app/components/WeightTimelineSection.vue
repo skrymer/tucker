@@ -42,6 +42,30 @@ const plan = computed(() => weightTimelineTrajectory(props.timeline))
 const kgDomain = computed(() => scale.value?.kgDomain ?? plan.value?.kgDomain)
 /** Whether the plan runs past an edge of the plot, which changes what the key says. */
 const planClipped = computed(() => (plan.value?.clips.length ?? 0) > 0)
+
+/**
+ * What to say when a plan is what this timeline draws and none of it is drawable.
+ * Null whenever there is nothing to explain — the plan is on the chart, or there
+ * is no plan because the User is in Maintenance Mode.
+ *
+ * Without it the two are the same card: every `trajectoryKg` is null either way,
+ * and the key chip, the line and the readout all go with nothing saying why
+ * (ADR 0029). `planStartsOn` is the response saying a plan is its evidence even
+ * when no day carries one, which is what tells the states apart.
+ */
+const planPending = computed(() => {
+  const evidence = props.timeline.evidence
+  if (plan.value || evidence?.kind !== 'PLAN' || !evidence.planStartsOn) {
+    return null
+  }
+  // Two silences, two sentences. A plan still ahead of the window has a date
+  // worth naming; a plan that began *within* it has too few days to draw a line
+  // through — the common case, since a Goal is always started today (ADR 0016)
+  // and the window ends today. Dating that one prints today in the future tense.
+  return evidence.planStartsOn > props.timeline.to
+    ? `Your goal’s plan starts ${formatDayMonthFromISO(evidence.planStartsOn)}.`
+    : 'Your goal’s plan appears here from tomorrow.'
+})
 const {
   at,
   trendKg,
@@ -63,15 +87,15 @@ const {
 const tracksIntake = computed(() => timelineTracksIntake(props.timeline))
 
 /** How far the bars can be trusted: how many of the days drawn carry an Entry. */
-const coverage = computed(() =>
-  tracksIntake.value
-    ? loggedDaysCaption(
-        props.timeline.loggedDays!,
-        props.timeline.from,
-        props.timeline.to,
-      )
-    : null,
-)
+const coverage = computed(() => {
+  const evidence = props.timeline.evidence
+  if (evidence?.kind !== 'INTAKE' || evidence.loggedDays == null) return null
+  return loggedDaysCaption(
+    evidence.loggedDays,
+    props.timeline.from,
+    props.timeline.to,
+  )
+})
 
 /** Each day in words — the chart is decorative, so this is what states it. */
 const readouts = computed(() => weightTimelineReadouts(props.timeline))
@@ -296,6 +320,10 @@ const { focusOn, readout } = useFocus()
         </p>
 
         <span v-if="coverage">{{ coverage }}</span>
+        <!-- Said in the key's own row rather than over the chart: the chart is
+             correct and simply has nothing of the plan to show yet, so this
+             belongs beside the strokes it names and not as an error. -->
+        <span v-if="planPending">{{ planPending }}</span>
       </div>
 
       <!-- An `output`, the result of asking rather than another line of prose —

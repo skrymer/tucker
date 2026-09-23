@@ -21,8 +21,17 @@ const periodItems: TabsItem[] = [
 ]
 
 // An empty window keeps the section rather than hiding it (ADR 0026) — there is
-// nothing to draw a ring from, so it says so.
+// nothing to draw a ring from, so it says so. Empty means no Entry at all, which
+// for this read is what an empty item list is: both are "nothing was logged".
 const isEmpty = computed(() => props.breakdown.items.length === 0)
+
+/**
+ * Whether there are arcs to draw. A window can be logged and still cost nothing —
+ * a day of diet drinks and black coffee — and a donut fed nothing but zeroes
+ * reads as a broken chart rather than as a fact (ADR 0026). The legend stays:
+ * what was logged is worth stating even when none of it cost anything.
+ */
+const hasRing = computed(() => props.breakdown.totalCalories > 0)
 
 /** How far the figures can be trusted: how much of the window was actually logged. */
 const coverage = computed(() =>
@@ -152,7 +161,7 @@ const { data: ringData, categories: ringCategories } = useRing()
       <!-- Decorative: every figure it encodes is in the legend beside it, and
            three of the palette's light hues sit under 3:1, so the labelled rows
            are what make it readable at all (frontend/DESIGN.md). -->
-      <div aria-hidden="true" class="intake-ring w-45 shrink-0">
+      <div v-if="hasRing" aria-hidden="true" class="intake-ring w-45 shrink-0">
         <DonutChart
           :data="ringData"
           :categories="ringCategories"

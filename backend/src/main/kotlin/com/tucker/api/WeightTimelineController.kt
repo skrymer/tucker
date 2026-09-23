@@ -2,6 +2,7 @@ package com.tucker.api
 
 import com.tucker.domain.GoalTrajectory
 import com.tucker.domain.TimelineEvidence
+import com.tucker.domain.TimelineEvidenceSummary
 import com.tucker.domain.TimelineIntake
 import com.tucker.domain.WeightTimeline
 import com.tucker.domain.WeightTimelineDay
@@ -54,15 +55,38 @@ data class WeightTimelineDayResponse(
  * later — so a client describing the window reads these bounds rather than the
  * ones it asked for.
  *
- * [loggedDays] is how many of the drawn days carry an Entry, so a section can say
- * how far to trust the intake half — and is null with Calorie Tracking off, which
- * is what makes that half absent rather than empty.
+ * [evidence] says which of the two halves was drawn beside the weight, and is null
+ * when neither was — Maintenance Mode with Calorie Tracking off.
  */
 data class WeightTimelineResponse(
     val from: LocalDate,
     val to: LocalDate,
     val days: List<WeightTimelineDayResponse>,
+    val evidence: TimelineEvidenceResponse?,
+)
+
+/** Which half a [WeightTimelineResponse] drew beside the weight. */
+enum class TimelineEvidenceKind { INTAKE, PLAN }
+
+/**
+ * What the timeline drew beside the weight, and the one figure that half states
+ * about the window (ADR 0029).
+ *
+ * Discriminated by [kind] rather than left as two sibling nullables on the
+ * response: siblings admit a timeline claiming both halves, which is a state the
+ * domain does not have, and leave every client to re-establish that they agree
+ * (ADR 0024). The same shape [BarcodeLookupResponse] uses for its outcomes.
+ *
+ * [loggedDays] is set for [TimelineEvidenceKind.INTAKE] and says how many of the
+ * drawn days carry an Entry; [planStartsOn] is set for
+ * [TimelineEvidenceKind.PLAN] and is the day the active Goal's plan begins, which
+ * may be after the window ends.
+ */
+data class TimelineEvidenceResponse(
+    /** The domain discriminator, so the spec lists the values (see [FoodResponse.kind]). */
+    val kind: TimelineEvidenceKind,
     val loggedDays: Int?,
+    val planStartsOn: LocalDate?,
 )
 
 private fun WeightTimelineDay.toResponse() = WeightTimelineDayResponse(
@@ -75,11 +99,22 @@ private fun WeightTimelineDay.toResponse() = WeightTimelineDayResponse(
     trajectoryKg = trajectoryKg,
 )
 
+/**
+ * Flattened in an exhaustive `when` rather than by two `as?`, so a third evidence
+ * kind is a compile error here instead of a silently absent field (ADR 0024).
+ */
+private fun TimelineEvidenceSummary.toResponse() = when (this) {
+    is TimelineEvidenceSummary.Intake ->
+        TimelineEvidenceResponse(TimelineEvidenceKind.INTAKE, loggedDays = loggedDays, planStartsOn = null)
+    is TimelineEvidenceSummary.Plan ->
+        TimelineEvidenceResponse(TimelineEvidenceKind.PLAN, loggedDays = null, planStartsOn = startsOn)
+}
+
 private fun WeightTimeline.toResponse() = WeightTimelineResponse(
     from = from,
     to = to,
     days = days.map { it.toResponse() },
-    loggedDays = loggedDays,
+    evidence = evidence?.toResponse(),
 )
 
 @RestController

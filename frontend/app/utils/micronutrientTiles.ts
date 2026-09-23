@@ -48,7 +48,10 @@ export function micronutrientReading(rows: Row[]): MicronutrientReading {
       tiles: rows
         .filter((row) => row.claim === group.claim)
         .map((row) => {
-          const against = group.against(row)
+          // Both non-null on exactly the rows that earn a claim, which the backend
+          // decides and states (ADR 0027): a figure and the line it was read
+          // against travel together, so there is nothing here to pair up.
+          const against = row.readAgainst!
           const figures = formatMicronutrientFigures(
             row.amount!,
             against.amount,
@@ -59,7 +62,7 @@ export function micronutrientReading(rows: Row[]): MicronutrientReading {
             nutrient: row.nutrient,
             label: row.label,
             bound: figures.bound,
-            lineLabel: against.label,
+            lineLabel: LINE_NAMES[against.kind],
             line: figures.line,
           }
         }),
@@ -76,15 +79,18 @@ export function micronutrientReading(rows: Row[]): MicronutrientReading {
 }
 
 /**
- * What each claim Tucker can state is called, and which published line its figure
- * is read against. Over the limit leads, and is usually empty: that claim is the
- * one sound at *any* coverage — more data can only push the figure further over —
- * so it is the finding a barely-matched week can still carry (ADR 0027).
+ * What each claim Tucker can state is called. Over the limit leads, and is usually
+ * empty: that claim is the one sound at *any* coverage — more data can only push
+ * the figure further over — so it is the finding a barely-matched week can still
+ * carry (ADR 0027).
+ *
+ * Which published line a claim was read against is **not** here: the backend
+ * decided the claim by that line and sends it on the row, so restating the pairing
+ * would let this table read a verdict against the other figure (ADR 0002).
  */
 const STATED: {
   claim: Claim
   heading: string
-  against: (row: Row) => Line
   /**
    * Whether the backend reached this claim on `>` rather than on `>=`, which is
    * what decides whether its two figures may draw level. `MicronutrientIntakeTest`
@@ -92,19 +98,10 @@ const STATED: {
    */
   strict: boolean
 }[] = [
-  {
-    claim: 'OVER_LIMIT',
-    heading: 'Over the limit',
-    against: (row) => ({
-      label: LIMIT_NAMES[row.limit!.kind],
-      amount: row.limit!.amount,
-    }),
-    strict: true,
-  },
+  { claim: 'OVER_LIMIT', heading: 'Over the limit', strict: true },
   {
     claim: 'CLEARS_REFERENCE',
     heading: 'Reached the reference',
-    against: (row) => ({ label: 'Reference', amount: row.recommended! }),
     strict: false,
   },
 ]
@@ -113,19 +110,14 @@ const STATED: {
  * Named for the figure each line actually is. Sodium's is a Suggested Dietary
  * Target rather than an Upper Level, and calling a population chronic-disease
  * target a safety threshold is the substitution ADR 0027 refuses. Keyed off the
- * generated schema, so a rename on the backend fails typecheck here rather than
- * rendering "undefined 2000 mg".
+ * generated schema, so a rename on the backend — or a fourth published figure —
+ * fails typecheck here rather than rendering "undefined 2000 mg".
  */
-const LIMIT_NAMES: Record<
-  components['schemas']['IntakeLimitResponse']['kind'],
+const LINE_NAMES: Record<
+  components['schemas']['PublishedLineResponse']['kind'],
   string
 > = {
+  RECOMMENDED: 'Reference',
   UPPER_LEVEL: 'Upper Level',
   SUGGESTED_DIETARY_TARGET: 'Suggested target',
-}
-
-/** The published line a tile is read against, and what to call it. */
-interface Line {
-  label: string
-  amount: number
 }

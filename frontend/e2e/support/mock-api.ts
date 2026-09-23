@@ -95,8 +95,10 @@ export async function mockIntakeBreakdownByWindow(
 /** A week with nothing logged — what a spec that is not about matching wants. */
 const emptyMicronutrientIntake: MicronutrientIntakeOverrides = {
   totalCalories: 0,
+  // Nothing logged, which is what makes the window empty — and so no share to
+  // state, calories being what a coverage figure is a share of (ADR 0027).
   loggedDays: 0,
-  coverage: 0,
+  coverage: null,
   rows: [],
   unmatched: [],
 }

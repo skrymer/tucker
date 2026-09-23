@@ -71,6 +71,31 @@ class MicronutrientIntakeApiTest {
     }
 
     @Test
+    fun `a week of nothing but zero-calorie food is logged, and states no coverage`() {
+        val coffee = createZeroCalorieFood("Black coffee")
+        logWeighed(coffee, grams = 500.0)
+
+        mockMvc.get("/api/micronutrient-intake") {
+            param("from", "$weekStart")
+            param("to", "$day")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.totalCalories") { value(0.0) }
+            // Zero calories is a fact about the food; this is the fact about the log,
+            // and it is the one that says whether there is anything to show at all.
+            jsonPath("$.loggedDays") { value(1) }
+            // Nothing over nothing. Reported as 0% it would say this week cannot be
+            // read for vitamins — which is exactly backwards once the coffee is
+            // matched, since the figures are summed by grams (ADR 0027).
+            jsonPath("$.coverage") { value(null) }
+            // And the queue the backend computed is real work, not an artefact of an
+            // empty window: there is a Food here and a tap that would earn it.
+            jsonPath("$.unmatched.length()") { value(1) }
+            jsonPath("$.unmatched[0].name") { value("Black coffee") }
+        }
+    }
+
+    @Test
     fun `each nutrient is read against the line published for this User's body`() {
         // 56, so the band in force is 51-70 — where a woman's calcium is 1,300 mg
         // and a man's is 1,000. Reading the wrong sex gives the wrong figure here.
@@ -82,9 +107,14 @@ class MicronutrientIntakeApiTest {
             param("to", "$day")
         }.andExpect {
             status { isOk() }
-            jsonPath("$.rows[?(@.nutrient == 'CALCIUM')].recommended") { value(1300.0) }
-            jsonPath("$.rows[?(@.nutrient == 'CALCIUM')].limit.amount") { value(2500.0) }
-            jsonPath("$.rows[?(@.nutrient == 'CALCIUM')].limit.kind") { value("UPPER_LEVEL") }
+            jsonPath("$.rows[?(@.nutrient == 'CALCIUM')].readAgainst.amount") { value(1300.0) }
+            jsonPath("$.rows[?(@.nutrient == 'CALCIUM')].readAgainst.kind") { value("RECOMMENDED") }
+            // The 2,500 mg Upper Level this bound is nowhere near is *not* on the
+            // wire: the claim was decided by the recommended figure, and a response
+            // carrying both leaves a client free to read the verdict against the
+            // other one (ADR 0002, ADR 0027).
+            jsonPath("$.rows[?(@.nutrient == 'CALCIUM')].limit") { doesNotExist() }
+            jsonPath("$.rows[?(@.nutrient == 'CALCIUM')].recommended") { doesNotExist() }
         }
     }
 
@@ -107,8 +137,7 @@ class MicronutrientIntakeApiTest {
             // one from — the rule is a fact about the response rather than a
             // convention every client has to keep (ADR 0027).
             jsonPath("$.rows[?(@.nutrient == 'CALCIUM')].amount") { value(null) }
-            jsonPath("$.rows[?(@.nutrient == 'CALCIUM')].recommended") { value(null) }
-            jsonPath("$.rows[?(@.nutrient == 'CALCIUM')].limit") { value(null) }
+            jsonPath("$.rows[?(@.nutrient == 'CALCIUM')].readAgainst") { value(null) }
             // The name survives, because the absence is stated by naming it.
             jsonPath("$.rows[?(@.nutrient == 'CALCIUM')].label") { value("Calcium") }
         }
@@ -158,7 +187,7 @@ class MicronutrientIntakeApiTest {
             param("to", "$day")
         }.andExpect {
             status { isOk() }
-            jsonPath("$.rows[?(@.nutrient == 'CALCIUM')].recommended") { value(1300.0) }
+            jsonPath("$.rows[?(@.nutrient == 'CALCIUM')].readAgainst.amount") { value(1300.0) }
         }
     }
 
@@ -282,6 +311,15 @@ class MicronutrientIntakeApiTest {
     private fun referenceFoodFor(text: String): Long =
         referenceFoods.search(ReferenceFoodQuery.of(text, referenceFoods.synonyms()), limit = 1)
             .first().food.id
+
+    /** A Food that costs nothing — `Nutrition`'s own diet drink or black coffee. */
+    private fun createZeroCalorieFood(name: String): Long {
+        val body = mockMvc.post("/api/foods") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"name":"$name","proteinPer100g":0.0,"carbsPer100g":0.0,"fatPer100g":0.0}"""
+        }.andExpect { status { isCreated() } }.andReturn().response.contentAsString
+        return objectMapper.readTree(body).get("id").asLong()
+    }
 
     private fun createFood(name: String): Long {
         val body = mockMvc.post("/api/foods") {

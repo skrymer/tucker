@@ -68,6 +68,30 @@ class MicronutrientIntakeTest {
     }
 
     @Test
+    fun `a bound over its limit carries the limit it was read against, kind and all`() {
+        fun lineOf(kind: IntakeLimitKind): PublishedLine? {
+            val overLimit = IntakeLimit(amount = 45.0, kind = kind)
+            val read = weekOf(grams = 70.0, iron = 500.0, reference = ReferenceIntake(8.0, overLimit))
+            return read.rows.single { it.nutrient == Micronutrient.IRON }.readAgainst
+        }
+
+        assertEquals(
+            PublishedLine(kind = ReferenceLine.UPPER_LEVEL, amount = 45.0),
+            lineOf(IntakeLimitKind.UPPER_LEVEL),
+            "the claim was decided *by* this line, so it comes back with it — a reader " +
+                "handed both published figures has to re-run the rule to know which one " +
+                "the verdict stands on, and would be free to pick the other (ADR 0002)",
+        )
+        assertEquals(
+            PublishedLine(kind = ReferenceLine.SUGGESTED_DIETARY_TARGET, amount = 45.0),
+            lineOf(IntakeLimitKind.SUGGESTED_DIETARY_TARGET),
+            "and which kind of line survives the trip: sodium's is a population " +
+                "chronic-disease target rather than where harm begins, so reporting it " +
+                "as an Upper Level is the substitution ADR 0027 refuses",
+        )
+    }
+
+    @Test
     fun `a bound sitting exactly on its limit has not crossed it`() {
         val limit = IntakeLimit(amount = 45.0, kind = IntakeLimitKind.UPPER_LEVEL)
         // 700 g of a food reporting 45 mg per 100 g is 45 mg a day exactly.
@@ -145,6 +169,20 @@ class MicronutrientIntakeTest {
     }
 
     @Test
+    fun `a bound that clears its reference carries the recommended figure, not the limit`() {
+        val farBelowItsLimit = IntakeLimit(amount = 45.0, kind = IntakeLimitKind.UPPER_LEVEL)
+        val read = weekOf(grams = 700.0, iron = 8.0, reference = ReferenceIntake(8.0, farBelowItsLimit))
+
+        assertEquals(
+            PublishedLine(kind = ReferenceLine.RECOMMENDED, amount = 8.0),
+            read.rows.single { it.nutrient == Micronutrient.IRON }.readAgainst,
+            "both published figures are set on this nutrient and only one of them " +
+                "decided the verdict — the row names it, so nothing downstream has to " +
+                "know that this claim is the one reached by the recommended figure",
+        )
+    }
+
+    @Test
     fun `a bound that reaches its reference clears it`() {
         val read = weekOf(grams = 700.0, iron = 8.0, reference = ReferenceIntake(8.0, null))
 
@@ -165,6 +203,19 @@ class MicronutrientIntakeTest {
             read.rows.single { it.nutrient == Micronutrient.IRON }.claim,
             "1 mg a day against a published 8 mg is not a deficiency and not a deficit: " +
                 "the share that went unmatched could easily hold the other seven (ADR 0027)",
+        )
+    }
+
+    @Test
+    fun `a bound below its reference was read against nothing, so it names nothing`() {
+        val read = weekOf(grams = 700.0, iron = 1.0, reference = ReferenceIntake(8.0, null))
+
+        assertEquals(
+            null,
+            read.rows.single { it.nutrient == Micronutrient.IRON }.readAgainst,
+            "the published figure is set and the bound simply did not reach it, so no " +
+                "line was crossed and none was cleared — naming one here would put a " +
+                "figure beside a nutrient Tucker has declined to state (ADR 0027)",
         )
     }
 
@@ -224,10 +275,11 @@ class MicronutrientIntakeTest {
                 "is matched, so the window's own total is what tells them apart",
         )
         assertEquals(
-            0.0,
+            null,
             read.coverage,
-            "and coverage is zero rather than NaN: nothing over nothing is what dividing " +
-                "by the window's own total would give, and NaN serialises as null",
+            "and coverage is absent rather than zero: calories are its measure, so a " +
+                "window that ate none divides nothing by nothing — 0% would report a " +
+                "week Tucker could read perfectly well as unreadable (ADR 0027)",
         )
     }
 

@@ -153,6 +153,27 @@ of a round-trip.
   branches, and it self-corrects as the day fills. An _empty_ window keeps the
   section (with a "nothing logged" line) rather than hiding it, so the period
   toggle stays reachable.
+- **Amended by [#290](https://github.com/skrymer/tucker/issues/290): an empty window
+  and a weightless one are two states.** The bullet above says an _empty_ window
+  keeps the section with a "nothing logged" line, and the section decided that on
+  `items.length === 0` — which a week of zero-calorie Foods does not satisfy, every
+  such Food being a slice of its own at `0 kcal` and `0%`. The card drew a donut fed
+  nothing but zeroes, which reads as a broken chart rather than as a fact. The two
+  are now told apart on the response's own figures. The empty branch is unchanged
+  and stays keyed on the item list, which for *this* read is already exactly
+  "nothing was logged": `IntakeBreakdown.of` derives both `items` and `loggedDays`
+  from the same Entries, so the two predicates are equivalent by construction and
+  swapping one for the other would be a change no test could distinguish. What
+  changes is the **ring**: it is drawn only when there are calories to divide, and
+  a logged window costing nothing keeps its **legend**, which is true and worth
+  reading — here is what you logged, none of it cost anything.
+
+  The **Micronutrient Intake** card had no such equivalence to lean on — not
+  because its window can hold Entries at `totalCalories` 0, which is true of this
+  one too and is the whole case, but because its response carries **no item
+  list**, so the calories were the only proxy available to it. That is why the fix
+  lands differently there (ADR 0027). What the two now share is the *rule* —
+  an empty window is one nothing was logged in — rather than one expression of it.
 - **Absent with Calorie Tracking off**, and gated explicitly rather than left to
   the data. The first draft of this decision said no gate was needed, on the
   reasoning that such a User logs no Entries — but the setting is not a one-time

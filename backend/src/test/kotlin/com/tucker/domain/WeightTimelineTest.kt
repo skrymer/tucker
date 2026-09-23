@@ -96,7 +96,7 @@ class WeightTimelineTest {
 
         val timeline = WeightTimeline.of(from, to, twentyDays) { intake }!!
 
-        assertEquals(2, timeline.loggedDays)
+        assertEquals(TimelineEvidenceSummary.Intake(loggedDays = 2), timeline.evidence)
     }
 
     @Test
@@ -123,7 +123,7 @@ class WeightTimelineTest {
         // not there — the client is never left hiding a half it was handed.
         val timeline = WeightTimeline.of(from, to, daily(*DoubleArray(28) { 80.0 }))!!
 
-        assertNull(timeline.loggedDays)
+        assertNull(timeline.evidence)
         assertEquals(emptyList<Double>(), timeline.days.mapNotNull { it.caloriesKcal })
         assertEquals(emptyList<Double>(), timeline.days.mapNotNull { it.calorieBudgetKcal })
     }
@@ -297,9 +297,9 @@ class WeightTimelineTest {
         assertEquals(82.0, planned[from])
         assertEquals(81.5, planned[from.plusDays(7)])
         assertEquals(81.0, planned[from.plusDays(14)])
-        // A plan is not a log, and a count of none would read as a tracking window
-        // with nothing in it — which is what the client takes this figure to mean.
-        assertNull(timeline.loggedDays)
+        // A plan is not a log: the timeline names the plan as its evidence, so there
+        // is no logged-day count to be read as a tracking window with nothing in it.
+        assertEquals(TimelineEvidenceSummary.Plan(startsOn = from), timeline.evidence)
     }
 
     @Test
@@ -328,6 +328,30 @@ class WeightTimelineTest {
         assertEquals(78.5, planned[start.plusDays(49)])
         assertEquals(78.0, planned[start.plusDays(56)])
         assertEquals(78.0, planned[to])
+    }
+
+    @Test
+    fun `a window ending before the Goal started still says a plan is what it draws`() {
+        // The two-device shape: a Goal set on a phone already into tomorrow, read on
+        // a desktop whose window closes today. Every day's plan is null, which is
+        // byte-for-byte what Maintenance Mode sends — loggedDays being null under a
+        // plan too — so without this the card cannot tell the two apart (ADR 0029).
+        val tomorrow = to.plusDays(1)
+        val plan = GoalTrajectory(goal(startedOn = tomorrow, startWeightKg = 82.0, rateKgPerWeek = 0.5))
+
+        val timeline = WeightTimeline.of(from, to, daily(*DoubleArray(28) { 80.0 })) { plan }!!
+
+        assertEquals(
+            TimelineEvidenceSummary.Plan(startsOn = tomorrow),
+            timeline.evidence,
+            "the plan exists and simply does not reach this window, which is a " +
+                "different thing from defending no target weight at all",
+        )
+        assertNull(
+            timeline.days.map { it.trajectoryKg }.firstOrNull { it != null },
+            "and there is genuinely nothing to draw, which is what made the two " +
+                "states identical in the first place",
+        )
     }
 
     @Test

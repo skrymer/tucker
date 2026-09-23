@@ -77,8 +77,7 @@ test('reads the week per nutrient, tiling what it can claim and only naming what
         label: 'Sodium',
         unit: 'mg',
         amount: 2430,
-        recommended: null,
-        limit: { amount: 2000, kind: 'SUGGESTED_DIETARY_TARGET' },
+        readAgainst: { kind: 'SUGGESTED_DIETARY_TARGET', amount: 2000 },
         claim: 'OVER_LIMIT',
       }),
       micronutrientRow({
@@ -86,8 +85,7 @@ test('reads the week per nutrient, tiling what it can claim and only naming what
         label: 'Iron',
         unit: 'mg',
         amount: 21.4,
-        recommended: 18,
-        limit: { amount: 45, kind: 'UPPER_LEVEL' },
+        readAgainst: { kind: 'RECOMMENDED', amount: 18 },
         claim: 'CLEARS_REFERENCE',
       }),
       unstatedMicronutrientRow({

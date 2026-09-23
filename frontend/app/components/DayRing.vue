@@ -105,12 +105,14 @@ const { rows } = useLegend()
           <span class="shrink-0 text-sm font-semibold text-default">
             {{ row.title }}
           </span>
+          <!-- `get-value-label`, never `aria-label`: the attribute never reaches
+               the progressbar element (frontend/DESIGN.md). -->
           <UProgress
             class="min-w-16 flex-1"
             :model-value="row.filled"
             :max="row.target"
             :color="row.meter"
-            :aria-label="row.label"
+            :get-value-label="() => row.label"
           />
         </div>
         <p class="text-sm tabular-nums text-muted">{{ row.figures }}</p>
