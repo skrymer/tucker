@@ -113,6 +113,8 @@ export function withManyTags(foods: DemoFood[]): DemoFood[] {
       ...f.tags,
       extraTags[i % extraTags.length]!,
       ...(i % 3 === 0 ? [extraTags[(i * 7) % extraTags.length]!] : []),
+      // every fifth Food is a heavy tagger's favourite: five more
+      ...(i % 5 === 0 ? extraTags.slice(i % 8, (i % 8) + 5) : []),
     ].filter((t, j, a) => a.indexOf(t) === j),
   }))
 }

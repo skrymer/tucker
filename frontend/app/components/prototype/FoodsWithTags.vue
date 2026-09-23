@@ -5,10 +5,28 @@
 import {
   alphabetical,
   demoFoods,
+  withManyTags,
   type DemoFood,
 } from '~/prototype/foodTagsDemo'
 
-const foods = computed(() => alphabetical(demoFoods))
+const route = useRoute()
+const foods = computed(() =>
+  alphabetical(
+    route.query.tags === 'many' ? withManyTags(demoFoods) : demoFoods,
+  ),
+)
+
+/** Up to five show whole; past that, four and a "+N" — a "+1" would take the
+ *  room of the one Tag it hides. */
+const SHOWN = 5
+function visibleTags(food: DemoFood) {
+  const sorted = [...food.tags].sort((a, b) => a.localeCompare(b))
+  if (sorted.length <= SHOWN) return { shown: sorted, hidden: 0 }
+  return {
+    shown: sorted.slice(0, SHOWN - 1),
+    hidden: sorted.length - SHOWN + 1,
+  }
+}
 const editing = ref<DemoFood | null>(null)
 const draft = ref<string[]>([])
 const open = computed({
@@ -41,13 +59,26 @@ function save() {
         </template>
         <span v-if="food.tags.length" class="mt-1 flex flex-wrap gap-1">
           <UBadge
-            v-for="tag in [...food.tags].sort()"
+            v-for="tag in visibleTags(food).shown"
             :key="tag"
             :label="tag"
             color="neutral"
             variant="soft"
             size="sm"
           />
+          <button
+            v-if="visibleTags(food).hidden > 0"
+            type="button"
+            :aria-label="`${visibleTags(food).hidden} more tags on ${formatName(food.name)}`"
+            @click="edit(food)"
+          >
+            <UBadge
+              :label="`+${visibleTags(food).hidden}`"
+              color="neutral"
+              variant="outline"
+              size="sm"
+            />
+          </button>
         </span>
       </FigureRow>
       <UButton
