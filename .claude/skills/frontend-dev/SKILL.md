@@ -81,7 +81,9 @@ assertion with the dev token), and no browser-level layer can reach it.
 - **Per-project aria snapshots** (Desktop / Mobile) — after an intended markup change regenerate with
   `pnpm test:e2e --update-snapshots`, then `git diff` the `*-snapshots/` to confirm only the intended
   tree moved.
-- **Stale Playwright build** — if a UI change doesn't show in an e2e/smoke run, `rm -rf frontend/.nuxt/test`.
+- **Stale Playwright build** — the mocked e2e rebuilds `.nuxt/e2e` from scratch every run, so it cannot
+  serve a stale build; the smokes still build through `@nuxt/test-utils`, so if a UI change doesn't show
+  in a smoke run, `rm -rf frontend/.nuxt/test`.
 
 ## Exit
 
