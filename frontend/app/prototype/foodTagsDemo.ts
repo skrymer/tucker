@@ -67,11 +67,45 @@ export const demoFoods: DemoFood[] = reactive(
   })),
 )
 
-/** Every Tag in use, alphabetically — found by name, not by rank. */
+/** The User's Tags — things in their own right, so one carrying no Foods stays. */
+export const demoTagStore: string[] = reactive([
+  ...new Set(demoFoods.flatMap((f) => f.tags)),
+])
+
+/** Every Tag the User has (plus any the foods carry), alphabetically. */
 export function demoTags(foods: DemoFood[]): string[] {
-  return [...new Set(foods.flatMap((f) => f.tags))].sort((x, y) =>
-    x.localeCompare(y),
+  return [...new Set([...demoTagStore, ...foods.flatMap((f) => f.tags)])].sort(
+    (x, y) => x.localeCompare(y),
   )
+}
+
+export function tagCount(tag: string): number {
+  return demoFoods.filter((f) => f.tags.includes(tag)).length
+}
+
+export function createTag(name: string): string | null {
+  const tag = canonicalTag(name, demoTags(demoFoods))
+  if (tag && !demoTagStore.includes(tag)) demoTagStore.push(tag)
+  return tag
+}
+
+/** Renaming onto another Tag's name (any case) merges the two. */
+export function renameTag(from: string, to: string) {
+  const others = demoTags(demoFoods).filter((t) => t !== from)
+  const target = canonicalTag(to, others)
+  if (!target || target === from) return
+  for (const f of demoFoods)
+    if (f.tags.includes(from))
+      f.tags = [...new Set(f.tags.map((t) => (t === from ? target : t)))]
+  const i = demoTagStore.indexOf(from)
+  if (i >= 0) demoTagStore.splice(i, 1)
+  if (!demoTagStore.includes(target)) demoTagStore.push(target)
+}
+
+export function deleteTag(tag: string) {
+  for (const f of demoFoods) f.tags = f.tags.filter((t) => t !== tag)
+  const i = demoTagStore.indexOf(tag)
+  if (i >= 0) demoTagStore.splice(i, 1)
 }
 
 /** Frequent Foods over a subset: count desc, cap ten — what the backend would do. */

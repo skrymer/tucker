@@ -13,6 +13,7 @@ const protoMode = computed(
   () => import.meta.dev && useRoute().query.variant === 'tags',
 )
 const protoTags = ref<string[]>([])
+const protoManageOpen = ref(false)
 provide(
   'prototypeTags',
   computed(() => (protoMode.value ? protoTags : null)).value,
@@ -241,6 +242,16 @@ function handleDeleteConfirm() {
     <header class="flex items-center justify-between">
       <h1 class="text-2xl font-bold text-default">Foods</h1>
       <UButton
+        v-if="protoMode"
+        icon="i-lucide-tags"
+        color="neutral"
+        variant="ghost"
+        class="ms-auto me-2"
+        @click="protoManageOpen = true"
+      >
+        Manage tags
+      </UButton>
+      <UButton
         v-if="isDesktop"
         icon="i-lucide-plus"
         color="primary"
@@ -295,6 +306,8 @@ function handleDeleteConfirm() {
       @submit-recipe="handleSubmitRecipe"
       @create-food="handleCreateIngredient"
     />
+
+    <PrototypeManageTags v-if="protoMode" v-model:open="protoManageOpen" />
 
     <DeleteFoodConfirm
       :food="selectedFood"

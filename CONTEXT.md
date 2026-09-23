@@ -339,10 +339,13 @@ and contributes little; one big restaurant meal is the reverse.
 _Avoid_: top 10, favourites, recents, most used, top foods
 
 **Tag**:
-A word a **User** attaches to their own **Foods** so they can narrow the Foods on
-offer when logging — "breakfast", "post-workout", "snack". Free-form and the User's
-own, like the Food it sits on: nothing is suggested, derived or shared, and
-Tucker attaches no meaning to any particular Tag. It sits on the Food and not the
+A named grouping a **User** keeps of their own **Foods**, so they can narrow the
+Foods on offer when logging — "breakfast", "post-workout", "snack". Free-form and
+the User's own: nothing is suggested, derived or shared, and Tucker attaches no
+meaning to any particular Tag.
+A Tag is a thing in its own right, owned by its User, not merely a word repeated
+across Foods: renaming it renames it on every Food carrying it, deleting it takes
+it off every Food, and a Tag carrying no Foods still exists until it is deleted. It sits on the Food and not the
 **Entry**, because it answers "what do I reach for at breakfast?" — a fact about
 the Food in this User's rotation — not "what did I eat at breakfast?".
 Choosing a Tag narrows the Foods on offer the way a typed query does: to one flat
