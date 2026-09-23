@@ -28,18 +28,26 @@ const emit = defineEmits<{ match: [UnmatchedFood] }>()
 const days = computed(() => daysInWindow(props.intake.from, props.intake.to))
 
 /**
- * What the window can be read for, as a sentence rather than a bar: the number is
- * the whole claim here, and a bar beside it would read as progress toward a full
- * ring that is unreachable by construction (frontend/DESIGN.md, ADR 0027).
- *
- * Null where the window cost nothing, there being no calories to be a share of —
- * that case gets its own sentence below rather than a 0% that would call a week
- * of matched black coffee unreadable.
+ * The share, rounded once so every sentence built from it agrees with the figure
+ * printed beside it. Null where the window cost nothing to be a share of, which
+ * the backend withholds rather than reporting as 0%.
  */
-const coverage = computed(() =>
+const coveragePercent = computed(() =>
   props.intake.coverage == null
     ? null
-    : `${Math.round(props.intake.coverage * 100)}% of the last ${days.value} days' ` +
+    : Math.round(props.intake.coverage * 100),
+)
+
+/**
+ * What the window can be read for, as a sentence rather than a bar: the number is
+ * the whole claim here, and a bar beside it would read as progress toward a full
+ * ring that is unreachable by construction (frontend/DESIGN.md, ADR 0027). A
+ * window with no share to state says what happened instead.
+ */
+const coverage = computed(() =>
+  coveragePercent.value == null
+    ? `Nothing you logged in the last ${days.value} days carried any calories.`
+    : `${coveragePercent.value}% of the last ${days.value} days' ` +
       `calories came from food Tucker can read vitamins and minerals for.`,
 )
 
@@ -53,12 +61,9 @@ const loggedDays = computed(() =>
 )
 
 /**
- * Whether there is anything to show at all — which is *nothing was logged*, not
- * *nothing was eaten*. A week whose only Entries are zero-calorie Foods costs
- * nothing and was still lived in, and keying off the calories hid a match queue
- * the backend had computed and offered (ADR 0027). `loggedDays` is already on the
- * response, says exactly this, and is what the Intake Breakdown keys on too, so
- * the two cards on `/review` cannot disagree about what an empty week is.
+ * Whether there is anything to show at all — *nothing was logged*, not *nothing
+ * was eaten*. A week of zero-calorie Foods costs nothing and was still lived in
+ * (ADR 0027).
  */
 const isEmptyWindow = computed(() => props.intake.loggedDays === 0)
 
@@ -106,9 +111,7 @@ const hasQueue = computed(() => props.intake.unmatched.length > 0)
  * land on exactly 1.0, and a bare `< 1` would attribute a rest to a 99.999…% week.
  */
 const hasUnreadableRest = computed(
-  () =>
-    props.intake.coverage != null &&
-    Math.round(props.intake.coverage * 100) < 100,
+  () => coveragePercent.value != null && coveragePercent.value < 100,
 )
 
 /**
@@ -155,20 +158,11 @@ const queueLabel = computed(() => {
     <h2 id="micronutrient-heading" class="text-sm font-medium text-muted">
       Vitamins and minerals
     </h2>
-    <!-- A 0% over a window that ate nothing is true and useless — it reads as a
-         failure to match rather than as a week with nothing in it. -->
     <p v-if="isEmptyWindow" class="mt-2 text-sm text-muted">
       Nothing logged in the last {{ days }} days.
     </p>
     <template v-else>
-      <!-- The share, or — where the window cost nothing to be a share of — what
-           happened instead. The figures below are unaffected: they are summed by
-           the grams eaten, so matched black coffee supplies its potassium whether
-           or not it cost a calorie (ADR 0027). -->
-      <p v-if="coverage" class="mt-2 text-sm text-default">{{ coverage }}</p>
-      <p v-else class="mt-2 text-sm text-default">
-        Nothing you logged in the last {{ days }} days carried any calories.
-      </p>
+      <p class="mt-2 text-sm text-default">{{ coverage }}</p>
       <p class="mt-1 text-sm text-muted">{{ loggedDays }}</p>
 
       <!-- Once nothing is left, the share still unaccounted for has to be named

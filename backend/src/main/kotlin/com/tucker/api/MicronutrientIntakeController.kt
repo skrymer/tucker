@@ -49,10 +49,9 @@ data class PublishedLineResponse(
  * from — the rule is a property of the response rather than a convention every
  * client has to keep, which is what ADR 0002 asks of a rule this load-bearing.
  *
- * [readAgainst] is the *one* figure the verdict stands on, never both of them
- * side by side: pairing a claim with its line is `claimFor`'s rule, and a response
- * that ships the pair unresolved leaves every client to restate it — and free to
- * pick the other one (ADR 0027, amended by #288).
+ * [readAgainst] is the *one* figure the verdict stands on, never both of them side
+ * by side: the pairing is [MicronutrientIntake]'s rule, and a response shipping it
+ * unresolved leaves every client to restate it (ADR 0027).
  */
 data class MicronutrientRowResponse(
     /** The domain enums, so the spec lists the values (see [FoodResponse.kind]). */
@@ -70,10 +69,10 @@ data class MicronutrientRowResponse(
  * left to match. Nothing is stored per window — it is a read, like an Intake
  * Breakdown.
  *
- * [coverage] is stated always and never scaled up — the unaccounted share is
- * disproportionately restaurant and packaged food, so filling it in would read as a
- * neutral estimate and be a biased one. [totalCalories] is what tells a fully
- * matched week from one where nothing was logged; both are an empty queue.
+ * [coverage] is never scaled up — the unaccounted share is disproportionately
+ * restaurant and packaged food, so filling it in would read as a neutral estimate
+ * and be a biased one. It is null where the window cost nothing to be a share of;
+ * [loggedDays] is what says whether anything was logged at all.
  */
 data class MicronutrientIntakeResponse(
     val from: LocalDate,
@@ -108,9 +107,7 @@ private fun MicronutrientRow.toResponse() = MicronutrientRowResponse(
     label = nutrient.label,
     unit = nutrient.unit,
     amount = amount.takeIf { canBeStated },
-    // Not guarded in turn: the domain leaves this null on exactly the rows that
-    // earn no claim, so repeating the test here would be the second statement of
-    // the rule this field exists to remove.
+    // Null on exactly the rows that earn no claim, so no `canBeStated` guard here.
     readAgainst = readAgainst?.let { PublishedLineResponse(it.amount, it.kind) },
     claim = claim,
 )

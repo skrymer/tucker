@@ -454,6 +454,26 @@ describe('MicronutrientSection', () => {
     ).toBeVisible()
   })
 
+  it('blames no estimated meals for a window that cost nothing at all', async () => {
+    await renderSuspended(MicronutrientSection, {
+      props: {
+        intake: micronutrientIntake({
+          totalCalories: 0,
+          loggedDays: 3,
+          coverage: null,
+          unmatched: [],
+        }),
+      },
+    })
+
+    expect(screen.getByText(/Nothing left to match/)).toBeVisible()
+    // There is no rest: a window with no calories has no share for estimated
+    // meals to be, and a missing coverage figure must not read as a low one.
+    expect(
+      screen.queryByText(/came from meals you estimated/),
+    ).not.toBeInTheDocument()
+  })
+
   it('attributes no rest to estimates and recipes when the window left none', async () => {
     await renderSuspended(MicronutrientSection, {
       props: {

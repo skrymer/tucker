@@ -66,11 +66,11 @@ export type Timeline = components['schemas']['WeightTimelineResponse']
 
 /**
  * Whether the timeline has an intake half at all — which is what Calorie Tracking
- * decides, server-side (ADR 0029). A count of logged days is the one figure the
- * backend withholds wholesale rather than per day, so it is what says so.
+ * decides, server-side (ADR 0029). The response names which half it drew, so this
+ * reads that discriminator rather than inferring it from a figure's presence.
  */
 export function timelineTracksIntake(timeline: Timeline): boolean {
-  return timeline.loggedDays != null
+  return timeline.evidence?.kind === 'INTAKE'
 }
 
 /**

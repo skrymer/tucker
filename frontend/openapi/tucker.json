@@ -3996,6 +3996,29 @@
               "$ref": "#/components/schemas/WeightTimelineDayResponse"
             }
           },
+          "evidence": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TimelineEvidenceResponse"
+              }
+            ]
+          }
+        }
+      },
+      "TimelineEvidenceResponse": {
+        "required": [
+          "kind"
+        ],
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "INTAKE",
+              "PLAN"
+            ]
+          },
           "loggedDays": {
             "type": "integer",
             "format": "int32",

@@ -96,7 +96,7 @@ class WeightTimelineTest {
 
         val timeline = WeightTimeline.of(from, to, twentyDays) { intake }!!
 
-        assertEquals(2, timeline.loggedDays)
+        assertEquals(TimelineEvidenceSummary.Intake(loggedDays = 2), timeline.evidence)
     }
 
     @Test
@@ -123,7 +123,7 @@ class WeightTimelineTest {
         // not there — the client is never left hiding a half it was handed.
         val timeline = WeightTimeline.of(from, to, daily(*DoubleArray(28) { 80.0 }))!!
 
-        assertNull(timeline.loggedDays)
+        assertNull(timeline.evidence)
         assertEquals(emptyList<Double>(), timeline.days.mapNotNull { it.caloriesKcal })
         assertEquals(emptyList<Double>(), timeline.days.mapNotNull { it.calorieBudgetKcal })
     }
@@ -297,9 +297,9 @@ class WeightTimelineTest {
         assertEquals(82.0, planned[from])
         assertEquals(81.5, planned[from.plusDays(7)])
         assertEquals(81.0, planned[from.plusDays(14)])
-        // A plan is not a log, and a count of none would read as a tracking window
-        // with nothing in it — which is what the client takes this figure to mean.
-        assertNull(timeline.loggedDays)
+        // A plan is not a log: the timeline names the plan as its evidence, so there
+        // is no logged-day count to be read as a tracking window with nothing in it.
+        assertEquals(TimelineEvidenceSummary.Plan(startsOn = from), timeline.evidence)
     }
 
     @Test
@@ -342,8 +342,8 @@ class WeightTimelineTest {
         val timeline = WeightTimeline.of(from, to, daily(*DoubleArray(28) { 80.0 })) { plan }!!
 
         assertEquals(
-            tomorrow,
-            timeline.planStartsOn,
+            TimelineEvidenceSummary.Plan(startsOn = tomorrow),
+            timeline.evidence,
             "the plan exists and simply does not reach this window, which is a " +
                 "different thing from defending no target weight at all",
         )

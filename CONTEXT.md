@@ -226,8 +226,9 @@ way.
 An **empty window** is one nothing was logged in, not one nothing was *eaten* in.
 Zero calories is a fact about the food; how many of the window's days carry an
 **Entry** is the fact about the log, and it is the one that decides whether there is
-anything to show. The same predicate decides it for an **Intake Breakdown**, so the
-two never come to disagree about what an empty week is.
+anything to show. The same **rule** decides it for an **Intake Breakdown**, so the
+two never come to disagree about what an empty week is — though each reads it off
+the figure its own answer is built from.
 A partly-matched Recipe contributes partly, and its calories count **fractionally**
 toward the share above — by how much of the recipe's own calories came from matched
 ingredients. All-or-none would throw away something measured. Rolling a past Entry
@@ -371,8 +372,9 @@ single lumped bucket would answer instead of this one.
 A breakdown also states how many of the window's days carry an **Entry**: the
 width of a window is no evidence that it was logged, so a seven-day breakdown
 built from three logged days is discounted rather than read at face value. A day
-counts once, however much was logged on it. That count is also what says the window
-is **empty** — nothing was logged — which a window that merely cost nothing is not.
+counts once, however much was logged on it. Whether the window is **empty** is that
+same rule — nothing was logged — which a window that merely cost nothing is not;
+this read states it through its own slice list, there being no Entry without one.
 A day of zero-calorie Foods is one slice per Food at `0 kcal`, so there is nothing to
 divide and no ring to draw, but there is still something to state: what was logged,
 and that none of it cost anything.
@@ -760,7 +762,9 @@ two, so the weight axis stretches at most two kilos past the weights and the pla
 is clipped past that, marked at the edge it left by.
 A timeline says **which of the two it draws beside the weight**, and says it even
 when it has nothing to draw: the day the plan begins where a plan is the evidence,
-the logged-day count where intake is, and neither in **Maintenance Mode**. That is
+the logged-day count where intake is. A timeline naming **neither** is in
+**Maintenance Mode** — that direction only, since with **Calorie Tracking** on it
+still counts logged days. That is
 what keeps *there is a plan, it just does not reach this window* apart from *there
 is no plan at all* — two states that are otherwise identical, a Goal started on a
 phone already into tomorrow being a day ahead of a desktop reading in UTC. Where a

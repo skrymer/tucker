@@ -49,7 +49,11 @@ async function timeline(
     from: string
     to: string
     days: TimelineDay[]
-    loggedDays: number | null
+    evidence: {
+      kind: 'INTAKE' | 'PLAN'
+      loggedDays: number | null
+      planStartsOn: string | null
+    } | null
   }
 }
 
@@ -160,8 +164,11 @@ test('a weight-only User is shown the plan they set, and none once they drop it'
 
   const drawn = await timeline(request, 28, today)
   const dayOn = (date: string) => drawn.days.find((day) => day.date === date)!
-  // No intake half at all, and the plan in its place (ADR 0029).
-  expect(drawn.loggedDays).toBeNull()
+  // No intake half at all, and the plan in its place — named as the evidence
+  // even on the days it does not reach (ADR 0029).
+  expect(drawn.evidence?.kind).toBe('PLAN')
+  expect(drawn.evidence?.planStartsOn).toBe(SET_ON)
+  expect(drawn.evidence?.loggedDays).toBeNull()
   // Nothing on a day the Goal did not yet cover.
   expect(dayOn(isoShiftDays(today, -15)).trajectoryKg).toBeNull()
   expect(dayOn(SET_ON).trajectoryKg).toBeCloseTo(startWeightKg, 5)
@@ -240,7 +247,8 @@ test('each day is drawn against the Budget in force on it, and an unlogged one i
 
   const drawn = await timeline(request, 28, today)
   const dayOn = (date: string) => drawn.days.find((day) => day.date === date)!
-  expect(drawn.loggedDays).toBe(6)
+  expect(drawn.evidence?.kind).toBe('INTAKE')
+  expect(drawn.evidence?.loggedDays).toBe(6)
   // Absent, never zero: a floor-height bar would read as a day of eating nothing.
   expect(dayOn(NEVER_LOGGED).caloriesKcal).toBeNull()
   // And the Budget spans that day rather than lapsing over it.

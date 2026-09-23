@@ -342,7 +342,8 @@ Coverage is structurally poor and always will be. An **Estimated Entry** has no 
 so can never contribute; an unmatched Food contributes nothing; some manufactured
 foods have no generic worth matching to. So the summed figure is *at least* what was
 eaten, and **the share of the window's calories that could contribute is stated
-alongside it, always**. Calories measure that share for
+alongside it whenever there are calories to measure it against** (amended by
+[#290](https://github.com/skrymer/tucker/issues/290), below). Calories measure that share for
 [0026](0026-an-intake-breakdown-divides-what-was-eaten-never-the-budget.md)'s reason:
 an Estimated Entry has no mass, so grams cannot measure the entries most likely to be
 missing.
@@ -432,22 +433,32 @@ the reason stated above, and the reason has not changed.
 card keyed its whole empty state off `totalCalories == 0` and so replaced itself with
 *Nothing logged in the last 7 days*, hiding a match queue the backend had computed
 and offered. `loggedDays` is already on the response and says exactly what was meant,
-and is what both `/review` cards now key on — one predicate, so the two cannot come
-to disagree about what an empty week is.
+and is what this card now keys on. The **Intake Breakdown** reaches the same rule
+through its own item list, which `IntakeBreakdown.of` derives from the same Entries
+— so the two cannot come to disagree, and ADR 0026 records why the expression stays
+different there.
 
 ## Amended by [#288](https://github.com/skrymer/tucker/issues/288): a claim ships with the line it was read against
 
 A row carried `recommended` and `limit` side by side and left the client to pick
 which one a tile was read against — `OVER_LIMIT` by the limit, `CLEARS_REFERENCE` by
-the recommended figure. That is `claimFor`'s own rule, restated where ADR 0002 says
+the recommended figure. That is `MicronutrientIntake.rowFor`'s own rule, restated where ADR 0002 says
 derived state does not live, and held together by three non-null assertions standing
 on an invariant the wire type does not express.
 
-The row now carries **`readAgainst`** instead: one `PublishedLine(line, amount)`,
-present exactly when `amount` is, where `line` is a `RECOMMENDED | UPPER_LEVEL |
-SUGGESTED_DIETARY_TARGET`. The pairing is made inside `claimFor`, which is where the
-claim is decided, so a claim and its line come back together and cannot drift apart.
-The client renders what it is given.
+The row now carries **`readAgainst`** instead: one `PublishedLine(amount, kind)`,
+present exactly when `amount` is, where `kind` is a `RECOMMENDED | UPPER_LEVEL |
+SUGGESTED_DIETARY_TARGET`. The pairing is made inside `rowFor`, which is where the
+claim is decided — one `when` producing both, so a claim and its line cannot drift
+apart. The client renders what it is given.
+
+`ReferenceLine` is a **superset** of `IntakeLimitKind` rather than the same enum
+widened. The two answer different questions of the same table: one is *which kind of
+line NHMRC published*, where a limit is the only thing it can be; the other is
+*which published figure this verdict stands on*, which includes the figure to reach.
+Folding them together would make `RECOMMENDED` representable as a line not to cross,
+a state the domain does not have — and the `asLine()` mapping between them stays
+exhaustive, so a fourth published figure breaks the build rather than sliding through.
 
 What each line is *called* stays client-side — mapping an enum to a display string is
 the `dayStatusVerdict` / `paceBadge` precedent — and so does which claim is strict.

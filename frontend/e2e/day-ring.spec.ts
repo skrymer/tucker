@@ -143,14 +143,21 @@ test('each legend row puts its title and its bar on one line', async ({
 
   await goto('/', { waitUntil: 'hydration' })
 
-  // Read by position: a progressbar's accessible name is its percentage, not its
-  // `aria-label`, so the two meters cannot be told apart by name.
-  const meters = page.getByRole('progressbar')
-  await expect(meters).toHaveCount(2)
+  await expect(page.getByRole('progressbar')).toHaveCount(2)
 
   const [calories, protein] = await Promise.all([
-    sharesALine(page.getByText('Calories', { exact: true }), meters.nth(0)),
-    sharesALine(page.getByText('Protein', { exact: true }), meters.nth(1)),
+    sharesALine(
+      page.getByText('Calories', { exact: true }),
+      page.getByRole('progressbar', {
+        name: 'Calories against the Calorie Budget',
+      }),
+    ),
+    sharesALine(
+      page.getByText('Protein', { exact: true }),
+      page.getByRole('progressbar', {
+        name: 'Protein against the Protein Floor',
+      }),
+    ),
   ])
   expect(calories).toBe(true)
   expect(protein).toBe(true)

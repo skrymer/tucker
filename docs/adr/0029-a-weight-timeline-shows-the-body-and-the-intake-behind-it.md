@@ -129,17 +129,31 @@ window — and that is its own decision, not this one.
 
 The paragraph above left the read-side fix open between clamping `to` and saying it
 on the wire. **It says it on the wire**, because clamping does not work: clamp `to`
-forward to `startedOn` and the plan has exactly *one* day, which the paragraph two
-above refuses to draw — so the card renders the Maintenance-Mode shape either way,
+forward to `startedOn` and the plan has exactly *one* day, which *A plan of one day
+is not drawn at all* above refuses to draw — so the card renders the
+Maintenance-Mode shape either way,
 and clamping the two days it would take invents a window the caller never asked for
 while `to` is client-owned by ADR 0014.
 
-`WeightTimelineResponse` therefore carries **`planStartsOn`**, the day the active
-Goal's plan begins, non-null exactly when a plan is the evidence this timeline draws.
-It is the plan's `loggedDays`: that field is already how a client knows the *intake*
-half is what it is looking at, so `TimelineEvidence` answers both questions and
-Maintenance Mode is the one state that answers neither. A client can then tell the
-three apart without inspecting a single day.
+`WeightTimelineResponse` therefore **names the half it drew**, and names it whether
+or not that half had anything to draw on the days in the window. `TimelineEvidence`
+answers one question — `summarise` — returning a sealed `TimelineEvidenceSummary`:
+`Intake(loggedDays)` or `Plan(startsOn)`. A response naming **neither** is
+Maintenance Mode, with Calorie Tracking off, that being the only setting under
+which a plan is ever the evidence. That direction only: with tracking *on*,
+Maintenance Mode still counts logged days. A client can then tell the three apart
+without inspecting a single day.
+
+**One discriminated field, not two sibling nullables.** The first shape of this fix
+put `loggedDays` and `planStartsOn` side by side on the response, and that is
+precisely what ADR 0024 refuses: siblings admit a timeline claiming both halves — a
+state the domain does not have — and leave every client to re-establish that they
+agree. It was also incoherent with the same change's `readAgainst`, which collapses
+exactly that shape one endpoint over. So the wire carries
+`TimelineEvidenceResponse(kind, loggedDays, planStartsOn)`, the discriminated form
+`BarcodeLookupResponse` already uses, flattened from the sealed type by an
+**exhaustive `when`** — a third evidence kind is then a compile error in the
+controller rather than a field that silently arrives null.
 
 **It closes both silences, not only the reported one.** The window ending before the
 Goal started is the case #335 reports, and it is the case that is invisible on the

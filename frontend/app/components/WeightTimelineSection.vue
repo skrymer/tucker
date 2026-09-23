@@ -53,11 +53,19 @@ const planClipped = computed(() => (plan.value?.clips.length ?? 0) > 0)
  * (ADR 0029). `planStartsOn` is the response saying a plan is its evidence even
  * when no day carries one, which is what tells the states apart.
  */
-const planPending = computed(() =>
-  plan.value || !props.timeline.planStartsOn
-    ? null
-    : `Your goal’s plan starts ${formatDayMonthFromISO(props.timeline.planStartsOn)}.`,
-)
+const planPending = computed(() => {
+  const evidence = props.timeline.evidence
+  if (plan.value || evidence?.kind !== 'PLAN' || !evidence.planStartsOn) {
+    return null
+  }
+  // Two silences, two sentences. A plan still ahead of the window has a date
+  // worth naming; a plan that began *within* it has too few days to draw a line
+  // through — the common case, since a Goal is always started today (ADR 0016)
+  // and the window ends today. Dating that one prints today in the future tense.
+  return evidence.planStartsOn > props.timeline.to
+    ? `Your goal’s plan starts ${formatDayMonthFromISO(evidence.planStartsOn)}.`
+    : 'Your goal’s plan appears here from tomorrow.'
+})
 const {
   at,
   trendKg,
@@ -79,15 +87,15 @@ const {
 const tracksIntake = computed(() => timelineTracksIntake(props.timeline))
 
 /** How far the bars can be trusted: how many of the days drawn carry an Entry. */
-const coverage = computed(() =>
-  tracksIntake.value
-    ? loggedDaysCaption(
-        props.timeline.loggedDays!,
-        props.timeline.from,
-        props.timeline.to,
-      )
-    : null,
-)
+const coverage = computed(() => {
+  const evidence = props.timeline.evidence
+  if (evidence?.kind !== 'INTAKE' || evidence.loggedDays == null) return null
+  return loggedDaysCaption(
+    evidence.loggedDays,
+    props.timeline.from,
+    props.timeline.to,
+  )
+})
 
 /** Each day in words — the chart is decorative, so this is what states it. */
 const readouts = computed(() => weightTimelineReadouts(props.timeline))

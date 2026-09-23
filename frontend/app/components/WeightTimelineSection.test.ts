@@ -15,6 +15,7 @@ import {
 import WeightTimelineSection from './WeightTimelineSection.vue'
 import {
   timelineDays,
+  planStartingOn,
   weightTimeline,
   withIntake,
   withPlan,
@@ -26,7 +27,10 @@ const trackedDays = withIntake(timelineDays([80.4, null, 80.2]), [
   null,
   1000,
 ])
-const tracked = weightTimeline({ days: trackedDays, loggedDays: 2 })
+const tracked = weightTimeline({
+  days: trackedDays,
+  evidence: { kind: 'INTAKE', loggedDays: 2, planStartsOn: null },
+})
 
 /** A weight-only window with an active Goal: the plan takes the intake half's place. */
 const plannedDays = withPlan(
@@ -440,7 +444,11 @@ describe('WeightTimelineSection', () => {
       props: {
         timeline: weightTimeline({
           days: timelineDays([80.4, 80.2, 80.1]),
-          planStartsOn: '2026-06-04',
+          evidence: {
+            kind: 'PLAN',
+            loggedDays: null,
+            planStartsOn: '2026-06-04',
+          },
         }),
       },
     })
@@ -448,6 +456,27 @@ describe('WeightTimelineSection', () => {
     expect(screen.getByText('Your goal’s plan starts 4 Jun.')).toBeVisible()
     // Not the key chip, which names a stroke the chart is drawing.
     expect(screen.queryByText('Plan')).not.toBeInTheDocument()
+  })
+
+  it('does not date a plan that already started in the future tense', async () => {
+    // A Goal is always started today (ADR 0016) and the window ends today, so a
+    // User's first look after setting one carries exactly ONE planned day — the
+    // common case, not an edge. Naming today's date as when the plan "starts"
+    // reads as a bug rather than as an explanation.
+    const days = timelineDays([80.4, 80.2, 80.1])
+    await renderSuspended(WeightTimelineSection, {
+      props: {
+        timeline: weightTimeline({
+          days,
+          evidence: planStartingOn(days.at(-1)!.date),
+        }),
+      },
+    })
+
+    expect(screen.queryByText(/plan starts/)).not.toBeInTheDocument()
+    expect(
+      screen.getByText('Your goal’s plan appears here from tomorrow.'),
+    ).toBeVisible()
   })
 
   it('stays silent in Maintenance Mode, where there is no plan to be waiting for', async () => {

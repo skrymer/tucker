@@ -25,16 +25,7 @@ enum class IntakeLimitKind {
 /** The line a window's intake of a nutrient is not to cross. */
 data class IntakeLimit(val amount: Double, val kind: IntakeLimitKind)
 
-/**
- * Which published figure a claim was read against.
- *
- * A superset of [IntakeLimitKind] rather than the same enum, because these answer
- * different questions of the same table: that one is *which kind of line NHMRC
- * published*, where a limit is the only thing it can be, and this one is *which
- * published figure this verdict stands on*, which includes the figure to reach.
- * Folding them together would make `RECOMMENDED` representable as a line not to
- * cross, which is a state the domain does not have.
- */
+/** Which published figure a claim was read against. A superset of [IntakeLimitKind] (ADR 0027). */
 enum class ReferenceLine {
     /** The figure to reach — an RDI, or an Adequate Intake where no RDI is set. */
     RECOMMENDED,
@@ -46,11 +37,8 @@ enum class ReferenceLine {
     SUGGESTED_DIETARY_TARGET,
 }
 
-/**
- * A published figure, and which of them it is — the line a [MicronutrientClaim] was
- * read against, travelling with the claim it decided (ADR 0027).
- */
-data class PublishedLine(val kind: ReferenceLine, val amount: Double)
+/** The published line a [MicronutrientClaim] was read against, and which figure it is. */
+data class PublishedLine(val amount: Double, val kind: ReferenceLine)
 
 /**
  * What a body of a given age and sex is published as needing of one nutrient: a

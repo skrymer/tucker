@@ -583,7 +583,7 @@ class CrossUserIsolationTest {
             jsonPath("$.days.length()") { value(14) }
             jsonPath("$.days[0].weightKg") { value(bobKg) }
             jsonPath("$.days[13].trendKg") { value(bobKg) }
-            jsonPath("$.loggedDays") { value(0) }
+            jsonPath("$.evidence.loggedDays") { value(0) }
             jsonPath("$.days[13].caloriesKcal") { value(null) }
             jsonPath("$.days[13].calorieBudgetKcal") { value(null) }
         }

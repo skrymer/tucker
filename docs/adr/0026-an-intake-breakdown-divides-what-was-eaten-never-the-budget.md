@@ -168,9 +168,11 @@ of a round-trip.
   a logged window costing nothing keeps its **legend**, which is true and worth
   reading — here is what you logged, none of it cost anything.
 
-  The **Micronutrient Intake** card had no such equivalence to lean on, its own
-  window being able to hold Entries while `totalCalories` is 0, which is why the
-  fix lands differently there (ADR 0027). What the two now share is the *rule* —
+  The **Micronutrient Intake** card had no such equivalence to lean on — not
+  because its window can hold Entries at `totalCalories` 0, which is true of this
+  one too and is the whole case, but because its response carries **no item
+  list**, so the calories were the only proxy available to it. That is why the fix
+  lands differently there (ADR 0027). What the two now share is the *rule* —
   an empty window is one nothing was logged in — rather than one expression of it.
 - **Absent with Calorie Tracking off**, and gated explicitly rather than left to
   the data. The first draft of this decision said no gate was needed, on the
