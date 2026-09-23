@@ -154,6 +154,34 @@ describe('/foods saving a new food', () => {
   })
 })
 
+describe('/foods saving a Food’s Tags', () => {
+  it('names a save that failed for want of a connection in its own error toast', async () => {
+    toastAdd.mockClear()
+    registerEndpoint('/api/tags', () => [
+      { id: 1, name: 'snack', foodCount: 0 },
+    ])
+    registerEndpoint('/api/foods/7/tags', {
+      method: 'PUT',
+      handler: (event) => {
+        setResponseStatus(event, 503)
+        return {}
+      },
+    })
+    const user = userEvent.setup()
+    await renderSuspended(Foods)
+
+    await user.click(screen.getByRole('button', { name: 'Tags for Oats' }))
+    const sheet = screen.getByRole('dialog', { name: 'Tags for Oats' })
+    await user.click(within(sheet).getByRole('button', { name: 'Save tags' }))
+
+    await vi.waitFor(() =>
+      expect(toastAdd).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'Could not save tags' }),
+      ),
+    )
+  })
+})
+
 // Last of the describes that need a working catalog: this one re-registers
 // `/api/foods` to throw, and the override outlives the test.
 describe('/foods when the catalog fails to load', () => {

@@ -1,9 +1,19 @@
 import { describe, expect, it, vi } from 'vitest'
-import { registerEndpoint, renderSuspended } from '@nuxt/test-utils/runtime'
+import {
+  mockNuxtImport,
+  registerEndpoint,
+  renderSuspended,
+} from '@nuxt/test-utils/runtime'
 import { readBody, setResponseStatus } from 'h3'
 import { screen } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import FoodTagsSheet from './FoodTagsSheet.vue'
+
+const { toastAdd } = vi.hoisted(() => ({ toastAdd: vi.fn() }))
+mockNuxtImport('useToast', () => () => ({
+  add: toastAdd,
+  remove: vi.fn(),
+}))
 
 const oats = {
   id: 1,
@@ -22,6 +32,31 @@ describe('FoodTagsSheet', () => {
     const sheet = screen.getByRole('dialog', { name: 'Tags for Rolled oats' })
     expect(sheet).toBeVisible()
     expect(await screen.findByText('Breakfast')).toBeVisible()
+  })
+
+  it('asks for no Tags while it is closed', async () => {
+    let asked = 0
+    registerEndpoint('/api/tags', () => {
+      asked++
+      return []
+    })
+
+    await renderSuspended(FoodTagsSheet, { props: { food: null } })
+
+    expect(asked).toBe(0)
+  })
+
+  it('opens on an empty field, offering nothing until the Tags have loaded', async () => {
+    registerEndpoint('/api/tags', (event) => {
+      setResponseStatus(event, 500)
+      return {}
+    })
+    await renderSuspended(FoodTagsSheet, { props: { food: oats } })
+    const picker = screen.getByRole('combobox', { name: 'Tags' })
+
+    expect(picker).toHaveValue('')
+    await userEvent.setup().click(picker)
+    expect(screen.queryAllByRole('option')).toEqual([])
   })
 
   it('names its picker, so a screen reader knows what it is choosing', async () => {
@@ -164,6 +199,54 @@ describe('FoodTagsSheet', () => {
     ).toBeVisible()
     await user.click(screen.getByRole('button', { name: 'Save tags' }))
     expect(onSave).toHaveBeenCalledWith([7])
+  })
+
+  it('adds a created Tag to a Food that wore none', async () => {
+    registerEndpoint('/api/tags', {
+      method: 'GET',
+      handler: () => [],
+    })
+    registerEndpoint('/api/tags', {
+      method: 'POST',
+      handler: () => ({ id: 20, name: 'snack', foodCount: 0 }),
+    })
+    const onSave = vi.fn()
+    await renderSuspended(FoodTagsSheet, {
+      props: { food: { ...oats, tags: [] }, onSave },
+    })
+    const user = userEvent.setup()
+
+    await user.type(screen.getByRole('combobox'), 'snack')
+    await user.click(await screen.findByRole('option', { name: /snack/ }))
+    await user.click(screen.getByRole('button', { name: 'Save tags' }))
+
+    expect(onSave).toHaveBeenCalledWith([20])
+  })
+
+  it('names a create that failed for want of a connection in its own error toast', async () => {
+    toastAdd.mockClear()
+    registerEndpoint('/api/tags', {
+      method: 'GET',
+      handler: () => [],
+    })
+    registerEndpoint('/api/tags', {
+      method: 'POST',
+      handler: (event) => {
+        setResponseStatus(event, 503)
+        return {}
+      },
+    })
+    await renderSuspended(FoodTagsSheet, { props: { food: oats } })
+    const user = userEvent.setup()
+
+    await user.type(screen.getByRole('combobox'), 'snack')
+    await user.click(await screen.findByRole('option', { name: /snack/ }))
+
+    await vi.waitFor(() =>
+      expect(toastAdd).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'Could not add tag' }),
+      ),
+    )
   })
 
   it('saves a Food with a Tag taken off as no longer wearing it', async () => {
