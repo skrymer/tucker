@@ -31,8 +31,7 @@ describe('micronutrientReading', () => {
         label: 'Sodium',
         unit: 'mg',
         amount: 2430,
-        recommended: null,
-        limit: { amount: 2000, kind: 'SUGGESTED_DIETARY_TARGET' },
+        readAgainst: { kind: 'SUGGESTED_DIETARY_TARGET', amount: 2000 },
         claim: 'OVER_LIMIT',
       }),
     ])
@@ -61,7 +60,7 @@ describe('micronutrientReading', () => {
         label: 'Zinc',
         unit: 'mg',
         amount: 48,
-        limit: { amount: 40, kind: 'UPPER_LEVEL' },
+        readAgainst: { kind: 'UPPER_LEVEL', amount: 40 },
         claim: 'OVER_LIMIT',
       }),
     ])
@@ -80,8 +79,7 @@ describe('micronutrientReading', () => {
         label: 'Iron',
         unit: 'mg',
         amount: 21.4,
-        recommended: 18,
-        limit: null,
+        readAgainst: { kind: 'RECOMMENDED', amount: 18 },
         claim: 'CLEARS_REFERENCE',
       }),
     ])
@@ -110,8 +108,7 @@ describe('micronutrientReading', () => {
         label: 'Sodium',
         unit: 'mg',
         amount: 2000.4,
-        recommended: null,
-        limit: { amount: 2000, kind: 'SUGGESTED_DIETARY_TARGET' },
+        readAgainst: { kind: 'SUGGESTED_DIETARY_TARGET', amount: 2000 },
         claim: 'OVER_LIMIT',
       }),
     ])
@@ -130,8 +127,7 @@ describe('micronutrientReading', () => {
         label: 'Thiamin',
         unit: 'mg',
         amount: 1.24,
-        recommended: 1.2,
-        limit: null,
+        readAgainst: { kind: 'RECOMMENDED', amount: 1.2 },
         claim: 'CLEARS_REFERENCE',
       }),
     ])

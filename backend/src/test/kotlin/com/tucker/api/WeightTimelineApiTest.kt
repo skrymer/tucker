@@ -250,6 +250,33 @@ class WeightTimelineApiTest {
     }
 
     @Test
+    fun `a window ending before the Goal started is told apart from Maintenance Mode`() {
+        // Two devices, no broken clock: a phone in Brisbane at 08:00 Tuesday sends
+        // `clientToday` a day ahead of the server's UTC Monday, ADR 0014's tolerance
+        // accepts it, and a desktop reading in UTC then asks for a window ending
+        // today. Every `trajectoryKg` is null — which is byte-for-byte what
+        // Maintenance Mode sends, `loggedDays` being null under a plan too.
+        tracksWeightOnly()
+        aFortnightOnTheScale()
+        val tomorrow = LocalDate.now().plusDays(1)
+        mockMvc.post("/api/goal") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"startedOn":"$tomorrow","clientToday":"$tomorrow",
+                          "targetWeightKg":76.0,"rateKgPerWeek":0.5}"""
+        }.andExpect { status { isCreated() } }
+
+        timeline().andExpect {
+            status { isOk() }
+            jsonPath("$.days[0].trajectoryKg") { value(null) }
+            jsonPath("$.days[14].trajectoryKg") { value(null) }
+            // So the response has to say a plan is what it draws, or the card renders
+            // the Maintenance-Mode shape with nothing explaining why (ADR 0029).
+            jsonPath("$.planStartsOn") { value("$tomorrow") }
+            jsonPath("$.loggedDays") { value(null) }
+        }
+    }
+
+    @Test
     fun `in Maintenance Mode there is no plan at all, only the weight`() {
         // A decision rather than an omission: Tucker defends no target weight
         // (ADR 0008), so with no active Goal there is nothing to plan against.
@@ -261,6 +288,11 @@ class WeightTimelineApiTest {
             jsonPath("$.days[0].trajectoryKg") { value(null) }
             jsonPath("$.days[14].trajectoryKg") { value(null) }
             jsonPath("$.days[14].trendKg") { value(79.9) }
+            // Neither half named, which is what makes this state itself rather than
+            // the default every plan that draws nothing falls into. The test above
+            // sends the same days and says a plan starts tomorrow.
+            jsonPath("$.planStartsOn") { value(null) }
+            jsonPath("$.loggedDays") { value(null) }
         }
     }
 

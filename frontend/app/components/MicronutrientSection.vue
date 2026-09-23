@@ -31,11 +31,16 @@ const days = computed(() => daysInWindow(props.intake.from, props.intake.to))
  * What the window can be read for, as a sentence rather than a bar: the number is
  * the whole claim here, and a bar beside it would read as progress toward a full
  * ring that is unreachable by construction (frontend/DESIGN.md, ADR 0027).
+ *
+ * Null where the window cost nothing, there being no calories to be a share of —
+ * that case gets its own sentence below rather than a 0% that would call a week
+ * of matched black coffee unreadable.
  */
-const coverage = computed(
-  () =>
-    `${Math.round(props.intake.coverage * 100)}% of the last ${days.value} days' ` +
-    `calories came from food Tucker can read vitamins and minerals for.`,
+const coverage = computed(() =>
+  props.intake.coverage == null
+    ? null
+    : `${Math.round(props.intake.coverage * 100)}% of the last ${days.value} days' ` +
+      `calories came from food Tucker can read vitamins and minerals for.`,
 )
 
 /** How far the sentence above can be trusted, in the sibling card's own words. */
@@ -47,7 +52,15 @@ const loggedDays = computed(() =>
   ),
 )
 
-const isEmptyWindow = computed(() => props.intake.totalCalories === 0)
+/**
+ * Whether there is anything to show at all — which is *nothing was logged*, not
+ * *nothing was eaten*. A week whose only Entries are zero-calorie Foods costs
+ * nothing and was still lived in, and keying off the calories hid a match queue
+ * the backend had computed and offered (ADR 0027). `loggedDays` is already on the
+ * response, says exactly this, and is what the Intake Breakdown keys on too, so
+ * the two cards on `/review` cannot disagree about what an empty week is.
+ */
+const isEmptyWindow = computed(() => props.intake.loggedDays === 0)
 
 /**
  * The window read as the two things this card draws — tiles for the claims Tucker
@@ -93,7 +106,9 @@ const hasQueue = computed(() => props.intake.unmatched.length > 0)
  * land on exactly 1.0, and a bare `< 1` would attribute a rest to a 99.999…% week.
  */
 const hasUnreadableRest = computed(
-  () => Math.round(props.intake.coverage * 100) < 100,
+  () =>
+    props.intake.coverage != null &&
+    Math.round(props.intake.coverage * 100) < 100,
 )
 
 /**
@@ -146,7 +161,14 @@ const queueLabel = computed(() => {
       Nothing logged in the last {{ days }} days.
     </p>
     <template v-else>
-      <p class="mt-2 text-sm text-default">{{ coverage }}</p>
+      <!-- The share, or — where the window cost nothing to be a share of — what
+           happened instead. The figures below are unaffected: they are summed by
+           the grams eaten, so matched black coffee supplies its potassium whether
+           or not it cost a calorie (ADR 0027). -->
+      <p v-if="coverage" class="mt-2 text-sm text-default">{{ coverage }}</p>
+      <p v-else class="mt-2 text-sm text-default">
+        Nothing you logged in the last {{ days }} days carried any calories.
+      </p>
       <p class="mt-1 text-sm text-muted">{{ loggedDays }}</p>
 
       <!-- Once nothing is left, the share still unaccounted for has to be named

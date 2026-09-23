@@ -432,6 +432,36 @@ describe('WeightTimelineSection', () => {
     expect(screen.queryByText('Plan off chart')).not.toBeInTheDocument()
   })
 
+  it('says a plan is coming rather than rendering as Maintenance Mode', async () => {
+    // The two-device case: a Goal set on a phone already into tomorrow, read on a
+    // desktop whose window closes today. No day carries a plan, so nothing is
+    // drawn — and in Maintenance Mode nothing is drawn either (ADR 0029).
+    await renderSuspended(WeightTimelineSection, {
+      props: {
+        timeline: weightTimeline({
+          days: timelineDays([80.4, 80.2, 80.1]),
+          planStartsOn: '2026-06-04',
+        }),
+      },
+    })
+
+    expect(screen.getByText('Your goal’s plan starts 4 Jun.')).toBeVisible()
+    // Not the key chip, which names a stroke the chart is drawing.
+    expect(screen.queryByText('Plan')).not.toBeInTheDocument()
+  })
+
+  it('stays silent in Maintenance Mode, where there is no plan to be waiting for', async () => {
+    // The same drawn nothing as the test above, and the opposite sentence: here
+    // Tucker defends no target weight, so a plain weight card is the decision
+    // rather than a plan that has not arrived (ADR 0008, ADR 0029).
+    await renderSuspended(WeightTimelineSection, {
+      props: { timeline: weightTimeline() },
+    })
+
+    expect(screen.queryByText(/plan starts/)).not.toBeInTheDocument()
+    expect(screen.queryByText('Plan')).not.toBeInTheDocument()
+  })
+
   it('reads the plan out beside the day, the chart being unable to say it', async () => {
     await renderSuspended(WeightTimelineSection, {
       props: { timeline: planned },

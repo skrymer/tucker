@@ -45,14 +45,14 @@ enum class MicronutrientClaim {
 data class MicronutrientRow(
     val nutrient: Micronutrient,
     val amount: Double,
-    /**
-     * The published figures [claim] was decided against, or null where the body has
-     * no band open. Carried whole rather than split into its halves, so a reader
-     * cannot pair a figure with a line that was never read against it (ADR 0024's
-     * argument for [IntakeTargets] over four nullable fields).
-     */
-    val reference: ReferenceIntake?,
     val claim: MicronutrientClaim,
+    /**
+     * The published figure [claim] was actually decided against, or null where no
+     * claim could be made. The **one** line the verdict stands on, never the whole
+     * band it was drawn from: a reader handed both figures has to re-run the rule
+     * to know which one holds, and is free to pick the other (ADR 0002).
+     */
+    val readAgainst: PublishedLine?,
 )
 
 /**
@@ -81,7 +81,7 @@ data class MicronutrientIntake(
      * is discounted rather than read at face value (ADR 0026).
      */
     val loggedDays: Int,
-    val coverage: Double,
+    val coverage: Double?,
     /**
      * Whether any **Reference Intake** resolved for this body, and so whether any
      * nutrient can earn a claim at all. False with no **Profile**, and equally false
@@ -149,9 +149,14 @@ data class MicronutrientIntake(
                 to = to,
                 totalCalories = breakdown.totalCalories,
                 loggedDays = breakdown.loggedDays,
-                // A window that ate nothing has nothing to cover; the alternative is a
-                // NaN on the wire.
-                coverage = shareOfWindow(covered.sumOf { it.calories }, breakdown.totalCalories),
+                // A window that ate nothing has no share to state — calories are the
+                // measure, so this would be nothing over nothing. Withheld rather than
+                // reported as 0%, which would call a week of matched black coffee
+                // unreadable; the queue's own share stays 0.0, being a ranking figure
+                // rather than a claim (ADR 0027).
+                coverage = breakdown.totalCalories
+                    .takeIf { it > 0 }
+                    ?.let { covered.sumOf { part -> part.calories } / it },
                 // Not `references != null`: a body below the youngest band published
                 // resolves nothing, and telling that User to match more food is advice
                 // no amount of matching can satisfy.
@@ -231,30 +236,53 @@ data class MicronutrientIntake(
                 val perDay = borrowed.sumOf { (grams, profile) ->
                     profile.amountFor(nutrient, grams)
                 } / WINDOW_DAYS
-                val reference = references[nutrient]
-                MicronutrientRow(
-                    nutrient = nutrient,
-                    amount = perDay,
-                    reference = reference,
-                    claim = claimFor(perDay, reference),
-                )
+                rowFor(nutrient, perDay, references[nutrient])
             }
         }
 
         /**
-         * What a lower bound of [amount] lets Tucker say against [reference].
+         * What a lower bound of [amount] lets Tucker say about [nutrient] against
+         * [reference], and which published figure it says it against.
+         *
+         * The claim and its line are decided together because they are one fact: the
+         * verdict *is* the comparison that reached it, so splitting them would be the
+         * same rule stated twice, with nothing keeping the two in agreement (ADR 0002).
          *
          * Sound in one direction only: over the limit it holds at **any** coverage,
          * because more data can only push the figure further over, while reaching the
          * recommended figure holds only once the bound already has. A bound that falls
          * short says nothing — the unmatched share could hold the rest (ADR 0027).
          */
-        private fun claimFor(amount: Double, reference: ReferenceIntake?): MicronutrientClaim = when {
-            reference?.limit?.let { amount > it.amount } == true -> MicronutrientClaim.OVER_LIMIT
-            reference?.recommended?.let { amount >= it } == true -> MicronutrientClaim.CLEARS_REFERENCE
-            // Including the nutrient with no published band at all, below the youngest
-            // age seeded: no figure to read against is one more thing Tucker cannot say.
-            else -> MicronutrientClaim.NOT_ENOUGH_MATCHED
+        private fun rowFor(
+            nutrient: Micronutrient,
+            amount: Double,
+            reference: ReferenceIntake?,
+        ): MicronutrientRow {
+            val limit = reference?.limit?.takeIf { amount > it.amount }
+            val reached = reference?.recommended?.takeIf { amount >= it }
+            val readAgainst = when {
+                limit != null -> PublishedLine(limit.kind.asLine(), limit.amount)
+                reached != null -> PublishedLine(ReferenceLine.RECOMMENDED, reached)
+                else -> null
+            }
+            return MicronutrientRow(
+                nutrient = nutrient,
+                amount = amount,
+                claim = when {
+                    limit != null -> MicronutrientClaim.OVER_LIMIT
+                    reached != null -> MicronutrientClaim.CLEARS_REFERENCE
+                    // Including the nutrient with no published band at all, below the youngest
+                    // age seeded: no figure to read against is one more thing Tucker cannot say.
+                    else -> MicronutrientClaim.NOT_ENOUGH_MATCHED
+                },
+                readAgainst = readAgainst,
+            )
+        }
+
+        /** The same published figure, named as what a claim was read against. */
+        private fun IntakeLimitKind.asLine() = when (this) {
+            IntakeLimitKind.UPPER_LEVEL -> ReferenceLine.UPPER_LEVEL
+            IntakeLimitKind.SUGGESTED_DIETARY_TARGET -> ReferenceLine.SUGGESTED_DIETARY_TARGET
         }
     }
 }

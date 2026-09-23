@@ -331,6 +331,30 @@ class WeightTimelineTest {
     }
 
     @Test
+    fun `a window ending before the Goal started still says a plan is what it draws`() {
+        // The two-device shape: a Goal set on a phone already into tomorrow, read on
+        // a desktop whose window closes today. Every day's plan is null, which is
+        // byte-for-byte what Maintenance Mode sends — loggedDays being null under a
+        // plan too — so without this the card cannot tell the two apart (ADR 0029).
+        val tomorrow = to.plusDays(1)
+        val plan = GoalTrajectory(goal(startedOn = tomorrow, startWeightKg = 82.0, rateKgPerWeek = 0.5))
+
+        val timeline = WeightTimeline.of(from, to, daily(*DoubleArray(28) { 80.0 })) { plan }!!
+
+        assertEquals(
+            tomorrow,
+            timeline.planStartsOn,
+            "the plan exists and simply does not reach this window, which is a " +
+                "different thing from defending no target weight at all",
+        )
+        assertNull(
+            timeline.days.map { it.trajectoryKg }.firstOrNull { it != null },
+            "and there is genuinely nothing to draw, which is what made the two " +
+                "states identical in the first place",
+        )
+    }
+
+    @Test
     fun `a window that ends before the readings begin has nothing to draw`() {
         // A device whose clock ran fast stamps readings in the future, and the
         // window then closes before the first of them. Cutting the start forward

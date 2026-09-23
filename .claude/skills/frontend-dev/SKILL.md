@@ -63,9 +63,14 @@ assertion with the dev token), and no browser-level layer can reach it.
 - **Vitest defaults to DESKTOP** (jsdom) — `useIsDesktop` reads `true`; drive phone-only branches
   with an explicit viewport override.
 - **`UProgress`** — pass `:model-value` (not `:value`) and clamp it to `:max`; a wrong `:value` is
-  silently ignored → an indeterminate bar. Its progressbar's accessible **name is the percentage**,
-  so anchor e2e on visible text, not `getByRole('progressbar', { name })`.
-- **`USlider`** — the thumb's accessible name is hardcoded to `"Thumb"`; no prop overrides it
+  silently ignored → an indeterminate bar. Name it with **`:get-value-label`**, never `aria-label`:
+  the attribute falls through to UProgress's root `div`, which carries no role, while Reka names the
+  `role="progressbar"` element from that prop and *defaults it to the percentage*. So an
+  `aria-label` here is silently inert — both Day Ring meters shipped announced as "47%" and "46%"
+  with nothing saying which was calories. The percentage is still on `aria-valuenow`, which is where
+  a value belongs. Assert through `toHaveAccessibleName` / the aria snapshot, never the attribute.
+- **`USlider`** — the same attr-fallthrough trap, but **no such prop**, so the remedy differs: the
+  thumb's accessible name is hardcoded to `"Thumb"` and nothing overrides it
   (attr fallthrough lands on the root, which has no role). Wrap it in a `role="group"` labelled
   via `aria-labelledby` at the visible readout, with a **static** id like every other
   `aria-labelledby` in the app. Drive it by keyboard in both layers — `slider.focus()` +

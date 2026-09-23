@@ -214,9 +214,20 @@ and never against a **Food**, and Tucker sets no target for it — so it stays a
 **Recipe** through whichever of its ingredients are matched. An **Estimated Entry**
 has no Food, so it can never contribute at all. What is summed is therefore *at
 least* what was eaten, and the share of the window's calories that could contribute
-is stated alongside it, always. Calories are the measure of that share for the same
-reason they measure an **Intake Breakdown**: an Estimated Entry has no mass, so
-grams cannot measure the very entries most likely to be missing.
+is stated alongside it whenever there are calories to measure it against. Calories
+are the measure of that share for the same reason they measure an **Intake
+Breakdown**: an Estimated Entry has no mass, so grams cannot measure the very
+entries most likely to be missing. That measure is what a window costing **nothing**
+has none of — a week of diet drinks and black coffee divides zero by zero, and
+reporting the `0%` that falls out would call a fully **matched** week unreadable. The
+share is then simply absent, never zero. The nutrient figures are not: they are
+summed by the **grams** eaten, so matched black coffee supplies its potassium either
+way.
+An **empty window** is one nothing was logged in, not one nothing was *eaten* in.
+Zero calories is a fact about the food; how many of the window's days carry an
+**Entry** is the fact about the log, and it is the one that decides whether there is
+anything to show. The same predicate decides it for an **Intake Breakdown**, so the
+two never come to disagree about what an empty week is.
 A partly-matched Recipe contributes partly, and its calories count **fractionally**
 toward the share above — by how much of the recipe's own calories came from matched
 ingredients. All-or-none would throw away something measured. Rolling a past Entry
@@ -360,7 +371,11 @@ single lumped bucket would answer instead of this one.
 A breakdown also states how many of the window's days carry an **Entry**: the
 width of a window is no evidence that it was logged, so a seven-day breakdown
 built from three logged days is discounted rather than read at face value. A day
-counts once, however much was logged on it.
+counts once, however much was logged on it. That count is also what says the window
+is **empty** — nothing was logged — which a window that merely cost nothing is not.
+A day of zero-calorie Foods is one slice per Food at `0 kcal`, so there is nothing to
+divide and no ring to draw, but there is still something to state: what was logged,
+and that none of it cost anything.
 Each slice states what it **returned** in protein alongside what it cost in
 calories, for the same reason a **Check** does: a slice's size is a fact about the
 user's week, not a verdict on the Food, and the biggest item is very often the
@@ -743,6 +758,15 @@ target weight (ADR 0008). How much of it is *drawn* is the client's, not the
 timeline's: a Goal lives five to seven kilos away and this chart resolves one to
 two, so the weight axis stretches at most two kilos past the weights and the plan
 is clipped past that, marked at the edge it left by.
+A timeline says **which of the two it draws beside the weight**, and says it even
+when it has nothing to draw: the day the plan begins where a plan is the evidence,
+the logged-day count where intake is, and neither in **Maintenance Mode**. That is
+what keeps *there is a plan, it just does not reach this window* apart from *there
+is no plan at all* — two states that are otherwise identical, a Goal started on a
+phone already into tomorrow being a day ahead of a desktop reading in UTC. Where a
+plan is the evidence and none is drawn — its window ends before the Goal began, or
+holds the single day a line cannot be drawn through — the card says so rather than
+silently taking the Maintenance-Mode shape.
 The window is 28 or 90 days and nothing else — 28 being the span the observed
 pace and **Pace Status** are already classified over. The Trend Weight at a
 window's start depends on readings from *before* it, so the series is always built

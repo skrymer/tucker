@@ -40,7 +40,16 @@ describe('GoalProgressHero', () => {
     await renderSuspended(GoalProgressHero, { props: { progress: withheld } })
 
     expect(screen.getByText('40%')).toBeVisible()
-    expect(screen.getByRole('progressbar')).toBeVisible()
+    // Named for what it measures rather than for its own percentage, which Reka
+    // uses as the progressbar's accessible name by default — an `aria-label`
+    // here never reaches it, landing instead on the roleless root div.
+    expect(screen.getByRole('progressbar')).toHaveAccessibleName(
+      'Goal completion',
+    )
+    expect(screen.getByRole('progressbar')).toHaveAttribute(
+      'aria-valuenow',
+      '40',
+    )
   })
 
   it('shows the start, current trend, and target weights', async () => {

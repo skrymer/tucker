@@ -56,11 +56,14 @@ const { planned, pace, observedFinish, observedRate } = usePaceColumns()
       </UBadge>
     </div>
     <p class="mt-1 text-4xl font-bold text-default">{{ percent }}%</p>
+    <!-- `get-value-label`, never `aria-label`: the attribute lands on the
+         roleless root div, while Reka names the `role="progressbar"` element
+         from this prop and defaults it to the percentage (frontend/DESIGN.md). -->
     <UProgress
       class="mt-3"
       :model-value="percent"
       :max="100"
-      aria-label="Goal completion"
+      :get-value-label="() => 'Goal completion'"
     />
 
     <!-- Start → now → target, all on the smoothed Trend Weight (ADR 0016): the

@@ -61,8 +61,7 @@ describe('MicronutrientSection', () => {
               label: 'Iron',
               unit: 'mg',
               amount: 21.4,
-              recommended: 18,
-              limit: null,
+              readAgainst: { kind: 'RECOMMENDED', amount: 18 },
               claim: 'CLEARS_REFERENCE',
             }),
           ],
@@ -88,8 +87,7 @@ describe('MicronutrientSection', () => {
               label: 'Sodium',
               unit: 'mg',
               amount: 2430,
-              recommended: null,
-              limit: { amount: 2000, kind: 'SUGGESTED_DIETARY_TARGET' },
+              readAgainst: { kind: 'SUGGESTED_DIETARY_TARGET', amount: 2000 },
               claim: 'OVER_LIMIT',
             }),
           ],
@@ -400,7 +398,10 @@ describe('MicronutrientSection', () => {
       props: {
         intake: micronutrientIntake({
           totalCalories: 0,
-          coverage: 0,
+          // Nothing was logged, which is what makes the window empty — not that
+          // nothing was eaten, which a week of black coffee also satisfies.
+          loggedDays: 0,
+          coverage: null,
           unmatched: [],
         }),
       },
@@ -415,6 +416,42 @@ describe('MicronutrientSection', () => {
     // Nor "Nothing left to match", which is true of an empty week and says the
     // wrong thing about it: there was never anything to match.
     expect(screen.queryByText(/Nothing left to match/)).not.toBeInTheDocument()
+  })
+
+  it('keeps its card, and its queue, for a week that was logged but cost nothing', async () => {
+    await renderSuspended(MicronutrientSection, {
+      props: {
+        intake: micronutrientIntake({
+          totalCalories: 0,
+          loggedDays: 3,
+          coverage: null,
+          unmatched: [unmatchedFood({ name: 'Black coffee' })],
+        }),
+      },
+    })
+
+    // Zero calories is a fact about the food, not about the log: a week of diet
+    // drinks and black coffee was logged, and saying nothing was hides a queue
+    // the backend computed and offered (ADR 0027).
+    expect(
+      screen.queryByText('Nothing logged in the last 7 days.'),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: '1 food is not matched yet' }),
+    ).toBeVisible()
+    // And no coverage sentence, there being no calories to measure a share of —
+    // 0% would call a week of matched black coffee unreadable.
+    expect(
+      screen.queryByText(/came from food Tucker can read/),
+    ).not.toBeInTheDocument()
+    // And says so, rather than leaving the card headed by a figure that is
+    // silently missing — a coverage line absent without explanation reads as a
+    // load that failed (ADR 0005).
+    expect(
+      screen.getByText(
+        'Nothing you logged in the last 7 days carried any calories.',
+      ),
+    ).toBeVisible()
   })
 
   it('attributes no rest to estimates and recipes when the window left none', async () => {

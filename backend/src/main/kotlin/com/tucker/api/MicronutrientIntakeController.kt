@@ -3,13 +3,13 @@ package com.tucker.api
 import com.tucker.domain.BorrowedFood
 import com.tucker.domain.BorrowedIngredient
 import com.tucker.domain.FoodKind
-import com.tucker.domain.IntakeLimitKind
 import com.tucker.domain.Micronutrient
 import com.tucker.domain.MicronutrientClaim
 import com.tucker.domain.MicronutrientIntake
 import com.tucker.domain.MicronutrientRow
 import com.tucker.domain.RecipeIngredient
 import com.tucker.domain.ReferenceFood
+import com.tucker.domain.ReferenceLine
 import com.tucker.domain.UnmatchedFood
 import com.tucker.persistence.EntryRepository
 import com.tucker.persistence.FoodRepository
@@ -33,21 +33,26 @@ data class UnmatchedFoodResponse(
     val share: Double,
 )
 
-/** The line a nutrient is not to cross, and which published figure it is. */
-data class IntakeLimitResponse(
+/** The published figure a claim was read against, and which one it is. */
+data class PublishedLineResponse(
     val amount: Double,
     /** The domain enum, so the spec lists the values (see [FoodResponse.kind]). */
-    val kind: IntakeLimitKind,
+    val kind: ReferenceLine,
 )
 
 /**
  * One nutrient's window on the wire: a lower-bound daily average, the published
- * figures it was read against, and what that lets Tucker claim.
+ * figure it was read against, and what that lets Tucker claim.
  *
  * **A row Tucker can make no claim about carries no figures**, only its name and
  * that fact. A shortfall is not published, so there is nothing here to draw one
  * from — the rule is a property of the response rather than a convention every
  * client has to keep, which is what ADR 0002 asks of a rule this load-bearing.
+ *
+ * [readAgainst] is the *one* figure the verdict stands on, never both of them
+ * side by side: pairing a claim with its line is `claimFor`'s rule, and a response
+ * that ships the pair unresolved leaves every client to restate it — and free to
+ * pick the other one (ADR 0027, amended by #288).
  */
 data class MicronutrientRowResponse(
     /** The domain enums, so the spec lists the values (see [FoodResponse.kind]). */
@@ -55,8 +60,7 @@ data class MicronutrientRowResponse(
     val label: String,
     val unit: String,
     val amount: Double?,
-    val recommended: Double?,
-    val limit: IntakeLimitResponse?,
+    val readAgainst: PublishedLineResponse?,
     val claim: MicronutrientClaim,
 )
 
@@ -77,7 +81,7 @@ data class MicronutrientIntakeResponse(
     val totalCalories: Double,
     /** Days of the window holding an Entry — how far the claim above can be trusted. */
     val loggedDays: Int,
-    val coverage: Double,
+    val coverage: Double?,
     /**
      * Whether any Reference Intake resolved for this body. False until the User
      * has a **Profile**, and then no nutrient can earn a claim however much of
@@ -104,10 +108,10 @@ private fun MicronutrientRow.toResponse() = MicronutrientRowResponse(
     label = nutrient.label,
     unit = nutrient.unit,
     amount = amount.takeIf { canBeStated },
-    recommended = reference?.recommended.takeIf { canBeStated },
-    limit = reference?.limit
-        ?.takeIf { canBeStated }
-        ?.let { IntakeLimitResponse(it.amount, it.kind) },
+    // Not guarded in turn: the domain leaves this null on exactly the rows that
+    // earn no claim, so repeating the test here would be the second statement of
+    // the rule this field exists to remove.
+    readAgainst = readAgainst?.let { PublishedLineResponse(it.amount, it.kind) },
     claim = claim,
 )
 

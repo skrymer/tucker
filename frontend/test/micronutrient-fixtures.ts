@@ -37,8 +37,9 @@ export function micronutrientRow(
     label: 'Iron',
     unit: 'mg',
     amount: 21.4,
-    recommended: 18,
-    limit: { amount: 45, kind: 'UPPER_LEVEL' },
+    // The line this claim was actually decided against, and the only one the API
+    // sends — so a fixture cannot express a row whose claim and line disagree.
+    readAgainst: { kind: 'RECOMMENDED', amount: 18 },
     claim: 'CLEARS_REFERENCE',
     ...overrides,
   }
@@ -55,8 +56,7 @@ export function unstatedMicronutrientRow(
 ): Required<MicronutrientRowResponse> {
   return micronutrientRow({
     amount: null,
-    recommended: null,
-    limit: null,
+    readAgainst: null,
     claim: 'NOT_ENOUGH_MATCHED',
     ...overrides,
   })

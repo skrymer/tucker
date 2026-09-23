@@ -87,6 +87,28 @@ describe('IntakeBreakdownSection', () => {
     })
   }
 
+  it('lists a window that was logged but cost nothing, and draws it no ring', async () => {
+    await renderSuspended(IntakeBreakdownSection, {
+      props: {
+        breakdown: intakeBreakdown({
+          totalCalories: 0,
+          loggedDays: 1,
+          items: [
+            breakdownItem({ name: 'Black coffee', calories: 0, share: 0 }),
+          ],
+        }),
+      },
+    })
+
+    // Zero calories is nothing to divide, so there are no arcs to draw and a ring
+    // fed nothing but zeroes reads as a broken chart rather than as a fact.
+    expect(screen.queryByTestId('ring-centre')).not.toBeInTheDocument()
+    // But it was logged, and what was logged is worth stating — this is not the
+    // "Nothing logged yet" the card says when the window holds no Entry at all.
+    expect(screen.getByText('Black coffee')).toBeVisible()
+    expect(screen.queryByText('Nothing logged yet')).not.toBeInTheDocument()
+  })
+
   it('gives every slice a legend row stating what it cost and what it returned', async () => {
     await renderSuspended(IntakeBreakdownSection, {
       props: {

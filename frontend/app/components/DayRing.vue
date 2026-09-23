@@ -105,12 +105,18 @@ const { rows } = useLegend()
           <span class="shrink-0 text-sm font-semibold text-default">
             {{ row.title }}
           </span>
+          <!-- `get-value-label`, never `aria-label`: the attribute falls through
+               to UProgress's root div, which carries no role, while Reka names
+               the `role="progressbar"` element from this prop — defaulting it to
+               the percentage. So a bar told what it measures is a bar the label
+               actually reaches (frontend/DESIGN.md). The value stays on
+               `aria-valuenow`, which is where a percentage belongs. -->
           <UProgress
             class="min-w-16 flex-1"
             :model-value="row.filled"
             :max="row.target"
             :color="row.meter"
-            :aria-label="row.label"
+            :get-value-label="() => row.label"
           />
         </div>
         <p class="text-sm tabular-nums text-muted">{{ row.figures }}</p>

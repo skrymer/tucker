@@ -53,7 +53,13 @@ export function weightTimeline(
   return {
     from: days[0]!.date,
     to: days[days.length - 1]!.date,
+    // Neither half named is Maintenance Mode — the shape a plain weight card is
+    // drawn from. A test wanting the intake half says so; a plan names itself
+    // from the days, so a fixture cannot express a drawn plan the response does
+    // not admit to drawing. Override it for the case where a plan is the
+    // evidence and no day in the window carries one (ADR 0029).
     loggedDays: null,
+    planStartsOn: days.find((day) => day.trajectoryKg != null)?.date ?? null,
     ...overrides,
     days,
   }

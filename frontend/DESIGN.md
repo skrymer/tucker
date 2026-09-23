@@ -641,6 +641,12 @@ text-muted` what it cost and returned — `153 kcal · 13 g protein`, with
   Day Ring's two nested arcs — and for the goal hero on `/review`, which has no
   ring. The Goal ring has one arc and no meter: a second drawing of the same
   number is what a ring replaces.
+  **A meter is named for what it measures**, and that name is set with
+  `:get-value-label` — never `aria-label`, which lands on `UProgress`'s roleless
+  root while Reka names the `role="progressbar"` element from that prop and
+  defaults it to the percentage. Both Day Ring meters shipped announced as "47%"
+  and "46%", with the titles beside them readable only by eye. The percentage is
+  not lost: it is the _value_, and `aria-valuenow` carries it.
 - **Identity byline** — "Signed in as `<email>`" plus a **Sign out** link, muted
   and 14px, on the line directly under the `/profile` h1. A byline rather than a
   card, and this is the whole visible surface of multi-user: it attributes the

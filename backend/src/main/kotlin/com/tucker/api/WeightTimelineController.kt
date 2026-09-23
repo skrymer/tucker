@@ -57,12 +57,21 @@ data class WeightTimelineDayResponse(
  * [loggedDays] is how many of the drawn days carry an Entry, so a section can say
  * how far to trust the intake half — and is null with Calorie Tracking off, which
  * is what makes that half absent rather than empty.
+ *
+ * [planStartsOn] is its counterpart for the other half: the day the active Goal's
+ * plan begins, non-null exactly when a plan is what this timeline draws. It is
+ * stated **even when no day carries a figure** — a window ending before the Goal
+ * started, or holding the single day a line cannot be drawn through — because that
+ * is the case where a plan and Maintenance Mode are otherwise identical on the
+ * wire, and the card would silently render the Maintenance-Mode shape (ADR 0029).
+ * Both null is Maintenance Mode, and only that.
  */
 data class WeightTimelineResponse(
     val from: LocalDate,
     val to: LocalDate,
     val days: List<WeightTimelineDayResponse>,
     val loggedDays: Int?,
+    val planStartsOn: LocalDate?,
 )
 
 private fun WeightTimelineDay.toResponse() = WeightTimelineDayResponse(
@@ -80,6 +89,7 @@ private fun WeightTimeline.toResponse() = WeightTimelineResponse(
     to = to,
     days = days.map { it.toResponse() },
     loggedDays = loggedDays,
+    planStartsOn = planStartsOn,
 )
 
 @RestController

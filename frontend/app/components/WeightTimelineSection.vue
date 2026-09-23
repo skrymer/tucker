@@ -42,6 +42,22 @@ const plan = computed(() => weightTimelineTrajectory(props.timeline))
 const kgDomain = computed(() => scale.value?.kgDomain ?? plan.value?.kgDomain)
 /** Whether the plan runs past an edge of the plot, which changes what the key says. */
 const planClipped = computed(() => (plan.value?.clips.length ?? 0) > 0)
+
+/**
+ * What to say when a plan is what this timeline draws and none of it is drawable.
+ * Null whenever there is nothing to explain — the plan is on the chart, or there
+ * is no plan because the User is in Maintenance Mode.
+ *
+ * Without it the two are the same card: every `trajectoryKg` is null either way,
+ * and the key chip, the line and the readout all go with nothing saying why
+ * (ADR 0029). `planStartsOn` is the response saying a plan is its evidence even
+ * when no day carries one, which is what tells the states apart.
+ */
+const planPending = computed(() =>
+  plan.value || !props.timeline.planStartsOn
+    ? null
+    : `Your goal’s plan starts ${formatDayMonthFromISO(props.timeline.planStartsOn)}.`,
+)
 const {
   at,
   trendKg,
@@ -296,6 +312,10 @@ const { focusOn, readout } = useFocus()
         </p>
 
         <span v-if="coverage">{{ coverage }}</span>
+        <!-- Said in the key's own row rather than over the chart: the chart is
+             correct and simply has nothing of the plan to show yet, so this
+             belongs beside the strokes it names and not as an error. -->
+        <span v-if="planPending">{{ planPending }}</span>
       </div>
 
       <!-- An `output`, the result of asking rather than another line of prose —

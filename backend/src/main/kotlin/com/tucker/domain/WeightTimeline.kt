@@ -41,6 +41,10 @@ data class WeightTimelineDay(
  * Each member fills its own fields rather than being unpacked by [WeightTimeline.of],
  * so weight stays the premise every day is built from and a third kind has to say
  * what it adds instead of being silently ignored.
+ *
+ * Each also *names itself* on the timeline, whether or not it had anything to draw
+ * on the days in the window — [loggedDaysIn] for the intake half, [planStartsOn]
+ * for a plan. Both absent is Maintenance Mode, and only that.
  */
 sealed interface TimelineEvidence {
 
@@ -49,6 +53,9 @@ sealed interface TimelineEvidence {
 
     /** How many of [days] carry an Entry, or null where nothing counts days. */
     fun loggedDaysIn(days: List<WeightTimelineDay>): Int?
+
+    /** The day the plan begins, or null where this evidence is not a plan. */
+    fun planStartsOn(): LocalDate?
 }
 
 /**
@@ -106,6 +113,9 @@ class TimelineIntake(
      */
     override fun loggedDaysIn(days: List<WeightTimelineDay>): Int =
         days.count { it.caloriesKcal != null }
+
+    /** The intake half is not a plan, so it starts none. */
+    override fun planStartsOn(): LocalDate? = null
 }
 
 /**
@@ -120,6 +130,14 @@ class GoalTrajectory(private val goal: Goal) : TimelineEvidence {
 
     /** A plan is not a log, so it counts no days. */
     override fun loggedDaysIn(days: List<WeightTimelineDay>): Int? = null
+
+    /**
+     * When the plan begins — which may be after the window ends, a Goal set on a
+     * device already into tomorrow being a day ahead of one reading in UTC. Said
+     * regardless, because that is the case where no day carries a figure and the
+     * response is otherwise indistinguishable from Maintenance Mode (ADR 0029).
+     */
+    override fun planStartsOn(): LocalDate = goal.startedOn
 }
 
 /**
@@ -129,12 +147,16 @@ class GoalTrajectory(private val goal: Goal) : TimelineEvidence {
  *
  * [from] is where the timeline actually starts, which is not always where the
  * caller's window did — see [of].
+ *
+ * [loggedDays] and [planStartsOn] say which evidence was drawn beside the weight;
+ * exactly one is set, or neither in Maintenance Mode.
  */
 data class WeightTimeline(
     val from: LocalDate,
     val to: LocalDate,
     val days: List<WeightTimelineDay>,
     val loggedDays: Int?,
+    val planStartsOn: LocalDate?,
 ) {
     companion object {
         /**
@@ -202,6 +224,7 @@ data class WeightTimeline(
                 to = to,
                 days = days,
                 loggedDays = drawn?.loggedDaysIn(days),
+                planStartsOn = drawn?.planStartsOn(),
             )
         }
 

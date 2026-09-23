@@ -125,6 +125,35 @@ unguarded, so rows already written keep it. Closing it means a read-side change 
 clamping `to`, or saying on the wire that a plan exists but does not reach this
 window — and that is its own decision, not this one.
 
+### Amended by [#335](https://github.com/skrymer/tucker/issues/335): a timeline says what it would have drawn
+
+The paragraph above left the read-side fix open between clamping `to` and saying it
+on the wire. **It says it on the wire**, because clamping does not work: clamp `to`
+forward to `startedOn` and the plan has exactly *one* day, which the paragraph two
+above refuses to draw — so the card renders the Maintenance-Mode shape either way,
+and clamping the two days it would take invents a window the caller never asked for
+while `to` is client-owned by ADR 0014.
+
+`WeightTimelineResponse` therefore carries **`planStartsOn`**, the day the active
+Goal's plan begins, non-null exactly when a plan is the evidence this timeline draws.
+It is the plan's `loggedDays`: that field is already how a client knows the *intake*
+half is what it is looking at, so `TimelineEvidence` answers both questions and
+Maintenance Mode is the one state that answers neither. A client can then tell the
+three apart without inspecting a single day.
+
+**It closes both silences, not only the reported one.** The window ending before the
+Goal started is the case #335 reports, and it is the case that is invisible on the
+wire; a window containing exactly *one* planned day is distinguishable on the wire
+and identical on screen. Saying something for one and not the other would leave
+`/review` with two silences that look the same and mean different things — the
+`setupComplete` trap, one card over. So the card speaks whenever a plan is the
+evidence and no plan is drawn, whichever of the two put it there.
+
+**A date is not the three parameters this ADR refused to send.** `startedOn` here
+names *when the plan begins* so the card can say so; the trajectory stays the
+per-day series above, and no client projects anything from it. The distinction is
+between a figure a sentence states and a figure a chart is derived from.
+
 **The trajectory is a per-day series like every other**, not the Goal's start
 weight, start date and rate for the client to project from. `startWeight − rate ×
 weeks`, floored at the target, is derived state and so the backend's (ADR 0002);

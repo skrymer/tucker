@@ -4000,6 +4000,11 @@
             "type": "integer",
             "format": "int32",
             "nullable": true
+          },
+          "planStartsOn": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
           }
         }
       },
@@ -4292,7 +4297,7 @@
           }
         }
       },
-      "IntakeLimitResponse": {
+      "PublishedLineResponse": {
         "required": [
           "amount",
           "kind"
@@ -4306,6 +4311,7 @@
           "kind": {
             "type": "string",
             "enum": [
+              "RECOMMENDED",
               "UPPER_LEVEL",
               "SUGGESTED_DIETARY_TARGET"
             ]
@@ -4314,7 +4320,6 @@
       },
       "MicronutrientIntakeResponse": {
         "required": [
-          "coverage",
           "from",
           "hasReferenceIntakes",
           "loggedDays",
@@ -4343,7 +4348,8 @@
           },
           "coverage": {
             "type": "number",
-            "format": "double"
+            "format": "double",
+            "nullable": true
           },
           "hasReferenceIntakes": {
             "type": "boolean"
@@ -4406,16 +4412,11 @@
             "format": "double",
             "nullable": true
           },
-          "recommended": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
-          },
-          "limit": {
+          "readAgainst": {
             "nullable": true,
             "allOf": [
               {
-                "$ref": "#/components/schemas/IntakeLimitResponse"
+                "$ref": "#/components/schemas/PublishedLineResponse"
               }
             ]
           },
