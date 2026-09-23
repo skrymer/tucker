@@ -53,6 +53,17 @@ not restate them.
   specifying) gets its own test; **thin glue is covered by the integrated test** — a
   delegating controller and scheduler wiring get no standalone test, and mocking internal
   collaborators to give them one is the anti-pattern. (ADR 0013.)
+- **A rule no behaviour can break still gets a RED — make the rule executable.** Some
+  ADR rules hold "reachable or not" (ADR 0021: every scoped statement names the owner,
+  even when a scoped read upstream already makes it safe). No test through a public
+  interface can fail on their absence, so Probity rightly refuses the edit, and asking
+  to have it waved through is the wrong move. Write a guard test that checks the rule
+  itself: `LinkTableOwnerPredicateTest` records the SQL jOOQ executes (an
+  `ExecuteListenerProvider` bean in a `@TestConfiguration`) and fails on a link-table
+  DELETE that never names `user_id`; `RunAsCallSitesTest` does the same for `runAs`
+  call sites. Extend the existing guard before writing a new one. jOOQ renders SQLite
+  identifiers **unquoted** (`delete from food_tag …`), so match that or the RED fails
+  for the wrong reason.
 - Commands (run in `backend/`): `./gradlew build` (compile + detekt + fast suite) ·
   `detekt` · `e2eTest` · `generateOpenApiDocs` · `mutationTest`.
 - **A controller change is not done until the spec is regenerated**:
