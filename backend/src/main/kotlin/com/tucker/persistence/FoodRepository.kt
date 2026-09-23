@@ -150,7 +150,10 @@ class FoodRepository(
 
 /** Make [tagIds] exactly the Tags the Food [foodId] carries, in two statements however many. */
 private fun DSLContext.replaceTagsOf(foodId: Int, tagIds: Set<Long>, ownerId: Int) {
-    deleteFrom(FOOD_TAG).where(FOOD_TAG.FOOD_ID.eq(foodId)).execute()
+    deleteFrom(FOOD_TAG)
+        .where(FOOD_TAG.FOOD_ID.eq(foodId))
+        .and(FOOD_TAG.FOOD_ID.`in`(select(FOOD.ID).from(FOOD).where(FOOD.USER_ID.eq(ownerId))))
+        .execute()
     if (tagIds.isEmpty()) return
     // Only [ownerId]'s own Tags are linked: the link carries no owner, so a foreign
     // Tag id is filtered here rather than trusted to have been refused upstream.

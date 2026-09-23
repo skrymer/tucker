@@ -62,6 +62,11 @@ class RecipeRepository(
             ?: return null
         dsl.deleteFrom(RECIPE_INGREDIENT)
             .where(RECIPE_INGREDIENT.RECIPE_ID.eq(recipeId.toInt()))
+            .and(
+                RECIPE_INGREDIENT.RECIPE_ID.`in`(
+                    DSL.select(FOOD.ID).from(FOOD).where(FOOD.USER_ID.eq(currentUser.ownerId)),
+                ),
+            )
             .execute()
         writeIngredientLines(recipeId, recipe.ingredients)
         return updated
