@@ -26,7 +26,7 @@ class FoodTagOwnershipTest {
     @Autowired lateinit var dsl: DSLContext
 
     @Test
-    fun `a Food saved wearing another User's Tag does not come to wear it`() {
+    fun `a Food saved carrying another User's Tag does not come to carry it`() {
         val someoneElse = dsl.insertInto(USER, USER.EMAIL).values("someone-else@tucker.invalid")
             .returning(USER.ID).fetchOne()!!.id!!
         val theirTag = dsl.insertInto(TAG, TAG.USER_ID, TAG.NAME).values(someoneElse, "breakfast")
