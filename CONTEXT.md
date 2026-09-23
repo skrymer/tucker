@@ -345,6 +345,13 @@ own, like the Food it sits on: nothing is suggested, derived or shared, and
 Tucker attaches no meaning to any particular Tag. It sits on the Food and not the
 **Entry**, because it answers "what do I reach for at breakfast?" — a fact about
 the Food in this User's rotation — not "what did I eat at breakfast?".
+Choosing a Tag narrows the Foods on offer the way a typed query does: to one flat
+list of the Foods carrying it, in place of the **Frequent Foods** ranking — a Tag
+has stopped asking about the whole rotation. One Tag at a time.
+Tags are offered in order of use — how many **Entries** in the trailing 30 days
+name a Food carrying the Tag, most first, the window **Frequent Foods** uses — so
+the ones a User reaches for lead. A Tag unused in that window is not hidden: it
+follows the rest, alphabetically.
 A Tag is not a meal: there is no Meal object, and "breakfast" as a Tag says nothing
 about when a Food was eaten. Nor is it a verdict — a Tag is the User's word, and the
 no-good-or-bad rule governs what *Tucker* says about a Food, never what the User

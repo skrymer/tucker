@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { components } from '#open-fetch-schemas/api'
 
-import { demoFoods } from '~/prototype/foodTagsDemo'
+import { demoFoods, demoFoodsManyTags } from '~/prototype/foodTagsDemo'
 
 type FoodResponse = components['schemas']['FoodResponse']
 
@@ -123,6 +123,9 @@ const proto = computed(() =>
     ? String(protoRoute.query.variant)
     : null,
 )
+const protoFoods = computed(() =>
+  protoRoute.query.tags === 'many' ? demoFoodsManyTags : demoFoods,
+)
 const protoToast = useToast()
 function protoPick(food: { name: string }) {
   protoToast.add({ title: `Spike: would log ${food.name}`, duration: 1500 })
@@ -191,25 +194,25 @@ function retryBoth() {
     <template v-if="proto">
       <PrototypeTagsVariantA
         v-if="proto === 'A'"
-        :foods="demoFoods"
+        :foods="protoFoods"
         :query="filter.query.value"
         @pick="protoPick"
       />
       <PrototypeTagsVariantB
         v-else-if="proto === 'B'"
-        :foods="demoFoods"
+        :foods="protoFoods"
         :query="filter.query.value"
         @pick="protoPick"
       />
       <PrototypeTagsVariantC
         v-else-if="proto === 'C'"
-        :foods="demoFoods"
+        :foods="protoFoods"
         :query="filter.query.value"
         @pick="protoPick"
       />
       <PrototypeTagsVariantD
         v-else
-        :foods="demoFoods"
+        :foods="protoFoods"
         :query="filter.query.value"
         @pick="protoPick"
       />

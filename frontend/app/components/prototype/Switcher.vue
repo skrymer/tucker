@@ -17,6 +17,12 @@ function step(by: number) {
   router.replace({ query: { ...route.query, variant: next.key } })
 }
 
+const many = computed(() => route.query.tags === 'many')
+function toggleMany() {
+  const { tags: _t, ...rest } = route.query
+  router.replace({ query: many.value ? rest : { ...rest, tags: 'many' } })
+}
+
 function onKey(e: KeyboardEvent) {
   const t = e.target as HTMLElement | null
   if (t?.closest('input, textarea, [contenteditable]')) return
@@ -53,6 +59,14 @@ onUnmounted(() => window.removeEventListener('keydown', onKey))
         @click="step(1)"
       >
         <UIcon name="i-lucide-chevron-right" class="size-5" />
+      </button>
+      <button
+        type="button"
+        class="rounded-full border border-warning px-2 py-0.5 text-xs"
+        :class="many ? 'bg-warning text-inverted' : 'text-warning'"
+        @click="toggleMany"
+      >
+        {{ many ? '21 tags' : '5 tags' }}
       </button>
     </div>
   </div>

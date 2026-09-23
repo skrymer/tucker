@@ -5,11 +5,7 @@ const chosen = defineModel<string | null>({ required: true })
 </script>
 
 <template>
-  <div
-    role="group"
-    aria-label="Filter by tag"
-    class="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none]"
-  >
+  <div role="group" aria-label="Filter by tag" class="flex flex-wrap gap-2">
     <UButton
       size="sm"
       :variant="chosen === null ? 'solid' : 'outline'"

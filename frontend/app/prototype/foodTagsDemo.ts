@@ -65,12 +65,18 @@ export const demoFoods: DemoFood[] = rows.map(
   }),
 )
 
-/** Every Tag in use, most-used first — the order a chip row would offer them. */
+/**
+ * Every Tag in use, ordered by use: the Entries in the trailing 30 days naming
+ * a Food that carries it, most first. Tags unused in the window follow,
+ * alphabetically — last, never gone.
+ */
 export function demoTags(foods: DemoFood[]): string[] {
-  const counts = new Map<string, number>()
+  const use = new Map<string, number>()
   for (const f of foods)
-    for (const t of f.tags) counts.set(t, (counts.get(t) ?? 0) + 1)
-  return [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([t]) => t)
+    for (const t of f.tags) use.set(t, (use.get(t) ?? 0) + f.count30d)
+  return [...use.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .map(([t]) => t)
 }
 
 /** Frequent Foods over a subset: count desc, cap ten — what the backend would do. */
@@ -84,3 +90,32 @@ export function rankFrequent(foods: DemoFood[], cap = 10): DemoFood[] {
 export function alphabetical(foods: DemoFood[]): DemoFood[] {
   return [...foods].sort((a, b) => a.name.localeCompare(b.name))
 }
+
+const extraTags = [
+  'high-protein',
+  'quick',
+  'work',
+  'weekend',
+  'kids',
+  'pantry',
+  'fridge',
+  'pre-workout',
+  'cheat day',
+  'travel',
+  'meal prep',
+  'dessert',
+  'drinks',
+  'low-carb',
+  'takeaway-swap',
+  'late night',
+]
+
+/** The same catalog with sixteen more Tags spread across it — a heavy tagger. */
+export const demoFoodsManyTags: DemoFood[] = demoFoods.map((f, i) => ({
+  ...f,
+  tags: [
+    ...f.tags,
+    extraTags[i % extraTags.length]!,
+    ...(i % 3 === 0 ? [extraTags[(i * 7) % extraTags.length]!] : []),
+  ].filter((t, j, a) => a.indexOf(t) === j),
+}))
