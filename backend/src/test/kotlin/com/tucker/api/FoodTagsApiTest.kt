@@ -1,6 +1,8 @@
 package com.tucker.api
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.tucker.domain.ReferenceFoodQuery
+import com.tucker.persistence.ReferenceFoodRepository
 import com.tucker.security.WithTuckerUser
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -23,6 +25,7 @@ class FoodTagsApiTest {
 
     @Autowired lateinit var mockMvc: MockMvc
     @Autowired lateinit var objectMapper: ObjectMapper
+    @Autowired lateinit var referenceFoods: ReferenceFoodRepository
 
     @Test
     fun `a Food given Tags carries them, alphabetically`() {
@@ -123,6 +126,30 @@ class FoodTagsApiTest {
         mockMvc.get("/api/tags").andExpect {
             jsonPath("$[*].name") { value(org.hamcrest.Matchers.contains("Breakfast", "dinner", "snack")) }
             jsonPath("$[*].foodCount") { value(org.hamcrest.Matchers.contains(2, 0, 1)) }
+        }
+    }
+
+    @Test
+    fun `matching a Food to a Reference Food and taking it back keeps the Tags it carries`() {
+        val cheese = createFood("Tasty cheese")
+        val snack = createTag("snack")
+        retag(cheese, snack)
+        val cheddar = referenceFoods
+            .search(ReferenceFoodQuery.of("cheddar", referenceFoods.synonyms()), limit = 1)
+            .first().food.id
+
+        mockMvc.put("/api/foods/$cheese/reference-food") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"referenceFoodId":$cheddar}"""
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.tags[0].id") { value(snack) }
+        }
+        mockMvc.delete("/api/foods/$cheese/reference-food").andExpect { status { isNoContent() } }
+
+        mockMvc.get("/api/foods/$cheese").andExpect {
+            jsonPath("$.tags.length()") { value(1) }
+            jsonPath("$.tags[0].id") { value(snack) }
         }
     }
 
