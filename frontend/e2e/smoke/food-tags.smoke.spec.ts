@@ -36,7 +36,6 @@ test('a Tag put on a Food from its row is still there after a reload', async ({
   await page.getByRole('option', { name: /breakfast/ }).click()
   await picker.fill('snack')
   await page.getByRole('option', { name: 'Snack', exact: true }).click()
-  await sheet.getByRole('heading', { name: 'Tags for Rolled oats' }).click()
   await sheet.getByRole('button', { name: 'Save tags' }).click()
   await expect(sheet).toBeHidden()
 

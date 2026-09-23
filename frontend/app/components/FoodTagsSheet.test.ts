@@ -201,6 +201,66 @@ describe('FoodTagsSheet', () => {
     expect(onSave).toHaveBeenCalledWith([7])
   })
 
+  it('closes its list once a Tag is picked, so Save is not covered', async () => {
+    registerEndpoint('/api/tags', () => [
+      { id: 7, name: 'Breakfast', foodCount: 1 },
+      { id: 9, name: 'snack', foodCount: 3 },
+    ])
+    await renderSuspended(FoodTagsSheet, { props: { food: oats } })
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole('combobox', { name: 'Tags' }))
+    await user.click(await screen.findByRole('option', { name: 'snack' }))
+
+    await vi.waitFor(() =>
+      expect(screen.queryByRole('listbox')).not.toBeInTheDocument(),
+    )
+  })
+
+  it('closes its list once a typed Tag is created, so Save is not covered', async () => {
+    registerEndpoint('/api/tags', {
+      method: 'GET',
+      handler: () => [{ id: 9, name: 'snack', foodCount: 3 }],
+    })
+    registerEndpoint('/api/tags', {
+      method: 'POST',
+      handler: () => ({ id: 20, name: 'dinner', foodCount: 0 }),
+    })
+    await renderSuspended(FoodTagsSheet, { props: { food: oats } })
+    const user = userEvent.setup()
+
+    await user.type(screen.getByRole('combobox', { name: 'Tags' }), 'dinner')
+    await user.click(await screen.findByRole('option', { name: /dinner/ }))
+
+    await vi.waitFor(() =>
+      expect(screen.queryByRole('listbox')).not.toBeInTheDocument(),
+    )
+  })
+
+  it('puts a refused name back in the field, to be corrected', async () => {
+    registerEndpoint('/api/tags', {
+      method: 'GET',
+      handler: () => [],
+    })
+    registerEndpoint('/api/tags', {
+      method: 'POST',
+      handler: (event) => {
+        setResponseStatus(event, 400)
+        return { message: 'a Tag name must be at most 30 characters' }
+      },
+    })
+    await renderSuspended(FoodTagsSheet, { props: { food: oats } })
+    const user = userEvent.setup()
+    const picker = screen.getByRole('combobox', { name: 'Tags' })
+    const tooLong = 'a'.repeat(31)
+
+    await user.type(picker, tooLong)
+    await user.click(await screen.findByRole('option', { name: /a{31}/ }))
+
+    await screen.findByRole('alert')
+    expect(picker).toHaveValue(tooLong)
+  })
+
   it('adds a created Tag to a Food that carried none', async () => {
     registerEndpoint('/api/tags', {
       method: 'GET',
@@ -277,7 +337,7 @@ describe('FoodTagsSheet', () => {
     expect(screen.getByRole('combobox', { name: 'Tags' })).toHaveValue('')
   })
 
-  it('holds Save and the picker until a typed Tag has been created', async () => {
+  it('holds Save until a typed Tag has been created', async () => {
     let release!: () => void
     const held = new Promise<void>((resolve) => {
       release = resolve
@@ -303,12 +363,41 @@ describe('FoodTagsSheet', () => {
 
     const save = screen.getByRole('button', { name: 'Save tags' })
     await vi.waitFor(() => expect(save).toBeDisabled())
-    expect(picker).toBeDisabled()
 
     release()
     await vi.waitFor(() => expect(save).toBeEnabled())
     await user.click(save)
     expect(onSave).toHaveBeenCalledWith([7, 20])
+  })
+
+  it('keeps a second name typed while the first is being created', async () => {
+    let release!: () => void
+    const held = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    registerEndpoint('/api/tags', {
+      method: 'GET',
+      handler: () => [],
+    })
+    registerEndpoint('/api/tags', {
+      method: 'POST',
+      handler: async () => {
+        await held
+        return { id: 20, name: 'dinner', foodCount: 0 }
+      },
+    })
+    await renderSuspended(FoodTagsSheet, { props: { food: oats } })
+    const user = userEvent.setup()
+    const picker = screen.getByRole('combobox', { name: 'Tags' })
+    await user.type(picker, 'dinner')
+    await user.click(await screen.findByRole('option', { name: /dinner/ }))
+
+    await user.type(picker, 'lunch')
+    expect(picker).toHaveValue('lunch')
+    release()
+
+    await vi.waitFor(() => expect(screen.getByText('dinner')).toBeVisible())
+    expect(picker).toHaveValue('lunch')
   })
 
   it('keeps a Tag created for one Food off the next Food the sheet opens on', async () => {

@@ -46,8 +46,6 @@ test('a User tags a Food from its row, and the row shows the Tag', async ({
   const sheet = page.getByRole('dialog', { name: 'Tags for Rolled oats' })
   await sheet.getByRole('combobox').fill('breakfast')
   await page.getByRole('option', { name: /breakfast/ }).click()
-  // A multi-select stays open for the next pick; tapping away is how it closes.
-  await sheet.getByRole('heading', { name: 'Tags for Rolled oats' }).click()
   await sheet.getByRole('button', { name: 'Save tags' }).click()
 
   await expect(sheet).toBeHidden()

@@ -30,6 +30,8 @@ const options = computed<HeldTag[]>(() =>
 )
 const searchTerm = ref('')
 const refusal = ref<string | null>(null)
+// Closed on every pick: a multi-select left open covers Save below it.
+const menuOpen = ref(false)
 // One sheet is reassigned from Food to Food, so everything typed into it belongs
 // to the Food it was typed for.
 watch(
@@ -47,14 +49,19 @@ watch(
  * A typed name becomes a Tag at once, so the sheet only ever saves ids — and the
  * server, not this sheet, decides whether it names a Tag the User already has.
  */
+// The name last sent, so a refused one can be put back to correct.
+let lastTyped = ''
 const { execute: create, pending: creating } = useApiMutation(
   async (name: string) => {
     refusal.value = null
+    lastTyped = name
+    // Emptied as it is sent, so a next name can be typed while this one is created.
+    searchTerm.value = ''
+    menuOpen.value = false
     const typedFor = props.food?.id
     const tag = await $api('/api/tags', { method: 'POST', body: { name } })
     // The sheet may have moved to another Food while the create was in flight.
     if (props.food?.id !== typedFor) return
-    searchTerm.value = ''
     if (draft.value.some((held) => held.id === tag.id)) return
     draft.value = [...draft.value, { id: tag.id, name: tag.name }]
   },
@@ -64,6 +71,7 @@ const { execute: create, pending: creating } = useApiMutation(
     // would be refused again.
     onValidationError: (message) => {
       refusal.value = message
+      if (!searchTerm.value) searchTerm.value = lastTyped
     },
   },
 )
@@ -79,6 +87,7 @@ const { execute: create, pending: creating } = useApiMutation(
       <UInputMenu
         v-model="draft"
         v-model:search-term="searchTerm"
+        v-model:open="menuOpen"
         :items="options"
         label-key="name"
         by="id"
@@ -87,9 +96,9 @@ const { execute: create, pending: creating } = useApiMutation(
         create-item
         icon="i-lucide-tag"
         aria-label="Tags"
-        :disabled="creating"
         class="w-full"
         @create="create"
+        @update:model-value="menuOpen = false"
       />
       <p v-if="refusal" role="alert" class="text-sm text-error">
         {{ refusal }}
