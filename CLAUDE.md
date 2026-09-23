@@ -1746,6 +1746,28 @@ null` now means two things that earn opposite messages — the same trap
   "Weight history" — a different thing, deliberately named apart), and widening what
   advances the review cadence ([#192](https://github.com/skrymer/tucker/issues/192)).
 
+- **F18** — **Tags**: narrow **Log** to a grouping of the User's own Foods (PRD
+  [#360](https://github.com/skrymer/tucker/issues/360)). Design pass **done**, see
+  [ADR 0033](docs/adr/0033-a-tag-is-the-users-own-thing-not-a-word-on-a-food.md)
+  and the `Tag` term in `CONTEXT.md`; chosen from a throwaway four-variant prototype
+  on `/log` and `/foods` (branch `prototype/food-tags`, deleted once the slices
+  capture it). A **Tag** is the User's own thing, not a word on a Food: renamed,
+  deleted and merged as one (renaming onto an existing name merges), matched
+  ignoring case, attached where Foods are managed and never on Log. On Log a chosen
+  Tag collapses the page to one flat list, as a query does, and the two narrow
+  together; chips are alphabetical, wrap, offer only Tags carrying a Food, and reset
+  every visit. Six slices: [#361](https://github.com/skrymer/tucker/issues/361)
+  tag a Food from its `/foods` row (the tracer bullet — schema, `Tag` / `TagName`,
+  `FoodResponse.tags`, the picker, `+N` past five),
+  [#362](https://github.com/skrymer/tucker/issues/362) narrow Log by a Tag,
+  [#363](https://github.com/skrymer/tucker/issues/363) tag while adding a Food,
+  [#364](https://github.com/skrymer/tucker/issues/364) tag a Recipe,
+  [#365](https://github.com/skrymer/tucker/issues/365) Manage tags (list, create,
+  delete), [#366](https://github.com/skrymer/tucker/issues/366) rename and merge.
+  **Out of scope:** Tags on an Entry or any meal slot, derived or suggested Tags,
+  ranking within a Tag, more than one Tag at a time, remembering the chosen Tag,
+  and sharing Tags between Users.
+
 ## Architecture
 
 - **Frontend** — Nuxt + Nuxt UI, TypeScript, SPA mode (`ssr: false`). A
