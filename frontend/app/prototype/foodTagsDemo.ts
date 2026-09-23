@@ -65,18 +65,11 @@ export const demoFoods: DemoFood[] = rows.map(
   }),
 )
 
-/**
- * Every Tag in use, ordered by use: the Entries in the trailing 30 days naming
- * a Food that carries it, most first. Tags unused in the window follow,
- * alphabetically — last, never gone.
- */
+/** Every Tag in use, alphabetically — found by name, not by rank. */
 export function demoTags(foods: DemoFood[]): string[] {
-  const use = new Map<string, number>()
-  for (const f of foods)
-    for (const t of f.tags) use.set(t, (use.get(t) ?? 0) + f.count30d)
-  return [...use.entries()]
-    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-    .map(([t]) => t)
+  return [...new Set(foods.flatMap((f) => f.tags))].sort((x, y) =>
+    x.localeCompare(y),
+  )
 }
 
 /** Frequent Foods over a subset: count desc, cap ten — what the backend would do. */
