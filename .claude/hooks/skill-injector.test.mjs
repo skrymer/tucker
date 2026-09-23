@@ -125,20 +125,31 @@ test('nothing matched renders nothing', () => {
 
 test('the hook emits UserPromptSubmit context for a matching prompt', () => {
   const out = runHook(
-    JSON.stringify({ hook_event_name: 'UserPromptSubmit', user_prompt: 'ready to push' }),
-  )
+promptSubmitted('ready to push'))
+  assert.notEqual(out, '', 'a matching prompt produced no reminder at all')
   const parsed = JSON.parse(out)
   assert.equal(parsed.hookSpecificOutput.hookEventName, 'UserPromptSubmit')
   assert.match(parsed.hookSpecificOutput.additionalContext, /\/feature-sign-off/)
-  assert.match(parsed.hookSpecificOutput.systemMessage, /feature-sign-off/)
+  assert.match(parsed.systemMessage ?? '', /skill-injector: feature-sign-off/)
 })
 
 test('the hook stays silent rather than emitting an empty block', () => {
   const out = runHook(
-    JSON.stringify({ hook_event_name: 'UserPromptSubmit', user_prompt: 'hello' }),
-  )
+promptSubmitted('hello'))
   assert.equal(out, '')
 })
+
+/** Claude Code's `UserPromptSubmit` input, in the shape it actually sends. */
+function promptSubmitted(prompt) {
+  return JSON.stringify({
+    session_id: 'a-session',
+    transcript_path: '/tmp/a-session.jsonl',
+    cwd: '/tmp',
+    permission_mode: 'default',
+    hook_event_name: 'UserPromptSubmit',
+    prompt,
+  })
+}
 
 test('unreadable input fails open instead of blocking the prompt', () => {
   assert.equal(runHook('not json at all'), '')
