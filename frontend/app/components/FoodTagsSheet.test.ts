@@ -128,6 +128,33 @@ describe('FoodTagsSheet', () => {
     expect(onSave).toHaveBeenCalledWith([7, 20])
   })
 
+  it('creates a name typed with surrounding spaces and entered from the keyboard', async () => {
+    const created: unknown[] = []
+    registerEndpoint('/api/tags', {
+      method: 'GET',
+      handler: () => [],
+    })
+    registerEndpoint('/api/tags', {
+      method: 'POST',
+      handler: async (event) => {
+        created.push(await readBody(event))
+        return { id: 21, name: 'hello', foodCount: 0 }
+      },
+    })
+    const onSave = vi.fn()
+    await renderSuspended(FoodTagsSheet, {
+      props: { food: { ...oats, tags: [] }, onSave },
+    })
+    const user = userEvent.setup()
+
+    await user.type(screen.getByRole('combobox', { name: 'Tags' }), '  hello  ')
+    await user.keyboard('{Enter}')
+    await vi.waitFor(() => expect(created).toHaveLength(1))
+    await user.click(screen.getByRole('button', { name: 'Save tags' }))
+
+    expect(onSave).toHaveBeenCalledWith([21])
+  })
+
   it('empties the field once a typed Tag is created, so it is not offered again', async () => {
     registerEndpoint('/api/tags', {
       method: 'GET',

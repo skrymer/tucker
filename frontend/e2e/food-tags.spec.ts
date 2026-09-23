@@ -78,6 +78,31 @@ test('Save stays reachable while the Tag list is open, and saves only what was c
   expect(saved).toEqual([[]])
 })
 
+test('a name entered with its list closed is created, not held as a loose chip', async ({
+  page,
+  goto,
+}) => {
+  const { saved } = await mockTaggableCatalog(page)
+  await goto('/foods', { waitUntil: 'hydration' })
+
+  await page.getByRole('button', { name: 'Tags for Rolled oats' }).click()
+  const sheet = page.getByRole('dialog', { name: 'Tags for Rolled oats' })
+  const picker = sheet.getByRole('combobox', { name: 'Tags' })
+  await picker.fill('supper')
+  await picker.press('Escape')
+  const created = page.waitForResponse(
+    (response) =>
+      response.url().endsWith('/api/tags') &&
+      response.request().method() === 'POST',
+  )
+  await picker.press('Enter')
+  await created
+  await sheet.getByRole('button', { name: 'Save tags' }).click()
+
+  await expect(sheet).toBeHidden()
+  expect(saved).toEqual([[100]])
+})
+
 test('a row carrying six Tags shows four and a "+2" that opens its Tags', async ({
   page,
   goto,

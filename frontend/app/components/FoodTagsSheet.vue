@@ -75,6 +75,21 @@ const { execute: create, pending: creating } = useApiMutation(
     },
   },
 )
+
+/**
+ * A pick from the list, or a name entered with the list closed — which the tags
+ * input hands over as a bare string. That string is sent to be created like any
+ * typed name, never held as a chip with no Tag behind it.
+ */
+function pick(value: (HeldTag | string)[]) {
+  menuOpen.value = false
+  draft.value = value.filter(
+    (item): item is HeldTag => typeof item !== 'string',
+  )
+  value
+    .filter((item) => typeof item === 'string')
+    .forEach((name) => create(name))
+}
 </script>
 
 <template>
@@ -85,9 +100,9 @@ const { execute: create, pending: creating } = useApiMutation(
   >
     <div class="flex flex-col gap-4">
       <UInputMenu
-        v-model="draft"
         v-model:search-term="searchTerm"
         v-model:open="menuOpen"
+        :model-value="draft"
         :content="{ side: 'top' }"
         :items="options"
         label-key="name"
@@ -99,7 +114,7 @@ const { execute: create, pending: creating } = useApiMutation(
         aria-label="Tags"
         class="w-full"
         @create="create"
-        @update:model-value="menuOpen = false"
+        @update:model-value="pick"
       />
       <p v-if="refusal" role="alert" class="text-sm text-error">
         {{ refusal }}
