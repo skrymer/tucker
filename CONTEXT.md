@@ -356,7 +356,9 @@ Choosing a Tag narrows the Foods on offer the way a typed query does: to one fla
 list of the Foods carrying it, in place of the **Frequent Foods** ranking — a Tag
 has stopped asking about the whole rotation. One Tag at a time. A Tag and a typed
 query narrow together — the Foods carrying the Tag whose names match — so neither
-quietly undoes the other.
+quietly undoes the other. A chosen Tag is not remembered: each visit starts on the
+whole rotation, because a Tag held over from the morning would hide lunch without
+saying so.
 Only a Tag carrying at least one Food is offered to narrow by — one carrying none
 would narrow to nothing — though it stays wherever Tags are managed or attached.
 Tags are offered alphabetically: a User looking for a Tag is looking for it by
