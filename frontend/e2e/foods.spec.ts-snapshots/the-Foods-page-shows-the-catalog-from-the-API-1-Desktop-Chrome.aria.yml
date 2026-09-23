@@ -4,7 +4,9 @@
     - list:
         - listitem:
             - text: /Oats \d+ kcal · \d+ g protein \/100g/
+            - button "Tags for Oats"
             - button "Delete Oats"
         - listitem:
             - text: /Skyr \d+ kcal · \d+ g protein \/100g/
+            - button "Tags for Skyr"
             - button "Delete Skyr"

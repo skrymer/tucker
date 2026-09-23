@@ -64,6 +64,12 @@ const ALLOWED: Record<string, Record<string, string>> = {
       'the local `name` computed is formatName(food.name)',
     '`Change what ${name} borrows vitamins and minerals from`':
       'the local `name` computed is formatName(food.name)',
+    '`Tags on ${name}`': 'the local `name` computed is formatName(food.name)',
+    '`Tags for ${name}`': 'the local `name` computed is formatName(food.name)',
+    '`${tags.hidden} more tags on ${name}`':
+      'the local `name` computed is formatName(food.name)',
+    'tag.name':
+      'a Tag keeps the spelling its User gave it, so it is never recased (ADR 0033)',
   },
   'components/FoodPickList.vue': {
     'food.name': 'handed to FigureRow, which states it',

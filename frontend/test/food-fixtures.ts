@@ -37,6 +37,7 @@ export function food(
     ingredientCount: null,
     referenceFoodId: null,
     referenceFoodName: null,
+    tags: [],
     ...partial,
   }
 }

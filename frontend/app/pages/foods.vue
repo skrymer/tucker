@@ -195,6 +195,32 @@ const {
   unmatching,
 } = useReferenceFoodMatch(foodToMatch, refresh)
 
+/** The Food whose Tags sheet is open — non-null opens it (ADR 0033). */
+const foodToTag = ref<FoodResponse | null>(null)
+const { execute: saveTags } = useApiMutation(
+  (target: { foodId: number; tagIds: number[] }) =>
+    $api('/api/foods/{id}/tags', {
+      method: 'PUT',
+      path: { id: target.foodId },
+      body: { tagIds: target.tagIds },
+    }),
+  {
+    // No success toast: the row's Tags change where the User is looking.
+    errorTitle: 'Could not save tags',
+    onSuccess: () => {
+      foodToTag.value = null
+      return refresh()
+    },
+  },
+)
+
+// Read once at the tap and passed as an argument: a Retry replays the failed
+// attempt's arguments, not whichever Food the sheet holds by then.
+function handleSaveTags(tagIds: number[]) {
+  const target = foodToTag.value
+  if (target) saveTags({ foodId: target.id, tagIds })
+}
+
 function handleDeleteConfirm() {
   const food = selectedFood.value
   if (food) deleteFood(food)
@@ -231,6 +257,7 @@ function handleDeleteConfirm() {
         @delete="selectedFood = $event"
         @view="recipeToView = $event"
         @match="foodToMatch = $event"
+        @tag="foodToTag = $event"
       />
       <FoodEmptyState v-else @add="open = true" />
     </LoadErrorState>
@@ -273,6 +300,12 @@ function handleDeleteConfirm() {
       @match="claimMatch"
       @unmatch="clearMatch"
       @close="foodToMatch = null"
+    />
+
+    <FoodTagsSheet
+      :food="foodToTag"
+      @save="handleSaveTags"
+      @close="foodToTag = null"
     />
 
     <RecipeCompositionSheet

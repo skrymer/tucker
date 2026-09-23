@@ -19,7 +19,10 @@ const emit = defineEmits<{
   delete: [FoodResponse]
   view: [FoodResponse]
   match: [FoodResponse]
+  tag: [FoodResponse]
 }>()
+
+const tags = computed(() => rowTags(props.food.tags ?? []))
 
 const isRecipe = computed(() => props.food.kind === 'RECIPE')
 
@@ -38,31 +41,56 @@ const recipeSubline = computed(() => {
        own destination (ADR 0028). Beside it the list icon views a recipe's
        composition, the pencil changes a borrow and the trash deletes. -->
   <div class="flex items-center gap-1">
-    <FigureRow
-      class="flex-1 py-3"
-      :name="food.name"
-      :figures="formatPer100g(food)"
-    >
-      <template #marker>
-        <RecipeBadge v-if="isRecipe" />
-      </template>
+    <div class="min-w-0 flex-1 py-3">
+      <FigureRow :name="food.name" :figures="formatPer100g(food)">
+        <template #marker>
+          <RecipeBadge v-if="isRecipe" />
+        </template>
 
-      <!-- Recipe-only meta line, quieter than the nutrition line. -->
-      <span v-if="isRecipe" class="mt-0.5 block text-xs text-dimmed">
-        {{ recipeSubline }}
-      </span>
+        <!-- Recipe-only meta line, quieter than the nutrition line. -->
+        <span v-if="isRecipe" class="mt-0.5 block text-xs text-dimmed">
+          {{ recipeSubline }}
+        </span>
 
-      <!-- What this Food borrows its micronutrients from, named rather than
+        <!-- What this Food borrows its micronutrients from, named rather than
              ticked: a tick is unverifiable, and there is nothing on an unmatched
              row at all — a marker there would decorate a Food with a status it
              did not earn (ADR 0027). -->
-      <span
-        v-if="tracksCalories && food.referenceFoodName"
-        class="mt-0.5 block truncate text-xs text-dimmed"
+        <span
+          v-if="tracksCalories && food.referenceFoodName"
+          class="mt-0.5 block truncate text-xs text-dimmed"
+        >
+          Vitamins and minerals from {{ food.referenceFoodName }}
+        </span>
+      </FigureRow>
+
+      <!-- Tags are the User's words, spelled as given; the +N opens the same
+           sheet as the tag action (ADR 0033). -->
+      <ul
+        v-if="food.tags?.length"
+        :aria-label="`Tags on ${name}`"
+        class="mt-1 flex flex-wrap gap-1"
       >
-        Vitamins and minerals from {{ food.referenceFoodName }}
-      </span>
-    </FigureRow>
+        <li v-for="tag in tags.shown" :key="tag.id">
+          <UBadge :label="tag.name" color="neutral" variant="soft" size="sm" />
+        </li>
+        <li v-if="tags.hidden > 0">
+          <button
+            type="button"
+            :aria-label="`${tags.hidden} more tags on ${name}`"
+            class="rounded-full"
+            @click="emit('tag', props.food)"
+          >
+            <UBadge
+              :label="`+${tags.hidden}`"
+              color="neutral"
+              variant="outline"
+              size="sm"
+            />
+          </button>
+        </li>
+      </ul>
+    </div>
 
     <UButton
       v-if="isRecipe"
@@ -89,6 +117,17 @@ const recipeSubline = computed(() => {
       class="size-11 shrink-0 text-muted hover:text-default"
       :ui="{ base: 'justify-center' }"
       @click="emit('match', props.food)"
+    />
+
+    <UButton
+      :aria-label="`Tags for ${name}`"
+      icon="i-lucide-tag"
+      color="neutral"
+      variant="ghost"
+      square
+      class="size-11 shrink-0 text-muted hover:text-default"
+      :ui="{ base: 'justify-center' }"
+      @click="emit('tag', props.food)"
     />
 
     <UButton
