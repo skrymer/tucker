@@ -2,6 +2,8 @@
 // In-memory demo catalog; nothing here is persisted or sent to the backend.
 // Delete with the rest of components/prototype/ once a variant is chosen.
 
+import { reactive } from 'vue'
+
 export interface DemoFood {
   id: number
   name: string
@@ -53,8 +55,8 @@ const rows: Row[] = [
   ['Butter', 717, 0.9, 8, []],
 ]
 
-export const demoFoods: DemoFood[] = rows.map(
-  ([name, kcal, protein, count30d, tags, kind], i) => ({
+export const demoFoods: DemoFood[] = reactive(
+  rows.map(([name, kcal, protein, count30d, tags, kind], i) => ({
     id: 9000 + i,
     name,
     kind: kind ?? 'FOOD',
@@ -62,7 +64,7 @@ export const demoFoods: DemoFood[] = rows.map(
     proteinPer100g: protein,
     count30d,
     tags,
-  }),
+  })),
 )
 
 /** Every Tag in use, alphabetically — found by name, not by rank. */
@@ -104,11 +106,24 @@ const extraTags = [
 ]
 
 /** The same catalog with sixteen more Tags spread across it — a heavy tagger. */
-export const demoFoodsManyTags: DemoFood[] = demoFoods.map((f, i) => ({
-  ...f,
-  tags: [
-    ...f.tags,
-    extraTags[i % extraTags.length]!,
-    ...(i % 3 === 0 ? [extraTags[(i * 7) % extraTags.length]!] : []),
-  ].filter((t, j, a) => a.indexOf(t) === j),
-}))
+export function withManyTags(foods: DemoFood[]): DemoFood[] {
+  return foods.map((f, i) => ({
+    ...f,
+    tags: [
+      ...f.tags,
+      extraTags[i % extraTags.length]!,
+      ...(i % 3 === 0 ? [extraTags[(i * 7) % extraTags.length]!] : []),
+    ].filter((t, j, a) => a.indexOf(t) === j),
+  }))
+}
+
+/** Case-insensitive: an existing Tag's spelling wins over what was typed. */
+export function canonicalTag(typed: string, known: string[]): string | null {
+  const t = typed.trim()
+  if (!t) return null
+  return known.find((k) => k.toLowerCase() === t.toLowerCase()) ?? t
+}
+
+export function addDemoFood(food: Omit<DemoFood, 'id' | 'count30d'>) {
+  demoFoods.push({ ...food, id: 9000 + demoFoods.length, count30d: 0 })
+}

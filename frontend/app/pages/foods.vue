@@ -1,9 +1,22 @@
 <script setup lang="ts">
 import type { components } from '#open-fetch-schemas/api'
 
+import { addDemoFood } from '~/prototype/foodTagsDemo'
+
 type FoodResponse = components['schemas']['FoodResponse']
 
 const { data: foods, error: foodsError, refresh } = await useApi('/api/foods')
+
+// PROTOTYPE — Tags on the catalog, over the in-memory demo catalog /log's
+// variants read. Dev builds only, on `?variant=tags`.
+const protoMode = computed(
+  () => import.meta.dev && useRoute().query.variant === 'tags',
+)
+const protoTags = ref<string[]>([])
+provide(
+  'prototypeTags',
+  computed(() => (protoMode.value ? protoTags : null)).value,
+)
 
 // Gated explicitly on the setting, never on whether a row happens to hold a
 // match: a weight-only User who matched foods before turning tracking off would
@@ -61,7 +74,7 @@ async function savingFromThisSheet<T>(save: Promise<T>): Promise<T> {
   return saved
 }
 
-const { execute: handleSubmit } = useApiMutation(
+const { execute: realSubmit } = useApiMutation(
   (payload: {
     name: string
     barcode?: string
@@ -77,6 +90,28 @@ const { execute: handleSubmit } = useApiMutation(
     onSuccess: () => refresh(),
   },
 )
+
+function handleSubmit(payload: {
+  name: string
+  barcode?: string
+  proteinPer100g: number
+  carbsPer100g: number
+  fatPer100g: number
+}) {
+  if (!protoMode.value) return realSubmit(payload)
+  addDemoFood({
+    name: payload.name,
+    kind: 'FOOD',
+    caloriesPer100g:
+      4 * payload.proteinPer100g +
+      4 * payload.carbsPer100g +
+      9 * payload.fatPer100g,
+    proteinPer100g: payload.proteinPer100g,
+    tags: [...protoTags.value],
+  })
+  protoTags.value = []
+  open.value = false
+}
 
 // A new Food created inline from the recipe builder's "Add a new food". The page
 // owns catalog mutations, so it persists here and refreshes the catalog; the
@@ -224,8 +259,9 @@ function handleDeleteConfirm() {
       title="Couldn't load your foods"
       @retry="refresh"
     >
+      <PrototypeFoodsWithTags v-if="protoMode" />
       <FoodList
-        v-if="foods && foods.length > 0"
+        v-else-if="foods && foods.length > 0"
         :foods="foods"
         :tracks-calories="tracksCalories"
         @delete="selectedFood = $event"

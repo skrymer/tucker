@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { components } from '#open-fetch-schemas/api'
 
-import { demoFoods, demoFoodsManyTags } from '~/prototype/foodTagsDemo'
+import { demoFoods, withManyTags } from '~/prototype/foodTagsDemo'
 
 type FoodResponse = components['schemas']['FoodResponse']
 
@@ -124,7 +124,7 @@ const proto = computed(() =>
     : null,
 )
 const protoFoods = computed(() =>
-  protoRoute.query.tags === 'many' ? demoFoodsManyTags : demoFoods,
+  protoRoute.query.tags === 'many' ? withManyTags(demoFoods) : demoFoods,
 )
 const protoToast = useToast()
 function protoPick(food: { name: string }) {

@@ -104,6 +104,9 @@ function useFoodDraft() {
 
 const { state, markTouched, updateMacro } = useFoodDraft()
 
+// PROTOTYPE — the Tags field, present only when /foods?variant=tags provides it.
+const protoTags = inject<Ref<string[]> | null>('prototypeTags', null)
+
 function onSubmit() {
   emit('submit', {
     name: state.name,
@@ -172,6 +175,10 @@ function onSubmit() {
         />
       </UFormField>
     </div>
+
+    <UFormField v-if="protoTags" label="Tags" name="tags" hint="Optional">
+      <PrototypeTagPicker v-model="protoTags" />
+    </UFormField>
 
     <p v-if="statedEnergyKcalPer100g != null" class="text-sm text-muted">
       Stated on the label: {{ statedEnergyKcalPer100g }} kcal /100 g. Calories

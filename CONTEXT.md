@@ -351,6 +351,10 @@ has stopped asking about the whole rotation. One Tag at a time.
 Tags are offered alphabetically: a User looking for a Tag is looking for it by
 name, and an order that moves with their logging would put it somewhere different
 each week.
+A Tag's name is matched ignoring case: "Breakfast" and "breakfast" are one Tag,
+and a User typing a Tag they already have in another case gets the one they have.
+Tags are attached where Foods are managed — on a Food in the catalog, or while
+adding one — and never where they are picked to be logged.
 A Tag is not a meal: there is no Meal object, and "breakfast" as a Tag says nothing
 about when a Food was eaten. Nor is it a verdict — a Tag is the User's word, and the
 no-good-or-bad rule governs what *Tucker* says about a Food, never what the User
