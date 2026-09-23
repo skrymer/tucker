@@ -11,6 +11,7 @@ import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
+import org.springframework.test.web.servlet.put
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
 
@@ -70,6 +71,28 @@ class FoodFrequentApiTest {
             jsonPath("$[0].proteinPer100g") { value(31.0) }
             jsonPath("$[0].kind") { value("FOOD") }
             jsonPath("$[1].id") { value(oats) }
+        }
+    }
+
+    @Test
+    fun `a Frequent Food carries the Tags it wears, as the catalog does`() {
+        val oats = createFood("Rolled oats")
+        val breakfast = idOf(
+            mockMvc.post("/api/tags") {
+                contentType = MediaType.APPLICATION_JSON
+                content = """{"name":"breakfast"}"""
+            }.andReturn().response.contentAsString,
+        )
+        mockMvc.put("/api/foods/$oats/tags") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"tagIds":[$breakfast]}"""
+        }.andExpect { status { isOk() } }
+        logWeighed(oats)
+
+        frequent().andExpect {
+            jsonPath("$[0].tags.length()") { value(1) }
+            jsonPath("$[0].tags[0].id") { value(breakfast) }
+            jsonPath("$[0].tags[0].name") { value("breakfast") }
         }
     }
 

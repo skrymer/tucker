@@ -4,6 +4,7 @@ import com.tucker.domain.Food
 import com.tucker.domain.FoodKind
 import com.tucker.domain.Nutrition
 import com.tucker.jooq.Tables.FOOD
+import com.tucker.jooq.Tables.FOOD_TAG
 import com.tucker.jooq.tables.records.FoodRecord
 import com.tucker.security.CurrentUser
 import org.jooq.DSLContext
@@ -28,7 +29,7 @@ class FoodRepository(
         dsl.selectFrom(FOOD)
             .where(FOOD.ID.eq(id.toInt()))
             .and(FOOD.USER_ID.eq(currentUser.ownerId))
-            .fetchOne()?.toFood()
+            .fetchOne()?.toFood()?.let { wearingTags(listOf(it)).single() }
 
     /**
      * The caller's own Food for [barcode], if they have saved one. Scoped like every
@@ -40,13 +41,13 @@ class FoodRepository(
         dsl.selectFrom(FOOD)
             .where(FOOD.BARCODE.eq(barcode))
             .and(FOOD.USER_ID.eq(currentUser.ownerId))
-            .fetchOne()?.toFood()
+            .fetchOne()?.toFood()?.let { wearingTags(listOf(it)).single() }
 
     fun findAll(): List<Food> =
         dsl.selectFrom(FOOD)
             .where(FOOD.USER_ID.eq(currentUser.ownerId))
             .orderBy(FOOD.NAME.lower())
-            .fetch().map { it.toFood() }
+            .fetch().map { it.toFood() }.let(::wearingTags)
 
     /** Load every Food in [ids] in a single query (used to resolve recipe ingredients). */
     fun findByIds(ids: Collection<Long>): List<Food> {
@@ -54,7 +55,7 @@ class FoodRepository(
         return dsl.selectFrom(FOOD)
             .where(FOOD.ID.`in`(ids.map { it.toInt() }))
             .and(FOOD.USER_ID.eq(currentUser.ownerId))
-            .fetch().map { it.toFood() }
+            .fetch().map { it.toFood() }.let(::wearingTags)
     }
 
     fun insert(food: Food): Food {
@@ -101,6 +102,16 @@ class FoodRepository(
         fatPer_100g = food.nutrition.fatPer100g
         cookedWeightG = food.cookedWeightG
         referenceFoodId = food.referenceFoodId?.toInt()
+    }
+
+    /** [foods] each carrying the ids of the Tags it wears, read in one query. */
+    private fun wearingTags(foods: List<Food>): List<Food> {
+        if (foods.isEmpty()) return foods
+        val tagIdsByFood = dsl.select(FOOD_TAG.FOOD_ID, FOOD_TAG.TAG_ID)
+            .from(FOOD_TAG)
+            .where(FOOD_TAG.FOOD_ID.`in`(foods.map { it.id!!.toInt() }))
+            .fetchGroups({ it[FOOD_TAG.FOOD_ID]!!.toLong() }, { it[FOOD_TAG.TAG_ID]!!.toLong() })
+        return foods.map { it.copy(tagIds = tagIdsByFood[it.id].orEmpty().toSet()) }
     }
 
     fun delete(id: Long) {

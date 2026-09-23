@@ -332,6 +332,59 @@ class CrossUserIsolationTest {
     }
 
     @Test
+    fun `a User's Tags are only their own`() {
+        postForId(alice, "/api/tags", """{"name":"breakfast"}""")
+        postForId(bob, "/api/tags", """{"name":"post-workout"}""")
+
+        mockMvc.get("/api/tags") { header(ACCESS_ASSERTION_HEADER, bob) }.andExpect {
+            status { isOk() }
+            jsonPath("$.length()") { value(1) }
+            jsonPath("$[0].name") { value("post-workout") }
+        }
+    }
+
+    @Test
+    fun `naming a Tag another User already holds creates one of this User's own`() {
+        val alices = postForId(alice, "/api/tags", """{"name":"breakfast"}""")
+
+        val bobs = postForId(bob, "/api/tags", """{"name":"Breakfast"}""")
+
+        assertTrue(bobs != alices, "Bob was handed Alice's Tag rather than one of his own")
+    }
+
+    @Test
+    fun `tagging another User's Food is not found and leaves it untagged`() {
+        val almonds = createFood(alice, "Alice's almonds")
+        val snack = postForId(bob, "/api/tags", """{"name":"snack"}""")
+
+        mockMvc.put("/api/foods/$almonds/tags") {
+            header(ACCESS_ASSERTION_HEADER, bob)
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"tagIds":[$snack]}"""
+        }.andExpect { status { isNotFound() } }
+
+        mockMvc.get("/api/foods/$almonds") { header(ACCESS_ASSERTION_HEADER, alice) }.andExpect {
+            jsonPath("$.tags.length()") { value(0) }
+        }
+    }
+
+    @Test
+    fun `putting another User's Tag on a Food is not found, exactly as an absent Tag is`() {
+        val skyr = createFood(bob, "Bob's skyr")
+        val alicesBreakfast = postForId(alice, "/api/tags", """{"name":"breakfast"}""")
+
+        mockMvc.put("/api/foods/$skyr/tags") {
+            header(ACCESS_ASSERTION_HEADER, bob)
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"tagIds":[$alicesBreakfast]}"""
+        }.andExpect { status { isNotFound() } }
+
+        mockMvc.get("/api/foods/$skyr") { header(ACCESS_ASSERTION_HEADER, bob) }.andExpect {
+            jsonPath("$.tags.length()") { value(0) }
+        }
+    }
+
+    @Test
     fun `two Users can each hold a Food with the same barcode`() {
         createFood(alice, "Alice's skyr", barcode = "5701234567890")
         createFood(bob, "Bob's skyr", barcode = "5701234567890")

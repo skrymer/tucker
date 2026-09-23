@@ -30,7 +30,29 @@ class FoodTest {
                 "a wrong one is worse than none",
         )
     }
+
+    @Test
+    fun `a Food tagged with a Tag wears it beside the ones it already had`() {
+        assertEquals(setOf(BREAKFAST, SNACK), CHEESE.taggedWith(BREAKFAST).taggedWith(SNACK).tagIds)
+    }
+
+    @Test
+    fun `a Food a Tag is taken off keeps its other Tags`() {
+        assertEquals(setOf(SNACK), CHEESE.taggedWith(BREAKFAST).taggedWith(SNACK).untagged(BREAKFAST).tagIds)
+    }
+
+    @Test
+    fun `a Food retagged wears exactly the Tags it was given, each once`() {
+        assertEquals(
+            setOf(SNACK, POST_WORKOUT),
+            CHEESE.taggedWith(BREAKFAST).retagged(listOf(SNACK, POST_WORKOUT, SNACK)).tagIds,
+        )
+    }
 }
+
+private const val BREAKFAST = 3L
+private const val SNACK = 4L
+private const val POST_WORKOUT = 5L
 
 private val CHEESE = Food.plain(
     id = 1L,
