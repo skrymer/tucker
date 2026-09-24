@@ -34,7 +34,7 @@ class FoodService(
      * nothing when one of them is not the caller's (ADR 0033).
      */
     @Transactional
-    fun createRecipe(recipe: Recipe): Recipe? = if (ownsAll(recipe.tagIds)) recipes.insert(recipe) else null
+    fun createRecipe(recipe: Recipe): Food? = if (ownsAll(recipe.tagIds)) recipes.insert(recipe).asFood() else null
 
     /**
      * Replace the stored Recipe with [recipe] — composition and Tags alike — or return

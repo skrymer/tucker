@@ -2,6 +2,7 @@ package com.tucker.api
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.tucker.security.WithTuckerUser
+import org.hamcrest.Matchers.contains
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
@@ -63,7 +64,7 @@ class RecipeTagsApiTest {
         }
 
         mockMvc.get("/api/foods").andExpect {
-            jsonPath("$[*].name") { value(org.hamcrest.Matchers.contains("Beef mince")) }
+            jsonPath("$[*].name") { value(contains("Beef mince")) }
         }
     }
 
@@ -85,7 +86,7 @@ class RecipeTagsApiTest {
         }
 
         mockMvc.get("/api/foods/$recipe").andExpect {
-            jsonPath("$.tags[*].id") { value(org.hamcrest.Matchers.contains(dinner.toInt(), freezer.toInt())) }
+            jsonPath("$.tags[*].id") { value(contains(dinner.toInt(), freezer.toInt())) }
         }
     }
 
@@ -105,11 +106,25 @@ class RecipeTagsApiTest {
         }
 
         mockMvc.get("/api/foods/$recipe").andExpect {
-            jsonPath("$.tags[*].id") { value(org.hamcrest.Matchers.contains(dinner.toInt())) }
+            jsonPath("$.tags[*].id") { value(contains(dinner.toInt())) }
         }
         mockMvc.get("/api/recipes/$recipe").andExpect {
             jsonPath("$.cookedWeightG") { value(500.0) }
-            jsonPath("$.ingredients[*].name") { value(org.hamcrest.Matchers.contains("Beef mince")) }
+            jsonPath("$.ingredients[*].name") { value(contains("Beef mince")) }
+        }
+    }
+
+    @Test
+    fun `a Recipe read for editing carries its Tags beside its composition`() {
+        val mince = createFood("Beef mince")
+        val dinner = createTag("dinner")
+        val batch = createTag("Batch cook")
+        val recipe = createRecipe(mince, dinner, batch)
+
+        mockMvc.get("/api/recipes/$recipe").andExpect {
+            status { isOk() }
+            jsonPath("$.tags[*].name") { value(contains("Batch cook", "dinner")) }
+            jsonPath("$.tags[*].id") { value(contains(batch.toInt(), dinner.toInt())) }
         }
     }
 

@@ -51,6 +51,7 @@ test('recalibrates a recipe from its composition view via the pre-filled builder
         name: 'Cottage pie',
         cookedWeightG: 200,
         ingredients: [{ foodId: 1, name: 'Beef mince', grams: 300 }],
+        tags: [],
       },
     })
   })

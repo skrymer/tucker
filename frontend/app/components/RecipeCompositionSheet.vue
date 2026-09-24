@@ -104,7 +104,7 @@ function useEditMode() {
       name: comp.name,
       cookedWeightG: comp.cookedWeightG,
       ingredients: lines,
-      tags: props.recipe?.tags ?? [],
+      tags: comp.tags,
     }
   })
   return {

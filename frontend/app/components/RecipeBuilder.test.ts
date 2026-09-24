@@ -347,6 +347,42 @@ describe('RecipeBuilder', () => {
     )
   })
 
+  it('keeps a Tag still being created while an ingredient is added', async () => {
+    let release!: () => void
+    const held = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    registerEndpoint('/api/tags', { method: 'GET', handler: () => [] })
+    registerEndpoint('/api/tags', {
+      method: 'POST',
+      handler: async () => {
+        await held
+        return { id: 20, name: 'dinner', foodCount: 0 }
+      },
+    })
+    const onSubmit = vi.fn()
+    const user = userEvent.setup()
+    await renderSuspended(RecipeBuilder, {
+      props: { foods: sampleFoods, onSubmit },
+    })
+
+    await user.type(screen.getByLabelText(/recipe name/i), 'Cottage pie')
+    await user.type(screen.getByRole('combobox', { name: 'Tags' }), 'dinner')
+    await user.click(await screen.findByRole('option', { name: /dinner/ }))
+    await user.click(screen.getByRole('button', { name: /add ingredient/i }))
+    release()
+    await user.click(screen.getByRole('button', { name: /beef mince/i }))
+    await user.type(screen.getByLabelText(/grams/i), '300')
+    await user.click(screen.getByRole('button', { name: /^add$/i }))
+
+    const save = screen.getByRole('button', { name: /save recipe/i })
+    await vi.waitFor(() => expect(save).toBeEnabled())
+    await user.click(save)
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({ tagIds: [20] }),
+    )
+  })
+
   it('cannot save a recipe with no ingredients', async () => {
     const onSubmit = vi.fn()
     const user = userEvent.setup()

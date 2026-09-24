@@ -290,8 +290,10 @@ function onSave() {
 
 <template>
   <div class="flex flex-col gap-4">
+    <!-- Hidden rather than unmounted while an ingredient is added, so a Tag still
+         being created lands in the picker that asked for it. -->
     <UForm
-      v-if="step === 'build'"
+      v-show="step === 'build'"
       :state="form"
       :schema="buildSchema"
       class="flex flex-col gap-4"
@@ -404,7 +406,7 @@ function onSave() {
       </UButton>
     </UForm>
 
-    <div v-else-if="step === 'pick'" class="flex flex-col gap-3">
+    <div v-if="step === 'pick'" class="flex flex-col gap-3">
       <UButton
         icon="i-lucide-arrow-left"
         color="neutral"

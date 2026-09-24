@@ -4551,7 +4551,8 @@
           "cookedWeightG",
           "id",
           "ingredients",
-          "name"
+          "name",
+          "tags"
         ],
         "type": "object",
         "properties": {
@@ -4570,6 +4571,12 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/RecipeIngredientResponse"
+            }
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FoodTagResponse"
             }
           }
         }

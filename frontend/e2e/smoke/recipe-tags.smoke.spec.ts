@@ -1,4 +1,5 @@
 import { test, expect } from './support/smoke-test'
+import { expectCreated } from './support/seeding'
 
 // F18 slice 4 smoke: a User tags a Recipe while building it and changes its Tags
 // while editing it, against the real backend — and an edit that leaves the Tags
@@ -14,19 +15,19 @@ test('a Recipe built with a Tag carries it, and editing it changes or keeps its 
   // Two passes through the builder against the real backend.
   test.slow()
 
-  const mince = await request.post(`${API}/foods`, {
-    data: {
-      name: 'Beef mince',
-      proteinPer100g: 20,
-      carbsPer100g: 0,
-      fatPer100g: 10,
-    },
-  })
-  expect(mince.status()).toBe(201)
-  const existing = await request.post(`${API}/tags`, {
-    data: { name: 'Batch cook' },
-  })
-  expect(existing.status()).toBe(201)
+  await expectCreated(
+    request.post(`${API}/foods`, {
+      data: {
+        name: 'Beef mince',
+        proteinPer100g: 20,
+        carbsPer100g: 0,
+        fatPer100g: 10,
+      },
+    }),
+  )
+  await expectCreated(
+    request.post(`${API}/tags`, { data: { name: 'Batch cook' } }),
+  )
 
   await goto('/foods', { waitUntil: 'hydration' })
 

@@ -52,9 +52,10 @@ data class RecipeResponse(
     val name: String,
     val cookedWeightG: Double,
     val ingredients: List<RecipeIngredientResponse>,
+    val tags: List<FoodTagResponse>,
 )
 
-private fun Recipe.toResponse() = RecipeResponse(
+private fun Recipe.toResponse(tags: List<FoodTagResponse>) = RecipeResponse(
     id = persistedId(id),
     name = name,
     cookedWeightG = cookedWeightG,
@@ -65,6 +66,7 @@ private fun Recipe.toResponse() = RecipeResponse(
             grams = line.grams,
         )
     },
+    tags = tags,
 )
 
 @RestController
@@ -87,7 +89,7 @@ class RecipeController(
     fun create(@RequestBody request: CreateRecipeRequest): FoodResponse {
         val recipe = request.toRecipe(id = null)
         val created = foodService.createRecipe(recipe) ?: throw NotFoundException("no Tag among ${request.tagIds}")
-        return describer.describe(created.asFood())
+        return describer.describe(created)
     }
 
     /**
@@ -96,9 +98,10 @@ class RecipeController(
      * recipe (a plain Food or an unknown id), via [ApiExceptionHandler].
      */
     @GetMapping("/{id}")
-    fun byId(@PathVariable id: Long): RecipeResponse =
-        recipes.findById(id)?.toResponse()
-            ?: throw NotFoundException("no recipe with id $id")
+    fun byId(@PathVariable id: Long): RecipeResponse {
+        val recipe = recipes.findById(id) ?: throw NotFoundException("no recipe with id $id")
+        return recipe.toResponse(tags = describer.describe(recipe.asFood()).tags)
+    }
 
     /**
      * Update a Recipe in place, keeping its Food id: re-roll its per-100g and

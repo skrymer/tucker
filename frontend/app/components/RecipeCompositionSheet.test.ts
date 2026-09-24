@@ -23,6 +23,7 @@ const composition = {
     { foodId: 1, name: 'Mince', grams: 500 },
     { foodId: 2, name: 'Potato', grams: 900 },
   ],
+  tags: [],
 }
 
 const beefStew = recipe({
@@ -42,6 +43,7 @@ const stewComposition = {
     { foodId: 6, name: 'Beef', grams: 400 },
     { foodId: 7, name: 'Carrot', grams: 300 },
   ],
+  tags: [],
 }
 
 // The catalog the edit builder resolves its pre-filled ingredient lines against —
@@ -188,8 +190,11 @@ describe('RecipeCompositionSheet', () => {
     })
   })
 
-  it('seeds the edit builder with the Tags the recipe carries, saving them as they were', async () => {
-    registerEndpoint('/api/recipes/4', () => composition)
+  it('seeds the edit builder with the Tags read beside the composition, not the catalog row', async () => {
+    registerEndpoint('/api/recipes/4', () => ({
+      ...composition,
+      tags: [{ id: 7, name: 'Batch cook' }],
+    }))
     registerEndpoint('/api/tags', () => [])
     const onSubmitEdit = vi.fn()
     const user = userEvent.setup()
@@ -203,11 +208,12 @@ describe('RecipeCompositionSheet', () => {
 
     await screen.findByText('Mince')
     await user.click(screen.getByRole('button', { name: /edit recipe/i }))
-    expect(screen.getByText('dinner')).toBeVisible()
+    expect(screen.getByText('Batch cook')).toBeVisible()
+    expect(screen.queryByText('dinner')).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /save changes/i }))
 
     expect(onSubmitEdit).toHaveBeenCalledWith(
-      expect.objectContaining({ tagIds: [9] }),
+      expect.objectContaining({ tagIds: [7] }),
     )
   })
 

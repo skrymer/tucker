@@ -93,6 +93,7 @@ class RecipeRepository(
             ingredients = ingredientsOf(listOf(id))[id].orEmpty(),
             // Non-null by `Food`'s invariant: a RECIPE is sliced out of its cooked weight.
             cookedWeightG = food.cookedWeightG!!,
+            tagIds = food.tagIds,
         )
     }
 
