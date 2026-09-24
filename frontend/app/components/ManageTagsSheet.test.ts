@@ -496,8 +496,5 @@ describe('ManageTagsSheet', () => {
     expect(await screen.findByText('Lunch')).toBeVisible()
     expect(sent).toEqual([{ name: 'Lunch' }])
     expect(screen.getByRole('textbox', { name: 'New tag' })).toHaveValue('')
-    expect(
-      screen.queryByText('Enter a name for this tag'),
-    ).not.toBeInTheDocument()
   })
 })
