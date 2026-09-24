@@ -87,6 +87,12 @@ const ALLOWED: Record<string, Record<string, string>> = {
     'food.referenceFoodName':
       'a published FSANZ name, stated as FSANZ writes it (ADR 0027)',
   },
+  'components/ManageTagsSheet.vue': {
+    'tag.name':
+      'a Tag keeps the spelling its User gave it, so it is never recased (ADR 0033)',
+    '`Delete ${tag.name}`':
+      'a Tag keeps the spelling its User gave it, so it is never recased (ADR 0033)',
+  },
   'components/TagChips.vue': {
     'tag.name':
       'a Tag keeps the spelling its User gave it, so it is never recased (ADR 0033)',
