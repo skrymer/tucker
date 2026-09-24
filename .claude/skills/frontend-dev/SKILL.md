@@ -83,9 +83,10 @@ assertion with the dev token), and no browser-level layer can reach it.
 - **Per-project aria snapshots** (Desktop / Mobile) — after an intended markup change regenerate with
   `pnpm test:e2e --update-snapshots`, then `git diff` the `*-snapshots/` to confirm only the intended
   tree moved.
-- **`toMatchAriaSnapshot` is a partial match.** Unlisted nodes are ignored, so a snapshot says
-  nothing about what is *absent* until `- /children: equal` sits under each node that must be
-  exact; and a chip's `[pressed=false]` is unchecked unless written.
+- **`toMatchAriaSnapshot` is a partial match.** Unlisted nodes are ignored, so every baseline
+  opens with `- /children: deep-equal` under its root — without it a snapshot says nothing about
+  what is *absent*. State figures exactly, never as `/\d+/`: `--update-snapshots` generalises
+  numbers into regexes, so regenerate from `locator.ariaSnapshot()`, which writes literals.
 - **Headless Chromium hides scrollbars**, so a layout jump caused by the page's scrollbar
   appearing or disappearing is invisible to e2e. A spec about horizontal position sets
   `test.use({ launchOptions: { ignoreDefaultArgs: ['--hide-scrollbars'] } })` and measures the
