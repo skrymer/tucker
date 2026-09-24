@@ -43,10 +43,7 @@ function useTagCreation() {
     () => (refusal.value = undefined),
   )
   const { execute: create, pending: creating } = useApiMutation(
-    (name: string) => {
-      refusal.value = undefined
-      return $api('/api/tags', { method: 'POST', body: { name } })
-    },
+    (name: string) => $api('/api/tags', { method: 'POST', body: { name } }),
     {
       errorTitle: 'Could not add tag',
       // No Retry: the same name would be refused again.

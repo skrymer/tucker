@@ -27,10 +27,9 @@ async function mockTags(
   })
   await page.route('**/api/tags/*', (route) => {
     const id = Number(new URL(route.request().url()).pathname.split('/').pop())
-    known.splice(
-      known.findIndex((tag) => tag.id === id),
-      1,
-    )
+    // An absent id deletes nothing, as the backend's 204 does.
+    const at = known.findIndex((tag) => tag.id === id)
+    if (at >= 0) known.splice(at, 1)
     onDelete(id)
     return route.fulfill({ status: 204 })
   })
