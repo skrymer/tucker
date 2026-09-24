@@ -404,6 +404,26 @@ class CrossUserIsolationTest {
     }
 
     @Test
+    fun `creating a Recipe carrying another User's Tag is not found, and creates nothing`() {
+        val oats = createFood(bob, "Bob's oats")
+        val alicesBreakfast = postForId(alice, "/api/tags", """{"name":"breakfast"}""")
+
+        mockMvc.post("/api/recipes") {
+            header(ACCESS_ASSERTION_HEADER, bob)
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"name":"Bob's porridge","cookedWeightG":300.0,"tagIds":[$alicesBreakfast],
+                          "ingredients":[{"foodId":$oats,"grams":100.0}]}"""
+        }.andExpect { status { isNotFound() } }
+
+        mockMvc.get("/api/foods") { header(ACCESS_ASSERTION_HEADER, bob) }.andExpect {
+            jsonPath("$[*].name") { value(org.hamcrest.Matchers.contains("Bob's oats")) }
+        }
+        mockMvc.get("/api/tags") { header(ACCESS_ASSERTION_HEADER, alice) }.andExpect {
+            jsonPath("$[0].foodCount") { value(0) }
+        }
+    }
+
+    @Test
     fun `two Users can each hold a Food with the same barcode`() {
         createFood(alice, "Alice's skyr", barcode = "5701234567890")
         createFood(bob, "Bob's skyr", barcode = "5701234567890")
