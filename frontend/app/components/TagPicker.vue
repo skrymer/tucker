@@ -33,12 +33,13 @@ function useTagEntry() {
   const refusal = ref<string | null>(null)
   // Closed on every pick: a multi-select left open covers what sits below it.
   const menuOpen = ref(false)
-  // The name last sent, so a refused one can be put back to correct.
-  let lastTyped = ''
+  // Names wait their turn rather than being dropped while one is created; the
+  // head is the one in flight, and stays until it lands.
+  const queued = ref<string[]>([])
+  watchEffect(() => (creating.value = queued.value.length > 0))
 
-  const { execute: create, pending } = useApiMutation(
+  const { execute: create } = useApiMutation(
     async (name: string) => {
-      lastTyped = name
       // A picker gone by the time this lands cannot emit, so the Tag never reaches
       // whatever replaced it — which is why a consumer keys it on what it is picking for.
       const tag = await $api('/api/tags', { method: 'POST', body: { name } })
@@ -51,16 +52,10 @@ function useTagEntry() {
       // would be refused again.
       onValidationError: (message) => {
         refusal.value = message
-        if (!searchTerm.value) searchTerm.value = lastTyped
+        // Put back to be corrected: the refused name is still the queue's head.
+        if (!searchTerm.value) searchTerm.value = queued.value[0] ?? ''
       },
     },
-  )
-  // Names wait their turn rather than being dropped while one is created.
-  const queued = ref<string[]>([])
-  watch(
-    () => pending.value || queued.value.length > 0,
-    (value) => (creating.value = value),
-    { immediate: true },
   )
 
   async function enter(name: string) {
