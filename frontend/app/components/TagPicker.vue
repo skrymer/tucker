@@ -40,7 +40,7 @@ function useTagEntry() {
   // put back to correct.
   let lastSent = ''
 
-  const { execute: create, pending } = useApiMutation(
+  const { execute: create } = useApiMutation(
     async (name: string) => {
       lastSent = name
       // A picker gone by the time this lands cannot emit, so the Tag never reaches
@@ -57,34 +57,28 @@ function useTagEntry() {
         refusal.value = message
         if (!searchTerm.value) searchTerm.value = lastSent
       },
+      // Waits its turn like any name, or a create in flight would drop it.
+      retry: (name) => send(name),
     },
   )
-  // A Retry from the failure toast runs the create outside the queue.
-  watchEffect(() => (creating.value = pending.value || queued.value.length > 0))
+  watchEffect(() => (creating.value = queued.value.length > 0))
 
   async function enter(name: string) {
     refusal.value = null
     // Emptied as it is sent, so a next name can be typed while this one is created.
     searchTerm.value = ''
     menuOpen.value = false
+    return send(name)
+  }
+
+  /** Every create goes through here, one at a time. */
+  async function send(name: string) {
     queued.value.push(name)
     if (queued.value.length > 1) return
     while (queued.value.length) {
-      // A Retry already in flight would have this create dropped as a re-entry.
-      if (pending.value) await settled()
       await create(queued.value[0]!)
       queued.value.shift()
     }
-  }
-
-  function settled() {
-    return new Promise<void>((resolve) => {
-      const stop = watch(pending, (busy) => {
-        if (busy) return
-        stop()
-        resolve()
-      })
-    })
   }
 
   // True for the length of one Enter pressed on a typed name: a pick it causes

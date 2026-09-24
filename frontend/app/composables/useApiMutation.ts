@@ -1,4 +1,4 @@
-interface ApiMutationOptions<TResult> {
+interface ApiMutationOptions<TArgs extends unknown[], TResult> {
   /** Toast title shown when the mutation throws. */
   errorTitle: string
   /** Toast title shown on success. Omit for a silent success. */
@@ -21,6 +21,12 @@ interface ApiMutationOptions<TResult> {
    * refusable input shows it against the right one.
    */
   onValidationError?: (message: string, field: string | null) => void
+  /**
+   * Where the failure toast's Retry goes, for a caller that runs its own
+   * attempts one after another: re-running straight away would be dropped by
+   * the re-entry guard whenever the caller has another attempt in flight.
+   */
+  retry?: (...args: TArgs) => void
 }
 
 /**
@@ -59,7 +65,7 @@ function useSpentErrorToasts() {
  */
 export function useApiMutation<TArgs extends unknown[], TResult>(
   mutate: (...args: TArgs) => Promise<TResult>,
-  options: ApiMutationOptions<TResult>,
+  options: ApiMutationOptions<TArgs, TResult>,
 ) {
   const toast = useToast()
 
@@ -114,6 +120,7 @@ export function useApiMutation<TArgs extends unknown[], TResult>(
    */
   function retry(...args: TArgs) {
     spendErrorToastId()
+    if (options.retry) return options.retry(...args)
     return execute(...args)
   }
 

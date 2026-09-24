@@ -421,6 +421,50 @@ describe('FoodTagsSheet', () => {
     expect(picker).toHaveValue(tooLong)
   })
 
+  it('keeps a failed Tag retried while a later name is being created', async () => {
+    toastAdd.mockClear()
+    let release!: () => void
+    const held = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    let snackAttempts = 0
+    const ids: Record<string, number> = { snack: 20, lunch: 21 }
+    registerEndpoint('/api/tags', { method: 'GET', handler: () => [] })
+    registerEndpoint('/api/tags', {
+      method: 'POST',
+      handler: async (event) => {
+        const { name } = await readBody<{ name: string }>(event)
+        if (name === 'snack' && ++snackAttempts === 1) {
+          setResponseStatus(event, 503)
+          return {}
+        }
+        if (name === 'lunch') await held
+        return { id: ids[name], name, foodCount: 0 }
+      },
+    })
+    const onSave = vi.fn()
+    await renderSuspended(FoodTagsSheet, {
+      props: { food: { ...oats, tags: [] }, onSave },
+    })
+    const user = userEvent.setup()
+    const picker = screen.getByRole('combobox')
+
+    await user.type(picker, 'snack')
+    await user.click(await screen.findByRole('option', { name: /snack/ }))
+    await vi.waitFor(() => expect(toastAdd).toHaveBeenCalled())
+    await user.type(picker, 'lunch')
+    await user.click(await screen.findByRole('option', { name: /lunch/ }))
+    const [{ actions }] = toastAdd.mock.calls.at(-1)!
+    actions[0].onClick()
+    release()
+
+    const save = screen.getByRole('button', { name: 'Save tags' })
+    await vi.waitFor(() => expect(snackAttempts).toBe(2))
+    await vi.waitFor(() => expect(save).toBeEnabled())
+    await user.click(save)
+    expect(onSave).toHaveBeenCalledWith([21, 20])
+  })
+
   it('keeps a name entered while a failed Tag is being retried', async () => {
     toastAdd.mockClear()
     let release!: () => void

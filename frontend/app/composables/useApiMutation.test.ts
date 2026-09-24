@@ -190,6 +190,23 @@ describe('useApiMutation', () => {
     expect(onSuccess).toHaveBeenCalledOnce()
   })
 
+  it('hands its Retry to the caller when the caller runs its own attempts', async () => {
+    const mutate = vi
+      .fn<(payload: string) => Promise<void>>()
+      .mockRejectedValueOnce(new Error('boom'))
+    const retry = vi.fn()
+    const { execute } = useApiMutation(mutate, {
+      errorTitle: 'Could not save',
+      retry,
+    })
+
+    await execute('payload')
+    await toastAdd.mock.calls.at(-1)![0].actions[0].onClick()
+
+    expect(retry).toHaveBeenCalledWith('payload')
+    expect(mutate).toHaveBeenCalledTimes(1)
+  })
+
   it('routes a 400 validation error to onValidationError instead of the transient toast', async () => {
     // A 400 means the input is wrong, not the connection — surface it on the
     // form, not as a "check your connection" retry toast.
