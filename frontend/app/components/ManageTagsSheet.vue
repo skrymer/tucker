@@ -7,13 +7,18 @@ const emit = defineEmits<{ changed: [] }>()
 
 const { $api } = useNuxtApp()
 
-/** Every Tag the User keeps, read afresh each time the sheet opens. */
+/**
+ * Every Tag the User keeps, read afresh each time the sheet opens. A re-read supersedes
+ * one in flight, which may have been answered before the change that asked for it.
+ */
 function useTagList() {
   const {
     data: tags,
     error,
     load,
-  } = useOptionalFetch((signal) => $api('/api/tags', { signal }))
+  } = useOptionalFetch((signal) => $api('/api/tags', { signal }), {
+    mode: 'latest',
+  })
   watch(open, (isOpen) => isOpen && load(), { immediate: true })
   return { tags, error, load }
 }

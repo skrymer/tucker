@@ -174,6 +174,53 @@ describe('ManageTagsSheet', () => {
     expect(toastAdd).not.toHaveBeenCalled()
   })
 
+  it('lists what the server holds after a delete, even while an earlier re-read is still on its way', async () => {
+    const kept = [{ id: 9, name: 'snack', foodCount: 3 }]
+    let reads = 0
+    let releaseSecondRead: () => void = () => {}
+    registerEndpoint('/api/tags', {
+      method: 'GET',
+      handler: async () => {
+        reads++
+        const answer = [...kept]
+        if (reads === 2)
+          await new Promise<void>((resolve) => (releaseSecondRead = resolve))
+        return answer
+      },
+    })
+    registerEndpoint('/api/tags', {
+      method: 'POST',
+      handler: () => {
+        kept.push({ id: 10, name: 'Lunch', foodCount: 0 })
+        return { id: 10, name: 'Lunch', foodCount: 0 }
+      },
+    })
+    registerEndpoint('/api/tags/9', {
+      method: 'DELETE',
+      handler: () => {
+        kept.splice(0, 1)
+        return null
+      },
+    })
+    await renderSuspended(ManageTagsSheet, { props: { open: true } })
+    const user = userEvent.setup()
+    await screen.findByText('snack')
+
+    await user.type(screen.getByRole('textbox', { name: 'New tag' }), 'Lunch')
+    await user.click(screen.getByRole('button', { name: 'Add' }))
+    await vi.waitFor(() => expect(reads).toBe(2))
+    await user.click(screen.getByRole('button', { name: 'Delete snack' }))
+    await user.click(screen.getByRole('button', { name: 'Delete tag' }))
+    await vi.waitFor(() => expect(reads).toBe(3))
+    releaseSecondRead()
+
+    await vi.waitFor(() =>
+      expect(
+        screen.getAllByRole('listitem').map((row) => row.textContent),
+      ).toEqual([expect.stringContaining('Lunch')]),
+    )
+  })
+
   it('holds the delete button while a delete is in flight', async () => {
     let deletes = 0
     let answer: () => void = () => {}
