@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { z } from 'zod'
+import type { components } from '#open-fetch-schemas/api'
 
 const schema = z.object({
   name: z.string().min(1, 'Enter a name for this food'),
@@ -34,15 +35,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  submit: [
-    {
-      name: string
-      barcode?: string
-      proteinPer100g: number
-      carbsPer100g: number
-      fatPer100g: number
-    },
-  ]
+  submit: [components['schemas']['CreateFoodRequest']]
 }>()
 
 type Macro = 'proteinPer100g' | 'carbsPer100g' | 'fatPer100g'
@@ -103,6 +96,8 @@ function useFoodDraft() {
 }
 
 const { state, markTouched, updateMacro } = useFoodDraft()
+const tags = ref<components['schemas']['FoodTagResponse'][]>([])
+const creatingTag = ref(false)
 
 function onSubmit() {
   emit('submit', {
@@ -111,6 +106,7 @@ function onSubmit() {
     proteinPer100g: state.proteinPer100g!,
     carbsPer100g: state.carbsPer100g!,
     fatPer100g: state.fatPer100g!,
+    tagIds: tags.value.map((tag) => tag.id),
   })
 }
 </script>
@@ -173,6 +169,10 @@ function onSubmit() {
       </UFormField>
     </div>
 
+    <UFormField label="Tags">
+      <TagPicker v-model="tags" v-model:creating="creatingTag" />
+    </UFormField>
+
     <p v-if="statedEnergyKcalPer100g != null" class="text-sm text-muted">
       Stated on the label: {{ statedEnergyKcalPer100g }} kcal /100 g. Calories
       are recalculated from the macros above.
@@ -182,6 +182,13 @@ function onSubmit() {
          Save, so a scanned result lands right above the Save button. -->
     <slot />
 
-    <UButton type="submit" color="primary" class="w-full"> Save food </UButton>
+    <UButton
+      type="submit"
+      color="primary"
+      class="w-full"
+      :disabled="creatingTag"
+    >
+      Save food
+    </UButton>
   </UForm>
 </template>

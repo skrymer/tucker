@@ -4005,7 +4005,8 @@
           "carbsPer100g",
           "fatPer100g",
           "name",
-          "proteinPer100g"
+          "proteinPer100g",
+          "tagIds"
         ],
         "type": "object",
         "properties": {
@@ -4027,6 +4028,13 @@
           "fatPer100g": {
             "type": "number",
             "format": "double"
+          },
+          "tagIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            }
           }
         }
       },

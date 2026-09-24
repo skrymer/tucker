@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
-import { renderSuspended } from '@nuxt/test-utils/runtime'
+import { registerEndpoint, renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
+import { readBody } from 'h3'
 import AddFoodForm from './AddFoodForm.vue'
 
 // The corrected scan the dirty-tracking tests rerender with. It is the same
@@ -256,6 +257,7 @@ describe('AddFoodForm', () => {
       proteinPer100g: 10.34,
       carbsPer100g: 8.57,
       fatPer100g: 0.23,
+      tagIds: [],
     })
   })
 
@@ -419,7 +421,7 @@ describe('AddFoodForm', () => {
     expect(onSubmit).not.toHaveBeenCalled()
   })
 
-  it('emits the new-food payload when the user saves', async () => {
+  it('emits the new-food payload, carrying no Tags when none were picked', async () => {
     const onSubmit = vi.fn()
     await renderSuspended(AddFoodForm, { props: { onSubmit } })
     const user = userEvent.setup()
@@ -435,7 +437,107 @@ describe('AddFoodForm', () => {
       proteinPer100g: 10,
       carbsPer100g: 4,
       fatPer100g: 0.2,
+      tagIds: [],
     })
+  })
+
+  it('saves the Food carrying the Tags picked for it', async () => {
+    registerEndpoint('/api/tags', () => [
+      { id: 7, name: 'Breakfast', foodCount: 1 },
+      { id: 9, name: 'snack', foodCount: 3 },
+    ])
+    const onSubmit = vi.fn()
+    await renderSuspended(AddFoodForm, { props: { onSubmit } })
+    const user = userEvent.setup()
+
+    await user.type(screen.getByLabelText(/^name$/i), 'Skyr')
+    await user.type(screen.getByLabelText(/protein \/100\s*g/i), '10')
+    await user.type(screen.getByLabelText(/carbs \/100\s*g/i), '4')
+    await user.type(screen.getByLabelText(/fat \/100\s*g/i), '0.2')
+    await user.click(screen.getByRole('combobox', { name: 'Tags' }))
+    await user.click(await screen.findByRole('option', { name: 'snack' }))
+    await user.click(screen.getByRole('button', { name: /save food/i }))
+
+    expect(onSubmit).toHaveBeenCalledWith({
+      name: 'Skyr',
+      proteinPer100g: 10,
+      carbsPer100g: 4,
+      fatPer100g: 0.2,
+      tagIds: [9],
+    })
+  })
+
+  it('holds Save until a typed Tag has been created, then saves carrying it', async () => {
+    let release!: () => void
+    const held = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    registerEndpoint('/api/tags', { method: 'GET', handler: () => [] })
+    registerEndpoint('/api/tags', {
+      method: 'POST',
+      handler: async () => {
+        await held
+        return { id: 20, name: 'dinner', foodCount: 0 }
+      },
+    })
+    const onSubmit = vi.fn()
+    await renderSuspended(AddFoodForm, { props: { onSubmit } })
+    const user = userEvent.setup()
+
+    await user.type(screen.getByLabelText(/^name$/i), 'Skyr')
+    await user.type(screen.getByLabelText(/protein \/100\s*g/i), '10')
+    await user.type(screen.getByLabelText(/carbs \/100\s*g/i), '4')
+    await user.type(screen.getByLabelText(/fat \/100\s*g/i), '0.2')
+    await user.type(screen.getByRole('combobox', { name: 'Tags' }), 'dinner')
+    await user.click(await screen.findByRole('option', { name: /dinner/ }))
+
+    const save = screen.getByRole('button', { name: /save food/i })
+    await vi.waitFor(() => expect(save).toBeDisabled())
+
+    release()
+    await vi.waitFor(() => expect(save).toBeEnabled())
+    await user.click(save)
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'Skyr', tagIds: [20] }),
+    )
+  })
+
+  it('saves both Tags when a second name is entered while the first is being created', async () => {
+    let release!: () => void
+    const held = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const ids: Record<string, number> = { dinner: 20, lunch: 21 }
+    registerEndpoint('/api/tags', { method: 'GET', handler: () => [] })
+    registerEndpoint('/api/tags', {
+      method: 'POST',
+      handler: async (event) => {
+        const { name } = await readBody<{ name: string }>(event)
+        if (name === 'dinner') await held
+        return { id: ids[name], name, foodCount: 0 }
+      },
+    })
+    const onSubmit = vi.fn()
+    await renderSuspended(AddFoodForm, { props: { onSubmit } })
+    const user = userEvent.setup()
+
+    await user.type(screen.getByLabelText(/^name$/i), 'Skyr')
+    await user.type(screen.getByLabelText(/protein \/100\s*g/i), '10')
+    await user.type(screen.getByLabelText(/carbs \/100\s*g/i), '4')
+    await user.type(screen.getByLabelText(/fat \/100\s*g/i), '0.2')
+    const tags = screen.getByRole('combobox', { name: 'Tags' })
+    await user.type(tags, 'dinner')
+    await user.click(await screen.findByRole('option', { name: /dinner/ }))
+    await user.type(tags, 'lunch')
+    await user.click(await screen.findByRole('option', { name: /lunch/ }))
+
+    release()
+    const save = screen.getByRole('button', { name: /save food/i })
+    await vi.waitFor(() => expect(save).toBeEnabled())
+    await user.click(save)
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'Skyr', tagIds: [20, 21] }),
+    )
   })
 
   it('requires a name', async () => {

@@ -4,18 +4,9 @@ import { food } from '../test/food-fixtures'
 
 type Tag = { id: number; name: string }
 
-/**
- * A catalog of one Food and the User's Tags, kept in step the way the backend
- * keeps them: a created Tag joins the list, and a PUT replaces what the Food
- * carries, so the re-read catalog shows the save.
- */
-async function mockTaggableCatalog(page: Page, initial: Tag[] = []) {
+/** The User's Tags, as the backend keeps them: a created Tag joins the list. */
+async function mockTags(page: Page, initial: Tag[] = []) {
   const known: Tag[] = [...initial]
-  let carries: Tag[] = []
-  const saved: number[][] = []
-  const oats = () => food({ id: 1, name: 'Rolled oats', tags: carries })
-
-  await page.route('**/api/foods', (route) => route.fulfill({ json: [oats()] }))
   await page.route('**/api/tags', async (route) => {
     if (route.request().method() === 'GET')
       return route.fulfill({
@@ -26,6 +17,21 @@ async function mockTaggableCatalog(page: Page, initial: Tag[] = []) {
     known.push(tag)
     return route.fulfill({ status: 201, json: { ...tag, foodCount: 0 } })
   })
+  return known
+}
+
+/**
+ * A catalog of one Food and the User's Tags, kept in step the way the backend
+ * keeps them: a PUT replaces what the Food carries, so the re-read catalog
+ * shows the save.
+ */
+async function mockTaggableCatalog(page: Page, initial: Tag[] = []) {
+  let carries: Tag[] = []
+  const saved: number[][] = []
+  const oats = () => food({ id: 1, name: 'Rolled oats', tags: carries })
+
+  await page.route('**/api/foods', (route) => route.fulfill({ json: [oats()] }))
+  const known = await mockTags(page, initial)
   await page.route('**/api/foods/1/tags', async (route) => {
     const { tagIds } = route.request().postDataJSON() as { tagIds: number[] }
     saved.push(tagIds)
@@ -33,6 +39,34 @@ async function mockTaggableCatalog(page: Page, initial: Tag[] = []) {
     return route.fulfill({ json: oats() })
   })
   return { saved }
+}
+
+/** An empty catalog whose Add sheet saves a Food, recording what it was sent. */
+async function mockAddableCatalog(page: Page) {
+  const created: unknown[] = []
+  await page.route('**/api/foods', (route) => {
+    if (route.request().method() === 'GET') return route.fulfill({ json: [] })
+    created.push(route.request().postDataJSON())
+    return route.fulfill({ status: 201, json: food({ id: 1, name: 'Skyr' }) })
+  })
+  await mockTags(page)
+  return { created }
+}
+
+/** Opens the Add sheet on a Food named "Skyr", its macros filled in. */
+async function fillNewFood(page: Page) {
+  await page.getByRole('button', { name: 'Add food' }).click()
+  const sheet = page.getByRole('dialog', { name: /add food/i })
+  const form = sheet.getByRole('tabpanel', { name: 'Food' })
+  const name = form.getByLabel(/^name$/i)
+  await name.fill('Skyr')
+  await form.getByLabel(/protein \/100\s*g/i).fill('10')
+  await form.getByLabel(/carbs \/100\s*g/i).fill('4')
+  const fat = form.getByLabel(/fat \/100\s*g/i)
+  await fat.fill('0.2')
+  await fat.press('Tab')
+  const tags = form.getByRole('combobox', { name: 'Tags' })
+  return { sheet, form, name, tags }
 }
 
 test('a User tags a Food from its row, and the row shows the Tag', async ({
@@ -133,4 +167,99 @@ test('a row carrying six Tags shows four and a "+2" that opens its Tags', async 
   await expect(
     page.getByRole('dialog', { name: 'Tags for Rolled oats' }),
   ).toBeVisible()
+})
+
+test('Escape in the Tags field lets go of a typed name and keeps the sheet and its form', async ({
+  page,
+  goto,
+}) => {
+  await mockAddableCatalog(page)
+  await goto('/foods', { waitUntil: 'hydration' })
+  const { sheet, name, tags } = await fillNewFood(page)
+
+  await tags.pressSequentially('din')
+  await expect(page.getByRole('listbox')).toBeVisible()
+  await tags.press('Escape')
+
+  await expect(page.getByRole('listbox')).toBeHidden()
+  await expect(tags).toHaveValue('')
+  await expect(name).toHaveValue('Skyr')
+
+  // With the list already shut, Escape is refused like everywhere in a sheet,
+  // whose one exit is its corner close (ADR 0017).
+  await tags.press('Escape')
+  await expect(sheet).toBeVisible()
+  await expect(name).toHaveValue('Skyr')
+})
+
+test('Enter in an empty Tags field neither saves the Food nor closes the sheet', async ({
+  page,
+  goto,
+}) => {
+  const { created } = await mockAddableCatalog(page)
+  await goto('/foods', { waitUntil: 'hydration' })
+  const { sheet, name, tags } = await fillNewFood(page)
+
+  await tags.focus()
+  await tags.press('Enter')
+
+  await expect(sheet).toBeVisible()
+  await expect(name).toHaveValue('Skyr')
+  expect(created).toEqual([])
+})
+
+test('spaces entered with the Tag list closed create no Tag', async ({
+  page,
+  goto,
+}) => {
+  const { created } = await mockAddableCatalog(page)
+  const posted: unknown[] = []
+  page.on('request', (request) => {
+    if (request.url().endsWith('/api/tags') && request.method() === 'POST')
+      posted.push(request.postDataJSON())
+  })
+  await page.clock.install()
+  await goto('/foods', { waitUntil: 'hydration' })
+  const { form, tags } = await fillNewFood(page)
+
+  await tags.pressSequentially('   ')
+  await expect(page.getByRole('listbox')).toBeVisible()
+  // Held in the moment before closing the list empties the field, as below.
+  await page.clock.pauseAt(Date.now() + 1000)
+  await form.locator('[data-slot="trailing"]').click()
+  await expect(page.getByRole('listbox')).toBeHidden()
+  await expect(tags).toHaveValue('   ')
+  await tags.press('Enter')
+  await page.clock.resume()
+
+  await expect(tags).toHaveValue('')
+  expect(posted).toEqual([])
+  expect(created).toEqual([])
+})
+
+test('a name entered with the Tag list closed is created as a Tag, not a save', async ({
+  page,
+  goto,
+}) => {
+  const { created } = await mockAddableCatalog(page)
+  await page.clock.install()
+  await goto('/foods', { waitUntil: 'hydration' })
+  const { sheet, form, tags } = await fillNewFood(page)
+
+  await tags.pressSequentially('dinner')
+  await expect(page.getByRole('listbox')).toBeVisible()
+  // Closing the list empties the field 100 ms later, so a quick Enter is the
+  // only one that still has a name behind it. The paused clock holds that moment.
+  await page.clock.pauseAt(Date.now() + 1000)
+  await form.locator('[data-slot="trailing"]').click()
+  await expect(page.getByRole('listbox')).toBeHidden()
+  await expect(tags).toHaveValue('dinner')
+  await tags.press('Enter')
+  await page.clock.resume()
+
+  await expect(form.getByText('dinner', { exact: true })).toBeVisible()
+  expect(created).toEqual([])
+  await sheet.getByRole('button', { name: 'Save food' }).click()
+  await expect(sheet).toBeHidden()
+  expect(created).toEqual([expect.objectContaining({ tagIds: [100] })])
 })

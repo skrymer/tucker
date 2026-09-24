@@ -23,9 +23,16 @@ import { readFileSync } from 'node:fs'
 const PLAYWRIGHT = /\bplaywright\b|\be2e\b|smoke\w*|\baria snapshot\b|\.spec\.ts/i
 const COMPONENT_TESTING =
   /component test\w*|\bvitest\b|\btesting library\b|\brendersuspended\b|\.test\.ts/i
+/**
+ * Starting on a piece of work. Tucker's slices are vertical, so both dev
+ * playbooks apply whichever half the issue turns out to be about.
+ */
+const IMPLEMENTATION =
+  /\bpick(ed|ing)? ?up\b|\bissue #?\d+|\bslice \d+\b|\bnext slice\b|\bimplement\w*\b/i
 const TDD = new RegExp(
   [
     /\btdd\b|\bred[- ]green\b|\btests?\b|\btesting\b|\bspecs?\b/i.source,
+    IMPLEMENTATION.source,
     /\bbugs?\b|\bbroken\b|\bfailing\b|\bregressions?\b/i.source,
     PLAYWRIGHT.source,
     COMPONENT_TESTING.source,
@@ -69,6 +76,20 @@ export const RULES = [
     scope: 'project',
     pattern: COMPONENT_TESTING,
     why: 'required before writing or editing any Vue component or unit test.',
+  },
+  {
+    id: 'frontend-dev',
+    skill: 'frontend-dev',
+    scope: 'project',
+    pattern: IMPLEMENTATION,
+    why: 'before any frontend change; in a worktree, invoke its scoped copy.',
+  },
+  {
+    id: 'backend-dev',
+    skill: 'backend-dev',
+    scope: 'project',
+    pattern: IMPLEMENTATION,
+    why: 'before any backend change; in a worktree, invoke its scoped copy.',
   },
   {
     id: 'tdd',

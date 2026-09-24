@@ -1,8 +1,10 @@
 package com.tucker.service
 
+import com.tucker.domain.Food
 import com.tucker.persistence.EntryRepository
 import com.tucker.persistence.FoodRepository
 import com.tucker.persistence.RecipeRepository
+import com.tucker.persistence.TagRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -16,7 +18,28 @@ class FoodService(
     private val foods: FoodRepository,
     private val entries: EntryRepository,
     private val recipes: RecipeRepository,
+    private val tags: TagRepository,
 ) {
+
+    /**
+     * Add [food] to the catalog carrying its Tags, or return null having written
+     * nothing when one of them is not the caller's (ADR 0033).
+     */
+    @Transactional
+    fun create(food: Food): Food? = if (ownsAll(food.tagIds)) foods.insert(food) else null
+
+    /**
+     * Put exactly [tagIds] on the Food [id], or return null having written nothing when
+     * the Food or one of the Tags is not the caller's (ADR 0033).
+     */
+    @Transactional
+    fun retag(id: Long, tagIds: Collection<Long>): Food? {
+        if (!ownsAll(tagIds)) return null
+        return foods.findById(id)?.let { foods.update(it.retagged(tagIds)) }
+    }
+
+    private fun ownsAll(tagIds: Collection<Long>): Boolean =
+        tags.findByIds(tagIds).mapNotNull { it.id }.containsAll(tagIds)
 
     /**
      * Remove a Food from the catalog, enforcing that a Food referenced by at least

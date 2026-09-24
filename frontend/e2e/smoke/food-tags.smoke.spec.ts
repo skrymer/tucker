@@ -3,8 +3,9 @@ import { test, expect } from './support/smoke-test'
 // F18 slice 1 smoke: a User tags a Food from its row on /foods against the real
 // backend — the Tag created as it is typed, the Food's Tags saved by id — and the
 // Tag is still on the row after a reload, so it was persisted rather than held in
-// the page. An existing Tag typed in another case is reused with its own spelling
-// (ADR 0033). The per-test reset wipes the seed, so there is no cleanup.
+// the page. An existing Tag typed in another case is offered by the list and
+// picked there, keeping its own spelling. The per-test reset wipes the seed, so
+// there is no cleanup.
 const API = 'http://localhost:8080/api'
 
 test('a Tag put on a Food from its row is still there after a reload', async ({

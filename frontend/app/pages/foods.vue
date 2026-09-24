@@ -2,6 +2,7 @@
 import type { components } from '#open-fetch-schemas/api'
 
 type FoodResponse = components['schemas']['FoodResponse']
+type NewFood = components['schemas']['CreateFoodRequest']
 
 const { data: foods, error: foodsError, refresh } = await useApi('/api/foods')
 
@@ -62,13 +63,7 @@ async function savingFromThisSheet<T>(save: Promise<T>): Promise<T> {
 }
 
 const { execute: handleSubmit } = useApiMutation(
-  (payload: {
-    name: string
-    barcode?: string
-    proteinPer100g: number
-    carbsPer100g: number
-    fatPer100g: number
-  }) =>
+  (payload: NewFood) =>
     savingFromThisSheet($api('/api/foods', { method: 'POST', body: payload })),
   {
     errorTitle: 'Could not add food',
@@ -83,13 +78,7 @@ const { execute: handleSubmit } = useApiMutation(
 // created Food flows back down to the builder, which selects it (F9 #142).
 const createdIngredient = ref<FoodResponse | null>(null)
 const { execute: handleCreateIngredient } = useApiMutation(
-  async (payload: {
-    name: string
-    barcode?: string
-    proteinPer100g: number
-    carbsPer100g: number
-    fatPer100g: number
-  }) => {
+  async (payload: NewFood) => {
     createdIngredient.value = await $api('/api/foods', {
       method: 'POST',
       body: payload,

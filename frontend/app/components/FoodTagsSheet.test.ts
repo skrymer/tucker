@@ -288,6 +288,33 @@ describe('FoodTagsSheet', () => {
     expect(picker).toHaveValue(tooLong)
   })
 
+  it('leaves a name typed while an earlier one was refused where it is', async () => {
+    let release!: () => void
+    const held = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    registerEndpoint('/api/tags', { method: 'GET', handler: () => [] })
+    registerEndpoint('/api/tags', {
+      method: 'POST',
+      handler: async (event) => {
+        await held
+        setResponseStatus(event, 400)
+        return { message: 'a Tag name must be at most 30 characters' }
+      },
+    })
+    await renderSuspended(FoodTagsSheet, { props: { food: oats } })
+    const user = userEvent.setup()
+    const picker = screen.getByRole('combobox', { name: 'Tags' })
+
+    await user.type(picker, 'a'.repeat(31))
+    await user.click(await screen.findByRole('option', { name: /a{31}/ }))
+    await user.type(picker, 'lunch')
+    release()
+
+    await screen.findByRole('alert')
+    expect(picker).toHaveValue('lunch')
+  })
+
   it('adds a created Tag to a Food that carried none', async () => {
     registerEndpoint('/api/tags', {
       method: 'GET',
@@ -334,6 +361,152 @@ describe('FoodTagsSheet', () => {
         expect.objectContaining({ title: 'Could not add tag' }),
       ),
     )
+  })
+
+  it('holds Save while a failed Tag is retried from its toast', async () => {
+    toastAdd.mockClear()
+    let attempts = 0
+    registerEndpoint('/api/tags', { method: 'GET', handler: () => [] })
+    registerEndpoint('/api/tags', {
+      method: 'POST',
+      handler: async (event) => {
+        attempts += 1
+        if (attempts === 1) {
+          setResponseStatus(event, 503)
+          return {}
+        }
+        await new Promise(() => {})
+      },
+    })
+    await renderSuspended(FoodTagsSheet, { props: { food: oats } })
+    const user = userEvent.setup()
+
+    await user.type(screen.getByRole('combobox'), 'snack')
+    await user.click(await screen.findByRole('option', { name: /snack/ }))
+    await vi.waitFor(() => expect(toastAdd).toHaveBeenCalled())
+    const [{ actions }] = toastAdd.mock.calls.at(-1)!
+    actions[0].onClick()
+
+    await vi.waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Save tags' })).toBeDisabled(),
+    )
+  })
+
+  it('puts a name refused on its Retry back in the field, to be corrected', async () => {
+    toastAdd.mockClear()
+    let attempts = 0
+    registerEndpoint('/api/tags', { method: 'GET', handler: () => [] })
+    registerEndpoint('/api/tags', {
+      method: 'POST',
+      handler: (event) => {
+        attempts += 1
+        setResponseStatus(event, attempts === 1 ? 503 : 400)
+        return attempts === 1
+          ? {}
+          : { message: 'a Tag name must be at most 30 characters' }
+      },
+    })
+    await renderSuspended(FoodTagsSheet, { props: { food: oats } })
+    const user = userEvent.setup()
+    const picker = screen.getByRole('combobox')
+    const tooLong = 'a'.repeat(31)
+
+    await user.type(picker, tooLong)
+    await user.click(await screen.findByRole('option', { name: /a{31}/ }))
+    await vi.waitFor(() => expect(toastAdd).toHaveBeenCalled())
+    const [{ actions }] = toastAdd.mock.calls.at(-1)!
+    actions[0].onClick()
+
+    await screen.findByRole('alert')
+    expect(picker).toHaveValue(tooLong)
+  })
+
+  it('keeps a failed Tag retried while a later name is being created', async () => {
+    toastAdd.mockClear()
+    let release!: () => void
+    const held = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    let snackAttempts = 0
+    const ids: Record<string, number> = { snack: 20, lunch: 21 }
+    registerEndpoint('/api/tags', { method: 'GET', handler: () => [] })
+    registerEndpoint('/api/tags', {
+      method: 'POST',
+      handler: async (event) => {
+        const { name } = await readBody<{ name: string }>(event)
+        if (name === 'snack' && ++snackAttempts === 1) {
+          setResponseStatus(event, 503)
+          return {}
+        }
+        if (name === 'lunch') await held
+        return { id: ids[name], name, foodCount: 0 }
+      },
+    })
+    const onSave = vi.fn()
+    await renderSuspended(FoodTagsSheet, {
+      props: { food: { ...oats, tags: [] }, onSave },
+    })
+    const user = userEvent.setup()
+    const picker = screen.getByRole('combobox')
+
+    await user.type(picker, 'snack')
+    await user.click(await screen.findByRole('option', { name: /snack/ }))
+    await vi.waitFor(() => expect(toastAdd).toHaveBeenCalled())
+    await user.type(picker, 'lunch')
+    await user.click(await screen.findByRole('option', { name: /lunch/ }))
+    const [{ actions }] = toastAdd.mock.calls.at(-1)!
+    actions[0].onClick()
+    release()
+
+    const save = screen.getByRole('button', { name: 'Save tags' })
+    await vi.waitFor(() => expect(snackAttempts).toBe(2))
+    await vi.waitFor(() => expect(save).toBeEnabled())
+    await user.click(save)
+    expect(onSave).toHaveBeenCalledWith([21, 20])
+  })
+
+  it('keeps a name entered while a failed Tag is being retried', async () => {
+    toastAdd.mockClear()
+    let release!: () => void
+    const held = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    let attempts = 0
+    const ids: Record<string, number> = { snack: 20, lunch: 21 }
+    registerEndpoint('/api/tags', { method: 'GET', handler: () => [] })
+    registerEndpoint('/api/tags', {
+      method: 'POST',
+      handler: async (event) => {
+        attempts += 1
+        if (attempts === 1) {
+          setResponseStatus(event, 503)
+          return {}
+        }
+        const { name } = await readBody<{ name: string }>(event)
+        if (name === 'snack') await held
+        return { id: ids[name], name, foodCount: 0 }
+      },
+    })
+    const onSave = vi.fn()
+    await renderSuspended(FoodTagsSheet, {
+      props: { food: { ...oats, tags: [] }, onSave },
+    })
+    const user = userEvent.setup()
+    const picker = screen.getByRole('combobox')
+
+    await user.type(picker, 'snack')
+    await user.click(await screen.findByRole('option', { name: /snack/ }))
+    await vi.waitFor(() => expect(toastAdd).toHaveBeenCalled())
+    const [{ actions }] = toastAdd.mock.calls.at(-1)!
+    actions[0].onClick()
+    await user.type(picker, 'lunch')
+    await user.click(await screen.findByRole('option', { name: /lunch/ }))
+    release()
+
+    const save = screen.getByRole('button', { name: 'Save tags' })
+    await vi.waitFor(() => expect(save).toBeEnabled())
+    await user.click(save)
+    expect(onSave).toHaveBeenCalledWith([20, 21])
   })
 
   it('forgets a refused name when it is opened on another Food', async () => {
@@ -468,6 +641,103 @@ describe('FoodTagsSheet', () => {
     })
 
     expect(screen.getByRole('button', { name: 'Save tags' })).toBeDisabled()
+  })
+
+  it('opens with its Tag list shut, so Save is not covered', async () => {
+    registerEndpoint('/api/tags', () => [
+      { id: 7, name: 'Breakfast', foodCount: 1 },
+    ])
+    await renderSuspended(FoodTagsSheet, { props: { food: oats } })
+
+    await screen.findByRole('button', { name: 'Save tags' })
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+  })
+
+  it('takes one Tag off a Food carrying two, and keeps the other', async () => {
+    registerEndpoint('/api/tags', () => [
+      { id: 7, name: 'Breakfast', foodCount: 1 },
+      { id: 9, name: 'snack', foodCount: 1 },
+    ])
+    const onSave = vi.fn()
+    await renderSuspended(FoodTagsSheet, {
+      props: {
+        food: { ...oats, tags: [...oats.tags, { id: 9, name: 'snack' }] },
+        onSave,
+      },
+    })
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole('combobox', { name: 'Tags' }))
+    await user.click(await screen.findByRole('option', { name: 'snack' }))
+    await user.click(screen.getByRole('button', { name: 'Save tags' }))
+
+    expect(onSave).toHaveBeenCalledWith([7])
+  })
+
+  it('keeps a Tag the Food carries when its name is typed and entered again', async () => {
+    registerEndpoint('/api/tags', () => [
+      { id: 7, name: 'Breakfast', foodCount: 1 },
+    ])
+    const onSave = vi.fn()
+    await renderSuspended(FoodTagsSheet, { props: { food: oats, onSave } })
+    const user = userEvent.setup()
+
+    await user.type(screen.getByRole('combobox', { name: 'Tags' }), 'Breakfast')
+    await screen.findByRole('option', { name: 'Breakfast' })
+    await user.keyboard('{Enter}')
+    await user.click(screen.getByRole('button', { name: 'Save tags' }))
+
+    expect(onSave).toHaveBeenCalledWith([7])
+  })
+
+  it('takes a Tag off when it is clicked in a list narrowed by a typed name', async () => {
+    registerEndpoint('/api/tags', () => [
+      { id: 7, name: 'Breakfast', foodCount: 1 },
+    ])
+    const onSave = vi.fn()
+    await renderSuspended(FoodTagsSheet, { props: { food: oats, onSave } })
+    const user = userEvent.setup()
+
+    await user.type(screen.getByRole('combobox', { name: 'Tags' }), 'Break')
+    await user.click(await screen.findByRole('option', { name: 'Breakfast' }))
+    await user.click(screen.getByRole('button', { name: 'Save tags' }))
+
+    expect(onSave).toHaveBeenCalledWith([])
+  })
+
+  it('takes a Tag off from the keyboard when nothing is typed', async () => {
+    registerEndpoint('/api/tags', () => [
+      { id: 7, name: 'Breakfast', foodCount: 1 },
+    ])
+    const onSave = vi.fn()
+    await renderSuspended(FoodTagsSheet, { props: { food: oats, onSave } })
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole('combobox', { name: 'Tags' }))
+    await screen.findByRole('option', { name: 'Breakfast' })
+    await user.keyboard('{ArrowDown}{Enter}')
+    await user.click(screen.getByRole('button', { name: 'Save tags' }))
+
+    expect(onSave).toHaveBeenCalledWith([])
+  })
+
+  it('takes a Tag off by a click after its name was entered again', async () => {
+    registerEndpoint('/api/tags', () => [
+      { id: 7, name: 'Breakfast', foodCount: 1 },
+    ])
+    const onSave = vi.fn()
+    await renderSuspended(FoodTagsSheet, { props: { food: oats, onSave } })
+    const user = userEvent.setup()
+    const picker = screen.getByRole('combobox', { name: 'Tags' })
+
+    await user.type(picker, 'Breakfast')
+    await screen.findByRole('option', { name: 'Breakfast' })
+    await user.keyboard('{Enter}')
+    await user.type(picker, 'Break')
+    await user.click(await screen.findByRole('option', { name: 'Breakfast' }))
+    await user.click(screen.getByRole('button', { name: 'Save tags' }))
+
+    expect(onSave).toHaveBeenCalledWith([])
   })
 
   it('saves a Food with a Tag taken off as no longer carrying it', async () => {

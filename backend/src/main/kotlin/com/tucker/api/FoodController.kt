@@ -72,6 +72,7 @@ data class CreateFoodRequest(
     val proteinPer100g: Double,
     val carbsPer100g: Double,
     val fatPer100g: Double,
+    val tagIds: List<Long> = emptyList(),
 )
 
 /**
@@ -258,8 +259,9 @@ class FoodController(
                 carbsPer100g = request.carbsPer100g,
                 fatPer100g = request.fatPer100g,
             ),
-        )
-        return describer.describe(foods.insert(food))
+        ).retagged(request.tagIds)
+        val created = foodService.create(food) ?: throw NotFoundException("no Tag among ${request.tagIds}")
+        return describer.describe(created)
     }
 
     /**

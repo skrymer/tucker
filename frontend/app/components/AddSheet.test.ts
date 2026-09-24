@@ -217,6 +217,32 @@ describe('AddSheet', () => {
     expect(screen.getByLabelText(/fat \/100\s*g/i)).toHaveDisplayValue('50.3')
   })
 
+  it('saves a provider candidate carrying the Tags picked for it', async () => {
+    registerEndpoint('/api/tags', () => [
+      { id: 7, name: 'Breakfast', foodCount: 1 },
+      { id: 9, name: 'snack', foodCount: 3 },
+    ])
+    const onSubmit = vi.fn()
+    await renderSuspended(AddSheet, { props: { open: true, onSubmit } })
+    const user = userEvent.setup()
+
+    await user.type(screen.getByLabelText(/barcode/i), FULL_CANDIDATE_BARCODE)
+    await user.click(screen.getByRole('button', { name: /look up/i }))
+    expect(await screen.findByDisplayValue('Peanut Butter')).toBeVisible()
+    await user.click(screen.getByRole('combobox', { name: 'Tags' }))
+    await user.click(await screen.findByRole('option', { name: 'snack' }))
+    await user.click(screen.getByRole('button', { name: /save food/i }))
+
+    expect(onSubmit).toHaveBeenCalledWith({
+      name: 'Peanut Butter',
+      barcode: FULL_CANDIDATE_BARCODE,
+      proteinPer100g: 25.1,
+      carbsPer100g: 12.2,
+      fatPer100g: 50.3,
+      tagIds: [9],
+    })
+  })
+
   it('does not look up a barcode of nothing but whitespace', async () => {
     // The guard is on the *trimmed* code, so a stray space is not a barcode. Run
     // it anyway and the miss would wipe the candidate already on screen.
@@ -637,7 +663,7 @@ describe('AddSheet', () => {
     expect(screen.getByLabelText(/fat \/100\s*g/i)).toBeVisible()
   })
 
-  it('emits the new-food payload when the user saves', async () => {
+  it('emits the new-food payload, carrying no Tags when none were picked', async () => {
     const onSubmit = vi.fn()
     await renderSuspended(AddSheet, {
       props: { open: true, onSubmit },
@@ -655,6 +681,7 @@ describe('AddSheet', () => {
       proteinPer100g: 10,
       carbsPer100g: 4,
       fatPer100g: 0.2,
+      tagIds: [],
     })
   })
 

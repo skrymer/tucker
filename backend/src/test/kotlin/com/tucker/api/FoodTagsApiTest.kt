@@ -52,6 +52,48 @@ class FoodTagsApiTest {
     }
 
     @Test
+    fun `a Food created with Tags carries them from the start`() {
+        val snack = createTag("snack")
+        val breakfast = createTag("Breakfast")
+
+        val created = objectMapper.readTree(
+            mockMvc.post("/api/foods") {
+                contentType = MediaType.APPLICATION_JSON
+                content = """{"name":"Rolled oats","barcode":null,"proteinPer100g":13.0,
+                              "carbsPer100g":60.0,"fatPer100g":7.0,"tagIds":[$snack,$breakfast]}"""
+            }.andExpect {
+                status { isCreated() }
+                jsonPath("$.tags.length()") { value(2) }
+            }.andReturn().response.contentAsString,
+        )["id"].asLong()
+
+        mockMvc.get("/api/foods/$created").andExpect {
+            jsonPath("$.tags.length()") { value(2) }
+            jsonPath("$.tags[0].id") { value(breakfast) }
+            jsonPath("$.tags[0].name") { value("Breakfast") }
+            jsonPath("$.tags[1].id") { value(snack) }
+            jsonPath("$.tags[1].name") { value("snack") }
+        }
+    }
+
+    @Test
+    fun `a Food created with a Tag id the User does not have is refused as absent, and not created`() {
+        val snack = createTag("snack")
+
+        mockMvc.post("/api/foods") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"name":"Rolled oats","barcode":null,"proteinPer100g":13.0,
+                          "carbsPer100g":60.0,"fatPer100g":7.0,"tagIds":[$snack,999999]}"""
+        }.andExpect {
+            status { isNotFound() }
+        }
+
+        mockMvc.get("/api/foods").andExpect {
+            jsonPath("$.length()") { value(0) }
+        }
+    }
+
+    @Test
     fun `a Tag id the User does not have is refused as absent, and the Food keeps its Tags`() {
         val oats = createFood("Rolled oats")
         val breakfast = createTag("breakfast")
