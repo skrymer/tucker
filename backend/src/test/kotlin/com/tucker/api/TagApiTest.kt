@@ -8,6 +8,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.delete
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
 import org.springframework.test.web.servlet.put
@@ -93,6 +94,34 @@ class TagApiTest {
 
         mockMvc.get("/api/tags").andExpect { jsonPath("$.length()") { value(0) } }
     }
+
+    @Test
+    fun `deleting a Tag takes it off every Food carrying it and deletes no Food`() {
+        val breakfast = createTag("breakfast")
+        val snack = createTag("snack")
+        val oats = createFood("Rolled oats")
+        mockMvc.put("/api/foods/$oats/tags") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"tagIds":[$breakfast,$snack]}"""
+        }.andExpect { status { isOk() } }
+
+        mockMvc.delete("/api/tags/$breakfast").andExpect { status { isNoContent() } }
+
+        mockMvc.get("/api/tags").andExpect {
+            jsonPath("$[*].name") { value(org.hamcrest.Matchers.contains("snack")) }
+        }
+        mockMvc.get("/api/foods/$oats").andExpect {
+            status { isOk() }
+            jsonPath("$.name") { value("Rolled oats") }
+            jsonPath("$.tags[*].name") { value(org.hamcrest.Matchers.contains("snack")) }
+        }
+    }
+
+    private fun createFood(name: String): Long = mockMvc.post("/api/foods") {
+        contentType = MediaType.APPLICATION_JSON
+        content = """{"name":"$name","barcode":null,
+                      "proteinPer100g":13.0,"carbsPer100g":60.0,"fatPer100g":7.0,"tagIds":[]}"""
+    }.andReturn().response.contentAsString.let(::idOf)
 
     private fun createTag(name: String): Long {
         val body = mockMvc.post("/api/tags") {

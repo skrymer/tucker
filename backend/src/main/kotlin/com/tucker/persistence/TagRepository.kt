@@ -48,6 +48,17 @@ class TagRepository(
     }
 
     /**
+     * Delete the caller's Tag [id], which the schema's cascade takes off every Food
+     * carrying it. A foreign or absent id deletes nothing (ADR 0021).
+     */
+    fun delete(id: Long) {
+        dsl.deleteFrom(TAG)
+            .where(TAG.ID.eq(id.toInt()))
+            .and(TAG.USER_ID.eq(currentUser.ownerId))
+            .execute()
+    }
+
+    /**
      * Create the caller's Tag named [name], or return the one another request created
      * under that name first. Two devices creating one name at once both miss a lookup,
      * so the unique index settles the race here rather than failing the loser.
