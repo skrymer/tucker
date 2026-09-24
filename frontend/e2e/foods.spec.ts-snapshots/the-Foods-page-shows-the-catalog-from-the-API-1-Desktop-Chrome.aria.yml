@@ -1,12 +1,13 @@
 - main:
+    - /children: deep-equal
     - heading "Foods" [level=1]
     - button "Add food"
     - list:
         - listitem:
-            - text: /Oats \d+ kcal · \d+ g protein \/100g/
+            - text: Oats 380 kcal · 13 g protein /100g
             - button "Tags for Oats"
             - button "Delete Oats"
         - listitem:
-            - text: /Skyr \d+ kcal · \d+ g protein \/100g/
+            - text: Skyr 64 kcal · 11 g protein /100g
             - button "Tags for Skyr"
             - button "Delete Skyr"

@@ -1,19 +1,16 @@
 - main:
-    - /children: equal
+    - /children: deep-equal
     - heading "Log" [level=1]
     - textbox "Filter foods"
     - button "Log an estimate instead"
     - group "Filter by tag":
-        - /children: equal
-        - button "All" [pressed=false]
-        - button "breakfast" [pressed=false]
+        - button "All"
+        - button "breakfast"
         - button "Dinner" [pressed]
     - region "Dinner foods":
-        - /children: equal
         - heading "Dinner foods" [level=2]
         - list:
-            - /children: equal
             - listitem:
-                - button "Log Free-range eggs": /^Free-range eggs \d+ kcal · \d+ g protein \/100g$/
+                - button "Log Free-range eggs": Free-range eggs 143 kcal · 13 g protein /100g
             - listitem:
-                - button "Log Weekday chilli, a recipe": /^Weekday chilli Recipe \d+ kcal · \d+ g protein \/100g$/
+                - button "Log Weekday chilli, a recipe": Weekday chilli Recipe 121 kcal · 11 g protein /100g

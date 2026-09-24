@@ -1,5 +1,28 @@
 - main:
+    - /children: deep-equal
     - heading "Review" [level=1]
+    - region "What you're eating":
+        - heading "What you're eating" [level=2]
+        - text: 0 kcal
+        - group "Period":
+            - tablist:
+                - tab "Today" [selected]
+                - tab "Last 7 days"
+        - paragraph: Nothing logged yet
+    - region "Vitamins and minerals":
+        - heading "Vitamins and minerals" [level=2]
+        - paragraph: Nothing logged in the last 7 days.
+        - paragraph:
+            - text: Based on the Australian Food Composition Database (Release 3), Food Standards Australia New Zealand, used under
+            - link "the CC BY-SA 3.0 AU data user licence":
+                - /url: https://www.foodstandards.gov.au/science-data/monitoringnutrients/afcd/datauserlicenceagreement
+            - text: .
+        - button "About this data"
+        - paragraph:
+            - text: Reference intakes from the Nutrient Reference Values for Australia and New Zealand (NHMRC, 2006, sodium revised 2017), used under
+            - link "CC BY 4.0":
+                - /url: https://creativecommons.org/licenses/by/4.0/
+            - text: '. Source: National Health and Medical Research Council. They are the figures for an adult who is not pregnant and not breastfeeding — both shift several of them substantially, and Tucker has no setting for either.'
     - list:
         - listitem:
             - paragraph: 15 Jun 2026

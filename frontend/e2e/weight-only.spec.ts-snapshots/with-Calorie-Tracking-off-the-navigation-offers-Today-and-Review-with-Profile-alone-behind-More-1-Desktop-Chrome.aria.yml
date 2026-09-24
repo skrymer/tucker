@@ -1,4 +1,5 @@
 - navigation "Primary":
+    - /children: deep-equal
     - text: Tucker
     - link "Today":
         - /url: /

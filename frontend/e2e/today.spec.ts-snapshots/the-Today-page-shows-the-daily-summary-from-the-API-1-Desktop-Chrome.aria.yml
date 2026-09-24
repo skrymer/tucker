@@ -1,17 +1,18 @@
 - main:
+    - /children: deep-equal
     - heading "Today" [level=1]
     - heading "Today's weight" [level=2]
     - paragraph: No weight logged today.
     - button "Log weight"
-    - text: /\d+ kcal left Calories/
+    - text: 500 kcal left Calories
     - progressbar "Calories against the Calorie Budget"
-    - paragraph: /\d+ \/ \d+ kcal/
+    - paragraph: 1500 / 2000 kcal
     - text: Protein
     - progressbar "Protein against the Protein Floor"
-    - paragraph: /\d+ \/ \d+ g/
+    - paragraph: 140 / 140 g
     - paragraph: On target
     - heading "Today's entries" [level=2]
     - list:
         - listitem:
-            - text: /Oats \d+ kcal · 8 g protein/
-            - button /Delete Oats — \d+ kcal · 8 g protein/
+            - text: Oats 240 kcal · 8 g protein
+            - button "Delete Oats — 240 kcal · 8 g protein"
