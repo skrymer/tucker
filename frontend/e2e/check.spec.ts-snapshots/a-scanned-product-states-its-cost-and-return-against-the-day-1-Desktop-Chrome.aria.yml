@@ -3,18 +3,18 @@
     - heading "Check" [level=1]
     - heading "Nutella" [level=2]
     - paragraph: Costs
-    - text: /\d+%/
-    - paragraph: /\d+ \/ \d+ kcal/
+    - text: 21%
+    - paragraph: 533 / 2492 kcal
     - paragraph: Returns
     - text: 4%
-    - paragraph: /6\.3 \/ \d+ g protein/
-    - group /Portion \d+ g/:
-        - paragraph: /Portion \d+ g/
+    - paragraph: 6.3 / 170 g protein
+    - group "Portion 100 g":
+        - paragraph: Portion 100 g
         - slider "Thumb"
-    - paragraph: /1\.2 g protein per \d+ kcal/
+    - paragraph: 1.2 g protein per 100 kcal
     - paragraph: your day needs 6.8
-    - paragraph: /Balance \d+ g with \d+\.\d+ g of protein elsewhere today\./
-    - paragraph: /A whole day of it is \d+ g — and still \d+ g under your protein floor\./
-    - text: /6\.3 g protein \d+\.\d+ g carbs \d+\.\d+ g fat/
+    - paragraph: Balance 100 g with 30.1 g of protein elsewhere today.
+    - paragraph: A whole day of it is 467 g — and still 141 g under your protein floor.
+    - text: 6.3 g protein 57.5 g carbs 30.9 g fat
     - paragraph: Data from Open Food Facts
     - button "Scan another"

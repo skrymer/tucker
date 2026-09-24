@@ -7,17 +7,17 @@
         - heading "Frequent foods" [level=2]
         - list:
             - listitem:
-                - button "Log Free-range eggs": /Free-range eggs \d+ kcal · \d+ g protein \/100g/
+                - button "Log Free-range eggs": Free-range eggs 143 kcal · 13 g protein /100g
             - listitem:
-                - button "Log Rolled oats": /Rolled oats \d+ kcal · \d+ g protein \/100g/
+                - button "Log Rolled oats": Rolled oats 379 kcal · 13 g protein /100g
             - listitem:
-                - button "Log Weekday chilli, a recipe": /Weekday chilli \d+ kcal · \d+ g protein \/100g/
+                - button "Log Weekday chilli, a recipe": Weekday chilli 121 kcal · 11 g protein /100g
     - region "All foods":
         - heading "All foods" [level=2]
         - list:
             - listitem:
-                - button "Log Free-range eggs": /Free-range eggs \d+ kcal · \d+ g protein \/100g/
+                - button "Log Free-range eggs": Free-range eggs 143 kcal · 13 g protein /100g
             - listitem:
-                - button "Log Rolled oats": /Rolled oats \d+ kcal · \d+ g protein \/100g/
+                - button "Log Rolled oats": Rolled oats 379 kcal · 13 g protein /100g
             - listitem:
-                - button "Log Weekday chilli, a recipe": /Weekday chilli Recipe \d+ kcal · \d+ g protein \/100g/
+                - button "Log Weekday chilli, a recipe": Weekday chilli Recipe 121 kcal · 11 g protein /100g

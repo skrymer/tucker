@@ -1,22 +1,22 @@
 - region "What you're eating":
     - /children: deep-equal
     - heading "What you're eating" [level=2]
-    - text: /\d+ kcal/
+    - text: 2000 kcal
     - group "Period":
         - tablist:
             - tab "Today" [selected]
             - tab "Last 7 days"
     - list:
-        - listitem: /Chicken breast \d+ kcal · \d+ g protein \d+%/
-        - listitem: /Work canteen est\. \d+ kcal \d+%/
-        - listitem: /Basmati rice \d+ kcal · 8 g protein \d+%/
-        - listitem: /Cottage pie \d+ kcal · \d+ g protein \d+%/
-        - listitem: /Skyr \d+ kcal · \d+ g protein 6%/
-        - listitem: /Banana \d+ kcal · 1 g protein 5%/
-        - listitem: /Olive oil \d+ kcal · 0 g protein 5%/
-        - listitem: /Almonds \d+ kcal · 2 g protein 3%/
+        - listitem: Chicken breast 520 kcal · 97 g protein 26%
+        - listitem: Work canteen est. 480 kcal 24%
+        - listitem: Basmati rice 350 kcal · 8 g protein 18%
+        - listitem: Cottage pie 240 kcal · 22 g protein 12%
+        - listitem: Skyr 120 kcal · 20 g protein 6%
+        - listitem: Banana 105 kcal · 1 g protein 5%
+        - listitem: Olive oil 90 kcal · 0 g protein 5%
+        - listitem: Almonds 60 kcal · 2 g protein 3%
         - listitem:
-            - text: /Other 2 items \d+ kcal · 0 g protein 2%/
+            - text: Other 2 items 35 kcal · 0 g protein 2%
             - button "Show less" [expanded]
-        - listitem: /Blueberries \d+ kcal · 0 g protein 1%/
-        - listitem: /Black coffee \d+ kcal · 0 g protein 1%/
+        - listitem: Blueberries 25 kcal · 0 g protein 1%
+        - listitem: Black coffee 10 kcal · 0 g protein 1%

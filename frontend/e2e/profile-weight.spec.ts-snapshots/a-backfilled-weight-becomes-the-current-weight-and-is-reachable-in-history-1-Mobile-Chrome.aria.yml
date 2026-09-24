@@ -3,7 +3,7 @@
     - heading "Weight" [level=2]
     - button "Add weight"
     - heading "Latest" [level=3]
-    - paragraph: /\d+\.\d+ kg/
-    - paragraph: /\d+ Mar \d+/
+    - paragraph: 84.2 kg
+    - paragraph: 15 Mar 2024
     - link "View history":
         - /url: /profile/weight
