@@ -424,6 +424,28 @@ class CrossUserIsolationTest {
     }
 
     @Test
+    fun `editing a Recipe to carry another User's Tag is not found, and leaves it as it was`() {
+        val oats = createFood(bob, "Bob's oats")
+        val porridge = createRecipe(bob, "Bob's porridge", oats)
+        val alicesBreakfast = postForId(alice, "/api/tags", """{"name":"breakfast"}""")
+
+        mockMvc.put("/api/recipes/$porridge") {
+            header(ACCESS_ASSERTION_HEADER, bob)
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"name":"Bob's porridge","cookedWeightG":250.0,"tagIds":[$alicesBreakfast],
+                          "ingredients":[{"foodId":$oats,"grams":100.0}]}"""
+        }.andExpect { status { isNotFound() } }
+
+        mockMvc.get("/api/recipes/$porridge") { header(ACCESS_ASSERTION_HEADER, bob) }.andExpect {
+            jsonPath("$.tags.length()") { value(0) }
+            jsonPath("$.cookedWeightG") { value(500.0) }
+        }
+        mockMvc.get("/api/tags") { header(ACCESS_ASSERTION_HEADER, alice) }.andExpect {
+            jsonPath("$[0].foodCount") { value(0) }
+        }
+    }
+
+    @Test
     fun `two Users can each hold a Food with the same barcode`() {
         createFood(alice, "Alice's skyr", barcode = "5701234567890")
         createFood(bob, "Bob's skyr", barcode = "5701234567890")
