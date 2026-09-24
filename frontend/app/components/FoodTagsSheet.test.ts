@@ -392,6 +392,35 @@ describe('FoodTagsSheet', () => {
     )
   })
 
+  it('puts a name refused on its Retry back in the field, to be corrected', async () => {
+    toastAdd.mockClear()
+    let attempts = 0
+    registerEndpoint('/api/tags', { method: 'GET', handler: () => [] })
+    registerEndpoint('/api/tags', {
+      method: 'POST',
+      handler: (event) => {
+        attempts += 1
+        setResponseStatus(event, attempts === 1 ? 503 : 400)
+        return attempts === 1
+          ? {}
+          : { message: 'a Tag name must be at most 30 characters' }
+      },
+    })
+    await renderSuspended(FoodTagsSheet, { props: { food: oats } })
+    const user = userEvent.setup()
+    const picker = screen.getByRole('combobox')
+    const tooLong = 'a'.repeat(31)
+
+    await user.type(picker, tooLong)
+    await user.click(await screen.findByRole('option', { name: /a{31}/ }))
+    await vi.waitFor(() => expect(toastAdd).toHaveBeenCalled())
+    const [{ actions }] = toastAdd.mock.calls.at(-1)!
+    actions[0].onClick()
+
+    await screen.findByRole('alert')
+    expect(picker).toHaveValue(tooLong)
+  })
+
   it('keeps a name entered while a failed Tag is being retried', async () => {
     toastAdd.mockClear()
     let release!: () => void

@@ -36,9 +36,13 @@ function useTagEntry() {
   // Names wait their turn rather than being dropped while one is created; the
   // head is the one in flight, and stays until it lands.
   const queued = ref<string[]>([])
+  // The name last sent — by the queue or a toast's Retry — so a refused one can be
+  // put back to correct.
+  let lastSent = ''
 
   const { execute: create, pending } = useApiMutation(
     async (name: string) => {
+      lastSent = name
       // A picker gone by the time this lands cannot emit, so the Tag never reaches
       // whatever replaced it — which is why a consumer keys it on what it is picking for.
       const tag = await $api('/api/tags', { method: 'POST', body: { name } })
@@ -51,8 +55,7 @@ function useTagEntry() {
       // would be refused again.
       onValidationError: (message) => {
         refusal.value = message
-        // Put back to be corrected: the refused name is still the queue's head.
-        if (!searchTerm.value) searchTerm.value = queued.value[0] ?? ''
+        if (!searchTerm.value) searchTerm.value = lastSent
       },
     },
   )

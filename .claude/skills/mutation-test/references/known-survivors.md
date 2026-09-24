@@ -1196,8 +1196,6 @@ two carried over above (the `signal`, the initial search term), the remaining su
   its `trim` dropped and its `enter` call deleted. The Vitest layer structurally
   cannot reach them. The `trim` is pinned by the spaces-only test; the other three by
   "a name entered with the Tag list closed".
-- **Equivalent:** the refused name's `?? ''`, since the refused name is always the
-  queue's head while `onValidationError` runs.
 - **Equivalent:** three mutants that empty `pick`'s `kept` when nothing is typed. They
   leave `picked = held`, and Reka hands back the held list in the order it was given.
   Forcing `kept` to *all* of `picked` is **not** equivalent. The two-Tag take-off test
