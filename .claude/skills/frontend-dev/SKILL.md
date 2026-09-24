@@ -92,6 +92,19 @@ assertion with the dev token), and no browser-level layer can reach it.
   `test.use({ launchOptions: { ignoreDefaultArgs: ['--hide-scrollbars'] } })` and measures the
   element (`e2e/log-column.spec.ts`). The app keeps the gutter (`scrollbar-gutter: stable`) and so
   runs `UApp` with `:scroll-body="false"` — turn one off and every sheet shifts the column.
+- **Keyboard bugs in a Reka component need Playwright.** Some Reka handlers `await nextTick()`
+  and then check `event.defaultPrevented` (Reka's `TagsInputInput` on Enter is one). A browser
+  runs a microtask checkpoint between listeners, so that check happens *before* an ancestor's
+  bubbling `preventDefault` does. happy-dom does not, so it sees the event already prevented. A
+  bubbling `@keydown.enter.prevent` therefore passes every component test and still lets Reka
+  act in a browser. That is how the Tag picker drew chips that were never Tags. Reproduce in
+  `e2e/`, and take the key in the **capture** phase (`@keydown.enter.capture`) to get ahead of
+  Reka.
+- **`UInputMenu`** — with `create-item`, it offers no Create item when an existing item matches
+  ignoring case, so a typed name of another case picks the existing one. Closing its list clears
+  the typed text **100 ms later** (`resetSearchTermOnBlur`), so anything that reads the field
+  after the list shuts only works inside that window. An e2e holds it with `page.clock.install()`
+  before `goto`, then `page.clock.pauseAt(...)` around the close (`e2e/food-tags.spec.ts`).
 - **Stale Playwright build** — the mocked e2e rebuilds `.nuxt/e2e` from scratch every run, so it cannot
   serve a stale build; the smokes still build through `@nuxt/test-utils`, so if a UI change doesn't show
   in a smoke run, `rm -rf frontend/.nuxt/test`.

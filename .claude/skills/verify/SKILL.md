@@ -63,6 +63,7 @@ shapes a real user's data comes in, and drive at least one of each:
 | A number | zero, the boundary of its rule, one past it, a decimal where an integer is expected |
 | A list | none, one, the cap, one past the cap |
 | A date | today, a local midnight, a day the rule spans |
+| A new request-body field | read the saved record back through the API after the save, since a form can look right and send nothing (`GET /api/foods` showing the new `tags`, not the chips on screen) |
 
 Then the states: empty/zero, the error path, the reset. Two of those, chosen by what the
 change could plausibly have broken.
@@ -77,8 +78,14 @@ resemble** — a value that looks like the happy path is not a probe.
 
 ## Viewports — the part that bites
 
-- `resize_window` **reports success even when nothing moved.** Always confirm with
-  `javascript_tool` → `window.innerWidth`. Ignore `read_page`'s "Viewport:" line.
+- `resize_window` **reports success even when nothing moved.** Judge the viewport
+  from the **screenshot's layout** (bottom tabs vs side nav), not from `innerWidth`:
+  it has misreported in both directions. Ignore `read_page`'s "Viewport:" line.
+- **Stop after two failed resizes.** Un-maximizing has not always been enough: on
+  F18 slice 3 the window stayed at desktop width through three attempts, the last
+  after the user had un-maximized it. Past that point, fall back to the Playwright
+  **Mobile Chrome** project and label the verdict so, rather than stalling the gate.
+  Issue #379 is about replacing this driver.
 - **A maximized window silently refuses to resize** (no `wmctrl`/`xdotool` under
   Wayland). If two resize attempts don't move `innerWidth`, first open a **fresh tab**
   with `tabs_create_mcp` and resize that to 412×915 — one session reports it landing
@@ -108,8 +115,13 @@ submit does nothing. In the measured run three interactions were lost that way
 before switching, plus one on a modal caught mid-transition, whose coordinates were
 stale by the time the click landed.
 
-Two related ones, both cheap:
+Related, all cheap:
 
+- **`find` can return refs into a closed sheet.** A sheet that has closed can leave
+  its hidden inputs in the tree, and `find` will hand those back. Scope the query to
+  the open dialog by name, and check the state after each click: a ref click can
+  report success without landing. When it does, a DOM `.click()` through
+  `javascript_tool` gets through.
 - **A screenshot can time out on an open modal** (`Page.captureScreenshot` after
   30s). That is a capture flake, not a frozen page — read the dialog's text with
   `javascript_tool` and carry on rather than retrying the screenshot.

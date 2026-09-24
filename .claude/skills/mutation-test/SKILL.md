@@ -139,6 +139,12 @@ Identical for both stacks; only step 1 and 2's commands differ.
      module that owes its own test (a deep module, per ADR 0013). Write the
      missing test red-green (per `tdd`): confirm it fails against the mutant's
      behaviour before restoring the source, which is already correct.
+     Probity refuses a test that passes the moment it is written, so show the red
+     on a mutant copy first. Put copies of the component and its test in
+     `frontend/mutant/`, outside the gated `app/`, with a `vitest.config.ts` that
+     includes `mutant/**`. Have a small `build.mjs` apply the one mutation, run the
+     candidate test there, and see it fail on its assertion. Then write the same
+     test into the real file straight away, and delete `mutant/`.
    - **Killed by an out-of-scope layer** — the module is *thin glue*, whose red
      lives in a Playwright e2e, a real-stack smoke, or the Testcontainers e2e by
      ADR 0013 ("thin glue gets no separate test"). The engine can't see those
@@ -163,6 +169,11 @@ Identical for both stacks; only step 1 and 2's commands differ.
    Every mutant a full sweep leaves alive already has a verdict there, with the
    evidence. Triage what your *change* introduced; only re-litigate an entry if the
    code under it moved.
+
+   **Call a survivor "pre-existing" only after running that mutant against
+   `main`.** A survivor on a line the change moved can look inherited and still be
+   new. The same hand-mutated copy settles it. In F18 slice 3 this showed a sheet's
+   recorded "35 of 39" had been missing a survivor all along.
 
    Never raise a threshold or narrow the scope to make a survivor go away.
 
