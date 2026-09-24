@@ -88,6 +88,9 @@ function foodCount(count: number) {
       </UFormField>
       <UButton type="submit" color="neutral" variant="outline">Add</UButton>
     </UForm>
+    <p v-if="tags?.length === 0" class="py-4 text-center text-sm text-muted">
+      No tags yet.
+    </p>
     <ul role="list" class="divide-y divide-default">
       <li v-for="tag in tags ?? []" :key="tag.id" class="py-2">
         <div v-if="confirming === tag.id" class="flex flex-col gap-2">

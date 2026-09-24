@@ -39,6 +39,15 @@ describe('ManageTagsSheet', () => {
     })
   })
 
+  it('says there are no Tags yet when the User keeps none', async () => {
+    registerEndpoint('/api/tags', () => [])
+
+    await renderSuspended(ManageTagsSheet, { props: { open: true } })
+
+    expect(await screen.findByText('No tags yet.')).toBeVisible()
+    expect(screen.queryAllByRole('listitem')).toEqual([])
+  })
+
   it('asks before deleting a Tag, naming how many Foods it comes off and that they stay', async () => {
     let deletes = 0
     registerEndpoint('/api/tags', () => [
