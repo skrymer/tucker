@@ -277,6 +277,33 @@ describe('ManageTagsSheet', () => {
     expect(posts).toBe(0)
   })
 
+  it('states a name the server refuses beside the field, with no Retry toast', async () => {
+    toastAdd.mockClear()
+    registerEndpoint('/api/tags', { method: 'GET', handler: () => [] })
+    registerEndpoint('/api/tags', {
+      method: 'POST',
+      handler: (event) => {
+        setResponseStatus(event, 400)
+        return { message: 'a Tag name must be at most 30 characters' }
+      },
+    })
+    await renderSuspended(ManageTagsSheet, { props: { open: true } })
+    const user = userEvent.setup()
+
+    await user.type(screen.getByRole('textbox', { name: 'New tag' }), 'Lunch')
+    await user.click(screen.getByRole('button', { name: 'Add' }))
+
+    expect(
+      await screen.findByText('a Tag name must be at most 30 characters', {
+        exact: true,
+      }),
+    ).toBeVisible()
+    expect(screen.getByRole('textbox', { name: 'New tag' })).toHaveValue(
+      'Lunch',
+    )
+    expect(toastAdd).not.toHaveBeenCalled()
+  })
+
   it('creates a Tag from the name typed, and lists it once the server has it', async () => {
     const kept = [{ id: 7, name: 'Breakfast', foodCount: 1 }]
     const sent: unknown[] = []

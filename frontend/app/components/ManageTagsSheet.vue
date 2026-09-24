@@ -31,20 +31,27 @@ const schema = z.object({
 /** Naming a Tag before tagging anything with it; the list is re-read once it exists. */
 function useTagCreation() {
   const draft = reactive({ name: '' })
+  /** The server's refusal of the name typed, stated beside the field. */
+  const refusal = ref<string | undefined>()
   const { execute: create, pending: creating } = useApiMutation(
-    (name: string) => $api('/api/tags', { method: 'POST', body: { name } }),
+    (name: string) => {
+      refusal.value = undefined
+      return $api('/api/tags', { method: 'POST', body: { name } })
+    },
     {
       errorTitle: 'Could not add tag',
+      // No Retry: the same name would be refused again.
+      onValidationError: (message) => (refusal.value = message),
       onSuccess: () => {
         draft.name = ''
         return load()
       },
     },
   )
-  return { draft, creating, submit: () => create(draft.name) }
+  return { draft, refusal, creating, submit: () => create(draft.name) }
 }
 
-const { draft, creating, submit } = useTagCreation()
+const { draft, refusal, creating, submit } = useTagCreation()
 
 /**
  * Deleting a Tag, once its row has asked. It takes the Tag off every Food and deletes
@@ -90,7 +97,7 @@ function deleteQuestion(tag: { name: string; foodCount: number }) {
       class="flex items-start gap-2"
       @submit="submit"
     >
-      <UFormField name="name" class="flex-1">
+      <UFormField name="name" :error="refusal" class="flex-1">
         <UInput
           v-model="draft.name"
           placeholder="New tag"
