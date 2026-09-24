@@ -72,6 +72,13 @@ not restate them.
 
 ## Gotchas (each cost a build or a debugging session once)
 
+- **On SQLite, `onConflictDoNothing().returning(X).fetchOne()` is not null on a conflict.**
+  jOOQ answers `RETURNING` from the connection's `last_insert_rowid()`, so a losing insert
+  is handed whatever that connection inserted last — possibly another table's row. Use
+  `.onConflictDoNothing().execute()` and read the row back by its key, as
+  `UserRepository.insertIfAbsent` does. A test of it needs a *third* insert between the
+  colliding pair, or the collided row is the last insert and the bug passes (#385).
+
 - **Run the suite as `TZ=Etc/UTC ./gradlew build`** — it flakes in the UTC-evening window on a
   Brisbane host, where the two calendar days disagree.
 - **A green `./gradlew build` can be a cached one.** After a config or Spring-context change,

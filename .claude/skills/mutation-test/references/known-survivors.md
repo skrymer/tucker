@@ -1244,6 +1244,29 @@ no Tag carried, and the clear button shown for a Tag alone. The one line no test
 reaches is the resolved-Tag fallback, which matters only if a catalog refresh drops
 the chosen Tag; nothing on `/log` refreshes the catalog while it holds one.
 
+### Manage tags — `ManageTagsSheet.vue` 56 of 61, then 2 carried
+
+First sweep: three **real gaps**, closed — the name draft's `''` default (an empty
+submit then reads Zod's type error instead of "Enter a name for this tag") and the two
+`errorTitle` literals. `foods.vue:220`'s `if (food)` is the standing verdict under the
+catalog page above; the line moved, not the code.
+
+**The list read's abort (2), carried as a real gap.** `{ signal }` → `{}` and
+`mode: 'latest'` → `""`. Swept again after a gate-3 fix moved the read to `latest`,
+which is what made the first of them stop being equivalent. Both keep the stale-run
+guard, so the newest answer still wins; only the network abort differs, and the
+component layer cannot see one — measured: a `registerEndpoint` handler receives no
+signal, and the client `$fetch` never rejects. The same verdict as the
+`/api/foods/frequent` call site above: the composable's own tests specify both
+policies, and nothing pins that *this* call site picks `latest`.
+
+**`TagRepository.insert` L71/L72 — neither equivalent nor false survivors.** The
+negated `fetchOne()?.id` and `id?.let` survive because the `findByName` fallback is
+**unreachable**: on SQLite a conflicting `RETURNING` answers with
+`last_insert_rowid()`, not null (#385). Hand-mutating a copy showed the null branch
+passing `TagRepositoryTest`, whose two inserts make the collided row the last insert.
+Re-sweep once #385 lands; they should then die.
+
 ### Noise removed at the source
 
 Four `getLog()` companion accessors (`MartijndwarsWebPushSender`, `RecordingWebPushSender`,

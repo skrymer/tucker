@@ -65,6 +65,7 @@ shapes a real user's data comes in, and drive at least one of each:
 | Input | Shapes that have bitten Tucker |
 | --- | --- |
 | A text query | a **capitalised** word (every Food name starts with one), an **accented** name, whitespace alone, the empty string, a word matching nothing |
+| A capped, trimmed name | the cap and cap+1 **padded with spaces**, the cap counted in UTF-16 (16 × 😀 is 32 units), a character the two sides trim differently (`"\u001F"`: JS keeps it, Kotlin's `trim()` strips it — the one road to a server refusal the client lets through) |
 | A number | zero, the boundary of its rule, one past it, a decimal where an integer is expected |
 | A list | none, one, the cap, one past the cap |
 | A date | today, a local midnight, a day the rule spans |
@@ -132,6 +133,13 @@ Related, all cheap:
   `javascript_tool` and carry on rather than retrying the screenshot.
 - **Batch with `browser_batch`** whenever you can predict two steps ahead: click,
   type, Tab, assert. Each standalone call is a round trip.
+- **Typing can stop landing too**, silently: the field has focus, the tool reports the
+  keys, the value stays empty — seen once the window lost OS focus, alongside a sheet
+  stuck in `data-state="closed"` (its exit animation never ran). Check the value after
+  every type. Setting it through the native setter plus an `input` event drives v-model,
+  but it is **not typed entry** — it skips the keystroke and blur timing where F18 slice 5's
+  bug lived. Label such probes in the verdict, and drive the golden path and one boundary
+  with real keystrokes (or Playwright `pressSequentially`).
 
 ## Camera-gated surfaces
 
