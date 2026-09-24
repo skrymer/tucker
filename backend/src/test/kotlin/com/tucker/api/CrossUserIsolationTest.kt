@@ -416,7 +416,8 @@ class CrossUserIsolationTest {
         }.andExpect { status { isNotFound() } }
 
         mockMvc.get("/api/foods") { header(ACCESS_ASSERTION_HEADER, bob) }.andExpect {
-            jsonPath("$[*].name") { value(org.hamcrest.Matchers.contains("Bob's oats")) }
+            jsonPath("$.length()") { value(1) }
+            jsonPath("$[0].name") { value("Bob's oats") }
         }
         mockMvc.get("/api/tags") { header(ACCESS_ASSERTION_HEADER, alice) }.andExpect {
             jsonPath("$[0].foodCount") { value(0) }
