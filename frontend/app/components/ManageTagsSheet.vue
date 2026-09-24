@@ -53,7 +53,7 @@ const confirming = ref<number | null>(null)
  * Deleting a Tag takes it off every Food and deletes no Food (ADR 0033), so the page
  * is told its Foods changed.
  */
-const { execute: deleteTag } = useApiMutation(
+const { execute: deleteTag, pending: deleting } = useApiMutation(
   (id: number) => $api('/api/tags/{id}', { method: 'DELETE', path: { id } }),
   {
     // No success toast: the row leaves the list.
@@ -116,7 +116,11 @@ function foodCount(count: number) {
               >
                 Cancel
               </UButton>
-              <UButton color="error" @click="deleteTag(tag.id)">
+              <UButton
+                color="error"
+                :loading="deleting"
+                @click="deleteTag(tag.id)"
+              >
                 Delete tag
               </UButton>
             </div>

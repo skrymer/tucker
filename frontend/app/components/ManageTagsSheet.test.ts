@@ -174,6 +174,32 @@ describe('ManageTagsSheet', () => {
     expect(toastAdd).not.toHaveBeenCalled()
   })
 
+  it('holds the delete button while a delete is in flight', async () => {
+    let deletes = 0
+    let answer: () => void = () => {}
+    registerEndpoint('/api/tags', () => [
+      { id: 9, name: 'snack', foodCount: 3 },
+    ])
+    registerEndpoint('/api/tags/9', {
+      method: 'DELETE',
+      handler: () => {
+        deletes++
+        return new Promise<null>((resolve) => (answer = () => resolve(null)))
+      },
+    })
+    await renderSuspended(ManageTagsSheet, { props: { open: true } })
+    const user = userEvent.setup()
+    await user.click(
+      await screen.findByRole('button', { name: 'Delete snack' }),
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Delete tag' }))
+
+    await vi.waitFor(() => expect(deletes).toBe(1))
+    expect(screen.getByRole('button', { name: /Delete tag/ })).toBeDisabled()
+    answer()
+  })
+
   it('refuses a Tag name of whitespace alone at the field, and sends nothing', async () => {
     let posts = 0
     registerEndpoint('/api/tags', { method: 'GET', handler: () => [] })
