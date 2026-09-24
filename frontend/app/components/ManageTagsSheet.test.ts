@@ -143,6 +143,29 @@ describe('ManageTagsSheet', () => {
     expect(toastAdd).not.toHaveBeenCalled()
   })
 
+  it('refuses a Tag name of whitespace alone at the field, and sends nothing', async () => {
+    let posts = 0
+    registerEndpoint('/api/tags', { method: 'GET', handler: () => [] })
+    registerEndpoint('/api/tags', {
+      method: 'POST',
+      handler: () => {
+        posts++
+        return { id: 8, name: '', foodCount: 0 }
+      },
+    })
+    await renderSuspended(ManageTagsSheet, { props: { open: true } })
+    const user = userEvent.setup()
+
+    await user.type(screen.getByRole('textbox', { name: 'New tag' }), '   ')
+    await user.click(screen.getByRole('button', { name: 'Add' }))
+
+    expect(
+      await screen.findByText('Enter a name for this tag', { exact: true }),
+    ).toBeVisible()
+    expect(screen.queryByText(/at most 30 characters/)).not.toBeInTheDocument()
+    expect(posts).toBe(0)
+  })
+
   it('creates a Tag from the name typed, and lists it once the server has it', async () => {
     const kept = [{ id: 7, name: 'Breakfast', foodCount: 1 }]
     const sent: unknown[] = []

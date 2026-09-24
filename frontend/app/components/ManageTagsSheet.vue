@@ -18,7 +18,9 @@ function useTagList() {
 
 const { tags, load } = useTagList()
 
-const schema = z.object({ name: z.string().min(1) })
+const schema = z.object({
+  name: z.string().trim().min(1, 'Enter a name for this tag'),
+})
 
 /** Naming a Tag before tagging anything with it; the list is re-read once it exists. */
 function useTagCreation() {
