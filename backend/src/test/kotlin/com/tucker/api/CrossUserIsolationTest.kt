@@ -353,6 +353,27 @@ class CrossUserIsolationTest {
     }
 
     @Test
+    fun `deleting another User's Tag is no content, exactly as an absent one, and leaves it on their Food`() {
+        val almonds = createFood(alice, "Alice's almonds")
+        val snack = postForId(alice, "/api/tags", """{"name":"snack"}""")
+        mockMvc.put("/api/foods/$almonds/tags") {
+            header(ACCESS_ASSERTION_HEADER, alice)
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"tagIds":[$snack]}"""
+        }.andExpect { status { isOk() } }
+
+        mockMvc.delete("/api/tags/$snack") { header(ACCESS_ASSERTION_HEADER, bob) }
+            .andExpect { status { isNoContent() } }
+
+        mockMvc.get("/api/foods/$almonds") { header(ACCESS_ASSERTION_HEADER, alice) }.andExpect {
+            jsonPath("$.tags[*].name") { value(org.hamcrest.Matchers.contains("snack")) }
+        }
+        mockMvc.get("/api/tags") { header(ACCESS_ASSERTION_HEADER, alice) }.andExpect {
+            jsonPath("$[0].foodCount") { value(1) }
+        }
+    }
+
+    @Test
     fun `tagging another User's Food is not found and leaves it untagged`() {
         val almonds = createFood(alice, "Alice's almonds")
         val snack = postForId(bob, "/api/tags", """{"name":"snack"}""")
