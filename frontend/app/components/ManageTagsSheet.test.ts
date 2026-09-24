@@ -4,7 +4,9 @@ import {
   registerEndpoint,
   renderSuspended,
 } from '@nuxt/test-utils/runtime'
+import { readBody } from 'h3'
 import { screen, within } from '@testing-library/vue'
+import userEvent from '@testing-library/user-event'
 import ManageTagsSheet from './ManageTagsSheet.vue'
 
 const { toastAdd } = vi.hoisted(() => ({ toastAdd: vi.fn() }))
@@ -35,5 +37,33 @@ describe('ManageTagsSheet', () => {
       expect(within(rows[i]!).getByText(name!)).toBeVisible()
       expect(within(rows[i]!).getByText(count!)).toBeVisible()
     })
+  })
+
+  it('creates a Tag from the name typed, and lists it once the server has it', async () => {
+    const kept = [{ id: 7, name: 'Breakfast', foodCount: 1 }]
+    const sent: unknown[] = []
+    registerEndpoint('/api/tags', {
+      method: 'GET',
+      handler: () => [...kept],
+    })
+    registerEndpoint('/api/tags', {
+      method: 'POST',
+      handler: async (event) => {
+        const body = await readBody(event)
+        sent.push(body)
+        const created = { id: 8, name: body.name, foodCount: 0 }
+        kept.push(created)
+        return created
+      },
+    })
+    await renderSuspended(ManageTagsSheet, { props: { open: true } })
+    const user = userEvent.setup()
+
+    await user.type(screen.getByRole('textbox', { name: 'New tag' }), 'Lunch')
+    await user.click(screen.getByRole('button', { name: 'Add' }))
+
+    expect(await screen.findByText('Lunch')).toBeVisible()
+    expect(sent).toEqual([{ name: 'Lunch' }])
+    expect(screen.getByRole('textbox', { name: 'New tag' })).toHaveValue('')
   })
 })
