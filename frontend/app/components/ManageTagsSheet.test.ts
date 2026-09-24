@@ -4,7 +4,7 @@ import {
   registerEndpoint,
   renderSuspended,
 } from '@nuxt/test-utils/runtime'
-import { readBody } from 'h3'
+import { readBody, setResponseStatus } from 'h3'
 import { screen, within } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import ManageTagsSheet from './ManageTagsSheet.vue'
@@ -37,6 +37,28 @@ describe('ManageTagsSheet', () => {
       expect(within(rows[i]!).getByText(name!)).toBeVisible()
       expect(within(rows[i]!).getByText(count!)).toBeVisible()
     })
+  })
+
+  it('says the Tags could not load, and lists them once a Retry reads them', async () => {
+    let failing = true
+    registerEndpoint('/api/tags', (event) => {
+      if (failing) {
+        setResponseStatus(event, 500)
+        return {}
+      }
+      return [{ id: 7, name: 'Breakfast', foodCount: 1 }]
+    })
+    await renderSuspended(ManageTagsSheet, { props: { open: true } })
+
+    expect(await screen.findByText("Couldn't load your tags")).toBeVisible()
+    expect(screen.queryByText('No tags yet.')).not.toBeInTheDocument()
+    failing = false
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Retry' }))
+
+    expect(await screen.findByText('Breakfast')).toBeVisible()
+    expect(
+      screen.queryByText("Couldn't load your tags"),
+    ).not.toBeInTheDocument()
   })
 
   it('says there are no Tags yet when the User keeps none', async () => {

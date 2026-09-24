@@ -9,14 +9,16 @@ const { $api } = useNuxtApp()
 
 /** Every Tag the User keeps, read afresh each time the sheet opens. */
 function useTagList() {
-  const { data: tags, load } = useOptionalFetch((signal) =>
-    $api('/api/tags', { signal }),
-  )
+  const {
+    data: tags,
+    error,
+    load,
+  } = useOptionalFetch((signal) => $api('/api/tags', { signal }))
   watch(open, (isOpen) => isOpen && load(), { immediate: true })
-  return { tags, load }
+  return { tags, error, load }
 }
 
-const { tags, load } = useTagList()
+const { tags, error, load } = useTagList()
 
 const schema = z.object({
   name: z
@@ -88,46 +90,56 @@ function foodCount(count: number) {
       </UFormField>
       <UButton type="submit" color="neutral" variant="outline">Add</UButton>
     </UForm>
-    <p v-if="tags?.length === 0" class="py-4 text-center text-sm text-muted">
-      No tags yet.
-    </p>
-    <ul role="list" class="divide-y divide-default">
-      <li v-for="tag in tags ?? []" :key="tag.id" class="py-2">
-        <div v-if="confirming === tag.id" class="flex flex-col gap-2">
-          <p v-if="tag.foodCount === 0" class="text-sm text-default">
-            Delete “{{ tag.name }}”? No foods carry it.
-          </p>
-          <p v-else class="text-sm text-default">
-            Delete “{{ tag.name }}”? It comes off
-            {{ foodCount(tag.foodCount) }}. The foods stay in your catalog.
-          </p>
-          <div class="flex justify-end gap-2">
-            <UButton color="neutral" variant="ghost" @click="confirming = null">
-              Cancel
-            </UButton>
-            <UButton color="error" @click="deleteTag(tag.id)">
-              Delete tag
-            </UButton>
+    <LoadErrorState
+      :error="error"
+      title="Couldn't load your tags"
+      @retry="load"
+    >
+      <p v-if="tags?.length === 0" class="py-4 text-center text-sm text-muted">
+        No tags yet.
+      </p>
+      <ul role="list" class="divide-y divide-default">
+        <li v-for="tag in tags ?? []" :key="tag.id" class="py-2">
+          <div v-if="confirming === tag.id" class="flex flex-col gap-2">
+            <p v-if="tag.foodCount === 0" class="text-sm text-default">
+              Delete “{{ tag.name }}”? No foods carry it.
+            </p>
+            <p v-else class="text-sm text-default">
+              Delete “{{ tag.name }}”? It comes off
+              {{ foodCount(tag.foodCount) }}. The foods stay in your catalog.
+            </p>
+            <div class="flex justify-end gap-2">
+              <UButton
+                color="neutral"
+                variant="ghost"
+                @click="confirming = null"
+              >
+                Cancel
+              </UButton>
+              <UButton color="error" @click="deleteTag(tag.id)">
+                Delete tag
+              </UButton>
+            </div>
           </div>
-        </div>
-        <div v-else class="flex items-center gap-1">
-          <span class="flex-1">
-            <span class="block font-medium text-default">{{ tag.name }}</span>
-            <span class="block text-sm text-muted">{{
-              foodCount(tag.foodCount)
-            }}</span>
-          </span>
-          <UButton
-            :aria-label="`Delete ${tag.name}`"
-            icon="i-lucide-trash-2"
-            color="neutral"
-            variant="ghost"
-            square
-            class="size-11 justify-center text-muted"
-            @click="confirming = tag.id"
-          />
-        </div>
-      </li>
-    </ul>
+          <div v-else class="flex items-center gap-1">
+            <span class="flex-1">
+              <span class="block font-medium text-default">{{ tag.name }}</span>
+              <span class="block text-sm text-muted">{{
+                foodCount(tag.foodCount)
+              }}</span>
+            </span>
+            <UButton
+              :aria-label="`Delete ${tag.name}`"
+              icon="i-lucide-trash-2"
+              color="neutral"
+              variant="ghost"
+              square
+              class="size-11 justify-center text-muted"
+              @click="confirming = tag.id"
+            />
+          </div>
+        </li>
+      </ul>
+    </LoadErrorState>
   </ResponsiveOverlay>
 </template>
