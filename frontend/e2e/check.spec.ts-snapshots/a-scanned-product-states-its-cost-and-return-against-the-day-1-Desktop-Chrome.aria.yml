@@ -1,4 +1,5 @@
 - main:
+    - /children: deep-equal
     - heading "Check" [level=1]
     - heading "Nutella" [level=2]
     - paragraph: Costs

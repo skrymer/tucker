@@ -1,4 +1,5 @@
 - main:
+    - /children: deep-equal
     - heading "Review" [level=1]
     - region "What you're eating":
         - heading "What you're eating" [level=2]

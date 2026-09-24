@@ -1,4 +1,5 @@
 - region "Weight":
+    - /children: deep-equal
     - heading "Weight" [level=2]
     - button "Add weight"
     - heading "Latest" [level=3]

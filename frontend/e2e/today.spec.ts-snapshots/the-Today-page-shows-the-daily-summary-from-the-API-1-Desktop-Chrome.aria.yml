@@ -1,4 +1,5 @@
 - main:
+    - /children: deep-equal
     - heading "Today" [level=1]
     - heading "Today's weight" [level=2]
     - paragraph: No weight logged today.

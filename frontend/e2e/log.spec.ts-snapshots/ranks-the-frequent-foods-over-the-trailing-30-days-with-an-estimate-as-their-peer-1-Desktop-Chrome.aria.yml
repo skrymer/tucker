@@ -1,4 +1,5 @@
 - main:
+    - /children: deep-equal
     - heading "Log" [level=1]
     - textbox "Filter foods"
     - button "Log an estimate instead"

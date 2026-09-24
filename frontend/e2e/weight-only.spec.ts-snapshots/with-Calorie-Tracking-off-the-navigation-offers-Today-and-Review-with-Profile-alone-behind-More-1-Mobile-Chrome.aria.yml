@@ -1,4 +1,5 @@
 - navigation "Primary":
+    - /children: deep-equal
     - link "Today":
         - /url: /
     - link "Review":

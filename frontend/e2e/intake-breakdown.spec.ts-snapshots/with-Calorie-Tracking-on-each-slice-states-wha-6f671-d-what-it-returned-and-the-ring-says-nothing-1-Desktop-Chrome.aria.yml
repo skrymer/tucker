@@ -1,4 +1,5 @@
 - main:
+    - /children: deep-equal
     - heading "Review" [level=1]
     - button "Run review now"
     - region "What you're eating":
