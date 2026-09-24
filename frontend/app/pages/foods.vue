@@ -213,6 +213,8 @@ const {
   saving: savingTags,
 } = useFoodTagging(refresh)
 
+const manageTagsOpen = ref(false)
+
 function handleDeleteConfirm() {
   const food = selectedFood.value
   if (food) deleteFood(food)
@@ -223,6 +225,15 @@ function handleDeleteConfirm() {
   <section class="flex flex-col gap-4">
     <header class="flex items-center justify-between">
       <h1 class="text-2xl font-bold text-default">Foods</h1>
+      <UButton
+        icon="i-lucide-tags"
+        color="neutral"
+        variant="ghost"
+        class="ms-auto me-2"
+        @click="manageTagsOpen = true"
+      >
+        Manage tags
+      </UButton>
       <UButton
         v-if="isDesktop"
         icon="i-lucide-plus"
@@ -293,6 +304,8 @@ function handleDeleteConfirm() {
       @unmatch="clearMatch"
       @close="foodToMatch = null"
     />
+
+    <ManageTagsSheet v-model:open="manageTagsOpen" @changed="refresh" />
 
     <FoodTagsSheet
       :food="foodToTag"

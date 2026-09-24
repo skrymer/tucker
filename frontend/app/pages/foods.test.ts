@@ -27,8 +27,9 @@ const oats = food({
 // separate POST one would replace the catalog read.
 let holdSave: Promise<void> | null = null
 let savesLanded = 0
+let oatsTags: { id: number; name: string }[] = []
 registerEndpoint('/api/foods', async (event) => {
-  if (event.method !== 'POST') return [oats]
+  if (event.method !== 'POST') return [{ ...oats, tags: oatsTags }]
   if (holdSave) await holdSave
   savesLanded += 1
   return { ...oats, id: 8, name: 'Skyr' }
@@ -179,6 +180,37 @@ describe('/foods saving a Food’s Tags', () => {
         expect.objectContaining({ title: 'Could not save tags' }),
       ),
     )
+  })
+})
+
+describe('/foods managing Tags', () => {
+  it('re-reads the catalog once a Tag is deleted, so no row still wears it', async () => {
+    oatsTags = [{ id: 9, name: 'snack' }]
+    registerEndpoint('/api/tags', () =>
+      oatsTags.length ? [{ id: 9, name: 'snack', foodCount: 1 }] : [],
+    )
+    registerEndpoint('/api/tags/9', {
+      method: 'DELETE',
+      handler: () => {
+        oatsTags = []
+        return null
+      },
+    })
+    const user = userEvent.setup()
+    await renderSuspended(Foods)
+    expect(screen.getByText('snack')).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: 'Manage tags' }))
+    const sheet = screen.getByRole('dialog', { name: 'Manage tags' })
+    await user.click(
+      await within(sheet).findByRole('button', { name: 'Delete snack' }),
+    )
+    await user.click(within(sheet).getByRole('button', { name: 'Delete tag' }))
+
+    await vi.waitFor(() =>
+      expect(screen.queryByText('snack')).not.toBeInTheDocument(),
+    )
+    expect(screen.getByText('Oats')).toBeInTheDocument()
   })
 })
 
