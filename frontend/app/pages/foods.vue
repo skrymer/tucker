@@ -3,6 +3,7 @@ import type { components } from '#open-fetch-schemas/api'
 
 type FoodResponse = components['schemas']['FoodResponse']
 type NewFood = components['schemas']['CreateFoodRequest']
+type NewRecipe = components['schemas']['CreateRecipeRequest']
 
 const { data: foods, error: foodsError, refresh } = await useApi('/api/foods')
 
@@ -94,11 +95,7 @@ const { execute: handleCreateIngredient } = useApiMutation(
 // nutrition and returns a FoodResponse, so it appears in the catalog exactly
 // like a plain Food (F9 #142).
 const { pending: recipePending, execute: handleSubmitRecipe } = useApiMutation(
-  (payload: {
-    name: string
-    cookedWeightG: number
-    ingredients: { foodId: number; grams: number }[]
-  }) =>
+  (payload: NewRecipe) =>
     savingFromThisSheet(
       $api('/api/recipes', { method: 'POST', body: payload }),
     ),
@@ -114,11 +111,7 @@ const { pending: recipePending, execute: handleSubmitRecipe } = useApiMutation(
 // the catalog so the row reflects the new per-100g.
 const { pending: recipeEditPending, execute: handleEditRecipe } =
   useApiMutation(
-    (payload: {
-      name: string
-      cookedWeightG: number
-      ingredients: { foodId: number; grams: number }[]
-    }) => {
+    (payload: NewRecipe) => {
       const id = recipeToView.value!.id
       return $api('/api/recipes/{id}', {
         method: 'PUT',

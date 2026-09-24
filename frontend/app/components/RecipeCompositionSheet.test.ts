@@ -184,7 +184,31 @@ describe('RecipeCompositionSheet', () => {
         { foodId: 1, grams: 500 },
         { foodId: 2, grams: 900 },
       ],
+      tagIds: [],
     })
+  })
+
+  it('seeds the edit builder with the Tags the recipe carries, saving them as they were', async () => {
+    registerEndpoint('/api/recipes/4', () => composition)
+    registerEndpoint('/api/tags', () => [])
+    const onSubmitEdit = vi.fn()
+    const user = userEvent.setup()
+    await renderSuspended(RecipeCompositionSheet, {
+      props: {
+        recipe: { ...cottagePie, tags: [{ id: 9, name: 'dinner' }] },
+        foods: catalog,
+        'onSubmit-edit': onSubmitEdit,
+      },
+    })
+
+    await screen.findByText('Mince')
+    await user.click(screen.getByRole('button', { name: /edit recipe/i }))
+    expect(screen.getByText('dinner')).toBeVisible()
+    await user.click(screen.getByRole('button', { name: /save changes/i }))
+
+    expect(onSubmitEdit).toHaveBeenCalledWith(
+      expect.objectContaining({ tagIds: [9] }),
+    )
   })
 
   it('surfaces an error instead of an empty composition when the recipe is gone', async () => {

@@ -3,6 +3,7 @@ import { z } from 'zod'
 import type { components } from '#open-fetch-schemas/api'
 
 type FoodResponse = components['schemas']['FoodResponse']
+type FoodTag = components['schemas']['FoodTagResponse']
 
 /** One ingredient weighed into the recipe under construction. */
 interface DraftIngredient {
@@ -28,17 +29,12 @@ const props = defineProps<{
     name: string
     cookedWeightG: number
     ingredients: DraftIngredient[]
+    tags?: FoodTag[]
   } | null
 }>()
 
 const emit = defineEmits<{
-  submit: [
-    {
-      name: string
-      cookedWeightG: number
-      ingredients: { foodId: number; grams: number }[]
-    },
-  ]
+  submit: [components['schemas']['CreateRecipeRequest']]
   // The page owns the catalog and its mutations (foods.vue); the inline add-food
   // is handed up so the created Food re-enters the catalog via its refresh.
   'create-food': [components['schemas']['CreateFoodRequest']]
@@ -59,6 +55,8 @@ function useRecipeDraft() {
   const ingredients = ref<DraftIngredient[]>([
     ...(props.initial?.ingredients ?? []),
   ])
+  const tags = ref<FoodTag[]>([...(props.initial?.tags ?? [])])
+  const creatingTag = ref(false)
   const rawSumG = computed(() =>
     ingredients.value.reduce((sum, line) => sum + line.grams, 0),
   )
@@ -114,6 +112,8 @@ function useRecipeDraft() {
   return {
     form,
     ingredients,
+    tags,
+    creatingTag,
     rawSumG,
     cookedWeightEdited,
     markCookedWeightEdited,
@@ -128,6 +128,8 @@ function useRecipeDraft() {
 const {
   form,
   ingredients,
+  tags,
+  creatingTag,
   rawSumG,
   cookedWeightEdited,
   markCookedWeightEdited,
@@ -281,6 +283,7 @@ function onSave() {
       foodId: line.food.id,
       grams: line.grams,
     })),
+    tagIds: tags.value.map((tag) => tag.id),
   })
 }
 </script>
@@ -386,11 +389,15 @@ function onSave() {
         </div>
       </section>
 
+      <UFormField label="Tags">
+        <TagPicker v-model="tags" v-model:creating="creatingTag" />
+      </UFormField>
+
       <UButton
         type="submit"
         color="primary"
         block
-        :disabled="ingredients.length === 0"
+        :disabled="ingredients.length === 0 || creatingTag"
         :loading="pending"
       >
         {{ initial ? 'Save changes' : 'Save recipe' }}
