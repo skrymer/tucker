@@ -91,7 +91,12 @@ const { politeness } = useToastAnnouncement()
   <Teleport to="body">
     <div :id="TOAST_PORTAL" :aria-live="politeness"></div>
   </Teleport>
-  <UApp :toaster="toaster">
+  <!--
+    `scroll-body` off: the page keeps its scrollbar's room at all times
+    (`scrollbar-gutter` in main.css), so a sheet locking the scroll must not also
+    pad the body for a scrollbar whose room never left.
+  -->
+  <UApp :toaster="toaster" :scroll-body="false">
     <!--
       @vite-pwa/nuxt does not inject the manifest link on its own — this
       component emits it, with crossorigin from `pwa.useCredentials` (see

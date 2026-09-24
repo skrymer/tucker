@@ -42,6 +42,13 @@
   --shadow-float: 0 10px 24px -6px rgb(0 193 106 / 0.45);
 }
 
+/* The scrollbar's room is kept whether the page scrolls or not, so a list
+   narrowed short enough to drop it does not re-centre the column under the
+   User's thumb. Overlay scrollbars (phones, macOS) reserve nothing. */
+html {
+  scrollbar-gutter: stable;
+}
+
 /* Green-biased neutrals + brand status tokens. Unlayered, so these win over
    Nuxt UI's layered light-mode defaults regardless of import order. */
 :root {
