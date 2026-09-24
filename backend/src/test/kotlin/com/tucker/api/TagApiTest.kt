@@ -65,7 +65,7 @@ class TagApiTest {
         val oats = mockMvc.post("/api/foods") {
             contentType = MediaType.APPLICATION_JSON
             content = """{"name":"Rolled oats","barcode":null,
-                          "proteinPer100g":13.0,"carbsPer100g":60.0,"fatPer100g":7.0}"""
+                          "proteinPer100g":13.0,"carbsPer100g":60.0,"fatPer100g":7.0,"tagIds":[]}"""
         }.andReturn().response.contentAsString.let(::idOf)
         mockMvc.put("/api/foods/$oats/tags") {
             contentType = MediaType.APPLICATION_JSON

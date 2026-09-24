@@ -50,7 +50,7 @@ class EntryPreviewApiTest {
     private fun seedFoodAt100KcalPer100g(): Long {
         val json = mockMvc.post("/api/foods") {
             contentType = MediaType.APPLICATION_JSON
-            content = """{"name":"Rice","proteinPer100g":0.0,"carbsPer100g":25.0,"fatPer100g":0.0}"""
+            content = """{"name":"Rice","proteinPer100g":0.0,"carbsPer100g":25.0,"fatPer100g":0.0,"tagIds":[]}"""
         }.andReturn().response.contentAsString
         return objectMapper.readTree(json).get("id").asLong()
     }

@@ -94,6 +94,21 @@ class FoodTagsApiTest {
     }
 
     @Test
+    fun `a Food created without saying which Tags it carries is refused, and not created`() {
+        mockMvc.post("/api/foods") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"name":"Rolled oats","barcode":null,"proteinPer100g":13.0,
+                          "carbsPer100g":60.0,"fatPer100g":7.0}"""
+        }.andExpect {
+            status { isBadRequest() }
+        }
+
+        mockMvc.get("/api/foods").andExpect {
+            jsonPath("$.length()") { value(0) }
+        }
+    }
+
+    @Test
     fun `a Tag id the User does not have is refused as absent, and the Food keeps its Tags`() {
         val oats = createFood("Rolled oats")
         val breakfast = createTag("breakfast")
@@ -109,34 +124,6 @@ class FoodTagsApiTest {
         mockMvc.get("/api/foods/$oats").andExpect {
             jsonPath("$.tags.length()") { value(1) }
             jsonPath("$.tags[0].id") { value(breakfast) }
-        }
-    }
-
-    @Test
-    fun `a Recipe edited keeps the Tags it carries, and says so`() {
-        val mince = createFood("Beef mince")
-        val recipe = objectMapper.readTree(
-            mockMvc.post("/api/recipes") {
-                contentType = MediaType.APPLICATION_JSON
-                content = """{"name":"Bolognese","cookedWeightG":500.0,
-                              "ingredients":[{"foodId":$mince,"grams":600.0}]}"""
-            }.andExpect { status { isCreated() } }.andReturn().response.contentAsString,
-        ).get("id").asLong()
-        val dinner = createTag("dinner")
-        retag(recipe, dinner)
-
-        mockMvc.put("/api/recipes/$recipe") {
-            contentType = MediaType.APPLICATION_JSON
-            content = """{"name":"Bolognese","cookedWeightG":450.0,
-                          "ingredients":[{"foodId":$mince,"grams":600.0}]}"""
-        }.andExpect {
-            status { isOk() }
-            jsonPath("$.tags[0].id") { value(dinner) }
-        }
-
-        mockMvc.get("/api/foods/$recipe").andExpect {
-            jsonPath("$.tags.length()") { value(1) }
-            jsonPath("$.tags[0].name") { value("dinner") }
         }
     }
 
@@ -206,7 +193,7 @@ class FoodTagsApiTest {
         val body = mockMvc.post("/api/foods") {
             contentType = MediaType.APPLICATION_JSON
             content = """{"name":"$name","barcode":null,
-                          "proteinPer100g":13.0,"carbsPer100g":60.0,"fatPer100g":7.0}"""
+                          "proteinPer100g":13.0,"carbsPer100g":60.0,"fatPer100g":7.0,"tagIds":[]}"""
         }.andExpect { status { isCreated() } }.andReturn().response.contentAsString
         return objectMapper.readTree(body).get("id").asLong()
     }

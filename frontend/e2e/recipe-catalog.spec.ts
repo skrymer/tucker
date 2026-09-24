@@ -34,6 +34,7 @@ test('a recipe reads as a recipe in the catalog and opens its composition', asyn
           { foodId: 1, name: 'Beef mince', grams: 500 },
           { foodId: 3, name: 'Potato', grams: 900 },
         ],
+        tags: [],
       },
     }),
   )

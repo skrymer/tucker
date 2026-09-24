@@ -4,11 +4,7 @@ import type { components } from '#open-fetch-schemas/api'
 type FoodResponse = components['schemas']['FoodResponse']
 type RecipeResponse = components['schemas']['RecipeResponse']
 
-type RecipePayload = {
-  name: string
-  cookedWeightG: number
-  ingredients: { foodId: number; grams: number }[]
-}
+type RecipePayload = components['schemas']['CreateRecipeRequest']
 
 // Stryker disable all: a compiler macro's arguments are hoisted out of setup()
 const props = withDefaults(
@@ -108,6 +104,7 @@ function useEditMode() {
       name: comp.name,
       cookedWeightG: comp.cookedWeightG,
       ingredients: lines,
+      tags: comp.tags,
     }
   })
   return {

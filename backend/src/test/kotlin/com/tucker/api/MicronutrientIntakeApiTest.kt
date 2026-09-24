@@ -298,7 +298,7 @@ class MicronutrientIntakeApiTest {
 
     private fun recipeBody(name: String, cookedWeightG: Double, lines: List<Pair<Long, Double>>): String {
         val ingredients = lines.joinToString(",") { (foodId, grams) -> """{"foodId":$foodId,"grams":$grams}""" }
-        return """{"name":"$name","cookedWeightG":$cookedWeightG,"ingredients":[$ingredients]}"""
+        return """{"name":"$name","cookedWeightG":$cookedWeightG,"ingredients":[$ingredients],"tagIds":[]}"""
     }
 
     private fun seedProfile(sex: String, birthDate: String) {
@@ -316,7 +316,7 @@ class MicronutrientIntakeApiTest {
     private fun createZeroCalorieFood(name: String): Long {
         val body = mockMvc.post("/api/foods") {
             contentType = MediaType.APPLICATION_JSON
-            content = """{"name":"$name","proteinPer100g":0.0,"carbsPer100g":0.0,"fatPer100g":0.0}"""
+            content = """{"name":"$name","proteinPer100g":0.0,"carbsPer100g":0.0,"fatPer100g":0.0,"tagIds":[]}"""
         }.andExpect { status { isCreated() } }.andReturn().response.contentAsString
         return objectMapper.readTree(body).get("id").asLong()
     }
@@ -324,7 +324,7 @@ class MicronutrientIntakeApiTest {
     private fun createFood(name: String): Long {
         val body = mockMvc.post("/api/foods") {
             contentType = MediaType.APPLICATION_JSON
-            content = """{"name":"$name","proteinPer100g":25.0,"carbsPer100g":0.0,"fatPer100g":0.0}"""
+            content = """{"name":"$name","proteinPer100g":25.0,"carbsPer100g":0.0,"fatPer100g":0.0,"tagIds":[]}"""
         }.andExpect { status { isCreated() } }.andReturn().response.contentAsString
         return objectMapper.readTree(body).get("id").asLong()
     }

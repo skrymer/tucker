@@ -193,6 +193,17 @@ only reason the two agree; a spec-affecting one added to main would turn this
 guard red against a snapshot that is right about production, and the answer then
 is to make the contexts agree — never to edit the snapshot to match the test.
 
+**A request field the spec marks `required` is required on the wire, so a non-null
+request field carries no Kotlin default.** swagger marks a non-null property
+`required` whether or not it has a default, while Jackson quietly fills a defaulted
+one in when it is omitted — so the spec and the server disagreed about the same
+field, and nothing tested the gap. It bit on `tagIds`, whose `= emptyList()` let a
+`PUT /api/recipes/{id}` that left it out replace the Recipe's Tags with none: the
+one sender that omits it is a bundle older than the field, which is exactly the
+client that must not decide the Tags. Without the default, omission is a 400 and
+nothing is written. A field that is genuinely optional on a request says so by
+being nullable, which this ADR already describes.
+
 ## Consequences
 
 Every nullable field added after these 46 is described correctly the day it is

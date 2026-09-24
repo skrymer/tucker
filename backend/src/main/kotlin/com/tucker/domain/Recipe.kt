@@ -25,6 +25,7 @@ data class Recipe(
     val name: String,
     val ingredients: List<RecipeIngredient>,
     val cookedWeightG: Double,
+    val tagIds: Set<Long> = emptySet(),
 ) {
     init {
         require(name.isNotBlank()) { "Recipe name must not be blank" }
@@ -53,5 +54,6 @@ data class Recipe(
         barcode = null,
         nutrition = nutrition(),
         cookedWeightG = cookedWeightG,
+        tagIds = tagIds,
     )
 }

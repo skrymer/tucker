@@ -82,6 +82,7 @@ test('user builds and saves a recipe through the Food or Recipe switch', async (
     name: 'Cottage pie',
     cookedWeightG: 400,
     ingredients: [{ foodId: 1, grams: 800 }],
+    tagIds: [],
   })
 })
 

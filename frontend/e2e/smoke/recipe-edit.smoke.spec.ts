@@ -37,6 +37,7 @@ test('editing a recipe recalibrates future logs while leaving a past log untouch
   try {
     const createdRecipe = await request.post(`${API}/recipes`, {
       data: {
+        tagIds: [],
         name: recipeName,
         cookedWeightG: 200,
         ingredients: [{ foodId: ingredient.id, grams: 400 }],
@@ -129,6 +130,7 @@ test('editing a recipe recalibrates future logs while leaving a past log untouch
   ): Promise<{ id: number }> {
     const res = await request.post(`${API}/foods`, {
       data: {
+        tagIds: [],
         name,
         proteinPer100g: macros.protein,
         carbsPer100g: macros.carbs,

@@ -36,6 +36,7 @@ test('user builds a recipe, saves it, and logs a portion onto Today', async ({
 
   const created = await request.post('http://localhost:8080/api/foods', {
     data: {
+      tagIds: [],
       name: ingredientName,
       proteinPer100g: 25,
       carbsPer100g: 0,

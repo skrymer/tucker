@@ -43,6 +43,7 @@ test('a User sees only their own catalog and their own day', async ({
   await expectCreated(
     otherUser.post(`${API}/foods`, {
       data: {
+        tagIds: [],
         name: 'Their almonds',
         proteinPer100g: 21,
         carbsPer100g: 22,
@@ -66,6 +67,7 @@ test('a User sees only their own catalog and their own day', async ({
   await expectCreated(
     request.post(`${API}/foods`, {
       data: {
+        tagIds: [],
         name: 'My skyr',
         proteinPer100g: 10,
         carbsPer100g: 4,

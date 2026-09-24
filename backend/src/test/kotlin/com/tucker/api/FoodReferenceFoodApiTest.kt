@@ -144,7 +144,7 @@ class FoodReferenceFoodApiTest {
         val body = mockMvc.post("/api/recipes") {
             contentType = MediaType.APPLICATION_JSON
             content = """{"name":"$name","cookedWeightG":500.0,
-                          "ingredients":[{"foodId":$ingredientId,"grams":600.0}]}"""
+                          "ingredients":[{"foodId":$ingredientId,"grams":600.0}],"tagIds":[]}"""
         }.andExpect { status { isCreated() } }.andReturn().response.contentAsString
         return objectMapper.readTree(body).get("id").asLong()
     }
@@ -160,7 +160,7 @@ class FoodReferenceFoodApiTest {
         val body = mockMvc.post("/api/foods") {
             contentType = MediaType.APPLICATION_JSON
             content = """{"name":"$name","barcode":${barcode?.let { "\"$it\"" }},
-                          "proteinPer100g":25.0,"carbsPer100g":0.0,"fatPer100g":33.0}"""
+                          "proteinPer100g":25.0,"carbsPer100g":0.0,"fatPer100g":33.0,"tagIds":[]}"""
         }.andExpect { status { isCreated() } }.andReturn().response.contentAsString
         return objectMapper.readTree(body).get("id").asLong()
     }

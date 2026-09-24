@@ -1206,6 +1206,21 @@ Enter flag forced on, and its reset removed). Beyond the two carried over above 
 `useApiMutation.ts` scores **72 of 80** with the `retry` hook, which is killed. Its
 survivors are on lines the hook did not touch.
 
+### Tags on a Recipe — `RecipeBuilder.vue` 93 of 147, 44 of them already there
+
+`RecipeBuilder.vue` had never been swept. On `origin/main` it scores **88 killed, 43
+survived, 10 no cov**, all on the ingredient-flow and cook-down lines F9 wrote. F18
+slice 4 adds exactly one survivor: `creatingTag` seeded `true`, which is **equivalent**
+for the same reason as `AddFoodForm`'s (the picker's `watchEffect` writes it on mount).
+The build step is `v-show`, so the picker mounts with the builder. The Tag seed,
+`tagIds`, and `RecipeCompositionSheet`'s `tags: comp.tags` are killed.
+`RecipeCompositionSheet.vue` now instruments (51 of 62). The `withDefaults` block
+sits inside a `Stryker disable`, so it is no longer hand-check only. Its 11
+survivors are on the fetch-race and title lines, which predate this slice.
+Backend: `Recipe`, `FoodService`, `RecipeRepository` and `RecipeController` score **59
+of 61**. The two survivors are the `isEmpty()` early returns in `ingredientsOf` and
+`ingredientCounts` replaced with `emptyMap()`. They are equivalent.
+
 ### Tags on Log — `catalog.ts` 48 of 54, `log.vue` and `TagChips.vue` unattributed
 
 All six `catalog.ts` survivors are **equivalent**. One is `fold`'s `toLowerCase` →

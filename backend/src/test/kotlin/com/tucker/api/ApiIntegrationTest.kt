@@ -40,7 +40,7 @@ class ApiIntegrationTest {
         // Banana: 1.1P + 22.8C + 0.3F → 4 * 1.1 + 4 * 22.8 + 9 * 0.3 = 98.3 kcal /100g
         val foodJson = mockMvc.post("/api/foods") {
             contentType = MediaType.APPLICATION_JSON
-            content = """{"name":"Banana","proteinPer100g":1.1,"carbsPer100g":22.8,"fatPer100g":0.3}"""
+            content = """{"name":"Banana","proteinPer100g":1.1,"carbsPer100g":22.8,"fatPer100g":0.3,"tagIds":[]}"""
         }.andExpect {
             status { isCreated() }
             jsonPath("$.caloriesPer100g", closeTo(98.3, 1e-6))
@@ -74,7 +74,7 @@ class ApiIntegrationTest {
     fun `an invalid food is rejected with 400`() {
         mockMvc.post("/api/foods") {
             contentType = MediaType.APPLICATION_JSON
-            content = """{"name":"Bad","proteinPer100g":-1.0,"carbsPer100g":0.0,"fatPer100g":0.0}"""
+            content = """{"name":"Bad","proteinPer100g":-1.0,"carbsPer100g":0.0,"fatPer100g":0.0,"tagIds":[]}"""
         }.andExpect { status { isBadRequest() } }
     }
 
@@ -87,7 +87,7 @@ class ApiIntegrationTest {
     fun `deleting a food that has logged entries is rejected by the domain`() {
         val foodJson = mockMvc.post("/api/foods") {
             contentType = MediaType.APPLICATION_JSON
-            content = """{"name":"Skyr","proteinPer100g":11.0,"carbsPer100g":4.0,"fatPer100g":0.2}"""
+            content = """{"name":"Skyr","proteinPer100g":11.0,"carbsPer100g":4.0,"fatPer100g":0.2,"tagIds":[]}"""
         }.andExpect { status { isCreated() } }.andReturn().response.contentAsString
         val foodId = objectMapper.readTree(foodJson).get("id").asLong()
 
@@ -113,7 +113,7 @@ class ApiIntegrationTest {
     fun `deleting a food with no logged entries removes it`() {
         val foodJson = mockMvc.post("/api/foods") {
             contentType = MediaType.APPLICATION_JSON
-            content = """{"name":"Unlogged","proteinPer100g":1.0,"carbsPer100g":1.0,"fatPer100g":1.0}"""
+            content = """{"name":"Unlogged","proteinPer100g":1.0,"carbsPer100g":1.0,"fatPer100g":1.0,"tagIds":[]}"""
         }.andExpect { status { isCreated() } }.andReturn().response.contentAsString
         val foodId = objectMapper.readTree(foodJson).get("id").asLong()
 

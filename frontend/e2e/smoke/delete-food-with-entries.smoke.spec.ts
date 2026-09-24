@@ -25,6 +25,7 @@ test('a food with logged entries cannot be deleted from the catalog', async ({
 
   const created = await request.post(`${API}/foods`, {
     data: {
+      tagIds: [],
       name: foodName,
       proteinPer100g: 11,
       carbsPer100g: 4,

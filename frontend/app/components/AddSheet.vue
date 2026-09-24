@@ -19,13 +19,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   'update:open': [boolean]
   submit: [NewFood]
-  'submit-recipe': [
-    {
-      name: string
-      cookedWeightG: number
-      ingredients: { foodId: number; grams: number }[]
-    },
-  ]
+  'submit-recipe': [components['schemas']['CreateRecipeRequest']]
   'create-food': [NewFood]
 }>()
 

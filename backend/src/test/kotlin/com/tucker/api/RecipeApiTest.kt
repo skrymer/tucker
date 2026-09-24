@@ -31,7 +31,8 @@ class RecipeApiTest {
     private fun createFood(name: String, protein: Double, carbs: Double, fat: Double): Long {
         val json = mockMvc.post("/api/foods") {
             contentType = MediaType.APPLICATION_JSON
-            content = """{"name":"$name","proteinPer100g":$protein,"carbsPer100g":$carbs,"fatPer100g":$fat}"""
+            content = """{"name":"$name","proteinPer100g":$protein,"carbsPer100g":$carbs,"fatPer100g":$fat,
+                "tagIds":[]}"""
         }.andExpect { status { isCreated() } }.andReturn().response.contentAsString
         return objectMapper.readTree(json).get("id").asLong()
     }
@@ -39,7 +40,8 @@ class RecipeApiTest {
     /** Build a create-recipe request body from `foodId to grams` ingredient pairs. */
     private fun recipeBody(name: String, cookedWeightG: Double, vararg ingredients: Pair<Long, Double>): String {
         val lines = ingredients.joinToString(",") { (id, grams) -> """{"foodId":$id,"grams":$grams}""" }
-        return """{"name":"$name","cookedWeightG":$cookedWeightG,"ingredients":[$lines]}"""
+        return """{"name":"$name","cookedWeightG":$cookedWeightG,"ingredients":[$lines],
+                "tagIds":[]}"""
     }
 
     @Test
@@ -51,7 +53,8 @@ class RecipeApiTest {
         mockMvc.post("/api/recipes") {
             contentType = MediaType.APPLICATION_JSON
             content =
-                """{"name":"Cottage Pie","cookedWeightG":200.0,"ingredients":[{"foodId":$minceId,"grams":300.0}]}"""
+                """{"name":"Cottage Pie","cookedWeightG":200.0,"ingredients":[{"foodId":$minceId,"grams":300.0}],
+                "tagIds":[]}"""
         }.andExpect {
             status { isCreated() }
             jsonPath("$.name") { value("Cottage Pie") }
@@ -68,7 +71,8 @@ class RecipeApiTest {
 
         val recipeJson = mockMvc.post("/api/recipes") {
             contentType = MediaType.APPLICATION_JSON
-            content = """{"name":"Ragu","cookedWeightG":400.0,"ingredients":[{"foodId":$minceId,"grams":500.0}]}"""
+            content = """{"name":"Ragu","cookedWeightG":400.0,"ingredients":[{"foodId":$minceId,"grams":500.0}],
+                "tagIds":[]}"""
         }.andExpect { status { isCreated() } }.andReturn().response.contentAsString
         val recipeId = objectMapper.readTree(recipeJson).get("id").asLong()
 
@@ -84,7 +88,8 @@ class RecipeApiTest {
         val foodId = createFood("Beef", 20.0, 0.0, 10.0)
         mockMvc.post("/api/recipes") {
             contentType = MediaType.APPLICATION_JSON
-            content = """{"name":"  ","cookedWeightG":200.0,"ingredients":[{"foodId":$foodId,"grams":300.0}]}"""
+            content = """{"name":"  ","cookedWeightG":200.0,"ingredients":[{"foodId":$foodId,"grams":300.0}],
+                "tagIds":[]}"""
         }.andExpect { status { isBadRequest() } }
     }
 
@@ -92,7 +97,8 @@ class RecipeApiTest {
     fun `a recipe with no ingredients is rejected with 400`() {
         mockMvc.post("/api/recipes") {
             contentType = MediaType.APPLICATION_JSON
-            content = """{"name":"Empty","cookedWeightG":200.0,"ingredients":[]}"""
+            content = """{"name":"Empty","cookedWeightG":200.0,"ingredients":[],
+                "tagIds":[]}"""
         }.andExpect { status { isBadRequest() } }
     }
 
@@ -101,7 +107,8 @@ class RecipeApiTest {
         val foodId = createFood("Beef", 20.0, 0.0, 10.0)
         mockMvc.post("/api/recipes") {
             contentType = MediaType.APPLICATION_JSON
-            content = """{"name":"Bad","cookedWeightG":200.0,"ingredients":[{"foodId":$foodId,"grams":0.0}]}"""
+            content = """{"name":"Bad","cookedWeightG":200.0,"ingredients":[{"foodId":$foodId,"grams":0.0}],
+                "tagIds":[]}"""
         }.andExpect { status { isBadRequest() } }
     }
 
@@ -110,7 +117,8 @@ class RecipeApiTest {
         val foodId = createFood("Beef", 20.0, 0.0, 10.0)
         mockMvc.post("/api/recipes") {
             contentType = MediaType.APPLICATION_JSON
-            content = """{"name":"Bad","cookedWeightG":0.0,"ingredients":[{"foodId":$foodId,"grams":300.0}]}"""
+            content = """{"name":"Bad","cookedWeightG":0.0,"ingredients":[{"foodId":$foodId,"grams":300.0}],
+                "tagIds":[]}"""
         }.andExpect { status { isBadRequest() } }
     }
 
@@ -120,7 +128,8 @@ class RecipeApiTest {
         val recipeJson = mockMvc.post("/api/recipes") {
             contentType = MediaType.APPLICATION_JSON
             content =
-                """{"name":"Base","cookedWeightG":200.0,"ingredients":[{"foodId":$foodId,"grams":300.0}]}"""
+                """{"name":"Base","cookedWeightG":200.0,"ingredients":[{"foodId":$foodId,"grams":300.0}],
+                "tagIds":[]}"""
         }.andExpect { status { isCreated() } }.andReturn().response.contentAsString
         val recipeId = objectMapper.readTree(recipeJson).get("id").asLong()
 
@@ -128,7 +137,8 @@ class RecipeApiTest {
         mockMvc.post("/api/recipes") {
             contentType = MediaType.APPLICATION_JSON
             content =
-                """{"name":"Nested","cookedWeightG":200.0,"ingredients":[{"foodId":$recipeId,"grams":100.0}]}"""
+                """{"name":"Nested","cookedWeightG":200.0,"ingredients":[{"foodId":$recipeId,"grams":100.0}],
+                "tagIds":[]}"""
         }.andExpect { status { isBadRequest() } }
     }
 
@@ -231,7 +241,8 @@ class RecipeApiTest {
         // have to answer alike, or the difference reveals the row (ADR 0021).
         mockMvc.post("/api/recipes") {
             contentType = MediaType.APPLICATION_JSON
-            content = """{"name":"Ghost","cookedWeightG":200.0,"ingredients":[{"foodId":999999,"grams":300.0}]}"""
+            content = """{"name":"Ghost","cookedWeightG":200.0,"ingredients":[{"foodId":999999,"grams":300.0}],
+                "tagIds":[]}"""
         }.andExpect {
             status { isNotFound() }
             jsonPath("$.message") { value(org.hamcrest.Matchers.containsString("999999")) }
@@ -348,7 +359,8 @@ class RecipeApiTest {
         val recipeId = createRecipe("Base", 200.0, foodId to 300.0)
         mockMvc.put("/api/recipes/$recipeId") {
             contentType = MediaType.APPLICATION_JSON
-            content = """{"name":"Base","cookedWeightG":200.0,"ingredients":[]}"""
+            content = """{"name":"Base","cookedWeightG":200.0,"ingredients":[],
+                "tagIds":[]}"""
         }.andExpect { status { isBadRequest() } }
     }
 

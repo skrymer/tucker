@@ -55,11 +55,7 @@ class RecipeRepository(
     @Transactional
     fun update(recipe: Recipe): Food? {
         val recipeId = requireNotNull(recipe.id) { "cannot update a Recipe without an id" }
-        // Editing a Recipe changes its composition, never the Tags it carries — and
-        // `asFood` knows only the composition — so they are carried over from the row.
-        val updated = foods.findById(recipeId)
-            ?.let { stored -> foods.update(recipe.asFood().retagged(stored.tagIds)) }
-            ?: return null
+        val updated = foods.update(recipe.asFood()) ?: return null
         dsl.deleteFrom(RECIPE_INGREDIENT)
             .where(RECIPE_INGREDIENT.RECIPE_ID.eq(recipeId.toInt()))
             .and(
@@ -97,6 +93,7 @@ class RecipeRepository(
             ingredients = ingredientsOf(listOf(id))[id].orEmpty(),
             // Non-null by `Food`'s invariant: a RECIPE is sliced out of its cooked weight.
             cookedWeightG = food.cookedWeightG!!,
+            tagIds = food.tagIds,
         )
     }
 

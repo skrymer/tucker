@@ -1817,6 +1817,50 @@ null` now means two things that earn opposite messages — the same trap
     `log.test.ts`, and the TDD hook refuses a mutant written into `app/`, so they were
     hand-mutated as copies outside it: 12 of 12 killed (`known-survivors.md`).
 
+  Slice 3 ([#363](https://github.com/skrymer/tucker/issues/363), shipped
+  [#378](https://github.com/skrymer/tucker/pull/378)) — **tag while adding a Food** —
+  ✅ done. `POST /api/foods` takes an optional `tagIds`, written with the Food in one
+  transaction and only when every id is the caller's; a foreign or absent Tag is a 404
+  with nothing written, as an absent Food is.
+  - **The ownership rule has one home.** `FoodService.ownsAll` sits behind `create` and
+    `retag`, so `PUT /api/foods/{id}/tags` delegates rather than checking in the
+    controller.
+  - **`TagPicker` is the one picker**, extracted from the row sheet and reused in
+    `AddFoodForm` (manual and barcode-filled alike, and so the Recipe builder's inline
+    new-ingredient form too). Save waits while a typed Tag is created.
+  - **Names typed while one is being created wait their turn** in a queue instead of
+    being dropped, and a failure toast's Retry joins that queue — `useApiMutation`
+    gained a `retry` option for a caller that runs its own attempts (ADR 0005).
+  - **Enter is taken in the capture phase**, ahead of Reka's tags input, so it never
+    submits the form and never draws a chip with no Tag behind it. Keyboard behaviour
+    differs between happy-dom and a browser, so it is pinned in `e2e/food-tags.spec.ts`.
+  - Found and filed rather than fixed: one mutation's success dismisses its failure
+    toast whatever input failed, so a Tag created for one name takes down another
+    name's failure ([#381](https://github.com/skrymer/tucker/issues/381)).
+
+  Slice 4 ([#364](https://github.com/skrymer/tucker/issues/364)) — **tag a Recipe** —
+  ✅ done. The Recipe builder and Recipe edit host `TagPicker`; `CreateRecipeRequest`
+  takes `tagIds` on both `POST` and `PUT /api/recipes`, ownership checked through
+  `FoodService.createRecipe` / `updateRecipe` as in slice 3.
+  - **An edit replaces a Recipe's Tags, as it replaces its ingredients.** Slice 1 had
+    `RecipeRepository.update` carry the stored Tags over, because `Recipe.asFood()` is
+    rebuilt from the composition and knew none; `Recipe` now carries its `tagIds`, and
+    "saved untouched keeps them" is the builder resending the Tags it was seeded with.
+    `tagIds` carries no Kotlin default on `CreateRecipeRequest` or
+    `CreateFoodRequest`, so a request that leaves it out is a 400 rather than a
+    silent "no Tags" — the spec already called it `required`, and a stale bundle
+    omitting it would otherwise have cleared every Recipe it edited (ADR 0023).
+  - **`RecipeResponse` carries `tags`, and the edit form is seeded from that one
+    read.** The catalog's `FoodResponse` carries them too, but it is whatever the list
+    last loaded — and since an edit replaces the Tags, seeding them from an older read
+    than the composition would let the stale one decide what is written.
+    `RecipeRepository.findById` loads `tagIds`, so the aggregate reads back as it writes.
+  - **The builder's build step is hidden, not unmounted, while an ingredient is
+    added.** `TagPicker` holds its in-flight creates, so unmounting it dropped a Tag
+    still being created and refetched `/api/tags` on every return.
+  - The recipe payload is typed from the generated `CreateRecipeRequest` rather than
+    five hand-kept copies, one of which would otherwise have gone stale here.
+
 ## Architecture
 
 - **Frontend** — Nuxt + Nuxt UI, TypeScript, SPA mode (`ssr: false`). A

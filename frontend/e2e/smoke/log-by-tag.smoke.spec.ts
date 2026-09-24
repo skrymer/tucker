@@ -33,6 +33,7 @@ const createFood = (request: APIRequestContext, name: string) =>
     proteinPer100g: 10,
     carbsPer100g: 4,
     fatPer100g: 0.2,
+    tagIds: [],
   })
 
 test('a Tag narrows Log to the Foods carrying it, and one is logged from there', async ({

@@ -95,7 +95,7 @@ class OpenApiDiscriminatorTest {
     fun `the wire carries a kind as the enum constant name`() {
         val foodJson = mockMvc.post("/api/foods") {
             contentType = MediaType.APPLICATION_JSON
-            content = """{"name":"Skyr","proteinPer100g":11.0,"carbsPer100g":4.0,"fatPer100g":0.2}"""
+            content = """{"name":"Skyr","proteinPer100g":11.0,"carbsPer100g":4.0,"fatPer100g":0.2,"tagIds":[]}"""
         }.andExpect {
             status { isCreated() }
             // One constant of each enum is enough: Jackson's rendering is a
