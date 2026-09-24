@@ -289,6 +289,30 @@ test('a name entered with the Tag list closed is created as a Tag, not a save', 
   expect(created).toEqual([expect.objectContaining({ tagIds: [100] })])
 })
 
+test('a name entered in Manage tags with Enter becomes a Tag, leaving the field empty and uncomplaining', async ({
+  page,
+  goto,
+}) => {
+  await mockTaggableCatalog(page)
+  await goto('/foods', { waitUntil: 'hydration' })
+  await page.getByRole('button', { name: 'Manage tags' }).click()
+  const sheet = page.getByRole('dialog', { name: 'Manage tags' })
+  const field = sheet.getByRole('textbox', { name: 'New tag' })
+
+  await field.fill('Lunch')
+  await field.press('Enter')
+  // As a phone's keyboard does when its Go key submits: the field lets go.
+  await field.blur()
+
+  await expect(sheet.getByRole('listitem')).toHaveText([/Lunch/])
+  await expect(field).toHaveValue('')
+  // An absence has nothing to wait for. UForm debounces input validation by 300 ms
+  // unless told otherwise, and that late validation is what complained, so the
+  // check outlasts it.
+  await page.waitForTimeout(500)
+  await expect(sheet.getByText('Enter a name for this tag')).toHaveCount(0)
+})
+
 test('Manage tags lists every Tag with its Food count, and deleting one takes it off the row', async ({
   page,
   goto,

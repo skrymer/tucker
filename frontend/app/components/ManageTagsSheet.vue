@@ -98,9 +98,12 @@ function deleteQuestion(tag: { name: string; foodCount: number }) {
 
 <template>
   <ResponsiveOverlay v-model:open="open" title="Manage tags">
+    <!-- Validates a keystroke as it lands: a delayed one can fire after a create has
+         emptied the field, and complain about a name nobody is typing. -->
     <UForm
       :schema="schema"
       :state="draft"
+      :validate-on-input-delay="0"
       class="flex items-start gap-2"
       @submit="submit"
     >
