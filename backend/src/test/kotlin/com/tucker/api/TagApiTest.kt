@@ -117,6 +117,19 @@ class TagApiTest {
         }
     }
 
+    @Test
+    fun `deleting a Tag that is already gone is no content, and deletes nothing else`() {
+        val breakfast = createTag("breakfast")
+        createTag("snack")
+        mockMvc.delete("/api/tags/$breakfast").andExpect { status { isNoContent() } }
+
+        mockMvc.delete("/api/tags/$breakfast").andExpect { status { isNoContent() } }
+
+        mockMvc.get("/api/tags").andExpect {
+            jsonPath("$[*].name") { value(org.hamcrest.Matchers.contains("snack")) }
+        }
+    }
+
     private fun createFood(name: String): Long = mockMvc.post("/api/foods") {
         contentType = MediaType.APPLICATION_JSON
         content = """{"name":"$name","barcode":null,
