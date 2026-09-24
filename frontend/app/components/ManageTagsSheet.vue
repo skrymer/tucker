@@ -85,7 +85,10 @@ function foodCount(count: number) {
     <ul role="list" class="divide-y divide-default">
       <li v-for="tag in tags ?? []" :key="tag.id" class="py-2">
         <div v-if="confirming === tag.id" class="flex flex-col gap-2">
-          <p class="text-sm text-default">
+          <p v-if="tag.foodCount === 0" class="text-sm text-default">
+            Delete “{{ tag.name }}”? No foods carry it.
+          </p>
+          <p v-else class="text-sm text-default">
             Delete “{{ tag.name }}”? It comes off
             {{ foodCount(tag.foodCount) }}. The foods stay in your catalog.
           </p>

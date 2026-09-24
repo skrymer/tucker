@@ -68,6 +68,22 @@ describe('ManageTagsSheet', () => {
     expect(deletes).toBe(0)
   })
 
+  it('asks before deleting a Tag no Food carries, saying it is on none', async () => {
+    registerEndpoint('/api/tags', () => [
+      { id: 8, name: 'dinner', foodCount: 0 },
+    ])
+    await renderSuspended(ManageTagsSheet, { props: { open: true } })
+
+    await userEvent
+      .setup()
+      .click(await screen.findByRole('button', { name: 'Delete dinner' }))
+
+    expect(
+      screen.getByText('Delete “dinner”? No foods carry it.'),
+    ).toBeVisible()
+    expect(screen.queryByText(/It comes off/)).not.toBeInTheDocument()
+  })
+
   it('keeps a Tag whose delete is cancelled, back as it was', async () => {
     let deletes = 0
     registerEndpoint('/api/tags', () => [
