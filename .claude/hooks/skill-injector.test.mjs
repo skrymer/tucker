@@ -94,6 +94,10 @@ test('a planning prompt is pointed at grill-with-docs, not plan mode', () => {
   assert.ok(skillsOf('what is the plan for F17?').includes('grill-with-docs'))
 })
 
+test('picking up an issue is reminded of both dev playbooks and red-green', () => {
+  assert.deepEqual(skillsOf('pickup issue 363'), ['frontend-dev', 'backend-dev', 'tdd'])
+})
+
 test('an ordinary prompt gets no reminder at all', () => {
   assert.deepEqual(skillsOf('what does IntakeBreakdown.of refuse?'), [])
 })
