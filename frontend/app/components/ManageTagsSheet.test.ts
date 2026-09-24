@@ -200,6 +200,30 @@ describe('ManageTagsSheet', () => {
     answer()
   })
 
+  it('holds the add button while a create is in flight', async () => {
+    let posts = 0
+    let answer: () => void = () => {}
+    registerEndpoint('/api/tags', { method: 'GET', handler: () => [] })
+    registerEndpoint('/api/tags', {
+      method: 'POST',
+      handler: () => {
+        posts++
+        return new Promise((resolve) => {
+          answer = () => resolve({ id: 8, name: 'Lunch', foodCount: 0 })
+        })
+      },
+    })
+    await renderSuspended(ManageTagsSheet, { props: { open: true } })
+    const user = userEvent.setup()
+    await user.type(screen.getByRole('textbox', { name: 'New tag' }), 'Lunch')
+
+    await user.click(screen.getByRole('button', { name: 'Add' }))
+
+    await vi.waitFor(() => expect(posts).toBe(1))
+    expect(screen.getByRole('button', { name: /Add/ })).toBeDisabled()
+    answer()
+  })
+
   it('refuses a Tag name of whitespace alone at the field, and sends nothing', async () => {
     let posts = 0
     registerEndpoint('/api/tags', { method: 'GET', handler: () => [] })

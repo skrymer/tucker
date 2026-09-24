@@ -31,7 +31,7 @@ const schema = z.object({
 /** Naming a Tag before tagging anything with it; the list is re-read once it exists. */
 function useTagCreation() {
   const draft = reactive({ name: '' })
-  const { execute: create } = useApiMutation(
+  const { execute: create, pending: creating } = useApiMutation(
     (name: string) => $api('/api/tags', { method: 'POST', body: { name } }),
     {
       errorTitle: 'Could not add tag',
@@ -41,10 +41,10 @@ function useTagCreation() {
       },
     },
   )
-  return { draft, submit: () => create(draft.name) }
+  return { draft, creating, submit: () => create(draft.name) }
 }
 
-const { draft, submit } = useTagCreation()
+const { draft, creating, submit } = useTagCreation()
 
 /** The Tag whose delete is being asked about. */
 const confirming = ref<number | null>(null)
@@ -88,7 +88,14 @@ function foodCount(count: number) {
           class="w-full"
         />
       </UFormField>
-      <UButton type="submit" color="neutral" variant="outline">Add</UButton>
+      <UButton
+        type="submit"
+        color="neutral"
+        variant="outline"
+        :loading="creating"
+      >
+        Add
+      </UButton>
     </UForm>
     <LoadErrorState
       :error="error"
