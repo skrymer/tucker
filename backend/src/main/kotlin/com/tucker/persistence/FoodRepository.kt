@@ -62,10 +62,12 @@ class FoodRepository(
             .fetch().map { it.toFood() }.let(::carryingTags)
     }
 
+    @Transactional
     fun insert(food: Food): Food {
         val rec = dsl.newRecord(FOOD)
         rec.applyFrom(food)
         rec.store()
+        dsl.linkTags(rec.id!!, food.tagIds, currentUser.ownerId)
         return food.copy(id = rec.id!!.toLong())
     }
 
@@ -154,6 +156,11 @@ private fun DSLContext.replaceTagsOf(foodId: Int, tagIds: Set<Long>, ownerId: In
         .where(FOOD_TAG.FOOD_ID.eq(foodId))
         .and(FOOD_TAG.FOOD_ID.`in`(select(FOOD.ID).from(FOOD).where(FOOD.USER_ID.eq(ownerId))))
         .execute()
+    linkTags(foodId, tagIds, ownerId)
+}
+
+/** Link the Food [foodId] to [tagIds], alongside whatever it already carries. */
+private fun DSLContext.linkTags(foodId: Int, tagIds: Set<Long>, ownerId: Int) {
     if (tagIds.isEmpty()) return
     // Only [ownerId]'s own Tags are linked: the link carries no owner, so a foreign
     // Tag id is filtered here rather than trusted to have been refused upstream.

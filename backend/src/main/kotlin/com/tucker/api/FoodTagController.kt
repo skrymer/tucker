@@ -1,7 +1,6 @@
 package com.tucker.api
 
-import com.tucker.persistence.FoodRepository
-import com.tucker.persistence.TagRepository
+import com.tucker.service.FoodService
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -12,8 +11,7 @@ data class SetFoodTagsRequest(val tagIds: List<Long>)
 
 @RestController
 class FoodTagController(
-    private val foods: FoodRepository,
-    private val tags: TagRepository,
+    private val foodService: FoodService,
     private val describer: FoodDescriber,
 ) {
 
@@ -21,19 +19,13 @@ class FoodTagController(
      * Put exactly [SetFoodTagsRequest.tagIds] on [id] (ADR 0033). Ids only: a new Tag is
      * created by `POST /api/tags` first, so there is one way to name a Tag, not two.
      *
-     * A Tag id that is not the caller's answers 404 exactly as an absent one does, and
-     * before anything is written, so a half-applied set is never left behind.
+     * A Food or Tag that is not the caller's answers 404 exactly as an absent one does,
+     * with nothing written.
      */
     @PutMapping("/api/foods/{id}/tags")
     fun retag(@PathVariable id: Long, @RequestBody request: SetFoodTagsRequest): FoodResponse {
-        requireOwned(request.tagIds)
-        val retagged = foods.findById(id)?.let { foods.update(it.retagged(request.tagIds)) }
-            ?: throw NotFoundException("no Food with id $id")
+        val retagged = foodService.retag(id, request.tagIds)
+            ?: throw NotFoundException("no Food with id $id, or no Tag among ${request.tagIds}")
         return describer.describe(retagged)
-    }
-
-    private fun requireOwned(tagIds: List<Long>) {
-        val owned = tags.findByIds(tagIds).mapNotNull { it.id }.toSet()
-        tagIds.firstOrNull { it !in owned }?.let { throw NotFoundException("no Tag with id $it") }
     }
 }

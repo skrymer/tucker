@@ -385,6 +385,25 @@ class CrossUserIsolationTest {
     }
 
     @Test
+    fun `creating a Food carrying another User's Tag is not found, and creates nothing`() {
+        val alicesBreakfast = postForId(alice, "/api/tags", """{"name":"breakfast"}""")
+
+        mockMvc.post("/api/foods") {
+            header(ACCESS_ASSERTION_HEADER, bob)
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"name":"Bob's skyr","barcode":null,"proteinPer100g":10.0,
+                          "carbsPer100g":4.0,"fatPer100g":0.2,"tagIds":[$alicesBreakfast]}"""
+        }.andExpect { status { isNotFound() } }
+
+        mockMvc.get("/api/foods") { header(ACCESS_ASSERTION_HEADER, bob) }.andExpect {
+            jsonPath("$.length()") { value(0) }
+        }
+        mockMvc.get("/api/tags") { header(ACCESS_ASSERTION_HEADER, alice) }.andExpect {
+            jsonPath("$[0].foodCount") { value(0) }
+        }
+    }
+
+    @Test
     fun `two Users can each hold a Food with the same barcode`() {
         createFood(alice, "Alice's skyr", barcode = "5701234567890")
         createFood(bob, "Bob's skyr", barcode = "5701234567890")
