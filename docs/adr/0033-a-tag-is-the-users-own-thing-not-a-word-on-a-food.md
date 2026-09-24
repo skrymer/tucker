@@ -59,7 +59,12 @@ and is owned per [ADR 0021](0021-every-row-is-owned-by-one-user.md).*
   putting the next Entry within one tap of a long catalog — is already done.
 - **Tags are offered alphabetically, not by use.** An order that moves with a User's
   logging puts the Tag they are looking for somewhere different each week; a User
-  looking for a Tag looks for it by name.
+  looking for a Tag looks for it by name. On `/log` the chips are the Tags the
+  catalog's Foods already carry, so offering them costs no request — and so the
+  client puts their union in order, where everywhere else on `/log` it keeps the
+  order the backend sent. It orders by `TagName`'s own rule (lower-cased, compared code unit by code
+  unit), never the browser's collation, so the chips list Tags in the order every
+  Food's own Tags arrive in.
 - Nothing about a Tag reaches the adaptive engine, a **Weekly Review**, or any
   figure Tucker states. It is navigation over the catalog, and the no-good-or-bad
   rule is untouched: a Tag is the User's word, never Tucker's verdict.

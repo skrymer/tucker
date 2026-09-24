@@ -239,7 +239,7 @@ describe('/log', () => {
   })
 
   it('leaves the grid standing for a query of whitespace alone', async () => {
-    // A space is not a question. `filterFoods` states that rule for the list;
+    // A space is not a question. `narrowFoods` states that rule for the list;
     // the two states have to agree with it or a brushed space bar collapses a
     // grid nothing was asked to narrow.
     const user = userEvent.setup()
@@ -422,5 +422,206 @@ describe('/log', () => {
     expect(
       within(sheet).getByRole('button', { name: /log estimated entry/i }),
     ).toBeVisible()
+  })
+})
+
+describe('/log narrowed by a Tag', () => {
+  const breakfast = { id: 20, name: 'breakfast' }
+  const dinner = { id: 21, name: 'Dinner' }
+
+  beforeEach(() => {
+    catalog = [
+      { ...eggs, tags: [breakfast, dinner] },
+      { ...oats, tags: [breakfast] },
+      { ...tuna, tags: [dinner] },
+    ]
+    frequent = [catalog[0]!, catalog[1]!]
+  })
+
+  const chips = () =>
+    within(screen.getByRole('group', { name: 'Filter by tag' }))
+
+  it('offers All and every Tag carrying a Food, alphabetically, with All chosen', async () => {
+    await renderSuspended(Log)
+
+    const offered = chips().getAllByRole('button')
+    expect(offered.map((chip) => chip.textContent?.trim())).toEqual([
+      'All',
+      'breakfast',
+      'Dinner',
+    ])
+    expect(offered.map((chip) => chip.getAttribute('aria-pressed'))).toEqual([
+      'true',
+      'false',
+      'false',
+    ])
+  })
+
+  it('collapses the two sections into one list of the Foods carrying the chosen Tag', async () => {
+    const user = userEvent.setup()
+    await renderSuspended(Log)
+
+    await user.click(chips().getByRole('button', { name: 'Dinner' }))
+
+    expect(
+      screen.queryByRole('region', { name: 'Frequent foods' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('region', { name: 'All foods' }),
+    ).not.toBeInTheDocument()
+    expect(
+      within(screen.getByRole('region', { name: 'Dinner foods' }))
+        .getAllByRole('button')
+        .map((row) => row.getAttribute('aria-label')),
+    ).toEqual(['Log Free-range eggs', 'Log Tinned tuna'])
+    expect(chips().getByRole('button', { name: 'Dinner' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    expect(chips().getByRole('button', { name: 'All' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    )
+  })
+
+  it('offers to clear the field only when something is typed in it', async () => {
+    // The chips are the way back from a Tag; a field-clearing button beside an
+    // empty field would clear nothing.
+    const user = userEvent.setup()
+    await renderSuspended(Log)
+
+    await user.click(chips().getByRole('button', { name: 'Dinner' }))
+
+    expect(
+      screen.queryByRole('button', { name: 'Clear filter' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('narrows by the Tag and the query together, naming both', async () => {
+    const user = userEvent.setup()
+    await renderSuspended(Log)
+
+    await user.click(chips().getByRole('button', { name: 'breakfast' }))
+    await user.type(screen.getByLabelText('Filter foods'), ' oat ')
+
+    expect(
+      within(
+        screen.getByRole('region', {
+          name: 'breakfast foods matching “oat”',
+        }),
+      )
+        .getAllByRole('button')
+        .map((row) => row.getAttribute('aria-label')),
+    ).toEqual(['Log Rolled oats'])
+  })
+
+  it('names the Tag and the query when together they find nothing', async () => {
+    // The oats match "oat" but are not a dinner Food, so a message naming the
+    // query alone would read as though the oats had gone missing.
+    const user = userEvent.setup()
+    await renderSuspended(Log)
+
+    await user.click(chips().getByRole('button', { name: 'Dinner' }))
+    await user.type(screen.getByLabelText('Filter foods'), 'oat')
+
+    expect(screen.getByText('No Dinner foods match “oat”.')).toBeVisible()
+  })
+
+  it('returns to the rotation when All is chosen', async () => {
+    const user = userEvent.setup()
+    await renderSuspended(Log)
+    await user.click(chips().getByRole('button', { name: 'Dinner' }))
+
+    await user.click(chips().getByRole('button', { name: 'All' }))
+
+    expect(screen.getByRole('region', { name: 'Frequent foods' })).toBeVisible()
+    expect(screen.getByRole('region', { name: 'All foods' })).toBeVisible()
+    expect(chips().getByRole('button', { name: 'All' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+  })
+
+  it('returns to the rotation when the chosen Tag is chosen again', async () => {
+    const user = userEvent.setup()
+    await renderSuspended(Log)
+    const dinnerChip = chips().getByRole('button', { name: 'Dinner' })
+    await user.click(dinnerChip)
+
+    await user.click(dinnerChip)
+
+    expect(screen.getByRole('region', { name: 'Frequent foods' })).toBeVisible()
+    expect(dinnerChip).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('moves the choice to another Tag rather than holding two', async () => {
+    const user = userEvent.setup()
+    await renderSuspended(Log)
+    await user.click(chips().getByRole('button', { name: 'breakfast' }))
+
+    await user.click(chips().getByRole('button', { name: 'Dinner' }))
+
+    expect(
+      chips()
+        .getAllByRole('button')
+        .map((chip) => chip.getAttribute('aria-pressed')),
+    ).toEqual(['false', 'false', 'true'])
+    expect(
+      within(screen.getByRole('region', { name: 'Dinner foods' }))
+        .getAllByRole('button')
+        .map((row) => row.getAttribute('aria-label')),
+    ).toEqual(['Log Free-range eggs', 'Log Tinned tuna'])
+  })
+
+  it("logs a Food from a Tag's list through the same budget gate as the grid", async () => {
+    overBudget = true
+    const user = userEvent.setup()
+    await renderSuspended(Log)
+    await user.click(chips().getByRole('button', { name: 'Dinner' }))
+
+    await user.click(screen.getByRole('button', { name: 'Log Tinned tuna' }))
+    const sheet = await screen.findByRole('dialog', { name: 'Log Tinned tuna' })
+    await user.type(within(sheet).getByLabelText(/weight \(g\)/i), '120')
+    await user.click(within(sheet).getByRole('button', { name: /log entry/i }))
+
+    // The first Save previews and stops, exactly as a picked cell does.
+    const logAnyway = await within(sheet).findByRole('button', {
+      name: 'Log anyway',
+    })
+    expect(logged).toHaveLength(0)
+
+    await user.click(logAnyway)
+    await vi.waitFor(() => expect(logged).toHaveLength(1))
+    expect(logged[0]).toEqual({ date: localToday(), foodId: 9, grams: 120 })
+  })
+
+  it('sets a failed ranking aside while a Tag is chosen, and brings it back after', async () => {
+    // A Tag has stopped asking about the rotation, so a Retry for a grid it is
+    // hiding recovers nothing — exactly as a typed query treats it.
+    failFrequent = true
+    const user = userEvent.setup()
+    await renderSuspended(Log)
+    const failed = "Couldn't load your frequent foods"
+    expect(screen.getByRole('heading', { name: failed })).toBeVisible()
+
+    await user.click(chips().getByRole('button', { name: 'Dinner' }))
+    expect(
+      screen.queryByRole('heading', { name: failed }),
+    ).not.toBeInTheDocument()
+
+    await user.click(chips().getByRole('button', { name: 'All' }))
+    expect(screen.getByRole('heading', { name: failed })).toBeVisible()
+  })
+
+  it('offers no chips at all while no Food carries a Tag', async () => {
+    // "All" alone is a choice of one, and a User who has never tagged a Food
+    // should not meet a control they cannot use.
+    catalog = [eggs, oats, tuna]
+    await renderSuspended(Log)
+
+    expect(
+      screen.queryByRole('group', { name: 'Filter by tag' }),
+    ).not.toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'All foods' })).toBeVisible()
   })
 })

@@ -1173,6 +1173,29 @@ a created Tag to a Food wearing none, and the two `errorTitle` literals — are 
 `e2e/food-tags.spec.ts`**, which asserts the PUT body and the sheet closing;
 `if (target)` is equivalent, Save being reachable only from an open sheet.
 
+### Tags on Log — `catalog.ts` 48 of 54, `log.vue` and `TagChips.vue` unattributed
+
+All six `catalog.ts` survivors are **equivalent**. One is `fold`'s `toLowerCase` →
+`toUpperCase`, recorded above. The other five are `tagsOnOffer`'s comparator, for two
+different reasons. `<` → `<=`, `>` → `>=` and `>` → `true` differ only when two Tags on
+offer fold to the same name, and a User cannot hold two: `TagName` is equal to another
+ignoring case, and the offer is deduplicated by id. `>` → `false` and `>` → `<=` return
+`0` where the original returns `1` for every greater pair — equivalent only because
+V8's sort reads nothing but the comparator's sign against zero from below.
+
+`log.vue` (94) and `TagChips.vue` (6) came back entirely `NoCoverage` in this run,
+although `log.test.ts` renders both (F16 slice 2's sweep did score `log.vue`, so this
+is not a fixed property of the file). A throwaway single-file Stryker config ran no
+tests, and the TDD hook refuses a mutant written into `app/`, so they were settled by
+hand-mutating **copies** outside it — the page importing its sibling `TagChips` copy
+explicitly — and running `log.test.ts` against each: 12 of 12 killed, a clean control
+run first. The toggle never clearing, no "All" chip, `aria-pressed` pinned false, the
+chips bound to nothing, a Tag not collapsing the page, a Tag not reaching
+`narrowFoods`, each of the four heading and empty-message branches, the row shown with
+no Tag carried, and the clear button shown for a Tag alone. The one line no test
+reaches is the resolved-Tag fallback, which matters only if a catalog refresh drops
+the chosen Tag; nothing on `/log` refreshes the catalog while it holds one.
+
 ### Noise removed at the source
 
 Four `getLog()` companion accessors (`MartijndwarsWebPushSender`, `RecordingWebPushSender`,

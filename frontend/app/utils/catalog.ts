@@ -19,23 +19,28 @@ export function opensAddSheet(query: Record<string, unknown>): boolean {
 }
 
 /**
- * The catalog narrowed to a query, matched on name.
+ * The catalog narrowed to a query, matched on name, and to a Tag, when one is
+ * chosen — the two together, so neither quietly undoes the other.
  *
  * Case and accents are folded on **both** sides, because a Food is unreachable
  * from the only surface that logs it if it can be found solely by the spelling
  * it was typed in: nobody looking for `Crème fraîche` on a phone reaches for the
  * grave first. A query of whitespace alone holds nothing back, so a stray space
- * cannot collapse the **Frequent Foods** grid.
+ * cannot collapse the **Frequent Foods** grid or thin a Tag's list.
  *
- * Filtering is the client's here only because the catalog is already in hand;
- * a backend search is out of scope for F16, so there is no endpoint to call.
+ * Narrowing is the client's here only because the catalog is already in hand
+ * (ADR 0028, ADR 0033); there is no search endpoint to call.
  */
-export function filterFoods(
+export function narrowFoods(
   foods: FoodResponse[],
-  query: string,
+  by: { query: string; tagId: number | null },
 ): FoodResponse[] {
-  const needle = fold(query)
-  return foods.filter((food) => fold(food.name).includes(needle))
+  const needle = fold(by.query)
+  return foods.filter(
+    (food) =>
+      (by.tagId === null || food.tags.some((tag) => tag.id === by.tagId)) &&
+      fold(food.name).includes(needle),
+  )
 }
 
 /** A name reduced to what a User can be expected to type: no case, no accents. */
@@ -72,4 +77,24 @@ export function formatPer100g(food: {
   proteinPer100g: number
 }): string {
   return `${formatIntakeFigures(food.caloriesPer100g, food.proteinPer100g)} /100g`
+}
+
+/**
+ * The Tags a User can narrow **Log** by: each Tag carrying at least one Food,
+ * once, alphabetically. A Tag carrying none would narrow to nothing, so it is
+ * never offered (ADR 0033).
+ *
+ * Ordered by the backend's own rule for Tag names — lower-cased, then compared
+ * code unit by code unit — so the chips cannot disagree with the order a Food's
+ * own Tags arrive in.
+ */
+export function tagsOnOffer(foods: FoodResponse[]): FoodResponse['tags'] {
+  const byId = new Map(
+    foods.flatMap((food) => food.tags).map((tag) => [tag.id, tag]),
+  )
+  return [...byId.values()].sort((a, b) => {
+    const x = a.name.toLowerCase()
+    const y = b.name.toLowerCase()
+    return x < y ? -1 : x > y ? 1 : 0
+  })
 }
