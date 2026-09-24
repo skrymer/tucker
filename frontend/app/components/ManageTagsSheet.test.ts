@@ -221,6 +221,24 @@ describe('ManageTagsSheet', () => {
     )
   })
 
+  it('reopens on the list at rest, not on a delete it was asking about when it closed', async () => {
+    registerEndpoint('/api/tags', () => [
+      { id: 9, name: 'snack', foodCount: 3 },
+    ])
+    const { rerender } = await renderSuspended(ManageTagsSheet, {
+      props: { open: true },
+    })
+    await userEvent
+      .setup()
+      .click(await screen.findByRole('button', { name: 'Delete snack' }))
+
+    await rerender({ open: false })
+    await rerender({ open: true })
+
+    expect(screen.queryByText(/It comes off/)).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Delete snack' })).toBeVisible()
+  })
+
   it('holds the delete button while a delete is in flight', async () => {
     let deletes = 0
     let answer: () => void = () => {}

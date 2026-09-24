@@ -63,8 +63,9 @@ const { draft, refusal, creating, submit } = useTagCreation()
  * no Food (ADR 0033), so the page is told its Foods changed.
  */
 function useTagDeletion() {
-  /** The Tag whose delete is being asked about. */
+  /** The Tag whose delete is being asked about; each opening starts at rest. */
   const confirming = ref<number | null>(null)
+  watch(open, () => (confirming.value = null))
   const { execute: deleteTag, pending: deleting } = useApiMutation(
     (id: number) => $api('/api/tags/{id}', { method: 'DELETE', path: { id } }),
     {
