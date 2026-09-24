@@ -46,28 +46,39 @@ function useTagCreation() {
 
 const { draft, creating, submit } = useTagCreation()
 
-/** The Tag whose delete is being asked about. */
-const confirming = ref<number | null>(null)
-
 /**
- * Deleting a Tag takes it off every Food and deletes no Food (ADR 0033), so the page
- * is told its Foods changed.
+ * Deleting a Tag, once its row has asked. It takes the Tag off every Food and deletes
+ * no Food (ADR 0033), so the page is told its Foods changed.
  */
-const { execute: deleteTag, pending: deleting } = useApiMutation(
-  (id: number) => $api('/api/tags/{id}', { method: 'DELETE', path: { id } }),
-  {
-    // No success toast: the row leaves the list.
-    errorTitle: 'Could not delete tag',
-    onSuccess: () => {
-      confirming.value = null
-      emit('changed')
-      return load()
+function useTagDeletion() {
+  /** The Tag whose delete is being asked about. */
+  const confirming = ref<number | null>(null)
+  const { execute: deleteTag, pending: deleting } = useApiMutation(
+    (id: number) => $api('/api/tags/{id}', { method: 'DELETE', path: { id } }),
+    {
+      // No success toast: the row leaves the list.
+      errorTitle: 'Could not delete tag',
+      onSuccess: () => {
+        confirming.value = null
+        emit('changed')
+        return load()
+      },
     },
-  },
-)
+  )
+  return { confirming, deleteTag, deleting }
+}
+
+const { confirming, deleteTag, deleting } = useTagDeletion()
 
 function foodCount(count: number) {
   return count === 1 ? '1 food' : `${count} foods`
+}
+
+function deleteQuestion(tag: { name: string; foodCount: number }) {
+  const opening = `Delete “${tag.name}”?`
+  return tag.foodCount === 0
+    ? `${opening} No foods carry it.`
+    : `${opening} It comes off ${foodCount(tag.foodCount)}. The foods stay in your catalog.`
 }
 </script>
 
@@ -108,13 +119,7 @@ function foodCount(count: number) {
       <ul role="list" class="divide-y divide-default">
         <li v-for="tag in tags ?? []" :key="tag.id" class="py-2">
           <div v-if="confirming === tag.id" class="flex flex-col gap-2">
-            <p v-if="tag.foodCount === 0" class="text-sm text-default">
-              Delete “{{ tag.name }}”? No foods carry it.
-            </p>
-            <p v-else class="text-sm text-default">
-              Delete “{{ tag.name }}”? It comes off
-              {{ foodCount(tag.foodCount) }}. The foods stay in your catalog.
-            </p>
+            <p class="text-sm text-default">{{ deleteQuestion(tag) }}</p>
             <div class="flex justify-end gap-2">
               <UButton
                 color="neutral"
