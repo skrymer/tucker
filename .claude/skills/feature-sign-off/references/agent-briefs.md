@@ -1,6 +1,6 @@
 # Agent briefs
 
-The prompt contract every fan-out gate's agents are written to, and the four briefs
+The prompt contract every fan-out gate's agents are written to, and the five briefs
 written out in full here. Copy the brief, fill the bracketed slots, send it.
 
 Why a file rather than prose in the skill: a brief that is a **template** can be
@@ -14,7 +14,7 @@ author felt. The repo makes this move elsewhere: `app/utils/exits.ts` and
 
 Applies to **every** agent any gate spawns — the `/simplify` three, the agents
 `/code-review` fans out to (it runs inline itself), `/check-adrs`, the resolutions
-agent, and the four below.
+agent, and the five below.
 
 **A brief carries:**
 
@@ -308,3 +308,54 @@ inventories it. They are launched in one message off one issue, so expect the sa
 twice on a change that overreaches — the duplicate costs a line in the pack, and the
 alternative is that an out-of-scope ruling is checked by nobody, `/check-adrs` covering
 the ADRs' rulings and not the issue's.
+
+## Brief E — the lesson miner
+
+**Fires:** every sign-off, after the commit and push (the retro step). A run with
+nothing worth recording comes back as exactly that, not as no agent.
+**Costs:** one agent, off the critical path — the feature is already pushed.
+
+```
+Mine a finished sign-off for lessons the next session should not have to learn
+again. Read-only: do not edit, create, delete or move any file. Read-only shell
+commands only.
+
+Repo: <worktree path> (a git worktree — stay in it).
+The change as committed: git log --stat <base>..HEAD, and git diff <base>..HEAD
+The run's agent transcripts: <every transcript path the run recorded>
+The resolutions pack: <path>
+Read a transcript with these two, never by opening the raw JSONL, and do not
+truncate the second with tail:
+  head -n 1 <transcript> | jq -r '.message.content'
+  jq -r 'select(.type=="assistant") | .message.content[]? | select(.type=="text")
+         | .text' <transcript>
+You may read anything else in the repo, including .claude/skills/, .claude/hooks/,
+docs/adr/, CONTEXT.md and the memory index <memory dir>/MEMORY.md.
+
+Look for:
+- A finding a gate rejected or reversed: a fix rejected by the resolutions pass,
+  a claim the evidence did not support, a test that passed vacuously.
+- A defect found late that an earlier gate or the build should have caught.
+- A tool, harness or hook behaviour that cost repeated attempts.
+- A rule stated in a skill or ADR that the run broke, or that did not fit.
+
+For each lesson, in this order:
+1. The lesson in one sentence, as a rule a future session can follow.
+2. The evidence: quote the transcript line, the failing output, or the
+   measurement. A lesson without evidence is not reported.
+3. Its home: the one file a future session would be reading at the moment the
+   lesson matters — the skill that owns that step, known-survivors.md, a memory
+   entry, a guard test or hook, or an ADR / CONTEXT.md. Name the file and the
+   section.
+4. Whether it is already there: quote the existing text if so, and say whether
+   the lesson sharpens it (replace), duplicates it (drop), or is new (add).
+
+Do not report what the run did well, and do not restate findings the gates
+already fixed in the code — a fixed bug is not a lesson unless something about
+how it was found should change. "Nothing worth recording" is a complete answer.
+```
+
+**It proposes; the author applies.** The miner's value is that it reads what the run
+*spent*, which is in the transcripts, rather than what the author remembers
+*fixing*. The author still owns every edit, because a lesson's home is a skill or
+hook the next session will obey — and those edits go on their own branch.
