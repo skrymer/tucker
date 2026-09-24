@@ -224,6 +224,26 @@ describe('ManageTagsSheet', () => {
     answer()
   })
 
+  it('asks for a name when Add is pressed on an empty field, and sends nothing', async () => {
+    let posts = 0
+    registerEndpoint('/api/tags', { method: 'GET', handler: () => [] })
+    registerEndpoint('/api/tags', {
+      method: 'POST',
+      handler: () => {
+        posts++
+        return { id: 8, name: 'x', foodCount: 0 }
+      },
+    })
+    await renderSuspended(ManageTagsSheet, { props: { open: true } })
+
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Add' }))
+
+    expect(
+      await screen.findByText('Enter a name for this tag', { exact: true }),
+    ).toBeVisible()
+    expect(posts).toBe(0)
+  })
+
   it('refuses a Tag name of whitespace alone at the field, and sends nothing', async () => {
     let posts = 0
     registerEndpoint('/api/tags', { method: 'GET', handler: () => [] })
