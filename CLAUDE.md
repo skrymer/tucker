@@ -1425,7 +1425,7 @@ null` now means two things that earn opposite messages — the same trap
     already argues about the signed-out shell — one clear message beats six identical
     Retry cards — so both failing is one message and one Retry that refreshes both.
   - **A query of whitespace alone is not a query**, or a brushed space bar collapses a
-    grid nothing asked to narrow. `filterFoods` states the rule and the page's `filtering`
+    grid nothing asked to narrow. `narrowFoods` (then `filterFoods`) states the rule and the page's `filtering`
     has to agree with it, which is why the two share one `trimmed`.
   - **The no-scroll criterion was re-expressed, not deleted.** Slice 1 asserted the whole
     document fit the phone viewport; the catalog below the grid is *meant* to scroll, so
@@ -1793,6 +1793,29 @@ null` now means two things that earn opposite messages — the same trap
   - **Found by the sign-off, not by design:** Probity silently skipped every write to
     a worktree outside the session's cwd, and its 12-event window refused legitimate
     REDs once a sign-off's agent reports filled it. `maxEvents` is now 20 (#354).
+
+  Slice 2 ([#362](https://github.com/skrymer/tucker/issues/362)) — **narrow Log by a
+  Tag** — ✅ done, frontend only: `/api/foods` already carried each Food's Tags.
+  `TagChips` sits under the estimate button; `narrowFoods(foods, { query, tagId })`
+  replaces `filterFoods`, so blank-is-not-a-query and case/accent folding compose
+  with the Tag in one function, and `tagsOnOffer` derives the chips from the catalog.
+  - **The chips are the catalog's Tags, sorted by `TagName`'s rule in the client** —
+    lower-cased, then code unit by code unit, never `localeCompare` — so they agree
+    with the order a Food's own Tags arrive in, cost no request, and can never offer a
+    Tag the list on the page does not carry. ADR 0033 records the client-side order.
+  - **Clearing the field keeps the Tag.** The ✕ belongs to the field; the chips are
+    the way back from a Tag, and "neither quietly undoes the other" (CONTEXT.md).
+  - **The row is absent, "All" included, while no Food carries a Tag** — "All" alone
+    is a choice of one.
+  - **The walk-through found the column moving sideways**, twice, on a desktop with
+    classic scrollbars: a Tag's short list dropped the page's scrollbar, and — once
+    `html { scrollbar-gutter: stable }` fixed that — every sheet did it instead,
+    because Reka's scroll lock pads `body` for a scrollbar whose room the gutter now
+    keeps. `UApp` takes `:scroll-body="false"`, app-wide. Headless Chromium hides
+    scrollbars, so `e2e/log-column.spec.ts` asks for them back and measures the column.
+  - **`log.vue` and `TagChips.vue` scored no coverage under Stryker** despite
+    `log.test.ts`, and the TDD hook refuses a mutant written into `app/`, so they were
+    hand-mutated as copies outside it: 12 of 12 killed (`known-survivors.md`).
 
 ## Architecture
 

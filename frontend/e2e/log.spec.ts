@@ -9,6 +9,8 @@ import {
 } from './support/mock-api'
 import { food, recipe } from '../test/food-fixtures'
 import { isoShiftDays, localTodayIso } from './support/date'
+import { visibleNav } from './support/nav'
+import { enterGrams, pickFoodToLog } from './support/log-page'
 
 // The Log destination: Frequent Foods as a grid, an estimate as its peer, and
 // nothing else that creates an Entry (ADR 0028).
@@ -199,6 +201,96 @@ test('restores the grid and the whole catalog when the filter is cleared', async
   await expect(
     page.getByRole('region', { name: 'All foods' }).getByRole('listitem'),
   ).toHaveCount(4)
+})
+
+const BREAKFAST = { id: 20, name: 'breakfast' }
+const DINNER = { id: 21, name: 'Dinner' }
+const TAGGED = [
+  { ...EGGS, tags: [BREAKFAST, DINNER] },
+  { ...OATS, tags: [BREAKFAST] },
+  { ...CHILLI, tags: [DINNER] },
+  TUNA,
+]
+
+/** The chip row a Tag is chosen from. */
+const tagChips = (page: Page) =>
+  page.getByRole('group', { name: 'Filter by tag' })
+
+test("narrows to a Tag's foods in place of both sections, and logs one the same way", async ({
+  page,
+  goto,
+}) => {
+  await mockFrequentFoods(page, TAGGED.slice(0, 3))
+  await mockFoods(page, TAGGED)
+  const logged = await mockWeighedEntryLog(page, { foodName: 'Weekday chilli' })
+
+  await goto('/log', { waitUntil: 'hydration' })
+  const estimate = page.getByRole('button', { name: 'Log an estimate instead' })
+  const before = await estimate.boundingBox()
+
+  await tagChips(page).getByRole('button', { name: 'Dinner' }).click()
+
+  // Closed-world: the chosen chip, one list headed with the Tag, and neither
+  // the grid nor "All foods" left beside it.
+  await expect(page.getByRole('main')).toMatchAriaSnapshot()
+  // The estimate is the peer of picking a Food, so choosing a Tag must not
+  // move it.
+  expect(await estimate.boundingBox()).toEqual(before)
+
+  const sheet = await pickFoodToLog(page, {
+    section: 'Dinner foods',
+    food: 'Weekday chilli',
+    recipe: true,
+  })
+  await enterGrams(page, sheet, 350)
+  await sheet.getByRole('button', { name: /log entry/i }).click()
+
+  await expect(sheet).toBeHidden()
+  expect(logged).toEqual([{ date: localTodayIso(), foodId: 3, grams: 350 }])
+})
+
+test('starts on All again when Log is revisited', async ({ page, goto }) => {
+  await mockFrequentFoods(page, TAGGED.slice(0, 3))
+  await mockFoods(page, TAGGED)
+
+  await goto('/log', { waitUntil: 'hydration' })
+  await tagChips(page).getByRole('button', { name: 'Dinner' }).click()
+  await expect(frequentSection(page)).toBeHidden()
+
+  await visibleNav(page).getByRole('link', { name: 'Today' }).click()
+  await expect(page).toHaveURL(/\/$/)
+  await visibleNav(page).getByRole('link', { name: 'Log' }).click()
+
+  await expect(
+    tagChips(page).getByRole('button', { name: 'All' }),
+  ).toHaveAttribute('aria-pressed', 'true')
+  await expect(frequentSection(page)).toBeVisible()
+})
+
+test('wraps the chips onto more lines rather than scrolling sideways', async ({
+  page,
+  goto,
+}) => {
+  const tags = Array.from({ length: 12 }, (_, i) => ({
+    id: 100 + i,
+    name: `after-work snack ${String(i + 1).padStart(2, '0')}`,
+  }))
+  const foods = [{ ...OATS, tags }]
+  await mockFrequentFoods(page, foods)
+  await mockFoods(page, foods)
+
+  await goto('/log', { waitUntil: 'hydration' })
+
+  const chips = tagChips(page).getByRole('button')
+  await expect(chips).toHaveCount(13)
+  const first = (await chips.first().boundingBox())!
+  const last = (await chips.last().boundingBox())!
+  expect(last.y).toBeGreaterThan(first.y)
+  // Every chip within the row's own width, so none is hidden off to the side.
+  const overflows = await tagChips(page).evaluate(
+    (row) => row.scrollWidth > row.clientWidth,
+  )
+  expect(overflows).toBe(false)
 })
 
 test('hands a User with no foods to the catalog with the Add sheet already open', async ({

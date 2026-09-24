@@ -1,0 +1,19 @@
+- main:
+    - /children: equal
+    - heading "Log" [level=1]
+    - textbox "Filter foods"
+    - button "Log an estimate instead"
+    - group "Filter by tag":
+        - /children: equal
+        - button "All" [pressed=false]
+        - button "breakfast" [pressed=false]
+        - button "Dinner" [pressed]
+    - region "Dinner foods":
+        - /children: equal
+        - heading "Dinner foods" [level=2]
+        - list:
+            - /children: equal
+            - listitem:
+                - button "Log Free-range eggs": /^Free-range eggs \d+ kcal · \d+ g protein \/100g$/
+            - listitem:
+                - button "Log Weekday chilli, a recipe": /^Weekday chilli Recipe \d+ kcal · \d+ g protein \/100g$/

@@ -629,6 +629,12 @@ text-muted` what it cost and returned — `153 kcal · 13 g protein`, with
   seeing anything (ADR 0028). It grows a one-tap clear in its trailing slot only
   while it holds a query — the way back cannot be holding backspace on a phone —
   and it is absent, not disabled, where there is nothing to narrow.
+- **Tag chips** — a wrapping row of small `UButton`s under the estimate button,
+  "All" first: the chosen one solid primary, the rest outline neutral, each
+  `aria-pressed` in a group named "Filter by tag". A control, not a badge, so it
+  takes a button's weight rather than a tint. Wraps rather than scrolls sideways,
+  so no Tag is hidden off the edge of a phone; absent while no Food carries a Tag,
+  since "All" alone is a choice of one.
 - **Chip / badge** — pill, subtle tint of its colour (`primary/10`, `coral/10`,
   `warning/15`). The estimate flag (`EstimateBadge`) is the word `est.` in
   warning — text **and** colour, never colour alone; it carries no icon, because

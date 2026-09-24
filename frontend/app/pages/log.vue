@@ -49,17 +49,50 @@ const catalogIsEmpty = computed(
 )
 
 /**
- * Narrowing the catalog to a query. A query of whitespace alone is not one, so
- * a stray space cannot collapse the grid — the rule `filterFoods` states, and
- * `filtering` has to agree with it or the two states disagree about what a
- * query is.
+ * Narrowing the catalog to a query, a Tag, or both. A query of whitespace alone
+ * is not one, so a stray space cannot collapse the grid — the rule `narrowFoods`
+ * states, and `filtering` has to agree with it or the two states disagree about
+ * what a query is.
+ *
+ * The chosen Tag is page state and nothing more: every visit starts on "All",
+ * because a Tag held over from the morning would hide lunch (CONTEXT.md, Tag).
  */
 function useCatalogFilter() {
   const query = ref('')
+  const tagId = ref<number | null>(null)
+  const tags = computed(() => tagsOnOffer(catalog.value ?? []))
+  // Resolved against the Tags on offer, so a chosen Tag that stops carrying a
+  // Food narrows nothing rather than collapsing the page onto an empty list.
+  const tag = computed(() => tags.value.find((t) => t.id === tagId.value))
   const trimmed = computed(() => query.value.trim())
-  const filtering = computed(() => trimmed.value.length > 0)
-  const shown = computed(() => filterFoods(catalog.value ?? [], query.value))
-  return { query, trimmed, filtering, shown }
+  const filtering = computed(() => trimmed.value.length > 0 || !!tag.value)
+  const shown = computed(() =>
+    narrowFoods(catalog.value ?? [], {
+      query: query.value,
+      tagId: tag.value?.id ?? null,
+    }),
+  )
+  const heading = computed(() => {
+    if (!filtering.value) return 'All foods'
+    if (!tag.value) return 'Matching foods'
+    const foods = `${tag.value.name} foods`
+    return trimmed.value ? `${foods} matching “${trimmed.value}”` : foods
+  })
+  const nothingFound = computed(() =>
+    tag.value
+      ? `No ${tag.value.name} foods match “${trimmed.value}”.`
+      : `No foods match “${trimmed.value}”.`,
+  )
+  return {
+    query,
+    tagId,
+    tags,
+    trimmed,
+    filtering,
+    shown,
+    heading,
+    nothingFound,
+  }
 }
 const filter = useCatalogFilter()
 
@@ -138,7 +171,7 @@ function retryBoth() {
     >
       <!-- Clearing has to be one tap: the way back to the grid cannot be
            holding backspace on a phone. -->
-      <template v-if="filter.filtering.value" #trailing>
+      <template v-if="filter.trimmed.value" #trailing>
         <UButton
           icon="i-lucide-x"
           color="neutral"
@@ -167,6 +200,12 @@ function retryBoth() {
       Log an estimate instead
     </UButton>
 
+    <TagChips
+      v-if="filter.tags.value.length > 0"
+      v-model="filter.tagId.value"
+      :tags="filter.tags.value"
+    />
+
     <LoadErrorState
       v-if="bothFailed"
       :error="frequentError"
@@ -174,11 +213,12 @@ function retryBoth() {
       @retry="retryBoth"
     />
 
-    <!-- A query has stopped asking about the rotation, so it collapses the two
-         sections into one flat list of matches (ADR 0028) rather than leaving
-         ten unrelated Foods above them. The guard takes the whole block, so a
-         failed ranking's Retry goes with it: recovering a grid a query is
-         hiding is worth nothing, and clearing brings both back. -->
+    <!-- A query or a Tag has stopped asking about the rotation, so either
+         collapses the two sections into one flat list of matches (ADR 0028,
+         ADR 0033) rather than leaving ten unrelated Foods above them. The guard
+         takes the whole block, so a failed ranking's Retry goes with it:
+         recovering a grid the narrowing is hiding is worth nothing, and
+         clearing brings both back. -->
     <LoadErrorState
       v-else-if="!filter.filtering.value && !catalogIsEmpty"
       :error="frequentError"
@@ -223,19 +263,20 @@ function retryBoth() {
           id="catalog-heading"
           class="mb-2 text-xs font-medium tracking-wide text-dimmed uppercase"
         >
-          {{ filter.filtering.value ? 'Matching foods' : 'All foods' }}
+          {{ filter.heading.value }}
         </h2>
         <FoodPickList
           v-if="filter.shown.value.length > 0"
           :foods="filter.shown.value"
           @pick="weighed.pick"
         />
-        <!-- Reached only while filtering, since an empty query matches every
-             Food — and it names the query rather than saying a bare "nothing
+        <!-- Reached only while a query is typed, since an empty query matches
+             every Food and a Tag on offer carries at least one — and it names
+             the query, and the Tag with it, rather than saying a bare "nothing
              found", because on a page whose other section has just collapsed
-             that is what says the emptiness came from what was typed. -->
+             that is what says where the emptiness came from. -->
         <p v-else class="py-4 text-center text-sm text-muted">
-          No foods match “{{ filter.trimmed.value }}”.
+          {{ filter.nothingFound.value }}
         </p>
       </section>
     </LoadErrorState>
