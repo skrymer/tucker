@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { registerEndpoint, renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
+import { readBody } from 'h3'
 import AddFoodForm from './AddFoodForm.vue'
 
 // The corrected scan the dirty-tracking tests rerender with. It is the same
@@ -501,11 +502,20 @@ describe('AddFoodForm', () => {
     )
   })
 
-  it('does not save the Food when Enter is pressed in the Tags field', async () => {
+  it('saves both Tags when a second name is entered while the first is being created', async () => {
+    let release!: () => void
+    const held = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const ids: Record<string, number> = { dinner: 20, lunch: 21 }
     registerEndpoint('/api/tags', { method: 'GET', handler: () => [] })
     registerEndpoint('/api/tags', {
       method: 'POST',
-      handler: () => ({ id: 20, name: 'dinner', foodCount: 0 }),
+      handler: async (event) => {
+        const { name } = await readBody<{ name: string }>(event)
+        if (name === 'dinner') await held
+        return { id: ids[name], name, foodCount: 0 }
+      },
     })
     const onSubmit = vi.fn()
     await renderSuspended(AddFoodForm, { props: { onSubmit } })
@@ -517,11 +527,17 @@ describe('AddFoodForm', () => {
     await user.type(screen.getByLabelText(/fat \/100\s*g/i), '0.2')
     const tags = screen.getByRole('combobox', { name: 'Tags' })
     await user.type(tags, 'dinner')
-    await user.keyboard('{Escape}')
-    await user.keyboard('{Enter}')
+    await user.click(await screen.findByRole('option', { name: /dinner/ }))
+    await user.type(tags, 'lunch')
+    await user.click(await screen.findByRole('option', { name: /lunch/ }))
 
-    await new Promise((resolve) => setTimeout(resolve, 50))
-    expect(onSubmit).not.toHaveBeenCalled()
+    release()
+    const save = screen.getByRole('button', { name: /save food/i })
+    await vi.waitFor(() => expect(save).toBeEnabled())
+    await user.click(save)
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'Skyr', tagIds: [20, 21] }),
+    )
   })
 
   it('requires a name', async () => {

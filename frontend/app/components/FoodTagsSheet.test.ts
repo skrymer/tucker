@@ -470,6 +470,22 @@ describe('FoodTagsSheet', () => {
     expect(screen.getByRole('button', { name: 'Save tags' })).toBeDisabled()
   })
 
+  it('keeps a Tag the Food carries when its name is typed and entered again', async () => {
+    registerEndpoint('/api/tags', () => [
+      { id: 7, name: 'Breakfast', foodCount: 1 },
+    ])
+    const onSave = vi.fn()
+    await renderSuspended(FoodTagsSheet, { props: { food: oats, onSave } })
+    const user = userEvent.setup()
+
+    await user.type(screen.getByRole('combobox', { name: 'Tags' }), 'Breakfast')
+    await screen.findByRole('option', { name: 'Breakfast' })
+    await user.keyboard('{Enter}')
+    await user.click(screen.getByRole('button', { name: 'Save tags' }))
+
+    expect(onSave).toHaveBeenCalledWith([7])
+  })
+
   it('saves a Food with a Tag taken off as no longer carrying it', async () => {
     registerEndpoint('/api/tags', () => [
       { id: 7, name: 'Breakfast', foodCount: 1 },

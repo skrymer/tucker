@@ -68,9 +68,13 @@ two rewrites are illegal in ways only the browser finds out:
   mutated in place, and the compiler hoists those arguments out of `setup()` — past the
   point where Stryker's `stryMutAct_9fa48` helper is in scope → `stryMutAct_9fa48 is not
   defined`.
+- a named `defineModel('creating', …)` has its **name** string mutated to `""`, which
+  collides with the default model → `[@vue/compiler-sfc] duplicate model name
+  "modelValue"`, and the initial test run crashes.
 
-The fix is a `// Stryker disable next-line all: …` above the macro, and it is load-bearing
-on **15 components** (`grep -rl 'Stryker disable' frontend/app`). Do not tidy them away.
+The fix is a `// Stryker disable next-line all: …` above the macro — or a `disable all` /
+`restore all` pair around several adjacent ones (`TagPicker.vue`) — and it is load-bearing
+across the components `grep -rl 'Stryker disable' frontend/app` lists. Do not tidy them away.
 A **multi-line** `withDefaults(…)` needs a `disable` / `restore` **pair** — `next-line`
 cannot reach the mutants inside the object literal (`LedgerFigure.vue` is the worked
 example). Assigning `const props = defineProps…` to dodge it is not an option: ESLint
@@ -1172,6 +1176,19 @@ a created Tag to a Food wearing none, and the two `errorTitle` literals — are 
 `foods.vue`'s `useFoodTagging` request and option objects are **killed by
 `e2e/food-tags.spec.ts`**, which asserts the PUT body and the sheet closing;
 `if (target)` is equivalent, Save being reachable only from an open sheet.
+
+**The picker moved to `TagPicker.vue`** (F18 slice 3), shared by `FoodTagsSheet` and
+`AddFoodForm`; the sheet's equivalents above now live there. Also equivalent: `lastTyped`
+seeded (written before it is read), and `creating`/`creatingTag` starting `true` (the
+picker's immediate watch writes `false` on mount). Hand-mutating copies against main
+settled that `pick()`'s bare-string branch survived there too, so the sheet's "35 of 39"
+above was incomplete; call a survivor pre-existing only after running it against main.
+That branch turned out to be **dead**, not merely untested: UInputMenu never forwards the
+tags input's own add, so a name entered with the list shut became a chip with no Tag
+behind it. It is gone; `enterTyped` takes that Enter in the capture phase instead, and
+only `e2e/food-tags.spec.ts` can reach it — happy-dom runs no microtask checkpoint between
+listeners, so Reka's post-`nextTick` `defaultPrevented` check sees a bubbling
+`preventDefault` there that it never sees in a browser.
 
 ### Tags on Log — `catalog.ts` 48 of 54, `log.vue` and `TagChips.vue` unattributed
 

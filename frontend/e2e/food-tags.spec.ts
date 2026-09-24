@@ -134,3 +134,102 @@ test('a row carrying six Tags shows four and a "+2" that opens its Tags', async 
     page.getByRole('dialog', { name: 'Tags for Rolled oats' }),
   ).toBeVisible()
 })
+
+test('Escape in the Tags field lets go of a typed name and keeps the sheet and its form', async ({
+  page,
+  goto,
+}) => {
+  await mockAddableCatalog(page)
+  await goto('/foods', { waitUntil: 'hydration' })
+  const { sheet, form, tags } = await fillNewFood(page)
+
+  await tags.pressSequentially('din')
+  await expect(page.getByRole('listbox')).toBeVisible()
+  await tags.press('Escape')
+
+  await expect(page.getByRole('listbox')).toBeHidden()
+  await expect(tags).toHaveValue('')
+  await expect(form.getByLabel(/^name$/i)).toHaveValue('Skyr')
+
+  // With the list already shut, Escape is refused like everywhere in a sheet,
+  // whose one exit is its corner close (ADR 0017).
+  await tags.press('Escape')
+  await expect(sheet).toBeVisible()
+  await expect(form.getByLabel(/^name$/i)).toHaveValue('Skyr')
+})
+
+/** An empty catalog whose Add sheet saves a Food, recording what it was sent. */
+async function mockAddableCatalog(page: Page) {
+  const created: unknown[] = []
+  let tagCount = 0
+  await page.route('**/api/foods', (route) => {
+    if (route.request().method() === 'GET') return route.fulfill({ json: [] })
+    created.push(route.request().postDataJSON())
+    return route.fulfill({ status: 201, json: food({ id: 1, name: 'Skyr' }) })
+  })
+  await page.route('**/api/tags', (route) => {
+    if (route.request().method() === 'GET') return route.fulfill({ json: [] })
+    const { name } = route.request().postDataJSON() as { name: string }
+    tagCount += 1
+    return route.fulfill({
+      status: 201,
+      json: { id: 100 + tagCount, name: name.trim(), foodCount: 0 },
+    })
+  })
+  return { created }
+}
+
+async function fillNewFood(page: Page) {
+  await page.getByRole('button', { name: 'Add food' }).click()
+  const sheet = page.getByRole('dialog', { name: /add food/i })
+  const form = sheet.getByRole('tabpanel', { name: 'Food' })
+  await form.getByLabel(/^name$/i).fill('Skyr')
+  await form.getByLabel(/protein \/100\s*g/i).fill('10')
+  await form.getByLabel(/carbs \/100\s*g/i).fill('4')
+  await form.getByLabel(/fat \/100\s*g/i).fill('0.2')
+  await form.getByLabel(/fat \/100\s*g/i).press('Tab')
+  return { sheet, form, tags: form.getByRole('combobox', { name: 'Tags' }) }
+}
+
+test('Enter in an empty Tags field neither saves the Food nor closes the sheet', async ({
+  page,
+  goto,
+}) => {
+  const { created } = await mockAddableCatalog(page)
+  await goto('/foods', { waitUntil: 'hydration' })
+  const { sheet, form, tags } = await fillNewFood(page)
+
+  await tags.focus()
+  await tags.press('Enter')
+
+  await expect(sheet).toBeVisible()
+  await expect(form.getByLabel(/^name$/i)).toHaveValue('Skyr')
+  expect(created).toEqual([])
+})
+
+test('a name entered with the Tag list closed is created as a Tag, not a save', async ({
+  page,
+  goto,
+}) => {
+  const { created } = await mockAddableCatalog(page)
+  await page.clock.install()
+  await goto('/foods', { waitUntil: 'hydration' })
+  const { sheet, form, tags } = await fillNewFood(page)
+
+  await tags.pressSequentially('dinner')
+  await expect(page.getByRole('listbox')).toBeVisible()
+  // Closing the list empties the field 100 ms later, so a quick Enter is the
+  // only one that still has a name behind it. The paused clock holds that moment.
+  await page.clock.pauseAt(Date.now() + 1000)
+  await form.locator('[data-slot="trailing"]').click()
+  await expect(page.getByRole('listbox')).toBeHidden()
+  await expect(tags).toHaveValue('dinner')
+  await tags.press('Enter')
+  await page.clock.resume()
+
+  await expect(form.getByText('dinner', { exact: true })).toBeVisible()
+  expect(created).toEqual([])
+  await sheet.getByRole('button', { name: 'Save food' }).click()
+  await expect(sheet).toBeHidden()
+  expect(created).toEqual([expect.objectContaining({ tagIds: [101] })])
+})

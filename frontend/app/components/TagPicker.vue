@@ -38,11 +38,7 @@ function useTagEntry() {
 
   const { execute: create, pending } = useApiMutation(
     async (name: string) => {
-      refusal.value = null
       lastTyped = name
-      // Emptied as it is sent, so a next name can be typed while this one is created.
-      searchTerm.value = ''
-      menuOpen.value = false
       // A picker gone by the time this lands cannot emit, so the Tag never reaches
       // whatever replaced it — which is why a consumer keys it on what it is picking for.
       const tag = await $api('/api/tags', { method: 'POST', body: { name } })
@@ -59,33 +55,58 @@ function useTagEntry() {
       },
     },
   )
-  watch(pending, (value) => (creating.value = value), { immediate: true })
+  // Names wait their turn rather than being dropped while one is created.
+  const queued = ref<string[]>([])
+  watch(
+    () => pending.value || queued.value.length > 0,
+    (value) => (creating.value = value),
+    { immediate: true },
+  )
 
-  /**
-   * A pick from the list, or a name entered with the list closed — which the tags
-   * input hands over as a bare string. That string is sent to be created like any
-   * typed name, never held as a chip with no Tag behind it.
-   */
-  function pick(value: (HeldTag | string)[]) {
+  async function enter(name: string) {
+    refusal.value = null
+    // Emptied as it is sent, so a next name can be typed while this one is created.
+    searchTerm.value = ''
     menuOpen.value = false
-    picked.value = value.filter(
-      (item): item is HeldTag => typeof item !== 'string',
-    )
-    value
-      .filter((item) => typeof item === 'string')
-      .forEach((name) => create(name))
+    queued.value.push(name)
+    if (queued.value.length > 1) return
+    while (queued.value.length) {
+      await create(queued.value[0]!)
+      queued.value.shift()
+    }
   }
 
-  return { searchTerm, refusal, menuOpen, create, pick }
+  /**
+   * A name entered with the list closed. Taken in the capture phase, because the
+   * tags input would otherwise draw it as a chip with no Tag behind it.
+   */
+  function enterTyped() {
+    if (!menuOpen.value && searchTerm.value.trim()) enter(searchTerm.value)
+  }
+
+  /** A pick from the list. */
+  function pick(held: HeldTag[]) {
+    menuOpen.value = false
+    // A name typed and entered is a request to hold that Tag, never to drop one.
+    const kept = searchTerm.value
+      ? picked.value
+      : picked.value.filter((tag) => held.some(({ id }) => id === tag.id))
+    picked.value = [
+      ...kept,
+      ...held.filter((tag) => !kept.some(({ id }) => id === tag.id)),
+    ]
+  }
+
+  return { searchTerm, refusal, menuOpen, enter, enterTyped, pick }
 }
 
 const options = useTagOptions()
-const { searchTerm, refusal, menuOpen, create, pick } = useTagEntry()
+const { searchTerm, refusal, menuOpen, enter, enterTyped, pick } = useTagEntry()
 </script>
 
 <template>
   <!-- Enter here names a Tag; it never submits a form the picker sits in. -->
-  <div class="flex flex-col gap-2" @keydown.enter.prevent>
+  <div class="flex flex-col gap-2" @keydown.enter.capture.prevent="enterTyped">
     <UInputMenu
       v-model:search-term="searchTerm"
       v-model:open="menuOpen"
@@ -100,7 +121,7 @@ const { searchTerm, refusal, menuOpen, create, pick } = useTagEntry()
       icon="i-lucide-tag"
       aria-label="Tags"
       class="w-full"
-      @create="create"
+      @create="enter"
       @update:model-value="pick"
     />
     <p v-if="refusal" role="alert" class="text-sm text-error">
