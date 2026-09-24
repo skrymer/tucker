@@ -1,6 +1,7 @@
 - main:
     - /children: deep-equal
     - heading "Foods" [level=1]
+    - button "Manage tags"
     - button "Add food"
     - list:
         - listitem:

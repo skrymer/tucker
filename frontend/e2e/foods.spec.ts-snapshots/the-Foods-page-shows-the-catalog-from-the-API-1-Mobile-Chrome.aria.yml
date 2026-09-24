@@ -1,6 +1,7 @@
 - main:
     - /children: deep-equal
     - heading "Foods" [level=1]
+    - button "Manage tags"
     - list:
         - listitem:
             - text: Oats 380 kcal · 13 g protein /100g

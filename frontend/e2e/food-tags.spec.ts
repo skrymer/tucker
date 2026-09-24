@@ -263,3 +263,66 @@ test('a name entered with the Tag list closed is created as a Tag, not a save', 
   await expect(sheet).toBeHidden()
   expect(created).toEqual([expect.objectContaining({ tagIds: [100] })])
 })
+
+test('Manage tags lists every Tag with its Food count, and deleting one takes it off the row', async ({
+  page,
+  goto,
+}) => {
+  let tags = [
+    { id: 1, name: 'breakfast' },
+    { id: 2, name: 'snack' },
+  ]
+  let carries = [{ id: 2, name: 'snack' }]
+  await page.route('**/api/foods', (route) =>
+    route.fulfill({
+      json: [food({ id: 1, name: 'Rolled oats', tags: carries })],
+    }),
+  )
+  await page.route('**/api/tags', (route) =>
+    route.fulfill({
+      json: tags.map((tag) => ({
+        ...tag,
+        foodCount: carries.some(({ id }) => id === tag.id) ? 1 : 0,
+      })),
+    }),
+  )
+  await page.route('**/api/tags/2', (route) => {
+    tags = tags.filter(({ id }) => id !== 2)
+    carries = []
+    return route.fulfill({ status: 204 })
+  })
+  await goto('/foods', { waitUntil: 'hydration' })
+  const row = page.getByRole('listitem').filter({ hasText: 'Rolled oats' })
+  await expect(row.getByText('snack')).toBeVisible()
+
+  await page.getByRole('button', { name: 'Manage tags' }).click()
+  const sheet = page.getByRole('dialog', { name: 'Manage tags' })
+  await expect(sheet.getByRole('list')).toMatchAriaSnapshot(`
+    - list:
+      - /children: deep-equal
+      - listitem:
+        - text: breakfast 0 foods
+        - button "Delete breakfast"
+      - listitem:
+        - text: snack 1 food
+        - button "Delete snack"
+  `)
+  await sheet.getByRole('button', { name: 'Delete snack' }).click()
+  await expect(
+    sheet.getByText(
+      'Delete “snack”? It comes off 1 food. The foods stay in your catalog.',
+    ),
+  ).toBeVisible()
+  await sheet.getByRole('button', { name: 'Delete tag' }).click()
+
+  await expect(sheet.getByRole('list')).toMatchAriaSnapshot(`
+    - list:
+      - /children: deep-equal
+      - listitem:
+        - text: breakfast 0 foods
+        - button "Delete breakfast"
+  `)
+  await sheet.getByRole('button', { name: 'Close' }).click()
+  await expect(row).toBeVisible()
+  await expect(row.getByText('snack')).toHaveCount(0)
+})
