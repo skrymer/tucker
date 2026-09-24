@@ -208,6 +208,35 @@ test('Enter in an empty Tags field neither saves the Food nor closes the sheet',
   expect(created).toEqual([])
 })
 
+test('spaces entered with the Tag list closed create no Tag', async ({
+  page,
+  goto,
+}) => {
+  const { created } = await mockAddableCatalog(page)
+  const posted: unknown[] = []
+  page.on('request', (request) => {
+    if (request.url().endsWith('/api/tags') && request.method() === 'POST')
+      posted.push(request.postDataJSON())
+  })
+  await page.clock.install()
+  await goto('/foods', { waitUntil: 'hydration' })
+  const { form, tags } = await fillNewFood(page)
+
+  await tags.pressSequentially('   ')
+  await expect(page.getByRole('listbox')).toBeVisible()
+  // Held in the moment before closing the list empties the field, as below.
+  await page.clock.pauseAt(Date.now() + 1000)
+  await form.locator('[data-slot="trailing"]').click()
+  await expect(page.getByRole('listbox')).toBeHidden()
+  await expect(tags).toHaveValue('   ')
+  await tags.press('Enter')
+  await page.clock.resume()
+
+  await expect(tags).toHaveValue('')
+  expect(posted).toEqual([])
+  expect(created).toEqual([])
+})
+
 test('a name entered with the Tag list closed is created as a Tag, not a save', async ({
   page,
   goto,
