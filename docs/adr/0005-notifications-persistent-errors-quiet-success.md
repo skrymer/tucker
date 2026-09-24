@@ -45,8 +45,12 @@ form and no input is lost. The mutation's arguments are captured in the error
 path's closure, so "the same arguments" is literal — Retry replays the failed
 call with its own payload (see the id rule below). Re-entry is already guarded by
 the `pending` flag, so a double-tap on Retry (or on the form) can't fire two
-mutations. The toast carries a stable `id`, so repeated failures of the same
-mutation pulse the existing toast rather than stacking.
+mutations. A caller that runs its own attempts one after another — the Tag
+picker, creating each typed name in turn — names where its Retry goes instead,
+and the Retry waits its turn there with the same arguments: re-run straight away,
+it would meet the guard while the caller's next attempt is in flight and be
+dropped without a word. The toast carries a stable `id`, so repeated failures of
+the same mutation pulse the existing toast rather than stacking.
 
 That id is stable for as long as the toast is, and no longer. Tapping one of a
 toast's actions **closes** it — Nuxt UI's action API offers no way to opt out —
