@@ -36,9 +36,8 @@ function useTagEntry() {
   // Names wait their turn rather than being dropped while one is created; the
   // head is the one in flight, and stays until it lands.
   const queued = ref<string[]>([])
-  watchEffect(() => (creating.value = queued.value.length > 0))
 
-  const { execute: create } = useApiMutation(
+  const { execute: create, pending } = useApiMutation(
     async (name: string) => {
       // A picker gone by the time this lands cannot emit, so the Tag never reaches
       // whatever replaced it — which is why a consumer keys it on what it is picking for.
@@ -57,6 +56,8 @@ function useTagEntry() {
       },
     },
   )
+  // A Retry from the failure toast runs the create outside the queue.
+  watchEffect(() => (creating.value = pending.value || queued.value.length > 0))
 
   async function enter(name: string) {
     refusal.value = null
@@ -66,24 +67,43 @@ function useTagEntry() {
     queued.value.push(name)
     if (queued.value.length > 1) return
     while (queued.value.length) {
+      // A Retry already in flight would have this create dropped as a re-entry.
+      if (pending.value) await settled()
       await create(queued.value[0]!)
       queued.value.shift()
     }
   }
 
+  function settled() {
+    return new Promise<void>((resolve) => {
+      const stop = watch(pending, (busy) => {
+        if (busy) return
+        stop()
+        resolve()
+      })
+    })
+  }
+
+  // True for the length of one Enter pressed on a typed name: a pick it causes
+  // re-enters that name, and is never a request to take the Tag off.
+  let enteringName = false
+
   /**
-   * A name entered with the list closed. Taken in the capture phase, because the
-   * tags input would otherwise draw it as a chip with no Tag behind it.
+   * Enter, taken in the capture phase, ahead of the list and the tags input. With
+   * the list closed a typed name is created here, because the tags input would
+   * otherwise draw it as a chip with no Tag behind it.
    */
   function enterTyped() {
-    if (!menuOpen.value && searchTerm.value.trim()) enter(searchTerm.value)
+    enteringName = searchTerm.value.trim() !== ''
+    // Past the whole dispatch: the list picks from inside it.
+    setTimeout(() => (enteringName = false))
+    if (!menuOpen.value && enteringName) enter(searchTerm.value)
   }
 
   /** A pick from the list. */
   function pick(held: HeldTag[]) {
     menuOpen.value = false
-    // A name typed and entered is a request to hold that Tag, never to drop one.
-    const kept = searchTerm.value
+    const kept = enteringName
       ? picked.value
       : picked.value.filter((tag) => held.some(({ id }) => id === tag.id))
     picked.value = [
