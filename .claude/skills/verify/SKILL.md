@@ -80,7 +80,9 @@ resemble** — a value that looks like the happy path is not a probe.
 - `resize_window` **reports success even when nothing moved.** Always confirm with
   `javascript_tool` → `window.innerWidth`. Ignore `read_page`'s "Viewport:" line.
 - **A maximized window silently refuses to resize** (no `wmctrl`/`xdotool` under
-  Wayland). If two resize attempts don't move `innerWidth`, **ask the user to
+  Wayland). If two resize attempts don't move `innerWidth`, first open a **fresh tab**
+  with `tabs_create_mcp` and resize that to 412×915 — one session reports it landing
+  first time (not yet re-confirmed). Only if that fails too, **ask the user to
   unmaximize the Chrome window** — one sentence, and the next resize works.
 - **Ask before the desktop pass, not after it.** The resize only fails at the
   *phone* step, which is halfway through the gate, so the question lands after the
@@ -88,7 +90,9 @@ resemble** — a value that looks like the happy path is not a probe.
   One `resize_window` + `innerWidth` check at the very start costs one tool call
   and moves the question to a moment where the user can answer it while you seed
   data.
-- **Chrome floors at ~555px wide**, so Pixel-7 width (412px) is unreachable. 555px is
+- **An un-maximized window floors at ~555px wide** (586px measured on another run), so
+  Pixel-7 width (412px) is unreachable that way — the fresh tab above is the one route
+  reported to reach it. The floor is
   still under Tucker's 1024px breakpoint, so the phone layout *is* genuinely exercised
   — say which width you actually used. For a true 412px check, lean on the Playwright
   **Mobile Chrome** project.
@@ -136,7 +140,7 @@ Verdict: PASS
 
 **PASS** only if you saw it work at both viewports, and only with the input probes named
 in the verdict — a walk-through that lists no probe values is a reachability pass wearing
-the wrong label. **FAIL** stops the sign-off — fix and re-verify. **BLOCKED** (couldn't
+the wrong label. A probe named without its value is not a probe. **FAIL** stops the sign-off — fix and re-verify. **BLOCKED** (couldn't
 reach the surface) is not a PASS; say what blocked you. If you fell back to Playwright,
 label the verdict `PASS (Playwright fallback — claude-in-chrome unavailable)`.
 

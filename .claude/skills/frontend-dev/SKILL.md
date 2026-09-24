@@ -77,10 +77,21 @@ assertion with the dev token), and no browser-level layer can reach it.
   `user.keyboard('{ArrowRight>20/}')` in Vitest, `locator.press('End')` in Playwright — which
   works without depending on track geometry; assert `aria-valuenow`, not the name.
 - **Toast body has a hidden `aria-live` twin** — assert with `getByText(fullMessage, { exact: true })`.
-- **Phone overlays are Reka Dialog bottom sheets** (ADR 0017), never Vaul `UDrawer`.
+- **Phone overlays are Reka Dialog bottom sheets** (ADR 0017), never Vaul `UDrawer`. While one
+  is open the page behind it is `aria-hidden`, so a role locator on that page never resolves —
+  measure it by text or CSS. A locator timeout is not a RED.
 - **Per-project aria snapshots** (Desktop / Mobile) — after an intended markup change regenerate with
   `pnpm test:e2e --update-snapshots`, then `git diff` the `*-snapshots/` to confirm only the intended
   tree moved.
+- **`toMatchAriaSnapshot` is a partial match.** Unlisted nodes are ignored, so every baseline
+  opens with `- /children: deep-equal` under its root — without it a snapshot says nothing about
+  what is *absent*. State figures exactly, never as `/\d+/`: `--update-snapshots` generalises
+  numbers into regexes, so regenerate from `locator.ariaSnapshot()`, which writes literals.
+- **Headless Chromium hides scrollbars**, so a layout jump caused by the page's scrollbar
+  appearing or disappearing is invisible to e2e. A spec about horizontal position sets
+  `test.use({ launchOptions: { ignoreDefaultArgs: ['--hide-scrollbars'] } })` and measures the
+  element (`e2e/log-column.spec.ts`). The app keeps the gutter (`scrollbar-gutter: stable`) and so
+  runs `UApp` with `:scroll-body="false"` — turn one off and every sheet shifts the column.
 - **Stale Playwright build** — the mocked e2e rebuilds `.nuxt/e2e` from scratch every run, so it cannot
   serve a stale build; the smokes still build through `@nuxt/test-utils`, so if a UI change doesn't show
   in a smoke run, `rm -rf frontend/.nuxt/test`.

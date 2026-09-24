@@ -1,6 +1,6 @@
 ---
 name: feature-sign-off
-description: The pre-commit/push sign-off gate for a finished feature or fix on the Tucker repo. Runs seven quality gates in order — /verify twice (a cheap reachability pass first, the full two-viewport walk-through last, on the code that ships), with /simplify (apply cleanups), /mutation-test (do the tests actually catch bugs), /code-review (hunt correctness bugs), /check-adrs (honour recorded decisions) and a resolutions pass (nothing approves its own fix; re-run if the walk-through changes code) in between — fixing what each surfaces before moving on, and only then commits and pushes. Every agent is briefed to a neutrality contract, one argues against merging, one ledgers the diff against the issue's own acceptance criteria, and a split between two agents is settled blind rather than by the author. Use when a change is functionally complete and the user says "sign off", "ready to commit/push", "wrap up this feature", "run the gates", or before opening a PR.
+description: The pre-commit/push sign-off gate for a finished feature or fix on the Tucker repo. Runs seven quality gates in order — /verify twice (a reachability pass first, the two-viewport walk-through last, on the code that ships), with /simplify, /mutation-test, /code-review, /check-adrs and a resolutions pass (nothing approves its own fix) in between — fixing what each surfaces, then commits and pushes, then a retro that routes each lesson into the file the next session will read it from. Every agent is briefed to a neutrality contract, one argues against merging, one ledgers the diff against the issue's acceptance criteria, and a split between two agents is settled blind. Use when a change is functionally complete and the user says "sign off", "ready to commit/push", "wrap up this feature", "run the gates", or before opening a PR.
 ---
 
 # Feature sign-off
@@ -163,7 +163,10 @@ needs it.
        The per-brief template check compares each to itself and is blind to them
        drifting apart, so this is the line that holds the copies together — and it
        reads the **files**, since the auditor's sent brief fires in gate 6 and is
-       out of reach here. Read only; the wording in `/verify` is `/verify`'s.
+       out of reach here. Read only; the wording in `/verify` is `/verify`'s. The
+       files are also pinned by `.claude/hooks/probe-rule.test.mjs`, which CI runs —
+       added after `/verify`'s copy was found to have drifted to a weaker rule — so
+       this check is now about the *sent* briefs.
 
      A contract that only forbids things catches a smuggled defence and misses an
      adversary quietly cut from six angles to two, or one that never ran at all.
@@ -332,6 +335,37 @@ justified):
    commits by concern; end messages with the `Co-Authored-By` trailer.
 3. Open the PR if the user wants one. CI re-runs the automated suites; the PR
    body should note the sign-off gates that passed.
+4. **Retro — what should the next session not have to learn again?** Every run
+   pays for lessons: a trap that cost twenty minutes, a gate that caught what an
+   earlier one should have, an assumption that turned out false. Left in the
+   conversation they die with it, and a `/tmp` handoff is read once. So the last
+   step routes each lesson into **the file it would have been read from** — the
+   next session reads that file anyway, and nothing else.
+
+   Spawn **Brief E** ([`references/agent-briefs.md`](references/agent-briefs.md)),
+   handing it the transcript paths you recorded for gate 5 plus the resolutions
+   pack. It proposes; you apply. The miner exists for the same reason the verdict
+   auditor does: the person who fell into the trap is the one worst placed to see
+   which falls were worth recording, and the transcripts show the time spent where
+   the author's memory shows the fix.
+
+   Where a lesson lands:
+
+   | Lesson | Home |
+   | --- | --- |
+   | A trap in a tool or a step | the skill that owns the step (`verify`, `mutation-test`, `frontend-dev`, …) — its gotchas |
+   | A mutant's standing verdict | `mutation-test/references/known-survivors.md` |
+   | The user's preference or correction | memory, as a `feedback` entry |
+   | A rule broken more than once | a guard test or hook — prose did not hold it |
+   | A domain or design ruling | the ADR or `CONTEXT.md` — `/check-adrs` already owns this, so it is rarely new here |
+
+   Three rules. **Evidence or nothing** — each lesson cites the transcript line, the
+   failing run or the measurement that taught it; a hunch is not a lesson. **Edit,
+   don't append** — a lesson that sharpens an existing gotcha replaces it, and one
+   already recorded is dropped. **Its own branch** — skill and hook edits go on a
+   process branch and PR, never onto the feature branch that surfaced them
+   (`[[process-changes-get-their-own-branch]]`); memory entries are written
+   directly. "Nothing worth recording" is a result, and the report says so.
 
 ## Reporting
 
@@ -356,6 +390,8 @@ Emit a short sign-off summary the user (and PR reviewer) can replay:
 5′. resolutions    — not re-run (gate 6 changed no code); else "N fixes judged → …"
 
 Suites green (detekt/build, lint/test). Committed + pushed to <branch>.
+retro              3 lessons → verify (headless hides scrollbars), mutation-test
+                   (hand-mutate copies outside app/), 1 memory; PR #<n> on <process-branch>
 ```
 
 ## Notes

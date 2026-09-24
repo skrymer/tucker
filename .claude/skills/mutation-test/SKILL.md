@@ -151,9 +151,13 @@ Identical for both stacks; only step 1 and 2's commands differ.
      is never reached). Record it in one line with the reason.
    - **False survivor** — a test *does* kill it, but the engine never ran that
      test. Suspect it whenever a whole class scores 0%, and **settle it by
-     hand-mutating the line and running the suite**: if tests fail, the verdict is
-     "the tool can't see it" and no test is owed. Backend gotchas carry the
-     mechanism and a worked example.
+     hand-mutating a throwaway copy and running the suite against it**: if tests
+     fail, the verdict is "the tool can't see it" and no test is owed. Mutate a
+     copy, never the line in place — the TDD hook refuses an in-place mutant as an
+     untested production change. For a page or component, copy it (and the test)
+     outside `frontend/app/`, have the copy import its siblings explicitly, and run
+     `vitest --config` pointed at the copy; for the backend, a copy of `backend/`.
+     Backend gotchas carry the mechanism and a worked example.
 
    **Check [`references/known-survivors.md`](references/known-survivors.md) first.**
    Every mutant a full sweep leaves alive already has a verdict there, with the
@@ -175,6 +179,12 @@ Scope (from the repo root):
 } | grep -E '\.(ts|vue)$' | grep -vE '\.(test|spec)\.ts$' \
   | sed 's|^frontend/||' | sort -u | paste -sd,
 ```
+
+**In a worktree-isolated session that command is refused** — the sandbox rejects any
+compound shell command whose text mentions `git`. Run it as two plain calls: `git
+merge-base origin/main HEAD`, then `git diff --name-only <that sha> -- app server` from
+`frontend/` (plus `git ls-files --others --exclude-standard -- app server`), and filter
+the output by eye.
 
 Run (in `frontend/`):
 
@@ -216,6 +226,11 @@ tests (~1–5 tests, not all 473), which is what makes this affordable as a gate
   behaviour to pin.
 - A **timeout** verdict is not a survivor: it usually means an infinite loop, which
   counts as killed.
+- **A `.vue` file can come back entirely `NoCoverage`** although its test renders
+  it — `log.vue` did in one run and scored 43/57 in another; the cause is not
+  diagnosed. A single-file config pointing the runner at that test ran no tests at
+  all. Go straight to hand-mutating copies (False survivor, above) rather than
+  debugging the runner.
 - **No mutator can flag the normalising call that isn't there.** This is about the
   *missing* fold, and no engine reaches it: there is no call node to mutate, so
   `fold(a).includes(fold(b))` scores exactly the same as `a.includes(fold(b))`.
