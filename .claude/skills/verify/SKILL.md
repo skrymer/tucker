@@ -32,7 +32,12 @@ explicitly in the verdict.
 ## Workflow
 
 1. **Bring the stack up.** `docker compose up -d backend` (repo root), then `pnpm dev`
-   in `frontend/`. Wait for both before navigating.
+   in `frontend/`. Wait for both before navigating. **Drive the URL the dev log's
+   `➜ Local:` line names, not the port you asked for** — Nuxt silently moves to
+   another port when yours is taken, so the one you asked for may still be answered
+   by another worktree's server running other code. Confirm the listener is yours
+   (`ss -ltnp | grep :<port>`, then `readlink /proc/<pid>/cwd`) before the first
+   navigation.
 2. **Seed what the surface needs**, via `curl` against `http://localhost:8080/api`, not
    the UI — you're verifying *your* change, not re-testing setup. Most screens need a
    Calorie Budget, which needs profile + weight + goal. Check what's already there

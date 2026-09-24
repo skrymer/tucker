@@ -369,6 +369,12 @@ domain code and **~1.6s for anything a controller test covers**.
   drives it without Spring makes it killable for real, which is what
   `KotlinNullableModelConverterTest` and `AccessAssertionValidatorTest` do (0/23 → 20/23
   and 3 survivors → none).
+- **`mutations.xml` names one killing test per mutant, not every one.** So it cannot
+  show that *a particular* test goes red — the thing a test that passes on write
+  still owes, and that the TDD hook will not let you show by editing the source in
+  place. Add `-PmutationFullMatrix` and each mutant's `killingTests` lists every test
+  that kills it (76 on one `FoodService` mutant, where the default named 1). It
+  costs a longer sweep, since no mutant stops at its first kill.
 - **Excluding a class is a last resort, and only when nothing in it is visible.**
   `--excludedClasses` currently drops three (`AccessSecurityConfig`, `AccessProperties`,
   `TuckerApplicationKt`), each verified by hand-mutation and each 100% unkilled before

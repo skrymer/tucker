@@ -330,6 +330,13 @@ tasks.register<JavaExec>("mutationTest") {
         // sweep is killed by what is also resident, not by its own peak alone.
         "--jvmArgs", "-Xmx1g",
     )
+    // Opt-in: mutations.xml then lists every test that kills a mutant, not just the
+    // first. It is how to see that one particular test goes red on a mutant without
+    // editing the source, which the TDD hook refuses. Off by default because every
+    // mutant then runs every covering test instead of stopping at the first kill.
+    if (providers.gradleProperty("mutationFullMatrix").isPresent) {
+        args("--fullMutationMatrix", "true")
+    }
 
     // Same reasoning for the JavaExec parent that drives the sweep.
     maxHeapSize = "1g"
