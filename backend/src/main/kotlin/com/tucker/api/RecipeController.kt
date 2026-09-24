@@ -31,7 +31,7 @@ data class CreateRecipeRequest(
     val name: String,
     val cookedWeightG: Double,
     val ingredients: List<CreateRecipeIngredient>,
-    val tagIds: List<Long> = emptyList(),
+    val tagIds: List<Long>,
 )
 
 /** One ingredient line of a [RecipeResponse]: the ingredient Food and the grams weighed in. */

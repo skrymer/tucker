@@ -23,6 +23,7 @@ test('a seeded recipe reads as a recipe in the catalog and shows its composition
   try {
     const created = await request.post(`${API}/recipes`, {
       data: {
+        tagIds: [],
         name: recipeName,
         cookedWeightG: 1400,
         ingredients: [
@@ -77,6 +78,7 @@ test('a seeded recipe reads as a recipe in the catalog and shows its composition
   ): Promise<{ id: number }> {
     const res = await request.post(`${API}/foods`, {
       data: {
+        tagIds: [],
         name,
         proteinPer100g: macros.protein,
         carbsPer100g: macros.carbs,

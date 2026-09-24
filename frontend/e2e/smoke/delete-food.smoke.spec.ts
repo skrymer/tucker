@@ -13,6 +13,7 @@ test('user deletes a food from the catalog', async ({
 
   const created = await request.post('http://localhost:8080/api/foods', {
     data: {
+      tagIds: [],
       name: foodName,
       proteinPer100g: 1,
       carbsPer100g: 1,

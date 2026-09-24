@@ -94,6 +94,21 @@ class FoodTagsApiTest {
     }
 
     @Test
+    fun `a Food created without saying which Tags it carries is refused, and not created`() {
+        mockMvc.post("/api/foods") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"name":"Rolled oats","barcode":null,"proteinPer100g":13.0,
+                          "carbsPer100g":60.0,"fatPer100g":7.0}"""
+        }.andExpect {
+            status { isBadRequest() }
+        }
+
+        mockMvc.get("/api/foods").andExpect {
+            jsonPath("$.length()") { value(0) }
+        }
+    }
+
+    @Test
     fun `a Tag id the User does not have is refused as absent, and the Food keeps its Tags`() {
         val oats = createFood("Rolled oats")
         val breakfast = createTag("breakfast")
@@ -178,7 +193,7 @@ class FoodTagsApiTest {
         val body = mockMvc.post("/api/foods") {
             contentType = MediaType.APPLICATION_JSON
             content = """{"name":"$name","barcode":null,
-                          "proteinPer100g":13.0,"carbsPer100g":60.0,"fatPer100g":7.0}"""
+                          "proteinPer100g":13.0,"carbsPer100g":60.0,"fatPer100g":7.0,"tagIds":[]}"""
         }.andExpect { status { isCreated() } }.andReturn().response.contentAsString
         return objectMapper.readTree(body).get("id").asLong()
     }

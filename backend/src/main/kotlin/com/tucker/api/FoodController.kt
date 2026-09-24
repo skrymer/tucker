@@ -72,7 +72,7 @@ data class CreateFoodRequest(
     val proteinPer100g: Double,
     val carbsPer100g: Double,
     val fatPer100g: Double,
-    val tagIds: List<Long> = emptyList(),
+    val tagIds: List<Long>,
 )
 
 /**

@@ -470,7 +470,7 @@ class CrossUserIsolationTest {
             contentType = MediaType.APPLICATION_JSON
             content = """
                 {"name":"Bob's granola","cookedWeightG":500.0,
-                 "ingredients":[{"foodId":$almonds,"grams":200.0}]}
+                 "ingredients":[{"foodId":$almonds,"grams":200.0}],"tagIds":[]}
             """.trimIndent()
         }.andExpect { status { isNotFound() } }
     }
@@ -537,7 +537,7 @@ class CrossUserIsolationTest {
             contentType = MediaType.APPLICATION_JSON
             content = """
                 {"name":"Bob's rename","cookedWeightG":100.0,
-                 "ingredients":[{"foodId":$rice,"grams":50.0}]}
+                 "ingredients":[{"foodId":$rice,"grams":50.0}],"tagIds":[]}
             """.trimIndent()
         }.andExpect { status { isNotFound() } }
 
@@ -1040,7 +1040,7 @@ class CrossUserIsolationTest {
             token, "/api/foods",
             """
                 {"name":"$name",${barcode?.let { """"barcode":"$it",""" } ?: ""}
-                 "proteinPer100g":10.0,"carbsPer100g":4.0,"fatPer100g":0.2}
+                 "proteinPer100g":10.0,"carbsPer100g":4.0,"fatPer100g":0.2,"tagIds":[]}
             """.trimIndent(),
         )
     }
@@ -1051,7 +1051,7 @@ class CrossUserIsolationTest {
             token, "/api/recipes",
             """
                 {"name":"$name","cookedWeightG":500.0,
-                 "ingredients":[{"foodId":$ingredientId,"grams":600.0}]}
+                 "ingredients":[{"foodId":$ingredientId,"grams":600.0}],"tagIds":[]}
             """.trimIndent(),
         )
     }

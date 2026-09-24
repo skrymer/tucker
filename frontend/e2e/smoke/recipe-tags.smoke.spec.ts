@@ -18,6 +18,7 @@ test('a Recipe built with a Tag carries it, and editing it changes or keeps its 
   await expectCreated(
     request.post(`${API}/foods`, {
       data: {
+        tagIds: [],
         name: 'Beef mince',
         proteinPer100g: 20,
         carbsPer100g: 0,

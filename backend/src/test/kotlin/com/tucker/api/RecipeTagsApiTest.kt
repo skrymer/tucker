@@ -128,6 +128,26 @@ class RecipeTagsApiTest {
         }
     }
 
+    @Test
+    fun `an edit that leaves out tagIds is refused, and the Recipe keeps its Tags`() {
+        val mince = createFood("Beef mince")
+        val dinner = createTag("dinner")
+        val recipe = createRecipe(mince, dinner)
+
+        mockMvc.put("/api/recipes/$recipe") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"name":"Bolognese","cookedWeightG":450.0,
+                          "ingredients":[{"foodId":$mince,"grams":600.0}]}"""
+        }.andExpect {
+            status { isBadRequest() }
+        }
+
+        mockMvc.get("/api/recipes/$recipe").andExpect {
+            jsonPath("$.tags[*].id") { value(contains(dinner.toInt())) }
+            jsonPath("$.cookedWeightG") { value(500.0) }
+        }
+    }
+
     private fun createRecipe(ingredient: Long, vararg tagIds: Long): Long {
         val body = mockMvc.post("/api/recipes") {
             contentType = MediaType.APPLICATION_JSON
@@ -141,7 +161,7 @@ class RecipeTagsApiTest {
         val body = mockMvc.post("/api/foods") {
             contentType = MediaType.APPLICATION_JSON
             content = """{"name":"$name","barcode":null,
-                          "proteinPer100g":20.0,"carbsPer100g":0.0,"fatPer100g":10.0}"""
+                          "proteinPer100g":20.0,"carbsPer100g":0.0,"fatPer100g":10.0,"tagIds":[]}"""
         }.andExpect { status { isCreated() } }.andReturn().response.contentAsString
         return objectMapper.readTree(body).get("id").asLong()
     }

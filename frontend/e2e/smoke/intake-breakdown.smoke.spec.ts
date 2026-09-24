@@ -19,6 +19,7 @@ test("the day's calories are divided between the Foods they went on", async ({
   // 4x31 + 4x0 + 9x3.6 = 156.4 kcal/100 g, rice 4x8 + 4x28 + 9x0.3 = 146.7.
   const chicken = await request.post(`${API}/foods`, {
     data: {
+      tagIds: [],
       name: 'Smoke chicken',
       proteinPer100g: 31,
       carbsPer100g: 0,
@@ -30,6 +31,7 @@ test("the day's calories are divided between the Foods they went on", async ({
 
   const rice = await request.post(`${API}/foods`, {
     data: {
+      tagIds: [],
       name: 'Smoke rice',
       proteinPer100g: 8,
       carbsPer100g: 28,
@@ -100,6 +102,7 @@ test('the week is a wider question than the day, and says how much of it was log
 
   const skyr = await request.post(`${API}/foods`, {
     data: {
+      tagIds: [],
       name: 'Smoke skyr',
       proteinPer100g: 11,
       carbsPer100g: 4,

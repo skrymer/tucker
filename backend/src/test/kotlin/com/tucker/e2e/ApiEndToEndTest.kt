@@ -117,7 +117,7 @@ class ApiEndToEndTest {
     fun `the running image serves the food, entry and summary API end to end`() {
         val createFood = post(
             "/api/foods",
-            """{"name":"Banana","caloriesPer100g":89.0,"proteinPer100g":1.1}""",
+            """{"name":"Banana","caloriesPer100g":89.0,"proteinPer100g":1.1,"tagIds":[]}""",
         )
         assertEquals(201, createFood.statusCode(), "create food: ${createFood.body()}")
         val foodId = Regex(""""id":(\d+)""").find(createFood.body())!!.groupValues[1]

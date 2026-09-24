@@ -15,6 +15,7 @@ test('a Tag put on a Food from its row is still there after a reload', async ({
 }) => {
   const created = await request.post(`${API}/foods`, {
     data: {
+      tagIds: [],
       name: 'Rolled oats',
       proteinPer100g: 13,
       carbsPer100g: 60,

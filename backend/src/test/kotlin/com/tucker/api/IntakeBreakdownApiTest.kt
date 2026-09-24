@@ -34,7 +34,7 @@ class IntakeBreakdownApiTest {
         val body = mockMvc.post("/api/foods") {
             contentType = MediaType.APPLICATION_JSON
             content = """{"name":"$name","proteinPer100g":$proteinPer100g,
-                          "carbsPer100g":0.0,"fatPer100g":3.6}"""
+                          "carbsPer100g":0.0,"fatPer100g":3.6,"tagIds":[]}"""
         }.andExpect { status { isCreated() } }.andReturn().response.contentAsString
         return idOf(body)
     }
@@ -126,7 +126,7 @@ class IntakeBreakdownApiTest {
             contentType = MediaType.APPLICATION_JSON
             content = """{"name":"Cottage pie","cookedWeightG":600.0,
                           "ingredients":[{"foodId":$mince,"grams":400.0},
-                                         {"foodId":$potato,"grams":300.0}]}"""
+                                         {"foodId":$potato,"grams":300.0}],"tagIds":[]}"""
         }.andExpect { status { isCreated() } }.andReturn().response.contentAsString
         val pieId = idOf(pie)
 

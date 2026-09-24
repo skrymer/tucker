@@ -35,7 +35,14 @@ async function seedScannableFood(request: APIRequestContext, name: string) {
   expect(goal.status()).toBe(201)
 
   const created = await request.post(`${API}/foods`, {
-    data: { name, barcode, proteinPer100g: 10, carbsPer100g: 0, fatPer100g: 0 },
+    data: {
+      tagIds: [],
+      name,
+      barcode,
+      proteinPer100g: 10,
+      carbsPer100g: 0,
+      fatPer100g: 0,
+    },
   })
   expect(created.status()).toBe(201)
 

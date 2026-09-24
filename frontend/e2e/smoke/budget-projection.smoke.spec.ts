@@ -56,6 +56,7 @@ test('a weighed entry over budget warns first, then logs on "Log anyway"', async
   const foodName = `Budget smoke ${Date.now()}`
   const created = await request.post(`${API}/foods`, {
     data: {
+      tagIds: [],
       name: foodName,
       proteinPer100g: 0,
       carbsPer100g: 100,

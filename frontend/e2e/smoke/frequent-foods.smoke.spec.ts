@@ -19,7 +19,13 @@ async function createFood(
   name: string,
 ): Promise<number> {
   const created = await request.post(`${API}/foods`, {
-    data: { name, proteinPer100g: 10, carbsPer100g: 4, fatPer100g: 0.2 },
+    data: {
+      tagIds: [],
+      name,
+      proteinPer100g: 10,
+      carbsPer100g: 4,
+      fatPer100g: 0.2,
+    },
   })
   expect(created.status()).toBe(201)
   return (await created.json()).id as number

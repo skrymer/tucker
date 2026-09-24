@@ -36,7 +36,7 @@ class FoodFrequentApiTest {
     private fun createFood(name: String): Long {
         val body = mockMvc.post("/api/foods") {
             contentType = MediaType.APPLICATION_JSON
-            content = """{"name":"$name","proteinPer100g":31.0,"carbsPer100g":0.0,"fatPer100g":3.6}"""
+            content = """{"name":"$name","proteinPer100g":31.0,"carbsPer100g":0.0,"fatPer100g":3.6,"tagIds":[]}"""
         }.andExpect { status { isCreated() } }.andReturn().response.contentAsString
         return idOf(body)
     }
@@ -134,7 +134,7 @@ class FoodFrequentApiTest {
         val chilli = mockMvc.post("/api/recipes") {
             contentType = MediaType.APPLICATION_JSON
             content = """{"name":"Weekday chilli","cookedWeightG":900.0,
-                          "ingredients":[{"foodId":$mince,"grams":500.0}]}"""
+                          "ingredients":[{"foodId":$mince,"grams":500.0}],"tagIds":[]}"""
         }.andExpect { status { isCreated() } }.andReturn().response.contentAsString.let(::idOf)
         logWeighed(chilli)
 

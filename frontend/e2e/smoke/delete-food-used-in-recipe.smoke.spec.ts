@@ -28,6 +28,7 @@ test('a food used as a recipe ingredient cannot be deleted from the catalog', as
 
   const created = await request.post(`${API}/foods`, {
     data: {
+      tagIds: [],
       name: ingredientName,
       proteinPer100g: 20,
       carbsPer100g: 0,
@@ -39,6 +40,7 @@ test('a food used as a recipe ingredient cannot be deleted from the catalog', as
 
   const recipeCreated = await request.post(`${API}/recipes`, {
     data: {
+      tagIds: [],
       name: recipeName,
       cookedWeightG: 200,
       ingredients: [{ foodId: ingredientId, grams: 300 }],

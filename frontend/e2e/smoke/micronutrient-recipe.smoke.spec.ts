@@ -34,15 +34,20 @@ test('a Recipe rolls up from the ingredients matched through the queue', async (
   }
   const macros = { proteinPer100g: 25, carbsPer100g: 0, fatPer100g: 0 }
   const cheese = await createdId(
-    request.post(`${API}/foods`, { data: { name: 'Tasty cheese', ...macros } }),
+    request.post(`${API}/foods`, {
+      data: { tagIds: [], name: 'Tasty cheese', ...macros },
+    }),
   )
   const rice = await createdId(
-    request.post(`${API}/foods`, { data: { name: 'Jasmine rice', ...macros } }),
+    request.post(`${API}/foods`, {
+      data: { tagIds: [], name: 'Jasmine rice', ...macros },
+    }),
   )
 
   const bake = await createdId(
     request.post(`${API}/recipes`, {
       data: {
+        tagIds: [],
         name: 'Cheesy bake',
         cookedWeightG: 2000,
         ingredients: [

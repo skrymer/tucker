@@ -23,6 +23,7 @@ test('a match turns a week of food into figures, and says nothing it cannot', as
 
   const created = await request.post(`${API}/foods`, {
     data: {
+      tagIds: [],
       name: 'Tasty cheese',
       proteinPer100g: 25,
       carbsPer100g: 0,

@@ -16,7 +16,13 @@ test('the Foods page lists foods from the real backend', async ({
   const expectedKcal = 228
 
   const created = await request.post('http://localhost:8080/api/foods', {
-    data: { name: foodName, proteinPer100g, carbsPer100g, fatPer100g },
+    data: {
+      tagIds: [],
+      name: foodName,
+      proteinPer100g,
+      carbsPer100g,
+      fatPer100g,
+    },
   })
   expect(created.status()).toBe(201)
   const food = (await created.json()) as { id: number; name: string }

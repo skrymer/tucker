@@ -1846,8 +1846,10 @@ null` now means two things that earn opposite messages — the same trap
     `RecipeRepository.update` carry the stored Tags over, because `Recipe.asFood()` is
     rebuilt from the composition and knew none; `Recipe` now carries its `tagIds`, and
     "saved untouched keeps them" is the builder resending the Tags it was seeded with.
-    A `PUT` that omits `tagIds` therefore clears them: the request states the whole
-    Recipe.
+    `tagIds` carries no Kotlin default on `CreateRecipeRequest` or
+    `CreateFoodRequest`, so a request that leaves it out is a 400 rather than a
+    silent "no Tags" — the spec already called it `required`, and a stale bundle
+    omitting it would otherwise have cleared every Recipe it edited (ADR 0023).
   - **`RecipeResponse` carries `tags`, and the edit form is seeded from that one
     read.** The catalog's `FoodResponse` carries them too, but it is whatever the list
     last loaded — and since an edit replaces the Tags, seeding them from an older read

@@ -20,6 +20,7 @@ test('a matched Food moves the coverage figure and names its borrow in the catal
   // through the seeded synonym rewrite.
   const created = await request.post(`${API}/foods`, {
     data: {
+      tagIds: [],
       name: 'Tasty cheese',
       proteinPer100g: 25,
       carbsPer100g: 0,
