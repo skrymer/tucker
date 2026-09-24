@@ -224,6 +224,34 @@ describe('ManageTagsSheet', () => {
     answer()
   })
 
+  it('names a delete that failed for want of a connection in its own error toast', async () => {
+    toastAdd.mockClear()
+    registerEndpoint('/api/tags', () => [
+      { id: 9, name: 'snack', foodCount: 3 },
+    ])
+    registerEndpoint('/api/tags/9', {
+      method: 'DELETE',
+      handler: (event) => {
+        setResponseStatus(event, 503)
+        return {}
+      },
+    })
+    await renderSuspended(ManageTagsSheet, { props: { open: true } })
+    const user = userEvent.setup()
+    await user.click(
+      await screen.findByRole('button', { name: 'Delete snack' }),
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Delete tag' }))
+
+    await vi.waitFor(() =>
+      expect(toastAdd).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'Could not delete tag' }),
+      ),
+    )
+    expect(screen.getByText('3 foods', { exact: false })).toBeInTheDocument()
+  })
+
   it('asks for a name when Add is pressed on an empty field, and sends nothing', async () => {
     let posts = 0
     registerEndpoint('/api/tags', { method: 'GET', handler: () => [] })
