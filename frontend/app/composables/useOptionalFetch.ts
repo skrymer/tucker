@@ -2,9 +2,10 @@ interface UseOptionalFetchOptions {
   /**
    * Re-entry policy, named as `useAsyncAction`'s is. `guard` drops a load issued
    * while one is in flight, which is right while every call asks the same
-   * question; `latest` aborts the one in flight and supersedes it, for a fetcher
-   * whose question can change between calls (ADR 0007 — supersede, don't
-   * reconcile).
+   * question of an unchanged server; `latest` aborts the one in flight and
+   * supersedes it, for a fetcher whose question can change between calls — a
+   * re-read after a mutation is one, since the answer in flight may predate it
+   * (ADR 0007 — supersede, don't reconcile).
    */
   mode?: 'guard' | 'latest'
 }

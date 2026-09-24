@@ -1786,7 +1786,10 @@ null` now means two things that earn opposite messages — the same trap
     folds the whole of Unicode for equality *and* ordering, so the Tag list and a
     Food's chips sort alike — SQLite's `lower()` would have put an accented capital
     apart. A create that races another of the same name is settled by
-    `ON CONFLICT DO NOTHING` on the index and returns the existing Tag, not a 500.
+    `ON CONFLICT DO NOTHING` on the index, not a 500 — but on SQLite the losing
+    insert's `RETURNING` answers with the connection's `last_insert_rowid()`, not
+    null, so it can be handed an unrelated id rather than the existing Tag
+    ([#385](https://github.com/skrymer/tucker/issues/385), open).
   - **The picker creates on type**, so forms send only ids. Save and the picker are
     held while a create is in flight, and a Tag created for one Food never lands on
     the next Food the sheet is reassigned to.

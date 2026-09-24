@@ -99,7 +99,8 @@ function deleteQuestion(tag: { name: string; foodCount: number }) {
 <template>
   <ResponsiveOverlay v-model:open="open" title="Manage tags">
     <!-- Validates a keystroke as it lands: a delayed one can fire after a create has
-         emptied the field, and complain about a name nobody is typing. -->
+         emptied the field, and complain about a name nobody is typing. Blurring the
+         emptied field afterwards still says so, as any required field does. -->
     <UForm
       :schema="schema"
       :state="draft"
