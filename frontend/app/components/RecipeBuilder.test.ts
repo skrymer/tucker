@@ -394,6 +394,7 @@ describe('RecipeBuilder', () => {
       proteinPer100g: 0.9,
       carbsPer100g: 10,
       fatPer100g: 0.2,
+      tagIds: [],
     })
 
     // The parent persists it and hands it back; the builder selects it and

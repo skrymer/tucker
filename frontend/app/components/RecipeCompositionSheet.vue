@@ -27,15 +27,7 @@ const props = withDefaults(
 const emit = defineEmits<{
   close: []
   'submit-edit': [RecipePayload]
-  'create-food': [
-    {
-      name: string
-      barcode?: string
-      proteinPer100g: number
-      carbsPer100g: number
-      fatPer100g: number
-    },
-  ]
+  'create-food': [components['schemas']['CreateFoodRequest']]
 }>()
 
 /**

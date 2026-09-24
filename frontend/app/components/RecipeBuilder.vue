@@ -41,15 +41,7 @@ const emit = defineEmits<{
   ]
   // The page owns the catalog and its mutations (foods.vue); the inline add-food
   // is handed up so the created Food re-enters the catalog via its refresh.
-  'create-food': [
-    {
-      name: string
-      barcode?: string
-      proteinPer100g: number
-      carbsPer100g: number
-      fatPer100g: number
-    },
-  ]
+  'create-food': [components['schemas']['CreateFoodRequest']]
 }>()
 
 /**

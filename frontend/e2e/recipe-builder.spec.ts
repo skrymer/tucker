@@ -155,6 +155,7 @@ test('user adds a new food inline and it arrives selected as the ingredient', as
     proteinPer100g: 5,
     carbsPer100g: 10,
     fatPer100g: 1,
+    tagIds: [],
   })
 
   // The page re-read the catalog on the way through, so the Food it persisted is

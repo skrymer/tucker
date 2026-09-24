@@ -4,6 +4,7 @@ import type { components } from '#open-fetch-schemas/api'
 
 type Candidate = components['schemas']['FoodCandidateResponse']
 type Food = components['schemas']['FoodResponse']
+type NewFood = components['schemas']['CreateFoodRequest']
 
 const props = defineProps<{
   open: boolean
@@ -17,15 +18,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [boolean]
-  submit: [
-    {
-      name: string
-      barcode?: string
-      proteinPer100g: number
-      carbsPer100g: number
-      fatPer100g: number
-    },
-  ]
+  submit: [NewFood]
   'submit-recipe': [
     {
       name: string
@@ -33,15 +26,7 @@ const emit = defineEmits<{
       ingredients: { foodId: number; grams: number }[]
     },
   ]
-  'create-food': [
-    {
-      name: string
-      barcode?: string
-      proteinPer100g: number
-      carbsPer100g: number
-      fatPer100g: number
-    },
-  ]
+  'create-food': [NewFood]
 }>()
 
 // The overlay hosts two builders (CONTEXT.md): a plain Food (with its barcode
