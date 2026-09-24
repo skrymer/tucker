@@ -68,6 +68,39 @@ describe('ManageTagsSheet', () => {
     expect(deletes).toBe(0)
   })
 
+  it('deletes a Tag once confirmed, drops it from the list, and tells the page its Foods changed', async () => {
+    const kept = [
+      { id: 7, name: 'Breakfast', foodCount: 1 },
+      { id: 9, name: 'snack', foodCount: 3 },
+    ]
+    registerEndpoint('/api/tags', { method: 'GET', handler: () => [...kept] })
+    registerEndpoint('/api/tags/9', {
+      method: 'DELETE',
+      handler: () => {
+        kept.splice(1, 1)
+        return null
+      },
+    })
+    const onChanged = vi.fn()
+    await renderSuspended(ManageTagsSheet, {
+      props: { open: true, onChanged },
+    })
+    const user = userEvent.setup()
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Delete snack' }),
+    )
+    await user.click(screen.getByRole('button', { name: 'Delete tag' }))
+
+    await vi.waitFor(() =>
+      expect(screen.getAllByRole('listitem')).toHaveLength(1),
+    )
+    expect(screen.getByRole('listitem')).toHaveTextContent('Breakfast')
+    expect(kept.map((tag) => tag.name)).toEqual(['Breakfast'])
+    expect(onChanged).toHaveBeenCalledOnce()
+    expect(toastAdd).not.toHaveBeenCalled()
+  })
+
   it('creates a Tag from the name typed, and lists it once the server has it', async () => {
     const kept = [{ id: 7, name: 'Breakfast', foodCount: 1 }]
     const sent: unknown[] = []
