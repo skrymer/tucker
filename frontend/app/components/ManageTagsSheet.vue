@@ -90,7 +90,9 @@ function foodCount(count: number) {
             {{ foodCount(tag.foodCount) }}. The foods stay in your catalog.
           </p>
           <div class="flex justify-end gap-2">
-            <UButton color="neutral" variant="ghost">Cancel</UButton>
+            <UButton color="neutral" variant="ghost" @click="confirming = null">
+              Cancel
+            </UButton>
             <UButton color="error" @click="deleteTag(tag.id)">
               Delete tag
             </UButton>

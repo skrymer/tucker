@@ -68,6 +68,32 @@ describe('ManageTagsSheet', () => {
     expect(deletes).toBe(0)
   })
 
+  it('keeps a Tag whose delete is cancelled, back as it was', async () => {
+    let deletes = 0
+    registerEndpoint('/api/tags', () => [
+      { id: 9, name: 'snack', foodCount: 3 },
+    ])
+    registerEndpoint('/api/tags/9', {
+      method: 'DELETE',
+      handler: () => {
+        deletes++
+        return null
+      },
+    })
+    await renderSuspended(ManageTagsSheet, { props: { open: true } })
+    const user = userEvent.setup()
+    await user.click(
+      await screen.findByRole('button', { name: 'Delete snack' }),
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+
+    expect(screen.queryByText(/It comes off/)).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Delete snack' })).toBeVisible()
+    expect(screen.getByText('3 foods')).toBeVisible()
+    expect(deletes).toBe(0)
+  })
+
   it('deletes a Tag once confirmed, drops it from the list, and tells the page its Foods changed', async () => {
     const kept = [
       { id: 7, name: 'Breakfast', foodCount: 1 },
