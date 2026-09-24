@@ -39,6 +39,35 @@ describe('ManageTagsSheet', () => {
     })
   })
 
+  it('asks before deleting a Tag, naming how many Foods it comes off and that they stay', async () => {
+    let deletes = 0
+    registerEndpoint('/api/tags', () => [
+      { id: 7, name: 'Breakfast', foodCount: 1 },
+      { id: 9, name: 'snack', foodCount: 3 },
+    ])
+    registerEndpoint('/api/tags/9', {
+      method: 'DELETE',
+      handler: () => {
+        deletes++
+        return null
+      },
+    })
+    await renderSuspended(ManageTagsSheet, { props: { open: true } })
+
+    await userEvent
+      .setup()
+      .click(await screen.findByRole('button', { name: 'Delete snack' }))
+
+    expect(
+      screen.getByText(
+        'Delete “snack”? It comes off 3 foods. The foods stay in your catalog.',
+      ),
+    ).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Delete tag' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeVisible()
+    expect(deletes).toBe(0)
+  })
+
   it('creates a Tag from the name typed, and lists it once the server has it', async () => {
     const kept = [{ id: 7, name: 'Breakfast', foodCount: 1 }]
     const sent: unknown[] = []
