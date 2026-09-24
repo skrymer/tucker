@@ -166,6 +166,36 @@ describe('ManageTagsSheet', () => {
     expect(posts).toBe(0)
   })
 
+  it('refuses a Tag name longer than 30 characters at the field, and sends nothing', async () => {
+    let posts = 0
+    registerEndpoint('/api/tags', { method: 'GET', handler: () => [] })
+    registerEndpoint('/api/tags', {
+      method: 'POST',
+      handler: () => {
+        posts++
+        return { id: 8, name: 'x', foodCount: 0 }
+      },
+    })
+    await renderSuspended(ManageTagsSheet, { props: { open: true } })
+    const user = userEvent.setup()
+
+    await user.type(
+      screen.getByRole('textbox', { name: 'New tag' }),
+      'abcdefghijklmnopqrstuvwxyzABCDE',
+    )
+    await user.click(screen.getByRole('button', { name: 'Add' }))
+
+    expect(
+      await screen.findByText('A tag name is at most 30 characters', {
+        exact: true,
+      }),
+    ).toBeVisible()
+    expect(
+      screen.queryByText('Enter a name for this tag'),
+    ).not.toBeInTheDocument()
+    expect(posts).toBe(0)
+  })
+
   it('creates a Tag from the name typed, and lists it once the server has it', async () => {
     const kept = [{ id: 7, name: 'Breakfast', foodCount: 1 }]
     const sent: unknown[] = []
