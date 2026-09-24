@@ -3634,7 +3634,8 @@
         "required": [
           "cookedWeightG",
           "ingredients",
-          "name"
+          "name",
+          "tagIds"
         ],
         "type": "object",
         "properties": {
@@ -3649,6 +3650,13 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/CreateRecipeIngredient"
+            }
+          },
+          "tagIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
             }
           }
         }

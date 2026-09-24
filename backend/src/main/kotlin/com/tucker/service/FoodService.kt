@@ -1,6 +1,7 @@
 package com.tucker.service
 
 import com.tucker.domain.Food
+import com.tucker.domain.Recipe
 import com.tucker.persistence.EntryRepository
 import com.tucker.persistence.FoodRepository
 import com.tucker.persistence.RecipeRepository
@@ -27,6 +28,20 @@ class FoodService(
      */
     @Transactional
     fun create(food: Food): Food? = if (ownsAll(food.tagIds)) foods.insert(food) else null
+
+    /**
+     * Add [recipe] to the catalog carrying its Tags, or return null having written
+     * nothing when one of them is not the caller's (ADR 0033).
+     */
+    @Transactional
+    fun createRecipe(recipe: Recipe): Recipe? = if (ownsAll(recipe.tagIds)) recipes.insert(recipe) else null
+
+    /**
+     * Replace the stored Recipe with [recipe] — composition and Tags alike — or return
+     * null having written nothing when the Recipe or one of the Tags is not the caller's.
+     */
+    @Transactional
+    fun updateRecipe(recipe: Recipe): Food? = if (ownsAll(recipe.tagIds)) recipes.update(recipe) else null
 
     /**
      * Put exactly [tagIds] on the Food [id], or return null having written nothing when

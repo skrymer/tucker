@@ -4,6 +4,7 @@ import com.tucker.domain.Recipe
 import com.tucker.domain.RecipeIngredient
 import com.tucker.persistence.FoodRepository
 import com.tucker.persistence.RecipeRepository
+import com.tucker.service.FoodService
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -30,6 +31,7 @@ data class CreateRecipeRequest(
     val name: String,
     val cookedWeightG: Double,
     val ingredients: List<CreateRecipeIngredient>,
+    val tagIds: List<Long> = emptyList(),
 )
 
 /** One ingredient line of a [RecipeResponse]: the ingredient Food and the grams weighed in. */
@@ -71,6 +73,7 @@ class RecipeController(
     private val recipes: RecipeRepository,
     private val foods: FoodRepository,
     private val describer: FoodDescriber,
+    private val foodService: FoodService,
 ) {
 
     /**
@@ -83,7 +86,8 @@ class RecipeController(
     @ResponseStatus(HttpStatus.CREATED)
     fun create(@RequestBody request: CreateRecipeRequest): FoodResponse {
         val recipe = request.toRecipe(id = null)
-        return describer.describe(recipes.insert(recipe).asFood())
+        val created = foodService.createRecipe(recipe) ?: throw NotFoundException("no Tag among ${request.tagIds}")
+        return describer.describe(created.asFood())
     }
 
     /**
@@ -110,7 +114,8 @@ class RecipeController(
         // caller's. Both answer 404, and neither is redundant.
         recipes.findById(id) ?: throw NotFoundException("no recipe with id $id")
         val recipe = request.toRecipe(id = id)
-        val updated = recipes.update(recipe) ?: throw NotFoundException("no recipe with id $id")
+        val updated = foodService.updateRecipe(recipe)
+            ?: throw NotFoundException("no recipe with id $id, or no Tag among ${request.tagIds}")
         return describer.describe(updated)
     }
 
@@ -124,6 +129,12 @@ class RecipeController(
                 ?: throw NotFoundException("no Food with id ${line.foodId}")
             RecipeIngredient(food, line.grams)
         }
-        return Recipe(id = id, name = name, ingredients = lines, cookedWeightG = cookedWeightG)
+        return Recipe(
+            id = id,
+            name = name,
+            ingredients = lines,
+            cookedWeightG = cookedWeightG,
+            tagIds = tagIds.toSet(),
+        )
     }
 }

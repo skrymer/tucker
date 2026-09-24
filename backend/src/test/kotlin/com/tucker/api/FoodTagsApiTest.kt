@@ -113,34 +113,6 @@ class FoodTagsApiTest {
     }
 
     @Test
-    fun `a Recipe edited keeps the Tags it carries, and says so`() {
-        val mince = createFood("Beef mince")
-        val recipe = objectMapper.readTree(
-            mockMvc.post("/api/recipes") {
-                contentType = MediaType.APPLICATION_JSON
-                content = """{"name":"Bolognese","cookedWeightG":500.0,
-                              "ingredients":[{"foodId":$mince,"grams":600.0}]}"""
-            }.andExpect { status { isCreated() } }.andReturn().response.contentAsString,
-        ).get("id").asLong()
-        val dinner = createTag("dinner")
-        retag(recipe, dinner)
-
-        mockMvc.put("/api/recipes/$recipe") {
-            contentType = MediaType.APPLICATION_JSON
-            content = """{"name":"Bolognese","cookedWeightG":450.0,
-                          "ingredients":[{"foodId":$mince,"grams":600.0}]}"""
-        }.andExpect {
-            status { isOk() }
-            jsonPath("$.tags[0].id") { value(dinner) }
-        }
-
-        mockMvc.get("/api/foods/$recipe").andExpect {
-            jsonPath("$.tags.length()") { value(1) }
-            jsonPath("$.tags[0].name") { value("dinner") }
-        }
-    }
-
-    @Test
     fun `deleting a Food deletes none of the Tags it carried`() {
         val oats = createFood("Rolled oats")
         val breakfast = createTag("breakfast")
