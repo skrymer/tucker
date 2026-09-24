@@ -252,6 +252,32 @@ describe('ManageTagsSheet', () => {
     expect(screen.getByText('3 foods', { exact: false })).toBeInTheDocument()
   })
 
+  it('names a create that failed for want of a connection in its own error toast', async () => {
+    toastAdd.mockClear()
+    registerEndpoint('/api/tags', { method: 'GET', handler: () => [] })
+    registerEndpoint('/api/tags', {
+      method: 'POST',
+      handler: (event) => {
+        setResponseStatus(event, 503)
+        return {}
+      },
+    })
+    await renderSuspended(ManageTagsSheet, { props: { open: true } })
+    const user = userEvent.setup()
+    await user.type(screen.getByRole('textbox', { name: 'New tag' }), 'Lunch')
+
+    await user.click(screen.getByRole('button', { name: 'Add' }))
+
+    await vi.waitFor(() =>
+      expect(toastAdd).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'Could not add tag' }),
+      ),
+    )
+    expect(screen.getByRole('textbox', { name: 'New tag' })).toHaveValue(
+      'Lunch',
+    )
+  })
+
   it('asks for a name when Add is pressed on an empty field, and sends nothing', async () => {
     let posts = 0
     registerEndpoint('/api/tags', { method: 'GET', handler: () => [] })
