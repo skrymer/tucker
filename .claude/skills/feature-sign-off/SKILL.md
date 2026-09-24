@@ -309,7 +309,11 @@ losing a finding:
 - **Batch the fixes, not one test run each.** Findings arrive in groups and most are
   independent. Apply a whole gate's worth, then run the touched spec once. The
   exception is a fix you intend to prove by hand-mutation — those stay one at a
-  time, because the point is watching that single mutant die.
+  time, because the point is watching that single mutant die. So does a test that
+  passes on write because the code already delivers it (a gate-3 ledger gap, say):
+  show its red on a throwaway copy, or with `-PmutationFullMatrix` on the backend —
+  never by mutating the source in place, which the TDD hook refuses. `mutation-test`
+  carries both recipes.
 
 ## After the gates
 
