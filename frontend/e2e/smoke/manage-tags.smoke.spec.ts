@@ -1,4 +1,5 @@
 import { test, expect } from './support/smoke-test'
+import { expectCreated } from './support/seeding'
 
 // F18 slice 5 smoke: Manage tags against the real backend. A Tag is created from
 // the sheet before anything carries it (and naming it again in another case does
@@ -13,16 +14,17 @@ test('a Tag created in Manage tags, put on a Food and deleted leaves the Food in
   goto,
   request,
 }) => {
-  const created = await request.post(`${API}/foods`, {
-    data: {
-      tagIds: [],
-      name: 'Rolled oats',
-      proteinPer100g: 13,
-      carbsPer100g: 60,
-      fatPer100g: 7,
-    },
-  })
-  expect(created.status()).toBe(201)
+  await expectCreated(
+    request.post(`${API}/foods`, {
+      data: {
+        tagIds: [],
+        name: 'Rolled oats',
+        proteinPer100g: 13,
+        carbsPer100g: 60,
+        fatPer100g: 7,
+      },
+    }),
+  )
   await goto('/foods', { waitUntil: 'hydration' })
 
   await page.getByRole('button', { name: 'Manage tags' }).click()

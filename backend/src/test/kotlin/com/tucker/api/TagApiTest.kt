@@ -134,7 +134,7 @@ class TagApiTest {
         contentType = MediaType.APPLICATION_JSON
         content = """{"name":"$name","barcode":null,
                       "proteinPer100g":13.0,"carbsPer100g":60.0,"fatPer100g":7.0,"tagIds":[]}"""
-    }.andReturn().response.contentAsString.let(::idOf)
+    }.andExpect { status { isCreated() } }.andReturn().response.contentAsString.let(::idOf)
 
     private fun createTag(name: String): Long {
         val body = mockMvc.post("/api/tags") {

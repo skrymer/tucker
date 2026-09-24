@@ -223,13 +223,13 @@ function handleDeleteConfirm() {
 
 <template>
   <section class="flex flex-col gap-4">
-    <header class="flex items-center justify-between">
+    <header class="flex items-center gap-2">
       <h1 class="text-2xl font-bold text-default">Foods</h1>
       <UButton
         icon="i-lucide-tags"
         color="neutral"
         variant="ghost"
-        class="ms-auto me-2"
+        class="ms-auto"
         @click="manageTagsOpen = true"
       >
         Manage tags
