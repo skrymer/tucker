@@ -705,6 +705,41 @@ describe('FoodTagsSheet', () => {
     expect(onSave).toHaveBeenCalledWith([])
   })
 
+  it('takes a Tag off from the keyboard when nothing is typed', async () => {
+    registerEndpoint('/api/tags', () => [
+      { id: 7, name: 'Breakfast', foodCount: 1 },
+    ])
+    const onSave = vi.fn()
+    await renderSuspended(FoodTagsSheet, { props: { food: oats, onSave } })
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole('combobox', { name: 'Tags' }))
+    await screen.findByRole('option', { name: 'Breakfast' })
+    await user.keyboard('{ArrowDown}{Enter}')
+    await user.click(screen.getByRole('button', { name: 'Save tags' }))
+
+    expect(onSave).toHaveBeenCalledWith([])
+  })
+
+  it('takes a Tag off by a click after its name was entered again', async () => {
+    registerEndpoint('/api/tags', () => [
+      { id: 7, name: 'Breakfast', foodCount: 1 },
+    ])
+    const onSave = vi.fn()
+    await renderSuspended(FoodTagsSheet, { props: { food: oats, onSave } })
+    const user = userEvent.setup()
+    const picker = screen.getByRole('combobox', { name: 'Tags' })
+
+    await user.type(picker, 'Breakfast')
+    await screen.findByRole('option', { name: 'Breakfast' })
+    await user.keyboard('{Enter}')
+    await user.type(picker, 'Break')
+    await user.click(await screen.findByRole('option', { name: 'Breakfast' }))
+    await user.click(screen.getByRole('button', { name: 'Save tags' }))
+
+    expect(onSave).toHaveBeenCalledWith([])
+  })
+
   it('saves a Food with a Tag taken off as no longer carrying it', async () => {
     registerEndpoint('/api/tags', () => [
       { id: 7, name: 'Breakfast', foodCount: 1 },

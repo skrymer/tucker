@@ -1190,16 +1190,21 @@ only `e2e/food-tags.spec.ts` can reach it — happy-dom runs no microtask checkp
 listeners, so Reka's post-`nextTick` `defaultPrevented` check sees a bubbling
 `preventDefault` there that it never sees in a browser.
 
-`TagPicker.vue` scores **66 of 78** after the queue and the typed-name rule. Beyond the
-two carried over above (the `signal`, the initial search term), the remaining survivors are:
-- **Killed by `e2e/food-tags.spec.ts`:** `enterTyped` emptied, its guard forced false,
-  its `trim` dropped and its `enter` call deleted. The Vitest layer structurally
-  cannot reach them. The `trim` is pinned by the spaces-only test; the other three by
-  "a name entered with the Tag list closed".
-- **Equivalent:** three mutants that empty `pick`'s `kept` when nothing is typed. They
-  leave `picked = held`, and Reka hands back the held list in the order it was given.
-  Forcing `kept` to *all* of `picked` is **not** equivalent. The two-Tag take-off test
-  kills it.
+`TagPicker.vue` scores **72 of 86** before its last two tests, which kill three more (the
+Enter flag forced on, and its reset removed). Beyond the two carried over above (the
+`signal`, the initial search term), the remaining survivors are:
+- **Killed by `e2e/food-tags.spec.ts`:** `enterTyped`'s create call forced off or
+  deleted, and the `trim` that decides whether a name was typed. The Vitest layer
+  structurally cannot reach them. The spaces-only test pins the `trim`; "a name entered
+  with the Tag list closed" pins the create.
+- **Equivalent:** `lastSent` seeded, since it is written before it is read.
+- **Equivalent:** three mutants that empty `pick`'s `kept` when no Enter is picking.
+  They leave `picked = held`, and Reka hands back the held list in the order it was
+  given. Forcing `kept` to *all* of `picked` is **not** equivalent. The two-Tag
+  take-off test kills it.
+
+`useApiMutation.ts` scores **72 of 80** with the `retry` hook, which is killed. Its
+survivors are on lines the hook did not touch.
 
 ### Tags on Log — `catalog.ts` 48 of 54, `log.vue` and `TagChips.vue` unattributed
 
