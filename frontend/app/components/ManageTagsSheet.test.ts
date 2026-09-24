@@ -443,6 +443,33 @@ describe('ManageTagsSheet', () => {
     expect(toastAdd).not.toHaveBeenCalled()
   })
 
+  it('lets go of the server’s refusal once the name it refused is edited', async () => {
+    registerEndpoint('/api/tags', { method: 'GET', handler: () => [] })
+    registerEndpoint('/api/tags', {
+      method: 'POST',
+      handler: (event) => {
+        setResponseStatus(event, 400)
+        return { message: 'a Tag name must be at most 30 characters' }
+      },
+    })
+    await renderSuspended(ManageTagsSheet, { props: { open: true } })
+    const user = userEvent.setup()
+    const field = screen.getByRole('textbox', { name: 'New tag' })
+    await user.type(field, 'Lunch')
+    await user.click(screen.getByRole('button', { name: 'Add' }))
+    await screen.findByText('a Tag name must be at most 30 characters')
+
+    await user.clear(field)
+    await user.click(screen.getByRole('button', { name: 'Add' }))
+
+    expect(
+      screen.queryByText('a Tag name must be at most 30 characters'),
+    ).not.toBeInTheDocument()
+    expect(
+      await screen.findByText('Enter a name for this tag', { exact: true }),
+    ).toBeVisible()
+  })
+
   it('creates a Tag from the name typed, and lists it once the server has it', async () => {
     const kept = [{ id: 7, name: 'Breakfast', foodCount: 1 }]
     const sent: unknown[] = []
