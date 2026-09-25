@@ -363,7 +363,8 @@ it off every Food (the Foods stay), and a Tag carrying no Foods still exists unt
 it is deleted. Renaming a Tag to the name of another **merges** them: every Food
 carrying either ends up carrying the one that already existed. That is what
 tidying "brekkie" into "breakfast" means, and it loses nothing — every Food keeps
-a Tag — so it is announced before it happens rather than refused.
+a Tag — so it is announced before it happens rather than refused. Respelling a
+Tag's own name in another case is a rename, never a merge into itself.
 A Tag's name is matched ignoring case: "Breakfast" and "breakfast" are one Tag,
 and a User typing a Tag they already have in another case gets the one they have.
 Tags are attached where Foods are managed — on a Food in the catalog, or while

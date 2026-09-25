@@ -1751,7 +1751,8 @@ null` now means two things that earn opposite messages — the same trap
   "Weight history" — a different thing, deliberately named apart), and widening what
   advances the review cadence ([#192](https://github.com/skrymer/tucker/issues/192)).
 
-- **F18** — **Tags**: narrow **Log** to a grouping of the User's own Foods (PRD
+- **F18** — **Tags**: narrow **Log** to a grouping of the User's own Foods
+  (**shipped**, all six slices; PRD
   [#360](https://github.com/skrymer/tucker/issues/360)). Design pass **done**, see
   [ADR 0033](docs/adr/0033-a-tag-is-the-users-own-thing-not-a-word-on-a-food.md)
   and the `Tag` term in `CONTEXT.md`; chosen from a throwaway four-variant prototype
@@ -1884,6 +1885,45 @@ null` now means two things that earn opposite messages — the same trap
   - **On a phone the sheet grows upward as a row lands**, which moves Add under a fast
     second click. The smoke waits for each row before the next add. A person does that
     anyway, but it is why a same-speed script failed on Mobile Chrome alone.
+
+  Slice 6 ([#366](https://github.com/skrymer/tucker/issues/366)) — **rename a Tag,
+  and merge by renaming onto another** — ✅ done, **and with it F18**. A pencil on each
+  Manage-tags row opens the name in place; `PUT /api/tags/{id}` answers with the Tag
+  that remains and whether it got there by merging.
+  - **Rename-or-merge is decided on `Tag`, applied by a service.** `Tag.renamedTo`
+    reads the User's own Tags and answers `Renamed` or `Merged(into)` — pure, and
+    tested without Spring. `TagService` runs the outcome in one transaction, because
+    a merge crosses aggregates: every Food carrying the renamed Tag moves onto the
+    one that existed, and the renamed Tag is deleted.
+  - **A respelling of a Tag's own name is a rename.** The User's Tags include the one
+    being renamed, so without excluding it by id, "treats" → "Treats" would find
+    itself as the name's owner and merge into itself.
+  - **The merge is one `INSERT … SELECT … ON CONFLICT DO NOTHING` and a delete.** The
+    conflict is the link a Food carrying *both* Tags already has, which is exactly the
+    duplicate to drop; the scoped delete of the renamed Tag then cascades its links
+    away. Nothing reads `RETURNING`, so the `last_insert_rowid` trap
+    ([#385](https://github.com/skrymer/tucker/issues/385)) does not apply. The insert
+    names the owner through both the Foods and the target Tag, and
+    `LinkTableOwnerPredicateTest` now checks INSERTs into `food_tag` as well as
+    DELETEs.
+  - **A merge target is only ever the caller's own Tag.** Renaming onto a name only
+    another User holds is a plain rename; a foreign id is **404**, the same as an
+    absent one — unlike delete's 204, a rename has nothing idempotent to answer with.
+  - **The warning is a preview over the Tags already fetched** (ADR 0002's carve-out):
+    "“Snack” already exists — its 3 foods and this tag’s 1 food become one tag.", and
+    the button reads **Merge**. The server decides; the sheet re-reads the list and
+    emits `changed` so `/foods` re-reads the catalog under the new name.
+  - **The preview trims what the server trims, not what JavaScript does.** Kotlin's
+    `trim()` strips U+001C–U+001F and JavaScript's keeps them; JavaScript strips
+    U+FEFF and Kotlin keeps it. With a plain `.trim()` a pasted `"\u001FSnacks"`
+    showed **Save** and then merged — an unannounced, irreversible merge, which is
+    exactly what ADR 0033 says never happens. `tagNameKey` states the server's rule
+    (the key a Tag is identified by) and the preview compares on it. Found by the
+    walk-through's verdict audit, not by any gate before it.
+  - **A row asks one thing at a time.** Opening a rename drops a delete question on
+    another row and the other way round, and reopening the sheet starts at rest. The
+    new-name field takes focus on desktop only, as `LogGramsSheet` does — on a phone
+    that focus pops the keyboard over the sheet.
 
 ## Architecture
 
