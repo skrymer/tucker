@@ -1,0 +1,500 @@
+import { describe, expect, it, vi } from 'vitest'
+import {
+  mockNuxtImport,
+  registerEndpoint,
+  renderSuspended,
+} from '@nuxt/test-utils/runtime'
+import { readBody, setResponseStatus } from 'h3'
+import { screen, within } from '@testing-library/vue'
+import userEvent from '@testing-library/user-event'
+import ManageTagsSheet from './ManageTagsSheet.vue'
+
+const { toastAdd } = vi.hoisted(() => ({ toastAdd: vi.fn() }))
+mockNuxtImport('useToast', () => () => ({
+  add: toastAdd,
+  remove: vi.fn(),
+}))
+
+describe('ManageTagsSheet', () => {
+  it('lists every Tag in the order the server sends, each with how many Foods carry it', async () => {
+    registerEndpoint('/api/tags', () => [
+      { id: 7, name: 'Breakfast', foodCount: 1 },
+      { id: 8, name: 'dinner', foodCount: 0 },
+      { id: 9, name: 'snack', foodCount: 3 },
+    ])
+
+    await renderSuspended(ManageTagsSheet, { props: { open: true } })
+
+    const sheet = screen.getByRole('dialog', { name: 'Manage tags' })
+    const rows = await within(sheet).findAllByRole('listitem')
+    const expected = [
+      ['Breakfast', '1 food'],
+      ['dinner', '0 foods'],
+      ['snack', '3 foods'],
+    ]
+    expect(rows).toHaveLength(expected.length)
+    expected.forEach(([name, count], i) => {
+      expect(within(rows[i]!).getByText(name!)).toBeVisible()
+      expect(within(rows[i]!).getByText(count!)).toBeVisible()
+    })
+  })
+
+  it('says the Tags could not load, and lists them once a Retry reads them', async () => {
+    let failing = true
+    registerEndpoint('/api/tags', (event) => {
+      if (failing) {
+        setResponseStatus(event, 500)
+        return {}
+      }
+      return [{ id: 7, name: 'Breakfast', foodCount: 1 }]
+    })
+    await renderSuspended(ManageTagsSheet, { props: { open: true } })
+
+    expect(await screen.findByText("Couldn't load your tags")).toBeVisible()
+    expect(screen.queryByText('No tags yet.')).not.toBeInTheDocument()
+    failing = false
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Retry' }))
+
+    expect(await screen.findByText('Breakfast')).toBeVisible()
+    expect(
+      screen.queryByText("Couldn't load your tags"),
+    ).not.toBeInTheDocument()
+  })
+
+  it('says there are no Tags yet when the User keeps none', async () => {
+    registerEndpoint('/api/tags', () => [])
+
+    await renderSuspended(ManageTagsSheet, { props: { open: true } })
+
+    expect(await screen.findByText('No tags yet.')).toBeVisible()
+    expect(screen.queryAllByRole('listitem')).toEqual([])
+  })
+
+  it('asks before deleting a Tag, naming how many Foods it comes off and that they stay', async () => {
+    let deletes = 0
+    registerEndpoint('/api/tags', () => [
+      { id: 7, name: 'Breakfast', foodCount: 1 },
+      { id: 9, name: 'snack', foodCount: 3 },
+    ])
+    registerEndpoint('/api/tags/9', {
+      method: 'DELETE',
+      handler: () => {
+        deletes++
+        return null
+      },
+    })
+    await renderSuspended(ManageTagsSheet, { props: { open: true } })
+
+    await userEvent
+      .setup()
+      .click(await screen.findByRole('button', { name: 'Delete snack' }))
+
+    expect(
+      screen.getByText(
+        'Delete “snack”? It comes off 3 foods. The foods stay in your catalog.',
+      ),
+    ).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Delete tag' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeVisible()
+    expect(deletes).toBe(0)
+  })
+
+  it('asks before deleting a Tag no Food carries, saying it is on none', async () => {
+    registerEndpoint('/api/tags', () => [
+      { id: 8, name: 'dinner', foodCount: 0 },
+    ])
+    await renderSuspended(ManageTagsSheet, { props: { open: true } })
+
+    await userEvent
+      .setup()
+      .click(await screen.findByRole('button', { name: 'Delete dinner' }))
+
+    expect(
+      screen.getByText('Delete “dinner”? No foods carry it.'),
+    ).toBeVisible()
+    expect(screen.queryByText(/It comes off/)).not.toBeInTheDocument()
+  })
+
+  it('keeps a Tag whose delete is cancelled, back as it was', async () => {
+    let deletes = 0
+    registerEndpoint('/api/tags', () => [
+      { id: 9, name: 'snack', foodCount: 3 },
+    ])
+    registerEndpoint('/api/tags/9', {
+      method: 'DELETE',
+      handler: () => {
+        deletes++
+        return null
+      },
+    })
+    await renderSuspended(ManageTagsSheet, { props: { open: true } })
+    const user = userEvent.setup()
+    await user.click(
+      await screen.findByRole('button', { name: 'Delete snack' }),
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+
+    expect(screen.queryByText(/It comes off/)).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Delete snack' })).toBeVisible()
+    expect(screen.getByText('3 foods')).toBeVisible()
+    expect(deletes).toBe(0)
+  })
+
+  it('deletes a Tag once confirmed, drops it from the list, and tells the page its Foods changed', async () => {
+    const kept = [
+      { id: 7, name: 'Breakfast', foodCount: 1 },
+      { id: 9, name: 'snack', foodCount: 3 },
+    ]
+    registerEndpoint('/api/tags', { method: 'GET', handler: () => [...kept] })
+    registerEndpoint('/api/tags/9', {
+      method: 'DELETE',
+      handler: () => {
+        kept.splice(1, 1)
+        return null
+      },
+    })
+    const onChanged = vi.fn()
+    await renderSuspended(ManageTagsSheet, {
+      props: { open: true, onChanged },
+    })
+    const user = userEvent.setup()
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Delete snack' }),
+    )
+    await user.click(screen.getByRole('button', { name: 'Delete tag' }))
+
+    await vi.waitFor(() =>
+      expect(screen.getAllByRole('listitem')).toHaveLength(1),
+    )
+    expect(screen.getByRole('listitem')).toHaveTextContent('Breakfast')
+    expect(kept.map((tag) => tag.name)).toEqual(['Breakfast'])
+    expect(onChanged).toHaveBeenCalledOnce()
+    expect(toastAdd).not.toHaveBeenCalled()
+  })
+
+  it('lists what the server holds after a delete, even while an earlier re-read is still on its way', async () => {
+    const kept = [{ id: 9, name: 'snack', foodCount: 3 }]
+    let reads = 0
+    let releaseSecondRead: () => void = () => {}
+    registerEndpoint('/api/tags', {
+      method: 'GET',
+      handler: async () => {
+        reads++
+        const answer = [...kept]
+        if (reads === 2)
+          await new Promise<void>((resolve) => (releaseSecondRead = resolve))
+        return answer
+      },
+    })
+    registerEndpoint('/api/tags', {
+      method: 'POST',
+      handler: () => {
+        kept.push({ id: 10, name: 'Lunch', foodCount: 0 })
+        return { id: 10, name: 'Lunch', foodCount: 0 }
+      },
+    })
+    registerEndpoint('/api/tags/9', {
+      method: 'DELETE',
+      handler: () => {
+        kept.splice(0, 1)
+        return null
+      },
+    })
+    await renderSuspended(ManageTagsSheet, { props: { open: true } })
+    const user = userEvent.setup()
+    await screen.findByText('snack')
+
+    await user.type(screen.getByRole('textbox', { name: 'New tag' }), 'Lunch')
+    await user.click(screen.getByRole('button', { name: 'Add' }))
+    await vi.waitFor(() => expect(reads).toBe(2))
+    await user.click(screen.getByRole('button', { name: 'Delete snack' }))
+    await user.click(screen.getByRole('button', { name: 'Delete tag' }))
+    await vi.waitFor(() => expect(reads).toBe(3))
+    releaseSecondRead()
+
+    await vi.waitFor(() =>
+      expect(
+        screen.getAllByRole('listitem').map((row) => row.textContent),
+      ).toEqual([expect.stringContaining('Lunch')]),
+    )
+  })
+
+  it('reopens on the list at rest, not on a delete it was asking about when it closed', async () => {
+    registerEndpoint('/api/tags', () => [
+      { id: 9, name: 'snack', foodCount: 3 },
+    ])
+    const { rerender } = await renderSuspended(ManageTagsSheet, {
+      props: { open: true },
+    })
+    await userEvent
+      .setup()
+      .click(await screen.findByRole('button', { name: 'Delete snack' }))
+
+    await rerender({ open: false })
+    await rerender({ open: true })
+
+    expect(screen.queryByText(/It comes off/)).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Delete snack' })).toBeVisible()
+  })
+
+  it('holds the delete button while a delete is in flight', async () => {
+    let deletes = 0
+    let answer: () => void = () => {}
+    registerEndpoint('/api/tags', () => [
+      { id: 9, name: 'snack', foodCount: 3 },
+    ])
+    registerEndpoint('/api/tags/9', {
+      method: 'DELETE',
+      handler: () => {
+        deletes++
+        return new Promise<null>((resolve) => (answer = () => resolve(null)))
+      },
+    })
+    await renderSuspended(ManageTagsSheet, { props: { open: true } })
+    const user = userEvent.setup()
+    await user.click(
+      await screen.findByRole('button', { name: 'Delete snack' }),
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Delete tag' }))
+
+    await vi.waitFor(() => expect(deletes).toBe(1))
+    expect(screen.getByRole('button', { name: /Delete tag/ })).toBeDisabled()
+    answer()
+  })
+
+  it('holds the add button while a create is in flight', async () => {
+    let posts = 0
+    let answer: () => void = () => {}
+    registerEndpoint('/api/tags', { method: 'GET', handler: () => [] })
+    registerEndpoint('/api/tags', {
+      method: 'POST',
+      handler: () => {
+        posts++
+        return new Promise((resolve) => {
+          answer = () => resolve({ id: 8, name: 'Lunch', foodCount: 0 })
+        })
+      },
+    })
+    await renderSuspended(ManageTagsSheet, { props: { open: true } })
+    const user = userEvent.setup()
+    await user.type(screen.getByRole('textbox', { name: 'New tag' }), 'Lunch')
+
+    await user.click(screen.getByRole('button', { name: 'Add' }))
+
+    await vi.waitFor(() => expect(posts).toBe(1))
+    expect(screen.getByRole('button', { name: /Add/ })).toBeDisabled()
+    answer()
+  })
+
+  it('names a delete that failed for want of a connection in its own error toast', async () => {
+    toastAdd.mockClear()
+    registerEndpoint('/api/tags', () => [
+      { id: 9, name: 'snack', foodCount: 3 },
+    ])
+    registerEndpoint('/api/tags/9', {
+      method: 'DELETE',
+      handler: (event) => {
+        setResponseStatus(event, 503)
+        return {}
+      },
+    })
+    await renderSuspended(ManageTagsSheet, { props: { open: true } })
+    const user = userEvent.setup()
+    await user.click(
+      await screen.findByRole('button', { name: 'Delete snack' }),
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Delete tag' }))
+
+    await vi.waitFor(() =>
+      expect(toastAdd).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'Could not delete tag' }),
+      ),
+    )
+    expect(screen.getByText('3 foods', { exact: false })).toBeInTheDocument()
+  })
+
+  it('names a create that failed for want of a connection in its own error toast', async () => {
+    toastAdd.mockClear()
+    registerEndpoint('/api/tags', { method: 'GET', handler: () => [] })
+    registerEndpoint('/api/tags', {
+      method: 'POST',
+      handler: (event) => {
+        setResponseStatus(event, 503)
+        return {}
+      },
+    })
+    await renderSuspended(ManageTagsSheet, { props: { open: true } })
+    const user = userEvent.setup()
+    await user.type(screen.getByRole('textbox', { name: 'New tag' }), 'Lunch')
+
+    await user.click(screen.getByRole('button', { name: 'Add' }))
+
+    await vi.waitFor(() =>
+      expect(toastAdd).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'Could not add tag' }),
+      ),
+    )
+    expect(screen.getByRole('textbox', { name: 'New tag' })).toHaveValue(
+      'Lunch',
+    )
+  })
+
+  it('asks for a name when Add is pressed on an empty field, and sends nothing', async () => {
+    let posts = 0
+    registerEndpoint('/api/tags', { method: 'GET', handler: () => [] })
+    registerEndpoint('/api/tags', {
+      method: 'POST',
+      handler: () => {
+        posts++
+        return { id: 8, name: 'x', foodCount: 0 }
+      },
+    })
+    await renderSuspended(ManageTagsSheet, { props: { open: true } })
+
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Add' }))
+
+    expect(
+      await screen.findByText('Enter a name for this tag', { exact: true }),
+    ).toBeVisible()
+    expect(posts).toBe(0)
+  })
+
+  it('refuses a Tag name of whitespace alone at the field, and sends nothing', async () => {
+    let posts = 0
+    registerEndpoint('/api/tags', { method: 'GET', handler: () => [] })
+    registerEndpoint('/api/tags', {
+      method: 'POST',
+      handler: () => {
+        posts++
+        return { id: 8, name: '', foodCount: 0 }
+      },
+    })
+    await renderSuspended(ManageTagsSheet, { props: { open: true } })
+    const user = userEvent.setup()
+
+    await user.type(screen.getByRole('textbox', { name: 'New tag' }), '   ')
+    await user.click(screen.getByRole('button', { name: 'Add' }))
+
+    expect(
+      await screen.findByText('Enter a name for this tag', { exact: true }),
+    ).toBeVisible()
+    expect(screen.queryByText(/at most 30 characters/)).not.toBeInTheDocument()
+    expect(posts).toBe(0)
+  })
+
+  it('refuses a Tag name longer than 30 characters at the field, and sends nothing', async () => {
+    let posts = 0
+    registerEndpoint('/api/tags', { method: 'GET', handler: () => [] })
+    registerEndpoint('/api/tags', {
+      method: 'POST',
+      handler: () => {
+        posts++
+        return { id: 8, name: 'x', foodCount: 0 }
+      },
+    })
+    await renderSuspended(ManageTagsSheet, { props: { open: true } })
+    const user = userEvent.setup()
+
+    await user.type(
+      screen.getByRole('textbox', { name: 'New tag' }),
+      'abcdefghijklmnopqrstuvwxyzABCDE',
+    )
+    await user.click(screen.getByRole('button', { name: 'Add' }))
+
+    expect(
+      await screen.findByText('A tag name is at most 30 characters', {
+        exact: true,
+      }),
+    ).toBeVisible()
+    expect(
+      screen.queryByText('Enter a name for this tag'),
+    ).not.toBeInTheDocument()
+    expect(posts).toBe(0)
+  })
+
+  it('states a name the server refuses beside the field, with no Retry toast', async () => {
+    toastAdd.mockClear()
+    registerEndpoint('/api/tags', { method: 'GET', handler: () => [] })
+    registerEndpoint('/api/tags', {
+      method: 'POST',
+      handler: (event) => {
+        setResponseStatus(event, 400)
+        return { message: 'a Tag name must be at most 30 characters' }
+      },
+    })
+    await renderSuspended(ManageTagsSheet, { props: { open: true } })
+    const user = userEvent.setup()
+
+    await user.type(screen.getByRole('textbox', { name: 'New tag' }), 'Lunch')
+    await user.click(screen.getByRole('button', { name: 'Add' }))
+
+    expect(
+      await screen.findByText('a Tag name must be at most 30 characters', {
+        exact: true,
+      }),
+    ).toBeVisible()
+    expect(screen.getByRole('textbox', { name: 'New tag' })).toHaveValue(
+      'Lunch',
+    )
+    expect(toastAdd).not.toHaveBeenCalled()
+  })
+
+  it('lets go of the server’s refusal once the name it refused is edited', async () => {
+    registerEndpoint('/api/tags', { method: 'GET', handler: () => [] })
+    registerEndpoint('/api/tags', {
+      method: 'POST',
+      handler: (event) => {
+        setResponseStatus(event, 400)
+        return { message: 'a Tag name must be at most 30 characters' }
+      },
+    })
+    await renderSuspended(ManageTagsSheet, { props: { open: true } })
+    const user = userEvent.setup()
+    const field = screen.getByRole('textbox', { name: 'New tag' })
+    await user.type(field, 'Lunch')
+    await user.click(screen.getByRole('button', { name: 'Add' }))
+    await screen.findByText('a Tag name must be at most 30 characters')
+
+    await user.clear(field)
+    await user.click(screen.getByRole('button', { name: 'Add' }))
+
+    expect(
+      screen.queryByText('a Tag name must be at most 30 characters'),
+    ).not.toBeInTheDocument()
+    expect(
+      await screen.findByText('Enter a name for this tag', { exact: true }),
+    ).toBeVisible()
+  })
+
+  it('creates a Tag from the name typed, and lists it once the server has it', async () => {
+    const kept = [{ id: 7, name: 'Breakfast', foodCount: 1 }]
+    const sent: unknown[] = []
+    registerEndpoint('/api/tags', {
+      method: 'GET',
+      handler: () => [...kept],
+    })
+    registerEndpoint('/api/tags', {
+      method: 'POST',
+      handler: async (event) => {
+        const body = await readBody(event)
+        sent.push(body)
+        const created = { id: 8, name: body.name, foodCount: 0 }
+        kept.push(created)
+        return created
+      },
+    })
+    await renderSuspended(ManageTagsSheet, { props: { open: true } })
+    const user = userEvent.setup()
+
+    await user.type(screen.getByRole('textbox', { name: 'New tag' }), 'Lunch')
+    await user.click(screen.getByRole('button', { name: 'Add' }))
+
+    expect(await screen.findByText('Lunch')).toBeVisible()
+    expect(sent).toEqual([{ name: 'Lunch' }])
+    expect(screen.getByRole('textbox', { name: 'New tag' })).toHaveValue('')
+  })
+})

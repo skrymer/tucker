@@ -1786,7 +1786,10 @@ null` now means two things that earn opposite messages — the same trap
     folds the whole of Unicode for equality *and* ordering, so the Tag list and a
     Food's chips sort alike — SQLite's `lower()` would have put an accented capital
     apart. A create that races another of the same name is settled by
-    `ON CONFLICT DO NOTHING` on the index and returns the existing Tag, not a 500.
+    `ON CONFLICT DO NOTHING` on the index, not a 500 — but on SQLite the losing
+    insert's `RETURNING` answers with the connection's `last_insert_rowid()`, not
+    null, so it can be handed an unrelated id rather than the existing Tag
+    ([#385](https://github.com/skrymer/tucker/issues/385), open).
   - **The picker creates on type**, so forms send only ids. Save and the picker are
     held while a create is in flight, and a Tag created for one Food never lands on
     the next Food the sheet is reassigned to.
@@ -1860,6 +1863,27 @@ null` now means two things that earn opposite messages — the same trap
     still being created and refetched `/api/tags` on every return.
   - The recipe payload is typed from the generated `CreateRecipeRequest` rather than
     five hand-kept copies, one of which would otherwise have gone stale here.
+
+  Slice 5 ([#365](https://github.com/skrymer/tucker/issues/365)) — **Manage tags** —
+  ✅ done. A `ManageTagsSheet` opened from `/foods`' header at both widths lists every
+  Tag in the server's order with its Food count, creates one, and deletes one;
+  `DELETE /api/tags/{id}` is new.
+  - **The delete is one scoped statement, and the schema does the rest.** `food_tag`'s
+    `ON DELETE CASCADE` takes the Tag off every Food, and no Food row is touched. A
+    foreign or absent id deletes nothing and answers **204**, the same as a second
+    delete of one's own (ADR 0021), so the status is no existence oracle.
+  - **The confirmation is in the row, not a second modal over the sheet.** It names
+    how many Foods the Tag comes off and that they stay, and a Tag on none says so
+    rather than "comes off 0 foods". The sheet emits `changed` once a delete lands,
+    and `/foods` re-reads the catalog, so no row goes on wearing a deleted Tag.
+  - **A Tag is stated as its User spelled it** here as everywhere, so the sheet joins
+    `nameCase.test.ts`'s allow-list beside `TagChips` and `log.vue`.
+  - **An empty Tag is listed here and in the picker, never among Log's chips.** The
+    smoke asserts all three against the real stack: create two Tags from the sheet,
+    put one on a Food, and Log offers only that one.
+  - **On a phone the sheet grows upward as a row lands**, which moves Add under a fast
+    second click. The smoke waits for each row before the next add. A person does that
+    anyway, but it is why a same-speed script failed on Mobile Chrome alone.
 
 ## Architecture
 

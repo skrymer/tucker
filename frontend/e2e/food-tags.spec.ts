@@ -4,18 +4,34 @@ import { food } from '../test/food-fixtures'
 
 type Tag = { id: number; name: string }
 
-/** The User's Tags, as the backend keeps them: a created Tag joins the list. */
-async function mockTags(page: Page, initial: Tag[] = []) {
+/**
+ * The User's Tags, as the backend keeps them: a created Tag joins the list, a
+ * deleted one leaves it, and each is counted by the Foods [carrying] it.
+ */
+async function mockTags(
+  page: Page,
+  initial: Tag[] = [],
+  carrying: (tag: Tag) => number = () => 0,
+  onDelete: (id: number) => void = () => {},
+) {
   const known: Tag[] = [...initial]
   await page.route('**/api/tags', async (route) => {
     if (route.request().method() === 'GET')
       return route.fulfill({
-        json: known.map((tag) => ({ ...tag, foodCount: 0 })),
+        json: known.map((tag) => ({ ...tag, foodCount: carrying(tag) })),
       })
     const { name } = route.request().postDataJSON() as { name: string }
     const tag = { id: 100 + known.length, name: name.trim() }
     known.push(tag)
     return route.fulfill({ status: 201, json: { ...tag, foodCount: 0 } })
+  })
+  await page.route('**/api/tags/*', (route) => {
+    const id = Number(new URL(route.request().url()).pathname.split('/').pop())
+    // An absent id deletes nothing, as the backend's 204 does.
+    const at = known.findIndex((tag) => tag.id === id)
+    if (at >= 0) known.splice(at, 1)
+    onDelete(id)
+    return route.fulfill({ status: 204 })
   })
   return known
 }
@@ -23,15 +39,24 @@ async function mockTags(page: Page, initial: Tag[] = []) {
 /**
  * A catalog of one Food and the User's Tags, kept in step the way the backend
  * keeps them: a PUT replaces what the Food carries, so the re-read catalog
- * shows the save.
+ * shows the save, and a deleted Tag comes off the Food.
  */
-async function mockTaggableCatalog(page: Page, initial: Tag[] = []) {
-  let carries: Tag[] = []
+async function mockTaggableCatalog(
+  page: Page,
+  initial: Tag[] = [],
+  carried: Tag[] = [],
+) {
+  let carries: Tag[] = [...carried]
   const saved: number[][] = []
   const oats = () => food({ id: 1, name: 'Rolled oats', tags: carries })
 
   await page.route('**/api/foods', (route) => route.fulfill({ json: [oats()] }))
-  const known = await mockTags(page, initial)
+  const known = await mockTags(
+    page,
+    initial,
+    (tag) => (carries.some(({ id }) => id === tag.id) ? 1 : 0),
+    (id) => (carries = carries.filter((tag) => tag.id !== id)),
+  )
   await page.route('**/api/foods/1/tags', async (route) => {
     const { tagIds } = route.request().postDataJSON() as { tagIds: number[] }
     saved.push(tagIds)
@@ -262,4 +287,74 @@ test('a name entered with the Tag list closed is created as a Tag, not a save', 
   await sheet.getByRole('button', { name: 'Save food' }).click()
   await expect(sheet).toBeHidden()
   expect(created).toEqual([expect.objectContaining({ tagIds: [100] })])
+})
+
+test('a name entered in Manage tags with Enter becomes a Tag, leaving the field empty and uncomplaining', async ({
+  page,
+  goto,
+}) => {
+  await mockTaggableCatalog(page)
+  await goto('/foods', { waitUntil: 'hydration' })
+  await page.getByRole('button', { name: 'Manage tags' }).click()
+  const sheet = page.getByRole('dialog', { name: 'Manage tags' })
+  const field = sheet.getByRole('textbox', { name: 'New tag' })
+
+  await field.fill('Lunch')
+  await field.press('Enter')
+  // As a phone's keyboard does when its Go key submits: the field lets go.
+  await field.blur()
+
+  await expect(sheet.getByRole('listitem')).toHaveText([/Lunch/])
+  await expect(field).toHaveValue('')
+  // An absence has nothing to wait for. UForm debounces input validation by 300 ms
+  // unless told otherwise, and that late validation is what complained, so the
+  // check outlasts it.
+  await page.waitForTimeout(500)
+  await expect(sheet.getByText('Enter a name for this tag')).toHaveCount(0)
+})
+
+test('Manage tags lists every Tag with its Food count, and deleting one takes it off the row', async ({
+  page,
+  goto,
+}) => {
+  const snack = { id: 2, name: 'snack' }
+  await mockTaggableCatalog(
+    page,
+    [{ id: 1, name: 'breakfast' }, snack],
+    [snack],
+  )
+  await goto('/foods', { waitUntil: 'hydration' })
+  const row = page.getByRole('listitem').filter({ hasText: 'Rolled oats' })
+  await expect(row.getByText('snack')).toBeVisible()
+
+  await page.getByRole('button', { name: 'Manage tags' }).click()
+  const sheet = page.getByRole('dialog', { name: 'Manage tags' })
+  await expect(sheet.getByRole('list')).toMatchAriaSnapshot(`
+    - list:
+      - /children: deep-equal
+      - listitem:
+        - text: breakfast 0 foods
+        - button "Delete breakfast"
+      - listitem:
+        - text: snack 1 food
+        - button "Delete snack"
+  `)
+  await sheet.getByRole('button', { name: 'Delete snack' }).click()
+  await expect(
+    sheet.getByText(
+      'Delete “snack”? It comes off 1 food. The foods stay in your catalog.',
+    ),
+  ).toBeVisible()
+  await sheet.getByRole('button', { name: 'Delete tag' }).click()
+
+  await expect(sheet.getByRole('list')).toMatchAriaSnapshot(`
+    - list:
+      - /children: deep-equal
+      - listitem:
+        - text: breakfast 0 foods
+        - button "Delete breakfast"
+  `)
+  await sheet.getByRole('button', { name: 'Close' }).click()
+  await expect(row).toBeVisible()
+  await expect(row.getByText('snack')).toHaveCount(0)
 })
