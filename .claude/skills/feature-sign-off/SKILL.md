@@ -1,6 +1,6 @@
 ---
 name: feature-sign-off
-description: The pre-commit/push sign-off gate for a finished feature or fix on the Tucker repo. Runs seven quality gates in order — /verify twice (a reachability pass first, the two-viewport walk-through last, on the code that ships), with /simplify, /mutation-test, /code-review, /check-adrs and a resolutions pass (nothing approves its own fix) in between — fixing what each surfaces, then commits and pushes, then a retro that routes each lesson into the file the next session will read it from. Every agent is briefed to a neutrality contract, one argues against merging, one ledgers the diff against the issue's acceptance criteria, and a split between two agents is settled blind. Use when a change is functionally complete and the user says "sign off", "ready to commit/push", "wrap up this feature", "run the gates", or before opening a PR.
+description: The pre-commit/push sign-off gate for a finished feature or fix on the Tucker repo. Runs seven quality gates in order — /verify twice (a reachability pass first, the two-viewport walk-through last, on the code that ships), with /simplify, /mutation-test, /code-review, /check-adrs and a resolutions pass (nothing approves its own fix) in between — fixing what each surfaces, then commits and pushes, then a retro that routes each lesson into the file the next session will read it from. Every agent is briefed to a neutrality contract, one argues against merging, one ledgers the diff against the issue's acceptance criteria, one checks the architecture diagrams still draw the code, and a split between two agents is settled blind. Use when a change is functionally complete and the user says "sign off", "ready to commit/push", "wrap up this feature", "run the gates", or before opening a PR.
 ---
 
 # Feature sign-off
@@ -108,18 +108,34 @@ needs it.
    criteria — bug reports and PRD umbrellas especially — and the answer to that is
    the SKIP, never criteria you write yourself.
 
+   **Launch the diagram auditor (Brief F) in this same message as well.** It asks
+   whether `docs/architecture.md` still draws the code after this diff — one row per
+   diagram, CURRENT or STALE, and a MISSING tail for anything new that no diagram
+   draws. Nothing else in the run reads those diagrams, and a stale one is silent:
+   it renders, it parses, and it is wrong. STALE and MISSING rows enter
+   fix-or-justify, and the fix ships **on the feature branch**, because the diagrams
+   describe the code rather than the process.
+
+   **Check a diagram edit against its render, not its source.** Mermaid parses a
+   diagram that no longer reads, and the C4 renderer places elements by statement
+   order, so one new element can push a label through a box. Push the branch and
+   read the file in GitHub's preview, or paste the block into mermaid.live. A
+   headless render (mermaid-cli, puppeteer) is **not** a check for the native C4
+   blocks: their rows wrap at `screen.availWidth`, which headless Chrome reports as
+   800px, so it draws two elements per row whatever `UpdateLayoutConfig` says.
+
 4. **`/check-adrs` — honour the recorded decisions.** Verify the diff against the
    ADRs in `docs/adr/` and the ubiquitous language in `CONTEXT.md`. A FAIL is
    either a code fix or a same-PR doc fix (per `[[prefer-source-fix-over-adr]]`)
    — the user's call, surfaced.
 
-   **Launch it in the same message as gate 3.** All four are pure read-and-report —
-   none edits the tree, and you apply all four sets of findings afterwards — so
+   **Launch it in the same message as gate 3.** All five are pure read-and-report —
+   none edits the tree, and you apply all five sets of findings afterwards — so
    running them back to back spends the shorter one's wall-clock for nothing
    (4–7 min against code-review's 12 in the run this was measured on). The cost
-   is that the other three judge pre-fix code. When code-review's fixes land,
+   is that the other four judge pre-fix code. When code-review's fixes land,
    re-check **only the files they touched** against the constraints `/check-adrs`
-   cited and the rows the ledger returned — a read of a handful of lines rather
+   cited and the rows the ledger and the diagram auditor returned — a read of a handful of lines rather
    than a second run. The adversary needs no re-check: it argues the premise, and
    a correctness fix does not move that. **Gate 2's verdicts do need one:** re-run
    the scoped mutation sweep over the files the fixes touched, because a verdict
@@ -159,9 +175,10 @@ needs it.
      reason for dismissing it. Check for findings that were softened, merged into
      another, or dropped on the way in, and check each brief against the prompt
      contract while the file is open. Three of those checks are about **absence**:
-     - the adversary and the **acceptance ledger** have transcripts at all — both
-       are marked *Fires: every sign-off*, and a SKIPPED ledger is a transcript,
-       not the lack of one — and so does the blind arbiter if any two agents split;
+     - the adversary, the **acceptance ledger** and the **diagram auditor** have
+       transcripts at all — all three are marked *Fires: every sign-off*, and a
+       SKIPPED ledger or an all-CURRENT audit is a transcript, not the lack of one —
+       and so does the blind arbiter if any two agents split;
      - the adversary's brief carries all six angles Brief A names, and the
        ledger's still enumerates **verbatim, in the issue's order, from the whole
        body** — a brief trimmed to something looser is the same failure as an
@@ -306,12 +323,13 @@ write the code either way.
 | --- | --- | --- |
 | The adversary | +1 | **none** — it rides in gate 3's message and finishes inside the longest gate |
 | The acceptance ledger | +1 | **none** — same message, same argument; it reads one issue and one diff |
+| The diagram auditor | +1 | **none** — same message; it reads one doc and one diff |
 | The verdict auditor (`/verify`, gate 6) | +1 | serial, a few minutes, after the browser work |
 | The blind arbiter | +1 *when a split fires* | serial, on the critical path — most runs never spawn it |
 | Gate 5 reading transcripts | none | a handful of extra tool calls inside an agent that already runs |
 
 For scale: the session that carried gates 3–6 of the #331 sign-off spawned three
-agents. The three standing additions take a run of that shape from three to six.
+agents. The four standing additions take a run of that shape from three to seven.
 
 ## Spending the agents well
 
@@ -405,6 +423,7 @@ Emit a short sign-off summary the user (and PR reviewer) can replay:
    adversary       ✅ SHOULD MERGE — closest attack: "unreachable from the UI" (it isn't; /log posts it)
    acceptance      ⚠️ 6 criteria: 4 MET (AC3 by probe only → gate 6) · 1 PARTIAL (holds only at the cap) → fixed
                    1 MISSING (AC6) → test added; nothing in the diff outside the issue's scope
+   diagrams        ⚠️ 10 diagrams: 9 CURRENT · 1 STALE (ER: new column) → fixed, render checked
    blind arbiter   — not spawned (no split)
 4. /check-adrs     ⚠️ 1 FAIL → fixed CONTEXT.md (stale auto-deactivate wording)
 5. resolutions     ⚠️ 9 judged → 8 upheld; 1 dismissal rejected ("pre-existing" — the diff moved that line) → fixed
