@@ -32,4 +32,28 @@ class TagName(given: String) : Comparable<TagName> {
  * A named grouping a User keeps of their own Foods (CONTEXT.md, **Tag**). A thing in
  * its own right rather than a word on a Food, so it outlives the last Food carrying it.
  */
-data class Tag(val id: Long?, val name: TagName)
+data class Tag(val id: Long?, val name: TagName) {
+
+    /**
+     * This Tag renamed to [name] — or, when another of the User's [owned] Tags already
+     * has that name in any case, merged into that one, whose spelling is kept (ADR 0033).
+     * A respelling of this Tag's own name is a rename.
+     */
+    fun renamedTo(name: TagName, owned: Collection<Tag>): TagRename =
+        owned.firstOrNull { it.id != id && it.name == name }?.let { TagRename.Merged(into = it) }
+            ?: TagRename.Renamed(copy(name = name))
+}
+
+/** What renaming a Tag came to: the Tag under its new name, or the Tag it merged into. */
+sealed interface TagRename {
+    /** The Tag that remains. */
+    val survivor: Tag
+
+    data class Renamed(val tag: Tag) : TagRename {
+        override val survivor get() = tag
+    }
+
+    data class Merged(val into: Tag) : TagRename {
+        override val survivor get() = into
+    }
+}

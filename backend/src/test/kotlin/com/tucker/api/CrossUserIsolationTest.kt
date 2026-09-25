@@ -374,6 +374,45 @@ class CrossUserIsolationTest {
     }
 
     @Test
+    fun `renaming another User's Tag is not found, exactly as an absent one, and leaves it as it was`() {
+        val snack = postForId(alice, "/api/tags", """{"name":"snack"}""")
+
+        listOf(snack, Long.MAX_VALUE).forEach { id ->
+            mockMvc.put("/api/tags/$id") {
+                header(ACCESS_ASSERTION_HEADER, bob)
+                contentType = MediaType.APPLICATION_JSON
+                content = """{"name":"treats"}"""
+            }.andExpect { status { isNotFound() } }
+        }
+
+        mockMvc.get("/api/tags") { header(ACCESS_ASSERTION_HEADER, alice) }.andExpect {
+            jsonPath("$[*].name") { value(org.hamcrest.Matchers.contains("snack")) }
+        }
+    }
+
+    @Test
+    fun `renaming a Tag onto a name only another User holds is a rename, never a merge into theirs`() {
+        val alices = postForId(alice, "/api/tags", """{"name":"Snack"}""")
+        val bobs = postForId(bob, "/api/tags", """{"name":"treats"}""")
+
+        mockMvc.put("/api/tags/$bobs") {
+            header(ACCESS_ASSERTION_HEADER, bob)
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"name":"snack"}"""
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.merged") { value(false) }
+            jsonPath("$.tag.id") { value(bobs) }
+            jsonPath("$.tag.name") { value("snack") }
+        }
+
+        mockMvc.get("/api/tags") { header(ACCESS_ASSERTION_HEADER, alice) }.andExpect {
+            jsonPath("$[*].id") { value(org.hamcrest.Matchers.contains(alices.toInt())) }
+            jsonPath("$[*].name") { value(org.hamcrest.Matchers.contains("Snack")) }
+        }
+    }
+
+    @Test
     fun `tagging another User's Food is not found and leaves it untagged`() {
         val almonds = createFood(alice, "Alice's almonds")
         val snack = postForId(bob, "/api/tags", """{"name":"snack"}""")
