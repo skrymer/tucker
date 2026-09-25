@@ -2,6 +2,7 @@ package com.tucker.persistence
 
 import com.tucker.domain.Tag
 import com.tucker.domain.TagName
+import com.tucker.jooq.Tables.FOOD
 import com.tucker.jooq.Tables.FOOD_TAG
 import com.tucker.jooq.Tables.TAG
 import com.tucker.security.CurrentUser
@@ -56,6 +57,36 @@ class TagRepository(
             .where(TAG.ID.eq(id.toInt()))
             .and(TAG.USER_ID.eq(currentUser.ownerId))
             .execute()
+    }
+
+    /** Store [tag]'s name, if the caller owns it; a foreign id changes nothing (ADR 0021). */
+    fun rename(tag: Tag) {
+        dsl.update(TAG)
+            .set(TAG.NAME, tag.name.value)
+            .where(TAG.ID.eq(checkNotNull(tag.id).toInt()))
+            .and(TAG.USER_ID.eq(currentUser.ownerId))
+            .execute()
+    }
+
+    /**
+     * Merge the caller's Tag [from] into their Tag [into]: every Food carrying [from]
+     * carries [into] instead — once, if it already did — and [from] is deleted.
+     */
+    fun merge(from: Long, into: Long) {
+        val ownedFoods = DSL.select(FOOD.ID).from(FOOD).where(FOOD.USER_ID.eq(currentUser.ownerId))
+        val ownedTags = DSL.select(TAG.ID).from(TAG).where(TAG.USER_ID.eq(currentUser.ownerId))
+        val target = DSL.inline(into.toInt())
+        dsl.insertInto(FOOD_TAG, FOOD_TAG.FOOD_ID, FOOD_TAG.TAG_ID)
+            .select(
+                DSL.select(FOOD_TAG.FOOD_ID, target)
+                    .from(FOOD_TAG)
+                    .where(FOOD_TAG.TAG_ID.eq(from.toInt()))
+                    .and(FOOD_TAG.FOOD_ID.`in`(ownedFoods))
+                    .and(target.`in`(ownedTags)),
+            )
+            .onConflictDoNothing()
+            .execute()
+        delete(from)
     }
 
     /**

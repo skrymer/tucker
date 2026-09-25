@@ -1267,6 +1267,33 @@ negated `fetchOne()?.id` and `id?.let` survive because the `findByName` fallback
 passing `TagRepositoryTest`, whose two inserts make the collided row the last insert.
 Re-sweep once #385 lands; they should then die.
 
+### Rename and merge a Tag — `ManageTagsSheet.vue` 41 of 48, backend 24 of 28
+
+Frontend first sweep 38 of 48: two **real gaps** (three mutants), closed — the rename
+refusal's clear-on-edit watch (source and callback) and the `'Could not rename tag'`
+title. The seven left:
+
+- **The rename draft's `{ name: '' }` default (2) — equivalent.** `startRename`
+  seeds the name before the rename form can render, so the default is never read.
+- **`settle()` dropped from the delete's `onSuccess` — equivalent.** The row it
+  pointed at has left the list, and a Tag id is never reused (`AUTOINCREMENT`), so
+  a stale question has no row to show on; reopening resets it anyway.
+- **`tags.value?.find` / `asking.value?.id` in `mergesInto` (2) — equivalent.** The
+  computed is read only by the rename row, which renders only once the list has
+  loaded and a rename is being asked.
+- The list read's `{ signal }` / `mode: 'latest'` pair is the carried real gap above.
+
+Re-swept after the walk-through's fixes (desktop autofocus, `tagNameKey`): the same
+seven, moved four lines. `tagName.ts` 6 of 6 — its one first-sweep survivor,
+`toLowerCase` → `toUpperCase`, looked equivalent (a fold is a fold) and was a **real
+gap**: upper-casing maps "Straße" onto "STRASSE", which Kotlin's `lowercase()` keeps
+apart. A sharp-s test killed it.
+
+Backend: every mutant on the new code (`Tag.renamedTo`, `TagRename`, `TagService`,
+`TagRepository.rename` / `merge`, `TagController.rename`) killed. The four survivors
+are `TagRepository.insert`'s #385 pair (L102/L103, moved from L71/L72) and
+`findByIds`' false survivor, both recorded above.
+
 ### Noise removed at the source
 
 Four `getLog()` companion accessors (`MartijndwarsWebPushSender`, `RecordingWebPushSender`,

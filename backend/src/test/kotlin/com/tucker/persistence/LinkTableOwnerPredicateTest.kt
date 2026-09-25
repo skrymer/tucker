@@ -4,6 +4,7 @@ import com.tucker.domain.Food
 import com.tucker.domain.Nutrition
 import com.tucker.domain.Recipe
 import com.tucker.domain.RecipeIngredient
+import com.tucker.domain.TagName
 import com.tucker.jooq.Tables.TAG
 import com.tucker.security.CurrentUser
 import com.tucker.security.WithTuckerUser
@@ -33,6 +34,7 @@ class LinkTableOwnerPredicateTest {
 
     @Autowired lateinit var foods: FoodRepository
     @Autowired lateinit var recipes: RecipeRepository
+    @Autowired lateinit var tags: TagRepository
     @Autowired lateinit var dsl: DSLContext
     @Autowired lateinit var currentUser: CurrentUser
     @Autowired lateinit var recorder: StatementRecorder
@@ -62,6 +64,23 @@ class LinkTableOwnerPredicateTest {
         recipes.update(porridge.copy(cookedWeightG = 320.0))
 
         assertOwnerNamedByEveryDeleteFrom("recipe_ingredient")
+    }
+
+    @Test
+    fun `merging a Tag moves its links only through the owner`() {
+        val snack = tags.insert(TagName("snack")).id!!
+        val treats = tags.insert(TagName("treats")).id!!
+        foods.insert(Food.plain(null, "Biscuit", null, Nutrition.fromMacros(6.0, 70.0, 20.0)).retagged(listOf(treats)))
+
+        recorder.statements.clear()
+        tags.merge(from = treats, into = snack)
+
+        val inserts = recorder.statements.map { it.lowercase() }.filter { it.startsWith("insert into food_tag ") }
+        assertTrue(inserts.isNotEmpty(), "expected an INSERT on food_tag, recorded: ${recorder.statements}")
+        inserts.forEach {
+            assertTrue("food.user_id" in it, "an INSERT on food_tag reaches Foods not through the owner: $it")
+            assertTrue("tag.user_id" in it, "an INSERT on food_tag reaches a Tag not through the owner: $it")
+        }
     }
 
     private fun assertOwnerNamedByEveryDeleteFrom(table: String) {

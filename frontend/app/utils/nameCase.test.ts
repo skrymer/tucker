@@ -92,6 +92,14 @@ const ALLOWED: Record<string, Record<string, string>> = {
       'a Tag keeps the spelling its User gave it, so it is never recased (ADR 0033)',
     '`Delete ${tag.name}`':
       'a Tag keeps the spelling its User gave it, so it is never recased (ADR 0033)',
+    '`Rename ${tag.name}`':
+      'a Tag keeps the spelling its User gave it, so it is never recased (ADR 0033)',
+    'into.name':
+      'a Tag keeps the spelling its User gave it, so it is never recased (ADR 0033)',
+    'foodCount(renamed.foodCount)': 'a count of Foods, not a name',
+    renameDraft: 'the rename form’s state, not a name being stated',
+    renameRefusal: 'the server’s refusal message, not a name',
+    renamePending: 'whether a rename is in flight, not a name',
   },
   'components/TagChips.vue': {
     'tag.name':

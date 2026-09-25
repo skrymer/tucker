@@ -334,9 +334,11 @@ test('Manage tags lists every Tag with its Food count, and deleting one takes it
       - /children: deep-equal
       - listitem:
         - text: breakfast 0 foods
+        - button "Rename breakfast"
         - button "Delete breakfast"
       - listitem:
         - text: snack 1 food
+        - button "Rename snack"
         - button "Delete snack"
   `)
   await sheet.getByRole('button', { name: 'Delete snack' }).click()
@@ -352,6 +354,7 @@ test('Manage tags lists every Tag with its Food count, and deleting one takes it
       - /children: deep-equal
       - listitem:
         - text: breakfast 0 foods
+        - button "Rename breakfast"
         - button "Delete breakfast"
   `)
   await sheet.getByRole('button', { name: 'Close' }).click()
