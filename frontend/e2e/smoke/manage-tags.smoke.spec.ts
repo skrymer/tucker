@@ -48,9 +48,11 @@ test('a Tag created in Manage tags, put on a Food and deleted leaves the Food in
       - /children: deep-equal
       - listitem:
         - text: dinner 0 foods
+        - button "Rename dinner"
         - button "Delete dinner"
       - listitem:
         - text: Snack 0 foods
+        - button "Rename Snack"
         - button "Delete Snack"
   `)
   await manage.getByRole('button', { name: 'Close' }).click()

@@ -1,6 +1,6 @@
 import type { APIRequestContext } from '@playwright/test'
 import { test, expect } from './support/smoke-test'
-import { expectCreated, expectStatus } from './support/seeding'
+import { create, expectStatus } from './support/seeding'
 import { entryRow } from '../support/entry-row'
 import { enterGrams, pickFoodToLog } from '../support/log-page'
 
@@ -11,17 +11,6 @@ import { enterGrams, pickFoodToLog } from '../support/log-page'
 // `GET /api/tags` would list, is never offered. The per-test reset wipes the
 // seed, so there is no cleanup.
 const API = 'http://localhost:8080/api'
-
-/** POSTs and returns the created row's id. */
-async function create(
-  request: APIRequestContext,
-  path: string,
-  data: object,
-): Promise<number> {
-  const created = request.post(`${API}${path}`, { data })
-  await expectCreated(created)
-  return (await (await created).json()).id as number
-}
 
 /**
  * A Food whose macros make 57.8 kcal per 100 g under Atwater — the figure the

@@ -1,4 +1,5 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { ref } from 'vue'
 import {
   mockNuxtImport,
   registerEndpoint,
@@ -9,6 +10,10 @@ import { screen, within } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import ManageTagsSheet from './ManageTagsSheet.vue'
 
+// The rename field's autofocus is desktop-only, so the tests drive the viewport.
+const viewport = vi.hoisted(() => ({ desktop: true }))
+mockNuxtImport('useIsDesktop', () => () => ref(viewport.desktop))
+
 const { toastAdd } = vi.hoisted(() => ({ toastAdd: vi.fn() }))
 mockNuxtImport('useToast', () => () => ({
   add: toastAdd,
@@ -16,6 +21,10 @@ mockNuxtImport('useToast', () => () => ({
 }))
 
 describe('ManageTagsSheet', () => {
+  beforeEach(() => {
+    viewport.desktop = true
+  })
+
   it('lists every Tag in the order the server sends, each with how many Foods carry it', async () => {
     registerEndpoint('/api/tags', () => [
       { id: 7, name: 'Breakfast', foodCount: 1 },
@@ -468,6 +477,392 @@ describe('ManageTagsSheet', () => {
     expect(
       await screen.findByText('Enter a name for this tag', { exact: true }),
     ).toBeVisible()
+  })
+
+  it('renames a Tag, lists it under its new name, and tells the page its Foods changed', async () => {
+    const kept = [
+      { id: 7, name: 'Breakfast', foodCount: 1 },
+      { id: 9, name: 'snack', foodCount: 3 },
+    ]
+    const sent: unknown[] = []
+    registerEndpoint('/api/tags', { method: 'GET', handler: () => [...kept] })
+    registerEndpoint('/api/tags/9', {
+      method: 'PUT',
+      handler: async (event) => {
+        const body = await readBody(event)
+        sent.push(body)
+        kept[1] = { id: 9, name: body.name, foodCount: 3 }
+        return { tag: kept[1], merged: false }
+      },
+    })
+    const onChanged = vi.fn()
+    await renderSuspended(ManageTagsSheet, {
+      props: { open: true, onChanged },
+    })
+    const user = userEvent.setup()
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Rename snack' }),
+    )
+    const field = screen.getByRole('textbox', { name: 'Rename snack' })
+    expect(field).toHaveValue('snack')
+    await user.clear(field)
+    await user.type(field, 'Treats')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(await screen.findByText('Treats')).toBeVisible()
+    expect(sent).toEqual([{ name: 'Treats' }])
+    expect(
+      screen.queryByRole('textbox', { name: /Rename/ }),
+    ).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Rename Treats' })).toBeVisible()
+    expect(onChanged).toHaveBeenCalledOnce()
+    expect(toastAdd).not.toHaveBeenCalled()
+  })
+
+  it('warns that renaming onto another Tag’s name in any case merges the two, with both Food counts, before sending anything', async () => {
+    let puts = 0
+    registerEndpoint('/api/tags', () => [
+      { id: 7, name: 'Snack', foodCount: 3 },
+      { id: 9, name: 'treats', foodCount: 1 },
+    ])
+    registerEndpoint('/api/tags/9', {
+      method: 'PUT',
+      handler: () => {
+        puts++
+        return null
+      },
+    })
+    await renderSuspended(ManageTagsSheet, { props: { open: true } })
+    const user = userEvent.setup()
+    await user.click(
+      await screen.findByRole('button', { name: 'Rename treats' }),
+    )
+    const field = screen.getByRole('textbox', { name: 'Rename treats' })
+
+    await user.clear(field)
+    await user.type(field, ' SNACK ')
+
+    expect(
+      screen.getByText(
+        '“Snack” already exists — its 3 foods and this tag’s 1 food become one tag.',
+        { exact: true },
+      ),
+    ).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Merge' })).toBeVisible()
+    expect(
+      screen.queryByRole('button', { name: 'Save' }),
+    ).not.toBeInTheDocument()
+    expect(puts).toBe(0)
+  })
+
+  it('treats respelling a Tag’s own name in another case as a rename, with no merge warning', async () => {
+    registerEndpoint('/api/tags', () => [
+      { id: 7, name: 'Snack', foodCount: 3 },
+      { id: 9, name: 'treats', foodCount: 1 },
+    ])
+    await renderSuspended(ManageTagsSheet, { props: { open: true } })
+    const user = userEvent.setup()
+    await user.click(
+      await screen.findByRole('button', { name: 'Rename treats' }),
+    )
+    const field = screen.getByRole('textbox', { name: 'Rename treats' })
+
+    await user.clear(field)
+    await user.type(field, 'Treats')
+
+    expect(screen.getByRole('button', { name: 'Save' })).toBeVisible()
+    expect(
+      screen.queryByRole('button', { name: 'Merge' }),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByText(/already exists/)).not.toBeInTheDocument()
+  })
+
+  it('keeps a Tag whose rename is cancelled, back as it was', async () => {
+    let puts = 0
+    registerEndpoint('/api/tags', () => [
+      { id: 9, name: 'snack', foodCount: 3 },
+    ])
+    registerEndpoint('/api/tags/9', {
+      method: 'PUT',
+      handler: () => {
+        puts++
+        return null
+      },
+    })
+    await renderSuspended(ManageTagsSheet, { props: { open: true } })
+    const user = userEvent.setup()
+    await user.click(
+      await screen.findByRole('button', { name: 'Rename snack' }),
+    )
+    await user.type(screen.getByRole('textbox', { name: 'Rename snack' }), 's')
+
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+
+    expect(
+      screen.queryByRole('textbox', { name: 'Rename snack' }),
+    ).not.toBeInTheDocument()
+    expect(screen.getByText('snack', { exact: true })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Rename snack' })).toBeVisible()
+    expect(puts).toBe(0)
+  })
+
+  it('states a new name the server refuses beside the rename field, with no Retry toast', async () => {
+    toastAdd.mockClear()
+    registerEndpoint('/api/tags', () => [
+      { id: 9, name: 'snack', foodCount: 3 },
+    ])
+    registerEndpoint('/api/tags/9', {
+      method: 'PUT',
+      handler: (event) => {
+        setResponseStatus(event, 400)
+        return { message: 'a Tag name must be at most 30 characters' }
+      },
+    })
+    await renderSuspended(ManageTagsSheet, { props: { open: true } })
+    const user = userEvent.setup()
+    await user.click(
+      await screen.findByRole('button', { name: 'Rename snack' }),
+    )
+    const field = screen.getByRole('textbox', { name: 'Rename snack' })
+    await user.clear(field)
+    await user.type(field, 'Treats')
+
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(
+      await screen.findByText('a Tag name must be at most 30 characters', {
+        exact: true,
+      }),
+    ).toBeVisible()
+    expect(field).toHaveValue('Treats')
+    expect(toastAdd).not.toHaveBeenCalled()
+  })
+
+  it('reopens on the list at rest, not on a rename it was part-way through when it closed', async () => {
+    registerEndpoint('/api/tags', () => [
+      { id: 9, name: 'snack', foodCount: 3 },
+    ])
+    const { rerender } = await renderSuspended(ManageTagsSheet, {
+      props: { open: true },
+    })
+    await userEvent
+      .setup()
+      .click(await screen.findByRole('button', { name: 'Rename snack' }))
+
+    await rerender({ open: false })
+    await rerender({ open: true })
+
+    expect(
+      screen.queryByRole('textbox', { name: 'Rename snack' }),
+    ).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Rename snack' })).toBeVisible()
+  })
+
+  it('asks one thing at a time: renaming a Tag drops a delete asked about on another, and asking to delete drops a rename', async () => {
+    registerEndpoint('/api/tags', () => [
+      { id: 7, name: 'Breakfast', foodCount: 1 },
+      { id: 9, name: 'snack', foodCount: 3 },
+    ])
+    await renderSuspended(ManageTagsSheet, { props: { open: true } })
+    const user = userEvent.setup()
+    await user.click(
+      await screen.findByRole('button', { name: 'Delete Breakfast' }),
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Rename snack' }))
+
+    expect(screen.queryByText(/Delete “Breakfast”/)).not.toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'Rename snack' })).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: 'Delete Breakfast' }))
+
+    expect(
+      screen.queryByRole('textbox', { name: 'Rename snack' }),
+    ).not.toBeInTheDocument()
+    expect(screen.getByText(/Delete “Breakfast”/)).toBeVisible()
+  })
+
+  it('holds the merge button while a rename is in flight', async () => {
+    let puts = 0
+    let answer: () => void = () => {}
+    registerEndpoint('/api/tags', () => [
+      { id: 7, name: 'Snack', foodCount: 3 },
+      { id: 9, name: 'treats', foodCount: 1 },
+    ])
+    registerEndpoint('/api/tags/9', {
+      method: 'PUT',
+      handler: () => {
+        puts++
+        return new Promise((resolve) => {
+          answer = () =>
+            resolve({
+              tag: { id: 7, name: 'Snack', foodCount: 4 },
+              merged: true,
+            })
+        })
+      },
+    })
+    await renderSuspended(ManageTagsSheet, { props: { open: true } })
+    const user = userEvent.setup()
+    await user.click(
+      await screen.findByRole('button', { name: 'Rename treats' }),
+    )
+    const field = screen.getByRole('textbox', { name: 'Rename treats' })
+    await user.clear(field)
+    await user.type(field, 'snack')
+
+    await user.click(screen.getByRole('button', { name: 'Merge' }))
+
+    await vi.waitFor(() => expect(puts).toBe(1))
+    expect(screen.getByRole('button', { name: /Merge/ })).toBeDisabled()
+    answer()
+  })
+
+  it('refuses renaming a Tag to whitespace alone at the field, and sends nothing', async () => {
+    let puts = 0
+    registerEndpoint('/api/tags', () => [
+      { id: 9, name: 'snack', foodCount: 3 },
+    ])
+    registerEndpoint('/api/tags/9', {
+      method: 'PUT',
+      handler: () => {
+        puts++
+        return null
+      },
+    })
+    await renderSuspended(ManageTagsSheet, { props: { open: true } })
+    const user = userEvent.setup()
+    await user.click(
+      await screen.findByRole('button', { name: 'Rename snack' }),
+    )
+    const field = screen.getByRole('textbox', { name: 'Rename snack' })
+    await user.clear(field)
+    await user.type(field, '   ')
+
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(
+      await screen.findByText('Enter a name for this tag', { exact: true }),
+    ).toBeVisible()
+    expect(field).toBeInTheDocument()
+    expect(puts).toBe(0)
+  })
+
+  it('lets go of the server’s refusal of a new name once that name is edited', async () => {
+    registerEndpoint('/api/tags', () => [
+      { id: 9, name: 'snack', foodCount: 3 },
+    ])
+    registerEndpoint('/api/tags/9', {
+      method: 'PUT',
+      handler: (event) => {
+        setResponseStatus(event, 400)
+        return { message: 'a Tag name must be at most 30 characters' }
+      },
+    })
+    await renderSuspended(ManageTagsSheet, { props: { open: true } })
+    const user = userEvent.setup()
+    await user.click(
+      await screen.findByRole('button', { name: 'Rename snack' }),
+    )
+    const field = screen.getByRole('textbox', { name: 'Rename snack' })
+    await user.type(field, 's')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    await screen.findByText('a Tag name must be at most 30 characters')
+
+    await user.type(field, 'x')
+
+    expect(
+      screen.queryByText('a Tag name must be at most 30 characters'),
+    ).not.toBeInTheDocument()
+    expect(field).toHaveValue('snacksx')
+  })
+
+  it('names a rename that failed for want of a connection in its own error toast, keeping the new name', async () => {
+    toastAdd.mockClear()
+    registerEndpoint('/api/tags', () => [
+      { id: 9, name: 'snack', foodCount: 3 },
+    ])
+    registerEndpoint('/api/tags/9', {
+      method: 'PUT',
+      handler: (event) => {
+        setResponseStatus(event, 503)
+        return {}
+      },
+    })
+    await renderSuspended(ManageTagsSheet, { props: { open: true } })
+    const user = userEvent.setup()
+    await user.click(
+      await screen.findByRole('button', { name: 'Rename snack' }),
+    )
+    const field = screen.getByRole('textbox', { name: 'Rename snack' })
+    await user.type(field, 's')
+
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    await vi.waitFor(() =>
+      expect(toastAdd).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'Could not rename tag' }),
+      ),
+    )
+    expect(field).toHaveValue('snacks')
+  })
+
+  it('puts the cursor in the new-name field when a rename starts on desktop', async () => {
+    registerEndpoint('/api/tags', () => [
+      { id: 9, name: 'snack', foodCount: 3 },
+    ])
+    await renderSuspended(ManageTagsSheet, { props: { open: true } })
+
+    await userEvent
+      .setup()
+      .click(await screen.findByRole('button', { name: 'Rename snack' }))
+
+    await vi.waitFor(() =>
+      expect(
+        screen.getByRole('textbox', { name: 'Rename snack' }),
+      ).toHaveFocus(),
+    )
+  })
+
+  it('leaves the new-name field unfocused when a rename starts on a phone, so its keyboard cannot cover the sheet', async () => {
+    viewport.desktop = false
+    registerEndpoint('/api/tags', () => [
+      { id: 9, name: 'snack', foodCount: 3 },
+    ])
+    await renderSuspended(ManageTagsSheet, { props: { open: true } })
+
+    await userEvent
+      .setup()
+      .click(await screen.findByRole('button', { name: 'Rename snack' }))
+
+    const field = await screen.findByRole('textbox', { name: 'Rename snack' })
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(field).not.toHaveFocus()
+  })
+
+  it('warns of a merge onto a name pasted with a character the server trims and the browser keeps', async () => {
+    registerEndpoint('/api/tags', () => [
+      { id: 7, name: 'Snack', foodCount: 3 },
+      { id: 9, name: 'treats', foodCount: 1 },
+    ])
+    await renderSuspended(ManageTagsSheet, { props: { open: true } })
+    const user = userEvent.setup()
+    await user.click(
+      await screen.findByRole('button', { name: 'Rename treats' }),
+    )
+    const field = screen.getByRole('textbox', { name: 'Rename treats' })
+
+    await user.clear(field)
+    await user.paste('\u001FSnack')
+
+    expect(
+      screen.getByText(
+        '“Snack” already exists — its 3 foods and this tag’s 1 food become one tag.',
+        { exact: true },
+      ),
+    ).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Merge' })).toBeVisible()
   })
 
   it('creates a Tag from the name typed, and lists it once the server has it', async () => {
