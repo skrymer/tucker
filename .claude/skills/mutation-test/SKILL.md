@@ -144,7 +144,11 @@ Identical for both stacks; only step 1 and 2's commands differ.
      `frontend/mutant/`, outside the gated `app/`, with a `vitest.config.ts` that
      includes `mutant/**`. Have a small `build.mjs` apply the one mutation, run the
      candidate test there, and see it fail on its assertion. Then write the same
-     test into the real file straight away, and delete `mutant/`.
+     test into the real file straight away, and delete `mutant/`. Probity can
+     still refuse that write ("the only observed failure was under a mutated
+     build"). Run the real test file green, unfiltered, then retry the identical
+     write **once** — in F18 slice 6 that was accepted every time; a second refusal
+     is a real objection, not noise.
    - **Killed by an out-of-scope layer** — the module is *thin glue*, whose red
      lives in a Playwright e2e, a real-stack smoke, or the Testcontainers e2e by
      ADR 0013 ("thin glue gets no separate test"). The engine can't see those
@@ -262,9 +266,12 @@ tests (~1–5 tests, not all 473), which is what makes this affordable as a gate
   `filter`, `sort`, `substring`, `charAt` — it **deletes the call**, so a built-in
   fold that *is* written is proven load-bearing (`AddSheet.vue`'s two
   `barcode.value.trim()` mutants, issue #303). For the rest it substitutes
-  (`toLowerCase`↔`toUpperCase`), which a test kills trivially and which says
-  nothing about the missing side. And it knows nothing at all about a normaliser
-  you wrote.
+  (`toLowerCase`↔`toUpperCase`), which says nothing about the missing side — and
+  **is not equivalent**, however much "a fold is a fold" suggests it: upper-casing
+  maps "ß" to "SS", so "Straße" and "STRASSE" collide under one fold and not the
+  other. F18 slice 6's swap survived the whole suite until a sharp-s fixture killed
+  it; kill it the same way rather than recording it equivalent. And it knows
+  nothing at all about a normaliser you wrote.
 - **Stryker has no truthiness mutator.** `x == null ? a : b` scoring 100% says
   nothing about whether `x ? b : a` would be caught — and those differ for `0`,
   `''` and `NaN`. Any guard distinguishing *absent* from *zero* needs an explicit

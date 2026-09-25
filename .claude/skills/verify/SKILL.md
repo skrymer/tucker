@@ -38,10 +38,22 @@ explicitly in the verdict.
    by another worktree's server running other code. Confirm the listener is yours
    (`ss -ltnp | grep :<port>`, then `readlink /proc/<pid>/cwd`) before the first
    navigation.
-2. **Seed what the surface needs**, via `curl` against `http://localhost:8080/api`, not
-   the UI — you're verifying *your* change, not re-testing setup. Most screens need a
-   Calorie Budget, which needs profile + weight + goal. Check what's already there
-   first: `curl -s "http://localhost:8080/api/summary?date=<today>"`.
+   **A fresh worktree has no `frontend/.env`, so every `/api` call 401s** until the
+   proxy has a dev assertion to attach: `printf 'TUCKER_DEV_ACCESS_TOKEN=%s\n'
+   "$(node scripts/mint-dev-token.mjs --email verify-<slice>@tucker.invalid
+   --expires-in 1d)" > .env` in `frontend/`. A fresh `--email` is a fresh User, so
+   the walk-through never touches the developer's own dev data. **Delete the
+   `.env` at cleanup** — it breaks the mocked e2e locally. And restart a dev server
+   that has been running across the gates' fixes before the walk-through: one that
+   had served the whole sign-off answered a 500 ("Cannot read properties of null")
+   until restarted.
+2. **Seed what the surface needs** over the API, not the UI — you're verifying
+   *your* change, not re-testing setup. Go **through the dev proxy**
+   (`http://localhost:<port>/api`), not `:8080`, which demands an Access assertion
+   `curl` does not carry; and a mutation needs the CSRF pair (ADR 0025): GET any
+   `/api` path into a cookie jar, then send the `XSRF-TOKEN` cookie's value back as
+   the `X-XSRF-TOKEN` header. Most screens need a Calorie Budget, which needs
+   profile + weight + goal; check first with `/api/summary?date=<today>`.
 3. **Walk the golden path** at **desktop**, then **repeat at phone width**. Tucker has a
    real responsive split (side-nav vs bottom-tabs, modal vs bottom sheet, header button
    vs FAB) — a single-viewport walk-through misses half the layout. (Gate 0 stops here,
@@ -65,7 +77,7 @@ shapes a real user's data comes in, and drive at least one of each:
 | Input | Shapes that have bitten Tucker |
 | --- | --- |
 | A text query | a **capitalised** word (every Food name starts with one), an **accented** name, whitespace alone, the empty string, a word matching nothing |
-| A capped, trimmed name | the cap and cap+1 **padded with spaces**, the cap counted in UTF-16 (16 × 😀 is 32 units), a character the two sides trim differently (`"\u001F"`: JS keeps it, Kotlin's `trim()` strips it — the one road to a server refusal the client lets through) |
+| A capped, trimmed name | the cap and cap+1 **padded with spaces**, the cap counted in UTF-16 (16 × 😀 is 32 units), a character the two sides trim differently, **both ways** — `"\u001F"` (JS keeps it, Kotlin's `trim()` strips it) and `"﻿"` (JS strips it, Kotlin keeps it) — driven alone *and* in front of a real value (`"\u001FSnack"`) through **every** client-side decision the name feeds (a duplicate check, a merge preview), not only the server's refusal: F18 slice 6 drove `"\u001F"` to the blank refusal alone, and the untested branch was an unannounced merge |
 | A number | zero, the boundary of its rule, one past it, a decimal where an integer is expected |
 | A list | none, one, the cap, one past the cap |
 | A date | today, a local midnight, a day the rule spans |

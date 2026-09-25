@@ -1223,8 +1223,14 @@ of 61**. The two survivors are the `isEmpty()` early returns in `ingredientsOf` 
 
 ### Tags on Log — `catalog.ts` 48 of 54, `log.vue` and `TagChips.vue` unattributed
 
-All six `catalog.ts` survivors are **equivalent**. One is `fold`'s `toLowerCase` →
-`toUpperCase`, recorded above. The other five are `tagsOnOffer`'s comparator, for two
+Five of the six `catalog.ts` survivors are **equivalent**. The sixth, `fold`'s
+`toLowerCase` → `toUpperCase`, was recorded equivalent and is **not** (re-litigated
+after F18 slice 6 found the same swap alive in `tagNameKey`): upper-casing folds "ß"
+to "SS", so under it a typed `strasse` finds `Straße` and under the shipped
+lower-case fold it does not. It is an **open real gap** with a product question in
+front of it — the upper-case behaviour is arguably the better search — so it is left
+for whoever next touches `narrowFoods` to decide and pin with a sharp-s fixture,
+rather than killed here by asserting whichever fold happens to ship. The other five are `tagsOnOffer`'s comparator, for two
 different reasons. `<` → `<=`, `>` → `>=` and `>` → `true` differ only when two Tags on
 offer fold to the same name, and a User cannot hold two: `TagName` is equal to another
 ignoring case, and the offer is deduplicated by id. `>` → `false` and `>` → `<=` return

@@ -79,7 +79,11 @@ needs it.
    gain. Medium gives cleanup-once (gate 1) + correctness-once (gate 3) with no
    overlap. Triage every finding: fix the genuine ones, and for each you *don't*
    fix, say why (by-design per an ADR, pre-existing, out of scope). Don't let an
-   unexplained finding through. (Bump to high only if the diff is large or
+   unexplained finding through. **"Pre-existing" holds only if the harm is
+   reachable on `main`** — a root cause that predates the diff, given a new consumer
+   by it, is the diff's harm: F18 slice 6 called a JS/Kotlin trim split pre-existing,
+   and gate 5 rejected it because the slice's own merge preview turned a harmless
+   refusal into an unannounced merge. (Bump to high only if the diff is large or
    security-sensitive and you want the broader net despite the redundancy.)
 
    **Launch the adversary (Brief A) in this same message.** `/code-review` runs
@@ -122,6 +126,9 @@ needs it.
    on a changed line no longer stands. Measured in F18 slice 5: an "equivalent,
    guard mode never aborts" survivor became a real gap the moment a gate-3 fix
    switched that read to `latest`, and a second survivor appeared beside it.
+   The one exception is a fix confined to a `.vue` template: Stryker mutates the
+   `<script>` block only, so there is nothing new to sweep — say so in the pack
+   rather than skipping silently.
 
    Gate 2 does **not** join them. It writes tests, and gate 3's test-quality pass
    reviews them — in the measured run it caught a vacuous assertion in a test
@@ -187,8 +194,17 @@ needs it.
    ```bash
    head -n 1 <transcript> | jq -r '.message.content'   # the brief it was sent
    jq -r 'select(.type=="assistant") | .message.content[]?
-          | select(.type=="text") | .text' <transcript>   # what it reported
+          | if .type=="text" then .text
+            elif (.type=="tool_use" and .name=="SubagentHandback")
+              then "HANDBACK: " + .input.message
+            else empty end' <transcript>                 # what it reported
    ```
+
+   **The report is in the `SubagentHandback` call, not the text blocks.** Agents
+   return their full report through that tool; their text output is only a closing
+   line ("sent in full"). A text-only extraction therefore compares the pack against
+   summaries — F18 slice 6's gate 5 did exactly that, and could not confirm a
+   paraphrase it was there to check.
 
    **Don't bound the second one with `tail`.** An extracted report runs to tens of
    lines, not hundreds, and agents here routinely put the verdict *first* — a

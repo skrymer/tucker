@@ -57,6 +57,12 @@ Backend commands (run in `backend/`):
   a `--rerun-tasks` regeneration swaps `400` against `404` under `responses` on
   most paths — ~700 lines of textual churn that a structural comparison of the two
   documents reports as identical. Discard such a diff rather than committing it.
+  When a regeneration carries **real** changes inside that churn, keep only the
+  structural ones: diff the key-sorted forms (`jq -S .` of the committed spec and
+  of the regenerated one) and graft what differs onto the committed file with
+  `jq`. Include any `operationId` that moved — adding one method can renumber
+  unrelated ones (`delete` / `delete_1` / `delete_2`), and the snapshot test
+  compares those too.
 - `./gradlew mutationTest` — pitest mutation testing over the fast suite, and the
   backend counterpart to the frontend's `pnpm test:mutation` below: same gate,
   same rules, same **local pre-PR only, deliberately not in CI**. Bare it sweeps

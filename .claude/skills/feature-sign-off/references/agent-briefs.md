@@ -33,6 +33,11 @@ agent, and the five below.
   that", or a parenthetical.
 - Words that presume the change is right: *correctly*, *properly*, *as required*,
   *the fix for*.
+- A yardstick that pre-scores the findings, e.g. "weigh each against Tucker's scale
+  and say whether it matters there". It is factual and still hands the agent its
+  verdict: F18 slice 6's efficiency agent dismissed two findings on exactly that
+  sentence, and gate 5 flagged the brief. Ask for the cost; judging it is the
+  resolution's job.
 - The conclusion of another agent in the same run. Two briefs are exempt because that
   material *is* their subject: the arbiter's, which is given both positions, and the
   **resolutions agent's**, which is given every finding, every dismissal and the
@@ -327,8 +332,11 @@ The resolutions pack: <path>
 Read a transcript with these two, never by opening the raw JSONL, and do not
 truncate the second with tail:
   head -n 1 <transcript> | jq -r '.message.content'
-  jq -r 'select(.type=="assistant") | .message.content[]? | select(.type=="text")
-         | .text' <transcript>
+  jq -r 'select(.type=="assistant") | .message.content[]? | if .type=="text"
+         then .text elif (.type=="tool_use" and .name=="SubagentHandback")
+         then "HANDBACK: " + .input.message else empty end' <transcript>
+(An agent's full report is the SubagentHandback call's input; its text blocks
+hold only a closing line.)
 You may read anything else in the repo, including .claude/skills/, .claude/hooks/,
 docs/adr/, CONTEXT.md and the memory index <memory dir>/MEMORY.md.
 
