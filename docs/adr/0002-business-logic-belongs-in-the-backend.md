@@ -32,7 +32,14 @@ deterministically and contradicts the rich domain model of
   keeps is that the backend is the single source of truth for every *saved*
   value; a transient preview it re-derives on write couples no durable rule to
   the UI. A preview must mirror the backend's formula (so the number doesn't
-  jump on save) and must never be the value written back.
+  jump on save) and must never be the value written back. **The formula includes
+  its normalisation**: a preview that decides *whether* something will happen —
+  the Manage-tags merge warning is one — must trim and fold exactly as the backend
+  does, and JavaScript's `trim`/`toLowerCase` are not Kotlin's `trim`/`lowercase`
+  (Kotlin trims U+001C–U+001F and keeps U+FEFF; JavaScript does the opposite;
+  upper-casing maps "ß" to "SS"). With a plain `.trim()` the merge warning let a
+  pasted `"\u001FSnacks"` merge unannounced. `tagNameKey` states the server's rule
+  once, and the preview compares on it.
 - **Where a rule is about what the User can *see*, the backend owns the rounding
   too** — narrow, and the opposite of the default, so it is written down rather
   than rediscovered as a tidy-up. Rounding is ordinarily presentation and belongs
