@@ -100,6 +100,12 @@ assertion with the dev token), and no browser-level layer can reach it.
   act in a browser. That is how the Tag picker drew chips that were never Tags. Reproduce in
   `e2e/`, and take the key in the **capture** phase (`@keydown.enter.capture`) to get ahead of
   Reka.
+- **`UForm` validates input 300 ms late by default** (`validateOnInputDelay`), and once a
+  field has blurred. A form that submits on Enter, loses the field's focus mid-request (the
+  phone keyboard's Go does) and empties it on success then shows its own "required" error
+  for a field nobody is typing in. `:validate-on-input-delay="0"` fixes it. happy-dom cannot
+  see it; the guard is an e2e with an *instant* mock — fill, Enter, `blur()`, wait past
+  300 ms, assert the message absent (`e2e/food-tags.spec.ts`).
 - **`UInputMenu`** — with `create-item`, it offers no Create item when an existing item matches
   ignoring case, so a typed name of another case picks the existing one. Closing its list clears
   the typed text **100 ms later** (`resetSearchTermOnBlur`), so anything that reads the field

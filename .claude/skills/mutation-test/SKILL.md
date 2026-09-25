@@ -154,7 +154,12 @@ Identical for both stacks; only step 1 and 2's commands differ.
      not in this one.
    - **Equivalent mutant** — semantically identical, so no test can kill it
      (`x >= 0` → `x > -1`, a re-ordering with no observable effect, a default that
-     is never reached). Record it in one line with the reason.
+     is never reached). Record it in one line with the reason. **A branch the code
+     says handles a case is not "never reached" until a test reaches that case** —
+     a race fallback, a conflict path. Hand-mutate it with a fixture where the two
+     outcomes differ. F18 slice 5's `TagRepository.insert` fallback was called
+     equivalent, then false survivor, and was neither: a third row between the
+     colliding pair showed the fallback unreachable because of a real bug (#385).
    - **False survivor** — a test *does* kill it, but the engine never ran that
      test. Suspect it whenever a whole class scores 0%, and **settle it by
      hand-mutating a throwaway copy and running the suite against it**: if tests

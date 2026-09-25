@@ -117,7 +117,11 @@ needs it.
    re-check **only the files they touched** against the constraints `/check-adrs`
    cited and the rows the ledger returned — a read of a handful of lines rather
    than a second run. The adversary needs no re-check: it argues the premise, and
-   a correctness fix does not move that.
+   a correctness fix does not move that. **Gate 2's verdicts do need one:** re-run
+   the scoped mutation sweep over the files the fixes touched, because a verdict
+   on a changed line no longer stands. Measured in F18 slice 5: an "equivalent,
+   guard mode never aborts" survivor became a real gap the moment a gate-3 fix
+   switched that read to `latest`, and a second survivor appeared beside it.
 
    Gate 2 does **not** join them. It writes tests, and gate 3's test-quality pass
    reviews them — in the measured run it caught a vacuous assertion in a test
