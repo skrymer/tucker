@@ -33,3 +33,5 @@ stack and VPS bring-up steps.
 ## Documentation
 
 - [`CONTEXT.md`](./CONTEXT.md) — the domain language and how the concepts relate.
+- [`docs/architecture.md`](./docs/architecture.md) — C4 architecture diagrams
+  (context, containers, components, deployment) and the database schema.

@@ -1933,6 +1933,14 @@ null` now means two things that earn opposite messages — the same trap
 
 ## Architecture
 
+**Architecture diagrams live in [`docs/architecture.md`](docs/architecture.md)**
+as Mermaid: the C4 context, container and component levels, the deployment view,
+and an ER diagram of the database. Update them in the same change whenever a
+module boundary, an external integration, a data flow or the schema changes, and
+check the rendered result rather than only the source. Mermaid's C4 renderer
+places elements by statement order and wraps rows at the viewer's screen width,
+so an edit that still parses can reshuffle a diagram.
+
 - **Frontend** — Nuxt + Nuxt UI, TypeScript, SPA mode (`ssr: false`). A
   responsive PWA, installable on both mobile (iOS home screen) and desktop
   (Chrome/Edge), via `@vite-pwa/nuxt`. The layout adapts by breakpoint — a
