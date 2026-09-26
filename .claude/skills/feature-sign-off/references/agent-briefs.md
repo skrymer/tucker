@@ -1,6 +1,6 @@
 # Agent briefs
 
-The prompt contract every fan-out gate's agents are written to, and the five briefs
+The prompt contract every fan-out gate's agents are written to, and the six briefs
 written out in full here. Copy the brief, fill the bracketed slots, send it.
 
 Why a file rather than prose in the skill: a brief that is a **template** can be
@@ -14,7 +14,7 @@ author felt. The repo makes this move elsewhere: `app/utils/exits.ts` and
 
 Applies to **every** agent any gate spawns — the `/simplify` three, the agents
 `/code-review` fans out to (it runs inline itself), `/check-adrs`, the resolutions
-agent, and the five below.
+agent, and the six below.
 
 **A brief carries:**
 
@@ -367,3 +367,70 @@ how it was found should change. "Nothing worth recording" is a complete answer.
 *spent*, which is in the transcripts, rather than what the author remembers
 *fixing*. The author still owns every edit, because a lesson's home is a skill or
 hook the next session will obey — and those edits go on their own branch.
+
+## Brief F — the diagram auditor
+
+**Fires:** every sign-off, launched in the same message as gates 3 and 4. A diff that
+moves nothing any diagram draws comes back as every row CURRENT, not as no agent —
+the same reason Brief D reports SKIPPED rather than going unlaunched.
+**Costs:** one agent, no wall-clock — it rides gate 3's message like the adversary.
+
+```
+Check whether a change leaves the architecture diagrams in docs/architecture.md
+stale. You are NOT hunting bugs and NOT reviewing the code's quality. Read-only:
+do not edit, create, delete or move any file. Read-only shell commands only, apart
+from `git fetch`, which touches nothing but remote refs.
+
+Repo: <worktree path> (a git worktree — stay in it).
+The change: cd <worktree path> && git fetch -q origin &&
+  git diff $(git merge-base origin/main HEAD)
+The diagrams: docs/architecture.md — every ```mermaid block in it, as it stands on
+this branch.
+Already read by other agents, so start here: <context-pack files>
+You may read anything else in the repo, including backend/src/main,
+backend/src/main/resources/db/migration/, frontend/, docker-compose*.yml and
+deploy/.
+
+One question, asked once per diagram: does it still draw what the code is?
+
+Method:
+1. Enumerate every diagram in the file, by its heading, in the file's order.
+2. From the diff, list what moved that a diagram of that level could draw: a
+   container, a component, or a package boundary added, removed or renamed; an
+   external system or integration; a relationship between two drawn elements or
+   the protocol it uses; a table, column, key or foreign key in a migration; a
+   deployment or hosting step.
+3. For each diagram, compare what it draws against the code after the diff —
+   names, edges, technology labels, protocols, cardinalities. Check the code, not
+   the diff alone: a diagram can be wrong about something the diff only moved past.
+4. Where the diff edits docs/architecture.md itself, check each edited element
+   against the code the same way. A diagram updated to the wrong thing is stale.
+
+Report one row per diagram, in the file's order:
+- CURRENT — nothing the diff moved is something this diagram draws, or it already
+  draws it right. One line saying which.
+- STALE — name each element, edge or label that no longer matches, cite the code
+  (file:line) it should match, and write the replacement Mermaid line.
+
+Then once, at the end:
+- MISSING — something the diff adds that no diagram draws but a diagram at that
+  level should: a new external integration, a new container, a new table. Name the
+  diagram it belongs in. A new class inside an area already drawn as one box is not
+  missing; Level 3 draws areas, not every class.
+
+A report whose every row is CURRENT is a complete and valued answer. Do not
+propose redrawing for style, layout or wording — only for what the diagram claims
+about the code. Do not report bugs, test quality or naming; other agents in this
+run own every one of those.
+```
+
+**It judges the claim, not the picture.** A diagram is a set of statements about the
+code — this container calls that one over this protocol, this table has that key —
+and the agent checks each statement the way the ledger checks a criterion. Whether a
+diagram *reads* well is the author's call when they edit it, and the render check in
+the skill's gate 3 is what catches a layout the edit broke.
+
+**STALE and MISSING enter fix-or-justify** like any finding, so gate 5 judges a waved
+off row against this transcript. The fix is an edit to `docs/architecture.md` on the
+feature branch itself — unlike a skill edit, the diagrams describe the code, so they
+ship with the change that moved it.
