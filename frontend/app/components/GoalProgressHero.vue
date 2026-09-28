@@ -80,8 +80,8 @@ const { planned, pace, observedFinish, observedRate } = usePaceColumns()
       Tracked on your smoothed trend weight
     </p>
 
-    <!-- Planned vs observed finish — stacked on phone, two columns on desktop. -->
-    <div class="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
+    <!-- Planned vs observed finish -->
+    <div class="mt-6 grid grid-cols-2 gap-4">
       <div class="border-t border-default pt-3">
         <p class="text-xs font-medium text-muted">Planned finish</p>
         <p class="mt-1 text-lg font-semibold text-default">
