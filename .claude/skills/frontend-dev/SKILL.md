@@ -111,6 +111,17 @@ assertion with the dev token), and no browser-level layer can reach it.
   the typed text **100 ms later** (`resetSearchTermOnBlur`), so anything that reads the field
   after the list shuts only works inside that window. An e2e holds it with `page.clock.install()`
   before `goto`, then `page.clock.pauseAt(...)` around the close (`e2e/food-tags.spec.ts`).
+- **Adding a query param to a request breaks every `page.route` glob that ends at
+  its path.** `**/api/check/123` stops matching `/api/check/123?clientToday=…`, and
+  the spec fails as a timeout, not as a routing error. End the glob with `**` (the
+  `e2e/support/mock-api.ts` convention), which matches with and without a query, and
+  grep `e2e/` for routes on the path whenever a request gains one.
+- **Proving a client sends its *local* day belongs in the mocked e2e.** Vitest runs in
+  the host's zone and CI in UTC, so an assertion there passes a page that sends the
+  UTC date everywhere but a Brisbane morning. The mocked browser runs in
+  `MOCKED_E2E_TIMEZONE`; pin `page.clock.setFixedTime` to a UTC time where the two
+  days differ (e.g. `22:00Z` = 08:00 AEST next day) and assert the request's query
+  (`e2e/check.spec.ts`). `setFixedTime`, not `install`, so the app's timers still run.
 - **Stale Playwright build** — the mocked e2e rebuilds `.nuxt/e2e` from scratch every run, so it cannot
   serve a stale build; the smokes still build through `@nuxt/test-utils`, so if a UI change doesn't show
   in a smoke run, `rm -rf frontend/.nuxt/test`.

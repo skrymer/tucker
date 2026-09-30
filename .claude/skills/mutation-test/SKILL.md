@@ -240,6 +240,9 @@ tests (~1–5 tests, not all 473), which is what makes this affordable as a gate
   after it. Left-over `.nuxt/test` builds measured 2.2 GB / 65k files, and copied
   into the sandbox they kill the Stryker **parent** with `FATAL ERROR: Reached heap limit` before a
   single mutant runs — `bounded-run.sh` does not help, the limit is V8's own.
+  `/.nuxt/dev` is ignored for the opposite reason: a running `pnpm dev` rewrites it
+  while the sandbox copies it, and the run dies in its first second with `ENOENT …
+  copyfile '.nuxt/dev/index.mjs.map'`.
 - **`.vue` mutates the `<script>` block only** — templates are untouched. A
   template-only defect (a wrong class, a missing `v-if`) needs a component test.
 - **`app/pages/design.vue` is excluded** — a static design reference with no
@@ -398,6 +401,11 @@ domain code and **~1.6s for anything a controller test covers**.
   notice `9` becoming `8`. A tuning constant needs an explicit test asserting the
   number it produces; the score will not ask for one. (This is pitest's version of
   Stryker's missing truthiness mutator — same lesson, different blind spot.)
+- **pitest never mutates a jOOQ predicate either.** `le`, `lt`, `ge`, `eq` are calls
+  returning a `Condition`, and no default mutator swaps one for another, so a 100%
+  score on a repository says nothing about whether a test would notice `<=` becoming
+  `<`. Pin each query bound with a test at the boundary — a row dated exactly on the
+  bound — as #358's `latestTwoOnOrBefore` / `deleteOnOrAfter` are.
 
 ## Delegating triage
 

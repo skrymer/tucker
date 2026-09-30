@@ -5,7 +5,7 @@
   "vitest": {
     "configFile": "vitest.config.ts"
   },
-  "ignorePatterns": ["!.nuxt", "/.nuxt/test", "/.nuxt/e2e"],
+  "ignorePatterns": ["!.nuxt", "/.nuxt/test", "/.nuxt/e2e", "/.nuxt/dev"],
   "mutate": [
     "app/**/*.ts",
     "app/**/*.vue",

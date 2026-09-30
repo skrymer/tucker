@@ -38,6 +38,10 @@ agent, and the six below.
   verdict: F18 slice 6's efficiency agent dismissed two findings on exactly that
   sentence, and gate 5 flagged the brief. Ask for the cost; judging it is the
   resolution's job.
+- A worked example drawn from the change, e.g. "(e.g. an ADR that says a recompute
+  overwrites only the same-day record)". It is not a defence, but it is a finding
+  handed over: in #358 that example became the check's first FAIL. Name the kind of
+  constraint to look for, never an instance of it.
 - The conclusion of another agent in the same run. Two briefs are exempt because that
   material *is* their subject: the arbiter's, which is given both positions, and the
   **resolutions agent's**, which is given every finding, every dismissal and the
