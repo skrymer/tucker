@@ -200,6 +200,11 @@ and checks each against a concrete value in the verdict.
 - **UNCOVERED or WEAK sends you back into the browser**, not into a justification.
   Drive the values it names, then extend the verdict.
 - **The reachability pass is exempt** — it has no probes to audit.
+- **"Not drivable" is a claim, and it needs checking before it is written.** Look for
+  every endpoint that can put the app in that state, unbounded ones included:
+  `/api/summary?date=` takes no ±1 check and runs a due review, so it can seed review
+  history on any date. #358's verdict called a state unseedable over the API; the
+  resolutions pass showed the recipe.
 - Append the result to the verdict, so a reviewer sees what was checked:
   `verdict audit: 4 inputs — 3 COVERED, 1 UNCOVERED (start date = today) → drove it ✅`
 

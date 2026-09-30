@@ -83,8 +83,21 @@ needs it.
    reachable on `main`** — a root cause that predates the diff, given a new consumer
    by it, is the diff's harm: F18 slice 6 called a JS/Kotlin trim split pre-existing,
    and gate 5 rejected it because the slice's own merge preview turned a harmless
-   refusal into an unannounced merge. (Bump to high only if the diff is large or
-   security-sensitive and you want the broader net despite the redundancy.)
+   refusal into an unannounced merge. **Nor is "by design", "transient" or
+   "accepted" a resolution for a harm the diff makes worse than `main`** — a
+   regression is fixed, red-first, in the same change; only a genuinely new scope
+   question goes to the user as a choice. #358 dismissed a stale-bundle fallback as
+   "by design: transient"; it was a regression, and was fixed.
+
+   **Judge each state by what the User sees in it**, not by whether a function's
+   return value is right on its own terms. When a fix narrows one read of some rows,
+   list every *other* reader of those rows and walk each through the states — none
+   standing, a stale one standing, a later one existing. #358's inline review wrote
+   "`isOverdue` with a future latest (negative days, not overdue)" as a check that
+   passed; that branch was a regression ("No budget yet" on the device behind), one
+   of three the narrowed read produced against the unbounded one, all found by later
+   gates. (Bump to high only if the diff is large or security-sensitive and you want
+   the broader net despite the redundancy.)
 
    **Launch the adversary (Brief A) in this same message.** `/code-review` runs
    inline, so the adversary is a background agent alongside it and gate 4. See
@@ -168,7 +181,16 @@ needs it.
      exactly the moment nobody is still looking.
    - **Does each dismissal hold?** "By design per ADR 00xx", "pre-existing", "out
      of scope" are checkable claims, and the agent has the ADRs to check them
-     against.
+     against. Two are never valid and the agent rejects them on sight: a harm the
+     diff makes worse than `main` recorded as accepted (it is a regression, and
+     gets fixed — never offer "accept and record" as an option), and a tool's
+     refusal as the reason something was left ("Probity refused the extract" says
+     nothing about whether the extract is worth doing).
+   - **Was an existing test edited to make the change pass?** That edit is a
+     finding, not housekeeping, and it belongs in the pack: ask what a User in the
+     state the old test described now sees. In #358 a test moved its day to
+     `LocalDate.now()` unrecorded — it was the device-behind regression, seen from
+     the test side.
    - **Is the pack faithful to the transcripts?** Both halves of every pair above
      are written by the author from memory of the agent output, so this gate would
      otherwise adjudicate the author's account of a finding against the author's
@@ -340,8 +362,10 @@ losing a finding:
 - **Hand each agent a context pack, not just the diff.** Every agent otherwise
   re-discovers the same files: in the measured run, eight agents each independently
   read `log.vue`, `catalog.ts` and the ADRs, at ~15–35 tool calls apiece. Write the
-  diff to a scratch file *and* inline the three-to-five files the angle actually
-  needs, then say which further reading is expected. Naming the files it will need
+  diff to a scratch file — **one per gate** (`diff-gate1.patch`, `diff-gate3.patch`),
+  never one shared file rewritten as fixes land, or gate 5 cannot replay what an
+  agent judged (#358's gate-1 input was overwritten) — *and* inline the
+  three-to-five files the angle actually needs, then say which further reading is expected. Naming the files it will need
   is also what stops it wandering — and it must carry the contract's
   read-anything-else sentence, so the pack cannot double as a fence.
 - **Batch the fixes, not one test run each.** Findings arrive in groups and most are
@@ -351,7 +375,13 @@ losing a finding:
   passes on write because the code already delivers it (a gate-3 ledger gap, say):
   show its red on a throwaway copy, or with `-PmutationFullMatrix` on the backend —
   never by mutating the source in place, which the TDD hook refuses. `mutation-test`
-  carries both recipes.
+  carries both recipes. "It passes on write, so it can't go RED" is never a reason
+  to leave behaviour unpinned, and gate 5 rejects it.
+
+  Every gate fix follows a large agent report, which is exactly when Probity loses
+  the run's test history and refuses a genuine RED as circular. Re-run the target
+  test class unfiltered immediately before writing each fix's RED; never route
+  round a refusal by writing gated files through Bash.
 
 ## After the gates
 
