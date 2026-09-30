@@ -3,10 +3,13 @@ package com.tucker.api
 import com.tucker.service.CheckOutcome
 import com.tucker.service.CheckService
 import com.tucker.service.CheckedProduct
+import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import java.time.LocalDate
 
 /**
  * A Check on the wire (ADR 0022): the scanned product, the day's targets it is
@@ -76,7 +79,10 @@ private fun CheckedProduct.toResponse(): CheckResponse {
 
 @RestController
 @RequestMapping("/api/check")
-class CheckController(private val checks: CheckService) {
+class CheckController(
+    private val checks: CheckService,
+    private val userToday: UserToday,
+) {
 
     /**
      * Check [barcode] against the day's targets. The failure cases are kept
@@ -86,10 +92,18 @@ class CheckController(private val checks: CheckService) {
      * therefore still unknown whether it exists (issue #164), `422` when a
      * Provider knows it but its nutrition can never yield a Check, and `409`
      * before setup has produced a Calorie Budget.
+     *
+     * [clientToday] is the User's local date (ADR 0014), which picks the review
+     * whose targets apply; without it, the newest review applies.
      */
     @GetMapping("/{barcode}")
-    fun check(@PathVariable barcode: String): CheckResponse =
-        when (val outcome = checks.check(barcode)) {
+    fun check(
+        @PathVariable barcode: String,
+        @RequestParam(required = false)
+        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+        clientToday: LocalDate?,
+    ): CheckResponse =
+        when (val outcome = checks.check(barcode, clientToday?.let(userToday::resolve))) {
             is CheckOutcome.Stated -> outcome.product.toResponse()
             is CheckOutcome.Incomplete -> throw UnprocessableException(
                 "${outcome.source} has no complete nutrition for ${outcome.name}, " +

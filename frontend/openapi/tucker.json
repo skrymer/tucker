@@ -3139,6 +3139,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "clientToday",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
           }
         ],
         "responses": {

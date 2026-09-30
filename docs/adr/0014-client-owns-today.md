@@ -33,9 +33,19 @@ against today — takes the client's local date and acts on it:
   a stamp but a comparison, and it needs the client's day for the same reason: at a
   UTC offset the server's day and the user's differ, so the server's would refuse a
   date the picker in front of them offers.
+- `GET /api/check/{barcode}`: a read, not a write, but it states the targets
+  *standing on* the User's day (the review dated on or before it; see **Weekly
+  Review** in `CONTEXT.md`), so it needs that day to pick the review. The summary and
+  the Budget Projection already carry it as `date`. The rule exists because of this
+  ADR's ±1 tolerance: a device a day ahead can stamp a review at its `clientToday`
+  that is still tomorrow for another device (#358). Unlike the writes below, a
+  Check sent *no* day does not fall back to the server's: it gets the newest review
+  whatever its date, which is what every client got before it sent one — the
+  server's day would miss a User's own review for the whole of a morning east of
+  UTC.
 
 The client date is carried as `clientToday` (request body for the POSTs, query param
-for the DELETE — and for `PUT /api/profile`, added by
+for the DELETE and for `GET /api/check/{barcode}` — and for `PUT /api/profile`, added by
 [0024](0024-a-weekly-review-carries-intake-targets-only-when-they-can-be-corrected.md),
 whose body is a whole-Profile replace with no room for a field that is not part of
 one), exactly as `/weight` already does, and resolved by one shared
@@ -96,7 +106,9 @@ the user's own zone is a move toward this ADR's model rather than away from it.
   made a Calorie-Tracking change recompute today's review — `/profile`; the
   frontend sends its `localToday()` on each. `/profile` has two writers and both
   replace the whole Profile, so the stamp lives in one `useProfileWrite` composable
-  rather than at each call site.
+  rather than at each call site. `GET /api/check/{barcode}` takes it too, as the
+  one read that needs it — the summary and the Budget Projection carry the day
+  as `date`.
 - The #84 UTC pin is retained as a safety net, not a crutch.
 
 ## References

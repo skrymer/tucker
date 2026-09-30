@@ -280,6 +280,24 @@ class SummaryApiTest {
     }
 
     @Test
+    fun `a stale review standing on the day fires a catch-up even when a later-dated review exists`() {
+        val today = LocalDate.now()
+        maintenanceSetup(today)
+        seedReview(today.minusDays(8), budgetKcal = 1850.0, floorG = 172.0)
+        // Stamped by a device already on tomorrow (ADR 0014); it does not stand today.
+        seedReview(today.plusDays(1), budgetKcal = 1700.0, floorG = 160.0)
+
+        mockMvc.get("/api/summary") {
+            param("date", "$today")
+        }.andExpect { status { isOk() } }
+
+        mockMvc.get("/api/weekly-review/history").andExpect {
+            status { isOk() }
+            jsonPath("$[?(@.reviewedOn == '$today')]") { isNotEmpty() }
+        }
+    }
+
+    @Test
     fun `the summary reports a budget change when the latest review differs from the previous`() {
         val prev = LocalDate.of(2026, 5, 15)
         val latest = prev.plusWeeks(1)
@@ -296,6 +314,25 @@ class SummaryApiTest {
             jsonPath("$.budgetChange.newBudgetKcal") { value(1800.0) }
             jsonPath("$.budgetChange.previousFloorG") { value(172.0) }
             jsonPath("$.budgetChange.newFloorG") { value(168.0) }
+        }
+    }
+
+    @Test
+    fun `the summary's budget change compares the reviews standing on the day, not a later one`() {
+        val prev = LocalDate.of(2026, 5, 15)
+        val latest = prev.plusWeeks(1)
+        seedReview(prev, budgetKcal = 1850.0, floorG = 172.0)
+        val review = seedReview(latest, budgetKcal = 1800.0, floorG = 168.0)
+        // Stamped by a device already on tomorrow (ADR 0014).
+        seedReview(latest.plusDays(1), budgetKcal = 1700.0, floorG = 160.0)
+
+        mockMvc.get("/api/summary") {
+            param("date", "$latest")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.budgetChange.reviewId") { value(review.id) }
+            jsonPath("$.budgetChange.previousBudgetKcal") { value(1850.0) }
+            jsonPath("$.budgetChange.newBudgetKcal") { value(1800.0) }
         }
     }
 
@@ -496,8 +533,9 @@ class SummaryApiTest {
     fun `a Goal whose deficit fits reports no Suspended Deficit`() {
         // 86 kg on the seeded body maintains well above the 550 kcal a 0.5 kg/week
         // Goal asks for, so the deficit is applied and the question is answered no
-        // rather than not arising.
-        val day = LocalDate.of(2026, 6, 10)
+        // rather than not arising. Read on the server's today, where starting the
+        // Goal stamped its review.
+        val day = LocalDate.now()
         completeSetup(day)
 
         mockMvc.get("/api/summary") {

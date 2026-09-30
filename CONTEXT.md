@@ -654,16 +654,23 @@ and, against a **Goal**, how it is tracking. With Calorie Tracking on the review
 *also* runs the adaptive engine, re-deriving Maintenance from the Trend Weight
 and logged intake and then the Calorie Budget and Protein Floor for the coming
 week — its **Intake Targets**.
-Clock-driven reviews are held steady — never changed once written — but a
-deliberate **Goal** change (creating or replacing one) and a change of **Calorie
-Tracking** each force-recompute today's review, overwriting any same-day record
-so the new figures take effect immediately rather than at the next cadence. It is
-the _only_ place Maintenance, the Budget, and the Floor are (re)computed; the
-Today screen (`/`) shows the latest review's figures. Reviews fire by **lazy catch-up**: on the daily-summary
+Clock-driven reviews are held steady — never changed once written, unless dated
+after a later recompute (below) — but a deliberate **Goal** change (creating or
+replacing one) and a change of **Calorie Tracking** each force-recompute today's review, overwriting any same-day record
+so the new figures take effect immediately rather than at the next cadence — and
+any review dated after it, which a device already on tomorrow may have stamped
+from the settings the change replaces. It is the _only_ place Maintenance, the
+Budget, and the Floor are (re)computed. A day's figures — on `/`, in a **Check**,
+in a **Budget Projection** — come from the review **standing on** that day: the
+latest dated on or before it, never a later one. Only the cadence (is a review
+due?) and a **Check** from a client that sends no day ask for the newest review
+whatever its date. Reviews fire by **lazy catch-up**: on the daily-summary
 read that opening Tucker performs — today `/` and a **Check**, not every screen — if
 the latest review is a week or more old, the engine runs one review snapping to
 today (it does not replay each missed week — the adaptive window already looks
-back two weeks). A manual "run now" trigger, a **Goal**-change recompute and a
+back two weeks). When the latest review is dated tomorrow — a device already on
+tomorrow stamped it — the age is judged from the review standing on today instead,
+and none standing counts as overdue. A manual "run now" trigger, a **Goal**-change recompute and a
 **Calorie Tracking**-change recompute also exist.
 There is no scheduler. Every recompute is stamped on the user's _local_ today —
 the client supplies it, the server never substitutes its own wall-clock day (the

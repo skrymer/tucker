@@ -118,7 +118,7 @@ both.
 5. **A Suspended Deficit is a live status, derived on read, never stored.** It is
    a sibling of **Pace Status** and **Drift Status**, computed in
    `SummaryController` from the two things it already holds — whether a Goal is
-   active, and the latest review's **Intake Targets**.
+   active, and the **Intake Targets** of the review standing on the day.
 
    What it asks of those targets is `appliesNoDeficit` — *did the Budget come out
    equal to the Maintenance it was derived from* — and **not** whether the live

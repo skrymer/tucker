@@ -49,7 +49,9 @@ test('a scanned product states its cost and return against the day', async ({
   goto,
 }) => {
   await mockSummary(page, withBudget)
-  await page.route(`**/api/check/${BARCODE}`, (route) =>
+  // `**`: the lookup carries the client's day as a query, which a glob ending
+  // at the path would not match.
+  await page.route(`**/api/check/${BARCODE}**`, (route) =>
     route.fulfill({ json: nutellaCheck }),
   )
   // The decoder's WASM is served from our own origin, not zxing-wasm's default
@@ -67,6 +69,32 @@ test('a scanned product states its cost and return against the day', async ({
     timeout: 20_000,
   })
   await expect(page.getByRole('main')).toMatchAriaSnapshot()
+})
+
+test("a Check asks about the User's local day, not the server's", async ({
+  page,
+  goto,
+}) => {
+  // 08:00 in Brisbane is still the previous day in UTC: the one window where
+  // sending the UTC date instead of the local one picks a different review.
+  await page.clock.setFixedTime(new Date('2026-06-15T22:00:00Z'))
+  await mockSummary(page, withBudget)
+  const askedFor: (string | null)[] = []
+  await page.route(`**/api/check/${BARCODE}**`, (route) => {
+    askedFor.push(
+      new URL(route.request().url()).searchParams.get('clientToday'),
+    )
+    return route.fulfill({ json: nutellaCheck })
+  })
+  await page.route('**jsdelivr.net/**', (route) => route.abort())
+  await fakeBarcodeCamera(page, BARCODE)
+
+  await goto('/check', { waitUntil: 'hydration' })
+
+  await expect(page.getByRole('heading', { name: 'Nutella' })).toBeVisible({
+    timeout: 20_000,
+  })
+  expect(askedFor).toEqual(['2026-06-16'])
 })
 
 test('Check is reachable from the navigation, under More', async ({

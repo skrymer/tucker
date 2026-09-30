@@ -60,7 +60,8 @@ place the two halves of the app can disagree.
 
 4. **Toggling Calorie Tracking is a fourth review trigger**, alongside the weekly
    catch-up, the manual run and a Goal lifecycle change. It reuses
-   `WeeklyReviewService.recomputeFor(today)` — delete today's record, re-run —
+   `WeeklyReviewService.recomputeFor(today)` — delete today's record and any dated
+   after it, re-run —
    in **both** directions, for the reason ADR 0008 gives for the third: reviews
    are held steady between cadence ticks, so without it turning tracking on
    leaves a User with a Log-entry button and no Budget for up to a week, and

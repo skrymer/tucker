@@ -49,16 +49,23 @@ class WeeklyReviewService(
         if (!setupComplete()) return false
         // The same overdue predicate the Weekly-Review Reminder asks (ADR 0010) —
         // a missing review is itself overdue, so the very first one bootstraps here.
-        if (ReviewCadence.isOverdue(reviews.latest()?.reviewedOn, today)) runReview(today)
+        val latestOn = reviews.latest()?.reviewedOn
+        // A review a device a day ahead stamped (ADR 0014) does not stand here yet, so
+        // the cadence is judged from the one that does, and none standing is overdue.
+        val cadenceFrom = if (latestOn == today.plusDays(1)) {
+            reviews.latestTwoOnOrBefore(today).firstOrNull()?.reviewedOn
+        } else {
+            latestOn
+        }
+        if (ReviewCadence.isOverdue(cadenceFrom, today)) runReview(today)
         return true
     }
 
     /**
-     * The two most recent reviews, newest first — the inputs to the dashboard's
-     * budget-change diff. The summary reads reviews through the engine rather than
-     * the repository directly.
+     * The two reviews standing on [date], newest first: that day's targets and its
+     * budget-change diff.
      */
-    fun recentReviews(): List<WeeklyReview> = reviews.latestTwo()
+    fun reviewsStandingOn(date: LocalDate): List<WeeklyReview> = reviews.latestTwoOnOrBefore(date)
 
     /**
      * The inputs a review needs; absent any of them, catch-up stays a no-op. A Goal
@@ -77,10 +84,13 @@ class WeeklyReviewService(
      * [runReview] is deliberately idempotent — the Budget is "held steady in between"
      * clock-driven ticks — so a deliberate Goal change recomputes through here, dropping
      * the stale same-day record first so the fresh deficit takes effect immediately.
+     *
+     * A review dated after [on] goes too: a device a day ahead stamped it from the
+     * settings this change replaces, and it would stand once its day arrived.
      */
     @Transactional
     fun recomputeFor(on: LocalDate): WeeklyReview {
-        reviews.deleteByReviewedOn(on)
+        reviews.deleteOnOrAfter(on)
         return runReview(on)
     }
 

@@ -28,6 +28,11 @@ class WeeklyReviewRepository(
     private val currentUser: CurrentUser,
 ) {
 
+    /**
+     * The newest review that exists, whatever its date — the cadence's question
+     * (is one due?), which a review stamped by a device a day ahead does answer.
+     * Never a day's figures: those come from [latestTwoOnOrBefore].
+     */
     fun latest(): WeeklyReview? =
         dsl.selectFrom(WEEKLY_REVIEW)
             .where(WEEKLY_REVIEW.USER_ID.eq(currentUser.ownerId))
@@ -69,10 +74,16 @@ class WeeklyReviewRepository(
             .and(WEEKLY_REVIEW.USER_ID.eq(currentUser.ownerId))
             .fetchOne()?.toDomain()
 
-    /** The two most recent reviews, newest first — the inputs to a budget-change diff. */
-    fun latestTwo(): List<WeeklyReview> =
+    /**
+     * The two most recent reviews dated on or before [date], newest first — the
+     * reviews standing on that day, the rule `TimelineIntake.budgetOn` applies to a
+     * window. A later-dated one exists whenever a device ahead of this one stamped it
+     * (ADR 0014), and has not happened yet for [date].
+     */
+    fun latestTwoOnOrBefore(date: LocalDate): List<WeeklyReview> =
         dsl.selectFrom(WEEKLY_REVIEW)
-            .where(WEEKLY_REVIEW.USER_ID.eq(currentUser.ownerId))
+            .where(WEEKLY_REVIEW.REVIEWED_ON.le(date.toString()))
+            .and(WEEKLY_REVIEW.USER_ID.eq(currentUser.ownerId))
             .orderBy(WEEKLY_REVIEW.REVIEWED_ON.desc())
             .limit(2)
             .fetch().map { it.toDomain() }
@@ -83,10 +94,10 @@ class WeeklyReviewRepository(
             .orderBy(WEEKLY_REVIEW.REVIEWED_ON)
             .fetch().map { it.toDomain() }
 
-    /** Remove the caller's review recorded on [reviewedOn], so it is recomputed. */
-    fun deleteByReviewedOn(reviewedOn: LocalDate) {
+    /** Remove the caller's reviews recorded on or after [date], so they are recomputed. */
+    fun deleteOnOrAfter(date: LocalDate) {
         dsl.deleteFrom(WEEKLY_REVIEW)
-            .where(WEEKLY_REVIEW.REVIEWED_ON.eq(reviewedOn.toString()))
+            .where(WEEKLY_REVIEW.REVIEWED_ON.ge(date.toString()))
             .and(WEEKLY_REVIEW.USER_ID.eq(currentUser.ownerId))
             .execute()
     }

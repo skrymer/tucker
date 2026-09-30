@@ -146,7 +146,7 @@ class SummaryController(
         val setupComplete = weeklyReview.catchUpIfDue(date)
 
         val log = DailyLog(date, entries.findByDate(date))
-        val recent = weeklyReview.recentReviews()
+        val recent = weeklyReview.reviewsStandingOn(date)
         val review = recent.firstOrNull()
         val targets = review?.intakeTargets
         val budgetChange = recent.takeIf { it.size == 2 }

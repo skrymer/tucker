@@ -8,7 +8,9 @@ import java.time.temporal.ChronoUnit
  * [WeeklyReview] is *overdue* once the latest one has aged past the cadence. Both
  * the lazy catch-up (which runs the due review on app use) and the Weekly-Review
  * Reminder (which nudges an absent user) ask the *same* question here, so the two
- * can never disagree on when a week is up (ADR 0010).
+ * never disagree on when a week is up (ADR 0010) — except that catch-up, when the
+ * latest review is dated tomorrow, asks it of the review standing on today, which
+ * can only make catch-up the more eager of the two.
  */
 object ReviewCadence {
 

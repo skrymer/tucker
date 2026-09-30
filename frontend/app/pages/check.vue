@@ -56,6 +56,7 @@ function useCheckLookup() {
     (signal: AbortSignal, code: string) =>
       $api('/api/check/{barcode}', {
         path: { barcode: code },
+        query: { clientToday: today },
         // A barcode's resolution is dynamic — a product saved to the catalog,
         // or a Budget moved by a Weekly Review, changes the answer — so never
         // serve one from the browser cache.
