@@ -89,7 +89,8 @@ makes the one judgment call.
 
 ## A Goal lifecycle change recomputes today's review
 
-The Budget shown on `/today` is read from the latest **Weekly Review** record and
+The Budget shown on `/today` is read from the **Weekly Review** standing on that day
+(the latest dated on or before it, see [0014](0014-client-owns-today.md)) and
 is frozen between reviews ([0002](0002-business-logic-belongs-in-the-backend.md),
 "held steady in between"). If switching to maintenance only deactivated the Goal,
 `/today` would keep showing the old *deficit* Budget for up to seven days until
@@ -97,7 +98,9 @@ the next lazy catch-up — the user "graduates" and their calories don't move.
 
 So a **Goal lifecycle change is a third review trigger**, alongside (1) weekly
 lazy catch-up and (2) manual "run now": switching to maintenance
-**force-recomputes today's review, overwriting any existing same-day record**.
+**force-recomputes today's review, overwriting any existing same-day record** —
+and deleting any review dated after today, which a device already on tomorrow
+stamped from the settings this change replaces.
 `runReview(today)` is idempotent (returns an existing same-day record unchanged),
 so this must *overwrite*, not no-op. "Held steady in between" still holds for
 clock ticks; a deliberate Goal event is exactly what *should* move the Budget
@@ -184,7 +187,7 @@ endpoint:
   stamped on Weight Measurement create/edit when the active Goal crosses target;
   the Weekly Review gains a **no-active-Goal branch** (`Budget = Maintenance`,
   `Floor = 2 g/kg × trend`); a deactivate-to-maintenance action that
-  force-recomputes today's review (overwrite); Goal-creation validation that the
+  force-recomputes today's review (overwrite, and drop any later-dated one); Goal-creation validation that the
   target is below the current trend; `driftStatus` + `observedRateKgPerWeek` added
   to the summary response, derived from the existing 28-day slope classified
   against zero; `GET /api/goal` + `/api/goal/progress` return 404 when no Goal is

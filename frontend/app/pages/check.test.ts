@@ -5,7 +5,7 @@ import {
   registerEndpoint,
   renderSuspended,
 } from '@nuxt/test-utils/runtime'
-import { setResponseStatus } from 'h3'
+import { getQuery, setResponseStatus } from 'h3'
 import { screen } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import { nutellaCheck } from '~~/test/check-fixtures'
@@ -105,6 +105,16 @@ registerEndpoint('/api/check/5003333333333', async (event) => {
   return { ...nutellaCheck, name: 'Recovered bar', barcode: '5003333333333' }
 })
 
+// Answers only when asked about the User's own day: the targets a Check states
+// are the ones standing on that day, and the server cannot know it otherwise.
+registerEndpoint('/api/check/5005555555555', (event) => {
+  if (getQuery(event).clientToday !== localToday()) {
+    setResponseStatus(event, 409)
+    return { message: 'a Check needs a Calorie Budget; finish setup first' }
+  }
+  return { ...nutellaCheck, name: 'Dated bar', barcode: '5005555555555' }
+})
+
 /** Hold the next answer open, and hand back the release. */
 function gateLookup() {
   let release!: () => void
@@ -139,6 +149,15 @@ describe('/check with a calorie budget', () => {
     expect(await screen.findByText('Nutella')).toBeVisible()
     expect(screen.getByText('21%')).toBeVisible()
     expect(screen.getByText('4%')).toBeVisible()
+  })
+
+  it("checks a product against the targets standing on the User's own day", async () => {
+    await renderSuspended(Check)
+
+    scanner.barcode.value = '5005555555555'
+    scanner.state.value = 'decoded'
+
+    expect(await screen.findByText('Dated bar')).toBeVisible()
   })
 
   it('states the product in sentence case however the label shouts it', async () => {

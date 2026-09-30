@@ -185,12 +185,13 @@ class EntryController(
 
     /**
      * Forecast the day's over-budget state if [prospective] were logged on [date],
-     * against the latest review's budget and floor. With no review yet there is no
-     * budget to exceed, so the projection reports the running total only.
+     * against the budget and floor of the review standing on [date]. With no review
+     * yet there is no budget to exceed, so the projection reports the running total
+     * only.
      */
     private fun projectionFor(date: LocalDate, prospective: Entry): BudgetProjectionResponse {
         val log = DailyLog(date, entries.findByDate(date))
-        val targets = weeklyReview.recentReviews().firstOrNull()?.intakeTargets
+        val targets = weeklyReview.reviewsStandingOn(date).firstOrNull()?.intakeTargets
         val projection = log.project(prospective, targets?.calorieBudgetKcal, targets?.proteinFloorG)
         return BudgetProjectionResponse(
             wouldExceedBudget = projection.wouldExceedBudget,

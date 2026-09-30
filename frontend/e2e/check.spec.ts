@@ -49,7 +49,9 @@ test('a scanned product states its cost and return against the day', async ({
   goto,
 }) => {
   await mockSummary(page, withBudget)
-  await page.route(`**/api/check/${BARCODE}`, (route) =>
+  // `?*`: the lookup carries the client's day as a query, which a glob ending
+  // at the path would not match.
+  await page.route(`**/api/check/${BARCODE}?*`, (route) =>
     route.fulfill({ json: nutellaCheck }),
   )
   // The decoder's WASM is served from our own origin, not zxing-wasm's default

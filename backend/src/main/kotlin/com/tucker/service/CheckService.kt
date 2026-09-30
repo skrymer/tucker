@@ -5,7 +5,9 @@ import com.tucker.domain.Check
 import com.tucker.domain.IntakeTargets
 import com.tucker.domain.Nutrition
 import com.tucker.persistence.ProfileRepository
+import com.tucker.persistence.WeeklyReviewRepository
 import org.springframework.stereotype.Service
+import java.time.LocalDate
 
 /** A Check together with the product it is about. */
 data class CheckedProduct(
@@ -60,17 +62,27 @@ sealed interface CheckOutcome {
 class CheckService(
     private val barcodeLookup: BarcodeLookupService,
     private val weeklyReview: WeeklyReviewService,
+    private val reviews: WeeklyReviewRepository,
     private val profiles: ProfileRepository,
 ) {
 
-    /** Check [barcode] against the day's targets; see [CheckOutcome] for the cases. */
-    fun check(barcode: String): CheckOutcome {
+    /**
+     * Check [barcode] against the targets standing on [today]; see [CheckOutcome] for
+     * the cases. A null [today] is a client that sends no day, which gets the newest
+     * review whatever its date.
+     */
+    fun check(barcode: String, today: LocalDate?): CheckOutcome {
         // Two ways to have no Budget, and they earn opposite advice (ADR 0024), so
         // the reason says which. Asked of the Profile rather than of setup: setup
         // being complete would also cover a tracking User whose first review has
         // simply not run yet, and telling them to turn on what is already on is the
         // trap this distinction exists to avoid.
-        val targets = weeklyReview.recentReviews().firstOrNull()?.intakeTargets
+        val review = if (today == null) {
+            reviews.latest()
+        } else {
+            weeklyReview.reviewsStandingOn(today).firstOrNull()
+        }
+        val targets = review?.intakeTargets
             ?: error(
                 if (profiles.get()?.tracksCalories == false) {
                     "a Check needs a Calorie Budget; turn calorie tracking on"

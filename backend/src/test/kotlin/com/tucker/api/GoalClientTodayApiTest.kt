@@ -160,6 +160,87 @@ class GoalClientTodayApiTest {
     }
 
     @Test
+    fun `a review stamped a day ahead without targets does not withdraw today's Calorie Budget`() {
+        phoneAheadStartsGoalThenDesktopTurnsTrackingOn()
+
+        mockMvc.get("/api/summary") {
+            param("date", "$SERVER_TODAY")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.calorieBudget") { isNumber() }
+            jsonPath("$.proteinFloor") { isNumber() }
+            jsonPath("$.dayStatus") { isString() }
+        }
+    }
+
+    @Test
+    fun `a recompute supersedes a review stamped a day ahead, so tomorrow keeps the Calorie Budget`() {
+        phoneAheadStartsGoalThenDesktopTurnsTrackingOn()
+
+        // Tomorrow arrives. The review dated then was computed with tracking off,
+        // before the desktop turned it back on.
+        mockMvc.get("/api/summary") {
+            param("date", "$CLIENT_AHEAD")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.calorieBudget") { isNumber() }
+            jsonPath("$.proteinFloor") { isNumber() }
+        }
+    }
+
+    @Test
+    fun `a device behind gets a Calorie Budget when the only review is stamped a day ahead`() {
+        // A phone already on tomorrow finishes setup: its Goal stamps the only review,
+        // dated tomorrow.
+        saveProfile(tracksCalories = true, clientToday = CLIENT_AHEAD)
+        mockMvc.post("/api/weight") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"date":"$SERVER_TODAY","weightKg":86.0,"clientToday":"$CLIENT_AHEAD"}"""
+        }.andExpect { status { isOk() } }
+        mockMvc.post("/api/goal") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"startedOn":"$SERVER_TODAY",
+                          "targetWeightKg":80.0,"rateKgPerWeek":0.5,"clientToday":"$CLIENT_AHEAD"}"""
+        }.andExpect { status { isCreated() } }
+
+        // A desktop still on today opens Tucker.
+        mockMvc.get("/api/summary") {
+            param("date", "$SERVER_TODAY")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.calorieBudget") { isNumber() }
+            jsonPath("$.proteinFloor") { isNumber() }
+        }
+    }
+
+    /**
+     * The two-device shape: a phone already on tomorrow starts a Goal with tracking
+     * off, stamping a review dated tomorrow with no Intake Targets (ADR 0024); then a
+     * desktop still on today turns tracking back on.
+     */
+    private fun phoneAheadStartsGoalThenDesktopTurnsTrackingOn() {
+        saveProfile(tracksCalories = false, clientToday = SERVER_TODAY)
+        mockMvc.post("/api/weight") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"date":"$SERVER_TODAY","weightKg":86.0,"clientToday":"$SERVER_TODAY"}"""
+        }.andExpect { status { isOk() } }
+        mockMvc.post("/api/goal") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"startedOn":"$SERVER_TODAY",
+                          "targetWeightKg":80.0,"rateKgPerWeek":0.5,"clientToday":"$CLIENT_AHEAD"}"""
+        }.andExpect { status { isCreated() } }
+        saveProfile(tracksCalories = true, clientToday = SERVER_TODAY)
+    }
+
+    private fun saveProfile(tracksCalories: Boolean, clientToday: LocalDate) {
+        mockMvc.put("/api/profile?clientToday=$clientToday") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"sex":"MALE","birthDate":"1986-05-22","heightCm":180.0,
+                          "tracksCalories":$tracksCalories}"""
+        }.andExpect { status { isOk() } }
+    }
+
+    @Test
     fun `a birth date is judged past against the client's day, not the server's`() {
         // The client's own day is the server's yesterday, so a birth date of the
         // client's today already reads as past on the server clock. Judged there it

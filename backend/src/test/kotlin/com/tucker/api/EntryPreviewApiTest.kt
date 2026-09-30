@@ -31,11 +31,11 @@ class EntryPreviewApiTest {
     private val date = LocalDate.of(2026, 6, 18)
 
     /** A review inserted directly, standing in for one the adaptive engine ran. */
-    private fun seedBudget(budgetKcal: Double, floorG: Double = 150.0) {
+    private fun seedBudget(budgetKcal: Double, floorG: Double = 150.0, on: LocalDate = date) {
         reviews.insert(
             WeeklyReview(
                 id = null,
-                reviewedOn = date,
+                reviewedOn = on,
                 trendWeightKg = 86.0,
                 intakeTargets = IntakeTargets(
                     maintenance = Maintenance(2400.0, Maintenance.Basis.FORMULA_SEED),
@@ -141,6 +141,23 @@ class EntryPreviewApiTest {
             jsonPath("$.projectedCaloriesConsumed", closeTo(600.0, 1e-6))
             jsonPath("$.calorieBudget") { value(null) }
             jsonPath("$.overByKcal") { value(null) }
+        }
+    }
+
+    @Test
+    fun `previewing judges the day against the review standing on it, not a later one`() {
+        seedBudget(2000.0)
+        // Stamped by a device already on tomorrow (ADR 0014), with a tighter Budget.
+        seedBudget(1500.0, on = date.plusDays(1))
+        logEstimated(1400.0)
+
+        mockMvc.post("/api/entries/estimated/preview") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"date":"$date","label":"dinner out","calories":500.0,"protein":null}""" // → 1,900
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.wouldExceedBudget") { value(false) }
+            jsonPath("$.calorieBudget", closeTo(2000.0, 1e-6))
         }
     }
 }

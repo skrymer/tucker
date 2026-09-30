@@ -193,6 +193,41 @@ class CheckApiTest {
     }
 
     @Test
+    fun `a Check measures against the review standing on the client's day, not a later one`() {
+        val today = LocalDate.now()
+        seedTargets(budgetKcal = 2492.0, floorG = 170.0, on = today)
+        // Stamped by a device already on tomorrow (ADR 0014), with tracking off.
+        reviews.insert(
+            WeeklyReview(id = null, reviewedOn = today.plusDays(1), trendWeightKg = 86.0, intakeTargets = null),
+        )
+        providerKnows(nutellaBarcode, nutella(nutellaBarcode))
+
+        mockMvc.get("/api/check/$nutellaBarcode") {
+            param("clientToday", "$today")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.calorieBudgetKcal", near(2492.0, 1e-6))
+            jsonPath("$.proteinFloorG", near(170.0, 1e-6))
+        }
+    }
+
+    @Test
+    fun `a Check from a client that sends no day measures against the newest review`() {
+        // A bundle from before clientToday existed. East of UTC in the morning, its
+        // own review is dated a day after the server's, and it must still be found.
+        val today = LocalDate.now()
+        seedTargets(budgetKcal = 2492.0, floorG = 170.0, on = today)
+        seedTargets(budgetKcal = 1800.0, floorG = 160.0, on = today.plusDays(1))
+        providerKnows(nutellaBarcode, nutella(nutellaBarcode))
+
+        mockMvc.get("/api/check/$nutellaBarcode").andExpect {
+            status { isOk() }
+            jsonPath("$.calorieBudgetKcal", near(1800.0, 1e-6))
+            jsonPath("$.proteinFloorG", near(160.0, 1e-6))
+        }
+    }
+
+    @Test
     fun `a barcode nothing knows is a 404`() {
         seedTargets()
         whenever(openFoodFacts.capabilities).thenReturn(setOf(ProviderCapability.BARCODE_LOOKUP))

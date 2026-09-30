@@ -28,7 +28,9 @@ recompute*, not a vow of notification celibacy; we sharpen the glossary to say s
 
 **Firing rule.** Each tick (hourly), for the user, send a reminder when **all** hold:
 - the latest Weekly Review is **≥ 7 days old** (the same predicate lazy catch-up
-  uses — a review *would* fire on next open), and
+  uses — a review *would* fire on next open; catch-up alone also asks it of the
+  review standing on today when the latest is dated tomorrow, see `CONTEXT.md` ›
+  **Weekly Review**), and
 - the user has at least one **Push Subscription**, and
 - the user **hasn't opened the app today** (the absent-today gate — redundant in
   practice, and never the reason a reminder is suppressed; see *What counts as

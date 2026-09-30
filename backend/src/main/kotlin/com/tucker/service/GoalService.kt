@@ -32,7 +32,8 @@ class GoalService(
      *
      * A deliberate Goal change is one of the few moments the Budget is allowed to
      * move mid-week — clock-driven ticks still hold it steady. The recompute
-     * *overwrites* any same-day review (see [WeeklyReviewService.recomputeFor]), and
+     * *overwrites* today's review and drops any dated after it (see
+     * [WeeklyReviewService.recomputeFor]), and
      * on a fresh install it mints today's first one. Direct call rather than a
      * domain event: single consumer, and we want the save and review committed in
      * one transaction.
