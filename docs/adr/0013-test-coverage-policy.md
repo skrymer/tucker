@@ -48,8 +48,10 @@ glue's failing red simply lives in the integrated test, not in a unit test.
   `shouldRemind(state)` function); frontend composables/utils via Vitest. Real
   implementation, public interface, no internal mocks.
 - **Component tests** — Testing Library via `renderSuspended`, real child components,
-  only the network mocked (see the component-testing-best-practices skill).
-- **Mocked Playwright e2e** — `page.route`-mocked API, Desktop + Mobile Chrome, for
+  only the network mocked (see the component-testing-best-practices skill; the mock is
+  MSW per ADR 0034).
+- **Mocked Playwright e2e** — API mocked through Playwright's routing (MSW handlers
+  shared with the component tests, ADR 0034), Desktop + Mobile Chrome, for
   responsive/interaction behaviour (see the playwright-best-practices skill).
 - **Real-stack smoke (e2e)** — Playwright against the live backend container, per
   slice, no mocks.

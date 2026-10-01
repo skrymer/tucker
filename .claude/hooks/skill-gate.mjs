@@ -22,6 +22,21 @@ export const RULES = [
     skills: ['playwright-best-practices', 'tdd'],
   },
   {
+    id: 'msw-test',
+    path: /(^|\/)frontend\/test\/mocks\/.*\.test\.ts$/,
+    skills: ['msw', 'tdd'],
+  },
+  {
+    id: 'msw',
+    path: /(^|\/)frontend\/test\/mocks\//,
+    skills: ['msw'],
+  },
+  {
+    id: 'msw-e2e',
+    path: /(^|\/)frontend\/e2e\/support\/network\.ts$/,
+    skills: ['playwright-best-practices', 'msw'],
+  },
+  {
     id: 'vitest',
     path: /(^|\/)frontend\/(app|server)\/.*\.test\.ts$/,
     skills: ['component-testing-best-practices', 'tdd'],

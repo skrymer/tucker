@@ -1,6 +1,6 @@
 ---
 name: frontend-dev
-description: The build-and-test workflow for the Tucker Nuxt frontend (Nuxt 4 + Nuxt UI 4, in frontend/). Use when building or changing ANY frontend functionality — a page, component, composable, util, or its tests. Sets the architecture rules, the four-layer test strategy, and the known gotchas, and routes to tdd, component-testing-best-practices, playwright-best-practices, and feature-sign-off for detail. This is the build workflow, NOT visual design — for look-and-feel use frontend-design and frontend/DESIGN.md.
+description: The build-and-test workflow for the Tucker Nuxt frontend (Nuxt 4 + Nuxt UI 4, in frontend/). Use when building or changing ANY frontend functionality — a page, component, composable, util, or its tests. Sets the architecture rules, the four-layer test strategy, and the known gotchas, and routes to tdd, component-testing-best-practices, playwright-best-practices, msw, and feature-sign-off for detail. This is the build workflow, NOT visual design — for look-and-feel use frontend-design and frontend/DESIGN.md.
 ---
 
 # Frontend dev (Tucker)
@@ -51,6 +51,10 @@ The `server/` layer is thin on purpose — the only route is the `/api` proxy �
 real production code with a rule of its own (it must never overwrite a Cloudflare Access
 assertion with the dev token), and no browser-level layer can reach it.
 
+- **`/api` is mocked with MSW** in both mocked layers — one typed handler set, a baseline
+  overridden per test, and no request assertions (the **msw** skill, ADR 0034). Files not
+  yet moved still use `registerEndpoint` / `page.route`; move a surface's Vitest and e2e
+  files together.
 - One test at a time, RED first (the `tdd` skill). A **deep module** (an interface worth
   specifying) gets its own test; thin glue is covered by the integrated / smoke test — never call
   these "isolation tests". (ADR 0013.)
@@ -112,7 +116,7 @@ assertion with the dev token), and no browser-level layer can reach it.
   after the list shuts only works inside that window. An e2e holds it with `page.clock.install()`
   before `goto`, then `page.clock.pauseAt(...)` around the close (`e2e/food-tags.spec.ts`).
 - **Adding a query param to a request breaks every `page.route` glob that ends at
-  its path.** `**/api/check/123` stops matching `/api/check/123?clientToday=…`, and
+  its path** (specs not yet on MSW). `**/api/check/123` stops matching `/api/check/123?clientToday=…`, and
   the spec fails as a timeout, not as a routing error. End the glob with `**` (the
   `e2e/support/mock-api.ts` convention), which matches with and without a query, and
   grep `e2e/` for routes on the path whenever a request gains one.
@@ -120,8 +124,9 @@ assertion with the dev token), and no browser-level layer can reach it.
   the host's zone and CI in UTC, so an assertion there passes a page that sends the
   UTC date everywhere but a Brisbane morning. The mocked browser runs in
   `MOCKED_E2E_TIMEZONE`; pin `page.clock.setFixedTime` to a UTC time where the two
-  days differ (e.g. `22:00Z` = 08:00 AEST next day) and assert the request's query
-  (`e2e/check.spec.ts`). `setFixedTime`, not `install`, so the app's timers still run.
+  days differ (e.g. `22:00Z` = 08:00 AEST next day), let the handler answer only the
+  local day, and assert the product on screen (`e2e/check.spec.ts`) — never the
+  request's query. `setFixedTime`, not `install`, so the app's timers still run.
 - **Stale Playwright build** — the mocked e2e rebuilds `.nuxt/e2e` from scratch every run, so it cannot
   serve a stale build; the smokes still build through `@nuxt/test-utils`, so if a UI change doesn't show
   in a smoke run, `rm -rf frontend/.nuxt/test`.
@@ -136,7 +141,7 @@ runs `backend-dev`'s half of that gate in the same pass.
 
 ## Related
 
-`tdd` · `component-testing-best-practices` · `playwright-best-practices` · `mutation-test` ·
+`tdd` · `component-testing-best-practices` · `playwright-best-practices` · `msw` · `mutation-test` ·
 `feature-sign-off` · `backend-dev` (the other half of a vertical slice) ·
 `frontend-design` (visuals only) + `frontend/DESIGN.md`. ADRs:
 [0002](../../../docs/adr/0002-business-logic-belongs-in-the-backend.md) ·
