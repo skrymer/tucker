@@ -6,6 +6,20 @@ import { handlers } from './handlers'
 /** The Vitest server, holding the baseline. A test overrides it with `server.use()`. */
 export const server = setupServer(...handlers)
 
+const unhandled: string[] = []
+
+/**
+ * Throw naming every request no handler covered since the last call, then forget
+ * them. Run after each test, so a page that catches the failed request still
+ * fails its test.
+ */
+export function assertNoUnhandledRequests(): void {
+  const requests = unhandled.splice(0)
+  if (requests.length > 0) {
+    throw new Error(`requests no MSW handler covers: ${requests.join(', ')}`)
+  }
+}
+
 type Fetch = typeof globalThis.fetch
 
 /**
@@ -26,14 +40,24 @@ export function useMswServer() {
     nuxtFetch = globalThis.fetch
     nuxt$fetch = globalThis.$fetch
     globalThis.fetch = unwrapRequests(nuxtFetch)
-    server.listen({ onUnhandledFrame: 'error' })
+    server.listen({
+      onUnhandledFrame: ({ frame }) => {
+        const { request } = frame.data as { request: Request }
+        const { pathname, search } = new URL(request.url)
+        unhandled.push(`${request.method} ${pathname}${search}`)
+        throw new Error(`no handler for ${request.method} ${pathname}`)
+      },
+    })
     globalThis.$fetch = createFetch({
       fetch: globalThis.fetch,
       defaults: { baseURL: location.origin },
     }) as typeof nuxt$fetch
   })
 
-  afterEach(() => server.resetHandlers())
+  afterEach(() => {
+    server.resetHandlers()
+    assertNoUnhandledRequests()
+  })
 
   afterAll(() => {
     server.close()

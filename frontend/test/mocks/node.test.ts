@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { registerEndpoint } from '@nuxt/test-utils/runtime'
 import { baselineProfile } from './handlers/profile'
 import { http } from './http'
-import { server, useMswServer } from './node'
+import { assertNoUnhandledRequests, server, useMswServer } from './node'
 
 useMswServer()
 
@@ -76,8 +76,15 @@ describe('the MSW baseline under the Nuxt test environment', () => {
 
   it('fails a request no handler covers, rather than answering it with a 404', async () => {
     await expect($fetch('/api/foods')).rejects.toThrow(
-      /<no response> fetch failed/,
+      /500 Unhandled Exception/,
     )
+    expect(() => assertNoUnhandledRequests()).toThrow(/GET \/api\/foods/)
+  })
+
+  it('names a request no handler covered when the test ends, even if the page caught it', async () => {
+    await $fetch('/api/foods').catch(() => undefined)
+
+    expect(() => assertNoUnhandledRequests()).toThrow(/GET \/api\/foods/)
   })
 
   it('answers a relative fetch from the handlers, not with a 404', async () => {

@@ -11,7 +11,10 @@ Upstream docs: [mswjs.io](https://mswjs.io/) — [Node.js integration](https://m
 - `server.listen({ onUnhandledFrame: 'error' })` — msw 3's name for what msw 2 called
   `onUnhandledRequest`.
 - A custom `onUnhandledFrame` callback's `defaults.error()` **only prints**; it does not fail
-  the frame. Throw, or record and assert, to make it fail.
+  the frame. Tucker's callbacks record the request and throw: in Node, msw answers a
+  throwing callback with `500 Unhandled Exception`, so the page meets an error, and the
+  recorded list fails the test after it ends (`assertNoUnhandledRequests` in Vitest, the
+  fixture's teardown in Playwright).
 
 ## Vitest: why stock `setupServer` needs a shim
 

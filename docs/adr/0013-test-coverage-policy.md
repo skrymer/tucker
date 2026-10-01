@@ -1,12 +1,12 @@
 # Test coverage policy: spec deep modules, drive glue through the slice
 
 Tucker is built strictly test-first (the `/tdd` skill: red→green, one test per
-cycle, vertical tracer bullets). That settles *how* we write tests, but a question
+cycle, vertical tracer bullets). That settles _how_ we write tests, but a question
 kept recurring per feature: **which units get their own test, and which are left to
 a higher-level test?** Answering it ad-hoc risks two failures — over-testing thin
 glue with mock-heavy tests (the exact "bad test" `/tdd` warns against), or
 under-testing genuine logic. This ADR records the standing answer so the decision
-is mechanical, and so it stays *inside* the `/tdd` rule rather than competing with
+is mechanical, and so it stays _inside_ the `/tdd` rule rather than competing with
 it.
 
 ## Decision
@@ -14,7 +14,7 @@ it.
 A module earns its **own** test when it has a **public interface worth specifying**
 — i.e. it is a **deep module** (small interface, deep implementation): domain value
 objects, pure decision functions, the adaptive engine, shared composables and
-utils. The test exercises the module's *real* implementation through that interface,
+utils. The test exercises the module's _real_ implementation through that interface,
 which is integration-style by `/tdd`'s definition — **not** mock-isolation.
 
 **Thin glue gets no separate test.** A controller that only delegates, scheduler
@@ -25,13 +25,13 @@ an **integrated** test one level out: a component test, or the slice's real-stac
 smoke.
 
 The dividing line is **"is there an interface worth specifying as a spec?"** — not
-"logic vs. plumbing get tested or not." *Everything* is still built test-first;
+"logic vs. plumbing get tested or not." _Everything_ is still built test-first;
 glue's failing red simply lives in the integrated test, not in a unit test.
 
 ### The rules, concretely
 
-1. **Test behaviour through public interfaces; mock only the *true external
-   boundary*** — the network (`$api`/HTTP), the web-push transport, the browser
+1. **Test behaviour through public interfaces; mock only the _true external
+   boundary_** — the network (`$api`/HTTP), the web-push transport, the browser
    event source (`beforeinstallprompt`, `PushManager`). **Never mock internal
    collaborators.**
 2. **Deep modules get their own behaviour test.** Their interface is a spec; running
@@ -48,8 +48,10 @@ glue's failing red simply lives in the integrated test, not in a unit test.
   `shouldRemind(state)` function); frontend composables/utils via Vitest. Real
   implementation, public interface, no internal mocks.
 - **Component tests** — Testing Library via `renderSuspended`, real child components,
-  only the network mocked (see the component-testing-best-practices skill).
-- **Mocked Playwright e2e** — `page.route`-mocked API, Desktop + Mobile Chrome, for
+  only the network mocked (see the component-testing-best-practices skill; the mock is
+  MSW per ADR 0034).
+- **Mocked Playwright e2e** — API mocked through Playwright's routing (MSW handlers
+  shared with the component tests, ADR 0034), Desktop + Mobile Chrome, for
   responsive/interaction behaviour (see the playwright-best-practices skill).
 - **Real-stack smoke (e2e)** — Playwright against the live backend container, per
   slice, no mocks.
@@ -58,8 +60,8 @@ glue's failing red simply lives in the integrated test, not in a unit test.
 
 ### Mutation testing checks the layers, it is not one of them
 
-This ADR answers *which units get a test*; it does not answer *whether those tests
-assert enough*. Mutation testing answers the second question by rewriting the
+This ADR answers _which units get a test_; it does not answer _whether those tests
+assert enough_. Mutation testing answers the second question by rewriting the
 source one mutant at a time — a mutant no test notices is a line no assertion
 pins. Both stacks run it, driven by the `/mutation-test` skill as gate 2 of
 `/feature-sign-off`: **StrykerJS** over the Vitest suite (`pnpm test:mutation`)
@@ -73,18 +75,18 @@ rather than a threshold. Two consequences follow directly from rule 3 above:
   Stryker the Vitest suite, pitest the fast JUnit suite — so a mutant whose red
   lives in a Playwright e2e, a real-stack smoke, or the Testcontainers e2e
   survives by construction. The verdict there is "killed by an out-of-scope
-  layer — *this* spec kills it", never "write a standalone unit test", which
+  layer — _this_ spec kills it", never "write a standalone unit test", which
   would contradict rule 3.
 - **A green score is not a green suite.** An engine only makes the mutants it
   knows how to make, and each has a blind spot big enough to hide a real bug.
   Stryker has no operator that rewrites a null check as a truthiness check, so a
-  guard distinguishing *absent* from *zero* can score 100% untested. pitest's
+  guard distinguishing _absent_ from _zero_ can score 100% untested. pitest's
   default operators never touch a **constant**, so the Atwater factors, the EWMA
   smoothing factor and every window length are invisible to it — the layer of
   Tucker most obviously made of numbers is the layer its score says least about.
   Rule 5's red-green discipline is what covers both, not the score.
 - **A survivor can be invisible rather than untested.** pitest picks which tests to
-  re-run from *line* coverage, so anything executed once and then cached — a `@Bean`
+  re-run from _line_ coverage, so anything executed once and then cached — a `@Bean`
   built when the first test class raises the context, a springdoc spec, a
   `@JsonValue` accessor read during serialization — is attributed to whichever test
   happened to trigger it, never to the tests that observe the result. The verdict is
@@ -92,7 +94,7 @@ rather than a threshold. Two consequences follow directly from rule 3 above:
   chase the score: `AccessSecurityConfig` scored 0/22 while deleting one line failed
   142 tests. Two remedies, in this order. Where the class holds real logic, **specify
   it directly** — a test that drives it without Spring makes it killable for real,
-  and is owed under rule 1 anyway. Only where a class is *entirely* assembly, with
+  and is owed under rule 1 anyway. Only where a class is _entirely_ assembly, with
   nothing the tool can see, does it leave `--targetClasses`; a class where some
   mutants die stays in, because hiding its survivors would hide its working ones too.
   Every exclusion carries its hand-mutation evidence in `backend/build.gradle.kts`.
@@ -125,7 +127,7 @@ integration test.
   anti-pattern `/tdd` calls out.
 - **Only end-to-end / smoke tests** — slow, and they pin deep logic (adaptive math,
   the reminder decision) too coarsely to drive it test-first or localise a failure.
-- **mutant-kraken for the backend** — a Kotlin *source*-level mutator, so it emits
+- **mutant-kraken for the backend** — a Kotlin _source_-level mutator, so it emits
   no bytecode junk and would need no denylist. Rejected because it re-runs the
   whole test command per mutant: with no coverage-based test selection there is no
   way to scope a run to the classes a change touched, which is the property that
@@ -135,8 +137,8 @@ integration test.
 
 - The recurring "does this get its own test?" question has a mechanical answer:
   deep module → yes; glue → covered by the integrated test.
-- It actively *reinforces* `/tdd` — same red-green discipline, same "behaviour
-  through public interfaces, minimal mocking" rule; this ADR only fixes *where* each
+- It actively _reinforces_ `/tdd` — same red-green discipline, same "behaviour
+  through public interfaces, minimal mocking" rule; this ADR only fixes _where_ each
   behaviour's red lives.
 - Designing for testability means **finding deep modules** (small interface, deep
   implementation) — the same pressure `/tdd`'s refactor step already applies.
@@ -151,4 +153,4 @@ integration test.
   vertical-with-smoke convention.
 - [0004 — compose inline composables](0004-compose-inline-composables.md) — extracted
   shared composables get their own tests; inline ones are covered by the component's.
-</content>
+  </content>
