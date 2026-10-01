@@ -17,3 +17,17 @@ export const checkHandlers = [
     return response(200).json(nutellaCheck)
   }),
 ]
+
+/**
+ * A lookup with targets standing on [day] alone: asked about any other day it
+ * refuses, which the page shows as a lookup that did not get through.
+ */
+export function checkOnlyOn(day: string) {
+  return http.get('/api/check/{barcode}', ({ query, response }) =>
+    query.get('clientToday') === day
+      ? response(200).json(nutellaCheck)
+      : response(409).json({
+          message: 'a Check needs a Calorie Budget; finish setup first',
+        }),
+  )
+}

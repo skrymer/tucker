@@ -2,33 +2,42 @@ import type { components } from '#open-fetch-schemas/api'
 import { http } from '../http'
 
 type Summary = components['schemas']['DailySummaryResponse']
+type Targets = Pick<Summary, 'setupComplete' | 'calorieBudget' | 'proteinFloor'>
 
-/**
- * A day with nothing logged yet, against the targets the Check fixtures are
- * measured by: a 2492 kcal Calorie Budget and a 170 g Protein Floor.
- */
-export function emptyDay(date: string): Summary {
+/** The baseline's targets: a 2492 kcal Calorie Budget and a 170 g Protein Floor. */
+const baselineTargets: Targets = {
+  setupComplete: true,
+  calorieBudget: 2492,
+  proteinFloor: 170,
+}
+
+/** A day with nothing logged yet, so all of any Calorie Budget remains. */
+export function emptyDay(
+  date: string,
+  targets: Targets = baselineTargets,
+): Summary {
   return {
     date,
-    setupComplete: true,
+    ...targets,
     caloriesConsumed: 0,
     proteinConsumed: 0,
     estimatedCalorieShare: 0,
-    calorieBudget: 2492,
-    proteinFloor: 170,
-    caloriesRemaining: 2492,
+    caloriesRemaining: targets.calorieBudget ?? null,
     dayStatus: null,
     entries: [],
   }
 }
 
-export const summaryHandlers = [
-  // The summary states the day it was asked about, as the real endpoint does.
-  http.get('/api/summary', ({ query, response }) => {
+/** The summary of an empty day carrying [targets] — a User with no Budget, say. */
+export function summaryWith(targets: Targets) {
+  return http.get('/api/summary', ({ query, response }) => {
     const date = query.get('date')
     if (!date) {
       return response(400).json({ message: 'date is required' })
     }
-    return response(200).json(emptyDay(date))
-  }),
-]
+    return response(200).json(emptyDay(date, targets))
+  })
+}
+
+// The summary states the day it was asked about, as the real endpoint does.
+export const summaryHandlers = [summaryWith(baselineTargets)]

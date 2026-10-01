@@ -2,8 +2,8 @@ import { expect, test } from './support/network'
 import { denyCamera, fakeBarcodeCamera } from './support/fake-camera'
 import { withOverflowNav } from './support/nav'
 import { nutellaCheck } from '../test/check-fixtures'
-import { emptyDay } from '../test/mocks/handlers/summary'
-import { http } from '../test/mocks/http'
+import { checkOnlyOn } from '../test/mocks/handlers/check'
+import { summaryWith } from '../test/mocks/handlers/summary'
 
 // F11 slice 1: Check. A scan states what a product costs and returns against
 // the whole day's targets, and creates nothing. It is reached from `More`. The
@@ -42,15 +42,7 @@ test("a Check asks about the User's local day, not the server's", async ({
   await page.clock.setFixedTime(new Date('2026-06-15T22:00:00Z'))
   // Only the User's own day has targets standing on it; asked about any other,
   // the lookup refuses, and the page says it couldn't look the product up.
-  network.use(
-    http.get('/api/check/{barcode}', ({ query, response }) =>
-      query.get('clientToday') === '2026-06-16'
-        ? response(200).json(nutellaCheck)
-        : response(409).json({
-            message: 'a Check needs a Calorie Budget; finish setup first',
-          }),
-    ),
-  )
+  network.use(checkOnlyOn('2026-06-16'))
   await page.route('**jsdelivr.net/**', (route) => route.abort())
   await fakeBarcodeCamera(page, BARCODE)
 
@@ -97,15 +89,11 @@ test('without a calorie budget the setup prompt replaces the scanner', async ({
   network,
 }) => {
   network.use(
-    http.get('/api/summary', ({ query, response }) =>
-      response(200).json({
-        ...emptyDay(query.get('date')!),
-        setupComplete: false,
-        calorieBudget: null,
-        proteinFloor: null,
-        caloriesRemaining: null,
-      }),
-    ),
+    summaryWith({
+      setupComplete: false,
+      calorieBudget: null,
+      proteinFloor: null,
+    }),
   )
   await fakeBarcodeCamera(page, BARCODE)
 

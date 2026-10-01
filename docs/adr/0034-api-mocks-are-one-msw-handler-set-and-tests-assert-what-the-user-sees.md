@@ -39,7 +39,8 @@ page reads back. The test asserts only what the User sees.
 
 ## How each layer reaches MSW
 
-- **Vitest: stock `setupServer` from `msw/node`, behind a shim in `test/setup.ts`.**
+- **Vitest: stock `setupServer` from `msw/node`, behind a shim.**
+  `useMswServer()` (`test/mocks/node.ts`) installs it for the file that opts in.
   Unaided, it cannot work under `environment: 'nuxt'`, for two independent reasons,
   both measured:
   1. `@nuxt/test-utils` wraps `fetch` so that an unregistered relative URL answers 404

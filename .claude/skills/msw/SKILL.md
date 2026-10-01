@@ -65,6 +65,8 @@ handlers free of app auto-imports (`localToday()` etc.) — pass such values in.
    only for a status the spec does not declare (a 500), with a comment saying so.
 3. **Override, don't redefine.** `use()` only the variation the test is about. A handler
    that returns `undefined` falls through to the next one — scope an override by param.
+   A variation both layers need is a factory beside the baseline (`summaryWith(targets)`,
+   `checkOnlyOn(day)`), never a copy per layer — the copies drift.
 4. **Error overrides are not `{ once: true }`** on a GET, unless the call passes `retry: 0`:
    ofetch retries a failed GET by itself, and the retry reaches the baseline, so the error
    never shows.

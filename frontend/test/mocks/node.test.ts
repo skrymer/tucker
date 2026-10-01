@@ -80,6 +80,12 @@ describe('the MSW baseline under the Nuxt test environment', () => {
     )
   })
 
+  it('answers a relative fetch from the handlers, not with a 404', async () => {
+    const response = await fetch('/api/profile')
+
+    expect(await response.json()).toMatchObject({ tracksCalories: true })
+  })
+
   it('leaves a path registered through registerEndpoint to Nuxt', async () => {
     registerEndpoint('/api/me', () => ({ email: 'nuxt@example.com' }))
 

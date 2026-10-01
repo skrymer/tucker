@@ -19,28 +19,26 @@ type Fetch = typeof globalThis.fetch
  * resolve `/api/*` against the page's origin (ADR 0034).
  */
 export function useMswServer() {
-  let restore = () => {}
+  let nuxtFetch: Fetch
+  let nuxt$fetch: typeof globalThis.$fetch
 
   beforeAll(() => {
-    const nuxtFetch = globalThis.fetch
-    const nuxt$fetch = globalThis.$fetch
+    nuxtFetch = globalThis.fetch
+    nuxt$fetch = globalThis.$fetch
     globalThis.fetch = unwrapRequests(nuxtFetch)
     server.listen({ onUnhandledFrame: 'error' })
     globalThis.$fetch = createFetch({
       fetch: globalThis.fetch,
       defaults: { baseURL: location.origin },
     }) as typeof nuxt$fetch
-    restore = () => {
-      globalThis.fetch = nuxtFetch
-      globalThis.$fetch = nuxt$fetch
-    }
   })
 
   afterEach(() => server.resetHandlers())
 
   afterAll(() => {
     server.close()
-    restore()
+    globalThis.fetch = nuxtFetch
+    globalThis.$fetch = nuxt$fetch
   })
 }
 

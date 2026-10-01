@@ -6,9 +6,6 @@ type CheckResult = components['schemas']['CheckResponse']
  * Nutella checked against the dev profile's targets — a 2492 kcal Calorie Budget
  * and a 170 g Protein Floor, which imply a pace of 6.8 g protein per 100 kcal.
  * Well below that pace, so it exercises the "balance it elsewhere" copy.
- *
- * Shared by the CheckAnalysis component test and the /check page test so a
- * change to the wire contract is felt in one place.
  */
 export const nutellaCheck: CheckResult = {
   name: 'Nutella',

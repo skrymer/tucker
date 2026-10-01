@@ -4,9 +4,9 @@ import { mockNuxtImport, renderSuspended } from '@nuxt/test-utils/runtime'
 import { HttpResponse } from 'msw'
 import { screen } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
-import type { components } from '#open-fetch-schemas/api'
 import { nutellaCheck } from '~~/test/check-fixtures'
-import { emptyDay } from '~~/test/mocks/handlers/summary'
+import { checkOnlyOn } from '~~/test/mocks/handlers/check'
+import { summaryWith } from '~~/test/mocks/handlers/summary'
 import { http } from '~~/test/mocks/http'
 import { server, useMswServer } from '~~/test/mocks/node'
 import Check from './check.vue'
@@ -24,19 +24,6 @@ const scanner = {
   stop: vi.fn(),
 }
 mockNuxtImport('useBarcodeScanner', () => () => scanner)
-
-type Summary = components['schemas']['DailySummaryResponse']
-
-/** The day's summary carries these targets instead of the baseline's Budget. */
-function targetsAre(
-  targets: Pick<Summary, 'setupComplete' | 'calorieBudget' | 'proteinFloor'>,
-) {
-  server.use(
-    http.get('/api/summary', ({ query, response }) =>
-      response(200).json({ ...emptyDay(query.get('date')!), ...targets }),
-    ),
-  )
-}
 
 type Lookup = Parameters<typeof http.get<'/api/check/{barcode}'>>[1]
 
@@ -97,11 +84,13 @@ beforeEach(() => {
 
 describe('/check before setup is finished', () => {
   it('prompts to finish setup instead of offering a scan', async () => {
-    targetsAre({
-      setupComplete: false,
-      calorieBudget: null,
-      proteinFloor: null,
-    })
+    server.use(
+      summaryWith({
+        setupComplete: false,
+        calorieBudget: null,
+        proteinFloor: null,
+      }),
+    )
 
     await renderSuspended(Check)
 
@@ -118,7 +107,13 @@ describe('/check with Calorie Tracking off', () => {
     // Budget is still absent, which the engine only does for a User who turned
     // Calorie Tracking off. One response answers both, so the page never joins
     // two endpoints to decide what to say.
-    targetsAre({ setupComplete: true, calorieBudget: null, proteinFloor: null })
+    server.use(
+      summaryWith({
+        setupComplete: true,
+        calorieBudget: null,
+        proteinFloor: null,
+      }),
+    )
 
     await renderSuspended(Check)
 
@@ -141,23 +136,15 @@ describe('/check with a calorie budget', () => {
   })
 
   it("checks a product against the targets standing on the User's own day", async () => {
-    // Answers only when asked about the User's own day: the targets a Check
-    // states are the ones standing on that day, and the server cannot know it
-    // otherwise.
-    server.use(
-      http.get('/api/check/{barcode}', ({ query, response }) =>
-        query.get('clientToday') === localToday()
-          ? response(200).json({ ...nutellaCheck, name: 'Dated bar' })
-          : response(409).json({
-              message: 'a Check needs a Calorie Budget; finish setup first',
-            }),
-      ),
-    )
+    // The targets a Check states are the ones standing on the User's own day,
+    // and the server cannot know that day otherwise.
+    server.use(checkOnlyOn(localToday()))
     await renderSuspended(Check)
 
     scan('3017620422003')
 
-    expect(await screen.findByText('Dated bar')).toBeVisible()
+    expect(await screen.findByText('Nutella')).toBeVisible()
+    expect(screen.queryByText("Couldn't look that up")).not.toBeInTheDocument()
   })
 
   it('states the product in sentence case however the label shouts it', async () => {
