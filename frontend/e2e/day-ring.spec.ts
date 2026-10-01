@@ -1,20 +1,14 @@
 import type { Locator } from '@playwright/test'
-import { expect, test } from './support/test'
-import {
-  mockGoalProgress,
-  mockNoActiveGoal,
-  mockSummary,
-  mockWeightApi,
-} from './support/mock-api'
-import { goalProgress } from '../test/goal-fixtures'
+import { expect, test } from './support/network'
+import { goalInProgress } from '../test/mocks/handlers/goal'
+import { summaryOf, type SummaryDay } from '../test/mocks/handlers/summary'
 import { drawnHoleDiameter, inkWidth, rings } from './support/ring'
 
 // The Day Ring's centre and legend, measured. jsdom has no layout, so a
 // component test can pin the *constraint* but never the rendered result.
 
 /** A fresh day on a four-digit Budget — `1702 kcal left`, every morning. */
-const FRESH_DAY = {
-  date: '2026-05-22',
+const FRESH_DAY: SummaryDay = {
   caloriesConsumed: 0,
   proteinConsumed: 0,
   estimatedCalorieShare: 0,
@@ -27,7 +21,7 @@ const FRESH_DAY = {
 }
 
 /** The same Budget, well past it — `5446 kcal over`, the red four-digit state. */
-const WELL_OVER = {
+const WELL_OVER: SummaryDay = {
   ...FRESH_DAY,
   caloriesConsumed: 7148,
   proteinConsumed: 205,
@@ -42,10 +36,9 @@ for (const [state, summary, figure] of [
   test(`the centre figure stays inside the donut hole on ${state}`, async ({
     page,
     goto,
+    network,
   }) => {
-    await mockWeightApi(page)
-    await mockNoActiveGoal(page)
-    await mockSummary(page, summary)
+    network.use(summaryOf(summary))
 
     await goto('/', { waitUntil: 'hydration' })
 
@@ -63,6 +56,7 @@ for (const [state, summary, figure] of [
 test('the centre figure stays inside the hole when the User enlarges their text', async ({
   page,
   goto,
+  network,
 }) => {
   // The figure is sized in rem and the ring has to follow it, or the margin that
   // makes four digits fit is spent by a browser setting the User owns. Setting
@@ -75,9 +69,7 @@ test('the centre figure stays inside the hole when the User enlarges their text'
     if (document.documentElement) enlarge()
     else document.addEventListener('DOMContentLoaded', enlarge)
   })
-  await mockWeightApi(page)
-  await mockNoActiveGoal(page)
-  await mockSummary(page, FRESH_DAY)
+  network.use(summaryOf(FRESH_DAY))
 
   await goto('/', { waitUntil: 'hydration' })
 
@@ -94,15 +86,14 @@ test('the centre figure stays inside the hole when the User enlarges their text'
 test("the goal ring's centre figure stays inside its own, wider hole", async ({
   page,
   goto,
+  network,
 }) => {
   // The two rings draw at one size but not one hole — the Goal ring sweeps a
   // single arc, at the outer radius — so the rule is checked on each of them, at
   // the longest figure this one can state: a hundred-kilo cut, five characters.
-  await mockWeightApi(page)
-  await mockSummary(page, FRESH_DAY)
-  await mockGoalProgress(
-    page,
-    goalProgress({ startWeightKg: 180, targetWeightKg: 80, kgToGo: 100 }),
+  network.use(
+    summaryOf(FRESH_DAY),
+    goalInProgress({ startWeightKg: 180, targetWeightKg: 80, kgToGo: 100 }),
   )
 
   await goto('/', { waitUntil: 'hydration' })
@@ -136,10 +127,9 @@ async function sharesALine(title: Locator, bar: Locator) {
 test('each legend row puts its title and its bar on one line', async ({
   page,
   goto,
+  network,
 }) => {
-  await mockWeightApi(page)
-  await mockNoActiveGoal(page)
-  await mockSummary(page, FRESH_DAY)
+  network.use(summaryOf(FRESH_DAY))
 
   await goto('/', { waitUntil: 'hydration' })
 

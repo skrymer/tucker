@@ -84,7 +84,26 @@ the test `application.yml`, which shadows it). Without it every body is `*/*` an
   `test.use({ timezoneId: 'UTC' })`.
 - **A Check-only page still reads the shell's endpoints**: `/api/profile` always, and Today's
   `/api/weight/latest` and `/api/goal/progress` on any spec that starts at `/`.
+- **Holding a request open.** A handler that `await`s a promise and returns nothing falls
+  through to the next one, so `use(hold, ...weightMeasurements(null))` holds a save until the test
+  releases it and then answers it normally. Within one `use()` call the first argument
+  wins.
+- **A `page.route` spec hid every read it did not route.** An unmatched `/api` request
+  went on to the server's proxy and failed there unnoticed, so a spec moved over can meet
+  reads its old mocks never mentioned — a page's own, or the shell's on the way to it.
+  The unhandled failure names each one; add it to the baseline.
 - **Coexistence in Vitest.** A path registered through `registerEndpoint` is answered by
   Nuxt even in an opted-in file, ahead of any MSW handler for it. The shim makes URLs
   absolute, which Nuxt's registry only knows relative, so it strips `location.origin` and
   hands a registered path to Nuxt's `fetch` itself. The last migration slice deletes it.
+
+## Red-proof runs
+
+- **Build once.** Write every break to its own copy (`e2e/redproof-bNN-<spec>`, with the
+  `-snapshots` directory copied beside it, or the aria snapshot fails as missing rather
+  than as different) and run them in one Playwright invocation. Vitest copies go under
+  `test/`, with `./` imports made `~/`. Delete the copies afterwards.
+- **An absence-only test passes with the page unrendered**, so no break turns it red until
+  it also asserts something the page shows. Probity refuses adding that assertion to a
+  green test as it stands: run a copy carrying the assertion under the break first, so
+  the strengthened test is seen red, then edit the real file.

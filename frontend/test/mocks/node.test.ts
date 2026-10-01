@@ -6,6 +6,9 @@ import { assertNoUnhandledRequests, server, useMswServer } from './node'
 
 useMswServer()
 
+// Not in the spec, so the baseline can never grow to cover it.
+const UNCOVERED = '/api/uncovered'
+
 describe('the MSW baseline under the Nuxt test environment', () => {
   it('answers $fetch, with the query string reaching the handler', async () => {
     const summary = await $fetch('/api/summary', {
@@ -75,16 +78,14 @@ describe('the MSW baseline under the Nuxt test environment', () => {
   })
 
   it('fails a request no handler covers, rather than answering it with a 404', async () => {
-    await expect($fetch('/api/foods')).rejects.toThrow(
-      /500 Unhandled Exception/,
-    )
-    expect(() => assertNoUnhandledRequests()).toThrow(/GET \/api\/foods/)
+    await expect($fetch(UNCOVERED)).rejects.toThrow(/500 Unhandled Exception/)
+    expect(() => assertNoUnhandledRequests()).toThrow(/GET \/api\/uncovered/)
   })
 
   it('names a request no handler covered when the test ends, even if the page caught it', async () => {
-    await $fetch('/api/foods').catch(() => undefined)
+    await $fetch(UNCOVERED).catch(() => undefined)
 
-    expect(() => assertNoUnhandledRequests()).toThrow(/GET \/api\/foods/)
+    expect(() => assertNoUnhandledRequests()).toThrow(/GET \/api\/uncovered/)
   })
 
   // Passes only because the test fails: the request is swallowed, so nothing in
@@ -92,7 +93,7 @@ describe('the MSW baseline under the Nuxt test environment', () => {
   it.fails(
     'fails a test whose page swallowed a request no handler covers',
     async () => {
-      await $fetch('/api/foods').catch(() => undefined)
+      await $fetch(UNCOVERED).catch(() => undefined)
     },
   )
 

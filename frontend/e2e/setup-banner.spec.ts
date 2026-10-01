@@ -1,13 +1,24 @@
-import { expect, test } from './support/test'
-import { mockProfile, mockSummary, mockWeightApi } from './support/mock-api'
+import { expect, test } from './support/network'
+import { profileOf, weightOnlyProfile } from '../test/mocks/handlers/profile'
+import {
+  noIntakeTargets,
+  setupUnfinished,
+  summaryWith,
+} from '../test/mocks/handlers/summary'
+import { weightMeasurements } from '../test/mocks/handlers/weight'
+
+/** Setup unfinished: no Budget, and no reading for one to be built from. */
+const beforeSetup = () => [
+  summaryWith(setupUnfinished),
+  ...weightMeasurements(null),
+]
 
 test('the Today page nudges the user to finish setup when there is no budget', async ({
   page,
   goto,
+  network,
 }) => {
-  await mockWeightApi(page)
-  // The default mocked summary is the pre-setup state: setupComplete false.
-  await mockSummary(page)
+  network.use(...beforeSetup())
 
   await goto('/', { waitUntil: 'hydration' })
 
@@ -23,22 +34,10 @@ test('the Today page hides the setup nudge once setup is complete', async ({
   page,
   goto,
 }) => {
-  await mockWeightApi(page)
-  await mockSummary(page, {
-    date: '2026-05-22',
-    caloriesConsumed: 0,
-    proteinConsumed: 0,
-    estimatedCalorieShare: 0,
-    setupComplete: true,
-    calorieBudget: 2000,
-    proteinFloor: 140,
-    caloriesRemaining: 2000,
-    dayStatus: 'in-progress',
-    entries: [],
-  })
-
+  // The baseline is set up, with a Budget.
   await goto('/', { waitUntil: 'hydration' })
 
+  await expect(page.getByText(/kcal left/)).toBeVisible()
   await expect(
     page.getByText(/finish setup to see your calorie budget/i),
   ).toHaveCount(0)
@@ -47,17 +46,11 @@ test('the Today page hides the setup nudge once setup is complete', async ({
 test('the Today page asks a weight-only user for their first weight, not for a budget', async ({
   page,
   goto,
+  network,
 }) => {
-  await mockWeightApi(page)
-  await mockProfile(page, {
-    sex: 'MALE',
-    birthDate: '1990-06-15',
-    heightCm: 180,
-    tracksCalories: false,
-  })
   // Setup genuinely unfinished — no reading yet — for a User who has chosen not
   // to count calories. The same absent Budget, the opposite sentence.
-  await mockSummary(page)
+  network.use(profileOf(weightOnlyProfile), ...beforeSetup())
 
   await goto('/', { waitUntil: 'hydration' })
 
@@ -71,31 +64,16 @@ test('the Today page asks a weight-only user for their first weight, not for a b
 test('the Today page hides the setup nudge from a weight-only user who has weighed in', async ({
   page,
   goto,
+  network,
 }) => {
-  await mockWeightApi(page)
-  await mockProfile(page, {
-    sex: 'MALE',
-    birthDate: '1990-06-15',
-    heightCm: 180,
-    tracksCalories: false,
-  })
   // Finished setup and no Budget by choice: there is nothing left to nag about.
-  await mockSummary(page, {
-    date: '2026-05-22',
-    setupComplete: true,
-    caloriesConsumed: 0,
-    proteinConsumed: 0,
-    estimatedCalorieShare: 0,
-    calorieBudget: null,
-    proteinFloor: null,
-    caloriesRemaining: null,
-    dayStatus: null,
-    trendWeightKg: 86,
-    entries: [],
-  })
+  network.use(profileOf(weightOnlyProfile), summaryWith(noIntakeTargets))
 
   await goto('/', { waitUntil: 'hydration' })
 
+  await expect(
+    page.getByRole('heading', { name: "Today's weight" }),
+  ).toBeVisible()
   await expect(page.getByText(/get started/i)).toHaveCount(0)
   await expect(page.getByText(/finish setup/i)).toHaveCount(0)
 })
