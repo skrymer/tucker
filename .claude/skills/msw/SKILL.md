@@ -12,12 +12,12 @@ The real-stack smokes are untouched — they hit the live backend.
 
 ## Where things live
 
-| What                                                        | Where                                                            |
-| ----------------------------------------------------------- | ---------------------------------------------------------------- |
-| Typed `http` (`createOpenApiHttp<paths>({ baseUrl: '*' })`) | `frontend/test/mocks/http.ts`                                    |
-| Baseline, one file per domain                               | `frontend/test/mocks/handlers/<domain>.ts`, joined in `index.ts` |
-| Vitest opt-in: `useMswServer()` + `server`                  | `frontend/test/mocks/node.ts`                                    |
-| Playwright opt-in: `test` with a `network` fixture          | `frontend/e2e/support/network.ts`                                |
+| What | Where |
+| --- | --- |
+| Typed `http` (`createOpenApiHttp<paths>({ baseUrl: '*' })`) | `frontend/test/mocks/http.ts` |
+| Baseline, one file per domain | `frontend/test/mocks/handlers/<domain>.ts`, joined in `index.ts` |
+| Vitest opt-in: `useMswServer()` + `server` | `frontend/test/mocks/node.ts` |
+| Playwright opt-in: `test` with a `network` fixture | `frontend/e2e/support/network.ts` |
 
 The baseline is a neutral, consistent account: set up, counting calories, weighed in,
 no Goal, nothing logged today. Extend it when a newly migrated surface reads a new
@@ -27,18 +27,18 @@ endpoint — never bend it to suit one test.
 
 ```ts
 // Vitest — top of the file, then override per test
-import { http } from "~~/test/mocks/http";
-import { server, useMswServer } from "~~/test/mocks/node";
-useMswServer();
+import { http } from '~~/test/mocks/http'
+import { server, useMswServer } from '~~/test/mocks/node'
+useMswServer()
 
-it("says the lookup did not get through", async () => {
+it('says the lookup did not get through', async () => {
   server.use(
-    http.get("/api/check/{barcode}", ({ response }) =>
-      response(503).json({ message: "could not reach a nutrition source" }),
+    http.get('/api/check/{barcode}', ({ response }) =>
+      response(503).json({ message: 'could not reach a nutrition source' }),
     ),
-  );
+  )
   // render, act, assert what the User sees
-});
+})
 ```
 
 ```ts

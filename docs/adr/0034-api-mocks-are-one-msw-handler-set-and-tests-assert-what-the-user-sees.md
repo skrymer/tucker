@@ -10,8 +10,8 @@ a path silently stops matching once the request gains a query string, which is h
 asserts on a request**. A handler validates what it is sent and keeps whatever state the
 page reads back. The test asserts only what the User sees.
 
-_Status: accepted. Covers the Vitest and mocked Playwright layers. The real-stack smokes
-(`pnpm test:smoke`) hit the live backend and are untouched._
+*Status: accepted. Covers the Vitest and mocked Playwright layers. The real-stack smokes
+(`pnpm test:smoke`) hit the live backend and are untouched.*
 
 ## The decisions
 
@@ -33,8 +33,8 @@ _Status: accepted. Covers the Vitest and mocked Playwright layers. The real-stac
   `clientToday`, is answered by a handler only when it is right, and with an error
   status (a 400 or 409) otherwise, so a wrong value surfaces as the error state the User would meet. A mutation's
   handler stores what it was sent, and the test asserts the page after the re-read. A test
-  that captures a request body or URL and asserts on it pins _how_ the page asks rather
-  than _what it shows_. Being as close to what the User sees as possible is the rule
+  that captures a request body or URL and asserts on it pins *how* the page asks rather
+  than *what it shows*. Being as close to what the User sees as possible is the rule
   Testing Library already sets for queries, here applied to the network.
 
 ## How each layer reaches MSW
@@ -53,7 +53,6 @@ _Status: accepted. Covers the Vitest and mocked Playwright layers. The real-stac
   rebinds `$fetch` with `baseURL: location.origin` so relative `/api/*` calls resolve.
   `$fetch`, the generated `$api` client, query strings, bodies, `use(…, { once: true })`
   and `resetHandlers` all behave as documented through it.
-
 - **Playwright: [`@msw/playwright`](https://github.com/mswjs/playwright)'s `network`
   fixture.** It provisions interception through Playwright's own routing, not a service
   worker. That leaves the app's Workbox service worker (ADR 0011) the only worker on its
