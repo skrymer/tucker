@@ -96,6 +96,11 @@ assertion with the dev token), and no browser-level layer can reach it.
   `test.use({ launchOptions: { ignoreDefaultArgs: ['--hide-scrollbars'] } })` and measures the
   element (`e2e/log-column.spec.ts`). The app keeps the gutter (`scrollbar-gutter: stable`) and so
   runs `UApp` with `:scroll-body="false"` — turn one off and every sheet shifts the column.
+- **The format hook rewrites between Edits.** `.claude/hooks/format.sh` runs
+  `eslint --fix` after every frontend Write or Edit, so a `let` whose reassignment
+  lands in a *later* Edit is turned into `const` first (`prefer-const`), and the test
+  fails with "Assignment to constant variable". Write the `let` and its reassignment
+  in one Edit.
 - **Keyboard bugs in a Reka component need Playwright.** Some Reka handlers `await nextTick()`
   and then check `event.defaultPrevented` (Reka's `TagsInputInput` on Enter is one). A browser
   runs a microtask checkpoint between listeners, so that check happens *before* an ancestor's
