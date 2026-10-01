@@ -76,7 +76,9 @@ handlers free of app auto-imports (`localToday()` etc.) — pass such values in.
 6. **Overrides last one test.** `resetHandlers` runs after each test in Vitest, and the
    Playwright fixture is built per test, so a `use()` never leaks into the next.
 7. **Prove each migrated test still goes red** by breaking its handler's response once, on a
-   copy — Probity refuses hand-mutating a gated file.
+   copy — Probity refuses hand-mutating a gated file. Save the output, naming each red test,
+   on both Playwright projects, to a file the sign-off pack cites; re-run it after any later
+   edit to the test or its handlers, since a stale script aborts on its first pattern.
 
 ## Moving a file over
 
@@ -84,7 +86,7 @@ handlers free of app auto-imports (`localToday()` etc.) — pass such values in.
 - [ ] e2e: import from `./support/network`; replace `page.route` on `/api` with baseline or
       `network.use()`. Non-API routes (a CDN abort, a fake camera) stay `page.route`.
 - [ ] Delete request-capturing arrays; assert the rendered result instead.
-- [ ] Run green, then break each handler once and record which test goes red.
+- [ ] Run green, then break each handler once and save the output naming each red test.
 
 Why the shim exists, the fixture's internals, coexistence and every trap measured so far:
 [REFERENCE.md](REFERENCE.md).
