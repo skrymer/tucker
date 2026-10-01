@@ -173,8 +173,10 @@ needs it.
    Hand a **fresh agent** the findings from gates 1–4 with the resolution recorded
    against each, the current diff, the same context pack the other agents got,
    [`references/agent-briefs.md`](references/agent-briefs.md), and **the transcript
-   path of every agent the run spawned**. It answers three
-   questions and nothing else:
+   path of every agent the run spawned**. A control the pack cites is saved output at a
+   named path: the agent is read-only, so a question only a run can answer needs that
+   run supplied — or the brief allows a throwaway copy in the scratchpad and says so.
+   It answers three questions and nothing else:
 
    - **Does each fix address the finding it cites, without introducing something
      new?** A plausible-but-wrong fix is the failure mode here, and it lands at
@@ -520,7 +522,16 @@ retro              3 lessons → verify (headless hides scrollbars), mutation-te
 - **Don't rubber-stamp.** A gate that found nothing is a result worth stating;
   a gate skipped is a gap. If you skip one (e.g. `/verify` SKIP for a docs-only
   change), say which and why.
-- **Fix-or-justify is the bar.** Every finding is either fixed or has a one-line
-  reason it isn't. An unaddressed finding means the sign-off isn't done.
+- **Fix-or-justify is the bar.** Every finding is either fixed or has a reason it
+  isn't — one that answers **each** remedy the finding names, not only the first: #400
+  dismissed a "move the test config" fix and never answered the "set it in code"
+  alternative beside it, and gate 5 rejected the dismissal. An unaddressed finding means
+  the sign-off isn't done.
+- **A fix is pinned only by a test that fails when the fix's wiring is removed.** Prove
+  it with that control — delete the call, show the named test red — and save the output.
+  A check installed in a hook (`afterEach`) is pinned only through the hook: in Vitest
+  that is an `it.fails` test, since a hook error counts as its expected failure. #400's
+  first fix called the assertion directly; removing it from `afterEach` left the suite
+  green, and gate 5 rejected it.
 - This skill assumes the work is built and tested. It is the *exit* gate, not a
   substitute for red-green TDD during development.

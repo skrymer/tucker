@@ -40,8 +40,11 @@ agent, and the six below.
   resolution's job.
 - A worked example drawn from the change, e.g. "(e.g. an ADR that says a recompute
   overwrites only the same-day record)". It is not a defence, but it is a finding
-  handed over: in #358 that example became the check's first FAIL. Name the kind of
-  constraint to look for, never an instance of it.
+  handed over: in #358 that example became the check's first FAIL, and in #400 an
+  efficiency angle's "e.g. every request now passing through a router" became that
+  agent's first finding. It applies to **every** angle line, the `/simplify` three's
+  included, which have no template to copy and so are where it slips in. Name the kind
+  of thing to look for, never an instance of it.
 - The conclusion of another agent in the same run. Two briefs are exempt because that
   material *is* their subject: the arbiter's, which is given both positions, and the
   **resolutions agent's**, which is given every finding, every dismissal and the
@@ -86,7 +89,7 @@ You are arguing that a change should NOT merge. Read-only: do not edit, create,
 delete or move any file. Read-only shell commands only, apart from `git fetch`,
 which touches nothing but remote refs.
 
-Repo: <worktree path> (a git worktree — stay in it).
+Repo: <path> (<a git worktree | the main checkout> — stay in it).
 The change: cd <worktree path> && git fetch -q origin &&
   git diff $(git merge-base origin/main HEAD)
 The issue it claims to fix: read it yourself with `gh issue view <n>` — do not
@@ -137,7 +140,7 @@ question. Most runs never spawn it.
 Two reviewers reached opposing conclusions on one question. Decide it.
 Read-only: do not edit, create, delete or move any file.
 
-Repo: <worktree path> (a git worktree — stay in it).
+Repo: <path> (<a git worktree | the main checkout> — stay in it).
 
 The question: <the single question, phrased so both positions answer it>
 
@@ -174,7 +177,7 @@ driving a browser and NOT re-verifying the feature. Read-only: do not edit, crea
 delete or move any file. Read-only shell commands only, apart from `git fetch`,
 which touches nothing but remote refs.
 
-Repo: <worktree path> (a git worktree — stay in it).
+Repo: <path> (<a git worktree | the main checkout> — stay in it).
 The change: cd <worktree path> && git fetch -q origin &&
   git diff $(git merge-base origin/main HEAD)
 The verdict, verbatim: <paste>
@@ -218,7 +221,7 @@ You are NOT hunting bugs and NOT reviewing the code's quality. Read-only: do not
 edit, create, delete or move any file. Read-only shell commands only, apart from
 `git fetch`, which touches nothing but remote refs.
 
-Repo: <worktree path> (a git worktree — stay in it).
+Repo: <path> (<a git worktree | the main checkout> — stay in it).
 The change: cd <worktree path> && git fetch -q origin &&
   git diff $(git merge-base origin/main HEAD)
 The issue it claims to deliver: read it yourself with `gh issue view <n>` — do not
@@ -329,7 +332,7 @@ Mine a finished sign-off for lessons the next session should not have to learn
 again. Read-only: do not edit, create, delete or move any file. Read-only shell
 commands only.
 
-Repo: <worktree path> (a git worktree — stay in it).
+Repo: <path> (<a git worktree | the main checkout> — stay in it).
 The change as committed: git log --stat <base>..HEAD, and git diff <base>..HEAD
 The run's agent transcripts: <every transcript path the run recorded>
 The resolutions pack: <path>
@@ -385,7 +388,7 @@ stale. You are NOT hunting bugs and NOT reviewing the code's quality. Read-only:
 do not edit, create, delete or move any file. Read-only shell commands only, apart
 from `git fetch`, which touches nothing but remote refs.
 
-Repo: <worktree path> (a git worktree — stay in it).
+Repo: <path> (<a git worktree | the main checkout> — stay in it).
 The change: cd <worktree path> && git fetch -q origin &&
   git diff $(git merge-base origin/main HEAD)
 The diagrams: docs/architecture.md — every ```mermaid block in it, as it stands on
