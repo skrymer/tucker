@@ -70,7 +70,10 @@ handlers free of app auto-imports (`localToday()` etc.) — pass such values in.
    (`weightMeasurements`); one whose re-read lands on **another** endpoint returns
    `{ handlers, <state getter> }` (`reachedGoal`, `savedProfile`), and the other
    endpoint's handler reads the getter (`summaryOf(() => …)`). Never keep state in the
-   baseline: it is shared across tests.
+   baseline: it is shared across tests. Overriding a derived field overrides its inputs
+   too — `setupComplete: false` with the baseline's reading still standing is a state the
+   backend cannot send (it derives it from the Profile and the latest Weight
+   Measurement) — and the test's comment is checked against the result.
 4. **Error overrides are not `{ once: true }`** on a GET, unless the call passes `retry: 0`:
    ofetch retries a failed GET by itself, and the retry reaches the baseline, so the error
    never shows.

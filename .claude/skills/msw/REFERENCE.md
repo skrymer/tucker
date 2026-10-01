@@ -72,7 +72,9 @@ the test `application.yml`, which shadows it). Without it every body is `*/*` an
 `.json` is `unknown`.
 
 `frontend/test/**` is typechecked by `pnpm typecheck` (the app tsconfig includes it);
-`frontend/e2e/**` is not, so keep typed handlers in `test/mocks`.
+`frontend/e2e/**` is not, so keep typed handlers in `test/mocks`. A type annotation in a
+spec is documentation and checks nothing: data that has to be checked lives under `test/`,
+or is stated as unchecked — an annotation in `e2e/` never answers a typing finding.
 
 ## Traps measured so far
 
@@ -107,3 +109,8 @@ the test `application.yml`, which shadows it). Without it every body is `*/*` an
   it also asserts something the page shows. Probity refuses adding that assertion to a
   green test as it stands: run a copy carrying the assertion under the break first, so
   the strengthened test is seen red, then edit the real file.
+- **A guard on a query the page must send is shown red by renaming what it reads.** Copy
+  the handler file with the guard reading a parameter the page never sends
+  (`query.get('clientTodayX')`) and point the spec copy's import at it: that is the page
+  dropping the parameter. "The built app's request cannot change" is never a reason to
+  list a guard as unprovable.

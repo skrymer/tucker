@@ -110,6 +110,8 @@ Ruled out: 0003 (no forms changed), 0006 (no nutrition lookup)
   the PASS is *not finding* that code; a FAIL is finding it shipped anyway.
 - **Domain terms are exact.** CONTEXT.md is the ubiquitous language — `Trend
   Weight`, `Calorie Budget`, `reached`, `Drift Status`. Code that invents a synonym
-  is a FAIL even if it works.
+  is a FAIL even if it works. A line reworded to clear an _Avoid_ term is re-checked
+  against every _Avoid_ list, not only the term removed: wording copied from an older
+  file carries its drift.
 - A clean run is all PASS/UNCERTAIN with zero FAIL. Surface UNCERTAINs plainly —
   don't inflate them to PASS to get a green board.
