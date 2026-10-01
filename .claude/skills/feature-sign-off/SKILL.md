@@ -176,6 +176,9 @@ needs it.
    path of every agent the run spawned**. A control the pack cites is saved output at a
    named path: the agent is read-only, so a question only a run can answer needs that
    run supplied — or the brief allows a throwaway copy in the scratchpad and says so.
+   That copy runs lint and typecheck but **not Vitest**, which cannot resolve modules
+   through the symlinked `node_modules` (measured, #402), so any test result the agent
+   may need goes in the pack as saved output.
    It answers three questions and nothing else:
 
    - **Does each fix address the finding it cites, without introducing something

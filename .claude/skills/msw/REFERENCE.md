@@ -123,7 +123,10 @@ or is stated as unchecked — an annotation in `e2e/` never answers a typing fin
   option: true }] })` — wrapped, because Playwright reads a bare array as its
   `[value, options]` tuple and fails every test with `handlers.every is not a function`.
 - **Script it and read a kill matrix.** Generate every copy from one list of breaks, run
-  them all, and tabulate which break turned each test red, per Playwright project. A test
-  no break kills is a missing break, not an unprovable test. Besides dropping rows and
-  failing reads, include a break that answers data the test never listed (an extra
-  Food); without it, tests about what a list holds — no match, no chips — survive.
+  them all, and tabulate which break turned each test red, per Playwright project. Include
+  one **unbroken control copy**: it must pass, or the harness is what failed — the first
+  #402 run failed all 384 copies on a copying fault and read as 384 kills. A test no
+  break kills is a missing break, not an unprovable test. Drop the **first and the last**
+  row, not "a row" — a test that queries one Food dies only when that row goes — fail the
+  reads, and include a break that answers data the test never listed (an extra Food);
+  without it, tests about what a list holds — no match, no chips — survive.
