@@ -1,13 +1,15 @@
-import { expect, test } from './support/test'
+import { expect, test } from './support/network'
+import { goalInProgress } from '../test/mocks/handlers/goal'
 import {
-  mockFoods,
-  mockFrequentFoods,
-  mockGoalProgress,
-  mockProfile,
-  mockSummary,
-  mockWeightApi,
-} from './support/mock-api'
-import { goalProgress } from '../test/goal-fixtures'
+  profileOf,
+  savedProfile,
+  weightOnlyProfile,
+} from '../test/mocks/handlers/profile'
+import { summaryOf } from '../test/mocks/handlers/summary'
+import {
+  baselineReading,
+  weightMeasurements,
+} from '../test/mocks/handlers/weight'
 import { denyCamera } from './support/fake-camera'
 import { visibleNav, withOverflowNav } from './support/nav'
 
@@ -15,16 +17,8 @@ import { visibleNav, withOverflowNav } from './support/nav'
 // log half — no Log destination, no Foods or Check, no day summary and no
 // budget-change banner — and the Goal is a ring.
 
-const WEIGHT_ONLY = {
-  sex: 'MALE',
-  birthDate: '1990-06-15',
-  heightCm: 180,
-  tracksCalories: false,
-}
-
 /** A finished setup with no targets: the review ran and recorded only a trend. */
 const WEIGHT_ONLY_DAY = {
-  date: '2026-08-24',
   setupComplete: true,
   caloriesConsumed: 0,
   proteinConsumed: 0,
@@ -55,24 +49,16 @@ const TRACKING_DAY = {
   },
 }
 
-const PROGRESS = goalProgress({ paceStatus: 'on-pace' })
-
 test.describe('with Calorie Tracking off', () => {
-  test.beforeEach(async ({ page }) => {
-    await mockProfile(page, WEIGHT_ONLY)
-    await mockSummary(page, WEIGHT_ONLY_DAY)
-    // No reading for *today*, whatever today is where this runs: the tile then
-    // has one resting shape rather than two, and the snapshot keeps meaning what
-    // it meant when it was taken. `todayIso()` is deliberately UTC (see
-    // e2e/support/date.ts) while the page compares against the *local* day, so a
-    // fixture built from it would disagree with the app for part of every day
-    // outside UTC.
-    await mockWeightApi(page, {
-      id: 1,
-      measuredOn: '2020-01-01',
-      weightKg: 86.2,
-    })
-    await mockGoalProgress(page, PROGRESS)
+  test.beforeEach(({ network }) => {
+    // The scale starts at the baseline's reading, long before today, so the
+    // tile has one resting shape and the snapshot keeps meaning what it meant.
+    network.use(
+      profileOf(weightOnlyProfile),
+      summaryOf(WEIGHT_ONLY_DAY),
+      ...weightMeasurements(baselineReading),
+      goalInProgress({ paceStatus: 'on-pace' }),
+    )
   })
 
   test('the navigation offers Today and Review, with Profile alone behind More', async ({
@@ -101,9 +87,6 @@ test.describe('with Calorie Tracking off', () => {
   }) => {
     // Hiding a tab is a navigation choice, not access control — a weight-only
     // User who arrives here can still log what they ate.
-    await mockFoods(page, [])
-    await mockFrequentFoods(page, [])
-
     await goto('/log', { waitUntil: 'hydration' })
 
     await expect(
@@ -142,8 +125,6 @@ test.describe('with Calorie Tracking off', () => {
   }) => {
     // Hiding a tab is a navigation choice, not access control: a User who
     // tracked before still owns their catalog.
-    await mockFoods(page, [])
-
     await goto('/foods', { waitUntil: 'hydration' })
 
     await expect(
@@ -175,24 +156,16 @@ test.describe('with Calorie Tracking off', () => {
 test('turning Calorie Tracking back on restores the log half without a reload', async ({
   page,
   goto,
+  network,
 }) => {
-  await mockWeightApi(page, { id: 1, measuredOn: '2020-01-01', weightKg: 86.2 })
-  let profile: Record<string, unknown> = { ...WEIGHT_ONLY }
-  await page.route('**/api/profile*', (route) => {
-    const method = route.request().method()
-    if (method === 'GET') return route.fulfill({ json: profile })
-    if (method === 'PUT') {
-      profile = { ...profile, ...route.request().postDataJSON() }
-      return route.fulfill({ json: profile })
-    }
-    return route.fallback()
-  })
+  const profile = savedProfile(weightOnlyProfile)
   // The save force-recomputes today's review, so the very next summary read
   // carries the Budget back — that same-day return is the point (ADR 0024).
-  await page.route('**/api/summary**', (route) =>
-    route.fulfill({
-      json: profile.tracksCalories ? TRACKING_DAY : WEIGHT_ONLY_DAY,
-    }),
+  network.use(
+    ...profile.handlers,
+    summaryOf(() =>
+      profile.current().tracksCalories ? TRACKING_DAY : WEIGHT_ONLY_DAY,
+    ),
   )
 
   await goto('/profile', { waitUntil: 'hydration' })

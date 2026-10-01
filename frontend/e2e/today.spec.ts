@@ -1,18 +1,20 @@
 import { estimatedEntry, weighedEntry } from '../test/entry-fixtures'
-import { goalProgress } from '../test/goal-fixtures'
-import { expect, test } from './support/test'
+import { http } from '../test/mocks/http'
+import { goalInProgress } from '../test/mocks/handlers/goal'
 import {
-  mockGoalProgress,
-  mockNoActiveGoal,
-  mockSummary,
-  mockSummaryError,
-  mockWeightApi,
-} from './support/mock-api'
+  summaryFails,
+  summaryOf,
+  type SummaryDay,
+} from '../test/mocks/handlers/summary'
+import { weightMeasurements } from '../test/mocks/handlers/weight'
+import { expect, test } from './support/network'
 import { rings } from './support/ring'
 
+// The baseline was last weighed on a day long past and has no Goal, so
+// Today offers to log a weight and shows no Goal ring unless a test says so.
+
 /** An on-target day with one Entry on it — the resting shape Today renders. */
-const DAY_WITH_AN_ENTRY = {
-  date: '2026-05-22',
+const DAY_WITH_AN_ENTRY: SummaryDay = {
   caloriesConsumed: 1500,
   proteinConsumed: 140,
   estimatedCalorieShare: 0,
@@ -36,10 +38,9 @@ const DAY_WITH_AN_ENTRY = {
 test('the Today page shows the daily summary from the API', async ({
   page,
   goto,
+  network,
 }) => {
-  await mockWeightApi(page)
-  await mockNoActiveGoal(page)
-  await mockSummary(page, DAY_WITH_AN_ENTRY)
+  network.use(summaryOf(DAY_WITH_AN_ENTRY))
 
   await goto('/', { waitUntil: 'hydration' })
 
@@ -53,10 +54,9 @@ test('the Today page shows the daily summary from the API', async ({
 test("logging a weight from the tile shows it as today's weight", async ({
   page,
   goto,
+  network,
 }) => {
-  await mockWeightApi(page)
-  await mockNoActiveGoal(page)
-  await mockSummary(page)
+  network.use(...weightMeasurements(null))
 
   await goto('/', { waitUntil: 'hydration' })
 
@@ -78,22 +78,20 @@ test("logging a weight from the tile shows it as today's weight", async ({
 test('the weight sheet stays put, reporting busy, until the save lands', async ({
   page,
   goto,
+  network,
 }) => {
-  await mockWeightApi(page)
-  await mockNoActiveGoal(page)
-  await mockSummary(page)
-
-  // Hold the POST open so the in-flight window is observable. Registered after
-  // mockWeightApi so it runs first, then hands the request back to it.
+  // Hold the save open so the in-flight window is observable. It answers
+  // nothing, so once released the save falls through to the scale behind it.
   let release!: () => void
   const held = new Promise<void>((resolve) => {
     release = resolve
   })
-  await page.route('**/api/weight', async (route) => {
-    if (route.request().method() !== 'POST') return route.fallback()
-    await held
-    return route.fallback()
-  })
+  network.use(
+    http.post('/api/weight', async () => {
+      await held
+    }),
+    ...weightMeasurements(null),
+  )
 
   await goto('/', { waitUntil: 'hydration' })
 
@@ -123,10 +121,9 @@ test('the weight sheet stays put, reporting busy, until the save lands', async (
 test("shows a retryable error instead of an empty dashboard when today's summary fails to load", async ({
   page,
   goto,
+  network,
 }) => {
-  await mockWeightApi(page)
-  await mockNoActiveGoal(page)
-  await mockSummaryError(page)
+  network.use(summaryFails())
 
   await goto('/', { waitUntil: 'hydration' })
 
@@ -139,22 +136,12 @@ test("shows a retryable error instead of an empty dashboard when today's summary
 test('the day ring and the goal ring are peers at the same size', async ({
   page,
   goto,
+  network,
 }) => {
-  await mockWeightApi(page)
-  await mockSummary(page, {
-    date: '2026-05-22',
-    caloriesConsumed: 1500,
-    proteinConsumed: 140,
-    estimatedCalorieShare: 0,
-    setupComplete: true,
-    calorieBudget: 2000,
-    proteinFloor: 140,
-    caloriesRemaining: 500,
-    dayStatus: 'on-target',
-    trendWeightKg: 86,
-    entries: [],
-  })
-  await mockGoalProgress(page, goalProgress())
+  network.use(
+    summaryOf({ ...DAY_WITH_AN_ENTRY, trendWeightKg: 86, entries: [] }),
+    goalInProgress(),
+  )
 
   await goto('/', { waitUntil: 'hydration' })
 
@@ -178,23 +165,24 @@ test('the day ring and the goal ring are peers at the same size', async ({
 test('a name long enough to clip never squeezes the flag beside it', async ({
   page,
   goto,
+  network,
 }) => {
-  await mockWeightApi(page)
-  await mockNoActiveGoal(page)
-  await mockSummary(page, {
-    ...DAY_WITH_AN_ENTRY,
-    entries: [
-      estimatedEntry({ id: 1, calories: 240, protein: 8, label: 'Toast' }),
-      estimatedEntry({
-        id: 2,
-        calories: 240,
-        protein: 8,
-        // Longer than any phone column, so the name must clip rather than push
-        // the flag off the row.
-        label: 'RECONSTITUTED LONG LIFE FULL CREAM DAIRY MILK BEVERAGE',
-      }),
-    ],
-  })
+  network.use(
+    summaryOf({
+      ...DAY_WITH_AN_ENTRY,
+      entries: [
+        estimatedEntry({ id: 1, calories: 240, protein: 8, label: 'Toast' }),
+        estimatedEntry({
+          id: 2,
+          calories: 240,
+          protein: 8,
+          // Longer than any phone column, so the name must clip rather than
+          // push the flag off the row.
+          label: 'RECONSTITUTED LONG LIFE FULL CREAM DAIRY MILK BEVERAGE',
+        }),
+      ],
+    }),
+  )
 
   await goto('/', { waitUntil: 'hydration' })
 

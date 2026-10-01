@@ -1,6 +1,6 @@
-import { expect, test } from './support/test'
-import type { Page } from '@playwright/test'
-import { mockWeightApi } from './support/mock-api'
+import { expect, test } from './support/network'
+import { reachedGoal } from '../test/mocks/handlers/goal'
+import { summaryOf } from '../test/mocks/handlers/summary'
 
 // F7 slice 2 (ADR 0008): when the Trend Weight first crosses the Goal's target,
 // the Goal is *reached* and /today shows an insistent two-way fork banner — no
@@ -8,68 +8,29 @@ import { mockWeightApi } from './support/mock-api'
 // backend force-recomputes today's review so the Budget lifts to Maintenance,
 // and the page lands on the calm "Maintaining" card.
 
-/** A reached active Goal until the user switches; 404 (maintenance) afterwards. */
-async function mockReachedThenMaintenance(page: Page) {
-  let maintaining = false
-
-  await page.route('**/api/goal/progress', (route) => {
-    if (route.request().method() !== 'GET') return route.fallback()
-    if (maintaining) {
-      return route.fulfill({ status: 404, json: { message: 'no active Goal' } })
-    }
-    return route.fulfill({
-      json: {
-        startWeightKg: 90,
-        targetWeightKg: 80,
-        currentTrendKg: 79.9,
-        kgToGo: 0,
-        percentComplete: 100,
-        plannedFinishDate: '2026-06-05',
-        plannedRateKgPerWeek: 0.5,
-        paceStatus: null,
-        observedRateKgPerWeek: null,
-        observedFinishDate: null,
-        reachedOn: '2026-06-05',
-      },
-    })
-  })
-
-  // Matches /api/goal with or without a query string (the switch-to-maintenance
-  // DELETE now carries ?clientToday=… per ADR 0014), but not /api/goal/progress
-  // or /api/goals.
-  await page.route(/\/api\/goal(\?.*)?$/, (route) => {
-    if (route.request().method() !== 'DELETE') return route.fallback()
-    maintaining = true
-    return route.fulfill({ status: 204, body: '' })
-  })
-
-  // Budget lifts from the cut (2000) to Maintenance (2400) once switched.
-  await page.route('**/api/summary**', (route) =>
-    route.fulfill({
-      json: {
-        date: '2026-06-05',
-        caloriesConsumed: 1200,
-        proteinConsumed: 90,
-        estimatedCalorieShare: 0,
-        setupComplete: true,
-        calorieBudget: maintaining ? 2400 : 2000,
-        proteinFloor: 160,
-        caloriesRemaining: maintaining ? 1200 : 800,
-        dayStatus: 'in-progress',
-        trendWeightKg: 79.9,
-        entries: [],
-        budgetChange: null,
-      },
-    }),
-  )
-}
-
 test('reaching a goal shows the fork banner, and switching to maintenance lands on the Maintaining card', async ({
   page,
   goto,
+  network,
 }) => {
-  await mockWeightApi(page, { id: 1, measuredOn: '2026-06-05', weightKg: 79.9 })
-  await mockReachedThenMaintenance(page)
+  const goal = reachedGoal('2026-06-05')
+  // Budget lifts from the cut (2000) to Maintenance (2400) once switched.
+  network.use(
+    ...goal.handlers,
+    summaryOf(() => ({
+      caloriesConsumed: 1200,
+      proteinConsumed: 90,
+      estimatedCalorieShare: 0,
+      setupComplete: true,
+      calorieBudget: goal.isActive() ? 2000 : 2400,
+      proteinFloor: 160,
+      caloriesRemaining: goal.isActive() ? 800 : 1200,
+      dayStatus: 'in-progress',
+      trendWeightKg: 79.9,
+      entries: [],
+      budgetChange: null,
+    })),
+  )
 
   await goto('/', { waitUntil: 'hydration' })
 

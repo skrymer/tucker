@@ -6,7 +6,11 @@ import { screen } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import { nutellaCheck } from '~~/test/check-fixtures'
 import { checkOnlyOn } from '~~/test/mocks/handlers/check'
-import { summaryWith } from '~~/test/mocks/handlers/summary'
+import {
+  noIntakeTargets,
+  setupUnfinished,
+  summaryWith,
+} from '~~/test/mocks/handlers/summary'
 import { http } from '~~/test/mocks/http'
 import { server, useMswServer } from '~~/test/mocks/node'
 import Check from './check.vue'
@@ -84,13 +88,7 @@ beforeEach(() => {
 
 describe('/check before setup is finished', () => {
   it('prompts to finish setup instead of offering a scan', async () => {
-    server.use(
-      summaryWith({
-        setupComplete: false,
-        calorieBudget: null,
-        proteinFloor: null,
-      }),
-    )
+    server.use(summaryWith(setupUnfinished))
 
     await renderSuspended(Check)
 
@@ -107,13 +105,7 @@ describe('/check with Calorie Tracking off', () => {
     // Budget is still absent, which the engine only does for a User who turned
     // Calorie Tracking off. One response answers both, so the page never joins
     // two endpoints to decide what to say.
-    server.use(
-      summaryWith({
-        setupComplete: true,
-        calorieBudget: null,
-        proteinFloor: null,
-      }),
-    )
+    server.use(summaryWith(noIntakeTargets))
 
     await renderSuspended(Check)
 

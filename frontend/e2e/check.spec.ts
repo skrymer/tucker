@@ -3,11 +3,11 @@ import { denyCamera, fakeBarcodeCamera } from './support/fake-camera'
 import { withOverflowNav } from './support/nav'
 import { nutellaCheck } from '../test/check-fixtures'
 import { checkOnlyOn } from '../test/mocks/handlers/check'
-import { summaryWith } from '../test/mocks/handlers/summary'
+import { setupUnfinished, summaryWith } from '../test/mocks/handlers/summary'
 
 // F11 slice 1: Check. A scan states what a product costs and returns against
 // the whole day's targets, and creates nothing. It is reached from `More`. The
-// baseline account has a Calorie Budget, and knows Nutella.
+// baseline User has a Calorie Budget, and the Nutrition Provider knows Nutella.
 
 const BARCODE = nutellaCheck.barcode
 
@@ -88,13 +88,7 @@ test('without a calorie budget the setup prompt replaces the scanner', async ({
   goto,
   network,
 }) => {
-  network.use(
-    summaryWith({
-      setupComplete: false,
-      calorieBudget: null,
-      proteinFloor: null,
-    }),
-  )
+  network.use(summaryWith(setupUnfinished))
   await fakeBarcodeCamera(page, BARCODE)
 
   await goto('/check', { waitUntil: 'hydration' })

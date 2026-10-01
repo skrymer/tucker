@@ -1,36 +1,32 @@
-import { expect, test } from './support/test'
-import {
-  mockNoActiveGoal,
-  mockSummary,
-  mockWeightApi,
-} from './support/mock-api'
+import { expect, test } from './support/network'
+import { summaryOf } from '../test/mocks/handlers/summary'
 
 // Maintenance Mode (ADR 0008, F7 slice 1): no active Goal (goal endpoints 404)
 // but a weekly review has produced a Budget and Trend Weight. The Today page
 // replaces the Goal-Progress card with the calm "Maintaining" card; Budget and
-// Floor still render in the daily summary as normal.
+// Floor still render in the daily summary as normal. The baseline has no Goal.
 test('the Today page shows the Maintaining card in place of Goal-Progress when there is no active Goal', async ({
   page,
   goto,
+  network,
 }) => {
-  await mockWeightApi(page, { id: 1, measuredOn: '2026-06-05', weightKg: 85.6 })
-  await mockNoActiveGoal(page)
-  await mockSummary(page, {
-    date: '2026-06-05',
-    caloriesConsumed: 1200,
-    proteinConsumed: 90,
-    estimatedCalorieShare: 0,
-    setupComplete: true,
-    calorieBudget: 2400,
-    proteinFloor: 172,
-    caloriesRemaining: 1200,
-    dayStatus: 'in-progress',
-    trendWeightKg: 85.8,
-    entries: [],
-    budgetChange: null,
-    driftStatus: 'holding',
-    observedRateKgPerWeek: 0.02,
-  })
+  network.use(
+    summaryOf({
+      caloriesConsumed: 1200,
+      proteinConsumed: 90,
+      estimatedCalorieShare: 0,
+      setupComplete: true,
+      calorieBudget: 2400,
+      proteinFloor: 172,
+      caloriesRemaining: 1200,
+      dayStatus: 'in-progress',
+      trendWeightKg: 85.8,
+      entries: [],
+      budgetChange: null,
+      driftStatus: 'holding',
+      observedRateKgPerWeek: 0.02,
+    }),
+  )
 
   await goto('/', { waitUntil: 'hydration' })
 
