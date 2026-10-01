@@ -1,81 +1,100 @@
 import { describe, expect, it, vi } from 'vitest'
 import { defineComponent, ref } from 'vue'
-import {
-  mockNuxtImport,
-  registerEndpoint,
-  renderSuspended,
-} from '@nuxt/test-utils/runtime'
-import { createError, readBody } from 'h3'
+import { mockNuxtImport, renderSuspended } from '@nuxt/test-utils/runtime'
 import userEvent from '@testing-library/user-event'
 import { screen } from '@testing-library/vue'
+import { food } from '~~/test/food-fixtures'
+import { foodCatalog } from '~~/test/mocks/handlers/catalog'
+import { http, serverError } from '~~/test/mocks/http'
+import { server, useMswServer } from '~~/test/mocks/node'
 import { useReferenceFoodMatch } from './useReferenceFoodMatch'
+
+useMswServer()
 
 const { toastAdd } = vi.hoisted(() => ({ toastAdd: vi.fn() }))
 mockNuxtImport('useToast', () => () => ({ add: toastAdd, remove: vi.fn() }))
 
-let seen: { method: string; body?: Record<string, unknown> } | undefined
-registerEndpoint('/api/foods/7/reference-food', {
-  method: 'PUT',
-  handler: async (event) => {
-    seen = { method: 'PUT', body: await readBody(event) }
-    return {}
-  },
-})
-registerEndpoint('/api/foods/7/reference-food', {
-  method: 'DELETE',
-  handler: () => {
-    seen = { method: 'DELETE' }
-    return {}
-  },
-})
+const cheddar = { id: 101, name: 'Cheese, cheddar, natural, regular fat' }
+const cheese = food({ id: 7, name: 'Tasty cheese' })
+const chicken = food({ id: 9, name: 'Chicken breast' })
 
-/** Drive the composable through a host, as the rest of the suite does. */
-function host(onChanged: () => void | Promise<void>) {
-  const food = ref<{ id: number; name: string } | null>({
-    id: 7,
-    name: 'Tasty cheese',
+/** The catalog [cheese] and [chicken] make, with [borrowed] borrowing cheddar. */
+const catalogWith = (borrowed: number[] = []) =>
+  foodCatalog({
+    foods: [cheese, chicken].map((f) =>
+      borrowed.includes(f.id)
+        ? { ...f, referenceFoodId: cheddar.id, referenceFoodName: cheddar.name }
+        : f,
+    ),
+    referenceFoods: [cheddar],
+  })
+
+/** A match the server fails while [isDown] holds. */
+const matchFails = (isDown: () => boolean) =>
+  http.put('/api/foods/{id}/reference-food', ({ response }) =>
+    isDown() ? response.untyped(serverError()) : undefined,
+  )
+
+/**
+ * Drive the composable through a host that does what a page does with its
+ * refresh: re-reads the catalog and states what each Food borrows.
+ */
+function host() {
+  const held = ref<{ id: number; name: string } | null>({
+    id: cheese.id,
+    name: cheese.name,
   })
   const component = defineComponent({
     setup() {
-      const { claim, clear } = useReferenceFoodMatch(food, onChanged)
-      return { claim: () => claim(101), clear: () => clear() }
+      const { $api } = useNuxtApp()
+      const borrows = ref<string[]>([])
+      const refresh = async () => {
+        borrows.value = (await $api('/api/foods')).map(
+          (f) => `${f.name} borrows ${f.referenceFoodName ?? 'nothing'}`,
+        )
+      }
+      const { claim, clear } = useReferenceFoodMatch(held, refresh)
+      return { claim: () => claim(cheddar.id), clear: () => clear(), borrows }
     },
     template: `<div>
       <button @click="claim">claim</button>
       <button @click="clear">clear</button>
+      <ul><li v-for="line in borrows" :key="line">{{ line }}</li></ul>
     </div>`,
   })
-  return { component, food }
+  return { component, held }
 }
+
+const borrowLines = () =>
+  screen.queryAllByRole('listitem').map((line) => line.textContent)
 
 describe('useReferenceFoodMatch', () => {
   it('claims the borrow for the held Food, then closes it and refreshes', async () => {
-    const onChanged = vi.fn()
-    const { component, food } = host(onChanged)
+    server.use(...catalogWith())
+    const { component, held } = host()
     await renderSuspended(component)
 
     await userEvent.setup().click(screen.getByRole('button', { name: 'claim' }))
 
-    expect(seen).toEqual({ method: 'PUT', body: { referenceFoodId: 101 } })
+    await vi.waitFor(() =>
+      expect(borrowLines()).toEqual([
+        'Chicken breast borrows nothing',
+        'Tasty cheese borrows Cheese, cheddar, natural, regular fat',
+      ]),
+    )
     // The picker closes on the answer, never optimistically: until the server has
     // said so, the coverage figure behind it is still the old one.
-    expect(food.value).toBeNull()
-    expect(onChanged).toHaveBeenCalled()
+    expect(held.value).toBeNull()
   })
 
   it('retries against the Food that failed, not whichever is open by then', async () => {
     let failing = true
-    seen = undefined
-    registerEndpoint('/api/foods/7/reference-food', {
-      method: 'PUT',
-      handler: async (event) => {
-        if (failing) throw createError({ statusCode: 500 })
-        seen = { method: 'PUT-7', body: await readBody(event) }
-        return {}
-      },
-    })
+    server.use(
+      matchFails(() => failing),
+      ...catalogWith(),
+    )
 
-    const { component, food } = host(vi.fn())
+    const { component, held } = host()
     await renderSuspended(component)
     await userEvent.setup().click(screen.getByRole('button', { name: 'claim' }))
     await vi.waitFor(() => expect(toastAdd).toHaveBeenCalled())
@@ -91,35 +110,44 @@ describe('useReferenceFoodMatch', () => {
     // The sheet is closed and reopened on a different Food while the failure's
     // Retry is still on screen (ADR 0005 — it persists so the User need not
     // re-enter the sheet). Retry must replay the match that failed.
-    food.value = { id: 9, name: 'Chicken breast' }
+    held.value = { id: chicken.id, name: chicken.name }
     failing = false
     const retry = toastAdd.mock.calls.at(-1)![0].actions[0].onClick
     await retry()
 
-    expect(seen).toEqual({ method: 'PUT-7', body: { referenceFoodId: 101 } })
+    await vi.waitFor(() =>
+      expect(borrowLines()).toEqual([
+        'Chicken breast borrows nothing',
+        'Tasty cheese borrows Cheese, cheddar, natural, regular fat',
+      ]),
+    )
   })
 
   it('takes the borrow back for the held Food, then closes it and refreshes', async () => {
-    const onChanged = vi.fn()
-    const { component, food } = host(onChanged)
+    server.use(...catalogWith([cheese.id, chicken.id]))
+    const { component, held } = host()
     await renderSuspended(component)
 
     await userEvent.setup().click(screen.getByRole('button', { name: 'clear' }))
 
-    expect(seen).toEqual({ method: 'DELETE' })
-    expect(food.value).toBeNull()
-    expect(onChanged).toHaveBeenCalled()
+    await vi.waitFor(() =>
+      expect(borrowLines()).toEqual([
+        'Chicken breast borrows Cheese, cheddar, natural, regular fat',
+        'Tasty cheese borrows nothing',
+      ]),
+    )
+    expect(held.value).toBeNull()
   })
   it('names the unmatch when taking the borrow back fails, and stays on that Food', async () => {
     toastAdd.mockClear()
-    registerEndpoint('/api/foods/7/reference-food', {
-      method: 'DELETE',
-      handler: () => {
-        throw createError({ statusCode: 500 })
-      },
-    })
+    server.use(
+      http.delete('/api/foods/{id}/reference-food', ({ response }) =>
+        response.untyped(serverError()),
+      ),
+      ...catalogWith([cheese.id]),
+    )
 
-    const { component, food } = host(vi.fn())
+    const { component, held } = host()
     await renderSuspended(component)
     await userEvent.setup().click(screen.getByRole('button', { name: 'clear' }))
 
@@ -130,6 +158,7 @@ describe('useReferenceFoodMatch', () => {
     )
     // `settled` never ran, so the sheet is still on the Food whose unmatch was
     // lost — the Retry in that toast has something to go back to (ADR 0005).
-    expect(food.value).not.toBeNull()
+    expect(held.value).not.toBeNull()
+    expect(borrowLines()).toEqual([])
   })
 })

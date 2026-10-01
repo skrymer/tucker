@@ -1,9 +1,29 @@
 import { describe, expect, it, vi } from 'vitest'
-import { registerEndpoint, renderSuspended } from '@nuxt/test-utils/runtime'
+import { renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
-import { readBody } from 'h3'
+import { foodCatalog } from '~~/test/mocks/handlers/catalog'
+import { http } from '~~/test/mocks/http'
+import { server, useMswServer } from '~~/test/mocks/node'
 import AddFoodForm from './AddFoodForm.vue'
+
+useMswServer()
+
+/**
+ * Creates of [name] held until [release], then answered by the catalog under
+ * it, which numbers a new Tag from 20.
+ */
+function heldCreateOf(name: string) {
+  let release!: () => void
+  const held = new Promise<void>((resolve) => (release = resolve))
+  server.use(
+    http.post('/api/tags', async ({ request }) => {
+      if ((await request.clone().json()).name === name) await held
+      return undefined
+    }),
+  )
+  return () => release()
+}
 
 // The corrected scan the dirty-tracking tests rerender with. It is the same
 // every time, so each test differs only in what it seeded first.
@@ -442,10 +462,14 @@ describe('AddFoodForm', () => {
   })
 
   it('saves the Food carrying the Tags picked for it', async () => {
-    registerEndpoint('/api/tags', () => [
-      { id: 7, name: 'Breakfast', foodCount: 1 },
-      { id: 9, name: 'snack', foodCount: 3 },
-    ])
+    server.use(
+      ...foodCatalog({
+        tags: [
+          { id: 7, name: 'Breakfast', foodCount: 1 },
+          { id: 9, name: 'snack', foodCount: 3 },
+        ],
+      }),
+    )
     const onSubmit = vi.fn()
     await renderSuspended(AddFoodForm, { props: { onSubmit } })
     const user = userEvent.setup()
@@ -468,18 +492,8 @@ describe('AddFoodForm', () => {
   })
 
   it('holds Save until a typed Tag has been created, then saves carrying it', async () => {
-    let release!: () => void
-    const held = new Promise<void>((resolve) => {
-      release = resolve
-    })
-    registerEndpoint('/api/tags', { method: 'GET', handler: () => [] })
-    registerEndpoint('/api/tags', {
-      method: 'POST',
-      handler: async () => {
-        await held
-        return { id: 20, name: 'dinner', foodCount: 0 }
-      },
-    })
+    server.use(...foodCatalog())
+    const release = heldCreateOf('dinner')
     const onSubmit = vi.fn()
     await renderSuspended(AddFoodForm, { props: { onSubmit } })
     const user = userEvent.setup()
@@ -503,20 +517,8 @@ describe('AddFoodForm', () => {
   })
 
   it('saves both Tags when a second name is entered while the first is being created', async () => {
-    let release!: () => void
-    const held = new Promise<void>((resolve) => {
-      release = resolve
-    })
-    const ids: Record<string, number> = { dinner: 20, lunch: 21 }
-    registerEndpoint('/api/tags', { method: 'GET', handler: () => [] })
-    registerEndpoint('/api/tags', {
-      method: 'POST',
-      handler: async (event) => {
-        const { name } = await readBody<{ name: string }>(event)
-        if (name === 'dinner') await held
-        return { id: ids[name], name, foodCount: 0 }
-      },
-    })
+    server.use(...foodCatalog())
+    const release = heldCreateOf('dinner')
     const onSubmit = vi.fn()
     await renderSuspended(AddFoodForm, { props: { onSubmit } })
     const user = userEvent.setup()

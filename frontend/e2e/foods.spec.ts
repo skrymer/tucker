@@ -1,15 +1,18 @@
-import { expect, test } from './support/test'
-import { mockFoods } from './support/mock-api'
+import { expect, test } from './support/network'
 import { food } from '../test/food-fixtures'
+import { catalogOf } from '../test/mocks/handlers/foods'
 
 test('the Foods page shows the catalog from the API', async ({
   page,
   goto,
+  network,
 }) => {
-  await mockFoods(page, [
-    food({ id: 1, name: 'Oats', caloriesPer100g: 380, proteinPer100g: 13 }),
-    food({ id: 2, name: 'Skyr', caloriesPer100g: 64, proteinPer100g: 11 }),
-  ])
+  network.use(
+    catalogOf([
+      food({ id: 1, name: 'Oats', caloriesPer100g: 380, proteinPer100g: 13 }),
+      food({ id: 2, name: 'Skyr', caloriesPer100g: 64, proteinPer100g: 11 }),
+    ]),
+  )
 
   await goto('/foods', { waitUntil: 'hydration' })
 
@@ -25,8 +28,7 @@ test('the Foods page shows the empty state when the catalog is empty', async ({
   page,
   goto,
 }) => {
-  await mockFoods(page, [])
-
+  // The baseline's catalog is empty.
   await goto('/foods', { waitUntil: 'hydration' })
 
   await expect(
@@ -39,17 +41,20 @@ test('the Foods page shows the empty state when the catalog is empty', async ({
 test('the catalog states every name in one voice, however each was typed', async ({
   page,
   goto,
+  network,
 }) => {
-  await mockFoods(page, [
-    food({ id: 1, name: 'Free Range Eggs' }),
-    food({ id: 2, name: 'rolled oats' }),
-    food({ id: 3, name: 'LIGHT MILK' }),
-    // Short words inside a shouted name are words, not initialisms — the row
-    // that moves most, and the one a length rule alone gets wrong.
-    food({ id: 4, name: 'LOW FAT MILK' }),
-    // An initialism stands out against lower-case neighbours, so here it stays.
-    food({ id: 5, name: 'UHT milk' }),
-  ])
+  network.use(
+    catalogOf([
+      food({ id: 1, name: 'Free Range Eggs' }),
+      food({ id: 2, name: 'rolled oats' }),
+      food({ id: 3, name: 'LIGHT MILK' }),
+      // Short words inside a shouted name are words, not initialisms — the row
+      // that moves most, and the one a length rule alone gets wrong.
+      food({ id: 4, name: 'LOW FAT MILK' }),
+      // An initialism stands out against lower-case neighbours, so here it stays.
+      food({ id: 5, name: 'UHT milk' }),
+    ]),
+  )
 
   await goto('/foods', { waitUntil: 'hydration' })
 

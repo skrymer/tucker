@@ -1,14 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ref } from 'vue'
-import {
-  mockNuxtImport,
-  registerEndpoint,
-  renderSuspended,
-} from '@nuxt/test-utils/runtime'
-import { readBody, setResponseStatus } from 'h3'
+import { getResponse } from 'msw'
+import { mockNuxtImport, renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen, within } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
+import { foodCatalog, type ShelvedTag } from '~~/test/mocks/handlers/catalog'
+import { failingRead, http } from '~~/test/mocks/http'
+import { server, useMswServer } from '~~/test/mocks/node'
 import ManageTagsSheet from './ManageTagsSheet.vue'
+
+useMswServer()
 
 // The rename field's autofocus is desktop-only, so the tests drive the viewport.
 const viewport = vi.hoisted(() => ({ desktop: true }))
@@ -20,17 +21,68 @@ mockNuxtImport('useToast', () => () => ({
   remove: vi.fn(),
 }))
 
+const breakfast: ShelvedTag = { id: 7, name: 'Breakfast', foodCount: 1 }
+const dinner: ShelvedTag = { id: 8, name: 'dinner', foodCount: 0 }
+const snack: ShelvedTag = { id: 9, name: 'snack', foodCount: 3 }
+
+/** The User keeps exactly [tags]. */
+const keeps = (...tags: ShelvedTag[]) => server.use(...foodCatalog({ tags }))
+
+/** What the server says when it refuses a name. */
+const refusal = 'a Tag name must be at most 30 characters'
+
+/** Every create refused, as the server refuses a name it will not keep. */
+const createRefused = () =>
+  http.post('/api/tags', ({ response }) =>
+    response(400).json({ message: refusal }),
+  )
+
+/** Every rename refused, as the server refuses a name it will not keep. */
+const renameRefused = () =>
+  http.put('/api/tags/{id}', ({ response }) =>
+    response(400).json({ message: refusal }),
+  )
+
+const unreachable = { message: 'no connection to the server' }
+
+/**
+ * Writes of [method] held until [release]; each then falls through to the
+ * handler under it.
+ */
+function heldWrites(method: 'post' | 'put' | 'delete') {
+  let release!: () => void
+  const held = new Promise<void>((resolve) => (release = resolve))
+  const resolver = async () => {
+    await held
+    return undefined
+  }
+  const handler =
+    method === 'post'
+      ? http.post('/api/tags', resolver)
+      : method === 'put'
+        ? http.put('/api/tags/{id}', resolver)
+        : http.delete('/api/tags/{id}', resolver)
+  return { handler, release: () => release() }
+}
+
+/** Long enough for a request a test says is not sent to have come back. */
+const settle = () => new Promise((resolve) => setTimeout(resolve, 50))
+
+type Rerender = (props: Record<string, unknown>) => Promise<void>
+
+/** Close the sheet and open it again, which reads the Tags afresh. */
+async function reopen(rerender: Rerender) {
+  await rerender({ open: false })
+  await rerender({ open: true })
+}
+
 describe('ManageTagsSheet', () => {
   beforeEach(() => {
     viewport.desktop = true
   })
 
   it('lists every Tag in the order the server sends, each with how many Foods carry it', async () => {
-    registerEndpoint('/api/tags', () => [
-      { id: 7, name: 'Breakfast', foodCount: 1 },
-      { id: 8, name: 'dinner', foodCount: 0 },
-      { id: 9, name: 'snack', foodCount: 3 },
-    ])
+    keeps(snack, dinner, breakfast)
 
     await renderSuspended(ManageTagsSheet, { props: { open: true } })
 
@@ -50,13 +102,8 @@ describe('ManageTagsSheet', () => {
 
   it('says the Tags could not load, and lists them once a Retry reads them', async () => {
     let failing = true
-    registerEndpoint('/api/tags', (event) => {
-      if (failing) {
-        setResponseStatus(event, 500)
-        return {}
-      }
-      return [{ id: 7, name: 'Breakfast', foodCount: 1 }]
-    })
+    keeps(breakfast)
+    server.use(failingRead('/api/tags', () => failing))
     await renderSuspended(ManageTagsSheet, { props: { open: true } })
 
     expect(await screen.findByText("Couldn't load your tags")).toBeVisible()
@@ -71,8 +118,6 @@ describe('ManageTagsSheet', () => {
   })
 
   it('says there are no Tags yet when the User keeps none', async () => {
-    registerEndpoint('/api/tags', () => [])
-
     await renderSuspended(ManageTagsSheet, { props: { open: true } })
 
     expect(await screen.findByText('No tags yet.')).toBeVisible()
@@ -80,19 +125,10 @@ describe('ManageTagsSheet', () => {
   })
 
   it('asks before deleting a Tag, naming how many Foods it comes off and that they stay', async () => {
-    let deletes = 0
-    registerEndpoint('/api/tags', () => [
-      { id: 7, name: 'Breakfast', foodCount: 1 },
-      { id: 9, name: 'snack', foodCount: 3 },
-    ])
-    registerEndpoint('/api/tags/9', {
-      method: 'DELETE',
-      handler: () => {
-        deletes++
-        return null
-      },
+    keeps(breakfast, snack)
+    const { rerender } = await renderSuspended(ManageTagsSheet, {
+      props: { open: true },
     })
-    await renderSuspended(ManageTagsSheet, { props: { open: true } })
 
     await userEvent
       .setup()
@@ -105,13 +141,15 @@ describe('ManageTagsSheet', () => {
     ).toBeVisible()
     expect(screen.getByRole('button', { name: 'Delete tag' })).toBeVisible()
     expect(screen.getByRole('button', { name: 'Cancel' })).toBeVisible()
-    expect(deletes).toBe(0)
+    // Asking deleted nothing: the server still keeps it.
+    await reopen(rerender)
+    expect(
+      await screen.findByRole('button', { name: 'Delete snack' }),
+    ).toBeVisible()
   })
 
   it('asks before deleting a Tag no Food carries, saying it is on none', async () => {
-    registerEndpoint('/api/tags', () => [
-      { id: 8, name: 'dinner', foodCount: 0 },
-    ])
+    keeps(dinner)
     await renderSuspended(ManageTagsSheet, { props: { open: true } })
 
     await userEvent
@@ -125,18 +163,10 @@ describe('ManageTagsSheet', () => {
   })
 
   it('keeps a Tag whose delete is cancelled, back as it was', async () => {
-    let deletes = 0
-    registerEndpoint('/api/tags', () => [
-      { id: 9, name: 'snack', foodCount: 3 },
-    ])
-    registerEndpoint('/api/tags/9', {
-      method: 'DELETE',
-      handler: () => {
-        deletes++
-        return null
-      },
+    keeps(snack)
+    const { rerender } = await renderSuspended(ManageTagsSheet, {
+      props: { open: true },
     })
-    await renderSuspended(ManageTagsSheet, { props: { open: true } })
     const user = userEvent.setup()
     await user.click(
       await screen.findByRole('button', { name: 'Delete snack' }),
@@ -147,24 +177,14 @@ describe('ManageTagsSheet', () => {
     expect(screen.queryByText(/It comes off/)).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Delete snack' })).toBeVisible()
     expect(screen.getByText('3 foods')).toBeVisible()
-    expect(deletes).toBe(0)
+    await reopen(rerender)
+    expect(await screen.findByText('3 foods')).toBeVisible()
   })
 
   it('deletes a Tag once confirmed, drops it from the list, and tells the page its Foods changed', async () => {
-    const kept = [
-      { id: 7, name: 'Breakfast', foodCount: 1 },
-      { id: 9, name: 'snack', foodCount: 3 },
-    ]
-    registerEndpoint('/api/tags', { method: 'GET', handler: () => [...kept] })
-    registerEndpoint('/api/tags/9', {
-      method: 'DELETE',
-      handler: () => {
-        kept.splice(1, 1)
-        return null
-      },
-    })
+    keeps(breakfast, snack)
     const onChanged = vi.fn()
-    await renderSuspended(ManageTagsSheet, {
+    const { rerender } = await renderSuspended(ManageTagsSheet, {
       props: { open: true, onChanged },
     })
     const user = userEvent.setup()
@@ -178,50 +198,53 @@ describe('ManageTagsSheet', () => {
       expect(screen.getAllByRole('listitem')).toHaveLength(1),
     )
     expect(screen.getByRole('listitem')).toHaveTextContent('Breakfast')
-    expect(kept.map((tag) => tag.name)).toEqual(['Breakfast'])
     expect(onChanged).toHaveBeenCalledOnce()
     expect(toastAdd).not.toHaveBeenCalled()
+    await reopen(rerender)
+    await vi.waitFor(() =>
+      expect(
+        screen.getAllByRole('listitem').map((row) => row.textContent),
+      ).toEqual([expect.stringContaining('Breakfast')]),
+    )
   })
 
   it('lists what the server holds after a delete, even while an earlier re-read is still on its way', async () => {
-    const kept = [{ id: 9, name: 'snack', foodCount: 3 }]
-    let reads = 0
-    let releaseSecondRead: () => void = () => {}
-    registerEndpoint('/api/tags', {
-      method: 'GET',
-      handler: async () => {
-        reads++
-        const answer = [...kept]
-        if (reads === 2)
-          await new Promise<void>((resolve) => (releaseSecondRead = resolve))
+    const shelf = foodCatalog({ tags: [snack] })
+    // The read after the create is answered with what the server held when it
+    // arrived — before the delete — and only once released.
+    let holdNextRead = false
+    let release!: () => void
+    const released = new Promise<void>((resolve) => (release = resolve))
+    let arrived!: () => void
+    const staleReadArrived = new Promise<void>((resolve) => (arrived = resolve))
+    server.use(...shelf)
+    server.use(
+      http.get('/api/tags', async ({ request }) => {
+        if (!holdNextRead) return undefined
+        holdNextRead = false
+        const answer = await getResponse(shelf, request.clone())
+        arrived()
+        await released
         return answer
-      },
-    })
-    registerEndpoint('/api/tags', {
-      method: 'POST',
-      handler: () => {
-        kept.push({ id: 10, name: 'Lunch', foodCount: 0 })
-        return { id: 10, name: 'Lunch', foodCount: 0 }
-      },
-    })
-    registerEndpoint('/api/tags/9', {
-      method: 'DELETE',
-      handler: () => {
-        kept.splice(0, 1)
-        return null
-      },
-    })
+      }),
+      http.post('/api/tags', () => {
+        holdNextRead = true
+        return undefined
+      }),
+    )
     await renderSuspended(ManageTagsSheet, { props: { open: true } })
     const user = userEvent.setup()
     await screen.findByText('snack')
 
     await user.type(screen.getByRole('textbox', { name: 'New tag' }), 'Lunch')
     await user.click(screen.getByRole('button', { name: 'Add' }))
-    await vi.waitFor(() => expect(reads).toBe(2))
+    await staleReadArrived
     await user.click(screen.getByRole('button', { name: 'Delete snack' }))
     await user.click(screen.getByRole('button', { name: 'Delete tag' }))
-    await vi.waitFor(() => expect(reads).toBe(3))
-    releaseSecondRead()
+    await vi.waitFor(() =>
+      expect(screen.queryByText(/Delete “snack”/)).not.toBeInTheDocument(),
+    )
+    release()
 
     await vi.waitFor(() =>
       expect(
@@ -231,9 +254,7 @@ describe('ManageTagsSheet', () => {
   })
 
   it('reopens on the list at rest, not on a delete it was asking about when it closed', async () => {
-    registerEndpoint('/api/tags', () => [
-      { id: 9, name: 'snack', foodCount: 3 },
-    ])
+    keeps(snack)
     const { rerender } = await renderSuspended(ManageTagsSheet, {
       props: { open: true },
     })
@@ -241,26 +262,16 @@ describe('ManageTagsSheet', () => {
       .setup()
       .click(await screen.findByRole('button', { name: 'Delete snack' }))
 
-    await rerender({ open: false })
-    await rerender({ open: true })
+    await reopen(rerender)
 
     expect(screen.queryByText(/It comes off/)).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Delete snack' })).toBeVisible()
   })
 
   it('holds the delete button while a delete is in flight', async () => {
-    let deletes = 0
-    let answer: () => void = () => {}
-    registerEndpoint('/api/tags', () => [
-      { id: 9, name: 'snack', foodCount: 3 },
-    ])
-    registerEndpoint('/api/tags/9', {
-      method: 'DELETE',
-      handler: () => {
-        deletes++
-        return new Promise<null>((resolve) => (answer = () => resolve(null)))
-      },
-    })
+    keeps(snack)
+    const { handler, release } = heldWrites('delete')
+    server.use(handler)
     await renderSuspended(ManageTagsSheet, { props: { open: true } })
     const user = userEvent.setup()
     await user.click(
@@ -269,47 +280,35 @@ describe('ManageTagsSheet', () => {
 
     await user.click(screen.getByRole('button', { name: 'Delete tag' }))
 
-    await vi.waitFor(() => expect(deletes).toBe(1))
-    expect(screen.getByRole('button', { name: /Delete tag/ })).toBeDisabled()
-    answer()
+    await vi.waitFor(() =>
+      expect(screen.getByRole('button', { name: /Delete tag/ })).toBeDisabled(),
+    )
+    release()
   })
 
   it('holds the add button while a create is in flight', async () => {
-    let posts = 0
-    let answer: () => void = () => {}
-    registerEndpoint('/api/tags', { method: 'GET', handler: () => [] })
-    registerEndpoint('/api/tags', {
-      method: 'POST',
-      handler: () => {
-        posts++
-        return new Promise((resolve) => {
-          answer = () => resolve({ id: 8, name: 'Lunch', foodCount: 0 })
-        })
-      },
-    })
+    const { handler, release } = heldWrites('post')
+    server.use(handler)
     await renderSuspended(ManageTagsSheet, { props: { open: true } })
     const user = userEvent.setup()
     await user.type(screen.getByRole('textbox', { name: 'New tag' }), 'Lunch')
 
     await user.click(screen.getByRole('button', { name: 'Add' }))
 
-    await vi.waitFor(() => expect(posts).toBe(1))
-    expect(screen.getByRole('button', { name: /Add/ })).toBeDisabled()
-    answer()
+    await vi.waitFor(() =>
+      expect(screen.getByRole('button', { name: /Add/ })).toBeDisabled(),
+    )
+    release()
   })
 
   it('names a delete that failed for want of a connection in its own error toast', async () => {
     toastAdd.mockClear()
-    registerEndpoint('/api/tags', () => [
-      { id: 9, name: 'snack', foodCount: 3 },
-    ])
-    registerEndpoint('/api/tags/9', {
-      method: 'DELETE',
-      handler: (event) => {
-        setResponseStatus(event, 503)
-        return {}
-      },
-    })
+    keeps(snack)
+    server.use(
+      http.delete('/api/tags/{id}', ({ response }) =>
+        response(503).json(unreachable),
+      ),
+    )
     await renderSuspended(ManageTagsSheet, { props: { open: true } })
     const user = userEvent.setup()
     await user.click(
@@ -328,14 +327,9 @@ describe('ManageTagsSheet', () => {
 
   it('names a create that failed for want of a connection in its own error toast', async () => {
     toastAdd.mockClear()
-    registerEndpoint('/api/tags', { method: 'GET', handler: () => [] })
-    registerEndpoint('/api/tags', {
-      method: 'POST',
-      handler: (event) => {
-        setResponseStatus(event, 503)
-        return {}
-      },
-    })
+    server.use(
+      http.post('/api/tags', ({ response }) => response(503).json(unreachable)),
+    )
     await renderSuspended(ManageTagsSheet, { props: { open: true } })
     const user = userEvent.setup()
     await user.type(screen.getByRole('textbox', { name: 'New tag' }), 'Lunch')
@@ -353,15 +347,6 @@ describe('ManageTagsSheet', () => {
   })
 
   it('asks for a name when Add is pressed on an empty field, and sends nothing', async () => {
-    let posts = 0
-    registerEndpoint('/api/tags', { method: 'GET', handler: () => [] })
-    registerEndpoint('/api/tags', {
-      method: 'POST',
-      handler: () => {
-        posts++
-        return { id: 8, name: 'x', foodCount: 0 }
-      },
-    })
     await renderSuspended(ManageTagsSheet, { props: { open: true } })
 
     await userEvent.setup().click(screen.getByRole('button', { name: 'Add' }))
@@ -369,19 +354,12 @@ describe('ManageTagsSheet', () => {
     expect(
       await screen.findByText('Enter a name for this tag', { exact: true }),
     ).toBeVisible()
-    expect(posts).toBe(0)
+    // Sent, the server would have refused it in words of its own.
+    await settle()
+    expect(screen.queryByText(/must not be blank/)).not.toBeInTheDocument()
   })
 
   it('refuses a Tag name of whitespace alone at the field, and sends nothing', async () => {
-    let posts = 0
-    registerEndpoint('/api/tags', { method: 'GET', handler: () => [] })
-    registerEndpoint('/api/tags', {
-      method: 'POST',
-      handler: () => {
-        posts++
-        return { id: 8, name: '', foodCount: 0 }
-      },
-    })
     await renderSuspended(ManageTagsSheet, { props: { open: true } })
     const user = userEvent.setup()
 
@@ -392,19 +370,11 @@ describe('ManageTagsSheet', () => {
       await screen.findByText('Enter a name for this tag', { exact: true }),
     ).toBeVisible()
     expect(screen.queryByText(/at most 30 characters/)).not.toBeInTheDocument()
-    expect(posts).toBe(0)
+    await settle()
+    expect(screen.queryByText(/must not be blank/)).not.toBeInTheDocument()
   })
 
   it('refuses a Tag name longer than 30 characters at the field, and sends nothing', async () => {
-    let posts = 0
-    registerEndpoint('/api/tags', { method: 'GET', handler: () => [] })
-    registerEndpoint('/api/tags', {
-      method: 'POST',
-      handler: () => {
-        posts++
-        return { id: 8, name: 'x', foodCount: 0 }
-      },
-    })
     await renderSuspended(ManageTagsSheet, { props: { open: true } })
     const user = userEvent.setup()
 
@@ -422,30 +392,20 @@ describe('ManageTagsSheet', () => {
     expect(
       screen.queryByText('Enter a name for this tag'),
     ).not.toBeInTheDocument()
-    expect(posts).toBe(0)
+    await settle()
+    expect(screen.queryByText(refusal)).not.toBeInTheDocument()
   })
 
   it('states a name the server refuses beside the field, with no Retry toast', async () => {
     toastAdd.mockClear()
-    registerEndpoint('/api/tags', { method: 'GET', handler: () => [] })
-    registerEndpoint('/api/tags', {
-      method: 'POST',
-      handler: (event) => {
-        setResponseStatus(event, 400)
-        return { message: 'a Tag name must be at most 30 characters' }
-      },
-    })
+    server.use(createRefused())
     await renderSuspended(ManageTagsSheet, { props: { open: true } })
     const user = userEvent.setup()
 
     await user.type(screen.getByRole('textbox', { name: 'New tag' }), 'Lunch')
     await user.click(screen.getByRole('button', { name: 'Add' }))
 
-    expect(
-      await screen.findByText('a Tag name must be at most 30 characters', {
-        exact: true,
-      }),
-    ).toBeVisible()
+    expect(await screen.findByText(refusal, { exact: true })).toBeVisible()
     expect(screen.getByRole('textbox', { name: 'New tag' })).toHaveValue(
       'Lunch',
     )
@@ -453,48 +413,25 @@ describe('ManageTagsSheet', () => {
   })
 
   it('lets go of the server’s refusal once the name it refused is edited', async () => {
-    registerEndpoint('/api/tags', { method: 'GET', handler: () => [] })
-    registerEndpoint('/api/tags', {
-      method: 'POST',
-      handler: (event) => {
-        setResponseStatus(event, 400)
-        return { message: 'a Tag name must be at most 30 characters' }
-      },
-    })
+    server.use(createRefused())
     await renderSuspended(ManageTagsSheet, { props: { open: true } })
     const user = userEvent.setup()
     const field = screen.getByRole('textbox', { name: 'New tag' })
     await user.type(field, 'Lunch')
     await user.click(screen.getByRole('button', { name: 'Add' }))
-    await screen.findByText('a Tag name must be at most 30 characters')
+    await screen.findByText(refusal)
 
     await user.clear(field)
     await user.click(screen.getByRole('button', { name: 'Add' }))
 
-    expect(
-      screen.queryByText('a Tag name must be at most 30 characters'),
-    ).not.toBeInTheDocument()
+    expect(screen.queryByText(refusal)).not.toBeInTheDocument()
     expect(
       await screen.findByText('Enter a name for this tag', { exact: true }),
     ).toBeVisible()
   })
 
   it('renames a Tag, lists it under its new name, and tells the page its Foods changed', async () => {
-    const kept = [
-      { id: 7, name: 'Breakfast', foodCount: 1 },
-      { id: 9, name: 'snack', foodCount: 3 },
-    ]
-    const sent: unknown[] = []
-    registerEndpoint('/api/tags', { method: 'GET', handler: () => [...kept] })
-    registerEndpoint('/api/tags/9', {
-      method: 'PUT',
-      handler: async (event) => {
-        const body = await readBody(event)
-        sent.push(body)
-        kept[1] = { id: 9, name: body.name, foodCount: 3 }
-        return { tag: kept[1], merged: false }
-      },
-    })
+    keeps(breakfast, snack)
     const onChanged = vi.fn()
     await renderSuspended(ManageTagsSheet, {
       props: { open: true, onChanged },
@@ -511,7 +448,7 @@ describe('ManageTagsSheet', () => {
     await user.click(screen.getByRole('button', { name: 'Save' }))
 
     expect(await screen.findByText('Treats')).toBeVisible()
-    expect(sent).toEqual([{ name: 'Treats' }])
+    expect(screen.getByText('3 foods')).toBeVisible()
     expect(
       screen.queryByRole('textbox', { name: /Rename/ }),
     ).not.toBeInTheDocument()
@@ -521,18 +458,10 @@ describe('ManageTagsSheet', () => {
   })
 
   it('warns that renaming onto another Tag’s name in any case merges the two, with both Food counts, before sending anything', async () => {
-    let puts = 0
-    registerEndpoint('/api/tags', () => [
+    keeps(
       { id: 7, name: 'Snack', foodCount: 3 },
       { id: 9, name: 'treats', foodCount: 1 },
-    ])
-    registerEndpoint('/api/tags/9', {
-      method: 'PUT',
-      handler: () => {
-        puts++
-        return null
-      },
-    })
+    )
     await renderSuspended(ManageTagsSheet, { props: { open: true } })
     const user = userEvent.setup()
     await user.click(
@@ -553,14 +482,13 @@ describe('ManageTagsSheet', () => {
     expect(
       screen.queryByRole('button', { name: 'Save' }),
     ).not.toBeInTheDocument()
-    expect(puts).toBe(0)
   })
 
   it('treats respelling a Tag’s own name in another case as a rename, with no merge warning', async () => {
-    registerEndpoint('/api/tags', () => [
+    keeps(
       { id: 7, name: 'Snack', foodCount: 3 },
       { id: 9, name: 'treats', foodCount: 1 },
-    ])
+    )
     await renderSuspended(ManageTagsSheet, { props: { open: true } })
     const user = userEvent.setup()
     await user.click(
@@ -579,18 +507,10 @@ describe('ManageTagsSheet', () => {
   })
 
   it('keeps a Tag whose rename is cancelled, back as it was', async () => {
-    let puts = 0
-    registerEndpoint('/api/tags', () => [
-      { id: 9, name: 'snack', foodCount: 3 },
-    ])
-    registerEndpoint('/api/tags/9', {
-      method: 'PUT',
-      handler: () => {
-        puts++
-        return null
-      },
+    keeps(snack)
+    const { rerender } = await renderSuspended(ManageTagsSheet, {
+      props: { open: true },
     })
-    await renderSuspended(ManageTagsSheet, { props: { open: true } })
     const user = userEvent.setup()
     await user.click(
       await screen.findByRole('button', { name: 'Rename snack' }),
@@ -604,21 +524,16 @@ describe('ManageTagsSheet', () => {
     ).not.toBeInTheDocument()
     expect(screen.getByText('snack', { exact: true })).toBeVisible()
     expect(screen.getByRole('button', { name: 'Rename snack' })).toBeVisible()
-    expect(puts).toBe(0)
+    await reopen(rerender)
+    expect(
+      await screen.findByRole('button', { name: 'Rename snack' }),
+    ).toBeVisible()
   })
 
   it('states a new name the server refuses beside the rename field, with no Retry toast', async () => {
     toastAdd.mockClear()
-    registerEndpoint('/api/tags', () => [
-      { id: 9, name: 'snack', foodCount: 3 },
-    ])
-    registerEndpoint('/api/tags/9', {
-      method: 'PUT',
-      handler: (event) => {
-        setResponseStatus(event, 400)
-        return { message: 'a Tag name must be at most 30 characters' }
-      },
-    })
+    keeps(snack)
+    server.use(renameRefused())
     await renderSuspended(ManageTagsSheet, { props: { open: true } })
     const user = userEvent.setup()
     await user.click(
@@ -630,19 +545,13 @@ describe('ManageTagsSheet', () => {
 
     await user.click(screen.getByRole('button', { name: 'Save' }))
 
-    expect(
-      await screen.findByText('a Tag name must be at most 30 characters', {
-        exact: true,
-      }),
-    ).toBeVisible()
+    expect(await screen.findByText(refusal, { exact: true })).toBeVisible()
     expect(field).toHaveValue('Treats')
     expect(toastAdd).not.toHaveBeenCalled()
   })
 
   it('reopens on the list at rest, not on a rename it was part-way through when it closed', async () => {
-    registerEndpoint('/api/tags', () => [
-      { id: 9, name: 'snack', foodCount: 3 },
-    ])
+    keeps(snack)
     const { rerender } = await renderSuspended(ManageTagsSheet, {
       props: { open: true },
     })
@@ -650,8 +559,7 @@ describe('ManageTagsSheet', () => {
       .setup()
       .click(await screen.findByRole('button', { name: 'Rename snack' }))
 
-    await rerender({ open: false })
-    await rerender({ open: true })
+    await reopen(rerender)
 
     expect(
       screen.queryByRole('textbox', { name: 'Rename snack' }),
@@ -660,10 +568,7 @@ describe('ManageTagsSheet', () => {
   })
 
   it('asks one thing at a time: renaming a Tag drops a delete asked about on another, and asking to delete drops a rename', async () => {
-    registerEndpoint('/api/tags', () => [
-      { id: 7, name: 'Breakfast', foodCount: 1 },
-      { id: 9, name: 'snack', foodCount: 3 },
-    ])
+    keeps(breakfast, snack)
     await renderSuspended(ManageTagsSheet, { props: { open: true } })
     const user = userEvent.setup()
     await user.click(
@@ -684,25 +589,12 @@ describe('ManageTagsSheet', () => {
   })
 
   it('holds the merge button while a rename is in flight', async () => {
-    let puts = 0
-    let answer: () => void = () => {}
-    registerEndpoint('/api/tags', () => [
+    keeps(
       { id: 7, name: 'Snack', foodCount: 3 },
       { id: 9, name: 'treats', foodCount: 1 },
-    ])
-    registerEndpoint('/api/tags/9', {
-      method: 'PUT',
-      handler: () => {
-        puts++
-        return new Promise((resolve) => {
-          answer = () =>
-            resolve({
-              tag: { id: 7, name: 'Snack', foodCount: 4 },
-              merged: true,
-            })
-        })
-      },
-    })
+    )
+    const { handler, release } = heldWrites('put')
+    server.use(handler)
     await renderSuspended(ManageTagsSheet, { props: { open: true } })
     const user = userEvent.setup()
     await user.click(
@@ -714,23 +606,14 @@ describe('ManageTagsSheet', () => {
 
     await user.click(screen.getByRole('button', { name: 'Merge' }))
 
-    await vi.waitFor(() => expect(puts).toBe(1))
-    expect(screen.getByRole('button', { name: /Merge/ })).toBeDisabled()
-    answer()
+    await vi.waitFor(() =>
+      expect(screen.getByRole('button', { name: /Merge/ })).toBeDisabled(),
+    )
+    release()
   })
 
   it('refuses renaming a Tag to whitespace alone at the field, and sends nothing', async () => {
-    let puts = 0
-    registerEndpoint('/api/tags', () => [
-      { id: 9, name: 'snack', foodCount: 3 },
-    ])
-    registerEndpoint('/api/tags/9', {
-      method: 'PUT',
-      handler: () => {
-        puts++
-        return null
-      },
-    })
+    keeps(snack)
     await renderSuspended(ManageTagsSheet, { props: { open: true } })
     const user = userEvent.setup()
     await user.click(
@@ -746,20 +629,13 @@ describe('ManageTagsSheet', () => {
       await screen.findByText('Enter a name for this tag', { exact: true }),
     ).toBeVisible()
     expect(field).toBeInTheDocument()
-    expect(puts).toBe(0)
+    await settle()
+    expect(screen.queryByText(/must not be blank/)).not.toBeInTheDocument()
   })
 
   it('lets go of the server’s refusal of a new name once that name is edited', async () => {
-    registerEndpoint('/api/tags', () => [
-      { id: 9, name: 'snack', foodCount: 3 },
-    ])
-    registerEndpoint('/api/tags/9', {
-      method: 'PUT',
-      handler: (event) => {
-        setResponseStatus(event, 400)
-        return { message: 'a Tag name must be at most 30 characters' }
-      },
-    })
+    keeps(snack)
+    server.use(renameRefused())
     await renderSuspended(ManageTagsSheet, { props: { open: true } })
     const user = userEvent.setup()
     await user.click(
@@ -768,28 +644,22 @@ describe('ManageTagsSheet', () => {
     const field = screen.getByRole('textbox', { name: 'Rename snack' })
     await user.type(field, 's')
     await user.click(screen.getByRole('button', { name: 'Save' }))
-    await screen.findByText('a Tag name must be at most 30 characters')
+    await screen.findByText(refusal)
 
     await user.type(field, 'x')
 
-    expect(
-      screen.queryByText('a Tag name must be at most 30 characters'),
-    ).not.toBeInTheDocument()
+    expect(screen.queryByText(refusal)).not.toBeInTheDocument()
     expect(field).toHaveValue('snacksx')
   })
 
   it('names a rename that failed for want of a connection in its own error toast, keeping the new name', async () => {
     toastAdd.mockClear()
-    registerEndpoint('/api/tags', () => [
-      { id: 9, name: 'snack', foodCount: 3 },
-    ])
-    registerEndpoint('/api/tags/9', {
-      method: 'PUT',
-      handler: (event) => {
-        setResponseStatus(event, 503)
-        return {}
-      },
-    })
+    keeps(snack)
+    server.use(
+      http.put('/api/tags/{id}', ({ response }) =>
+        response(503).json(unreachable),
+      ),
+    )
     await renderSuspended(ManageTagsSheet, { props: { open: true } })
     const user = userEvent.setup()
     await user.click(
@@ -809,9 +679,7 @@ describe('ManageTagsSheet', () => {
   })
 
   it('puts the cursor in the new-name field when a rename starts on desktop', async () => {
-    registerEndpoint('/api/tags', () => [
-      { id: 9, name: 'snack', foodCount: 3 },
-    ])
+    keeps(snack)
     await renderSuspended(ManageTagsSheet, { props: { open: true } })
 
     await userEvent
@@ -827,9 +695,7 @@ describe('ManageTagsSheet', () => {
 
   it('leaves the new-name field unfocused when a rename starts on a phone, so its keyboard cannot cover the sheet', async () => {
     viewport.desktop = false
-    registerEndpoint('/api/tags', () => [
-      { id: 9, name: 'snack', foodCount: 3 },
-    ])
+    keeps(snack)
     await renderSuspended(ManageTagsSheet, { props: { open: true } })
 
     await userEvent
@@ -842,10 +708,10 @@ describe('ManageTagsSheet', () => {
   })
 
   it('warns of a merge onto a name pasted with a character the server trims and the browser keeps', async () => {
-    registerEndpoint('/api/tags', () => [
+    keeps(
       { id: 7, name: 'Snack', foodCount: 3 },
       { id: 9, name: 'treats', foodCount: 1 },
-    ])
+    )
     await renderSuspended(ManageTagsSheet, { props: { open: true } })
     const user = userEvent.setup()
     await user.click(
@@ -866,22 +732,7 @@ describe('ManageTagsSheet', () => {
   })
 
   it('creates a Tag from the name typed, and lists it once the server has it', async () => {
-    const kept = [{ id: 7, name: 'Breakfast', foodCount: 1 }]
-    const sent: unknown[] = []
-    registerEndpoint('/api/tags', {
-      method: 'GET',
-      handler: () => [...kept],
-    })
-    registerEndpoint('/api/tags', {
-      method: 'POST',
-      handler: async (event) => {
-        const body = await readBody(event)
-        sent.push(body)
-        const created = { id: 8, name: body.name, foodCount: 0 }
-        kept.push(created)
-        return created
-      },
-    })
+    keeps(breakfast)
     await renderSuspended(ManageTagsSheet, { props: { open: true } })
     const user = userEvent.setup()
 
@@ -889,7 +740,7 @@ describe('ManageTagsSheet', () => {
     await user.click(screen.getByRole('button', { name: 'Add' }))
 
     expect(await screen.findByText('Lunch')).toBeVisible()
-    expect(sent).toEqual([{ name: 'Lunch' }])
+    expect(screen.getByText('0 foods')).toBeVisible()
     expect(screen.getByRole('textbox', { name: 'New tag' })).toHaveValue('')
   })
 })

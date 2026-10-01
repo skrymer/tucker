@@ -18,3 +18,21 @@ export const http = createOpenApiHttp<paths>({ baseUrl: '*' })
  */
 export const serverError = () =>
   HttpResponse.json({ message: 'boom' }, { status: 500 })
+
+/**
+ * A read of [path] the server fails while [isDown] holds, falling through to the
+ * handler under it once it does not. Every time, not once: ofetch retries a
+ * failed GET by itself.
+ */
+export function failingRead(
+  path:
+    | '/api/foods'
+    | '/api/foods/frequent'
+    | '/api/tags'
+    | '/api/reference-foods',
+  isDown: () => boolean = () => true,
+) {
+  return http.get(path, ({ response }) =>
+    isDown() ? response.untyped(serverError()) : undefined,
+  )
+}

@@ -1,10 +1,16 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
-import { registerEndpoint, renderSuspended } from '@nuxt/test-utils/runtime'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { HttpResponse } from 'msw'
+import { renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import { readBarcodes } from 'zxing-wasm/reader'
 import { food } from '~~/test/food-fixtures'
+import { foodCatalog } from '~~/test/mocks/handlers/catalog'
+import { http } from '~~/test/mocks/http'
+import { server, useMswServer } from '~~/test/mocks/node'
 import AddSheet from './AddSheet.vue'
+
+useMswServer()
 
 // The camera scanner's hardware + WASM decoder are mocked (ADR 0006: the live
 // lifecycle is a real-stack smoke). These helpers drive the sheet's camera
@@ -75,91 +81,98 @@ function primeVideoFrame() {
   } as unknown as CanvasRenderingContext2D)
 }
 
-// The mock router matches concrete paths only (no params), so each scenario
-// registers its own barcode. A distinct barcode per outcome keeps them apart.
+// A distinct barcode per outcome keeps them apart.
 const CANDIDATE_BARCODE = '5701234567890'
-registerEndpoint(`/api/foods/barcode/${CANDIDATE_BARCODE}`, {
-  method: 'GET',
-  handler: () => ({
-    outcome: 'CANDIDATE',
-    candidate: {
-      name: 'Skyr Natural',
-      barcode: CANDIDATE_BARCODE,
-      proteinPer100g: 10.3,
-      carbsPer100g: 4,
-      fatPer100g: null,
-      statedEnergyKcalPer100g: 63,
-      source: 'Open Food Facts',
-    },
-  }),
-})
-
-// A candidate look-up that resolves only once the test opens the gate, so the
-// user can type while it's still in flight.
-let candidateGate: Promise<unknown> | null = null
+// Answered as CANDIDATE_BARCODE is, but only once the test releases it.
 const SLOW_CANDIDATE_BARCODE = '5700000000001'
-registerEndpoint(`/api/foods/barcode/${SLOW_CANDIDATE_BARCODE}`, {
-  method: 'GET',
-  handler: async () => {
-    if (candidateGate) await candidateGate
-    return {
-      outcome: 'CANDIDATE',
-      candidate: {
-        name: 'Skyr Natural',
-        barcode: SLOW_CANDIDATE_BARCODE,
-        proteinPer100g: 10.3,
-        carbsPer100g: 4,
-        fatPer100g: null,
-        statedEnergyKcalPer100g: 63,
-        source: 'Open Food Facts',
-      },
-    }
-  },
-})
+const skyr = {
+  name: 'Skyr Natural',
+  proteinPer100g: 10.3,
+  carbsPer100g: 4,
+  fatPer100g: null,
+  statedEnergyKcalPer100g: 63,
+  source: 'Open Food Facts',
+}
 
 // A candidate whose every macro is present, so each one is pinned reaching the
 // form. CANDIDATE_BARCODE deliberately withholds fat, to pin the blank instead.
 const FULL_CANDIDATE_BARCODE = '5700000000002'
-registerEndpoint(`/api/foods/barcode/${FULL_CANDIDATE_BARCODE}`, {
-  method: 'GET',
-  handler: () => ({
-    outcome: 'CANDIDATE',
-    candidate: {
-      name: 'Peanut Butter',
-      barcode: FULL_CANDIDATE_BARCODE,
-      proteinPer100g: 25.1,
-      carbsPer100g: 12.2,
-      fatPer100g: 50.3,
-      statedEnergyKcalPer100g: 600,
-      source: 'Open Food Facts',
-    },
-  }),
-})
 
 const EXISTING_BARCODE = '5709999999999'
-registerEndpoint(`/api/foods/barcode/${EXISTING_BARCODE}`, {
-  method: 'GET',
-  handler: () => ({
-    outcome: 'EXISTING',
-    food: food({
-      id: 7,
-      name: 'Existing Skyr',
-      barcode: EXISTING_BARCODE,
-      caloriesPer100g: 63,
-      proteinPer100g: 10,
-      carbsPer100g: 4,
-      fatPer100g: 0.2,
+
+// Each test's catalog: one Food that owns EXISTING_BARCODE, and what the
+// provider knows of the candidates. Any other barcode misses.
+beforeEach(() => {
+  server.use(
+    ...foodCatalog({
+      foods: [
+        food({
+          id: 7,
+          name: 'Existing Skyr',
+          barcode: EXISTING_BARCODE,
+          caloriesPer100g: 63,
+          proteinPer100g: 10,
+          carbsPer100g: 4,
+          fatPer100g: 0.2,
+        }),
+      ],
+      candidates: [
+        { ...skyr, barcode: CANDIDATE_BARCODE },
+        { ...skyr, barcode: SLOW_CANDIDATE_BARCODE },
+        {
+          name: 'Peanut Butter',
+          barcode: FULL_CANDIDATE_BARCODE,
+          proteinPer100g: 25.1,
+          carbsPer100g: 12.2,
+          fatPer100g: 50.3,
+          statedEnergyKcalPer100g: 600,
+          source: 'Open Food Facts',
+        },
+      ],
     }),
-  }),
+  )
 })
 
-describe('AddSheet', () => {
-  // Structural rather than per-test: a gate left armed by a test that throws
-  // before its own reset hangs every later SLOW_CANDIDATE_BARCODE look-up.
-  afterEach(() => {
-    candidateGate = null
-  })
+/** A look-up of [barcode] the provider is unreachable for. */
+const unreachableFor = (barcode: string) =>
+  server.use(
+    http.get('/api/foods/barcode/{barcode}', ({ params, response }) =>
+      params.barcode === barcode
+        ? response(503).json({ message: 'could not reach a nutrition source' })
+        : undefined,
+    ),
+  )
 
+/** A look-up of [barcode] that fails as an unreachable network does. */
+const offlineFor = (barcode: string) =>
+  server.use(
+    http.get('/api/foods/barcode/{barcode}', ({ params }) =>
+      params.barcode === barcode ? HttpResponse.error() : undefined,
+    ),
+  )
+
+/** A look-up of [barcode] that never answers. */
+const hangsFor = (barcode: string) =>
+  server.use(
+    http.get('/api/foods/barcode/{barcode}', ({ params }) =>
+      params.barcode === barcode ? new Promise<never>(() => {}) : undefined,
+    ),
+  )
+
+/** The SLOW_CANDIDATE_BARCODE look-up held until the returned release. */
+function holdSlowCandidate() {
+  let release!: () => void
+  const held = new Promise<void>((resolve) => (release = resolve))
+  server.use(
+    http.get('/api/foods/barcode/{barcode}', async ({ params }) => {
+      if (params.barcode === SLOW_CANDIDATE_BARCODE) await held
+      return undefined
+    }),
+  )
+  return () => release()
+}
+
+describe('AddSheet', () => {
   it('offers a barcode lookup alongside the manual form', async () => {
     await renderSuspended(AddSheet, { props: { open: true } })
 
@@ -218,10 +231,25 @@ describe('AddSheet', () => {
   })
 
   it('saves a provider candidate carrying the Tags picked for it', async () => {
-    registerEndpoint('/api/tags', () => [
-      { id: 7, name: 'Breakfast', foodCount: 1 },
-      { id: 9, name: 'snack', foodCount: 3 },
-    ])
+    server.use(
+      ...foodCatalog({
+        tags: [
+          { id: 7, name: 'Breakfast', foodCount: 1 },
+          { id: 9, name: 'snack', foodCount: 3 },
+        ],
+        candidates: [
+          {
+            name: 'Peanut Butter',
+            barcode: FULL_CANDIDATE_BARCODE,
+            proteinPer100g: 25.1,
+            carbsPer100g: 12.2,
+            fatPer100g: 50.3,
+            statedEnergyKcalPer100g: 600,
+            source: 'Open Food Facts',
+          },
+        ],
+      }),
+    )
     const onSubmit = vi.fn()
     await renderSuspended(AddSheet, { props: { open: true, onSubmit } })
     const user = userEvent.setup()
@@ -269,10 +297,7 @@ describe('AddSheet', () => {
   })
 
   it('keeps what the user typed when a slow look-up lands a candidate', async () => {
-    let releaseLookup!: () => void
-    candidateGate = new Promise<void>((resolve) => {
-      releaseLookup = resolve
-    })
+    const releaseLookup = holdSlowCandidate()
     await renderSuspended(AddSheet, { props: { open: true } })
     const user = userEvent.setup()
 
@@ -298,10 +323,7 @@ describe('AddSheet', () => {
     // A superseded run carries no value, so falling through to read one throws
     // and lands in the catch — which would blank the newer look-up's result and
     // add a failure note under it (issue #164's corruption from a third side).
-    let releaseLookup!: () => void
-    candidateGate = new Promise<void>((resolve) => {
-      releaseLookup = resolve
-    })
+    const releaseLookup = holdSlowCandidate()
     await renderSuspended(AddSheet, { props: { open: true } })
     const user = userEvent.setup()
 
@@ -436,7 +458,7 @@ describe('AddSheet', () => {
   })
 
   it('drops to a blank form carrying the barcode on a miss', async () => {
-    // MISS_BARCODE is intentionally unregistered, so the lookup 404s.
+    // Neither the catalog nor the provider knows MISS_BARCODE, so it 404s.
     const MISS_BARCODE = '0000000000000'
     const onSubmit = vi.fn()
     await renderSuspended(AddSheet, { props: { open: true, onSubmit } })
@@ -466,7 +488,7 @@ describe('AddSheet', () => {
   })
 
   it('stays quiet on a genuine miss, where the blank form is already the answer', async () => {
-    // MISS_BARCODE is intentionally unregistered, so the lookup 404s. Everything
+    // Neither the catalog nor the provider knows MISS_BARCODE, so it 404s. Everything
     // that could be asked was asked; an empty form says exactly that, and a note
     // would only add noise to the overwhelmingly common path.
     const MISS_BARCODE = '0000000000000'
@@ -488,15 +510,7 @@ describe('AddSheet', () => {
     // thing nobody managed to find out. Left unsaid, the user hand-enters a product
     // Open Food Facts knows, and that Food owns the barcode from then on.
     const UNREACHABLE_BARCODE = '5704444444444'
-    registerEndpoint(`/api/foods/barcode/${UNREACHABLE_BARCODE}`, {
-      method: 'GET',
-      handler: () => {
-        throw createError({
-          statusCode: 503,
-          statusMessage: 'Service Unavailable',
-        })
-      },
-    })
+    unreachableFor(UNREACHABLE_BARCODE)
     await renderSuspended(AddSheet, { props: { open: true } })
     const user = userEvent.setup()
 
@@ -516,10 +530,7 @@ describe('AddSheet', () => {
     // A hung connection ends the same way as an unreachable source: nothing was
     // learned. The user must not be left with a blank form implying otherwise.
     const HANGING_BARCODE = '5705555555555'
-    registerEndpoint(`/api/foods/barcode/${HANGING_BARCODE}`, {
-      method: 'GET',
-      handler: () => new Promise(() => {}),
-    })
+    hangsFor(HANGING_BARCODE)
     await renderSuspended(AddSheet, { props: { open: true } })
     await userEvent
       .setup()
@@ -544,10 +555,7 @@ describe('AddSheet', () => {
     // walks them into saving product A under the barcode of product B — the very
     // catalog corruption issue #164 is about, arrived at from the other side.
     const HANGING_BARCODE = '5706666666666'
-    registerEndpoint(`/api/foods/barcode/${HANGING_BARCODE}`, {
-      method: 'GET',
-      handler: () => new Promise(() => {}),
-    })
+    hangsFor(HANGING_BARCODE)
     await renderSuspended(AddSheet, { props: { open: true } })
     const user = userEvent.setup()
 
@@ -585,15 +593,7 @@ describe('AddSheet', () => {
     // one — a thrown response rather than an abort — and has to land the user in
     // the same place: told nothing was learned, and looking at an empty form.
     const REFUSED_BARCODE = '5707777777777'
-    registerEndpoint(`/api/foods/barcode/${REFUSED_BARCODE}`, {
-      method: 'GET',
-      handler: () => {
-        throw createError({
-          statusCode: 503,
-          statusMessage: 'Service Unavailable',
-        })
-      },
-    })
+    unreachableFor(REFUSED_BARCODE)
     await renderSuspended(AddSheet, { props: { open: true } })
     const user = userEvent.setup()
 
@@ -623,12 +623,7 @@ describe('AddSheet', () => {
     // network. A network-failed lookup must degrade to the same barcode-pre-filled
     // manual entry as a miss (ADR 0006) so the user can still add the Food.
     const OFFLINE_BARCODE = '5703333333333'
-    registerEndpoint(`/api/foods/barcode/${OFFLINE_BARCODE}`, {
-      method: 'GET',
-      handler: () => {
-        throw new Error('network down')
-      },
-    })
+    offlineFor(OFFLINE_BARCODE)
     const onSubmit = vi.fn()
     await renderSuspended(AddSheet, { props: { open: true, onSubmit } })
     const user = userEvent.setup()
