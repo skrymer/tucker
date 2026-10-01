@@ -86,6 +86,26 @@ describe('the MSW baseline under the Nuxt test environment', () => {
     expect(await response.json()).toMatchObject({ tracksCalories: true })
   })
 
+  it('rejects a request its caller aborts while the handler is still answering', async () => {
+    let release!: () => void
+    const answered = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    server.use(
+      http.get('/api/profile', async ({ response }) => {
+        await answered
+        return response(200).json(baselineProfile)
+      }),
+    )
+    const controller = new AbortController()
+
+    const read = $fetch('/api/profile', { signal: controller.signal })
+    controller.abort()
+    release()
+
+    await expect(read).rejects.toThrow(/abort/i)
+  })
+
   it('leaves a path registered through registerEndpoint to Nuxt', async () => {
     registerEndpoint('/api/me', () => ({ email: 'nuxt@example.com' }))
 

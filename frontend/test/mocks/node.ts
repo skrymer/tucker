@@ -66,13 +66,33 @@ function unwrapRequests(nuxtFetch: Fetch): Fetch {
       const body = ['GET', 'HEAD'].includes(input.method)
         ? undefined
         : await input.arrayBuffer()
-      return viaNuxt(input.url, {
-        method: input.method,
-        headers: input.headers,
-        body,
-        ...init,
-      })
+      return abortable(
+        viaNuxt(input.url, {
+          method: input.method,
+          headers: input.headers,
+          body,
+          ...init,
+        }),
+        input.signal,
+      )
     }
     return viaNuxt(input instanceof URL ? input.href : input, init)
   }) as Fetch
+}
+
+/**
+ * Reject when [signal] aborts, as a browser's `fetch` does. The signal is
+ * happy-dom's, which Node's `fetch` refuses, so it cannot be handed on.
+ */
+function abortable(
+  response: Promise<Response>,
+  signal: AbortSignal,
+): Promise<Response> {
+  return new Promise((resolve, reject) => {
+    const abort = () =>
+      reject(signal.reason ?? new DOMException('Aborted', 'AbortError'))
+    if (signal.aborted) return abort()
+    signal.addEventListener('abort', abort, { once: true })
+    response.then(resolve, reject)
+  })
 }

@@ -32,6 +32,11 @@ location.origin } })` so relative `/api/*` becomes absolute and reaches the inte
 restores both in `afterAll`, so an unmigrated file is untouched. `useNuxtApp().$api` reads
 `globalThis.$fetch` per call, so it follows the rebind.
 
+The unwrap cannot hand on the `Request`'s `signal` — Node's `fetch` refuses happy-dom's
+`AbortSignal` by brand check, failing every request — so the shim races the response
+against it instead. An aborted read rejects as it would in a browser, which
+`useOptionalFetch` and `useWindowedFetch` rely on when they supersede one.
+
 Each part is pinned by `test/mocks/node.test.ts`: without the unwrap all seven tests fail,
 without the rebind six do, without the registry branch the coexistence test does.
 
