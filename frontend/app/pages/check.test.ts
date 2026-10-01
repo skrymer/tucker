@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ref } from 'vue'
 import { mockNuxtImport, renderSuspended } from '@nuxt/test-utils/runtime'
-import { HttpResponse } from 'msw'
 import { screen } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import { nutellaCheck } from '~~/test/check-fixtures'
@@ -11,7 +10,7 @@ import {
   setupUnfinished,
   summaryWith,
 } from '~~/test/mocks/handlers/summary'
-import { http } from '~~/test/mocks/http'
+import { http, serverError } from '~~/test/mocks/http'
 import { server, useMswServer } from '~~/test/mocks/node'
 import Check from './check.vue'
 
@@ -261,11 +260,8 @@ describe('/check with a calorie budget', () => {
   })
 
   it('does not blame the product when the lookup itself fails', async () => {
-    // The lookup itself failing, which says nothing about the product. The spec
-    // declares no 500, so this response leaves its types on purpose.
-    lookupOf('5001111111111', ({ response }) =>
-      response.untyped(HttpResponse.json({ message: 'boom' }, { status: 500 })),
-    )
+    // The lookup itself failing, which says nothing about the product.
+    lookupOf('5001111111111', ({ response }) => response.untyped(serverError()))
     await renderSuspended(Check)
 
     scan('5001111111111')

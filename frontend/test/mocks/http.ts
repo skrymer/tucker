@@ -1,3 +1,4 @@
+import { HttpResponse } from 'msw'
 import { createOpenApiHttp } from 'openapi-msw'
 import type { paths } from '#open-fetch-schemas/api'
 
@@ -10,3 +11,10 @@ import type { paths } from '#open-fetch-schemas/api'
  * served from a free port.
  */
 export const http = createOpenApiHttp<paths>({ baseUrl: '*' })
+
+/**
+ * An unexpected server failure, for `response.untyped(serverError())`: the spec
+ * declares a 500 on no endpoint, because no endpoint means to answer one.
+ */
+export const serverError = () =>
+  HttpResponse.json({ message: 'boom' }, { status: 500 })

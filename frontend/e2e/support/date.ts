@@ -1,3 +1,5 @@
+import type { Page } from '@playwright/test'
+
 /**
  * The single home for date construction in `e2e/` (issue #85).
  *
@@ -25,6 +27,20 @@
  * of every day and never half an hour off.
  */
 export const MOCKED_E2E_TIMEZONE = 'Australia/Brisbane'
+
+/**
+ * Start the browser's clock at 08:00 in [MOCKED_E2E_TIMEZONE] on 16 June 2026 —
+ * still the 15th in UTC, the one window where a page stamping the UTC date asks
+ * about the wrong day — and return that local day. A handler answering only it
+ * is what proves a client sends its local day (ADR 0014).
+ *
+ * `setSystemTime`, so the clock keeps running: `setFixedTime` freezes
+ * `Date.now`, and a `UInputNumber` then never commits what was typed.
+ */
+export async function pinToLocalMorning(page: Page): Promise<string> {
+  await page.clock.setSystemTime(new Date('2026-06-15T22:00:00Z'))
+  return '2026-06-16'
+}
 
 /** Today's calendar day as an ISO `yyyy-mm-dd` string, in UTC. */
 export function todayIso(): string {

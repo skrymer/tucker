@@ -1,6 +1,6 @@
 import type { components } from '#open-fetch-schemas/api'
 
-type FoodResponse = components['schemas']['FoodResponse']
+export type FoodResponse = components['schemas']['FoodResponse']
 
 /**
  * A catalog Food as `GET /api/foods` sends it.
