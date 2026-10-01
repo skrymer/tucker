@@ -38,6 +38,10 @@ springdoc:
     # still governs where the UI mounts if it is ever opened up again.
     path: /docs
   writer-with-default-pretty-printer: true
+  # Every response is JSON, and the spec says so. Left at springdoc's `*/*`, a body has
+  # no JSON media type for `openapi-msw`'s typed `response(status).json(...)` to find, so
+  # a test mock could answer any status with any shape the spec has (ADR 0034).
+  default-produces-media-type: application/json
 
 # Build stamp (issue #117): baked into the image as env at build time
 # (Dockerfile ARG -> ENV) and surfaced by GET /api/version. Defaults keep local

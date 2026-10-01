@@ -1,15 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ref } from 'vue'
-import {
-  mockNuxtImport,
-  registerEndpoint,
-  renderSuspended,
-} from '@nuxt/test-utils/runtime'
-import { getQuery, setResponseStatus } from 'h3'
+import { mockNuxtImport, renderSuspended } from '@nuxt/test-utils/runtime'
+import { HttpResponse } from 'msw'
 import { screen } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
+import type { components } from '#open-fetch-schemas/api'
 import { nutellaCheck } from '~~/test/check-fixtures'
+import { emptyDay } from '~~/test/mocks/handlers/summary'
+import { http } from '~~/test/mocks/http'
+import { server, useMswServer } from '~~/test/mocks/node'
 import Check from './check.vue'
+
+useMswServer()
 
 // The scanner is stubbed so a scan can be driven from a test: jsdom has no
 // camera, and the real composable's states are exercised by the Playwright
@@ -23,14 +25,83 @@ const scanner = {
 }
 mockNuxtImport('useBarcodeScanner', () => () => scanner)
 
-const budget = { setupComplete: true, calorieBudget: 2492, proteinFloor: 170 }
-let summary: Record<string, unknown> = budget
-registerEndpoint('/api/summary', () => summary)
+type Summary = components['schemas']['DailySummaryResponse']
+
+/** The day's summary carries these targets instead of the baseline's Budget. */
+function targetsAre(
+  targets: Pick<Summary, 'setupComplete' | 'calorieBudget' | 'proteinFloor'>,
+) {
+  server.use(
+    http.get('/api/summary', ({ query, response }) =>
+      response(200).json({ ...emptyDay(query.get('date')!), ...targets }),
+    ),
+  )
+}
+
+type Lookup = Parameters<typeof http.get<'/api/check/{barcode}'>>[1]
+
+/** The lookup for [barcode] answers with [answer]; every other barcode keeps the baseline. */
+function lookupOf(barcode: string, answer: Lookup) {
+  server.use(
+    http.get('/api/check/{barcode}', (info) =>
+      info.params.barcode === barcode ? answer(info) : undefined,
+    ),
+  )
+}
+
+/**
+ * The source a retry exists for: down, and then back. A test flips `reachable`
+ * rather than the handler counting attempts, because an outage that passes is
+ * the scenario; an attempt count would pin the test to how many times the HTTP
+ * client happens to ask. `hold()` keeps the next answer open so a test can read
+ * the screen mid-flight, and hands back its release.
+ */
+function recoveringSource() {
+  const source = { reachable: false, gate: null as Promise<void> | null }
+  lookupOf('5003333333333', async ({ response }) => {
+    if (source.gate) await source.gate
+    return source.reachable
+      ? response(200).json({
+          ...nutellaCheck,
+          name: 'Recovered bar',
+          barcode: '5003333333333',
+        })
+      : response(503).json({ message: 'could not reach a nutrition source' })
+  })
+  return {
+    source,
+    hold() {
+      let release!: () => void
+      source.gate = new Promise<void>((resolve) => {
+        release = resolve
+      })
+      return release
+    },
+  }
+}
+
+/** Decode [barcode] off the stubbed camera. */
+function scan(barcode: string) {
+  scanner.barcode.value = barcode
+  scanner.state.value = 'decoded'
+}
+
+// The scanner mock is module state: without this, "the camera started" passes on
+// a call some earlier test made.
+beforeEach(() => {
+  scanner.state.value = 'idle'
+  scanner.barcode.value = null
+  scanner.start.mockClear()
+  scanner.stop.mockClear()
+})
 
 describe('/check before setup is finished', () => {
   it('prompts to finish setup instead of offering a scan', async () => {
-    summary = { setupComplete: false, calorieBudget: null, proteinFloor: null }
-    vi.clearAllMocks()
+    targetsAre({
+      setupComplete: false,
+      calorieBudget: null,
+      proteinFloor: null,
+    })
 
     await renderSuspended(Check)
 
@@ -47,8 +118,7 @@ describe('/check with Calorie Tracking off', () => {
     // Budget is still absent, which the engine only does for a User who turned
     // Calorie Tracking off. One response answers both, so the page never joins
     // two endpoints to decide what to say.
-    summary = { setupComplete: true, calorieBudget: null, proteinFloor: null }
-    vi.clearAllMocks()
+    targetsAre({ setupComplete: true, calorieBudget: null, proteinFloor: null })
 
     await renderSuspended(Check)
 
@@ -58,93 +128,12 @@ describe('/check with Calorie Tracking off', () => {
   })
 })
 
-registerEndpoint('/api/check/3017620422003', () => nutellaCheck)
-
-// A Provider that knows the product but not all three macros — permanent (422).
-registerEndpoint('/api/check/5708888888888', (event) => {
-  setResponseStatus(event, 422)
-  return {
-    message: 'Open Food Facts has no complete nutrition for Mystery bar',
-  }
-})
-
-// A product whose label shouts its own name, as many do.
-registerEndpoint('/api/check/5004444444444', () => ({
-  ...nutellaCheck,
-  name: 'LIGHT MILK',
-  barcode: '5004444444444',
-}))
-
-// The lookup itself failing, which says nothing about the product.
-registerEndpoint('/api/check/5001111111111', (event) => {
-  setResponseStatus(event, 500)
-  return { message: 'boom' }
-})
-
-// No source could be reached, so whether the product exists is still unknown.
-registerEndpoint('/api/check/5002222222222', (event) => {
-  setResponseStatus(event, 503)
-  return {
-    message: 'could not reach a nutrition source for barcode 5002222222222',
-  }
-})
-
-// The source a retry exists for: down, and then back. Two switches drive it —
-// `sourceReachable` decides the answer, `lookupGate` holds it open so a test can
-// read the screen mid-flight. A test flips a switch rather than the stub
-// counting attempts, because an outage that passes is the scenario; an attempt
-// count would pin the test to how many times the HTTP client happens to ask.
-let sourceReachable = true
-let lookupGate: Promise<void> | null = null
-registerEndpoint('/api/check/5003333333333', async (event) => {
-  if (lookupGate) await lookupGate
-  if (!sourceReachable) {
-    setResponseStatus(event, 503)
-    return { message: 'could not reach a nutrition source' }
-  }
-  return { ...nutellaCheck, name: 'Recovered bar', barcode: '5003333333333' }
-})
-
-// Answers only when asked about the User's own day: the targets a Check states
-// are the ones standing on that day, and the server cannot know it otherwise.
-registerEndpoint('/api/check/5005555555555', (event) => {
-  if (getQuery(event).clientToday !== localToday()) {
-    setResponseStatus(event, 409)
-    return { message: 'a Check needs a Calorie Budget; finish setup first' }
-  }
-  return { ...nutellaCheck, name: 'Dated bar', barcode: '5005555555555' }
-})
-
-/** Hold the next answer open, and hand back the release. */
-function gateLookup() {
-  let release!: () => void
-  lookupGate = new Promise<void>((resolve) => {
-    release = resolve
-  })
-  return release
-}
-
 describe('/check with a calorie budget', () => {
-  // Every switch above is module state, so each test starts from the same
-  // slate — otherwise a test's outcome depends on which ones ran before it.
-  beforeEach(() => {
-    summary = budget
-    scanner.state.value = 'idle'
-    scanner.barcode.value = null
-    sourceReachable = true
-    lookupGate = null
-    // The scanner mock is module state too: without this, "the camera started"
-    // passes on a call some earlier test made.
-    scanner.start.mockClear()
-    scanner.stop.mockClear()
-  })
-
   it('starts the camera on arrival and states the product a scan resolves', async () => {
     await renderSuspended(Check)
     expect(scanner.start).toHaveBeenCalled()
 
-    scanner.barcode.value = '3017620422003'
-    scanner.state.value = 'decoded'
+    scan('3017620422003')
 
     expect(await screen.findByText('Nutella')).toBeVisible()
     expect(screen.getByText('21%')).toBeVisible()
@@ -152,19 +141,37 @@ describe('/check with a calorie budget', () => {
   })
 
   it("checks a product against the targets standing on the User's own day", async () => {
+    // Answers only when asked about the User's own day: the targets a Check
+    // states are the ones standing on that day, and the server cannot know it
+    // otherwise.
+    server.use(
+      http.get('/api/check/{barcode}', ({ query, response }) =>
+        query.get('clientToday') === localToday()
+          ? response(200).json({ ...nutellaCheck, name: 'Dated bar' })
+          : response(409).json({
+              message: 'a Check needs a Calorie Budget; finish setup first',
+            }),
+      ),
+    )
     await renderSuspended(Check)
 
-    scanner.barcode.value = '5005555555555'
-    scanner.state.value = 'decoded'
+    scan('3017620422003')
 
     expect(await screen.findByText('Dated bar')).toBeVisible()
   })
 
   it('states the product in sentence case however the label shouts it', async () => {
+    // A product whose label shouts its own name, as many do.
+    lookupOf('5004444444444', ({ response }) =>
+      response(200).json({
+        ...nutellaCheck,
+        name: 'LIGHT MILK',
+        barcode: '5004444444444',
+      }),
+    )
     await renderSuspended(Check)
 
-    scanner.barcode.value = '5004444444444'
-    scanner.state.value = 'decoded'
+    scan('5004444444444')
 
     expect(await screen.findByText('Light milk')).toBeVisible()
   })
@@ -205,11 +212,11 @@ describe('/check with a calorie budget', () => {
   it('states plainly that a missed product is not in the food database', async () => {
     // Everything that could be asked was asked, and none of it knew the product.
     // That is a verdict, so it can be asserted rather than hedged — and the
-    // advice is to move on, never to keep rescanning.
+    // advice is to move on, never to keep rescanning. The baseline misses every
+    // barcode but Nutella's.
     await renderSuspended(Check)
 
-    scanner.barcode.value = '9999999999999'
-    scanner.state.value = 'decoded'
+    scan('9999999999999')
 
     expect(await screen.findByText('Not in the food database')).toBeVisible()
     expect(screen.getByText(/9999999999999/)).toBeVisible()
@@ -224,12 +231,17 @@ describe('/check with a calorie budget', () => {
   })
 
   it('tells a product whose nutrition is incomplete apart from one that is missing', async () => {
-    // A 422 is permanent for this product, so the advice must not be "try again"
-    // — the opposite of what a transient failure deserves.
+    // A Provider that knows the product but not all three macros: a 422 is
+    // permanent for this product, so the advice must not be "try again" — the
+    // opposite of what a transient failure deserves.
+    lookupOf('5708888888888', ({ response }) =>
+      response(422).json({
+        message: 'Open Food Facts has no complete nutrition for Mystery bar',
+      }),
+    )
     await renderSuspended(Check)
 
-    scanner.barcode.value = '5708888888888'
-    scanner.state.value = 'decoded'
+    scan('5708888888888')
 
     expect(
       await screen.findByText('Not enough nutrition information'),
@@ -248,10 +260,15 @@ describe('/check with a calorie budget', () => {
   it('says the lookup did not get through, not that the targets failed', async () => {
     // The targets loaded fine — they are what the Check is measured against, and
     // blaming them would send the user off to fix something that isn't broken.
+    // No source could be reached, so whether the product exists is still unknown.
+    lookupOf('5002222222222', ({ response }) =>
+      response(503).json({
+        message: 'could not reach a nutrition source for barcode 5002222222222',
+      }),
+    )
     await renderSuspended(Check)
 
-    scanner.barcode.value = '5002222222222'
-    scanner.state.value = 'decoded'
+    scan('5002222222222')
 
     expect(await screen.findByText("Couldn't look that up")).toBeVisible()
     expect(screen.queryByText(/your targets/i)).not.toBeInTheDocument()
@@ -265,10 +282,14 @@ describe('/check with a calorie budget', () => {
   })
 
   it('does not blame the product when the lookup itself fails', async () => {
+    // The lookup itself failing, which says nothing about the product. The spec
+    // declares no 500, so this response leaves its types on purpose.
+    lookupOf('5001111111111', ({ response }) =>
+      response.untyped(HttpResponse.json({ message: 'boom' }, { status: 500 })),
+    )
     await renderSuspended(Check)
 
-    scanner.barcode.value = '5001111111111'
-    scanner.state.value = 'decoded'
+    scan('5001111111111')
 
     expect(await screen.findByText("Couldn't look that up")).toBeVisible()
     // Never a claim about the package the user is holding, on the strength of a
@@ -281,16 +302,15 @@ describe('/check with a calorie budget', () => {
   it('re-runs the failed lookup without sending the user back to the package', async () => {
     // The decode succeeded; only the round-trip failed. Retrying the scan would
     // cost a re-aim in a shop aisle to redo work that never broke.
-    sourceReachable = false
+    const { source } = recoveringSource()
 
     await renderSuspended(Check)
 
-    scanner.barcode.value = '5003333333333'
-    scanner.state.value = 'decoded'
+    scan('5003333333333')
 
     expect(await screen.findByText("Couldn't look that up")).toBeVisible()
 
-    sourceReachable = true
+    source.reachable = true
     scanner.start.mockClear()
     await userEvent.click(screen.getByRole('button', { name: 'Try again' }))
 
@@ -308,19 +328,18 @@ describe('/check with a calorie budget', () => {
     // The user is looking at this message when they tap the button inside it,
     // so it stays put and the control responds in place — rather than the
     // screen blanking and reflowing under their thumb.
-    sourceReachable = false
+    const { hold } = recoveringSource()
 
     await renderSuspended(Check)
 
-    scanner.barcode.value = '5003333333333'
-    scanner.state.value = 'decoded'
+    scan('5003333333333')
 
     expect(await screen.findByText("Couldn't look that up")).toBeVisible()
 
     const button = () => screen.getByRole('button', { name: 'Try again' })
     expect(button()).toBeEnabled()
 
-    const release = gateLookup()
+    const release = hold()
     await userEvent.click(button())
 
     await vi.waitFor(() => expect(button()).toBeDisabled(), { timeout: 3000 })
@@ -336,13 +355,12 @@ describe('/check with a calorie budget', () => {
     // The in-flight flag lingers past the answer, to stop spinners flickering.
     // A button is not a spinner: a tap in that window is the user asking again,
     // and swallowing it leaves them pressing a dead control in a shop.
-    const release = gateLookup()
-    sourceReachable = false
+    const { hold } = recoveringSource()
+    const release = hold()
 
     await renderSuspended(Check)
 
-    scanner.barcode.value = '5003333333333'
-    scanner.state.value = 'decoded'
+    scan('5003333333333')
 
     // Long enough that the delayed in-flight flag has certainly latched, so its
     // linger is still running when the answer lands.
@@ -359,16 +377,15 @@ describe('/check with a calorie budget', () => {
     // blanks to "Looking it up…" *after* the answer arrived — the reflow the
     // held alert exists to avoid, moved to the end of the round trip. Sampling
     // every macrotask catches it; awaiting the result would wait it out.
-    sourceReachable = false
+    const { source, hold } = recoveringSource()
 
     await renderSuspended(Check)
 
-    scanner.barcode.value = '5003333333333'
-    scanner.state.value = 'decoded'
+    scan('5003333333333')
     expect(await screen.findByText("Couldn't look that up")).toBeVisible()
 
-    sourceReachable = true
-    const release = gateLookup()
+    source.reachable = true
+    const release = hold()
     await userEvent.click(screen.getByRole('button', { name: 'Try again' }))
 
     await vi.waitFor(
@@ -397,8 +414,7 @@ describe('/check with a calorie budget', () => {
   it('clears the previous result and restarts the camera on Scan another', async () => {
     await renderSuspended(Check)
 
-    scanner.barcode.value = '3017620422003'
-    scanner.state.value = 'decoded'
+    scan('3017620422003')
     expect(await screen.findByText('Nutella')).toBeVisible()
 
     scanner.start.mockClear()

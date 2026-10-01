@@ -32,3 +32,8 @@ tucker:
     issuer: https://access.tucker.invalid
     audience: tucker-dev
     jwk-set-uri: classpath:access/jwks.json
+
+# Main declares every response JSON for the spec; this file shadows main entirely,
+# so the spec OpenApiSnapshotTest compares against would otherwise say `*/*`.
+springdoc:
+  default-produces-media-type: application/json
