@@ -58,10 +58,15 @@ handlers free of app auto-imports (`localToday()` etc.) — pass such values in.
 1. **No request assertions.** Never capture a URL, query or body to assert on it. A query
    the page must send is answered only when it is right — a 400/409 otherwise, which the
    User meets as the error state. A mutation's handler keeps what it was sent and the test
-   asserts the page after the re-read.
+   asserts the page after the re-read — or, where the page shows the response itself (a
+   toast naming what was logged), derives that response from the body (`entryLog`
+   scales a Food's per-100 g figures by the grams sent), so what the User reads proves
+   what was sent. A fixed reply proves nothing about the body.
 2. **Type every response.** `response(status).json(body)` checks the status against the
-   spec and the body against that status' schema. `response.untyped(HttpResponse.json(…))`
-   only for a status the spec does not declare (a 500), with a comment saying so.
+   spec and the body against that status' schema. `response.untyped(...)` only for a
+   status the spec does not declare: an unexpected failure is
+   `response.untyped(serverError())` (`test/mocks/http.ts`), whose doc says why it is
+   untyped, so the call site needs no comment of its own.
 3. **Override, don't redefine.** `use()` only the variation the test is about. A handler
    that returns `undefined` falls through to the next one — scope an override by param.
    A variation both layers need is a factory beside the baseline (`summaryWith(targets)`,

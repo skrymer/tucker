@@ -81,9 +81,12 @@ or is stated as unchecked — an annotation in `e2e/` never answers a typing fin
 - **ofetch GET retry.** A `{ once: true }` 500 override showed as 200: the automatic retry
   hit the baseline. Override without `once`, or the call passes `retry: 0` (ADR 0007).
 - **Proving a client sends its local day** stays in the mocked e2e — Vitest runs in the
-  host zone and CI in UTC. Pin `page.clock.setFixedTime` where the two days differ and let
-  the handler answer only the local day; the red is the same spec run with
-  `test.use({ timezoneId: 'UTC' })`.
+  host zone and CI in UTC. `pinToLocalMorning(page)` (`e2e/support/date.ts`) returns the
+  local day to let the handler answer alone; the red is the same spec run with
+  `test.use({ timezoneId: 'UTC' })`. Why it is not `setFixedTime`: frontend-dev's gotchas.
+- **A read that fails, then recovers on Retry**, is a failure override with a predicate
+  (`catalogFails(() => down)`) that returns `undefined` once it is false, falling through
+  to the handler under it.
 - **A Check-only page still reads the shell's endpoints**: `/api/profile` always, and Today's
   `/api/weight/latest` and `/api/goal/progress` on any spec that starts at `/`.
 - **Holding a request open.** A handler that `await`s a promise and returns nothing falls
@@ -113,4 +116,14 @@ or is stated as unchecked — an annotation in `e2e/` never answers a typing fin
   the handler file with the guard reading a parameter the page never sends
   (`query.get('clientTodayX')`) and point the spec copy's import at it: that is the page
   dropping the parameter. "The built app's request cannot change" is never a reason to
-  list a guard as unprovable.
+  list a guard as unprovable. A guard on a body field the page stamps (an Entry's `date`)
+  is shown red the same way, by comparing against a day the page never sends.
+- **A test answered by the baseline needs the baseline swapped**, or no break in a copied
+  handler file reaches it. In the spec copy, `test.use({ handlers: [copyBaseline, {
+  option: true }] })` — wrapped, because Playwright reads a bare array as its
+  `[value, options]` tuple and fails every test with `handlers.every is not a function`.
+- **Script it and read a kill matrix.** Generate every copy from one list of breaks, run
+  them all, and tabulate which break turned each test red, per Playwright project. A test
+  no break kills is a missing break, not an unprovable test. Besides dropping rows and
+  failing reads, include a break that answers data the test never listed (an extra
+  Food); without it, tests about what a list holds — no match, no chips — survive.
