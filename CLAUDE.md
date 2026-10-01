@@ -88,8 +88,9 @@ Frontend commands (run in `frontend/`, package manager is pnpm):
 - `pnpm build` — production build
 - `pnpm test` — Vitest component / unit tests (`@nuxt/test-utils`, `@vue/test-utils`)
 - `pnpm test:e2e` — Playwright browser e2e against a Nuxt build with
-  `/api/*` mocked via `page.route` (see `e2e/support/mock-api.ts`); fast and
-  deterministic. Every spec runs on two projects, **Desktop Chrome** and
+  `/api/*` mocked; fast and deterministic. Mocks are moving surface by surface from
+  `page.route` (`e2e/support/mock-api.ts`) to one typed MSW handler set shared with
+  Vitest (`test/mocks/`, ADR 0034, the `msw` skill). Every spec runs on two projects, **Desktop Chrome** and
   **Mobile Chrome** (Pixel 7), to flush responsive bugs. The app is built
   **once** per run and shared: a Playwright `webServer`
   builds `nuxt.config.ts` into `.nuxt/e2e` (`scripts/build-e2e.mjs`) and serves

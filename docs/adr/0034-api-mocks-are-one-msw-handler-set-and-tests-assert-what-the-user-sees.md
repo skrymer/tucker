@@ -18,13 +18,17 @@ page reads back. The test asserts only what the User sees.
 - **One baseline of happy paths, overridden per test.** `test/mocks/handlers/<domain>.ts`
   describe a neutral, consistent account: an empty day, no Goal, Calorie Tracking on.
   Every test inherits it, and a test `use()`s only the variation it is about.
-  `onUnhandledRequest: 'error'` makes a request outside the baseline fail the test. That
+  An unhandled `/api` request fails the test (`onUnhandledFrame: 'error'`, msw 3's name
+  for `onUnhandledRequest`). That
   ends both silent defaults, a 404 in Vitest and the real network in Playwright, one of
   which once let an unmocked `/api/goal/progress` decide what an aria snapshot captured.
 - **Handlers are typed from `openapi/tucker.json`.** `createOpenApiHttp<paths>()` checks
   the path, its parameters, the query, the request body and the response body against the
   generated `paths` type (`#open-fetch-schemas/api`). A mock that drifts from the spec is
-  a type error, not a test that passes against a backend that no longer exists.
+  a type error, not a test that passes against a backend that no longer exists. That
+  needs the spec to name a JSON media type, so the backend declares
+  `springdoc.default-produces-media-type: application/json` rather than springdoc's
+  `*/*`, which `openapi-msw` cannot type a JSON body against.
 - **Tests do not assert on requests.** A query the page must send, such as Check's
   `clientToday`, is answered by a handler only when it is right, and with a 400
   otherwise, so a wrong value surfaces as the error state the User would meet. A mutation's

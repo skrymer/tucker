@@ -63,6 +63,8 @@ test('source and backend tests need their playbook, and anything else needs noth
     'CLAUDE.md': [],
     'frontend/DESIGN.md': [],
     'frontend/e2e/support/mock-api.ts': ['playwright-best-practices'],
+    'frontend/test/mocks/handlers/check.ts': ['msw'],
+    'frontend/test/mocks/node.test.ts': ['msw', 'tdd'],
     '.claude/hooks/skill-gate.mjs': [],
   }
   for (const [file, skills] of Object.entries(cases)) {
