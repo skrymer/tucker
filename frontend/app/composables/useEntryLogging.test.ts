@@ -1,77 +1,35 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent } from 'vue'
-import {
-  mockNuxtImport,
-  registerEndpoint,
-  renderSuspended,
-} from '@nuxt/test-utils/runtime'
-import { createError, readBody } from 'h3'
+import { mockNuxtImport, renderSuspended } from '@nuxt/test-utils/runtime'
 import { openGate } from '~~/test/async-gate'
-import { estimatedEntry, weighedEntry } from '~~/test/entry-fixtures'
+import { food } from '~~/test/food-fixtures'
+import { entryLog } from '~~/test/mocks/handlers/entries'
+import { http, serverError } from '~~/test/mocks/http'
+import { server, useMswServer } from '~~/test/mocks/node'
 import userEvent from '@testing-library/user-event'
 import { screen } from '@testing-library/vue'
 import { useEstimatedEntryLog, useWeighedEntryLog } from './useEntryLogging'
 
+useMswServer()
+
 const { toastAdd } = vi.hoisted(() => ({ toastAdd: vi.fn() }))
 mockNuxtImport('useToast', () => () => ({ add: toastAdd, remove: vi.fn() }))
 
-const logged: Record<string, unknown>[] = []
-const previewed: Record<string, unknown>[] = []
-// Module-scoped switch, so every test states the shape it needs rather than
-// inheriting whichever one ran before it.
-let overBudget = false
-let held: Promise<void> | null = null
-let saveFails = false
+// 80 g of it is 300 kcal and 10 g protein — what the host logs.
+const oats = food({
+  id: 7,
+  name: 'Oats',
+  caloriesPer100g: 375,
+  proteinPer100g: 12.5,
+})
 
-/** What a log request carries; each arm below reads only the keys its own kind sends. */
-type LoggedBody = {
-  foodId: number
-  grams: number
-  label: string
-  calories: number
-  protein: number | null
-}
-
-for (const kind of ['weighed', 'estimated']) {
-  registerEndpoint(`/api/entries/${kind}/preview`, {
-    method: 'POST',
-    handler: async (event) => {
-      previewed.push((await readBody(event)) as Record<string, unknown>)
-      return {
-        wouldExceedBudget: overBudget,
-        calorieBudget: 1900,
-        overByKcal: overBudget ? 180 : null,
-      }
-    },
-  })
-  registerEndpoint(`/api/entries/${kind}`, {
-    method: 'POST',
-    handler: async (event) => {
-      const sent = (await readBody(event)) as LoggedBody
-      logged.push(sent)
-      if (held) await held
-      if (saveFails) throw createError({ statusCode: 500 })
-      // The estimated arm echoes what it was sent: its label, calories and
-      // protein are the request's, so the toast cannot name an Entry the caller
-      // never logged.
-      return kind === 'weighed'
-        ? weighedEntry({
-            id: 1,
-            foodId: sent.foodId,
-            foodName: 'Oats',
-            grams: sent.grams,
-            calories: 300,
-            protein: 10,
-          })
-        : estimatedEntry({
-            id: 1,
-            label: sent.label,
-            calories: sent.calories,
-            protein: sent.protein ?? null,
-          })
-    },
-  })
-}
+/**
+ * Logging against today, under a Calorie Budget of [calorieBudget]: 120 kcal
+ * leaves the host's 300 kcal weighed entry 180 over, 460 leaves its 640 kcal
+ * estimate 180 over.
+ */
+const logEntries = (calorieBudget?: number) =>
+  entryLog({ today: localToday(), foods: [oats], calorieBudget })
 
 /** Drive a gate through a minimal host, so it runs in a real component context. */
 const host = (onLogged?: () => void) =>
@@ -95,91 +53,91 @@ const host = (onLogged?: () => void) =>
       <p>pending: {{ weighed.pending.value }}</p>`,
   })
 
-function reset() {
-  logged.length = 0
-  previewed.length = 0
-  overBudget = false
-  held = null
-  saveFails = false
+/** The last toast the User was shown. */
+const lastToast = () => toastAdd.mock.calls.at(-1)?.[0]
+
+beforeEach(() => {
   toastAdd.mockClear()
-}
+})
 
 describe('useEntryLogging', () => {
-  it('stamps the local day on a weighed entry rather than taking one from a form', async () => {
-    reset()
-    await renderSuspended(host())
-
-    await userEvent.click(screen.getByRole('button', { name: 'weighed' }))
-
-    await vi.waitFor(() => expect(logged).toHaveLength(1))
-    expect(logged[0]).toEqual({ date: localToday(), foodId: 7, grams: 80 })
-  })
-
-  it('warns instead of committing when the entry would exceed the Calorie Budget', async () => {
-    reset()
-    overBudget = true
-    await renderSuspended(host())
-
-    await userEvent.click(screen.getByRole('button', { name: 'weighed' }))
-
-    await vi.waitFor(() =>
-      expect(screen.getByText('warning: 180')).toBeVisible(),
-    )
-    expect(logged).toHaveLength(0)
-  })
-
-  it('takes the next log as the deliberate "log anyway" and commits', async () => {
-    reset()
-    overBudget = true
-    await renderSuspended(host())
-    await userEvent.click(screen.getByRole('button', { name: 'weighed' }))
-    await vi.waitFor(() =>
-      expect(screen.getByText('warning: 180')).toBeVisible(),
-    )
-
-    await userEvent.click(screen.getByRole('button', { name: 'weighed' }))
-
-    await vi.waitFor(() => expect(logged).toHaveLength(1))
-    // The body the second tap commits is rebuilt, not the one the warning was
-    // computed against — which is what keeps the day right across midnight.
-    expect(logged[0]).toEqual({ date: localToday(), foodId: 7, grams: 80 })
-    // One preview, not two: the second tap is the answer to the first, so it
-    // must not re-ask a question the User has already been shown.
-    expect(previewed).toHaveLength(1)
-  })
-
-  it('names the Entry in the toast, in the words Today is about to use for it', async () => {
-    // The Entry lands on Today, which is never the page that logged it, so the
-    // toast is the only sign it worked (ADR 0005).
-    reset()
+  it("stamps today's date on a weighed entry, taking none from its caller", async () => {
+    // The handler refuses any other day, which would surface as a failed save.
+    // That today is the *local* day, not the UTC one, only the mocked browser
+    // can show: Vitest runs in the host's zone (log.spec.ts).
+    server.use(...logEntries())
     await renderSuspended(host())
 
     await userEvent.click(screen.getByRole('button', { name: 'weighed' }))
 
     await vi.waitFor(() => expect(toastAdd).toHaveBeenCalled())
-    expect(toastAdd.mock.calls.at(-1)![0]).toMatchObject({
+    expect(lastToast()).toMatchObject({ title: 'Entry logged' })
+  })
+
+  it('warns instead of committing when the entry would exceed the Calorie Budget', async () => {
+    server.use(...logEntries(120))
+    await renderSuspended(host())
+
+    await userEvent.click(screen.getByRole('button', { name: 'weighed' }))
+
+    await vi.waitFor(() =>
+      expect(screen.getByText('warning: 180')).toBeVisible(),
+    )
+    expect(toastAdd).not.toHaveBeenCalled()
+  })
+
+  it('takes the next log as the deliberate "log anyway" and commits', async () => {
+    server.use(...logEntries(120))
+    await renderSuspended(host())
+    await userEvent.click(screen.getByRole('button', { name: 'weighed' }))
+    await vi.waitFor(() =>
+      expect(screen.getByText('warning: 180')).toBeVisible(),
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: 'weighed' }))
+
+    // Committed, not re-asked: a second preview would warn again, the budget
+    // being no less exceeded, and nothing would be logged. The body is rebuilt
+    // rather than the one the warning was computed against — which is what
+    // keeps the day right across midnight, and today is the only day the
+    // handler accepts.
+    await vi.waitFor(() => expect(toastAdd).toHaveBeenCalled())
+    expect(lastToast()).toMatchObject({
       title: 'Entry logged',
       description: 'Oats — 300 kcal · 10 g protein',
     })
   })
 
-  it('logs an estimate the same way, against the same local day', async () => {
-    reset()
+  it('names the Entry in the toast, in the words Today is about to use for it', async () => {
+    // The Entry lands on Today, which is never the page that logged it, so the
+    // toast is the only sign it worked (ADR 0005).
+    server.use(...logEntries())
+    await renderSuspended(host())
+
+    await userEvent.click(screen.getByRole('button', { name: 'weighed' }))
+
+    await vi.waitFor(() => expect(toastAdd).toHaveBeenCalled())
+    expect(lastToast()).toMatchObject({
+      title: 'Entry logged',
+      description: 'Oats — 300 kcal · 10 g protein',
+    })
+  })
+
+  it("logs an estimate the same way, against today's date", async () => {
+    server.use(...logEntries())
     await renderSuspended(host())
 
     await userEvent.click(screen.getByRole('button', { name: 'estimated' }))
 
-    await vi.waitFor(() => expect(logged).toHaveLength(1))
-    expect(logged[0]).toEqual({
-      date: localToday(),
-      label: 'Work canteen',
-      calories: 640,
+    await vi.waitFor(() => expect(toastAdd).toHaveBeenCalled())
+    expect(lastToast()).toMatchObject({
+      title: 'Entry logged',
+      description: 'Work canteen — 640 kcal',
     })
   })
 
   it('runs onLogged once the Entry is committed, never on the warning', async () => {
-    reset()
-    overBudget = true
+    server.use(...logEntries(120))
     const onLogged = vi.fn()
     await renderSuspended(host(onLogged))
 
@@ -195,8 +153,7 @@ describe('useEntryLogging', () => {
   })
 
   it('clears a showing warning when reset, so the next log re-checks the new figures', async () => {
-    reset()
-    overBudget = true
+    server.use(...logEntries(120))
     await renderSuspended(host())
     await userEvent.click(screen.getByRole('button', { name: 'weighed' }))
     await vi.waitFor(() =>
@@ -209,9 +166,14 @@ describe('useEntryLogging', () => {
   })
 
   it('reports pending while the save is in flight, so a form can lock its action', async () => {
-    reset()
     const { gate, release } = openGate()
-    held = gate
+    // Holds the save open and then falls through to the log, which answers it.
+    server.use(
+      http.post('/api/entries/weighed', async () => {
+        await gate
+      }),
+      ...logEntries(),
+    )
     await renderSuspended(host())
     expect(screen.getByText('pending: false')).toBeVisible()
 
@@ -227,8 +189,7 @@ describe('useEntryLogging', () => {
   })
 
   it('gates an estimate against the budget too, not only a weighed entry', async () => {
-    reset()
-    overBudget = true
+    server.use(...logEntries(460))
     await renderSuspended(host())
 
     await userEvent.click(screen.getByRole('button', { name: 'estimated' }))
@@ -236,18 +197,22 @@ describe('useEntryLogging', () => {
     await vi.waitFor(() =>
       expect(screen.getByText('estimate warning: 180')).toBeVisible(),
     )
-    expect(logged).toHaveLength(0)
+    expect(toastAdd).not.toHaveBeenCalled()
   })
 
   it('names the save, not the projection, when the save is what failed', async () => {
-    reset()
-    saveFails = true
+    server.use(
+      http.post('/api/entries/weighed', ({ response }) =>
+        response.untyped(serverError()),
+      ),
+      ...logEntries(),
+    )
     await renderSuspended(host())
 
     await userEvent.click(screen.getByRole('button', { name: 'weighed' }))
 
     await vi.waitFor(() => expect(toastAdd).toHaveBeenCalled())
-    expect(toastAdd.mock.calls.at(-1)![0]).toMatchObject({
+    expect(lastToast()).toMatchObject({
       title: 'Could not save entry',
       color: 'error',
     })
@@ -257,16 +222,19 @@ describe('useEntryLogging', () => {
     // The second tap skips the preview, so only the save is in flight — the one
     // window where "either is pending" and "both are" disagree, and the one
     // where a form left unlocked would take a third tap as a second Entry.
-    reset()
-    overBudget = true
     const { gate, release } = openGate()
+    server.use(...logEntries(120))
     await renderSuspended(host())
     await userEvent.click(screen.getByRole('button', { name: 'weighed' }))
     await vi.waitFor(() =>
       expect(screen.getByText('warning: 180')).toBeVisible(),
     )
 
-    held = gate
+    server.use(
+      http.post('/api/entries/weighed', async () => {
+        await gate
+      }),
+    )
     await userEvent.click(screen.getByRole('button', { name: 'weighed' }))
 
     await vi.waitFor(() =>

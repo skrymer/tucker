@@ -1,11 +1,24 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { registerEndpoint, renderSuspended } from '@nuxt/test-utils/runtime'
-import { readBody, setResponseStatus } from 'h3'
+import { mockNuxtImport, renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen, within } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import { food } from '~~/test/food-fixtures'
-import { estimatedEntry, weighedEntry } from '~~/test/entry-fixtures'
+import { entryLog } from '~~/test/mocks/handlers/entries'
+import {
+  catalogFails,
+  catalogOf,
+  frequentFoods,
+  frequentFoodsFail,
+} from '~~/test/mocks/handlers/foods'
+import { server, useMswServer } from '~~/test/mocks/node'
 import Log from './log.vue'
+
+useMswServer()
+
+// The page renders no toaster of its own, so the toast a User would read is
+// what `useToast` is handed.
+const { toastAdd } = vi.hoisted(() => ({ toastAdd: vi.fn() }))
+mockNuxtImport('useToast', () => () => ({ add: toastAdd, remove: vi.fn() }))
 
 const oats = food({
   id: 7,
@@ -28,82 +41,23 @@ const tuna = food({
   proteinPer100g: 25.5,
 })
 
-let frequent = [eggs, oats]
-let catalog = [eggs, oats, tuna]
-let failFrequent = false
-let failCatalog = false
-registerEndpoint('/api/foods/frequent', (event) => {
-  if (failFrequent) setResponseStatus(event, 500)
-  return failFrequent ? { message: 'boom' } : frequent
-})
-registerEndpoint('/api/foods', (event) => {
-  if (failCatalog) setResponseStatus(event, 500)
-  return failCatalog ? { message: 'boom' } : catalog
-})
+const catalog = [eggs, oats, tuna]
 
-const logged: unknown[] = []
-let overBudget = false
-registerEndpoint('/api/entries/weighed/preview', {
-  method: 'POST',
-  handler: () => ({
-    wouldExceedBudget: overBudget,
-    calorieBudget: 1900,
-    overByKcal: overBudget ? 180 : null,
-  }),
-})
-registerEndpoint('/api/entries/weighed', {
-  method: 'POST',
-  handler: async (event) => {
-    const sent = await readBody(event)
-    logged.push(sent)
-    // Answered from what was sent, so a test that logs the tuna is not told it
-    // logged the oats — the reply names the Food the request named.
-    return weighedEntry({
-      id: 1,
-      foodId: sent.foodId,
-      foodName: catalog.find((f) => f.id === sent.foodId)!.name,
-      grams: sent.grams,
-      calories: 300,
-      protein: 10,
-    })
-  },
-})
+/** Logging the catalog's Foods against today, under [calorieBudget]. */
+const logEntries = (calorieBudget?: number) =>
+  entryLog({ today: localToday(), foods: catalog, calorieBudget })
 
-const estimated: unknown[] = []
-registerEndpoint('/api/entries/estimated/preview', {
-  method: 'POST',
-  handler: () => ({
-    wouldExceedBudget: overBudget,
-    calorieBudget: 1900,
-    overByKcal: overBudget ? 180 : null,
-  }),
-})
-registerEndpoint('/api/entries/estimated', {
-  method: 'POST',
-  handler: async (event) => {
-    const sent = await readBody(event)
-    estimated.push(sent)
-    return estimatedEntry({
-      id: 2,
-      label: sent.label,
-      calories: sent.calories,
-      protein: sent.protein ?? null,
-    })
-  },
-})
+/** A Calorie Budget every portion in these tests exceeds, so Save stops to warn. */
+const OVER_ANY_PORTION = 100
 
-/**
- * Every knob restored before each test, so a test states only its deviation and
- * the file does not depend on its own order.
- */
+/** The last toast the User was shown. */
+const lastToast = () => toastAdd.mock.calls.at(-1)?.[0]
+
+// A test stating its own catalog, ranking or log `use()`s it after this, which
+// wins.
 beforeEach(() => {
-  frequent = [eggs, oats]
-  catalog = [eggs, oats, tuna]
-  overBudget = false
-  failFrequent = false
-  failCatalog = false
-  logged.length = 0
-  estimated.length = 0
+  toastAdd.mockClear()
+  server.use(catalogOf(catalog), frequentFoods([eggs, oats]), ...logEntries())
 })
 
 /**
@@ -187,7 +141,7 @@ describe('/log', () => {
   it('logs a Food found by filtering through the same sheet and budget gate', async () => {
     // One path, not a second one beside the grid's: the /foods row tap was the
     // one way of creating an Entry with no Budget Projection (ADR 0028).
-    overBudget = true
+    server.use(...logEntries(OVER_ANY_PORTION))
     const user = userEvent.setup()
     await renderSuspended(Log)
     await user.type(screen.getByLabelText('Filter foods'), 'tun')
@@ -201,19 +155,27 @@ describe('/log', () => {
     const logAnyway = await within(sheet).findByRole('button', {
       name: 'Log anyway',
     })
-    expect(logged).toHaveLength(0)
+    expect(toastAdd).not.toHaveBeenCalled()
 
     await user.click(logAnyway)
-    await vi.waitFor(() => expect(logged).toHaveLength(1))
-    expect(logged[0]).toEqual({ date: localToday(), foodId: 9, grams: 120 })
+    // 120 g of the tuna, against today — the only day the log accepts.
+    await vi.waitFor(() =>
+      expect(lastToast()).toMatchObject({
+        title: 'Entry logged',
+        description: 'Tinned tuna — 139 kcal · 31 g protein',
+      }),
+    )
   })
 
   it('says the connection failed once, not twice, when neither read lands', async () => {
     // Two independent reads, but one fault — the rule the layout already
     // applies to the signed-out shell: one clear message beats two identical
     // Retry cards.
-    failFrequent = true
-    failCatalog = true
+    let down = true
+    server.use(
+      frequentFoodsFail(() => down),
+      catalogFails(() => down),
+    )
     const user = userEvent.setup()
     await renderSuspended(Log)
 
@@ -225,8 +187,7 @@ describe('/log', () => {
 
     // One Retry, both reads: a button that recovered half the page would leave
     // the other half claiming a fault that is over.
-    failFrequent = false
-    failCatalog = false
+    down = false
     await user.click(screen.getByRole('button', { name: 'Retry' }))
 
     expect(
@@ -254,7 +215,7 @@ describe('/log', () => {
   it('keeps the grid when only the catalog read fails, and names that read', async () => {
     // The two are separate error states precisely so neither can blank the
     // section the other loaded.
-    failCatalog = true
+    server.use(catalogFails())
     await renderSuspended(Log)
 
     expect(screen.getByRole('region', { name: 'Frequent foods' })).toBeVisible()
@@ -268,7 +229,7 @@ describe('/log', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('logs the grams weighed against the local day when a Food is picked', async () => {
+  it("logs the grams weighed against today's date when a Food is picked", async () => {
     const user = userEvent.setup()
     await renderSuspended(Log)
 
@@ -279,12 +240,20 @@ describe('/log', () => {
     await user.type(within(sheet).getByLabelText(/weight \(g\)/i), '80')
     await user.click(within(sheet).getByRole('button', { name: /log entry/i }))
 
-    await vi.waitFor(() => expect(logged).toHaveLength(1))
-    expect(logged[0]).toEqual({ date: localToday(), foodId: 7, grams: 80 })
+    // 80 g of the oats, against today — the only day the log accepts.
+    await vi.waitFor(() =>
+      expect(lastToast()).toMatchObject({
+        title: 'Entry logged',
+        description: 'Rolled oats — 303 kcal · 11 g protein',
+      }),
+    )
+    expect(
+      screen.queryByRole('dialog', { name: 'Log Rolled oats' }),
+    ).not.toBeInTheDocument()
   })
 
   it('warns before committing an entry that would exceed the Calorie Budget', async () => {
-    overBudget = true
+    server.use(...logEntries(OVER_ANY_PORTION))
     const user = userEvent.setup()
     await renderSuspended(Log)
 
@@ -299,11 +268,16 @@ describe('/log', () => {
     const logAnyway = await within(sheet).findByRole('button', {
       name: 'Log anyway',
     })
-    expect(logged).toHaveLength(0)
+    expect(toastAdd).not.toHaveBeenCalled()
 
     // The next deliberate tap commits it.
     await user.click(logAnyway)
-    await vi.waitFor(() => expect(logged).toHaveLength(1))
+    await vi.waitFor(() =>
+      expect(lastToast()).toMatchObject({
+        title: 'Entry logged',
+        description: 'Rolled oats — 3032 kcal · 106 g protein',
+      }),
+    )
   })
 
   it('logs an estimate as a peer of picking a Food', async () => {
@@ -324,19 +298,22 @@ describe('/log', () => {
       within(sheet).getByRole('button', { name: /log estimated entry/i }),
     )
 
-    await vi.waitFor(() => expect(estimated).toHaveLength(1))
-    expect(estimated[0]).toEqual({
-      date: localToday(),
-      label: 'Work canteen',
-      calories: 640,
-    })
+    // Against today — the only day the log accepts.
+    await vi.waitFor(() =>
+      expect(lastToast()).toMatchObject({
+        title: 'Entry logged',
+        description: 'Work canteen — 640 kcal',
+      }),
+    )
+    expect(
+      screen.queryByRole('dialog', { name: /log an estimate/i }),
+    ).not.toBeInTheDocument()
   })
 
   it('hands a User with no Foods to the catalog with the Add sheet open', async () => {
     // Log picks from what exists and never creates a Food (ADR 0028), so an
     // empty catalog is a dead end unless it points somewhere.
-    frequent = []
-    catalog = []
+    server.use(catalogOf([]), frequentFoods([]))
     await renderSuspended(Log)
 
     expect(
@@ -352,8 +329,7 @@ describe('/log', () => {
     // A User with no Foods can have no rotation, so a failed ranking read tells
     // them nothing they can act on — and two full-height panels read as two
     // things broken.
-    failFrequent = true
-    catalog = []
+    server.use(frequentFoodsFail(), catalogOf([]))
     await renderSuspended(Log)
 
     expect(
@@ -370,8 +346,7 @@ describe('/log', () => {
     // Never a stale rotation from a longer window or an all-time count
     // (CONTEXT.md — Frequent Foods), and never an empty grid under a heading
     // that promises one.
-    frequent = []
-    catalog = [eggs, oats]
+    server.use(frequentFoods([]), catalogOf([eggs, oats]))
     await renderSuspended(Log)
 
     expect(
@@ -395,7 +370,7 @@ describe('/log', () => {
   })
 
   it('opens the estimate sheet clean after one was abandoned over budget', async () => {
-    overBudget = true
+    server.use(...logEntries(OVER_ANY_PORTION))
     const user = userEvent.setup()
     await renderSuspended(Log)
     const open = () =>
@@ -429,13 +404,14 @@ describe('/log narrowed by a Tag', () => {
   const breakfast = { id: 20, name: 'breakfast' }
   const dinner = { id: 21, name: 'Dinner' }
 
+  const tagged = [
+    { ...eggs, tags: [breakfast, dinner] },
+    { ...oats, tags: [breakfast] },
+    { ...tuna, tags: [dinner] },
+  ]
+
   beforeEach(() => {
-    catalog = [
-      { ...eggs, tags: [breakfast, dinner] },
-      { ...oats, tags: [breakfast] },
-      { ...tuna, tags: [dinner] },
-    ]
-    frequent = [catalog[0]!, catalog[1]!]
+    server.use(catalogOf(tagged), frequentFoods([tagged[0]!, tagged[1]!]))
   })
 
   const chips = () =>
@@ -574,7 +550,7 @@ describe('/log narrowed by a Tag', () => {
   })
 
   it("logs a Food from a Tag's list through the same budget gate as the grid", async () => {
-    overBudget = true
+    server.use(...logEntries(OVER_ANY_PORTION))
     const user = userEvent.setup()
     await renderSuspended(Log)
     await user.click(chips().getByRole('button', { name: 'Dinner' }))
@@ -588,17 +564,22 @@ describe('/log narrowed by a Tag', () => {
     const logAnyway = await within(sheet).findByRole('button', {
       name: 'Log anyway',
     })
-    expect(logged).toHaveLength(0)
+    expect(toastAdd).not.toHaveBeenCalled()
 
     await user.click(logAnyway)
-    await vi.waitFor(() => expect(logged).toHaveLength(1))
-    expect(logged[0]).toEqual({ date: localToday(), foodId: 9, grams: 120 })
+    // 120 g of the tuna, against today — the only day the log accepts.
+    await vi.waitFor(() =>
+      expect(lastToast()).toMatchObject({
+        title: 'Entry logged',
+        description: 'Tinned tuna — 139 kcal · 31 g protein',
+      }),
+    )
   })
 
   it('sets a failed ranking aside while a Tag is chosen, and brings it back after', async () => {
     // A Tag has stopped asking about the rotation, so a Retry for a grid it is
     // hiding recovers nothing — exactly as a typed query treats it.
-    failFrequent = true
+    server.use(frequentFoodsFail())
     const user = userEvent.setup()
     await renderSuspended(Log)
     const failed = "Couldn't load your frequent foods"
@@ -616,7 +597,7 @@ describe('/log narrowed by a Tag', () => {
   it('offers no chips at all while no Food carries a Tag', async () => {
     // "All" alone is a choice of one, and a User who has never tagged a Food
     // should not meet a control they cannot use.
-    catalog = [eggs, oats, tuna]
+    server.use(catalogOf(catalog))
     await renderSuspended(Log)
 
     expect(

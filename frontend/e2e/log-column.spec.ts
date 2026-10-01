@@ -1,7 +1,7 @@
 import type { Page } from '@playwright/test'
-import { expect, test } from './support/test'
-import { mockFoods, mockFrequentFoods, mockProfile } from './support/mock-api'
+import { expect, test } from './support/network'
 import { food } from '../test/food-fixtures'
+import { catalogOf } from '../test/mocks/handlers/foods'
 import { pickFoodToLog } from './support/log-page'
 
 // The Log column must not move sideways under the User's pointer — not when a
@@ -28,17 +28,11 @@ const columnX = async (page: Page) =>
     .locator('main button', { hasText: 'Log an estimate instead' })
     .boundingBox())!.x
 
-test.beforeEach(async ({ page, isMobile }) => {
+test.beforeEach(({ isMobile, network }) => {
   // Phones draw overlay scrollbars, which take no room to begin with.
   test.skip(isMobile, 'overlay scrollbars reserve no width')
-  await mockProfile(page, {
-    sex: 'MALE',
-    birthDate: '1990-06-15',
-    heightCm: 180,
-    tracksCalories: true,
-  })
-  await mockFrequentFoods(page, [])
-  await mockFoods(page, CATALOG)
+  // Nothing ranked — the baseline's — so the catalog is the whole page.
+  network.use(catalogOf(CATALOG))
 })
 
 test('keeps the column still when a Tag narrows the page short enough to stop scrolling', async ({

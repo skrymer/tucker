@@ -70,6 +70,9 @@ reproduces real user behaviour (focus, key sequences, pointer events). Call
   (`queryBy*` + `.not.toBeInTheDocument()`) — a positive-only check still passes
   if a regression renders two states at once.
 - Never assert on CSS classes, DOM structure, `wrapper.vm`, or emitted internals.
+- A toast never renders under `renderSuspended`, which mounts no toaster. Mock
+  `useToast` with `mockNuxtImport` and assert what `add` is handed — the title and
+  description are the words the User reads (`app/pages/log.test.ts`).
 - After writing tests, run `pnpm test` and only proceed when green.
 
 ## Anti-patterns

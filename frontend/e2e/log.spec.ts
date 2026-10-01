@@ -1,26 +1,21 @@
 import type { Page } from '@playwright/test'
-import { expect, test } from './support/test'
+import type { NetworkFixture } from '@msw/playwright'
+import { expect, test } from './support/network'
+import { food, recipe, type FoodResponse } from '../test/food-fixtures'
+import { entryLog } from '../test/mocks/handlers/entries'
 import {
-  mockFoods,
-  mockFrequentFoods,
-  mockFrequentFoodsError,
-  mockProfile,
-  mockWeighedEntryLog,
-} from './support/mock-api'
-import { food, recipe } from '../test/food-fixtures'
-import { isoShiftDays, localTodayIso } from './support/date'
+  catalogOf,
+  frequentFoods,
+  frequentFoodsFail,
+} from '../test/mocks/handlers/foods'
+import { pinToLocalMorning } from './support/date'
 import { visibleNav } from './support/nav'
 import { enterGrams, pickFoodToLog } from './support/log-page'
+import { toast } from './support/toast'
 
 // The Log destination: Frequent Foods as a grid, an estimate as its peer, and
-// nothing else that creates an Entry (ADR 0028).
-
-const TRACKING = {
-  sex: 'MALE',
-  birthDate: '1990-06-15',
-  heightCm: 180,
-  tracksCalories: true,
-}
+// nothing else that creates an Entry (ADR 0028). The baseline User counts
+// calories, so the page is in its full shape.
 
 const OATS = food({
   id: 1,
@@ -67,37 +62,49 @@ const TEN = Array.from({ length: 10 }, (_, i) =>
   }),
 )
 
-test.beforeEach(async ({ page }) => {
-  await mockProfile(page, TRACKING)
-})
-
 /** The ranked grid — named, because the catalog below offers the same controls. */
 const frequentSection = (page: Page) =>
   page.getByRole('region', { name: 'Frequent foods' })
 
+/**
+ * [catalog], and a log of its Foods that accepts an Entry on the User's local
+ * day alone — the one a page stamping the UTC date gets wrong at this hour,
+ * which the log refuses and the page reports as a save that failed.
+ */
+async function logFrom(
+  page: Page,
+  network: NetworkFixture,
+  catalog: FoodResponse[],
+) {
+  const today = await pinToLocalMorning(page)
+  network.use(catalogOf(catalog), ...entryLog({ today, foods: catalog }))
+}
+
+/** The "Entry logged" toast. */
+const loggedToast = (page: Page) => toast(page, 'Entry logged')
+
 test('ranks the frequent foods over the trailing 30 days, with an estimate as their peer', async ({
   page,
   goto,
+  network,
 }) => {
-  const asked = await mockFrequentFoods(page, RANKED)
-  await mockFoods(page, RANKED)
+  // The ranking answers only the 30 days ending on the User's local day
+  // (ADR 0014); asked for any other window it refuses, and the page shows the
+  // ranking's error panel where this snapshot holds the grid.
+  const today = await pinToLocalMorning(page)
+  network.use(frequentFoods(RANKED, { today }), catalogOf(RANKED))
 
   await goto('/log', { waitUntil: 'hydration' })
 
   // External aria-snapshot, one baseline per project: the grid is the same at
   // both viewports, but the shell around it is not.
   await expect(page.getByRole('main')).toMatchAriaSnapshot()
-  // The window is the client's (ADR 0014) and is the only one the backend
-  // accepts — a different span would 400 rather than return a wider ranking.
-  const today = localTodayIso()
-  // Every request, not merely one of them: a second read on a different window
-  // would be a different question answered into the same grid.
-  expect(asked).toEqual([{ from: isoShiftDays(today, -29), to: today }])
 })
 
 test('fits all ten frequent foods on one screen without scrolling', async ({
   page,
   goto,
+  network,
 }) => {
   // The acceptance criterion the two-column grid exists for: ten full-width rows
   // scroll at a phone width, and ten cells do not (ADR 0028). Asserted on the
@@ -106,8 +113,7 @@ test('fits all ten frequent foods on one screen without scrolling', async ({
   //
   // Measured on the grid rather than on the document, because the catalog now
   // sits below it and is *meant* to scroll: what must not scroll is the ten.
-  await mockFrequentFoods(page, TEN)
-  await mockFoods(page, TEN)
+  network.use(frequentFoods(TEN), catalogOf(TEN))
 
   await goto('/log', { waitUntil: 'hydration' })
 
@@ -133,10 +139,10 @@ test('fits all ten frequent foods on one screen without scrolling', async ({
 test('logs a weighed entry for the food whose cell was tapped', async ({
   page,
   goto,
+  network,
 }) => {
-  await mockFrequentFoods(page, RANKED)
-  await mockFoods(page, RANKED)
-  const logged = await mockWeighedEntryLog(page)
+  network.use(frequentFoods(RANKED))
+  await logFrom(page, network, RANKED)
 
   await goto('/log', { waitUntil: 'hydration' })
 
@@ -151,16 +157,19 @@ test('logs a weighed entry for the food whose cell was tapped', async ({
   await sheet.getByRole('button', { name: /log entry/i }).click()
 
   await expect(sheet).toBeHidden()
-  expect(logged).toEqual([{ date: localTodayIso(), foodId: 1, grams: 80 }])
+  // The oats, 80 g of them, on the local day.
+  await expect(loggedToast(page)).toContainText(
+    'Rolled oats — 303 kcal · 11 g protein',
+  )
 })
 
 test('finds a food the grid does not hold, and logs it the same way', async ({
   page,
   goto,
+  network,
 }) => {
-  await mockFrequentFoods(page, RANKED)
-  await mockFoods(page, [...RANKED, TUNA])
-  const logged = await mockWeighedEntryLog(page, { foodName: 'Tinned tuna' })
+  network.use(frequentFoods(RANKED))
+  await logFrom(page, network, [...RANKED, TUNA])
 
   await goto('/log', { waitUntil: 'hydration' })
   await page.getByLabel('Filter foods').fill('tuna')
@@ -181,15 +190,18 @@ test('finds a food the grid does not hold, and logs it the same way', async ({
   await sheet.getByRole('button', { name: /log entry/i }).click()
 
   await expect(sheet).toBeHidden()
-  expect(logged).toEqual([{ date: localTodayIso(), foodId: 4, grams: 120 }])
+  // The tuna, 120 g of it, on the local day.
+  await expect(loggedToast(page)).toContainText(
+    'Tinned tuna — 139 kcal · 31 g protein',
+  )
 })
 
 test('restores the grid and the whole catalog when the filter is cleared', async ({
   page,
   goto,
+  network,
 }) => {
-  await mockFrequentFoods(page, RANKED)
-  await mockFoods(page, [...RANKED, TUNA])
+  network.use(frequentFoods(RANKED), catalogOf([...RANKED, TUNA]))
 
   await goto('/log', { waitUntil: 'hydration' })
   await page.getByLabel('Filter foods').fill('tuna')
@@ -219,10 +231,10 @@ const tagChips = (page: Page) =>
 test("narrows to a Tag's foods in place of both sections, and logs one the same way", async ({
   page,
   goto,
+  network,
 }) => {
-  await mockFrequentFoods(page, TAGGED.slice(0, 3))
-  await mockFoods(page, TAGGED)
-  const logged = await mockWeighedEntryLog(page, { foodName: 'Weekday chilli' })
+  network.use(frequentFoods(TAGGED.slice(0, 3)))
+  await logFrom(page, network, TAGGED)
 
   await goto('/log', { waitUntil: 'hydration' })
   const estimate = page.getByRole('button', { name: 'Log an estimate instead' })
@@ -246,12 +258,18 @@ test("narrows to a Tag's foods in place of both sections, and logs one the same 
   await sheet.getByRole('button', { name: /log entry/i }).click()
 
   await expect(sheet).toBeHidden()
-  expect(logged).toEqual([{ date: localTodayIso(), foodId: 3, grams: 350 }])
+  // The chilli, 350 g of it, on the local day.
+  await expect(loggedToast(page)).toContainText(
+    'Weekday chilli — 424 kcal · 40 g protein',
+  )
 })
 
-test('starts on All again when Log is revisited', async ({ page, goto }) => {
-  await mockFrequentFoods(page, TAGGED.slice(0, 3))
-  await mockFoods(page, TAGGED)
+test('starts on All again when Log is revisited', async ({
+  page,
+  goto,
+  network,
+}) => {
+  network.use(frequentFoods(TAGGED.slice(0, 3)), catalogOf(TAGGED))
 
   await goto('/log', { waitUntil: 'hydration' })
   await tagChips(page).getByRole('button', { name: 'Dinner' }).click()
@@ -270,14 +288,14 @@ test('starts on All again when Log is revisited', async ({ page, goto }) => {
 test('wraps the chips onto more lines rather than scrolling sideways', async ({
   page,
   goto,
+  network,
 }) => {
   const tags = Array.from({ length: 12 }, (_, i) => ({
     id: 100 + i,
     name: `after-work snack ${String(i + 1).padStart(2, '0')}`,
   }))
   const foods = [{ ...OATS, tags }]
-  await mockFrequentFoods(page, foods)
-  await mockFoods(page, foods)
+  network.use(frequentFoods(foods), catalogOf(foods))
 
   await goto('/log', { waitUntil: 'hydration' })
 
@@ -297,9 +315,7 @@ test('hands a User with no foods to the catalog with the Add sheet already open'
   page,
   goto,
 }) => {
-  await mockFrequentFoods(page, [])
-  await mockFoods(page, [])
-
+  // The baseline's catalog is empty, and so is its ranking.
   await goto('/log', { waitUntil: 'hydration' })
   await page.getByRole('link', { name: /add your first food/i }).click()
 
@@ -309,9 +325,9 @@ test('hands a User with no foods to the catalog with the Add sheet already open'
 test('offers a retry, not an empty grid, when the ranking cannot be read', async ({
   page,
   goto,
+  network,
 }) => {
-  await mockFrequentFoodsError(page)
-  await mockFoods(page, RANKED)
+  network.use(frequentFoodsFail(), catalogOf(RANKED))
 
   await goto('/log', { waitUntil: 'hydration' })
 

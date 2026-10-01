@@ -1,6 +1,5 @@
-import { HttpResponse } from 'msw'
 import type { components } from '#open-fetch-schemas/api'
-import { http } from '../http'
+import { http, serverError } from '../http'
 
 type DailySummary = components['schemas']['DailySummaryResponse']
 type Targets = Pick<
@@ -11,10 +10,13 @@ type Targets = Pick<
 /** A day's summary without its date, which the handler states from the request. */
 export type SummaryDay = Omit<DailySummary, 'date'>
 
-/** The baseline's targets: a 2492 kcal Calorie Budget and a 170 g Protein Floor. */
+/** The baseline's Calorie Budget, in kcal. */
+export const baselineCalorieBudget = 2492
+
+/** The baseline's targets: its Calorie Budget and a 170 g Protein Floor. */
 const baselineTargets: Targets = {
   setupComplete: true,
-  calorieBudget: 2492,
+  calorieBudget: baselineCalorieBudget,
   proteinFloor: 170,
 }
 
@@ -66,10 +68,8 @@ export function summaryOf(day: SummaryDay | (() => SummaryDay)) {
  * failed GET by itself, and a retry reaching the baseline would hide the error.
  */
 export function summaryFails() {
-  // Untyped because the spec declares no 500 — an unexpected failure is one no
-  // endpoint documents.
   return http.get('/api/summary', ({ response }) =>
-    response.untyped(HttpResponse.json({ message: 'boom' }, { status: 500 })),
+    response.untyped(serverError()),
   )
 }
 

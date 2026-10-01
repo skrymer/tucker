@@ -1,6 +1,7 @@
 import { expect, test } from './support/network'
 import { denyCamera, fakeBarcodeCamera } from './support/fake-camera'
 import { withOverflowNav } from './support/nav'
+import { pinToLocalMorning } from './support/date'
 import { nutellaCheck } from '../test/check-fixtures'
 import { checkOnlyOn } from '../test/mocks/handlers/check'
 import { setupUnfinished, summaryWith } from '../test/mocks/handlers/summary'
@@ -37,12 +38,10 @@ test("a Check asks about the User's local day, not the server's", async ({
   goto,
   network,
 }) => {
-  // 08:00 in Brisbane is still the previous day in UTC: the one window where
-  // sending the UTC date instead of the local one picks a different review.
-  await page.clock.setFixedTime(new Date('2026-06-15T22:00:00Z'))
+  // Sending the UTC date instead of the local one picks a different review.
   // Only the User's own day has targets standing on it; asked about any other,
   // the lookup refuses, and the page says it couldn't look the product up.
-  network.use(checkOnlyOn('2026-06-16'))
+  network.use(checkOnlyOn(await pinToLocalMorning(page)))
   await page.route('**jsdelivr.net/**', (route) => route.abort())
   await fakeBarcodeCamera(page, BARCODE)
 

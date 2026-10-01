@@ -123,10 +123,12 @@ assertion with the dev token), and no browser-level layer can reach it.
 - **Proving a client sends its *local* day belongs in the mocked e2e.** Vitest runs in
   the host's zone and CI in UTC, so an assertion there passes a page that sends the
   UTC date everywhere but a Brisbane morning. The mocked browser runs in
-  `MOCKED_E2E_TIMEZONE`; pin `page.clock.setFixedTime` to a UTC time where the two
-  days differ (e.g. `22:00Z` = 08:00 AEST next day), let the handler answer only the
-  local day, and assert the product on screen (`e2e/check.spec.ts`) — never the
-  request's query. `setFixedTime`, not `install`, so the app's timers still run.
+  `MOCKED_E2E_TIMEZONE`; `pinToLocalMorning(page)` (`e2e/support/date.ts`) starts the
+  clock at a UTC time where the two days differ and returns the local one. Let the
+  handler answer only that day, and assert the product on screen (`e2e/check.spec.ts`,
+  `e2e/log.spec.ts`) — never the request's query. It uses `setSystemTime`, so the
+  clock keeps running: `setFixedTime` freezes `Date.now`, and a `UInputNumber` then
+  never commits what was typed, so a sheet that submits grams refuses them as empty.
 - **Stale Playwright build** — the mocked e2e rebuilds `.nuxt/e2e` from scratch every run, so it cannot
   serve a stale build; the smokes still build through `@nuxt/test-utils`, so if a UI change doesn't show
   in a smoke run, `rm -rf frontend/.nuxt/test`.
