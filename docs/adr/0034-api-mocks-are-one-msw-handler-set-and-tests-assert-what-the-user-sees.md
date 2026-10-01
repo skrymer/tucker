@@ -16,7 +16,7 @@ page reads back. The test asserts only what the User sees.
 ## The decisions
 
 - **One baseline of happy paths, overridden per test.** `test/mocks/handlers/<domain>.ts`
-  describe a neutral, consistent account: an empty day, no Goal, Calorie Tracking on.
+  describe a neutral, consistent User: an empty day, no Goal, Calorie Tracking on.
   Every test inherits it, and a test `use()`s only the variation it is about.
   An unhandled `/api` request fails the test: each layer's `onUnhandledFrame` callback
   (msw 3's name for `onUnhandledRequest`) records it, and the test fails on the list once
@@ -93,7 +93,10 @@ page reads back. The test asserts only what the User sees.
   the barcode lookups already do (ADR 0007).
 - **`@msw/playwright` is pre-1.0**, and its README calls its reliance on `page.route` an
   implementation detail likely to change. If it moves to a service worker, the coexistence
-  with Workbox has to be settled again.
+  with Workbox has to be settled again. It routes the whole browser context, so every
+  request of an opted-in spec — the app's chunks and styles included — makes a trip
+  through the test process before an asset falls through, where a `page.route` on `/api`
+  touched only the API. Not measured yet; worth measuring once every spec is opted in.
 - **Migration is per surface, both layers at once**, each migrated file opting in to the
   baseline explicitly so that unmigrated files behave exactly as before. Playwright gives
   a later `page.route` precedence over the fixture, and the Vitest shim sends a path

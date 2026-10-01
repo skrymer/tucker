@@ -1,6 +1,6 @@
 ---
 name: msw
-description: Mocking Tucker's /api in tests with MSW 3 — one typed handler set (openapi-msw) shared by Vitest (setupServer behind a Nuxt shim) and the mocked Playwright suite (@msw/playwright's network fixture), with a baseline account overridden per test and no request assertions. Use when writing or editing an API mock, a handler under frontend/test/mocks/, a test that overrides one with use(), or when moving a Vitest file off registerEndpoint or an e2e spec off page.route.
+description: Mocking Tucker's /api in tests with MSW 3 — one typed handler set (openapi-msw) shared by Vitest (setupServer behind a Nuxt shim) and the mocked Playwright suite (@msw/playwright's network fixture), with a baseline User overridden per test and no request assertions. Use when writing or editing an API mock, a handler under frontend/test/mocks/, a test that overrides one with use(), or when moving a Vitest file off registerEndpoint or an e2e spec off page.route.
 ---
 
 # MSW (Tucker)
@@ -19,9 +19,8 @@ The real-stack smokes are untouched — they hit the live backend.
 | Vitest opt-in: `useMswServer()` + `server` | `frontend/test/mocks/node.ts` |
 | Playwright opt-in: `test` with a `network` fixture | `frontend/e2e/support/network.ts` |
 
-The baseline is a neutral, consistent account: set up, counting calories, weighed in,
-no Goal, nothing logged today. Extend it when a newly migrated surface reads a new
-endpoint — never bend it to suit one test.
+The baseline is a neutral, consistent User, described in `handlers/index.ts`. Extend
+it when a newly migrated surface reads a new endpoint — never bend it to suit one test.
 
 ## Quick start
 
@@ -66,7 +65,12 @@ handlers free of app auto-imports (`localToday()` etc.) — pass such values in.
 3. **Override, don't redefine.** `use()` only the variation the test is about. A handler
    that returns `undefined` falls through to the next one — scope an override by param.
    A variation both layers need is a factory beside the baseline (`summaryWith(targets)`,
-   `checkOnlyOn(day)`), never a copy per layer — the copies drift.
+   `checkOnlyOn(day)`), never a copy per layer — the copies drift. A mutation re-read on
+   its own endpoint is a factory returning a plain array with the state in a closure
+   (`weightMeasurements`); one whose re-read lands on **another** endpoint returns
+   `{ handlers, <state getter> }` (`reachedGoal`, `savedProfile`), and the other
+   endpoint's handler reads the getter (`summaryOf(() => …)`). Never keep state in the
+   baseline: it is shared across tests.
 4. **Error overrides are not `{ once: true }`** on a GET, unless the call passes `retry: 0`:
    ofetch retries a failed GET by itself, and the retry reaches the baseline, so the error
    never shows.
@@ -79,6 +83,10 @@ handlers free of app auto-imports (`localToday()` etc.) — pass such values in.
    copy — Probity refuses hand-mutating a gated file. Save the output, naming each red test,
    on both Playwright projects, to a file the sign-off pack cites; re-run it after any later
    edit to the test or its handlers, since a stale script aborts on its first pattern.
+   A response that never answers is a break too — it holds whatever the page awaits.
+   Only a test decided by a setting seeded outside the API has no response to break:
+   list it in the proof as such rather than inventing a break. How to run one:
+   [REFERENCE.md, Red-proof runs](REFERENCE.md#red-proof-runs).
 
 ## Moving a file over
 
