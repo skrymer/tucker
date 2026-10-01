@@ -87,6 +87,15 @@ describe('the MSW baseline under the Nuxt test environment', () => {
     expect(() => assertNoUnhandledRequests()).toThrow(/GET \/api\/foods/)
   })
 
+  // Passes only because the test fails: the request is swallowed, so nothing in
+  // the body notices it, and what fails the test is the check after it ends.
+  it.fails(
+    'fails a test whose page swallowed a request no handler covers',
+    async () => {
+      await $fetch('/api/foods').catch(() => undefined)
+    },
+  )
+
   it('answers a relative fetch from the handlers, not with a 404', async () => {
     const response = await fetch('/api/profile')
 
