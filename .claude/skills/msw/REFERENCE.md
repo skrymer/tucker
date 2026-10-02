@@ -134,7 +134,10 @@ or is stated as unchecked — an annotation in `e2e/` never answers a typing fin
 - **Build once.** Write every break to its own copy (`e2e/redproof-bNN-<spec>`, with the
   `-snapshots` directory copied beside it, or the aria snapshot fails as missing rather
   than as different) and run them in one Playwright invocation. Vitest copies go under
-  `test/`, with `./` imports made `~/`. Delete the copies afterwards.
+  `test/`, with `./` imports made `~/`. A copied handler set sits a directory deeper
+  than `test/mocks/`, so rewrite **every** relative import in it, `../` included — one
+  `../async-gate` left as it was failed all 306 copies to load in #403. Delete the
+  copies afterwards.
 - **An absence-only test passes with the page unrendered**, so no break turns it red until
   it also asserts something the page shows. Probity refuses adding that assertion to a
   green test as it stands: run a copy carrying the assertion under the break first, so

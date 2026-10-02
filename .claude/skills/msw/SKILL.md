@@ -106,6 +106,10 @@ handlers free of app auto-imports (`localToday()` etc.) — pass such values in.
 - [ ] Vitest: `useMswServer()`; replace each `registerEndpoint` with baseline or `server.use()`.
 - [ ] e2e: import from `./support/network`; replace `page.route` on `/api` with baseline or
       `network.use()`. Non-API routes (a CDN abort, a fake camera) stay `page.route`.
+- [ ] A stateful handler stands for the backend: before writing one, read the controller
+      and repository behind each endpoint it answers — the status for an absent or
+      foreign id, and the `ORDER BY` (SQLite's `lower()` folds ASCII alone). #403's mock
+      got both wrong and only gates 3 and 4 caught it.
 - [ ] Delete request-capturing arrays; assert the rendered result instead.
 - [ ] Run green, then break each handler once and save the output naming each red test.
 
