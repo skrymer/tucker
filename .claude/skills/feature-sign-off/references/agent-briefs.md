@@ -113,6 +113,8 @@ this same diff right now; duplicating it wastes you. Your angles:
 - Is there a smaller or cheaper fix? Is there one that needs no code at all?
 - Does the change solve a problem this repo does not have?
 - Does it create a state the domain forbids, or widen a surface beyond the defect?
+  A figure is checked by computing it from the backend's code, not by its agreeing
+  with another fixture or the diff's own comment.
 - Is the scope wider than what the issue claims?
 
 Report:

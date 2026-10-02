@@ -86,7 +86,11 @@ handlers free of app auto-imports (`localToday()` etc.) — pass such values in.
    too — `setupComplete: false` with the baseline's reading still standing is a state the
    backend cannot send (it derives it from the Profile and the latest Weight
    Measurement), and a Weight Timeline naming a plan needs `goalInProgress()` beside
-   it — and the test's comment is checked against the result.
+   it — and the test's comment is checked against the result. The baseline's own
+   derived figures (a Budget, a Floor, a seed Maintenance) are computed from its own
+   Profile and reading, with the derivation in the doc comment
+   (`baselineCalorieBudget`), and that includes a literal a new handler inherits from
+   an older one: #405's first review carried an underived 2492 kcal / 170 g.
 4. **Error overrides are not `{ once: true }`** on a GET, unless the call passes `retry: 0`:
    ofetch retries a failed GET by itself, and the retry reaches the baseline, so the error
    never shows.
@@ -100,8 +104,10 @@ handlers free of app auto-imports (`localToday()` etc.) — pass such values in.
    Playwright fixture is built per test, so a `use()` never leaks into the next.
 7. **Prove each migrated test still goes red** by breaking its handler's response once, on a
    copy — Probity refuses hand-mutating a gated file. Save the output, naming each red test,
-   on both Playwright projects, to a file the sign-off pack cites; re-run it after any later
-   edit to the test or its handlers, since a stale script aborts on its first pattern.
+   on both Playwright projects, to a file the sign-off pack cites. Build the harness during
+   the slice, but start the run the pack cites only once gate 3/4's fixes have landed and
+   every gate-3/4 agent has returned: gate 1 edits handlers, so an earlier run is always
+   superseded (#405 ran it twice, ~38 minutes each). Any later edit means another run.
    A response that never answers is a break too — it holds whatever the page awaits.
    Only a test decided by a setting seeded outside the API has no response to break:
    list it in the proof as such rather than inventing a break. How to run one:
