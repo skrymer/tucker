@@ -1,7 +1,14 @@
 import type { Page } from '@playwright/test'
-import { expect, test } from './support/test'
-import { mockFoods } from './support/mock-api'
-import { food, recipe } from '../test/food-fixtures'
+import { expect, test } from './support/network'
+import { food } from '../test/food-fixtures'
+import { foodCatalog } from '../test/mocks/handlers/catalog'
+
+const chicken = food({
+  id: 1,
+  name: 'Chicken',
+  caloriesPer100g: 100,
+  proteinPer100g: 25,
+})
 
 /**
  * Open the Add sheet on the Recipe tab. `builder` is the Recipe tab panel: the
@@ -21,31 +28,13 @@ async function openRecipeBuilder(page: Page) {
 // F9 Slice 1: the recipe builder happy path with /api mocked, on both Desktop
 // and Mobile Chrome (the responsive check). Drives the Food|Recipe switch, the
 // one-ingredient-at-a-time step machine, the cook-down, and the save — asserting
-// the POST body the backend receives and that the sheet closes onto the catalog.
+// that the sheet closes onto the catalog, which lists the Recipe as saved.
 test('user builds and saves a recipe through the Food or Recipe switch', async ({
   page,
   goto,
+  network,
 }) => {
-  await mockFoods(page, [
-    food({ id: 1, name: 'Chicken', caloriesPer100g: 100, proteinPer100g: 25 }),
-  ])
-
-  let recipeBody: unknown
-  await page.route('**/api/recipes', async (route) => {
-    recipeBody = route.request().postDataJSON()
-    await route.fulfill({
-      status: 201,
-      json: recipe({
-        id: 50,
-        name: 'Cottage pie',
-        caloriesPer100g: 200,
-        proteinPer100g: 50,
-        cookedWeightG: 400,
-        // The one ingredient this test weighs in, not a placeholder.
-        ingredientCount: 1,
-      }),
-    })
-  })
+  network.use(...foodCatalog({ foods: [chicken] }))
 
   await goto('/foods', { waitUntil: 'hydration' })
 
@@ -78,12 +67,15 @@ test('user builds and saves a recipe through the Food or Recipe switch', async (
   // sheet closes onto it rather than pivoting into a second way to log.
   await expect(sheet).toBeHidden()
 
-  expect(recipeBody).toEqual({
-    name: 'Cottage pie',
-    cookedWeightG: 400,
-    ingredients: [{ foodId: 1, grams: 800 }],
-    tagIds: [],
-  })
+  // The re-read catalog lists the Recipe the server rolled up from the 800 g of
+  // Chicken weighed in: 800 kcal and 200 g of protein over 400 g cooked.
+  const recipeRow = page
+    .getByRole('listitem')
+    .filter({ hasText: 'Cottage pie' })
+  await expect(recipeRow.getByText('1 ingredient · makes 400 g')).toBeVisible()
+  await expect(
+    recipeRow.getByText('200 kcal · 50 g protein /100g'),
+  ).toBeVisible()
 })
 
 // F9 #142: the recipe builder's inline "Add a new food". The page owns catalog
@@ -96,32 +88,9 @@ test('user builds and saves a recipe through the Food or Recipe switch', async (
 test('user adds a new food inline and it arrives selected as the ingredient', async ({
   page,
   goto,
+  network,
 }) => {
-  const chicken = food({
-    id: 1,
-    name: 'Chicken',
-    caloriesPer100g: 100,
-    proteinPer100g: 25,
-  })
-  const peas = food({
-    id: 2,
-    name: 'Peas',
-    caloriesPer100g: 81,
-    proteinPer100g: 5,
-  })
-
-  let catalog = [chicken]
-  let createdBody: unknown
-  await page.route('**/api/foods', async (route) => {
-    if (route.request().method() !== 'POST') {
-      return route.fulfill({ json: catalog })
-    }
-    createdBody = route.request().postDataJSON()
-    // The page re-reads the catalog rather than appending, so the new Food has
-    // to be in it by the time the refresh lands.
-    catalog = [chicken, peas]
-    return route.fulfill({ status: 201, json: peas })
-  })
+  network.use(...foodCatalog({ foods: [chicken] }))
 
   await goto('/foods', { waitUntil: 'hydration' })
 
@@ -151,17 +120,11 @@ test('user adds a new food inline and it arrives selected as the ingredient', as
   await expect(builder.getByLabel('Grams')).toBeVisible()
   await expect(builder.getByText('Peas', { exact: true })).toBeVisible()
 
-  expect(createdBody).toEqual({
-    name: 'Peas',
-    proteinPer100g: 5,
-    carbsPer100g: 10,
-    fatPer100g: 1,
-    tagIds: [],
-  })
-
   // The page re-read the catalog on the way through, so the Food it persisted is
-  // in it — the builder is not the only place it exists.
+  // in it — the builder is not the only place it exists — with the calories the
+  // server derives from the macros it was sent: 4 × 5 + 4 × 10 + 9 × 1 = 69.
   await sheet.getByRole('button', { name: /close/i }).click()
   await expect(sheet).toBeHidden()
-  await expect(page.getByRole('list').getByText('Peas')).toBeVisible()
+  const peasRow = page.getByRole('listitem').filter({ hasText: 'Peas' })
+  await expect(peasRow.getByText('69 kcal · 5 g protein /100g')).toBeVisible()
 })

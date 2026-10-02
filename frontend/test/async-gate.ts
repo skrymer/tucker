@@ -10,3 +10,9 @@ export function openGate() {
   })
   return { gate, release }
 }
+
+/**
+ * One macrotask: long enough for a response the test released, or one it says
+ * was never sent, to have reached the screen.
+ */
+export const settle = () => new Promise((resolve) => setTimeout(resolve))

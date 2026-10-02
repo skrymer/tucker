@@ -4,7 +4,7 @@ import { getResponse } from 'msw'
 import { mockNuxtImport, renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen, within } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
-import { openGate } from '~~/test/async-gate'
+import { openGate, settle } from '~~/test/async-gate'
 import {
   foodCatalog,
   tagNameTooLong,
@@ -46,12 +46,6 @@ const renameRefused = () =>
   http.put('/api/tags/{id}', ({ response }) =>
     response(400).json({ message: refusal }),
   )
-
-/**
- * Long enough for a request a test says is not sent to have come back: a sent
- * one's refusal is on screen one macrotask after the click.
- */
-const settle = () => new Promise((resolve) => setTimeout(resolve))
 
 type Rerender = (props: Record<string, unknown>) => Promise<void>
 

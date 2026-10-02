@@ -73,7 +73,7 @@ handlers free of app auto-imports (`localToday()` etc.) — pass such values in.
    `checkOnlyOn(day)`), never a copy per layer — the copies drift. A mutation re-read on
    its own endpoint is a factory returning a plain array with the state in a closure
    (`weightMeasurements`, and `foodCatalog`, which answers every endpoint of the
-   catalog, its Tags and its barcode look-up from one state); one whose re-read lands
+   catalog, its Recipes, its Tags and its barcode look-up from one state); one whose re-read lands
    on **another** endpoint returns
    `{ handlers, <state getter> }` (`reachedGoal`, `savedProfile`), and the other
    endpoint's handler reads the getter (`summaryOf(() => …)`). Never keep state in the
@@ -108,8 +108,9 @@ handlers free of app auto-imports (`localToday()` etc.) — pass such values in.
       `network.use()`. Non-API routes (a CDN abort, a fake camera) stay `page.route`.
 - [ ] A stateful handler stands for the backend: before writing one, read the controller
       and repository behind each endpoint it answers — the status for an absent or
-      foreign id, and the `ORDER BY` (SQLite's `lower()` folds ASCII alone). #403's mock
-      got both wrong and only gates 3 and 4 caught it.
+      foreign id, the order its refusals are checked in, and the `ORDER BY` — per
+      query, not per table (SQLite's `lower()` folds ASCII alone; a bare `ORDER BY`
+      compares bytes).
 - [ ] Delete request-capturing arrays; assert the rendered result instead.
 - [ ] Run green, then break each handler once and save the output naming each red test.
 
