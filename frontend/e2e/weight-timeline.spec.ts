@@ -1,16 +1,21 @@
-import { expect, test } from './support/test'
-import {
-  mockIntakeBreakdown,
-  mockMicronutrientIntake,
-  mockNoActiveGoal,
-  mockProfile,
-  mockReviewHistory,
-  mockWeightTimeline,
-  mockWeightTimelineByWindow,
-  recordWindows,
-} from './support/mock-api'
+import { expect, test } from './support/network'
 import { isoShiftDays, localTodayIso } from './support/date'
 import { timelineLine } from './support/weight-timeline'
+import {
+  intakeEvidence,
+  planStartingOn,
+  steadyDays,
+  weightTimeline,
+  withIntake,
+  withPlan,
+} from '../test/weight-timeline-fixtures'
+import { goalInProgress } from '../test/mocks/handlers/goal'
+import { profileOf, weightOnlyProfile } from '../test/mocks/handlers/profile'
+import {
+  weightTimelineByWidth,
+  weightTimelineFails,
+  weightTimelineOf,
+} from '../test/mocks/handlers/weight-timeline'
 
 // What a User's weight did over the trailing 28 or 90 days: every Weight
 // Measurement in the window as a point, the Trend Weight as the line through
@@ -22,59 +27,39 @@ import { timelineLine } from './support/weight-timeline'
  * which carries [openingKg] so one window's figures are told from the other's.
  */
 function aTimeline(days: number, openingKg: number) {
-  const to = localTodayIso()
-  const from = isoShiftDays(to, -(days - 1))
-  return {
-    from,
-    to,
-    days: Array.from({ length: days }, (_, index) => ({
-      date: isoShiftDays(from, index),
-      weightKg: index === 0 ? openingKg : 80,
-      trendKg: index === 0 ? openingKg : 80,
-    })),
-  }
+  return weightTimeline({
+    days: steadyDays(days, localTodayIso(), openingKg),
+  })
 }
 
 const FOUR_WEEKS = aTimeline(28, 88)
 const THREE_MONTHS = aTimeline(90, 95)
 
 /**
- * The same four weeks with an intake half: one Budget throughout, the opening day
- * over it, the second never logged, the rest comfortably under.
+ * The same four weeks with an intake half: one 1800 kcal Budget throughout, the
+ * opening day over it, the second never logged, the rest comfortably under.
  */
-const BUDGET_KCAL = 1800
-const TRACKED = {
-  ...FOUR_WEEKS,
-  evidence: {
-    kind: 'INTAKE',
-    loggedDays: FOUR_WEEKS.days.length - 1,
-    planStartsOn: null,
-  },
-  days: FOUR_WEEKS.days.map((day, index) => {
-    const caloriesKcal = index === 1 ? null : index === 0 ? 2100 : 1700
-    return {
-      ...day,
-      caloriesKcal,
-      calorieBudgetKcal: BUDGET_KCAL,
-      // Stated by the backend, never derived here (ADR 0002).
-      overBudget: caloriesKcal == null ? null : caloriesKcal > BUDGET_KCAL,
-    }
-  }),
-}
+const TRACKED = weightTimeline({
+  days: withIntake(
+    FOUR_WEEKS.days,
+    FOUR_WEEKS.days.map((_, index) =>
+      index === 1 ? null : index === 0 ? 2100 : 1700,
+    ),
+  ),
+  evidence: intakeEvidence(FOUR_WEEKS.days.length - 1),
+})
 
 /**
  * The same four weeks for a weight-only User pursuing a Goal: the plan takes the
  * intake half's place, opening where the trend was and running half a kilo a week
  * below it, which stays within reach of the weights throughout.
  */
-const PLANNED = {
-  ...FOUR_WEEKS,
-  evidence: { kind: 'PLAN', loggedDays: null, planStartsOn: FOUR_WEEKS.from },
-  days: FOUR_WEEKS.days.map((day, index) => ({
-    ...day,
-    trajectoryKg: 88 - (index * 0.5) / 7,
-  })),
-}
+const PLANNED = weightTimeline({
+  days: withPlan(
+    FOUR_WEEKS.days,
+    FOUR_WEEKS.days.map((_, index) => 88 - (index * 0.5) / 7),
+  ),
+})
 
 /**
  * Four weeks of the same User falling behind: steady at 80 kg while the plan runs
@@ -82,32 +67,36 @@ const PLANNED = {
  * it is off the bottom of the card.
  */
 const STEADY = aTimeline(28, 80)
-const BEHIND_PLAN = {
-  ...STEADY,
-  evidence: { kind: 'PLAN', loggedDays: null, planStartsOn: STEADY.from },
-  days: STEADY.days.map((day, index) => ({
-    ...day,
-    trajectoryKg: 80 - index / 7,
-  })),
-}
+const BEHIND_PLAN = weightTimeline({
+  days: withPlan(
+    STEADY.days,
+    STEADY.days.map((_, index) => 80 - index / 7),
+  ),
+})
 
 /** The line the sr-only list carries for a window's opening day. */
 function openingLine(timeline: ReturnType<typeof aTimeline>) {
   return timelineLine(timeline.days[0]!, false)
 }
 
-test.beforeEach(async ({ page }) => {
-  await mockNoActiveGoal(page)
-  await mockIntakeBreakdown(page)
-  await mockMicronutrientIntake(page)
-  await mockReviewHistory(page, [])
-})
+/**
+ * Both windows, each answered only when it ends on the local day — so a page
+ * asking about any other window meets the error state instead.
+ */
+const bothWindows = () =>
+  weightTimelineByWidth(
+    { 28: FOUR_WEEKS, 90: THREE_MONTHS },
+    { today: localTodayIso() },
+  )
 
 test('opens on the trailing 28 days, and states every day it drew', async ({
   page,
   goto,
+  network,
 }) => {
-  const asked = await mockWeightTimelineByWindow(page, () => FOUR_WEEKS)
+  network.use(
+    weightTimelineByWidth({ 28: FOUR_WEEKS }, { today: localTodayIso() }),
+  )
 
   await goto('/review', { waitUntil: 'hydration' })
 
@@ -116,9 +105,6 @@ test('opens on the trailing 28 days, and states every day it drew', async ({
     'aria-selected',
     'true',
   )
-  expect(asked).toHaveLength(1)
-  expect(asked[0]!.to).toBe(localTodayIso())
-  expect(asked[0]!.from).toBe(isoShiftDays(asked[0]!.to, -27))
   // The chart is aria-hidden, so this list is where its figures are readable.
   await expect(page.getByText(openingLine(FOUR_WEEKS))).toBeAttached()
 })
@@ -126,10 +112,9 @@ test('opens on the trailing 28 days, and states every day it drew', async ({
 test('switching to 90 days asks for the wider window, and back again', async ({
   page,
   goto,
+  network,
 }) => {
-  const asked = await mockWeightTimelineByWindow(page, (from, to) =>
-    from === isoShiftDays(to, -27) ? FOUR_WEEKS : THREE_MONTHS,
-  )
+  network.use(bothWindows())
 
   await goto('/review', { waitUntil: 'hydration' })
   await expect(page.getByText(openingLine(FOUR_WEEKS))).toBeAttached()
@@ -138,35 +123,26 @@ test('switching to 90 days asks for the wider window, and back again', async ({
 
   await expect(page.getByText(openingLine(THREE_MONTHS))).toBeAttached()
   await expect(page.getByText(openingLine(FOUR_WEEKS))).not.toBeAttached()
-  expect(asked).toHaveLength(2)
-  expect(asked[1]!.to).toBe(asked[0]!.to)
-  expect(asked[1]!.from).toBe(isoShiftDays(asked[1]!.to, -89))
 
   // A toggle that only works one way strands the User on the wider window.
   await page.getByRole('tab', { name: '28 days' }).click()
 
   await expect(page.getByText(openingLine(FOUR_WEEKS))).toBeAttached()
-  expect(asked).toHaveLength(3)
-  expect(asked[2]!.from).toBe(isoShiftDays(asked[2]!.to, -27))
+  await expect(page.getByText(openingLine(THREE_MONTHS))).not.toBeAttached()
 })
 
 test('a failed load retries the window still selected, not the one it opened on', async ({
   page,
   goto,
+  network,
 }) => {
   // Held rather than spent on the first refusal: ofetch retries a failed GET of
   // its own accord, so a one-shot failure is answered by the retry nobody asked
   // for and the error state never appears.
   let refusing = false
-  const asked = await recordWindows(
-    page,
-    '**/api/weight-timeline**',
-    (from, to, route) =>
-      refusing
-        ? route.fulfill({ status: 500, json: { message: 'boom' } })
-        : route.fulfill({
-            json: from === isoShiftDays(to, -27) ? FOUR_WEEKS : THREE_MONTHS,
-          }),
+  network.use(
+    weightTimelineFails(() => refusing),
+    bothWindows(),
   )
 
   await goto('/review', { waitUntil: 'hydration' })
@@ -185,15 +161,14 @@ test('a failed load retries the window still selected, not the one it opened on'
   // The wider window, not the one the page opened on: a retry that reverted
   // would answer a question the User had already left.
   await expect(page.getByText(openingLine(THREE_MONTHS))).toBeAttached()
-  const retried = asked.at(-1)!
-  expect(retried.from).toBe(isoShiftDays(retried.to, -89))
 })
 
 test('under a fortnight of readings there is no timeline, and no error where it would be', async ({
   page,
   goto,
+  network,
 }) => {
-  await mockWeightTimeline(page)
+  network.use(weightTimelineOf(null))
 
   await goto('/review', { waitUntil: 'hydration' })
 
@@ -209,8 +184,9 @@ test('under a fortnight of readings there is no timeline, and no error where it 
 test('each day states what it cost against the Budget, and an unlogged one says so', async ({
   page,
   goto,
+  network,
 }) => {
-  await mockWeightTimeline(page, TRACKED)
+  network.use(weightTimelineOf(TRACKED))
 
   await goto('/review', { waitUntil: 'hydration' })
 
@@ -234,14 +210,10 @@ test('each day states what it cost against the Budget, and an unlogged one says 
 test('the timeline is drawn with Calorie Tracking off, where the calorie sections are not', async ({
   page,
   goto,
+  network,
 }) => {
-  await mockProfile(page, {
-    sex: 'MALE',
-    birthDate: '1990-06-15',
-    heightCm: 180,
-    tracksCalories: false,
-  })
-  await mockWeightTimeline(page, FOUR_WEEKS)
+  // Maintenance Mode, so nothing is drawn beside the weight.
+  network.use(profileOf(weightOnlyProfile), weightTimelineOf(FOUR_WEEKS))
 
   await goto('/review', { waitUntil: 'hydration' })
 
@@ -265,14 +237,13 @@ test('the timeline is drawn with Calorie Tracking off, where the calorie section
 test("with Calorie Tracking off the Goal's plan is drawn beside the weight", async ({
   page,
   goto,
+  network,
 }) => {
-  await mockProfile(page, {
-    sex: 'MALE',
-    birthDate: '1990-06-15',
-    heightCm: 180,
-    tracksCalories: false,
-  })
-  await mockWeightTimeline(page, PLANNED)
+  network.use(
+    profileOf(weightOnlyProfile),
+    goalInProgress(),
+    weightTimelineOf(PLANNED),
+  )
 
   await goto('/review', { waitUntil: 'hydration' })
 
@@ -287,24 +258,19 @@ test("with Calorie Tracking off the Goal's plan is drawn beside the weight", asy
 test('a plan that does not reach the window says so, rather than looking like Maintenance Mode', async ({
   page,
   goto,
+  network,
 }) => {
-  await mockProfile(page, {
-    sex: 'MALE',
-    birthDate: '1990-06-15',
-    heightCm: 180,
-    tracksCalories: false,
-  })
   // A Goal started on a device already into tomorrow, read on one whose window
   // closes today: no day carries a plan, which is exactly what Maintenance Mode
   // sends too. Only the named evidence tells the card which it is looking at.
-  await mockWeightTimeline(page, {
-    ...FOUR_WEEKS,
-    evidence: {
-      kind: 'PLAN',
-      loggedDays: null,
-      planStartsOn: isoShiftDays(FOUR_WEEKS.to, 1),
-    },
-  })
+  network.use(
+    profileOf(weightOnlyProfile),
+    goalInProgress(),
+    weightTimelineOf({
+      ...FOUR_WEEKS,
+      evidence: planStartingOn(isoShiftDays(FOUR_WEEKS.to, 1)),
+    }),
+  )
 
   await goto('/review', { waitUntil: 'hydration' })
 
@@ -317,14 +283,13 @@ test('a plan that does not reach the window says so, rather than looking like Ma
 test('a plan below the chart is marked rather than silently cut short', async ({
   page,
   goto,
+  network,
 }) => {
-  await mockProfile(page, {
-    sex: 'MALE',
-    birthDate: '1990-06-15',
-    heightCm: 180,
-    tracksCalories: false,
-  })
-  await mockWeightTimeline(page, BEHIND_PLAN)
+  network.use(
+    profileOf(weightOnlyProfile),
+    goalInProgress(),
+    weightTimelineOf(BEHIND_PLAN),
+  )
 
   await goto('/review', { waitUntil: 'hydration' })
 
@@ -358,8 +323,9 @@ test('a plan below the chart is marked rather than silently cut short', async ({
 test('pointing at the chart reads out the day under the pointer', async ({
   page,
   goto,
+  network,
 }) => {
-  await mockWeightTimeline(page, FOUR_WEEKS)
+  network.use(weightTimelineOf(FOUR_WEEKS))
 
   await goto('/review', { waitUntil: 'hydration' })
   // Reached through the section rather than by a class: the chart is
