@@ -20,6 +20,10 @@ export const http = createOpenApiHttp<paths>({ baseUrl: '*' })
 export const serverError = () =>
   HttpResponse.json({ message: 'boom' }, { status: 500 })
 
+/** [value] as Kotlin prints a Double in a refusal: `0.0`, never `0`. */
+export const kotlinDouble = (value: number) =>
+  Number.isInteger(value) ? value.toFixed(1) : String(value)
+
 /** The body of a 503: the server could not be reached. */
 export const noConnection = { message: 'no connection to the server' }
 

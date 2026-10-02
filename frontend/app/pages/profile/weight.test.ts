@@ -1,25 +1,33 @@
 import { describe, expect, it } from 'vitest'
-import { renderSuspended, registerEndpoint } from '@nuxt/test-utils/runtime'
-import { createError } from 'h3'
+import { renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen } from '@testing-library/vue'
+import type { components } from '#open-fetch-schemas/api'
+import { bodyAndPlan } from '~~/test/mocks/handlers/body'
+import { baselineProfile } from '~~/test/mocks/handlers/profile'
+import { failingRead } from '~~/test/mocks/http'
+import { server, useMswServer } from '~~/test/mocks/node'
 import WeightHistory from './weight.vue'
 
-function mockWeight(
-  weights: { id: number; measuredOn: string; weightKg: number }[],
-) {
-  registerEndpoint('/api/weight', () => weights)
-}
+useMswServer()
+
+type Reading = components['schemas']['WeightMeasurementResponse']
+
+/** The User has weighed in exactly [readings]. */
+const weighed = (...readings: Reading[]) =>
+  server.use(...bodyAndPlan({ profile: baselineProfile, readings }))
+
+const reading: Reading = { id: 1, measuredOn: '2026-05-28', weightKg: 84.4 }
 
 describe('/profile/weight history page', () => {
   it('lists every measurement, newest first, with no cap', async () => {
-    mockWeight([
+    weighed(
       { id: 1, measuredOn: '2026-05-22', weightKg: 85.0 },
       { id: 2, measuredOn: '2026-05-23', weightKg: 84.9 },
       { id: 3, measuredOn: '2026-05-24', weightKg: 84.8 },
       { id: 4, measuredOn: '2026-05-25', weightKg: 84.7 },
       { id: 5, measuredOn: '2026-05-26', weightKg: 84.6 },
       { id: 6, measuredOn: '2026-05-28', weightKg: 84.4 },
-    ])
+    )
     await renderSuspended(WeightHistory)
 
     const items = screen.getAllByRole('listitem')
@@ -29,7 +37,7 @@ describe('/profile/weight history page', () => {
   })
 
   it('titles the page Weight history', async () => {
-    mockWeight([{ id: 1, measuredOn: '2026-05-28', weightKg: 84.4 }])
+    weighed(reading)
     await renderSuspended(WeightHistory)
 
     expect(
@@ -38,7 +46,7 @@ describe('/profile/weight history page', () => {
   })
 
   it('offers a back link to the profile page', async () => {
-    mockWeight([{ id: 1, measuredOn: '2026-05-28', weightKg: 84.4 }])
+    weighed(reading)
     await renderSuspended(WeightHistory)
 
     const back = screen.getByRole('link', { name: /back to profile/i })
@@ -46,7 +54,7 @@ describe('/profile/weight history page', () => {
   })
 
   it('shows an empty state when there are no readings', async () => {
-    mockWeight([])
+    weighed()
     await renderSuspended(WeightHistory)
 
     expect(screen.getByText(/no weight logged yet/i)).toBeVisible()
@@ -54,7 +62,7 @@ describe('/profile/weight history page', () => {
   })
 
   it('exposes no weight-logging control — logging stays on /profile', async () => {
-    mockWeight([{ id: 1, measuredOn: '2026-05-28', weightKg: 84.4 }])
+    weighed(reading)
     await renderSuspended(WeightHistory)
 
     expect(screen.queryByRole('button', { name: /add weight/i })).toBeNull()
@@ -62,9 +70,7 @@ describe('/profile/weight history page', () => {
   })
 
   it('shows a retryable error instead of the empty state when the history fails to load', async () => {
-    registerEndpoint('/api/weight', () => {
-      throw createError({ statusCode: 500 })
-    })
+    server.use(failingRead('/api/weight'))
     await renderSuspended(WeightHistory)
 
     expect(
