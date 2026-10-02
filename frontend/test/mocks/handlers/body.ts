@@ -51,7 +51,8 @@ function ageOn(birthDate: string, on: string): number {
 
 /**
  * The Maintenance a Goal's rate is judged against on [today]: nothing is
- * logged here and no review exists to hold, so it is a cold start — the
+ * logged here, and this factory holds no Weekly Review (the baseline's history
+ * is not consulted), so it is a cold start — the
  * Mifflin-St Jeor seed for [profile] at the live [trend], times the activity
  * factor (`WeeklyReviewService.maintenanceFor`, `Maintenance.seed`). Null with
  * Calorie Tracking off, when no review derives one.
