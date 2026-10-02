@@ -110,8 +110,14 @@ or is stated as unchecked — an annotation in `e2e/` never answers a typing fin
   so a hold or a predicate override with no handler beneath it escaped the
   unhandled check entirely. Both layers end their handler list with `fellThrough`
   (`test/mocks/http.ts`), which records the request and fails it; `node.test.ts` and
-  `e2e/network-fixture.spec.ts` pin it. It is the only uncovered-`/api` path now: no
-  `/api` request reaches `onUnhandledFrame` any more.
+  `e2e/network-fixture.spec.ts` pin it. While the server listens, no `/api` request
+  reaches `onUnhandledFrame` any more.
+- **A read still in flight when a Vitest file ends escapes every guard.** `afterAll`
+  closes the server and restores Nuxt's `fetch`, so a page's late `onMounted` read (the
+  byline's `/api/me`) goes to the real `localhost:3000` and only logs `ECONNREFUSED` /
+  "fetch failed" in stderr, with the suite green. A test that mounts a page waits for
+  what its post-mount reads draw before it ends (`reopenProfile` in
+  `test/profile-page.ts`), and a migration scans stderr for those two strings.
 - **A re-read answered with the state from when it arrived** — the stale read a
   superseded load must not land — is `getResponse(handlers, request)` (from `msw`)
   inside the holding handler, returned once released (`ManageTagsSheet.test.ts`).
@@ -123,8 +129,16 @@ or is stated as unchecked — an annotation in `e2e/` never answers a typing fin
   was shut is offered once it opens" still passes with the picker reading while shut.
 - **A derived figure in a mock follows the backend's arithmetic, operation for
   operation**, so it sends the same double the backend would (`compose` in
-  `foodCatalog`). A test that states the result picks inputs that divide exactly
-  rather than loosening to `toBeCloseTo`, which would also pass a mock that rounds.
+  `foodCatalog`), and takes the backend's branch and inputs — which reading, which day,
+  hold or seed. A test that states the result picks inputs that divide exactly rather
+  than loosening to `toBeCloseTo`, which would also pass a mock that rounds, and seeds
+  at least two values where the plausible wrong inputs give different answers: #406's
+  Maintenance seed used the first reading, not the live trend, and passed every test
+  until one seeded two readings (1611 kcal against 1874.6).
+- **A refusal is copied in the backend's own words**, because the page shows a 400's
+  message: `useApiMutation` puts it under the field it names or above the submit, and
+  `profile-goal.spec.ts` asserts it ("(84.0 kg)", "1595 kcal a day"). A plain 400 with
+  other text would pass a page that shows the wrong message.
 - **Seed state the backend could hold, and refuse the rest.** `foodCatalog`'s
   `compositions` throws on lines seeded under a row that is not a Recipe, on a
   line weighing in anything but a plain Food it holds, and on an `ingredientCount`
@@ -178,7 +192,9 @@ or is stated as unchecked — an annotation in `e2e/` never answers a typing fin
   append `test.beforeEach(() => test.setTimeout(30_000))`. Even capped, copy such a break
   only into the spec that pins that read: on a page that awaits its reads together it
   kills every test there, proving nothing per test. #405's four hang breaks ran in every
-  spec and cost ~33 of a 38-minute run.
+  spec and cost ~33 of a 38-minute run. Scoped or not, a row only a never-answering break
+  turns red shows the page awaits that read, not that its assertion is pinned: report it
+  beside the unkilled rows, not among the kills (#406 first counted 73 of 90, then 67).
 - **A break that changes nothing the User can tell apart proves nothing.** An offline
   look-up that falls through lands on a miss, which the page answers identically by
   design; the break that discriminates answers a candidate instead.

@@ -265,6 +265,8 @@ citing a file:line, a test name, or both:
   criterion asks, or code a test could pin that none does. Say which of the three.
 - UNSOUND — the criterion as written cannot be satisfied, or the diff answers a
   different criterion than the one filed. Say which one it answers.
+A criterion met by something produced after this ledger runs (a CI run, a red-proof
+report) is MISSING with "no evidence yet"; a later gate judges it against the evidence.
 
 Then once, at the end: behaviour this diff adds that no criterion asked for. Check
 it against whatever the issue rules out — an `## Out of scope` section where there
