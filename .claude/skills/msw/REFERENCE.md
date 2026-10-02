@@ -122,7 +122,7 @@ or is stated as unchecked — an annotation in `e2e/` never answers a typing fin
   Tag created while the sheet was shut is offered once it opens.
 - **The typed handler can only send what the spec declares.** `POST /api/tags`
   declares 200 alone, though the backend answers a new Tag with 201, so `foodCatalog`
-  answers both with 200 (#420).
+  answers both with 200.
 - **Coexistence in Vitest.** A path registered through `registerEndpoint` is answered by
   Nuxt even in an opted-in file, ahead of any MSW handler for it. The shim makes URLs
   absolute, which Nuxt's registry only knows relative, so it strips `location.origin` and
@@ -149,8 +149,7 @@ or is stated as unchecked — an annotation in `e2e/` never answers a typing fin
   option: true }] })` — wrapped, because Playwright reads a bare array as its
   `[value, options]` tuple and fails every test with `handlers.every is not a function`.
 - **Cap the e2e copies' timeout.** A never-answering break waits out the suite's
-  300 s test timeout once per test it reaches (three such breaks ran #403's first sweep
-  for hours). The copies append `test.beforeEach(() => test.setTimeout(30_000))`.
+  300 s test timeout once per test it reaches. The copies append `test.beforeEach(() => test.setTimeout(30_000))`.
 - **A break that changes nothing the User can tell apart proves nothing.** An offline
   look-up that falls through lands on a miss, which the page answers identically by
   design; the break that discriminates answers a candidate instead.

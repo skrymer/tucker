@@ -461,7 +461,7 @@ describe('ReferenceFoodPicker', () => {
   })
 
   it('says the database holds nothing like it rather than showing an empty list', async () => {
-    // The baseline's database matches nothing.
+    // The baseline matches no Reference Food.
 
     await renderSuspended(ReferenceFoodPicker, { props: { food: chicken } })
 
