@@ -173,8 +173,12 @@ or is stated as unchecked — an annotation in `e2e/` never answers a typing fin
   handler file reaches it. In the spec copy, `test.use({ handlers: [copyBaseline, {
   option: true }] })` — wrapped, because Playwright reads a bare array as its
   `[value, options]` tuple and fails every test with `handlers.every is not a function`.
-- **Cap the e2e copies' timeout.** A never-answering break waits out the suite's
-  300 s test timeout once per test it reaches. The copies append `test.beforeEach(() => test.setTimeout(30_000))`.
+- **Cap the e2e copies' timeout, and scope a never-answering break.** A never-answering
+  break waits out the suite's 300 s test timeout once per test it reaches; the copies
+  append `test.beforeEach(() => test.setTimeout(30_000))`. Even capped, copy such a break
+  only into the spec that pins that read: on a page that awaits its reads together it
+  kills every test there, proving nothing per test. #405's four hang breaks ran in every
+  spec and cost ~33 of a 38-minute run.
 - **A break that changes nothing the User can tell apart proves nothing.** An offline
   look-up that falls through lands on a miss, which the page answers identically by
   design; the break that discriminates answers a candidate instead.
