@@ -1,20 +1,16 @@
-import { expect, test } from './support/test'
-import {
-  mockMe,
-  mockNoProfile,
-  mockSummary,
-  mockFoods,
-  mockNoActiveGoal,
-  mockWeightApi,
-  mockWeightList,
-} from './support/mock-api'
+import { expect, test } from './support/network'
+import { http } from '../test/mocks/http'
 
 const EMAIL = 'tester@tucker.invalid'
 
+/** Access has admitted the person at [EMAIL]. */
+const signedInAs = http.get('/api/me', ({ response }) =>
+  response(200).json({ email: EMAIL }),
+)
+
 test.describe('the identity byline', () => {
-  test.beforeEach(async ({ page }) => {
-    await mockMe(page, EMAIL)
-    await mockNoProfile(page)
+  test.beforeEach(({ network }) => {
+    network.use(signedInAs)
   })
 
   test('names the person whose data is on screen', async ({ page, goto }) => {
@@ -58,15 +54,15 @@ const OTHER_PAGES = [
 ]
 
 for (const { path, heading } of OTHER_PAGES) {
-  test(`${path} carries no identity chrome`, async ({ page, goto }) => {
-    // Enough of each page's own data to let it actually render — the heading
-    // assertion below is what makes the two absence assertions mean something.
-    await mockMe(page, EMAIL)
-    await mockSummary(page)
-    await mockFoods(page)
-    await mockNoActiveGoal(page)
-    await mockWeightApi(page)
-    await mockWeightList(page)
+  test(`${path} carries no identity chrome`, async ({
+    page,
+    goto,
+    network,
+  }) => {
+    // The baseline is enough of each page's own data to let it actually
+    // render — the heading assertion below is what makes the two absence
+    // assertions mean something.
+    network.use(signedInAs)
 
     await goto(path, { waitUntil: 'hydration' })
 

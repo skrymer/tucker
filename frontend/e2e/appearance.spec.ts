@@ -1,5 +1,4 @@
-import { expect, test } from './support/test'
-import { mockProfile } from './support/mock-api'
+import { expect, test } from './support/network'
 
 // The real @nuxtjs/color-mode effect — the `.dark` class flipping on <html> and
 // the choice persisting via cookie across a reload — only runs in a real browser
@@ -73,12 +72,6 @@ test('the Appearance control sits on the Profile page', async ({
   page,
   goto,
 }) => {
-  await mockProfile(page, {
-    sex: 'MALE',
-    birthDate: '1986-05-22',
-    heightCm: 180,
-  })
-
   await goto('/profile', { waitUntil: 'hydration' })
 
   await expect(page.getByRole('heading', { name: /appearance/i })).toBeVisible()

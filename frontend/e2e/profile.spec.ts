@@ -1,17 +1,25 @@
-import { expect, test } from './support/test'
-import { mockProfile, mockNoProfile } from './support/mock-api'
+import { expect, test } from './support/network'
+import {
+  baselineProfile,
+  profileOf,
+  savedProfile,
+} from '../test/mocks/handlers/profile'
 import { pickDate } from './support/date-field'
-import { formatDmy } from './support/date'
+import { formatDmy, localTodayIso } from './support/date'
 
 test('the Profile page prefills the form from the saved profile', async ({
   page,
   goto,
+  network,
 }) => {
-  await mockProfile(page, {
-    sex: 'FEMALE',
-    birthDate: '1985-03-22',
-    heightCm: 168,
-  })
+  network.use(
+    profileOf({
+      ...baselineProfile,
+      sex: 'FEMALE',
+      birthDate: '1985-03-22',
+      heightCm: 168,
+    }),
+  )
 
   await goto('/profile', { waitUntil: 'hydration' })
 
@@ -25,8 +33,9 @@ test('the Profile page prefills the form from the saved profile', async ({
 test('the Profile page renders an empty form when no profile exists yet', async ({
   page,
   goto,
+  network,
 }) => {
-  await mockNoProfile(page)
+  network.use(...savedProfile(null).handlers)
 
   await goto('/profile', { waitUntil: 'hydration' })
 
@@ -36,24 +45,12 @@ test('the Profile page renders an empty form when no profile exists yet', async 
   await expect(page.getByLabel(/height/i)).toHaveValue('')
 })
 
-test('the Profile page saves the profile and reflects the new values', async ({
+test('the Profile page saves the profile and shows it again on the next visit', async ({
   page,
   goto,
+  network,
 }) => {
-  // Start with no profile; after PUT, GET returns the new values.
-  let saved: unknown = null
-  await page.route('**/api/profile*', async (route) => {
-    const req = route.request()
-    if (req.method() === 'GET') {
-      if (saved) return route.fulfill({ json: saved })
-      return route.fulfill({ status: 404, json: { message: 'Not found' } })
-    }
-    if (req.method() === 'PUT') {
-      saved = req.postDataJSON()
-      return route.fulfill({ json: saved })
-    }
-    return route.fallback()
-  })
+  network.use(...savedProfile(null, { today: localTodayIso() }).handlers)
 
   await goto('/profile', { waitUntil: 'hydration' })
 
@@ -61,6 +58,14 @@ test('the Profile page saves the profile and reflects the new values', async ({
   await pickDate(page.getByLabel(/birth date/i), '1990-06-15')
   await page.getByLabel(/height/i).fill('180')
   await page.getByRole('button', { name: /save profile/i }).click()
+
+  // A Profile unlocks the Weight section: the save has landed.
+  const weight = page.getByRole('region', { name: /^weight$/i })
+  await expect(
+    weight.getByRole('button', { name: /add weight/i }),
+  ).toBeVisible()
+
+  await page.reload()
 
   await expect(page.getByRole('radio', { name: /^male$/i })).toBeChecked()
   await expect(page.getByLabel(/birth date/i)).toHaveText(
