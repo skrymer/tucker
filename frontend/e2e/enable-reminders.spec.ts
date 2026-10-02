@@ -1,17 +1,6 @@
 import type { Page } from '@playwright/test'
-import { expect, test } from './support/test'
+import { expect, test } from './support/network'
 import { toast } from './support/toast'
-import { mockProfile } from './support/mock-api'
-
-const SAVED = {
-  sex: 'MALE',
-  birthDate: '1990-06-15',
-  heightCm: 180,
-  timezone: 'Australia/Brisbane',
-  reminderHour: 9,
-  remindersEnabled: false,
-  tracksCalories: true,
-}
 
 /**
  * A browser whose push service cannot be reached. The permission prompt and the
@@ -42,16 +31,9 @@ test('says so when the push service cannot be reached, rather than snapping the 
   page,
   goto,
 }) => {
+  // The baseline User has reminders off and no push service to subscribe to,
+  // so a subscription sent after the failure fails the test.
   await stubUnreachablePushService(page)
-  await mockProfile(page, SAVED)
-  await page.route('**/api/push/vapid-public-key', (route) =>
-    route.fulfill({
-      json: {
-        publicKey:
-          'BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QTpQtUbVlUls0VJXg7A8u-Ts1XbjhazAkj7I99e8QcYP7DkM',
-      },
-    }),
-  )
 
   await goto('/profile', { waitUntil: 'hydration' })
   await page.getByRole('switch', { name: /reminder/i }).click()

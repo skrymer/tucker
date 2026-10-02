@@ -1,41 +1,49 @@
-import { describe, expect, it, vi } from 'vitest'
-import { renderSuspended, registerEndpoint } from '@nuxt/test-utils/runtime'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen, within } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
-import { createError, getQuery, readBody, setResponseStatus } from 'h3'
-import { openGate } from '~~/test/async-gate'
+import type { components } from '#open-fetch-schemas/api'
+import { bodyAndPlan } from '~~/test/mocks/handlers/body'
+import { baselineProfile } from '~~/test/mocks/handlers/profile'
+import { failingRead, held, http } from '~~/test/mocks/http'
+import { server, useMswServer } from '~~/test/mocks/node'
+import { reopenProfile } from '~~/test/profile-page'
+import { setupWebPush } from '~~/test/web-push-helpers'
 import Profile from './index.vue'
 
-type ProfileBody = {
-  sex: string
-  birthDate: string
-  heightCm: number
-  timezone?: string
-  reminderHour?: number
-  remindersEnabled?: boolean
-  tracksCalories?: boolean
-}
-type Weight = { id: number; measuredOn: string; weightKg: number }
-type Goal = unknown
+useMswServer()
 
-// Wire up the three upstream GETs the page fetches on load. Each test sets the
-// fixtures that put gating into the state under test.
-function mockApi(opts: {
-  profile: ProfileBody | null
-  weights: Weight[]
-  goals: Goal[]
-}) {
-  registerEndpoint('/api/profile', () => {
-    if (opts.profile === null) throw createError({ statusCode: 404 })
-    return opts.profile
-  })
-  registerEndpoint('/api/weight', () => opts.weights)
-  registerEndpoint('/api/goals', () => opts.goals)
+type ProfileDto = components['schemas']['ProfileDto']
+type Reading = components['schemas']['WeightMeasurementResponse']
+
+afterEach(() => {
+  vi.unstubAllGlobals()
+})
+
+/** A User holding [profile] (null for none yet) and [readings], with no Goal. */
+const holds = (
+  profile: ProfileDto | null,
+  readings: Reading[] = [],
+  guards: { today?: string; timezone?: string } = {},
+) => server.use(...bodyAndPlan({ profile, readings, ...guards }))
+
+const reading: Reading = { id: 1, measuredOn: '2026-05-29', weightKg: 84 }
+
+const saveProfile = () => screen.getByRole('button', { name: /save profile/i })
+
+/** Save the details form and wait for the save, and the re-read, to land. */
+async function saveDetails() {
+  const save = held('put', '/api/profile')
+  server.use(save.handler)
+  await userEvent.click(saveProfile())
+  await save.arrived
+  save.release()
+  await vi.waitFor(() => expect(saveProfile()).toBeEnabled())
 }
 
 describe('/profile progressive disclosure', () => {
   it('disables Weight and Goal with explanatory copy when there is no profile', async () => {
-    mockApi({ profile: null, weights: [], goals: [] })
+    holds(null)
     await renderSuspended(Profile)
 
     const weight = screen.getByRole('region', { name: /^weight$/i })
@@ -50,11 +58,7 @@ describe('/profile progressive disclosure', () => {
   })
 
   it('enables Weight but keeps Goal disabled when a profile exists with no weight', async () => {
-    mockApi({
-      profile: { sex: 'MALE', birthDate: '1990-06-15', heightCm: 180 },
-      weights: [],
-      goals: [],
-    })
+    holds(baselineProfile)
     await renderSuspended(Profile)
 
     const weight = screen.getByRole('region', { name: /^weight$/i })
@@ -69,11 +73,7 @@ describe('/profile progressive disclosure', () => {
   })
 
   it('renders the sections in order: Goal, Weight, Your details, Reminder', async () => {
-    mockApi({
-      profile: { sex: 'MALE', birthDate: '1990-06-15', heightCm: 180 },
-      weights: [{ id: 1, measuredOn: '2026-05-29', weightKg: 84 }],
-      goals: [],
-    })
+    holds(baselineProfile, [reading])
     await renderSuspended(Profile)
 
     const goal = screen.getByRole('heading', { name: /^goal$/i })
@@ -95,15 +95,11 @@ describe('/profile progressive disclosure', () => {
   })
 
   it('enables all three sections once a profile and a weight exist', async () => {
-    mockApi({
-      profile: { sex: 'MALE', birthDate: '1990-06-15', heightCm: 180 },
-      weights: [{ id: 1, measuredOn: '2026-05-29', weightKg: 84 }],
-      goals: [],
-    })
+    holds(baselineProfile, [reading])
     await renderSuspended(Profile)
 
     // Profile section is always interactive.
-    expect(screen.getByRole('button', { name: /save profile/i })).toBeVisible()
+    expect(saveProfile()).toBeVisible()
 
     const weight = screen.getByRole('region', { name: /^weight$/i })
     expect(
@@ -123,13 +119,8 @@ describe('/profile progressive disclosure', () => {
 
 describe('/profile when a section fails to load', () => {
   it('shows a retryable error in place of the Weight section', async () => {
-    registerEndpoint('/api/profile', () => {
-      throw createError({ statusCode: 404 })
-    })
-    registerEndpoint('/api/weight', () => {
-      throw createError({ statusCode: 500 })
-    })
-    registerEndpoint('/api/goals', () => [])
+    holds(null)
+    server.use(failingRead('/api/weight'))
     await renderSuspended(Profile)
 
     expect(
@@ -141,13 +132,8 @@ describe('/profile when a section fails to load', () => {
   })
 
   it('shows a retryable error in place of the Goal section', async () => {
-    registerEndpoint('/api/profile', () => {
-      throw createError({ statusCode: 404 })
-    })
-    registerEndpoint('/api/weight', () => [])
-    registerEndpoint('/api/goals', () => {
-      throw createError({ statusCode: 500 })
-    })
+    holds(null)
+    server.use(failingRead('/api/goals'))
     await renderSuspended(Profile)
 
     expect(
@@ -159,14 +145,8 @@ describe('/profile when a section fails to load', () => {
   })
 
   it('shows a retryable error in place of the Goal section when the trend fails to load', async () => {
-    registerEndpoint('/api/profile', () => {
-      throw createError({ statusCode: 404 })
-    })
-    registerEndpoint('/api/weight', () => [])
-    registerEndpoint('/api/goals', () => [])
-    registerEndpoint('/api/weight/trend', () => {
-      throw createError({ statusCode: 500 })
-    })
+    holds(null)
+    server.use(failingRead('/api/weight/trend'))
     await renderSuspended(Profile)
 
     expect(
@@ -178,11 +158,8 @@ describe('/profile when a section fails to load', () => {
   })
 
   it('shows a retryable error in place of the profile details form', async () => {
-    registerEndpoint('/api/profile', () => {
-      throw createError({ statusCode: 500 })
-    })
-    registerEndpoint('/api/weight', () => [])
-    registerEndpoint('/api/goals', () => [])
+    holds(null)
+    server.use(failingRead('/api/profile'))
     await renderSuspended(Profile)
 
     expect(
@@ -198,96 +175,62 @@ describe('/profile saving the details form', () => {
   it('keeps the reminder preferences when the details form is saved', async () => {
     // The details form knows nothing about reminders, so it can only preserve
     // them by saving onto the Profile it loaded rather than over it.
-    let saved: Record<string, unknown> | undefined
-    mockApi({
-      profile: {
-        sex: 'MALE',
-        birthDate: '1990-06-15',
-        heightCm: 180,
+    setupWebPush({ supported: true })
+    holds(
+      {
+        ...baselineProfile,
         timezone: 'Australia/Brisbane',
         reminderHour: 21,
         remindersEnabled: true,
         tracksCalories: false,
       },
-      weights: [],
-      goals: [],
-    })
-    registerEndpoint('/api/profile', {
-      method: 'PUT',
-      handler: async (event) => {
-        saved = await readBody(event)
-        return saved
-      },
-    })
-    await renderSuspended(Profile)
-    const user = userEvent.setup()
+      [],
+      // The zone is shown nowhere, so a save naming another is refused.
+      { timezone: 'Australia/Brisbane' },
+    )
+    const page = await renderSuspended(Profile)
 
-    await user.click(screen.getByRole('button', { name: /save profile/i }))
+    await saveDetails()
 
-    await vi.waitFor(() => expect(saved).toBeDefined())
-    expect(saved).toMatchObject({
-      timezone: 'Australia/Brisbane',
-      reminderHour: 21,
-      remindersEnabled: true,
-      tracksCalories: false,
-    })
+    await reopenProfile(page)
+    expect(screen.getByRole('switch', { name: /reminder/i })).toBeChecked()
+    expect(screen.getByLabelText(/reminder hour/i)).toHaveValue(21)
+    expect(screen.getByRole('radio', { name: /weight only/i })).toBeChecked()
   })
 
   it('reports the details save as busy while it is in flight', async () => {
     // The slowest mutation in the app: a Calorie Tracking change makes PUT
     // /api/profile re-run the adaptive engine over the whole weight history, so
     // this is the control that most needs to say it is working (ADR 0007).
-    const { gate, release } = openGate()
-    mockApi({
-      profile: { sex: 'MALE', birthDate: '1990-06-15', heightCm: 180 },
-      weights: [],
-      goals: [],
-    })
-    registerEndpoint('/api/profile', {
-      method: 'PUT',
-      handler: async () => {
-        await gate
-        return {}
-      },
-    })
+    const save = held('put', '/api/profile')
+    holds(baselineProfile)
+    server.use(save.handler)
     await renderSuspended(Profile)
     const user = userEvent.setup()
-    const save = () => screen.getByRole('button', { name: /save profile/i })
 
-    expect(save()).toBeEnabled()
-    await user.click(save())
+    expect(saveProfile()).toBeEnabled()
+    await user.click(saveProfile())
 
-    await vi.waitFor(() => expect(save()).toBeDisabled())
+    await save.arrived
+    await vi.waitFor(() => expect(saveProfile()).toBeDisabled())
 
     // And it hands the control back rather than leaving a dead button behind.
-    release()
-    await vi.waitFor(() => expect(save()).toBeEnabled())
+    save.release()
+    await vi.waitFor(() => expect(saveProfile()).toBeEnabled())
   })
 
   it("stamps the save on the user's local day so a Calorie Tracking change lands today", async () => {
     // Toggling Calorie Tracking force-recomputes today's review (ADR 0008's
     // trigger). The client owns "today" (ADR 0014), so the Budget leaves or
     // returns on the user's day rather than the server's wall-clock one.
-    let query: Record<string, unknown> | undefined
-    mockApi({
-      profile: { sex: 'MALE', birthDate: '1990-06-15', heightCm: 180 },
-      weights: [],
-      goals: [],
-    })
-    registerEndpoint('/api/profile', {
-      method: 'PUT',
-      handler: (event) => {
-        query = getQuery(event)
-        return {}
-      },
-    })
-    await renderSuspended(Profile)
-    const user = userEvent.setup()
+    holds(baselineProfile, [], { today: localToday() })
+    const page = await renderSuspended(Profile)
 
-    await user.click(screen.getByRole('button', { name: /save profile/i }))
+    await userEvent.click(screen.getByRole('radio', { name: /weight only/i }))
+    await saveDetails()
 
-    await vi.waitFor(() => expect(query).toBeDefined())
-    expect(query?.clientToday).toBe(localToday())
+    await reopenProfile(page)
+    expect(screen.getByRole('radio', { name: /weight only/i })).toBeChecked()
   })
 })
 
@@ -295,24 +238,10 @@ describe('/profile setting a goal', () => {
   it('reports the goal save as busy while it is in flight', async () => {
     // POST /api/goal force-recomputes today's review (ADR 0008), so the form
     // waits on the adaptive engine and has to say so. It also stays on screen
-    // afterwards — it closes only once a new active Goal comes back.
-    const { gate, release } = openGate()
-    mockApi({
-      profile: { sex: 'MALE', birthDate: '1990-06-15', heightCm: 180 },
-      weights: [{ id: 1, measuredOn: '2026-05-29', weightKg: 86 }],
-      goals: [],
-    })
-    registerEndpoint('/api/weight/trend', () => ({
-      trendKg: 86,
-      asOf: '2026-05-29',
-    }))
-    registerEndpoint('/api/goal', {
-      method: 'POST',
-      handler: async () => {
-        await gate
-        return {}
-      },
-    })
+    // until the new active Goal comes back.
+    const create = held('post', '/api/goal')
+    holds(baselineProfile, [{ id: 1, measuredOn: '2026-05-29', weightKg: 86 }])
+    server.use(create.handler)
     await renderSuspended(Profile)
     const user = userEvent.setup()
 
@@ -326,35 +255,30 @@ describe('/profile setting a goal', () => {
     expect(setGoal()).toBeEnabled()
     await user.click(setGoal())
 
+    await create.arrived
     await vi.waitFor(() => expect(setGoal()).toBeDisabled())
 
-    // And it hands the control back rather than leaving a dead button behind.
-    release()
-    await vi.waitFor(() => expect(setGoal()).toBeEnabled())
+    // The new Goal replaces the form, and a fresh one is ready to submit
+    // rather than left a dead button behind.
+    create.release()
+    const newGoal = await screen.findByRole('button', {
+      name: /set a new goal/i,
+    })
+    await user.click(newGoal)
+    expect(setGoal()).toBeEnabled()
   })
 })
 
 describe('/profile when the backend refuses a goal', () => {
   /** Open the Goal form on a set-up profile whose POST refuses with [refusal]. */
-  async function submitGoalRefusedWith(refusal: Record<string, unknown>) {
-    mockApi({
-      profile: { sex: 'MALE', birthDate: '1990-06-15', heightCm: 180 },
-      weights: [{ id: 1, measuredOn: '2026-05-29', weightKg: 86 }],
-      goals: [],
-    })
-    registerEndpoint('/api/weight/trend', () => ({
-      trendKg: 86,
-      asOf: '2026-05-29',
-    }))
-    registerEndpoint('/api/goal', {
-      method: 'POST',
-      // The body IS the refusal, as ApiError serialises it — createError would
-      // nest it under `data` and the client would read no message at all.
-      handler: (event) => {
-        setResponseStatus(event, 400)
-        return refusal
-      },
-    })
+  async function submitGoalRefusedWith(refusal: {
+    message: string
+    field?: string
+  }) {
+    holds(baselineProfile, [{ id: 1, measuredOn: '2026-05-29', weightKg: 86 }])
+    server.use(
+      http.post('/api/goal', ({ response }) => response(400).json(refusal)),
+    )
     await renderSuspended(Profile)
     const user = userEvent.setup()
 
@@ -407,25 +331,9 @@ describe('/profile logging a weight', () => {
   it('keeps the weight sheet up, reporting busy, until the save lands', async () => {
     // The sheet is the confirmation: dismissing it optimistically claims a
     // reading is stored before the server has said so (ADR 0007).
-    const { gate, release } = openGate()
-    mockApi({
-      profile: { sex: 'MALE', birthDate: '1990-06-15', heightCm: 180 },
-      weights: [],
-      goals: [],
-    })
-    // Stated rather than inherited: an earlier test's handler would otherwise
-    // be what this one resolves the trend against.
-    registerEndpoint('/api/weight/trend', () => ({
-      trendKg: 84,
-      asOf: '2026-05-29',
-    }))
-    registerEndpoint('/api/weight', {
-      method: 'POST',
-      handler: async () => {
-        await gate
-        return {}
-      },
-    })
+    const save = held('post', '/api/weight')
+    holds(baselineProfile)
+    server.use(save.handler)
     await renderSuspended(Profile)
     const user = userEvent.setup()
 
@@ -442,9 +350,10 @@ describe('/profile logging a weight', () => {
     expect(saveWeight()).toBeEnabled()
     await user.click(saveWeight())
 
+    await save.arrived
     await vi.waitFor(() => expect(saveWeight()).toBeDisabled())
 
-    release()
+    save.release()
     await vi.waitFor(() =>
       expect(screen.queryByRole('dialog', { name: /log weight/i })).toBeNull(),
     )

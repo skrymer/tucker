@@ -1,9 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { registerEndpoint, renderSuspended } from '@nuxt/test-utils/runtime'
-import { createError, getQuery, readBody } from 'h3'
+import { mockNuxtImport, renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen, within } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import type { components } from '#open-fetch-schemas/api'
+import { baselineProfile, savedProfile } from '~~/test/mocks/handlers/profile'
+import { pushServiceFor } from '~~/test/mocks/handlers/push'
+import { http, serverError } from '~~/test/mocks/http'
+import { server, useMswServer } from '~~/test/mocks/node'
+import { reopenProfile } from '~~/test/profile-page'
 import ReminderSettings from './ReminderSettings.vue'
 import {
   fakePushSubscription,
@@ -12,63 +16,35 @@ import {
 } from '../../test/web-push-helpers'
 import { setStandalone, setUserAgent, UA } from '../../test/pwa-install-helpers'
 
+useMswServer()
+
 // ReminderSettings composes the *real* useWebPush; the only things mocked are
 // the true external boundaries — the browser push machinery (setupWebPush) and
-// the network (registerEndpoint) — never the composable itself (ADR 0013).
-let savedProfile: Record<string, unknown> | undefined
-let savedQuery: Record<string, unknown> | undefined
-let postedSubscription: Record<string, unknown> | undefined
-let deletedSubscription: Record<string, unknown> | undefined
-let failSubscriptionPost = false
-registerEndpoint('/api/push/vapid-public-key', () => ({
-  publicKey:
-    'BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QTpQtUbVlUls0VJXg7A8u-Ts1XbjhazAkj7I99e8QcYP7DkM',
-}))
-registerEndpoint('/api/push/subscriptions', {
-  method: 'POST',
-  handler: async (event) => {
-    if (failSubscriptionPost) throw createError({ statusCode: 500 })
-    postedSubscription = await readBody(event)
-    return {}
-  },
-})
-registerEndpoint('/api/push/subscriptions', {
-  method: 'DELETE',
-  handler: async (event) => {
-    deletedSubscription = await readBody(event)
-    return {}
-  },
-})
-registerEndpoint('/api/profile', {
-  method: 'PUT',
-  handler: async (event) => {
-    savedQuery = getQuery(event)
-    savedProfile = await readBody(event)
-    return savedProfile
-  },
-})
+// the network (the shared MSW handlers) — never the composable itself
+// (ADR 0013, ADR 0034).
 
-const profile: components['schemas']['ProfileDto'] = {
-  sex: 'MALE',
-  birthDate: '1986-05-22',
-  heightCm: 180,
+const { toastAdd } = vi.hoisted(() => ({ toastAdd: vi.fn() }))
+mockNuxtImport('useToast', () => () => ({ add: toastAdd, remove: vi.fn() }))
+
+type ProfileDto = components['schemas']['ProfileDto']
+
+const profile: ProfileDto = {
+  ...baselineProfile,
   timezone: 'UTC',
   reminderHour: 9,
-  remindersEnabled: false,
-  tracksCalories: true,
 }
 
-const render = (over: Partial<typeof profile> = {}) =>
+const thisDevice = fakePushSubscription('https://push.example/this-device')
+
+const render = (over: Partial<ProfileDto> = {}, onSaved = () => {}) =>
   renderSuspended(ReminderSettings, {
-    props: { profile: { ...profile, ...over } },
+    props: { profile: { ...profile, ...over }, onSaved },
   })
 
+const reminderSwitch = () => screen.getByRole('switch', { name: /reminder/i })
+
 beforeEach(() => {
-  savedProfile = undefined
-  savedQuery = undefined
-  postedSubscription = undefined
-  deletedSubscription = undefined
-  failSubscriptionPost = false
+  toastAdd.mockClear()
   setUserAgent(UA.desktop, { maxTouchPoints: 0, standalone: undefined })
   setStandalone(false)
   setTimezone('Europe/Copenhagen')
@@ -81,75 +57,83 @@ afterEach(() => {
 
 describe('ReminderSettings', () => {
   it('turning the toggle on subscribes the device and saves the reminder preferences', async () => {
-    const env = setupWebPush({
-      supported: true,
-      created: fakePushSubscription('https://push.example/this-device'),
-    })
-    await render({ reminderHour: 9, remindersEnabled: false })
+    const env = setupWebPush({ supported: true, created: thisDevice })
+    server.use(
+      ...pushServiceFor({ ...thisDevice.toJSON(), label: UA.desktop }),
+      // The zone is shown nowhere, so a save naming another is refused.
+      ...savedProfile(profile, { timezone: 'Europe/Copenhagen' }).handlers,
+    )
+    const settings = await render({ reminderHour: 9, remindersEnabled: false })
 
-    await userEvent.click(screen.getByRole('switch', { name: /reminder/i }))
+    await userEvent.click(reminderSwitch())
 
-    await vi.waitFor(() => expect(savedProfile).toBeDefined())
+    await vi.waitFor(() => expect(reminderSwitch()).toBeChecked())
     expect(env.requestPermission).toHaveBeenCalledOnce()
-    expect(postedSubscription).toMatchObject({
-      endpoint: 'https://push.example/this-device',
-    })
-    expect(savedProfile).toMatchObject({
-      sex: 'MALE',
-      remindersEnabled: true,
-      reminderHour: 9,
-      timezone: 'Europe/Copenhagen',
-    })
+
+    await reopenProfile(settings)
+    expect(reminderSwitch()).toBeChecked()
+    expect(screen.getByLabelText(/reminder hour/i)).toHaveValue(9)
+    expect(screen.getByRole('radio', { name: /^male$/i })).toBeChecked()
   })
 
   it('sends the local day with the reminder write, which replaces the whole Profile', async () => {
     // The write carries the stored birth date back, and the backend judges it
     // against "today" — so a caller that omits the client's day leaves the
     // server's clock to decide, which differs for the width of a UTC offset.
-    setupWebPush({
-      supported: true,
-      created: fakePushSubscription('https://push.example/this-device'),
-    })
+    setupWebPush({ supported: true, created: thisDevice })
+    server.use(
+      ...pushServiceFor({ ...thisDevice.toJSON(), label: UA.desktop }),
+      ...savedProfile(profile, { today: localToday() }).handlers,
+    )
     await render({ reminderHour: 9, remindersEnabled: false })
 
-    await userEvent.click(screen.getByRole('switch', { name: /reminder/i }))
+    await userEvent.click(reminderSwitch())
 
-    await vi.waitFor(() => expect(savedProfile).toBeDefined())
-    expect(savedQuery?.clientToday).toBe(localToday())
+    // The switch turns on only once the whole Profile write has landed.
+    await vi.waitFor(() => expect(reminderSwitch()).toBeChecked())
   })
 
   it('turning the toggle off unsubscribes the device and saves reminders as off', async () => {
-    setupWebPush({
-      supported: true,
-      existing: fakePushSubscription('https://push.example/this-device'),
-    })
-    await render({ remindersEnabled: true })
+    setupWebPush({ supported: true, existing: thisDevice })
+    server.use(
+      ...pushServiceFor(thisDevice.toJSON()),
+      ...savedProfile({ ...profile, remindersEnabled: true }).handlers,
+    )
+    const settings = await render({ remindersEnabled: true })
 
-    await userEvent.click(screen.getByRole('switch', { name: /reminder/i }))
+    await userEvent.click(reminderSwitch())
 
-    await vi.waitFor(() => expect(deletedSubscription).toBeDefined())
-    expect(deletedSubscription).toEqual({
-      endpoint: 'https://push.example/this-device',
-    })
-    expect(savedProfile).toMatchObject({ remindersEnabled: false })
+    await vi.waitFor(() => expect(reminderSwitch()).not.toBeChecked())
+    expect(thisDevice.unsubscribe).toHaveBeenCalledOnce()
+
+    await reopenProfile(settings)
+    expect(reminderSwitch()).not.toBeChecked()
   })
 
   it('leaves the toggle off and saves nothing when subscribing fails', async () => {
-    failSubscriptionPost = true
-    setupWebPush({ supported: true })
-    await render({ remindersEnabled: false })
+    setupWebPush({ supported: true, created: thisDevice })
+    server.use(
+      http.post('/api/push/subscriptions', ({ response }) =>
+        response.untyped(serverError()),
+      ),
+      ...savedProfile(profile).handlers,
+    )
+    const settings = await render({ remindersEnabled: false })
 
-    await userEvent.click(screen.getByRole('switch', { name: /reminder/i }))
+    await userEvent.click(reminderSwitch())
 
     // The subscription POST failed, so the opt-in is never saved and the switch
-    // reflects reality instead of being stranded on (the retry toast — from the
-    // shared mutation — tells the user, per ADR 0005).
+    // reflects reality instead of being stranded on; the retry toast — from the
+    // shared mutation — tells the user (ADR 0005).
     await vi.waitFor(() =>
-      expect(
-        screen.getByRole('switch', { name: /reminder/i }),
-      ).not.toBeChecked(),
+      expect(toastAdd).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'Could not update reminders' }),
+      ),
     )
-    expect(savedProfile).toBeUndefined()
+    expect(reminderSwitch()).not.toBeChecked()
+
+    await reopenProfile(settings)
+    expect(reminderSwitch()).not.toBeChecked()
   })
 
   it('on iOS before install, shows the add-to-home-screen hint instead of a toggle', async () => {
@@ -172,7 +156,8 @@ describe('ReminderSettings', () => {
 
   it('rejects a reminder hour outside 0–23 and does not save it', async () => {
     setupWebPush({ supported: true })
-    await render({ reminderHour: 9 })
+    server.use(...savedProfile(profile).handlers)
+    const settings = await render({ reminderHour: 9 })
 
     const hour = screen.getByLabelText(/reminder hour/i)
     await userEvent.clear(hour)
@@ -182,12 +167,21 @@ describe('ReminderSettings', () => {
     )
 
     expect(screen.getByText(/between 0 and 23/i)).toBeVisible()
-    expect(savedProfile).toBeUndefined()
+
+    // A save sent anyway would be refused in the server's own words.
+    await reopenProfile(settings)
+    expect(screen.getByLabelText(/reminder hour/i)).toHaveValue(9)
+    expect(toastAdd).not.toHaveBeenCalled()
   })
 
   it('saves a valid reminder hour onto the profile without clobbering the rest', async () => {
     setupWebPush({ supported: true })
-    await render({ reminderHour: 9, tracksCalories: false })
+    server.use(...savedProfile({ ...profile, tracksCalories: false }).handlers)
+    const saved = vi.fn()
+    const settings = await render(
+      { reminderHour: 9, tracksCalories: false },
+      saved,
+    )
 
     const hour = screen.getByLabelText(/reminder hour/i)
     await userEvent.clear(hour)
@@ -195,13 +189,12 @@ describe('ReminderSettings', () => {
     await userEvent.click(
       screen.getByRole('button', { name: /save reminder time/i }),
     )
+    await vi.waitFor(() => expect(saved).toHaveBeenCalledOnce())
 
-    await vi.waitFor(() => expect(savedProfile).toBeDefined())
-    expect(savedProfile).toMatchObject({
-      reminderHour: 7,
-      sex: 'MALE',
-      tracksCalories: false,
-    })
+    await reopenProfile(settings)
+    expect(screen.getByLabelText(/reminder hour/i)).toHaveValue(7)
+    expect(screen.getByRole('radio', { name: /^male$/i })).toBeChecked()
+    expect(screen.getByRole('radio', { name: /weight only/i })).toBeChecked()
   })
 
   it('never asks for notification permission on load — only from a gesture', async () => {

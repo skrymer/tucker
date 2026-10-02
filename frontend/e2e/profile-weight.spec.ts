@@ -1,17 +1,21 @@
-import { expect, test } from './support/test'
-import { mockProfile, mockWeightList } from './support/mock-api'
+import { expect, test } from './support/network'
+import { bodyAndPlan } from '../test/mocks/handlers/body'
+import { baselineProfile } from '../test/mocks/handlers/profile'
 import { pickDate } from './support/date-field'
+import { localTodayIso } from './support/date'
 
 test('a backfilled weight becomes the current weight and is reachable in history', async ({
   page,
   goto,
+  network,
 }) => {
-  await mockProfile(page, {
-    sex: 'MALE',
-    birthDate: '1990-06-15',
-    heightCm: 180,
-  })
-  await mockWeightList(page, [])
+  network.use(
+    ...bodyAndPlan({
+      profile: baselineProfile,
+      readings: [],
+      today: localTodayIso(),
+    }),
+  )
 
   await goto('/profile', { waitUntil: 'hydration' })
 

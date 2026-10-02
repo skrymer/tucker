@@ -1,16 +1,20 @@
 import { describe, expect, it } from 'vitest'
-import { renderSuspended, registerEndpoint } from '@nuxt/test-utils/runtime'
+import { renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen } from '@testing-library/vue'
+import { settle } from '~~/test/async-gate'
+import { baselineEmail } from '~~/test/mocks/handlers/identity'
+import { failingRead, held } from '~~/test/mocks/http'
+import { server, useMswServer } from '~~/test/mocks/node'
 import IdentityByline from './IdentityByline.vue'
+
+useMswServer()
 
 describe('IdentityByline', () => {
   it('names the person whose data is on screen', async () => {
-    registerEndpoint('/api/me', () => ({ email: 'tester@tucker.invalid' }))
-
     await renderSuspended(IdentityByline)
 
     expect(
-      await screen.findByText(/signed in as tester@tucker\.invalid/i),
+      await screen.findByText(`Signed in as ${baselineEmail}`),
     ).toBeVisible()
   })
 
@@ -19,8 +23,6 @@ describe('IdentityByline', () => {
     // not one Tucker serves. It has to leave the SPA to get there: a router
     // `to` would resolve against the precached shell (ADR 0011) and quietly
     // re-render Tucker as the same signed-in person.
-    registerEndpoint('/api/me', () => ({ email: 'tester@tucker.invalid' }))
-
     await renderSuspended(IdentityByline)
 
     expect(screen.getByRole('link', { name: 'Sign out' })).toHaveAttribute(
@@ -34,11 +36,15 @@ describe('IdentityByline', () => {
     // the name and nothing else — the half that still works stays, rather than
     // the line vanishing exactly when you might most want out of it. Naming
     // nobody beats naming them wrongly, so the phrase goes with the address.
-    registerEndpoint('/api/me', () => {
-      throw new Error('backend unreachable')
-    })
+    const read = held('get', '/api/me')
+    server.use(read.handler, failingRead('/api/me'))
 
     await renderSuspended(IdentityByline)
+    await read.arrived
+    read.release()
+    // Long enough for the failure, and ofetch's own retry of it, to land.
+    await settle()
+    await settle()
 
     expect(screen.getByRole('link', { name: 'Sign out' })).toBeVisible()
     expect(screen.queryByText(/signed in as/i)).not.toBeInTheDocument()

@@ -5,8 +5,8 @@ import { vi } from 'vitest'
 // here is the browser's push machinery — the service worker registration's
 // PushManager, the Notification permission prompt, and the IANA timezone the
 // browser reports (ADR 0013) — so both tests drive the same fakes rather than
-// each redefining them. The network (`$api`) is mocked separately via
-// `registerEndpoint`.
+// each redefining them. The network (`$api`) is answered separately, by the
+// shared MSW handlers (`test/mocks/handlers/push.ts`).
 
 /** A fake browser PushSubscription, in the shape useWebPush reads. */
 export function fakePushSubscription(
@@ -79,9 +79,12 @@ export function setupWebPush(options: WebPushOptions = {}): WebPushEnv {
   return { subscribe, getSubscription, requestPermission }
 }
 
-/** Stub the browser's reported IANA timezone. */
+/** Stub the browser's reported IANA timezone, leaving date formatting real. */
 export function setTimezone(zone: string) {
-  vi.spyOn(Intl, 'DateTimeFormat').mockReturnValue({
-    resolvedOptions: () => ({ timeZone: zone }),
-  } as unknown as Intl.DateTimeFormat)
+  const resolvedOptions = Intl.DateTimeFormat.prototype.resolvedOptions
+  vi.spyOn(Intl.DateTimeFormat.prototype, 'resolvedOptions').mockImplementation(
+    function (this: Intl.DateTimeFormat) {
+      return { ...resolvedOptions.call(this), timeZone: zone }
+    },
+  )
 }

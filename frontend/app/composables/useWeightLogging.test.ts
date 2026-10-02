@@ -1,95 +1,94 @@
 import { describe, expect, it, vi } from 'vitest'
-import { defineComponent } from 'vue'
-import {
-  mockNuxtImport,
-  registerEndpoint,
-  renderSuspended,
-} from '@nuxt/test-utils/runtime'
-import { createError, readBody } from 'h3'
+import { defineComponent, ref } from 'vue'
+import { mockNuxtImport, renderSuspended } from '@nuxt/test-utils/runtime'
 import userEvent from '@testing-library/user-event'
 import { screen } from '@testing-library/vue'
-import { openGate } from '~~/test/async-gate'
+import type { components } from '#open-fetch-schemas/api'
+import { bodyAndPlan } from '~~/test/mocks/handlers/body'
+import { baselineProfile } from '~~/test/mocks/handlers/profile'
+import { held, http, serverError } from '~~/test/mocks/http'
+import { server, useMswServer } from '~~/test/mocks/node'
 import { useWeightLogging } from './useWeightLogging'
+
+useMswServer()
 
 const { toastAdd } = vi.hoisted(() => ({ toastAdd: vi.fn() }))
 mockNuxtImport('useToast', () => () => ({ add: toastAdd, remove: vi.fn() }))
 
-let postedBody: Record<string, unknown> | undefined
-// Module-scoped switches, so every test states the shape it needs rather than
-// inheriting whichever one ran before it.
-let saveSucceeds = true
-let held: Promise<void> | null = null
-registerEndpoint('/api/weight', {
-  method: 'POST',
-  handler: async (event) => {
-    postedBody = await readBody(event)
-    if (held) await held
-    if (!saveSucceeds) throw createError({ statusCode: 500 })
-    return {}
-  },
-})
+type Reading = components['schemas']['WeightMeasurementResponse']
+
+/** A User with no readings yet, whose scale refuses any day but [today]. */
+const scale = (today: string) =>
+  bodyAndPlan({ profile: baselineProfile, readings: [], today })
 
 // Drive the composable through a minimal host so it runs in a real component
 // context (matching how the rest of the suite exercises composables). The host
-// prints `sheetOpen` so a test can read it without reaching into internals.
-const host = (options: Parameters<typeof useWeightLogging>[0]) =>
+// prints `sheetOpen` so a test can read it without reaching into internals,
+// and once a save lands it reads the readings back, as a page does.
+const host = (today: string) =>
   defineComponent({
     setup() {
-      const { sheetOpen, saving, logWeight } = useWeightLogging(options)
+      const { $api } = useNuxtApp()
+      const readings = ref<Reading[]>([])
+      const { sheetOpen, saving, logWeight } = useWeightLogging({
+        today,
+        onSaved: async () => {
+          readings.value = await $api('/api/weight')
+        },
+      })
       sheetOpen.value = true
       return {
         sheetOpen,
         saving,
+        readings,
         log: () => logWeight({ date: '2026-06-01', weightKg: 84 }),
       }
     },
     template: `<button @click="log">log</button>
-      <p>sheet: {{ sheetOpen }}</p><p>saving: {{ saving }}</p>`,
+      <p>sheet: {{ sheetOpen }}</p><p>saving: {{ saving }}</p>
+      <ul><li v-for="r in readings" :key="r.id">{{ r.measuredOn }}: {{ r.weightKg }} kg</li></ul>`,
   })
 
 describe('useWeightLogging', () => {
-  it('posts the weight with the client local day as the validation anchor, then runs onSaved', async () => {
-    postedBody = undefined
-    saveSucceeds = true
-    held = null
-    const onSaved = vi.fn()
-    await renderSuspended(host({ today: '2026-06-03', onSaved }))
+  it('saves the weight stamped with the client local day, then runs onSaved', async () => {
+    server.use(...scale('2026-06-03'))
+    await renderSuspended(host('2026-06-03'))
 
     await userEvent.click(screen.getByRole('button', { name: 'log' }))
-    await vi.waitFor(() => expect(onSaved).toHaveBeenCalledOnce())
 
-    expect(postedBody).toEqual({
-      date: '2026-06-01',
-      weightKg: 84,
-      clientToday: '2026-06-03',
-    })
+    expect(await screen.findByRole('listitem')).toHaveTextContent(
+      '2026-06-01: 84 kg',
+    )
   })
 
   it('keeps the sheet open until the save lands, then closes it', async () => {
     // The sheet is the confirmation: closing it on submit would claim a reading
     // is stored before the server has said so.
-    saveSucceeds = true
-    const { gate, release } = openGate()
-    held = gate
-    await renderSuspended(host({ today: '2026-06-03', onSaved: vi.fn() }))
+    const save = held('post', '/api/weight')
+    server.use(save.handler, ...scale('2026-06-03'))
+    await renderSuspended(host('2026-06-03'))
 
     await userEvent.click(screen.getByRole('button', { name: 'log' }))
+    await save.arrived
     await vi.waitFor(() =>
       expect(screen.getByText('saving: true')).toBeVisible(),
     )
     expect(screen.getByText('sheet: true')).toBeVisible()
 
-    release()
+    save.release()
     await vi.waitFor(() =>
       expect(screen.getByText('sheet: false')).toBeVisible(),
     )
   })
 
   it('leaves the sheet open when the save fails, naming the weight it could not save', async () => {
-    saveSucceeds = false
-    held = null
     toastAdd.mockClear()
-    await renderSuspended(host({ today: '2026-06-03', onSaved: vi.fn() }))
+    server.use(
+      http.post('/api/weight', ({ response }) =>
+        response.untyped(serverError()),
+      ),
+    )
+    await renderSuspended(host('2026-06-03'))
 
     await userEvent.click(screen.getByRole('button', { name: 'log' }))
 
@@ -97,7 +96,6 @@ describe('useWeightLogging', () => {
     await vi.waitFor(() =>
       expect(screen.getByText('saving: false')).toBeVisible(),
     )
-    expect(postedBody).toBeDefined()
     expect(screen.getByText('sheet: true')).toBeVisible()
     // The failure names this save, not saving in general — the toast is all the
     // user gets, and it competes with every other mutation's.

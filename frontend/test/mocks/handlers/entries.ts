@@ -1,6 +1,6 @@
 import { estimatedEntry, weighedEntry } from '../../entry-fixtures'
 import type { FoodResponse } from '../../food-fixtures'
-import { http } from '../http'
+import { http, wrongDay } from '../http'
 import { baselineCalorieBudget } from './summary'
 
 /**
@@ -37,8 +37,6 @@ export function entryLog({
       overByKcal: over ? projected - calorieBudget : null,
     }
   }
-  const wrongDay = (date: string) =>
-    date === today ? null : { message: `${date} is not today` }
   /** A weighed portion, or why it is refused. */
   const weigh = (
     date: string,
@@ -47,7 +45,7 @@ export function entryLog({
   ):
     | { status: 400 | 404; message: string }
     | { food: FoodResponse; calories: number; protein: number } => {
-    const refused = wrongDay(date)
+    const refused = wrongDay(date, today)
     if (refused) return { status: 400, ...refused }
     const food = foods.find((f) => f.id === foodId)
     if (!food) return { status: 404, message: 'no such food' }
@@ -90,14 +88,14 @@ export function entryLog({
       '/api/entries/estimated/preview',
       async ({ request, response }) => {
         const { date, calories } = await request.json()
-        const refused = wrongDay(date)
+        const refused = wrongDay(date, today)
         if (refused) return response(400).json(refused)
         return response(200).json(projection(calories))
       },
     ),
     http.post('/api/entries/estimated', async ({ request, response }) => {
       const { date, label, calories, protein } = await request.json()
-      const refused = wrongDay(date)
+      const refused = wrongDay(date, today)
       if (refused) return response(400).json(refused)
       consumed += calories
       return response(201).json(
