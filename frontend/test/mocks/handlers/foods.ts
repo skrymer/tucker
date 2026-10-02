@@ -1,6 +1,6 @@
 import type { FoodResponse } from '../../food-fixtures'
 import { failingRead, http } from '../http'
-import { byName } from './catalog'
+import { byFoodName } from './catalog'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
@@ -10,7 +10,7 @@ const DAY_MS = 24 * 60 * 60 * 1000
  */
 export function catalogOf(foods: FoodResponse[]) {
   return http.get('/api/foods', ({ response }) =>
-    response(200).json([...foods].sort(byName)),
+    response(200).json([...foods].sort(byFoodName)),
   )
 }
 

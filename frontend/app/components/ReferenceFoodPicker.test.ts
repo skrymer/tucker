@@ -18,7 +18,7 @@ type Search = components['schemas']['ReferenceFoodSearchResponse']
 
 const chicken = { id: 1, name: 'Chicken breast', referenceFoodName: null }
 
-/** The database answering a search for the chicken's own name with [search]. */
+/** The search for the chicken's own name answered with [search]. */
 const chickenFinds = (search: Search = referenceFoodSearch()) =>
   server.use(referenceFoodsFor({ [chicken.name]: search }))
 
@@ -27,7 +27,7 @@ const riceSearch = referenceFoodSearch({
   candidates: [referenceFoodCandidate({ id: 303, name: 'Rice, white' })],
 })
 
-/** The database answering the chicken's name and the rice's. */
+/** The searches for the chicken's name and the rice's, both answered. */
 const chickenAndRiceFind = () =>
   server.use(
     referenceFoodsFor({
@@ -36,7 +36,7 @@ const chickenAndRiceFind = () =>
     }),
   )
 
-/** Searches for [q] held until released, then answered by the database. */
+/** Searches for [q] held until released, then answered as above. */
 const heldSearch = (q: string) =>
   held(
     'get',

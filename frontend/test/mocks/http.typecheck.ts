@@ -1,4 +1,4 @@
-import { http } from './http'
+import { held, http } from './http'
 
 // `pnpm typecheck` fails if any line below stops being an error: the handlers
 // are only as typed as `http` is, and a degraded `paths` would type them all.
@@ -15,4 +15,6 @@ export const drift = [
     // @ts-expect-error a status the spec does not declare
     response(418).json({ message: 'teapot' }),
   ),
+  // @ts-expect-error a method the path does not have, which would hold nothing
+  held('delete', '/api/foods').handler,
 ]

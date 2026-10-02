@@ -36,10 +36,13 @@ export function describeRequest(request: Request): string {
  * callback ever sees it: this adds it to [uncovered] and fails it instead.
  */
 export function fellThrough(uncovered: string[]) {
-  return untypedHttp.all('*/api/*', ({ request }) => {
-    uncovered.push(describeRequest(request))
-    throw new Error(`no handler for ${describeRequest(request)}`)
-  })
+  return untypedHttp.all(
+    ({ request }) => new URL(request.url).pathname.startsWith('/api/'),
+    ({ request }) => {
+      uncovered.push(describeRequest(request))
+      throw new Error(`no handler for ${describeRequest(request)}`)
+    },
+  )
 }
 
 /**
@@ -62,9 +65,9 @@ export function failingRead(
  * `arrived` resolves once the first is held. [matches] reads a copy of the
  * request, so it may read the body the handler under it reads too.
  */
-export function held(
-  method: 'get' | 'post' | 'put' | 'delete',
-  path: keyof paths,
+export function held<M extends 'get' | 'post' | 'put' | 'delete'>(
+  method: M,
+  path: Parameters<(typeof http)[M]>[0],
   matches?: (request: Request) => boolean | Promise<boolean>,
 ) {
   const { gate, release } = openGate()

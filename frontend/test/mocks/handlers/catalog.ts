@@ -25,12 +25,24 @@ const EDGES = new RegExp(
 )
 
 const fold = (name: string) => name.toLowerCase()
+const foldAscii = (name: string) =>
+  name.replace(/[A-Z]/g, (letter) => letter.toLowerCase())
 
-/** The order the backend lists Foods and Tags in: by name, ignoring case. */
-export const byName = (a: { name: string }, b: { name: string }) => {
-  const [x, y] = [fold(a.name), fold(b.name)]
-  return x < y ? -1 : x > y ? 1 : 0
-}
+const ordered =
+  (key: (name: string) => string) =>
+  (a: { name: string }, b: { name: string }) => {
+    const [x, y] = [key(a.name), key(b.name)]
+    return x < y ? -1 : x > y ? 1 : 0
+  }
+
+/** The order the backend lists Tags in: `TagName`'s, ignoring case in full. */
+const byName = ordered(fold)
+
+/**
+ * The order the backend lists Foods in: SQL `lower()`, which folds ASCII
+ * letters alone, so an accented capital keeps its place.
+ */
+export const byFoodName = ordered(foldAscii)
 
 /** How the server refuses a Tag name over 30 characters. */
 export const tagNameTooLong = 'a Tag name must be at most 30 characters'
@@ -51,8 +63,9 @@ type Shelved = { id: number; name: string; offCatalog: number }
  * Reference Foods they borrow from, and what a barcode looks up. Every write is
  * read back by the next read, so a test asserts the page after its re-read.
  *
- * - Foods are listed by name ignoring case. Saving one derives its calories
- *   from its macros (Atwater) and refuses a Tag the User does not have.
+ * - Foods are listed by name, ignoring the case of ASCII letters alone (SQL
+ *   `lower()`). Saving one derives its calories from its macros (Atwater) and
+ *   refuses a Tag the User does not have.
  *   Deleting one that has [logged] Entries is refused, naming it.
  * - Tags are listed by name ignoring case, each counted by the Foods carrying
  *   it — plus, where a [tags] entry states a `foodCount`, Foods outside this
@@ -121,7 +134,7 @@ export function foodCatalog({
 
   return [
     http.get('/api/foods', ({ response }) =>
-      response(200).json([...rows].sort(byName).map(described)),
+      response(200).json([...rows].sort(byFoodName).map(described)),
     ),
     http.post('/api/foods', async ({ request, response }) => {
       const { tagIds, barcode, ...macros } = await request.json()
@@ -178,13 +191,13 @@ export function foodCatalog({
         return response(200).json(described(row))
       },
     ),
+    // Idempotent, like every delete: an absent Food answers as a present one.
     http.delete('/api/foods/{id}/reference-food', ({ params, response }) => {
       const row = rowOf(params.id)
-      if (!row) {
-        return response(404).json({ message: `no Food with id ${params.id}` })
+      if (row) {
+        row.referenceFoodId = null
+        row.referenceFoodName = null
       }
-      row.referenceFoodId = null
-      row.referenceFoodName = null
       return response(204).empty()
     }),
     http.get('/api/foods/barcode/{barcode}', ({ params, response }) => {

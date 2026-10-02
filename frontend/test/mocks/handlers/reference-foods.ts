@@ -6,8 +6,8 @@ type Search = components['schemas']['ReferenceFoodSearchResponse']
 const nothing: Search = { suggestedId: null, candidates: [] }
 
 /**
- * The food database answering each query in [answers] with its search, and any
- * other query — a blank one included — with nothing at all.
+ * The Reference Food search answering each query in [answers] with its search,
+ * and any other query — a blank one included — with nothing at all.
  */
 export function referenceFoodsFor(answers: Record<string, Search>) {
   return http.get('/api/reference-foods', ({ query, response }) =>
@@ -15,5 +15,5 @@ export function referenceFoodsFor(answers: Record<string, Search>) {
   )
 }
 
-/** A food database that holds nothing like any Food. */
+/** No Reference Food is like any Food. */
 export const referenceFoodHandlers = [referenceFoodsFor({})]
