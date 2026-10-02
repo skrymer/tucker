@@ -136,11 +136,12 @@ handlers free of app auto-imports (`localToday()` etc.) — pass such values in.
 
 ## Changing a handler
 
-- A stateful handler stands for the backend: before writing one, read the controller
-  and repository behind each endpoint it answers — the status for an absent or
-  foreign id, the order its refusals are checked in, and the `ORDER BY` — per
-  query, not per table (SQLite's `lower()` folds ASCII alone; a bare `ORDER BY`
-  compares bytes).
+- A stateful handler stands for the backend: before writing one, read the controller,
+  the service, the repository and the domain type's own `init`/`require`s behind each
+  endpoint it answers — the status for an absent or foreign id, every refusal and the
+  order they are checked in, and the `ORDER BY` — per query, not per table (SQLite's
+  `lower()` folds ASCII alone; a bare `ORDER BY` compares bytes). The page's own
+  validation is never a reason to leave a backend refusal unmodelled.
 - Before deleting a request count, name the client regression it caught (a retry, a
   missing re-ask, a second read) and check the replacement shows that one on
   screen: a handler break cannot, since it changes the server, not the client. The
