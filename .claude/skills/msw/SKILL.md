@@ -106,11 +106,12 @@ handlers free of app auto-imports (`localToday()` etc.) — pass such values in.
 - [ ] Vitest: `useMswServer()`; replace each `registerEndpoint` with baseline or `server.use()`.
 - [ ] e2e: import from `./support/network`; replace `page.route` on `/api` with baseline or
       `network.use()`. Non-API routes (a CDN abort, a fake camera) stay `page.route`.
-- [ ] A stateful handler stands for the backend: before writing one, read the controller
-      and repository behind each endpoint it answers — the status for an absent or
-      foreign id, the order its refusals are checked in, and the `ORDER BY` — per
-      query, not per table (SQLite's `lower()` folds ASCII alone; a bare `ORDER BY`
-      compares bytes).
+- [ ] A stateful handler stands for the backend: before writing one, read the controller,
+      the service, the repository and the domain type's own `init`/`require`s behind
+      each endpoint it answers — the status for an absent or foreign id, every refusal
+      and the order they are checked in, and the `ORDER BY` — per query, not per table
+      (SQLite's `lower()` folds ASCII alone; a bare `ORDER BY` compares bytes). The
+      page's own validation is never a reason to leave a backend refusal unmodelled.
 - [ ] Delete request-capturing arrays; assert the rendered result instead.
 - [ ] Run green, then break each handler once and save the output naming each red test.
 

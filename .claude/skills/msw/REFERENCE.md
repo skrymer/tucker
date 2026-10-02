@@ -173,3 +173,12 @@ or is stated as unchecked — an annotation in `e2e/` never answers a typing fin
   row, not "a row" — a test that queries one Food dies only when that row goes — fail the
   reads, and include a break that answers data the test never listed (an extra Food);
   without it, tests about what a list holds — no match, no chips — survive.
+- **"Reads no handler answer" needs a break that reaches it.** List a test as such only
+  by naming a break of the handler it actually installs — the baseline, if it installs
+  none — that leaves it green. A break of a handler the test never installs proves
+  nothing, and an unkilled test is never a reason to remove its seed: #404 did both, and
+  left a Recipe carrying Tags its User did not hold.
+- **A red proof shows a test reads the handler, not which source the page prefers.** When
+  a test claims a figure comes from the response rather than a prop or a fallback, seed
+  the two with different values; when they agree, deleting the response's path still
+  passes.
