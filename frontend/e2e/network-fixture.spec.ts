@@ -14,8 +14,8 @@ test('lets a request outside /api go to the server, even one whose path carries 
   )
 
   // The server answers it — with the SPA's own not-found handling — rather than
-  // the fixture failing it as an uncovered /api request.
-  expect(status).toBeGreaterThan(0)
+  // the fixture failing it as an uncovered /api request, which answers a 500.
+  expect(status).not.toBe(500)
 })
 
 // Passes only because the test fails: the page swallows the failed request, so

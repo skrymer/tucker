@@ -117,9 +117,10 @@ or is stated as unchecked — an annotation in `e2e/` never answers a typing fin
   inside the holding handler, returned once released (`ManageTagsSheet.test.ts`).
 - **"Sends nothing" is shown by what a send would have made visible**: the server's
   refusal in its own words, which differ from the field's (`a Tag name must not be
-  blank`), or closing and reopening a sheet that reads afresh on open. "Asks for nothing
-  while closed" has no visible form at all; it becomes what reading on open is for — a
-  Tag created while the sheet was shut is offered once it opens.
+  blank`), or closing and reopening a sheet that reads afresh on open. A pin with no
+  visible form at all — "asks for nothing while closed" — goes unpinned, and the PR
+  body names it. A neighbouring test does not cover it: "a Tag created while the sheet
+  was shut is offered once it opens" still passes with the picker reading while shut.
 - **The typed handler can only send what the spec declares.** `POST /api/tags`
   declares 200 alone, though the backend answers a new Tag with 201, so `foodCatalog`
   answers both with 200.
