@@ -15,7 +15,10 @@ describe('the MSW baseline under the Nuxt test environment', () => {
       query: { date: '2026-06-16' },
     })
 
-    expect(summary).toMatchObject({ date: '2026-06-16', calorieBudget: 2492 })
+    expect(summary).toMatchObject({
+      date: '2026-06-16',
+      calorieBudget: 2448.6,
+    })
   })
 
   it('answers the generated $api client', async () => {

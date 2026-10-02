@@ -10,14 +10,21 @@ type Targets = Pick<
 /** A day's summary without its date, which the handler states from the request. */
 export type SummaryDay = Omit<DailySummary, 'date'>
 
-/** The baseline's Calorie Budget, in kcal. */
-export const baselineCalorieBudget = 2492
+/**
+ * The baseline's Calorie Budget, in kcal: with no Goal it is the Maintenance
+ * seed for the baseline Profile at its one reading — Mifflin-St Jeor
+ * (10 × 82.4 + 6.25 × 180 − 5 × 41 + 5) × 1.4.
+ */
+export const baselineCalorieBudget = 2448.6
 
-/** The baseline's targets: its Calorie Budget and a 170 g Protein Floor. */
+/** The baseline's Protein Floor, in grams: 2.0 g/kg of its one reading. */
+export const baselineProteinFloor = 164.8
+
+/** The baseline's targets: its Calorie Budget and Protein Floor. */
 const baselineTargets: Targets = {
   setupComplete: true,
   calorieBudget: baselineCalorieBudget,
-  proteinFloor: 170,
+  proteinFloor: baselineProteinFloor,
 }
 
 /** No Budget yet: the first review has not run, so setup is unfinished. */

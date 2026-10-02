@@ -1,8 +1,6 @@
 import type { FoodResponse } from '../../food-fixtures'
-import { failingRead, http } from '../http'
+import { askedWindow, failingRead, http } from '../http'
 import { byFoodName } from './catalog'
-
-const DAY_MS = 24 * 60 * 60 * 1000
 
 /**
  * The catalog, holding exactly [foods] and never written to — listed by name
@@ -26,15 +24,12 @@ export function frequentFoods(
   { today }: { today?: string } = {},
 ) {
   return http.get('/api/foods/frequent', ({ query, response }) => {
-    const from = query.get('from')
-    const to = query.get('to')
-    const span =
-      from && to ? (Date.parse(to) - Date.parse(from)) / DAY_MS + 1 : NaN
-    if (span !== 30) {
-      return response(400).json({ message: 'the window must be 30 days' })
+    const window = askedWindow(query, { today })
+    if ('refused' in window) {
+      return response(400).json({ message: window.refused })
     }
-    if (today && to !== today) {
-      return response(400).json({ message: `${to} is not today` })
+    if (window.days !== 30) {
+      return response(400).json({ message: 'the window must be 30 days' })
     }
     return response(200).json(ranked)
   })

@@ -1,32 +1,21 @@
-import { expect, test } from './support/test'
-import {
-  mockIntakeBreakdown,
-  mockIntakeBreakdownByWindow,
-  mockIntakeBreakdownError,
-  mockMicronutrientIntake,
-  mockNoActiveGoal,
-  mockWeightTimeline,
-  mockProfile,
-  mockReviewHistory,
-} from './support/mock-api'
-import { isoShiftDays } from './support/date'
+import { expect, test } from './support/network'
+import { localTodayIso } from './support/date'
 import { weeklyReview } from '../test/review-fixtures'
 import {
   breakdownItem,
   intakeBreakdown,
 } from '../test/intake-breakdown-fixtures'
+import {
+  intakeBreakdownByPeriod,
+  intakeBreakdownFails,
+  intakeBreakdownOf,
+  nothingLogged,
+} from '../test/mocks/handlers/intake-breakdown'
+import { profileOf, weightOnlyProfile } from '../test/mocks/handlers/profile'
+import { reviewHistory } from '../test/mocks/handlers/reviews'
 
 // The Intake Breakdown on /review: what a day's calories went on, biggest first.
 // Shares are of what was eaten, so nothing here mentions the Calorie Budget.
-
-const TRACKING = {
-  sex: 'MALE',
-  birthDate: '1990-06-15',
-  heightCm: 180,
-  tracksCalories: true,
-}
-
-const WEIGHT_ONLY = { ...TRACKING, tracksCalories: false }
 
 const HISTORY = [
   weeklyReview({ id: 1, reviewedOn: '2026-06-01', trendWeightKg: 86 }),
@@ -140,14 +129,9 @@ const A_FULL_WEEK = intakeBreakdown({
 })
 
 test.describe('with Calorie Tracking on', () => {
-  test.beforeEach(async ({ page }) => {
-    await mockProfile(page, TRACKING)
-    await mockNoActiveGoal(page)
-    await mockWeightTimeline(page)
-    await mockReviewHistory(page, HISTORY)
-    // The Vitamins and minerals section loads on this page too, and an unmocked
-    // read would put a second Retry on it and make every one below ambiguous.
-    await mockMicronutrientIntake(page)
+  // The baseline User counts calories and has logged nothing this week.
+  test.beforeEach(({ network }) => {
+    network.use(reviewHistory(HISTORY))
   })
 
   // The snapshot is the assertion that the ring carries no identity of its own:
@@ -156,8 +140,9 @@ test.describe('with Calorie Tracking on', () => {
   test('each slice states what it cost and what it returned, and the ring says nothing', async ({
     page,
     goto,
+    network,
   }) => {
-    await mockIntakeBreakdown(page, A_FULL_DAY)
+    network.use(intakeBreakdownOf(A_FULL_DAY))
 
     await goto('/review', { waitUntil: 'hydration' })
 
@@ -170,11 +155,9 @@ test.describe('with Calorie Tracking on', () => {
   test('a day with nothing logged keeps the section and says so', async ({
     page,
     goto,
+    network,
   }) => {
-    await mockIntakeBreakdown(
-      page,
-      intakeBreakdown({ totalCalories: 0, items: [] }),
-    )
+    network.use(intakeBreakdownOf(nothingLogged))
 
     await goto('/review', { waitUntil: 'hydration' })
 
@@ -184,8 +167,13 @@ test.describe('with Calorie Tracking on', () => {
   test('a failed load offers a retry rather than a blank card', async ({
     page,
     goto,
+    network,
   }) => {
-    await mockIntakeBreakdownError(page)
+    let down = true
+    network.use(
+      intakeBreakdownFails(() => down),
+      intakeBreakdownOf(A_FULL_DAY),
+    )
 
     await goto('/review', { waitUntil: 'hydration' })
 
@@ -194,7 +182,7 @@ test.describe('with Calorie Tracking on', () => {
     ).toBeVisible()
 
     // And the retry actually re-fetches: the second attempt succeeds.
-    await mockIntakeBreakdown(page, A_FULL_DAY)
+    down = false
     await page.getByRole('button', { name: 'Retry' }).click()
 
     await expect(page.getByText('Chicken breast')).toBeVisible()
@@ -202,24 +190,25 @@ test.describe('with Calorie Tracking on', () => {
   test('opens on the day, and asks about seven days ending today when the week is chosen', async ({
     page,
     goto,
+    network,
   }) => {
-    const asked = await mockIntakeBreakdownByWindow(page, (from, to) =>
-      from === to ? A_FULL_DAY : A_FULL_WEEK,
+    // Answered only for the local day and the seven days ending on it, so a
+    // page asking about any other window meets the error state instead.
+    network.use(
+      intakeBreakdownByPeriod(
+        { day: A_FULL_DAY, week: A_FULL_WEEK },
+        { today: localTodayIso() },
+      ),
     )
 
     await goto('/review', { waitUntil: 'hydration' })
 
-    // The day is what a User is shown first, and it is one day wide.
+    // The day is what a User is shown first.
     await expect(page.getByRole('tab', { name: 'Today' })).toHaveAttribute(
       'aria-selected',
       'true',
     )
     await expect(page.getByText('Almonds')).toBeVisible()
-    expect(asked).toHaveLength(1)
-    // A real day on both bounds: a client that dropped the window entirely would
-    // otherwise record two empty strings and read as a one-day window.
-    expect(asked[0]!.to).toMatch(/^\d{4}-\d{2}-\d{2}$/)
-    expect(asked[0]!.from).toBe(asked[0]!.to)
 
     await page.getByRole('tab', { name: 'Last 7 days' }).click()
 
@@ -228,27 +217,24 @@ test.describe('with Calorie Tracking on', () => {
     await expect(page.getByText('Almonds')).toBeHidden()
     await expect(page.getByText('5 of 7 days logged')).toBeVisible()
 
-    expect(asked).toHaveLength(2)
-    // Ending on the same day the first window asked about, and seven days wide,
-    // so today's Entries are in the week as well as in the day.
-    expect(asked[1]!.to).toBe(asked[0]!.to)
-    expect(asked[1]!.from).toBe(isoShiftDays(asked[1]!.to, -6))
-
     // And back again: a toggle that only works one way strands the User on the
     // week until they reload.
     await page.getByRole('tab', { name: 'Today' }).click()
 
     await expect(page.getByText('Almonds')).toBeVisible()
     await expect(page.getByText('Sourdough')).toBeHidden()
-    expect(asked).toHaveLength(3)
-    expect(asked[2]!.from).toBe(asked[2]!.to)
   })
 
   test('opens Other onto the tail it already holds, without asking again', async ({
     page,
     goto,
+    network,
   }) => {
-    const asked = await mockIntakeBreakdownByWindow(page, () => A_FULL_DAY)
+    // Any read after the first finds the day emptied, so asking again shows.
+    let reads = 0
+    network.use(
+      intakeBreakdownOf(() => (reads++ === 0 ? A_FULL_DAY : nothingLogged)),
+    )
 
     await goto('/review', { waitUntil: 'hydration' })
 
@@ -268,15 +254,17 @@ test.describe('with Calorie Tracking on', () => {
     await page.getByRole('button', { name: 'Show less' }).click()
     await expect(page.getByText('Blueberries')).toBeHidden()
 
-    // Re-read at the end, where a late duplicate request would have landed.
-    expect(asked).toHaveLength(1)
+    // Checked at the end, where a late duplicate request would have landed.
+    await expect(page.getByText('Almonds')).toBeVisible()
+    await expect(page.getByText('Nothing logged yet')).toBeHidden()
   })
 
   test('the ring reads the slice under the pointer out in its own centre', async ({
     page,
     goto,
+    network,
   }) => {
-    await mockIntakeBreakdownByWindow(page, () => A_FULL_DAY)
+    network.use(intakeBreakdownOf(A_FULL_DAY))
 
     await goto('/review', { waitUntil: 'hydration' })
 
@@ -300,12 +288,13 @@ test.describe('with Calorie Tracking on', () => {
   test('a tap reads a slice out too, which is the only pointer a phone has', async ({
     page,
     goto,
+    network,
   }, testInfo) => {
     test.skip(
       testInfo.project.name !== 'Mobile Chrome',
       'a touchscreen is what this is about',
     )
-    await mockIntakeBreakdownByWindow(page, () => A_FULL_DAY)
+    network.use(intakeBreakdownOf(A_FULL_DAY))
 
     await goto('/review', { waitUntil: 'hydration' })
 
@@ -325,11 +314,13 @@ test.describe('with Calorie Tracking on', () => {
   test('an empty day still offers the week, which is the point of asking', async ({
     page,
     goto,
+    network,
   }) => {
-    await mockIntakeBreakdownByWindow(page, (from, to) =>
-      from === to
-        ? intakeBreakdown({ totalCalories: 0, loggedDays: 0, items: [] })
-        : A_FULL_WEEK,
+    network.use(
+      intakeBreakdownByPeriod(
+        { day: nothingLogged, week: A_FULL_WEEK },
+        { today: localTodayIso() },
+      ),
     )
 
     await goto('/review', { waitUntil: 'hydration' })
@@ -346,13 +337,11 @@ test.describe('with Calorie Tracking on', () => {
 test('with Calorie Tracking off the section is absent and never asked for', async ({
   page,
   goto,
+  network,
 }) => {
-  await mockProfile(page, WEIGHT_ONLY)
-  await mockNoActiveGoal(page)
-  await mockWeightTimeline(page)
-  await mockReviewHistory(page, HISTORY)
-
-  const asked = await mockIntakeBreakdownByWindow(page, () => A_FULL_DAY)
+  // A full day to draw: the section renders whatever the page fetched, so a
+  // breakdown asked for would be on screen.
+  network.use(profileOf(weightOnlyProfile), intakeBreakdownOf(A_FULL_DAY))
 
   await goto('/review', { waitUntil: 'hydration' })
 
@@ -364,5 +353,4 @@ test('with Calorie Tracking off the section is absent and never asked for', asyn
   await expect(
     page.getByRole('region', { name: "What you're eating" }),
   ).toBeHidden()
-  expect(asked).toHaveLength(0)
 })
