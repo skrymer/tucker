@@ -79,8 +79,11 @@ needs it.
    gain. Medium gives cleanup-once (gate 1) + correctness-once (gate 3) with no
    overlap. Triage every finding: fix the genuine ones, and for each you *don't*
    fix, say why (by-design per an ADR, pre-existing, out of scope). Don't let an
-   unexplained finding through. **"Pre-existing" holds only if the harm is
-   reachable on `main`** — a root cause that predates the diff, given a new consumer
+   unexplained finding through. **A dismissal that cites precedent ("the file does
+   this throughout") is checked with `git grep` on `origin/main` before it is
+   written** — #403 dismissed a doc comment's issue number on "REFERENCE cites
+   issues throughout (#402, #358)", and gate 5 found exactly one.
+   **"Pre-existing" holds only if the harm is reachable on `main`** — a root cause that predates the diff, given a new consumer
    by it, is the diff's harm: F18 slice 6 called a JS/Kotlin trim split pre-existing,
    and gate 5 rejected it because the slice's own merge preview turned a harmless
    refusal into an unannounced merge. **Nor is "by design", "transient" or
