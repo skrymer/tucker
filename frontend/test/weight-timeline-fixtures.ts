@@ -45,6 +45,29 @@ export function timelineDays(
   })
 }
 
+/**
+ * [length] consecutive days ending on [endingOn], weighed every day and steady
+ * at 80 kg but for the first, which reads [openingKg] — so one window's opening
+ * day is told from another's.
+ */
+export function steadyDays(
+  length: number,
+  endingOn: string,
+  openingKg: number,
+): Required<WeightTimelineDayResponse>[] {
+  const last = Date.parse(endingOn)
+  return Array.from({ length }, (_, index) => {
+    const kg = index === 0 ? openingKg : 80
+    return timelineDay({
+      date: new Date(last - (length - 1 - index) * 24 * 60 * 60 * 1000)
+        .toISOString()
+        .slice(0, 10),
+      weightKg: kg,
+      trendKg: kg,
+    })
+  })
+}
+
 /** What a timeline names as the half it drew, or null in Maintenance Mode. */
 type Evidence = Required<WeightTimelineResponse>['evidence']
 

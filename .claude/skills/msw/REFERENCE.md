@@ -132,6 +132,19 @@ or is stated as unchecked — an annotation in `e2e/` never answers a typing fin
 - **The typed handler can only send what the spec declares.** `POST /api/tags`
   declares 200 alone, though the backend answers a new Tag with 201, so `foodCatalog`
   answers both with 200.
+- **"Never asked for" needs a page that would draw what it fetched.** Override the
+  read with an answer that has content, settle the page on something else (the
+  ledger's "Run review now"), and assert the section absent. That holds only while
+  the gate is in setup and the template draws whatever came back (`review.vue`); a
+  template that gates too hides a stray fetch, and needs a different proof.
+- **"Not asked again" is a handler whose later reads answer differently.** A
+  counter in the override (`reads++ === 0 ? A_FULL_DAY : nothingLogged`) turns a
+  duplicate read into a change on screen. Check for it at the end, where a late read
+  would have landed.
+- **Reading another factory's state through its own read** (rule 3):
+  `micronutrientIntakeOver(catalog, answer)` calls `getResponse` on the catalog's
+  handlers for `/api/foods`, so a match claimed through `foodCatalog` moves the next
+  intake, and `foodCatalog` stays a plain array for its many callers.
 - **Coexistence in Vitest.** A path registered through `registerEndpoint` is answered by
   Nuxt even in an opted-in file, ahead of any MSW handler for it. The shim makes URLs
   absolute, which Nuxt's registry only knows relative, so it strips `location.origin` and

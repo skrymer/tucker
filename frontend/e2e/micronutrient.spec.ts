@@ -1,22 +1,20 @@
-import { expect, test } from './support/test'
-import {
-  mockIntakeBreakdown,
-  mockMicronutrientIntake,
-  mockNoActiveGoal,
-  mockWeightTimeline,
-  mockProfile,
-  mockReferenceFoods,
-  mockReviewHistory,
-} from './support/mock-api'
-import { weeklyReview } from '../test/review-fixtures'
+import { expect, test } from './support/network'
+import { localTodayIso } from './support/date'
 import { food } from '../test/food-fixtures'
 import {
-  micronutrientIntake,
   micronutrientRow,
   referenceFoodCandidate,
+  referenceFoodSearch,
   unmatchedFood,
   unstatedMicronutrientRow,
 } from '../test/micronutrient-fixtures'
+import { foodCatalog } from '../test/mocks/handlers/catalog'
+import {
+  micronutrientIntakeOf,
+  micronutrientIntakeOver,
+} from '../test/mocks/handlers/micronutrients'
+import { profileOf, weightOnlyProfile } from '../test/mocks/handlers/profile'
+import { referenceFoodsFor } from '../test/mocks/handlers/reference-foods'
 
 /**
  * The Vitamins and minerals section on `/review` — the coverage figure, the
@@ -25,24 +23,36 @@ import {
 
 const chickenBreast = referenceFoodCandidate()
 
+/** The search the picker opens on, seeded with the queued Food's own name. */
+const searchingChicken = referenceFoodsFor({
+  'Chicken breast': referenceFoodSearch({
+    suggestedId: chickenBreast.id,
+    candidates: [chickenBreast],
+  }),
+})
+
 test('states the week’s coverage and folds what is left to match into one disclosure', async ({
   page,
   goto,
+  network,
 }) => {
-  await mockNoActiveGoal(page)
-  await mockWeightTimeline(page)
-  await mockIntakeBreakdown(page)
-  await mockReviewHistory(page, [])
-  await mockMicronutrientIntake(page, {
-    totalCalories: 12000,
-    loggedDays: 7,
-    rows: [],
-    coverage: 0.62,
-    unmatched: [
-      { foodId: 1, name: 'Chicken breast', share: 0.27 },
-      { foodId: 2, name: 'Jasmine rice', share: 0.11 },
-    ],
-  })
+  // Answered only for the seven days ending on the local day, so a page asking
+  // about any other week meets the error state instead of this one.
+  network.use(
+    micronutrientIntakeOf(
+      {
+        totalCalories: 12000,
+        loggedDays: 7,
+        rows: [],
+        coverage: 0.62,
+        unmatched: [
+          { foodId: 1, name: 'Chicken breast', share: 0.27 },
+          { foodId: 2, name: 'Jasmine rice', share: 0.11 },
+        ],
+      },
+      { today: localTodayIso() },
+    ),
+  )
 
   await goto('/review', { waitUntil: 'hydration' })
 
@@ -62,40 +72,42 @@ test('states the week’s coverage and folds what is left to match into one disc
 test('reads the week per nutrient, tiling what it can claim and only naming what it cannot', async ({
   page,
   goto,
+  network,
 }) => {
-  await mockNoActiveGoal(page)
-  await mockWeightTimeline(page)
-  await mockIntakeBreakdown(page)
-  await mockReviewHistory(page, [])
-  await mockMicronutrientIntake(page, {
-    totalCalories: 12000,
-    loggedDays: 5,
-    coverage: 0.62,
-    rows: [
-      micronutrientRow({
-        nutrient: 'SODIUM',
-        label: 'Sodium',
-        unit: 'mg',
-        amount: 2430,
-        readAgainst: { kind: 'SUGGESTED_DIETARY_TARGET', amount: 2000 },
-        claim: 'OVER_LIMIT',
-      }),
-      micronutrientRow({
-        nutrient: 'IRON',
-        label: 'Iron',
-        unit: 'mg',
-        amount: 21.4,
-        readAgainst: { kind: 'RECOMMENDED', amount: 18 },
-        claim: 'CLEARS_REFERENCE',
-      }),
-      unstatedMicronutrientRow({
-        nutrient: 'VITAMIN_B12',
-        label: 'Vitamin B12',
-        unit: 'µg',
-      }),
-    ],
-    unmatched: [{ foodId: 1, name: 'Chicken breast', share: 0.27 }],
-  })
+  network.use(
+    micronutrientIntakeOf(
+      {
+        totalCalories: 12000,
+        loggedDays: 5,
+        coverage: 0.62,
+        rows: [
+          micronutrientRow({
+            nutrient: 'SODIUM',
+            label: 'Sodium',
+            unit: 'mg',
+            amount: 2430,
+            readAgainst: { kind: 'SUGGESTED_DIETARY_TARGET', amount: 2000 },
+            claim: 'OVER_LIMIT',
+          }),
+          micronutrientRow({
+            nutrient: 'IRON',
+            label: 'Iron',
+            unit: 'mg',
+            amount: 21.4,
+            readAgainst: { kind: 'RECOMMENDED', amount: 18 },
+            claim: 'CLEARS_REFERENCE',
+          }),
+          unstatedMicronutrientRow({
+            nutrient: 'VITAMIN_B12',
+            label: 'Vitamin B12',
+            unit: 'µg',
+          }),
+        ],
+        unmatched: [{ foodId: 1, name: 'Chicken breast', share: 0.27 }],
+      },
+      { today: localTodayIso() },
+    ),
+  )
 
   await goto('/review', { waitUntil: 'hydration' })
 
@@ -120,26 +132,20 @@ test('reads the week per nutrient, tiling what it can claim and only naming what
 test('with Calorie Tracking off the section is absent and never asked for', async ({
   page,
   goto,
+  network,
 }) => {
-  await mockProfile(page, {
-    sex: 'MALE',
-    birthDate: '1990-06-15',
-    heightCm: 180,
-    tracksCalories: false,
-  })
-  await mockNoActiveGoal(page)
-  await mockWeightTimeline(page)
-  await mockIntakeBreakdown(page)
-  // A review in the ledger, so "Run review now" is the settled-page marker below
-  // rather than the empty state's own call to action.
-  await mockReviewHistory(page, [
-    weeklyReview({ id: 1, reviewedOn: '2026-06-01', trendWeightKg: 86 }),
-  ])
-  const asked: string[] = []
-  await page.route('**/api/micronutrient-intake**', (route) => {
-    asked.push(route.request().url())
-    return route.fulfill({ json: {} })
-  })
+  // The baseline's ledger holds a review, so "Run review now" is the
+  // settled-page marker below rather than the empty state's own call to action.
+  network.use(
+    profileOf(weightOnlyProfile),
+    // A week to state: the section renders whatever the page fetched, so an
+    // intake asked for would be on screen.
+    micronutrientIntakeOf({
+      totalCalories: 12000,
+      coverage: 0.62,
+      unmatched: [unmatchedFood()],
+    }),
+  )
 
   await goto('/review', { waitUntil: 'hydration' })
 
@@ -147,36 +153,32 @@ test('with Calorie Tracking off the section is absent and never asked for', asyn
   await expect(
     page.getByRole('button', { name: 'Run review now' }),
   ).toBeVisible()
+  // Gated in setup, not left to the data: it reads a log Tucker has agreed to
+  // stop asking for, so it must not be asked for either (ADR 0027).
   await expect(
     page.getByRole('region', { name: 'Vitamins and minerals' }),
   ).toBeHidden()
-  // Gated in setup, not left to the data: it reads a log Tucker has agreed to
-  // stop asking for, so it must not be asked for either (ADR 0027).
-  expect(asked).toHaveLength(0)
 })
 
 test('a matched food in the catalog names its borrow and can take it back', async ({
   page,
   goto,
+  network,
 }) => {
-  await mockReferenceFoods(page, [chickenBreast])
-  let matched = true
-  await page.route('**/api/foods', (route) =>
-    route.fulfill({
-      json: [
+  network.use(
+    ...foodCatalog({
+      foods: [
         food({
           id: 1,
           name: 'Chicken breast',
-          referenceFoodId: matched ? chickenBreast.id : null,
-          referenceFoodName: matched ? chickenBreast.name : null,
+          referenceFoodId: chickenBreast.id,
+          referenceFoodName: chickenBreast.name,
         }),
       ],
+      referenceFoods: [chickenBreast],
     }),
+    searchingChicken,
   )
-  await page.route('**/api/foods/*/reference-food', (route) => {
-    matched = route.request().method() !== 'DELETE'
-    return route.fulfill({ status: 204, body: '' })
-  })
 
   await goto('/foods', { waitUntil: 'hydration' })
 
@@ -199,16 +201,12 @@ test('a matched food in the catalog names its borrow and can take it back', asyn
 test('with Calorie Tracking off the catalog says nothing about a borrow', async ({
   page,
   goto,
+  network,
 }) => {
-  await mockProfile(page, {
-    sex: 'MALE',
-    birthDate: '1990-06-15',
-    heightCm: 180,
-    tracksCalories: false,
-  })
-  await page.route('**/api/foods', (route) =>
-    route.fulfill({
-      json: [
+  network.use(
+    profileOf(weightOnlyProfile),
+    ...foodCatalog({
+      foods: [
         food({
           id: 1,
           name: 'Chicken breast',
@@ -216,6 +214,7 @@ test('with Calorie Tracking off the catalog says nothing about a borrow', async 
           referenceFoodName: chickenBreast.name,
         }),
       ],
+      referenceFoods: [chickenBreast],
     }),
   )
 
@@ -237,39 +236,39 @@ test('with Calorie Tracking off the catalog says nothing about a borrow', async 
 test('matching a queued food from the picker moves the coverage figure', async ({
   page,
   goto,
+  network,
 }) => {
-  await mockNoActiveGoal(page)
-  await mockWeightTimeline(page)
-  await mockIntakeBreakdown(page)
-  await mockReviewHistory(page, [])
-  await mockReferenceFoods(page, [chickenBreast])
-
-  let matched = false
-  await page.route('**/api/micronutrient-intake**', (route) =>
-    route.fulfill({
-      json: matched
-        ? micronutrientIntake({
-            totalCalories: 12000,
-            coverage: 1,
-            rows: [
-              micronutrientRow({ label: 'Iron', claim: 'CLEARS_REFERENCE' }),
-            ],
-            unmatched: [],
-          })
-        : micronutrientIntake({
-            totalCalories: 12000,
-            coverage: 0,
-            rows: [],
-            unmatched: [
-              unmatchedFood({ foodId: 1, name: 'Chicken breast', share: 1 }),
-            ],
-          }),
-    }),
-  )
-  await page.route('**/api/foods/*/reference-food', (route) => {
-    matched = true
-    return route.fulfill({ json: { id: 1, referenceFoodId: 101 } })
+  const catalog = foodCatalog({
+    foods: [food({ id: 1, name: 'Chicken breast' })],
+    referenceFoods: [chickenBreast],
   })
+  network.use(
+    ...catalog,
+    searchingChicken,
+    // The week is all chicken, so matching it covers every calorie.
+    micronutrientIntakeOver(
+      catalog,
+      ([chicken]) =>
+        chicken!.referenceFoodId === null
+          ? {
+              totalCalories: 12000,
+              coverage: 0,
+              rows: [],
+              unmatched: [
+                unmatchedFood({ foodId: 1, name: 'Chicken breast', share: 1 }),
+              ],
+            }
+          : {
+              totalCalories: 12000,
+              coverage: 1,
+              rows: [
+                micronutrientRow({ label: 'Iron', claim: 'CLEARS_REFERENCE' }),
+              ],
+              unmatched: [],
+            },
+      { today: localTodayIso() },
+    ),
+  )
 
   await goto('/review', { waitUntil: 'hydration' })
 

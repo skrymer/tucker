@@ -61,7 +61,10 @@ handlers free of app auto-imports (`localToday()` etc.) — pass such values in.
    asserts the page after the re-read — or, where the page shows the response itself (a
    toast naming what was logged), derives that response from the body (`entryLog`
    scales a Food's per-100 g figures by the grams sent), so what the User reads proves
-   what was sent. A fixed reply proves nothing about the body.
+   what was sent. A fixed reply proves nothing about the body. A windowed read
+   (`?from=&to=`) is answered per width and only for a window ending on the day the
+   test passes in (`intakeBreakdownByPeriod`, `weightTimelineByWidth`), and the test
+   asserts each window's own content.
 2. **Type every response.** `response(status).json(body)` checks the status against the
    spec and the body against that status' schema. `response.untyped(...)` only for a
    status the spec does not declare: an unexpected failure is
@@ -76,11 +79,14 @@ handlers free of app auto-imports (`localToday()` etc.) — pass such values in.
    catalog, its Recipes, its Tags and its barcode look-up from one state); one whose re-read lands
    on **another** endpoint returns
    `{ handlers, <state getter> }` (`reachedGoal`, `savedProfile`), and the other
-   endpoint's handler reads the getter (`summaryOf(() => …)`). Never keep state in the
+   endpoint's handler reads the getter (`summaryOf(() => …)`) — or, where the state
+   lives in a plain-array factory, reads it through that factory's own read with
+   `getResponse` (`micronutrientIntakeOver(catalog, …)`). Never keep state in the
    baseline: it is shared across tests. Overriding a derived field overrides its inputs
    too — `setupComplete: false` with the baseline's reading still standing is a state the
    backend cannot send (it derives it from the Profile and the latest Weight
-   Measurement) — and the test's comment is checked against the result.
+   Measurement), and a Weight Timeline naming a plan needs `goalInProgress()` beside
+   it — and the test's comment is checked against the result.
 4. **Error overrides are not `{ once: true }`** on a GET, unless the call passes `retry: 0`:
    ofetch retries a failed GET by itself, and the retry reaches the baseline, so the error
    never shows.

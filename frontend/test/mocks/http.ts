@@ -23,6 +23,33 @@ export const serverError = () =>
 /** The body of a 503: the server could not be reached. */
 export const noConnection = { message: 'no connection to the server' }
 
+/** A window a windowed read asks about: both bounds inclusive, [days] wide. */
+export type AskedWindow = { from: string; to: string; days: number }
+
+/**
+ * The window a windowed read's `from` and `to` ask about, or why it is refused:
+ * a bound missing, or a window ending before it starts, as the backend refuses
+ * them — and, given [today], a window ending on any other day, which the real
+ * endpoint does not refuse, standing in for a page that asked about the wrong
+ * day (ADR 0014).
+ */
+export function askedWindow(
+  query: { get(name: 'from' | 'to'): string | null },
+  { today }: { today?: string } = {},
+): AskedWindow | { refused: string } {
+  const from = query.get('from')
+  const to = query.get('to')
+  const days =
+    from && to
+      ? (Date.parse(to) - Date.parse(from)) / (24 * 60 * 60 * 1000) + 1
+      : NaN
+  if (!from || !to || !(days >= 1)) {
+    return { refused: 'a window must not end before it starts' }
+  }
+  if (today && to !== today) return { refused: `${to} is not today` }
+  return { from, to, days }
+}
+
 /** A request as an uncovered-request failure names it: method, path, query. */
 export function describeRequest(request: Request): string {
   const { pathname, search } = new URL(request.url)
