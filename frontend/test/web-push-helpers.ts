@@ -79,9 +79,12 @@ export function setupWebPush(options: WebPushOptions = {}): WebPushEnv {
   return { subscribe, getSubscription, requestPermission }
 }
 
-/** Stub the browser's reported IANA timezone. */
+/** Stub the browser's reported IANA timezone, leaving date formatting real. */
 export function setTimezone(zone: string) {
-  vi.spyOn(Intl, 'DateTimeFormat').mockReturnValue({
-    resolvedOptions: () => ({ timeZone: zone }),
-  } as unknown as Intl.DateTimeFormat)
+  const resolvedOptions = Intl.DateTimeFormat.prototype.resolvedOptions
+  vi.spyOn(Intl.DateTimeFormat.prototype, 'resolvedOptions').mockImplementation(
+    function (this: Intl.DateTimeFormat) {
+      return { ...resolvedOptions.call(this), timeZone: zone }
+    },
+  )
 }

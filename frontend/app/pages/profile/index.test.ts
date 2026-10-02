@@ -7,6 +7,7 @@ import { bodyAndPlan } from '~~/test/mocks/handlers/body'
 import { baselineProfile } from '~~/test/mocks/handlers/profile'
 import { failingRead, held, http } from '~~/test/mocks/http'
 import { server, useMswServer } from '~~/test/mocks/node'
+import { reopenProfile } from '~~/test/profile-page'
 import { setupWebPush } from '~~/test/web-push-helpers'
 import Profile from './index.vue'
 
@@ -27,12 +28,6 @@ const holds = (
 ) => server.use(...bodyAndPlan({ profile, readings, ...guards }))
 
 const reading: Reading = { id: 1, measuredOn: '2026-05-29', weightKg: 84 }
-
-/** Leave /profile and open it afresh, which reads everything back. */
-async function reopen(page: { unmount: () => void }) {
-  page.unmount()
-  return renderSuspended(Profile)
-}
 
 const saveProfile = () => screen.getByRole('button', { name: /save profile/i })
 
@@ -197,7 +192,7 @@ describe('/profile saving the details form', () => {
 
     await saveDetails()
 
-    await reopen(page)
+    await reopenProfile(page)
     expect(screen.getByRole('switch', { name: /reminder/i })).toBeChecked()
     expect(screen.getByLabelText(/reminder hour/i)).toHaveValue(21)
     expect(screen.getByRole('radio', { name: /weight only/i })).toBeChecked()
@@ -234,7 +229,7 @@ describe('/profile saving the details form', () => {
     await userEvent.click(screen.getByRole('radio', { name: /weight only/i }))
     await saveDetails()
 
-    await reopen(page)
+    await reopenProfile(page)
     expect(screen.getByRole('radio', { name: /weight only/i })).toBeChecked()
   })
 })

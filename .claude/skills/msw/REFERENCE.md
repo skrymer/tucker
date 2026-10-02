@@ -161,10 +161,10 @@ or is stated as unchecked — an annotation in `e2e/` never answers a typing fin
   reading into `bodyAndPlan`, so the page holds a stale trend that the next save is
   judged against. An override answering a different trend would leave the readings
   saying otherwise.
-- **A handler must not use a browser API a test stubs.** `setTimezone` spies on
-  `Intl.DateTimeFormat`, and `savedProfile`'s zone check went through it, so every
-  save in `ReminderSettings.test.ts` was refused. `handlers/profile.ts` takes its
-  reference when the module loads, before any test stubs it.
+- **A browser stub replaces only the member a test needs.** Handlers run in the
+  test's globals, so a stub of a whole constructor reaches them too: replacing
+  `Intl.DateTimeFormat` to fake the device's zone broke `savedProfile`'s zone
+  check. `setTimezone` spies on `resolvedOptions` alone.
 - **A body is written back in the DTO's field order**, because a test that lists
   fields (`toEqual` on rendered rows) reads that order. `savedProfile` builds the
   saved Profile field by field, never by spreading defaults under the body.

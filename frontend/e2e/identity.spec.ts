@@ -1,22 +1,11 @@
 import { expect, test } from './support/network'
-import { http } from '../test/mocks/http'
-
-const EMAIL = 'tester@tucker.invalid'
-
-/** Access has admitted the person at [EMAIL]. */
-const signedInAs = http.get('/api/me', ({ response }) =>
-  response(200).json({ email: EMAIL }),
-)
+import { baselineEmail } from '../test/mocks/handlers/identity'
 
 test.describe('the identity byline', () => {
-  test.beforeEach(({ network }) => {
-    network.use(signedInAs)
-  })
-
   test('names the person whose data is on screen', async ({ page, goto }) => {
     await goto('/profile', { waitUntil: 'hydration' })
 
-    await expect(page.getByText(`Signed in as ${EMAIL}`)).toBeVisible()
+    await expect(page.getByText(`Signed in as ${baselineEmail}`)).toBeVisible()
   })
 
   test('points Sign out at Cloudflare Access, outside the SPA', async ({
@@ -54,16 +43,10 @@ const OTHER_PAGES = [
 ]
 
 for (const { path, heading } of OTHER_PAGES) {
-  test(`${path} carries no identity chrome`, async ({
-    page,
-    goto,
-    network,
-  }) => {
+  test(`${path} carries no identity chrome`, async ({ page, goto }) => {
     // The baseline is enough of each page's own data to let it actually
     // render — the heading assertion below is what makes the two absence
     // assertions mean something.
-    network.use(signedInAs)
-
     await goto(path, { waitUntil: 'hydration' })
 
     // level 1 so this is the page's own title, not a section heading that

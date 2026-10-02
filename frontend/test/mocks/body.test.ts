@@ -49,6 +49,28 @@ describe('bodyAndPlan', () => {
     ])
   })
 
+  it('answers the latest reading as the newest day weighed, and none before any', async () => {
+    server.use(...bodyAndPlan({ profile: baselineProfile, readings: [] }))
+    const { $api } = useNuxtApp()
+
+    const none = await $api('/api/weight/latest').catch((error) => error.data)
+    await $api('/api/weight', {
+      method: 'POST',
+      body: { date: '2026-05-03', weightKg: 80, clientToday: '2026-05-04' },
+    })
+    await $api('/api/weight', {
+      method: 'POST',
+      body: { date: '2026-05-01', weightKg: 90, clientToday: '2026-05-04' },
+    })
+
+    expect(none).toEqual({ message: 'no weight measurements recorded yet' })
+    expect(await $api('/api/weight/latest')).toEqual({
+      id: 1,
+      measuredOn: '2026-05-03',
+      weightKg: 80,
+    })
+  })
+
   it('refuses a reading dated after the day the page says it is, keeping nothing', async () => {
     server.use(...bodyAndPlan({ profile: baselineProfile, readings: [] }))
     const { $api } = useNuxtApp()

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen } from '@testing-library/vue'
 import { settle } from '~~/test/async-gate'
+import { baselineEmail } from '~~/test/mocks/handlers/identity'
 import { failingRead, held } from '~~/test/mocks/http'
 import { server, useMswServer } from '~~/test/mocks/node'
 import IdentityByline from './IdentityByline.vue'
@@ -13,7 +14,7 @@ describe('IdentityByline', () => {
     await renderSuspended(IdentityByline)
 
     expect(
-      await screen.findByText(/signed in as user@example\.com/i),
+      await screen.findByText(`Signed in as ${baselineEmail}`),
     ).toBeVisible()
   })
 

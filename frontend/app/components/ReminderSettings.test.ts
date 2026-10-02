@@ -3,11 +3,11 @@ import { mockNuxtImport, renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen, within } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import type { components } from '#open-fetch-schemas/api'
-import { savedProfile } from '~~/test/mocks/handlers/profile'
+import { baselineProfile, savedProfile } from '~~/test/mocks/handlers/profile'
 import { pushServiceFor } from '~~/test/mocks/handlers/push'
 import { http, serverError } from '~~/test/mocks/http'
 import { server, useMswServer } from '~~/test/mocks/node'
-import ProfilePage from '~/pages/profile/index.vue'
+import { reopenProfile } from '~~/test/profile-page'
 import ReminderSettings from './ReminderSettings.vue'
 import {
   fakePushSubscription,
@@ -29,13 +29,9 @@ mockNuxtImport('useToast', () => () => ({ add: toastAdd, remove: vi.fn() }))
 type ProfileDto = components['schemas']['ProfileDto']
 
 const profile: ProfileDto = {
-  sex: 'MALE',
-  birthDate: '1986-05-22',
-  heightCm: 180,
+  ...baselineProfile,
   timezone: 'UTC',
   reminderHour: 9,
-  remindersEnabled: false,
-  tracksCalories: true,
 }
 
 const thisDevice = fakePushSubscription('https://push.example/this-device')
@@ -44,15 +40,6 @@ const render = (over: Partial<ProfileDto> = {}, onSaved = () => {}) =>
   renderSuspended(ReminderSettings, {
     props: { profile: { ...profile, ...over }, onSaved },
   })
-
-/**
- * Leave the settings and open /profile afresh, which reads the Profile back:
- * what a save kept is what the reminder controls and the details form show.
- */
-async function reopenProfile(settings: { unmount: () => void }) {
-  settings.unmount()
-  await renderSuspended(ProfilePage)
-}
 
 const reminderSwitch = () => screen.getByRole('switch', { name: /reminder/i })
 

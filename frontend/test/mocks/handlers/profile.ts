@@ -1,5 +1,5 @@
 import type { components } from '#open-fetch-schemas/api'
-import { http, kotlinDouble } from '../http'
+import { http, kotlinDouble, wrongDay } from '../http'
 
 type Profile = components['schemas']['ProfileDto']
 
@@ -31,13 +31,10 @@ const profileDefaults = {
   tracksCalories: true,
 }
 
-// Held before any test can stub the browser's reported zone through it.
-const DateTimeFormat = Intl.DateTimeFormat
-
 /** Whether [zone] names an IANA zone, as `ZoneId.getAvailableZoneIds()` holds. */
 function isKnownZone(zone: string): boolean {
   try {
-    new DateTimeFormat('en', { timeZone: zone })
+    new Intl.DateTimeFormat('en', { timeZone: zone })
     return true
   } catch {
     return false
@@ -79,9 +76,8 @@ export function savedProfile(
         if (!today) {
           return response(400).json({ message: 'clientToday is required' })
         }
-        if (guards.today && today !== guards.today) {
-          return response(400).json({ message: `${today} is not today` })
-        }
+        const notToday = wrongDay(today, guards.today)
+        if (notToday) return response(400).json(notToday)
         const body = await request.json()
         // In `ProfileDto`'s own field order, as the backend writes it back.
         const saved: Profile = {

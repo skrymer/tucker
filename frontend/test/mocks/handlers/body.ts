@@ -1,5 +1,5 @@
 import type { components } from '#open-fetch-schemas/api'
-import { http, kotlinDouble } from '../http'
+import { DAY_MS, http, kotlinDouble, wrongDay } from '../http'
 import { savedProfile } from './profile'
 
 type Profile = components['schemas']['ProfileDto']
@@ -16,7 +16,9 @@ const KCAL_PER_KG_FAT = 7700
 /** The share of each reading the trend takes in, per day (`WeightTrend.SMOOTHING`). */
 const SMOOTHING = 0.1
 
-const DAY_MS = 24 * 60 * 60 * 1000
+/** [readings] by the day they were taken, as `ORDER BY measured_on` lists them. */
+const oldestFirst = (readings: Reading[]) =>
+  [...readings].sort((a, b) => a.measuredOn.localeCompare(b.measuredOn))
 
 /**
  * The live Trend Weight over [readings], as `WeightTrend.from` smooths it:
@@ -24,11 +26,8 @@ const DAY_MS = 24 * 60 * 60 * 1000
  * backend's order of operations so it sends the same double. Null with none.
  */
 function trendOf(readings: Reading[]): Trend | null {
-  const sorted = [...readings].sort((a, b) =>
-    a.measuredOn.localeCompare(b.measuredOn),
-  )
   let trend: Trend | null = null
-  for (const { measuredOn, weightKg } of sorted) {
+  for (const { measuredOn, weightKg } of oldestFirst(readings)) {
     if (trend === null) {
       trend = { trendKg: weightKg, asOf: measuredOn }
       continue
@@ -61,9 +60,7 @@ function seededMaintenance(
   profile: Profile | null,
   readings: Reading[],
 ): number | null {
-  const first = [...readings].sort((a, b) =>
-    a.measuredOn.localeCompare(b.measuredOn),
-  )[0]
+  const first = oldestFirst(readings)[0]
   if (!profile?.tracksCalories || !first) return null
   const base =
     10 * first.weightKg +
@@ -80,9 +77,9 @@ const plainRate = (rate: number) =>
 /**
  * One User's body and plan, kept as the backend keeps them: the Profile (null
  * for none yet), the Weight Measurements and the Goals, each read back as the
- * last save left it. Answers the Profile, the reading list, the trend and a
- * save, and the Goal history, the active Goal and a new one; the latest
- * reading and Goal Progress stay the baseline's.
+ * last save left it. Answers the Profile, the readings (the list, the latest,
+ * the trend and a save), and the Goal history, the active Goal and a new one;
+ * Goal Progress stays the baseline's.
  *
  * Given [today], a save stamped with any other day is refused, standing in for
  * a page that sent the wrong one (ADR 0014); [timezone] does the same for the
@@ -107,8 +104,6 @@ export function bodyAndPlan(seed: {
     ...goal,
     dailyDeficitKcal: (goal.rateKgPerWeek * KCAL_PER_KG_FAT) / 7,
   })
-  const oldestFirst = () =>
-    [...readings].sort((a, b) => a.measuredOn.localeCompare(b.measuredOn))
   return [
     ...profile.handlers,
     http.get('/api/goal', ({ response }) => {
@@ -127,9 +122,8 @@ export function bodyAndPlan(seed: {
     http.post('/api/goal', async ({ request, response }) => {
       const { startedOn, targetWeightKg, rateKgPerWeek, clientToday } =
         await request.json()
-      if (seed.today && clientToday !== seed.today) {
-        return response(400).json({ message: `${clientToday} is not today` })
-      }
+      const notToday = wrongDay(clientToday, seed.today)
+      if (notToday) return response(400).json(notToday)
       const trend = trendOf(readings)
       if (trend === null) {
         return response(400).json({
@@ -182,13 +176,18 @@ export function bodyAndPlan(seed: {
       return response(201).json(described(created))
     }),
     http.get('/api/weight', ({ response }) =>
-      response(200).json(oldestFirst()),
+      response(200).json(oldestFirst(readings)),
     ),
+    http.get('/api/weight/latest', ({ response }) => {
+      const latest = oldestFirst(readings).at(-1)
+      return latest
+        ? response(200).json(latest)
+        : response(404).json({ message: 'no weight measurements recorded yet' })
+    }),
     http.post('/api/weight', async ({ request, response }) => {
       const { date, weightKg, clientToday } = await request.json()
-      if (seed.today && clientToday !== seed.today) {
-        return response(400).json({ message: `${clientToday} is not today` })
-      }
+      const notToday = wrongDay(clientToday, seed.today)
+      if (notToday) return response(400).json(notToday)
       if (clientToday && date > clientToday) {
         return response(400).json({
           message: `measuredOn must not be in the future (was ${date}, today is ${clientToday})`,
