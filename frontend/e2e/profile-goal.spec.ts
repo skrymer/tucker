@@ -1,7 +1,7 @@
 import { expect, test } from './support/network'
 import { bodyAndPlan } from '../test/mocks/handlers/body'
 import { baselineProfile } from '../test/mocks/handlers/profile'
-import { localTodayIso } from './support/date'
+import { localTodayIso, pinToLocalMorning } from './support/date'
 
 test('setting a goal on /profile replaces the form with the new goal card', async ({
   page,
@@ -135,10 +135,12 @@ test('a rate the user cannot afford is refused under the rate field, not the tar
   goto,
   network,
 }) => {
-  // A 50 kg, 160 cm woman maintains on ~1595 kcal, while 1.5 kg/week demands
-  // 1650 — refused at creation (ADR 0030) while the rate control is still in
-  // her hand. Two inputs on this form can each be refused, so the message has
-  // to land on the one that is wrong.
+  // A 50 kg, 160 cm woman of 40 maintains on ~1595 kcal, while 1.5 kg/week
+  // demands 1650 — refused at creation (ADR 0030) while the rate control is
+  // still in her hand. Two inputs on this form can each be refused, so the
+  // message has to land on the one that is wrong. The clock is pinned because
+  // her age, and so her Maintenance, is taken on the day the page sends.
+  await pinToLocalMorning(page)
   network.use(
     ...bodyAndPlan({
       profile: {

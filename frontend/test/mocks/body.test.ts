@@ -187,7 +187,7 @@ describe('bodyAndPlan', () => {
   })
 
   it('refuses a rate whose deficit outruns the seeded Maintenance on the rate field', async () => {
-    // Mifflin-St Jeor on the first reading's day, at 40:
+    // Mifflin-St Jeor at the trend its one reading leaves, at 40:
     // (10 × 50 + 6.25 × 160 − 5 × 40 − 161) × 1.4 = 1594.6 kcal, while 1.5 kg
     // a week asks for 1650.
     server.use(
@@ -216,6 +216,45 @@ describe('bodyAndPlan', () => {
     expect(refused).toEqual({
       message:
         'at your current maintenance of 1595 kcal a day, 1.5 kg a week would leave you nothing to eat — choose a slower rate',
+      field: 'rateKgPerWeek',
+    })
+  })
+
+  it('seeds the Maintenance a rate is judged against at the live trend on the day the page says it is', async () => {
+    // No review exists to hold, so the seed is taken fresh: at 40, at the
+    // trend of 51.16 kg the two readings leave, it is 1610.9 kcal — under the
+    // 1650 that 1.5 kg a week asks for. At the first reading's 70 kg it
+    // would be 1874.6, and the rate would pass.
+    server.use(
+      ...bodyAndPlan({
+        profile: {
+          ...baselineProfile,
+          sex: 'FEMALE',
+          birthDate: '1986-05-22',
+          heightCm: 160,
+        },
+        readings: [
+          { id: 1, measuredOn: '2026-05-01', weightKg: 70 },
+          { id: 2, measuredOn: '2026-05-28', weightKg: 50 },
+        ],
+      }),
+    )
+
+    const refused = await useNuxtApp()
+      .$api('/api/goal', {
+        method: 'POST',
+        body: {
+          startedOn: '2026-06-01',
+          targetWeightKg: 45,
+          rateKgPerWeek: 1.5,
+          clientToday: '2026-06-01',
+        },
+      })
+      .catch((error) => error.data)
+
+    expect(refused).toEqual({
+      message:
+        'at your current maintenance of 1611 kcal a day, 1.5 kg a week would leave you nothing to eat — choose a slower rate',
       field: 'rateKgPerWeek',
     })
   })

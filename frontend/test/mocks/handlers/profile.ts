@@ -55,8 +55,9 @@ function minusYears(day: string, years: number): string {
 /**
  * A Profile that keeps what is saved to it — none yet, given null: [current]
  * reads what a save left, which is what a summary handler follows to carry the
- * review it recomputed. A save is refused unless it says which day that
- * recompute is for (ADR 0014).
+ * review it recomputed. A save that says nothing of which day that recompute
+ * is for is refused, where the backend would fall back to its own date:
+ * standing in for a page that dropped the day it must send (ADR 0014).
  */
 export function savedProfile(
   initial: Profile | null,

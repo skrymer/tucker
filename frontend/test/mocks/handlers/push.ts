@@ -22,7 +22,7 @@ export const pushHandlers = [
  * subscription is refused without its endpoint and both keys, as the backend
  * refuses the body; and nothing a page sends about a device is ever shown, so
  * one for any other device, or an unsubscribe naming another endpoint, is
- * refused too — standing in for a page that registered the wrong thing.
+ * refused too — standing in for a page that subscribed the wrong device.
  */
 export function pushServiceFor(device: Subscription) {
   return [

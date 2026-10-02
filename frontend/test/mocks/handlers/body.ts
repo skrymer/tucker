@@ -50,22 +50,22 @@ function ageOn(birthDate: string, on: string): number {
 }
 
 /**
- * The Maintenance a Goal's rate is judged against: nothing is ever logged
- * here, so the adaptive correction never runs and every review holds the
- * first one's — the Mifflin-St Jeor seed for [profile] at the first reading,
- * on its day, times the activity factor (`Maintenance.seed`). Null with
- * Calorie Tracking off or before a first reading, when no review derives one.
+ * The Maintenance a Goal's rate is judged against on [today]: nothing is
+ * logged here and no review exists to hold, so it is a cold start — the
+ * Mifflin-St Jeor seed for [profile] at the live [trend], times the activity
+ * factor (`WeeklyReviewService.maintenanceFor`, `Maintenance.seed`). Null with
+ * Calorie Tracking off, when no review derives one.
  */
 function seededMaintenance(
   profile: Profile | null,
-  readings: Reading[],
+  trend: Trend,
+  today: string,
 ): number | null {
-  const first = oldestFirst(readings)[0]
-  if (!profile?.tracksCalories || !first) return null
+  if (!profile?.tracksCalories) return null
   const base =
-    10 * first.weightKg +
+    10 * trend.trendKg +
     6.25 * profile.heightCm -
-    5 * ageOn(profile.birthDate, first.measuredOn)
+    5 * ageOn(profile.birthDate, today)
   const bmr = profile.sex === 'MALE' ? base + 5 : base - 161
   return bmr * 1.4
 }
@@ -149,7 +149,12 @@ export function bodyAndPlan(seed: {
           message: 'rateKgPerWeek must be between 0.05 and 1.5 kg/week',
         })
       }
-      const maintenance = seededMaintenance(profile.current(), readings)
+      const maintenance = seededMaintenance(
+        profile.current(),
+        trend,
+        // The backend falls back to its own date; the page always sends one.
+        clientToday ?? seed.today ?? trend.asOf,
+      )
       if (
         maintenance !== null &&
         (rateKgPerWeek * KCAL_PER_KG_FAT) / 7 >= maintenance
