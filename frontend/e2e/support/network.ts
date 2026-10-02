@@ -24,22 +24,13 @@ export const test = base.extend<{
   network: [
     async ({ context, handlers }, use) => {
       const unhandled: string[] = []
-      const note = (request: Request) => {
-        const url = new URL(request.url)
-        unhandled.push(`${request.method} ${url.pathname}${url.search}`)
-      }
       const network = defineNetworkFixture({
         context,
-        handlers: [...handlers, fellThrough(note)],
-        onUnhandledFrame: ({ frame }) => {
-          if (frame.protocol !== 'http') return
-          const { request } = frame.data as { request: Request }
-          const url = new URL(request.url)
-          if (!url.pathname.startsWith('/api/')) return
-          note(request)
-          // Fails the request too, so it never reaches the server's /api proxy.
-          throw new Error(`no handler for ${request.method} ${url.pathname}`)
-        },
+        // An uncovered `/api` request ends at `fellThrough`, failing it so it
+        // never reaches the server's /api proxy; anything else goes on to the
+        // server.
+        handlers: [...handlers, fellThrough(unhandled)],
+        onUnhandledFrame: () => {},
       })
 
       await network.enable()

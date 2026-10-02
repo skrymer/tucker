@@ -3,27 +3,21 @@ import { renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import { foodCatalog } from '~~/test/mocks/handlers/catalog'
-import { http } from '~~/test/mocks/http'
+import { held } from '~~/test/mocks/http'
 import { server, useMswServer } from '~~/test/mocks/node'
 import AddFoodForm from './AddFoodForm.vue'
 
 useMswServer()
 
-/**
- * Creates of [name] held until [release], then answered by the catalog under
- * it, which numbers a new Tag from 20.
- */
+/** Creates of [name] held until the returned release; others go through. */
 function heldCreateOf(name: string) {
-  let release!: () => void
-  const held = new Promise<void>((resolve) => (release = resolve))
-  server.use(
-    http.post('/api/tags', async ({ request }) => {
-      // A clone: the handler it falls through to reads the body too.
-      if ((await request.clone().json()).name === name) await held
-      return undefined
-    }),
+  const { handler, release } = held(
+    'post',
+    '/api/tags',
+    async (request) => (await request.json()).name === name,
   )
-  return () => release()
+  server.use(handler)
+  return release
 }
 
 // The corrected scan the dirty-tracking tests rerender with. It is the same

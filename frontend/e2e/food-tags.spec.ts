@@ -1,9 +1,9 @@
 import type { Page } from '@playwright/test'
 import { expect, test } from './support/network'
-import { food } from '../test/food-fixtures'
+import { food, type FoodResponse } from '../test/food-fixtures'
 import { foodCatalog } from '../test/mocks/handlers/catalog'
 
-type Tag = { id: number; name: string }
+type Tag = NonNullable<FoodResponse['tags']>[number]
 
 /** Rolled oats, carrying [tags]. */
 const oats = (tags: Tag[] = []) => food({ id: 1, name: 'Rolled oats', tags })

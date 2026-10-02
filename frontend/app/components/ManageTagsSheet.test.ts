@@ -4,8 +4,13 @@ import { getResponse } from 'msw'
 import { mockNuxtImport, renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen, within } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
-import { foodCatalog, type ShelvedTag } from '~~/test/mocks/handlers/catalog'
-import { failingRead, http } from '~~/test/mocks/http'
+import { openGate } from '~~/test/async-gate'
+import {
+  foodCatalog,
+  tagNameTooLong,
+  type ShelvedTag,
+} from '~~/test/mocks/handlers/catalog'
+import { failingRead, held, http, noConnection } from '~~/test/mocks/http'
 import { server, useMswServer } from '~~/test/mocks/node'
 import ManageTagsSheet from './ManageTagsSheet.vue'
 
@@ -28,8 +33,7 @@ const snack: ShelvedTag = { id: 9, name: 'snack', foodCount: 3 }
 /** The User keeps exactly [tags]. */
 const keeps = (...tags: ShelvedTag[]) => server.use(...foodCatalog({ tags }))
 
-/** What the server says when it refuses a name. */
-const refusal = 'a Tag name must be at most 30 characters'
+const refusal = tagNameTooLong
 
 /** Every create refused, as the server refuses a name it will not keep. */
 const createRefused = () =>
@@ -43,30 +47,11 @@ const renameRefused = () =>
     response(400).json({ message: refusal }),
   )
 
-const unreachable = { message: 'no connection to the server' }
-
 /**
- * Writes of [method] held until [release]; each then falls through to the
- * handler under it.
+ * Long enough for a request a test says is not sent to have come back: a sent
+ * one's refusal is on screen one macrotask after the click.
  */
-function heldWrites(method: 'post' | 'put' | 'delete') {
-  let release!: () => void
-  const held = new Promise<void>((resolve) => (release = resolve))
-  const resolver = async () => {
-    await held
-    return undefined
-  }
-  const handler =
-    method === 'post'
-      ? http.post('/api/tags', resolver)
-      : method === 'put'
-        ? http.put('/api/tags/{id}', resolver)
-        : http.delete('/api/tags/{id}', resolver)
-  return { handler, release: () => release() }
-}
-
-/** Long enough for a request a test says is not sent to have come back. */
-const settle = () => new Promise((resolve) => setTimeout(resolve, 50))
+const settle = () => new Promise((resolve) => setTimeout(resolve))
 
 type Rerender = (props: Record<string, unknown>) => Promise<void>
 
@@ -213,8 +198,7 @@ describe('ManageTagsSheet', () => {
     // The read after the create is answered with what the server held when it
     // arrived — before the delete — and only once released.
     let holdNextRead = false
-    let release!: () => void
-    const released = new Promise<void>((resolve) => (release = resolve))
+    const { gate: released, release } = openGate()
     let arrived!: () => void
     const staleReadArrived = new Promise<void>((resolve) => (arrived = resolve))
     server.use(...shelf)
@@ -270,7 +254,7 @@ describe('ManageTagsSheet', () => {
 
   it('holds the delete button while a delete is in flight', async () => {
     keeps(snack)
-    const { handler, release } = heldWrites('delete')
+    const { handler, release } = held('delete', '/api/tags/{id}')
     server.use(handler)
     await renderSuspended(ManageTagsSheet, { props: { open: true } })
     const user = userEvent.setup()
@@ -289,7 +273,7 @@ describe('ManageTagsSheet', () => {
 
   it('holds the add button while a create is in flight', async () => {
     keeps()
-    const { handler, release } = heldWrites('post')
+    const { handler, release } = held('post', '/api/tags')
     server.use(handler)
     await renderSuspended(ManageTagsSheet, { props: { open: true } })
     const user = userEvent.setup()
@@ -309,7 +293,7 @@ describe('ManageTagsSheet', () => {
     keeps(snack)
     server.use(
       http.delete('/api/tags/{id}', ({ response }) =>
-        response(503).json(unreachable),
+        response(503).json(noConnection),
       ),
     )
     await renderSuspended(ManageTagsSheet, { props: { open: true } })
@@ -331,7 +315,9 @@ describe('ManageTagsSheet', () => {
   it('names a create that failed for want of a connection in its own error toast', async () => {
     toastAdd.mockClear()
     server.use(
-      http.post('/api/tags', ({ response }) => response(503).json(unreachable)),
+      http.post('/api/tags', ({ response }) =>
+        response(503).json(noConnection),
+      ),
     )
     await renderSuspended(ManageTagsSheet, { props: { open: true } })
     const user = userEvent.setup()
@@ -596,7 +582,7 @@ describe('ManageTagsSheet', () => {
       { id: 7, name: 'Snack', foodCount: 3 },
       { id: 9, name: 'treats', foodCount: 1 },
     )
-    const { handler, release } = heldWrites('put')
+    const { handler, release } = held('put', '/api/tags/{id}')
     server.use(handler)
     await renderSuspended(ManageTagsSheet, { props: { open: true } })
     const user = userEvent.setup()
@@ -666,7 +652,7 @@ describe('ManageTagsSheet', () => {
     keeps(snack)
     server.use(
       http.put('/api/tags/{id}', ({ response }) =>
-        response(503).json(unreachable),
+        response(503).json(noConnection),
       ),
     )
     await renderSuspended(ManageTagsSheet, { props: { open: true } })

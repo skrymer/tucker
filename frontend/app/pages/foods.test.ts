@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event'
 import { food } from '~~/test/food-fixtures'
 import { foodCatalog } from '~~/test/mocks/handlers/catalog'
 import { catalogFails } from '~~/test/mocks/handlers/foods'
-import { http } from '~~/test/mocks/http'
+import { held, http, noConnection } from '~~/test/mocks/http'
 import { server, useMswServer } from '~~/test/mocks/node'
 import Foods from './foods.vue'
 
@@ -110,14 +110,8 @@ describe('/foods saving a new food', () => {
     // The save resolves whenever it resolves, which on a slow connection is
     // after the User has given up on it, dismissed the sheet and opened a fresh
     // one. Closing *that* sheet would take a half-typed Recipe with it.
-    let release!: () => void
-    const held = new Promise<void>((resolve) => (release = resolve))
-    server.use(
-      http.post('/api/foods', async () => {
-        await held
-        return undefined
-      }),
-    )
+    const { handler, release } = held('post', '/api/foods')
+    server.use(handler)
     const user = userEvent.setup()
     await renderSuspended(Foods, { route: '/foods?add=1' })
 
@@ -145,7 +139,7 @@ describe('/foods saving a Food’s Tags', () => {
   it('names a save that failed for want of a connection in its own error toast', async () => {
     server.use(
       http.put('/api/foods/{id}/tags', ({ response }) =>
-        response(503).json({ message: 'no connection to the server' }),
+        response(503).json(noConnection),
       ),
       ...foodCatalog({
         foods: [oats],

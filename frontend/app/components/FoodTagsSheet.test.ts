@@ -2,8 +2,12 @@ import { describe, expect, it, vi } from 'vitest'
 import { mockNuxtImport, renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
-import { foodCatalog, type ShelvedTag } from '~~/test/mocks/handlers/catalog'
-import { failingRead, http } from '~~/test/mocks/http'
+import {
+  foodCatalog,
+  tagNameTooLong,
+  type ShelvedTag,
+} from '~~/test/mocks/handlers/catalog'
+import { failingRead, held, http, noConnection } from '~~/test/mocks/http'
 import { server, useMswServer } from '~~/test/mocks/node'
 import FoodTagsSheet from './FoodTagsSheet.vue'
 
@@ -24,37 +28,25 @@ const oats = {
 const breakfast: ShelvedTag = { id: 7, name: 'Breakfast', foodCount: 1 }
 const snack: ShelvedTag = { id: 9, name: 'snack', foodCount: 3 }
 
-/** The User keeps exactly [tags]; a Tag created is numbered from 20. */
+/** The User keeps exactly [tags]. */
 const keeps = (...tags: ShelvedTag[]) => server.use(...foodCatalog({ tags }))
 
 /** Over 30 characters, which the server refuses as a Tag name. */
 const tooLong = 'a'.repeat(31)
-const refusal = 'a Tag name must be at most 30 characters'
 
-/**
- * Creates — of [name] alone, if given — held until [release]; each then
- * falls through to the handler under it.
- */
-function heldCreates(name?: string) {
-  let release!: () => void
-  const held = new Promise<void>((resolve) => (release = resolve))
-  const handler = http.post('/api/tags', async ({ request }) => {
-    // A clone: the handler it falls through to reads the body too.
-    if (name && (await request.clone().json()).name !== name) return undefined
-    await held
-    return undefined
-  })
-  return { handler, release: () => release() }
-}
+/** Creates — of [name] alone, if given — held until released. */
+const heldCreates = (name?: string) =>
+  held(
+    'post',
+    '/api/tags',
+    name ? async (request) => (await request.json()).name === name : undefined,
+  )
 
 /** The first create fails for want of a connection; the next falls through. */
 const firstCreateUnreachable = () =>
-  http.post(
-    '/api/tags',
-    ({ response }) =>
-      response(503).json({ message: 'no connection to the server' }),
-    { once: true },
-  )
+  http.post('/api/tags', ({ response }) => response(503).json(noConnection), {
+    once: true,
+  })
 
 /** Retry the action on the last failure toast the User was shown. */
 const retryLastToast = () => toastAdd.mock.calls.at(-1)![0].actions[0].onClick()
@@ -208,7 +200,7 @@ describe('FoodTagsSheet', () => {
     await user.type(screen.getByRole('combobox'), tooLong)
     await user.click(await screen.findByRole('option', { name: /a{31}/ }))
 
-    expect(await screen.findByText(refusal)).toBeVisible()
+    expect(await screen.findByText(tagNameTooLong)).toBeVisible()
     await user.click(screen.getByRole('button', { name: 'Save tags' }))
     expect(onSave).toHaveBeenCalledWith([7])
   })

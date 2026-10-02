@@ -25,18 +25,21 @@ const EDGES = new RegExp(
 )
 
 const fold = (name: string) => name.toLowerCase()
-const byName = (a: { name: string }, b: { name: string }) => {
+
+/** The order the backend lists Foods and Tags in: by name, ignoring case. */
+export const byName = (a: { name: string }, b: { name: string }) => {
   const [x, y] = [fold(a.name), fold(b.name)]
   return x < y ? -1 : x > y ? 1 : 0
 }
+
+/** How the server refuses a Tag name over 30 characters. */
+export const tagNameTooLong = 'a Tag name must be at most 30 characters'
 
 /** A Tag name as `TagName` admits it, or the message it refuses it with. */
 function tagName(given: string): { name: string } | { refused: string } {
   const name = given.replace(EDGES, '')
   if (!name) return { refused: 'a Tag name must not be blank' }
-  if (name.length > 30) {
-    return { refused: 'a Tag name must be at most 30 characters' }
-  }
+  if (name.length > 30) return { refused: tagNameTooLong }
   return { name }
 }
 
@@ -56,6 +59,7 @@ type Shelved = { id: number; name: string; offCatalog: number }
  *   catalog that make up the difference. Creating a name the User already has
  *   in any case answers with that Tag; renaming onto one merges into it.
  *   A name is trimmed as the server trims it and refused past 30 characters.
+ *   Created Tags are numbered from 20, or from one past the highest id given.
  *   A Tag a [foods] entry carries is on the shelf even if [tags] omits it.
  * - A barcode finds the catalog's Food carrying it, then a provider
  *   [candidates] entry, and otherwise misses.
@@ -209,7 +213,7 @@ export function foodCatalog({
       response(200).json([...shelf.values()].sort(byName).map(counted)),
     ),
     // A new Tag and one the User already had answer alike: the spec declares
-    // no 201 for the create the backend answers with one (#420).
+    // no 201 for the create the backend answers with one.
     http.post('/api/tags', async ({ request, response }) => {
       const given = tagName((await request.json()).name)
       if ('refused' in given) {

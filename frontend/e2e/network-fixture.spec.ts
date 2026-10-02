@@ -6,7 +6,8 @@ import { http } from '../test/mocks/http'
 // once it ends.
 test.fail(
   'fails a test whose override let an /api request fall through to no handler',
-  async ({ page, goto, network }) => {
+  async ({ page, goto, network, isMobile }) => {
+    test.skip(isMobile, 'the fixture is the same at every viewport')
     // Matched, so msw counts it handled — and with nothing under it to answer,
     // it would go on to the server's /api proxy instead.
     network.use(http.post('/api/tags', () => undefined))

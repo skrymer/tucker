@@ -58,10 +58,11 @@ test('the catalog states every name in one voice, however each was typed', async
 
   await goto('/foods', { waitUntil: 'hydration' })
 
+  // Listed as the server lists them: by name, ignoring case.
   const rows = page.getByRole('main').getByRole('listitem')
   await expect(rows.nth(0)).toContainText('Free range eggs')
-  await expect(rows.nth(1)).toContainText('Rolled oats')
-  await expect(rows.nth(2)).toContainText('Light milk')
-  await expect(rows.nth(3)).toContainText('Low fat milk')
+  await expect(rows.nth(1)).toContainText('Light milk')
+  await expect(rows.nth(2)).toContainText('Low fat milk')
+  await expect(rows.nth(3)).toContainText('Rolled oats')
   await expect(rows.nth(4)).toContainText('UHT milk')
 })

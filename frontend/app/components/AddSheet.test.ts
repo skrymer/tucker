@@ -6,7 +6,7 @@ import userEvent from '@testing-library/user-event'
 import { readBarcodes } from 'zxing-wasm/reader'
 import { food } from '~~/test/food-fixtures'
 import { foodCatalog } from '~~/test/mocks/handlers/catalog'
-import { http } from '~~/test/mocks/http'
+import { held, http } from '~~/test/mocks/http'
 import { server, useMswServer } from '~~/test/mocks/node'
 import AddSheet from './AddSheet.vue'
 
@@ -161,15 +161,13 @@ const hangsFor = (barcode: string) =>
 
 /** The SLOW_CANDIDATE_BARCODE look-up held until the returned release. */
 function holdSlowCandidate() {
-  let release!: () => void
-  const held = new Promise<void>((resolve) => (release = resolve))
-  server.use(
-    http.get('/api/foods/barcode/{barcode}', async ({ params }) => {
-      if (params.barcode === SLOW_CANDIDATE_BARCODE) await held
-      return undefined
-    }),
+  const { handler, release } = held(
+    'get',
+    '/api/foods/barcode/{barcode}',
+    (request) => request.url.endsWith(`/${SLOW_CANDIDATE_BARCODE}`),
   )
-  return () => release()
+  server.use(handler)
+  return release
 }
 
 describe('AddSheet', () => {

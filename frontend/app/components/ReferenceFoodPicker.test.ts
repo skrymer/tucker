@@ -8,7 +8,7 @@ import {
   referenceFoodSearch,
 } from '~~/test/micronutrient-fixtures'
 import { referenceFoodsFor } from '~~/test/mocks/handlers/reference-foods'
-import { failingRead, http } from '~~/test/mocks/http'
+import { failingRead, held } from '~~/test/mocks/http'
 import { server, useMswServer } from '~~/test/mocks/node'
 import ReferenceFoodPicker from './ReferenceFoodPicker.vue'
 
@@ -22,26 +22,27 @@ const chicken = { id: 1, name: 'Chicken breast', referenceFoodName: null }
 const chickenFinds = (search: Search = referenceFoodSearch()) =>
   server.use(referenceFoodsFor({ [chicken.name]: search }))
 
-/**
- * A search for [q] the database holds until [release] is called, then answers
- * with [search]; every other query falls through to the handler under it.
- */
-function heldSearch(q: string, search: Search) {
-  let release!: () => void
-  const held = new Promise<void>((resolve) => (release = resolve))
-  let asked!: () => void
-  const arrived = new Promise<void>((resolve) => (asked = resolve))
-  const handler = http.get(
-    '/api/reference-foods',
-    async ({ query, response }) => {
-      if (query.get('q') !== q) return undefined
-      asked()
-      await held
-      return response(200).json(search)
-    },
+const riceSearch = referenceFoodSearch({
+  suggestedId: 303,
+  candidates: [referenceFoodCandidate({ id: 303, name: 'Rice, white' })],
+})
+
+/** The database answering the chicken's name and the rice's. */
+const chickenAndRiceFind = () =>
+  server.use(
+    referenceFoodsFor({
+      [chicken.name]: referenceFoodSearch(),
+      'Jasmine rice': riceSearch,
+    }),
   )
-  return { handler, arrived, release: () => release() }
-}
+
+/** Searches for [q] held until released, then answered by the database. */
+const heldSearch = (q: string) =>
+  held(
+    'get',
+    '/api/reference-foods',
+    (request) => new URL(request.url).searchParams.get('q') === q,
+  )
 
 describe('ReferenceFoodPicker', () => {
   it("searches for the Food's own name as soon as it opens", async () => {
@@ -233,8 +234,7 @@ describe('ReferenceFoodPicker', () => {
   })
 
   it('reports the results busy while a search is still in flight', async () => {
-    const { handler, release } = heldSearch(
-      chicken.name,
+    chickenFinds(
       referenceFoodSearch({
         candidates: [
           referenceFoodCandidate({
@@ -244,6 +244,7 @@ describe('ReferenceFoodPicker', () => {
         ],
       }),
     )
+    const { handler, release } = heldSearch(chicken.name)
     server.use(handler)
 
     await renderSuspended(ReferenceFoodPicker, { props: { food: chicken } })
@@ -295,15 +296,8 @@ describe('ReferenceFoodPicker', () => {
   it('shows nothing of the last Food while the next one is still searching', async () => {
     // Chicken answers at once; rice is held, so the assertions below sit in the
     // window between opening the next queue row and its answer arriving.
-    const rice = heldSearch(
-      'Jasmine rice',
-      referenceFoodSearch({
-        suggestedId: 303,
-        candidates: [referenceFoodCandidate({ id: 303, name: 'Rice, white' })],
-      }),
-    )
-    // Used last, so it is asked first; a search for chicken falls through it.
-    chickenFinds()
+    chickenAndRiceFind()
+    const rice = heldSearch('Jasmine rice')
     server.use(rice.handler)
 
     const { rerender } = await renderSuspended(ReferenceFoodPicker, {
@@ -332,14 +326,9 @@ describe('ReferenceFoodPicker', () => {
   it('searches the Food it is on now, even while the last one is still out', async () => {
     // Both answers are held, so the second search is issued *while* the first is
     // still in flight — which is the only window the re-entry policy decides.
-    const chickenSearch = heldSearch(chicken.name, referenceFoodSearch())
-    const rice = heldSearch(
-      'Jasmine rice',
-      referenceFoodSearch({
-        suggestedId: 303,
-        candidates: [referenceFoodCandidate({ id: 303, name: 'Rice, white' })],
-      }),
-    )
+    chickenAndRiceFind()
+    const chickenSearch = heldSearch(chicken.name)
+    const rice = heldSearch('Jasmine rice')
     server.use(chickenSearch.handler, rice.handler)
 
     const { rerender } = await renderSuspended(ReferenceFoodPicker, {

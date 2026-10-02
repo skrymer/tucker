@@ -52,9 +52,10 @@ reimplements `use` / `resetHandlers` / `once`).
 `defineNetworkFixture({ context, handlers, onUnhandledFrame })` routes **every** request of
 the context through `context.route`, not a service worker — so no `mockServiceWorker.js`
 ships and the Workbox SW (ADR 0011) is the only worker. `skipAssetRequests` (default on)
-lets JS/CSS/HTML fall through. Tucker's `onUnhandledFrame` lets non-`/api` frames fall
-through to the server and records an unhandled `/api` one; the fixture fails the test at
-teardown listing them, e.g. `GET /api/goal/progress`.
+lets JS/CSS/HTML fall through. Tucker's handler list ends with `fellThrough`, which
+records and fails an `/api` request nothing above it answered; every other frame falls
+through to the server, and the fixture fails the test at teardown listing the recorded
+ones, e.g. `GET /api/goal/progress`.
 
 `page.route` beats `context.route`, so a spec's own route still wins — that is the
 migration's coexistence, and how non-API routes (zxing CDN abort) keep working.
@@ -89,10 +90,16 @@ or is stated as unchecked — an annotation in `e2e/` never answers a typing fin
   to the handler under it.
 - **A Check-only page still reads the shell's endpoints**: `/api/profile` always, and Today's
   `/api/weight/latest` and `/api/goal/progress` on any spec that starts at `/`.
-- **Holding a request open.** A handler that `await`s a promise and returns nothing falls
-  through to the next one, so `use(hold, ...weightMeasurements(null))` holds a save until the test
-  releases it and then answers it normally. Within one `use()` call the first argument
-  wins.
+- **Holding a request open** is `held(method, path, matches?)` (`test/mocks/http.ts`): it
+  returns `{ handler, arrived, release }`, holds what `matches` admits, and once released
+  falls through to the handler under it, which answers normally — so
+  `use(held(...).handler)` after `...weightMeasurements(null)` holds a save. Within one
+  `use()` call the first argument wins. Three rules it carries for you, each measured:
+  - `matches` reads a clone, because a handler that reads the body and falls through
+    leaves the next one "Body has already been used".
+  - Await `arrived` to act while the request is in flight, rather than counting calls.
+  - A request released at the end of a test finishes in the next one, so wait for what
+    it changes on screen after `release()` (the new row, the emptied list).
 - **A `page.route` spec hid every read it did not route.** An unmatched `/api` request
   went on to the server's proxy and failed there unnoticed, so a spec moved over can meet
   reads its old mocks never mentioned — a page's own, or the shell's on the way to it.
@@ -103,17 +110,8 @@ or is stated as unchecked — an annotation in `e2e/` never answers a typing fin
   so a hold or a predicate override with no handler beneath it escaped the
   unhandled check entirely. Both layers end their handler list with `fellThrough`
   (`test/mocks/http.ts`), which records the request and fails it; `node.test.ts` and
-  `e2e/network-fixture.spec.ts` pin it. Found because a held create released at the
-  end of one test landed, uncovered, during the next.
-- **A handler that reads the body and falls through reads a clone.** Measured: with
-  `await request.json()` the handler under it fails with "Body has already been
-  used", so a predicate on a body field reads `await request.clone().json()`.
-- **A held request released at the end of a test finishes in the next one.** Wait
-  for what it changes on screen after the release (the new row, the emptied list), so
-  the request lands inside the test that sent it.
-- **Act while a request is in flight by awaiting its arrival, not by counting.** The
-  holding handler resolves a promise (`arrived()`) before it waits, and the test awaits
-  that rather than `vi.waitFor(() => expect(calls).toBe(2))`.
+  `e2e/network-fixture.spec.ts` pin it. It is the only uncovered-`/api` path now: no
+  `/api` request reaches `onUnhandledFrame` any more.
 - **A re-read answered with the state from when it arrived** — the stale read a
   superseded load must not land — is `getResponse(handlers, request)` (from `msw`)
   inside the holding handler, returned once released (`ManageTagsSheet.test.ts`).
@@ -151,8 +149,8 @@ or is stated as unchecked — an annotation in `e2e/` never answers a typing fin
   option: true }] })` — wrapped, because Playwright reads a bare array as its
   `[value, options]` tuple and fails every test with `handlers.every is not a function`.
 - **Cap the e2e copies' timeout.** A never-answering break waits out the suite's
-  300 s test timeout once per test it reaches; #403's first sweep ran overnight on
-  three of them. The copies append `test.beforeEach(() => test.setTimeout(30_000))`.
+  300 s test timeout once per test it reaches (three such breaks ran #403's first sweep
+  for hours). The copies append `test.beforeEach(() => test.setTimeout(30_000))`.
 - **A break that changes nothing the User can tell apart proves nothing.** An offline
   look-up that falls through lands on a miss, which the page answers identically by
   design; the break that discriminates answers a candidate instead.

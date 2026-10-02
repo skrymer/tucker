@@ -1,11 +1,17 @@
 import type { FoodResponse } from '../../food-fixtures'
 import { failingRead, http } from '../http'
+import { byName } from './catalog'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
-/** The catalog, holding exactly [foods]. */
+/**
+ * The catalog, holding exactly [foods] and never written to — listed by name
+ * as `foodCatalog` lists it, whatever order they are given in.
+ */
 export function catalogOf(foods: FoodResponse[]) {
-  return http.get('/api/foods', ({ response }) => response(200).json(foods))
+  return http.get('/api/foods', ({ response }) =>
+    response(200).json([...foods].sort(byName)),
+  )
 }
 
 /**
