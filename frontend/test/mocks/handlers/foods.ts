@@ -1,11 +1,17 @@
 import type { FoodResponse } from '../../food-fixtures'
-import { http, serverError } from '../http'
+import { failingRead, http } from '../http'
+import { byFoodName } from './catalog'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
-/** The catalog, holding exactly [foods]. */
+/**
+ * The catalog, holding exactly [foods] and never written to — listed by name
+ * as `foodCatalog` lists it, whatever order they are given in.
+ */
 export function catalogOf(foods: FoodResponse[]) {
-  return http.get('/api/foods', ({ response }) => response(200).json(foods))
+  return http.get('/api/foods', ({ response }) =>
+    response(200).json([...foods].sort(byFoodName)),
+  )
 }
 
 /**
@@ -34,28 +40,14 @@ export function frequentFoods(
   })
 }
 
-/**
- * A read of [path] the server fails while [isDown] holds, falling through to the
- * handler under it once it does not. Every time, not once: ofetch retries a
- * failed GET by itself.
- */
-function failing(
-  path: '/api/foods' | '/api/foods/frequent',
-  isDown: () => boolean,
-) {
-  return http.get(path, ({ response }) =>
-    isDown() ? response.untyped(serverError()) : undefined,
-  )
-}
-
 /** A catalog read the server fails while [isDown] holds. */
 export function catalogFails(isDown: () => boolean = () => true) {
-  return failing('/api/foods', isDown)
+  return failingRead('/api/foods', isDown)
 }
 
 /** A Frequent Foods read the server fails while [isDown] holds. */
 export function frequentFoodsFail(isDown: () => boolean = () => true) {
-  return failing('/api/foods/frequent', isDown)
+  return failingRead('/api/foods/frequent', isDown)
 }
 
 /** An empty catalog, so nothing has been logged in the window Frequent Foods ranks. */

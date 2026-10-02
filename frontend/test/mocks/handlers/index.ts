@@ -3,6 +3,7 @@ import { foodHandlers } from './foods'
 import { goalHandlers } from './goal'
 import { identityHandlers } from './identity'
 import { profileHandlers } from './profile'
+import { referenceFoodHandlers } from './reference-foods'
 import { summaryHandlers } from './summary'
 import { tagHandlers } from './tags'
 import { weightHandlers } from './weight'
@@ -10,8 +11,8 @@ import { weightHandlers } from './weight'
 /**
  * The baseline every opted-in test inherits: a neutral, consistent User —
  * set up, counting calories, weighed in, no Goal, an empty catalog and no
- * Tags, nothing logged today. A test `use()`s only the variation it is about
- * (ADR 0034).
+ * Tags, nothing logged today, and no Reference Food matching anything. A
+ * test `use()`s only the variation it is about (ADR 0034).
  */
 export const handlers = [
   ...identityHandlers,
@@ -21,5 +22,6 @@ export const handlers = [
   ...goalHandlers,
   ...foodHandlers,
   ...tagHandlers,
+  ...referenceFoodHandlers,
   ...checkHandlers,
 ]

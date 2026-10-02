@@ -72,7 +72,9 @@ handlers free of app auto-imports (`localToday()` etc.) — pass such values in.
    A variation both layers need is a factory beside the baseline (`summaryWith(targets)`,
    `checkOnlyOn(day)`), never a copy per layer — the copies drift. A mutation re-read on
    its own endpoint is a factory returning a plain array with the state in a closure
-   (`weightMeasurements`); one whose re-read lands on **another** endpoint returns
+   (`weightMeasurements`, and `foodCatalog`, which answers every endpoint of the
+   catalog, its Tags and its barcode look-up from one state); one whose re-read lands
+   on **another** endpoint returns
    `{ handlers, <state getter> }` (`reachedGoal`, `savedProfile`), and the other
    endpoint's handler reads the getter (`summaryOf(() => …)`). Never keep state in the
    baseline: it is shared across tests. Overriding a derived field overrides its inputs
@@ -83,8 +85,11 @@ handlers free of app auto-imports (`localToday()` etc.) — pass such values in.
    ofetch retries a failed GET by itself, and the retry reaches the baseline, so the error
    never shows.
 5. **Unhandled is a failure.** Both opt-ins fail the test on an `/api` request no handler
-   covers — after it ends, so a page that caught the failed request still fails. Add the
-   endpoint to the baseline (or the test) rather than loosening that.
+   covers — after it ends, so a page that caught the failed request still fails. That
+   includes one an override matched and let fall through with nothing beneath it, which
+   msw itself counts as handled and sends to the network: a terminal `fellThrough`
+   handler (`test/mocks/http.ts`) catches it in both layers. Add the endpoint to the
+   baseline (or the test) rather than loosening that.
 6. **Overrides last one test.** `resetHandlers` runs after each test in Vitest, and the
    Playwright fixture is built per test, so a `use()` never leaks into the next.
 7. **Prove each migrated test still goes red** by breaking its handler's response once, on a

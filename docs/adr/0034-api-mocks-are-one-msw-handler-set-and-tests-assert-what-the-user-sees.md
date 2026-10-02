@@ -18,9 +18,12 @@ page reads back. The test asserts only what the User sees.
 - **One baseline of happy paths, overridden per test.** `test/mocks/handlers/<domain>.ts`
   describe a neutral, consistent User: an empty day, no Goal, Calorie Tracking on.
   Every test inherits it, and a test `use()`s only the variation it is about.
-  An unhandled `/api` request fails the test: each layer's `onUnhandledFrame` callback
-  (msw 3's name for `onUnhandledRequest`) records it, and the test fails on the list once
-  it ends, so a page that catches the failed request still fails its test. That
+  An unhandled `/api` request fails the test: each layer ends its handler list with a
+  catch-all for `/api` that records it, and the test fails on the list once it ends, so
+  a page that catches the failed request still fails its test. A catch-all rather than
+  `onUnhandledFrame` (msw 3's name for `onUnhandledRequest`) alone, because msw counts a
+  handler that matched and returned nothing as handled and sends the request to the
+  network without ever calling that callback. That
   ends both silent defaults, a 404 in Vitest and the real network in Playwright, one of
   which once let an unmocked `/api/goal/progress` decide what an aria snapshot captured.
 - **Handlers are typed from `openapi/tucker.json`.** `createOpenApiHttp<paths>()` checks

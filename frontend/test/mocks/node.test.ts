@@ -88,6 +88,18 @@ describe('the MSW baseline under the Nuxt test environment', () => {
     expect(() => assertNoUnhandledRequests()).toThrow(/GET \/api\/uncovered/)
   })
 
+  it('names a request an override let fall through to no handler, rather than sending it to the network', async () => {
+    // Matched, so msw counts it handled — and with nothing under it to answer,
+    // it would go out to the real network instead.
+    server.use(http.post('/api/tags', () => undefined))
+
+    await $fetch('/api/tags', { method: 'POST', body: { name: 'x' } }).catch(
+      () => undefined,
+    )
+
+    expect(() => assertNoUnhandledRequests()).toThrow(/POST \/api\/tags/)
+  })
+
   // Passes only because the test fails: the request is swallowed, so nothing in
   // the body notices it, and what fails the test is the check after it ends.
   it.fails(

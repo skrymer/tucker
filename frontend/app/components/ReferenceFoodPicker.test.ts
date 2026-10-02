@@ -1,19 +1,52 @@
 import { describe, expect, it, vi } from 'vitest'
-import { registerEndpoint, renderSuspended } from '@nuxt/test-utils/runtime'
-import { getQuery, setResponseStatus } from 'h3'
+import { renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen, within } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
+import type { components } from '#open-fetch-schemas/api'
 import {
   referenceFoodCandidate,
   referenceFoodSearch,
 } from '~~/test/micronutrient-fixtures'
+import { referenceFoodsFor } from '~~/test/mocks/handlers/reference-foods'
+import { failingRead, held } from '~~/test/mocks/http'
+import { server, useMswServer } from '~~/test/mocks/node'
 import ReferenceFoodPicker from './ReferenceFoodPicker.vue'
+
+useMswServer()
+
+type Search = components['schemas']['ReferenceFoodSearchResponse']
 
 const chicken = { id: 1, name: 'Chicken breast', referenceFoodName: null }
 
+/** The search for the chicken's own name answered with [search]. */
+const chickenFinds = (search: Search = referenceFoodSearch()) =>
+  server.use(referenceFoodsFor({ [chicken.name]: search }))
+
+const riceSearch = referenceFoodSearch({
+  suggestedId: 303,
+  candidates: [referenceFoodCandidate({ id: 303, name: 'Rice, white' })],
+})
+
+/** The searches for the chicken's name and the rice's, both answered. */
+const chickenAndRiceFind = () =>
+  server.use(
+    referenceFoodsFor({
+      [chicken.name]: referenceFoodSearch(),
+      'Jasmine rice': riceSearch,
+    }),
+  )
+
+/** Searches for [q] held until released, then answered as above. */
+const heldSearch = (q: string) =>
+  held(
+    'get',
+    '/api/reference-foods',
+    (request) => new URL(request.url).searchParams.get('q') === q,
+  )
+
 describe('ReferenceFoodPicker', () => {
   it("searches for the Food's own name as soon as it opens", async () => {
-    registerEndpoint('/api/reference-foods', () =>
+    chickenFinds(
       referenceFoodSearch({
         suggestedId: 101,
         candidates: [
@@ -33,14 +66,16 @@ describe('ReferenceFoodPicker', () => {
   })
 
   it('states the Food in sentence case and the candidate as FSANZ published it', async () => {
-    registerEndpoint('/api/reference-foods', () =>
-      referenceFoodSearch({
-        candidates: [
-          referenceFoodCandidate({
-            id: 101,
-            name: 'Soft drink, energy drink, Red Bull',
-          }),
-        ],
+    server.use(
+      referenceFoodsFor({
+        'LIGHT MILK': referenceFoodSearch({
+          candidates: [
+            referenceFoodCandidate({
+              id: 101,
+              name: 'Soft drink, energy drink, Red Bull',
+            }),
+          ],
+        }),
       }),
     )
 
@@ -61,7 +96,7 @@ describe('ReferenceFoodPicker', () => {
   })
 
   it('shows the figures that tell the candidates apart, under each name', async () => {
-    registerEndpoint('/api/reference-foods', () =>
+    chickenFinds(
       referenceFoodSearch({
         candidates: [
           referenceFoodCandidate({
@@ -84,7 +119,7 @@ describe('ReferenceFoodPicker', () => {
   })
 
   it('claims the match for the candidate the user taps', async () => {
-    registerEndpoint('/api/reference-foods', () =>
+    chickenFinds(
       referenceFoodSearch({
         candidates: [
           referenceFoodCandidate({ id: 101, name: 'Chicken, breast, raw' }),
@@ -107,7 +142,6 @@ describe('ReferenceFoodPicker', () => {
   })
 
   it('lets a matched Food take its borrow back, naming what it borrows now', async () => {
-    registerEndpoint('/api/reference-foods', () => referenceFoodSearch())
     const onUnmatch = vi.fn()
     await renderSuspended(ReferenceFoodPicker, {
       props: {
@@ -133,7 +167,7 @@ describe('ReferenceFoodPicker', () => {
   })
 
   it('carries the attribution the figures it shows are licensed under', async () => {
-    registerEndpoint('/api/reference-foods', () =>
+    chickenFinds(
       referenceFoodSearch({
         candidates: [
           referenceFoodCandidate({
@@ -161,7 +195,7 @@ describe('ReferenceFoodPicker', () => {
   })
 
   it('reports the tapped candidate busy while its match is in flight', async () => {
-    registerEndpoint('/api/reference-foods', () =>
+    chickenFinds(
       referenceFoodSearch({
         candidates: [
           referenceFoodCandidate({
@@ -200,20 +234,18 @@ describe('ReferenceFoodPicker', () => {
   })
 
   it('reports the results busy while a search is still in flight', async () => {
-    let release!: () => void
-    registerEndpoint('/api/reference-foods', async () => {
-      await new Promise<void>((resolve) => {
-        release = resolve
-      })
-      return referenceFoodSearch({
+    chickenFinds(
+      referenceFoodSearch({
         candidates: [
           referenceFoodCandidate({
             id: 101,
             name: 'Chicken, breast, lean flesh, raw',
           }),
         ],
-      })
-    })
+      }),
+    )
+    const { handler, release } = heldSearch(chicken.name)
+    server.use(handler)
 
     await renderSuspended(ReferenceFoodPicker, { props: { food: chicken } })
 
@@ -231,7 +263,7 @@ describe('ReferenceFoodPicker', () => {
   })
 
   it('closes when dismissed, leaving the Food as it was', async () => {
-    registerEndpoint('/api/reference-foods', () => referenceFoodSearch())
+    chickenFinds()
     const onClose = vi.fn()
     const onMatch = vi.fn()
     await renderSuspended(ReferenceFoodPicker, {
@@ -245,7 +277,7 @@ describe('ReferenceFoodPicker', () => {
   })
 
   it('clears the seeded query in one tap, so a different food can be searched for', async () => {
-    registerEndpoint('/api/reference-foods', () => referenceFoodSearch())
+    chickenFinds()
     await renderSuspended(ReferenceFoodPicker, { props: { food: chicken } })
     const box = screen.getByRole('textbox', {
       name: 'Search the food database',
@@ -264,18 +296,9 @@ describe('ReferenceFoodPicker', () => {
   it('shows nothing of the last Food while the next one is still searching', async () => {
     // Chicken answers at once; rice is held, so the assertions below sit in the
     // window between opening the next queue row and its answer arriving.
-    let releaseRice!: () => void
-    registerEndpoint('/api/reference-foods', async (event) => {
-      if (String(getQuery(event).q) === 'Chicken breast')
-        return referenceFoodSearch()
-      await new Promise<void>((resolve) => {
-        releaseRice = resolve
-      })
-      return referenceFoodSearch({
-        suggestedId: 303,
-        candidates: [referenceFoodCandidate({ id: 303, name: 'Rice, white' })],
-      })
-    })
+    chickenAndRiceFind()
+    const rice = heldSearch('Jasmine rice')
+    server.use(rice.handler)
 
     const { rerender } = await renderSuspended(ReferenceFoodPicker, {
       props: { food: chicken },
@@ -295,45 +318,32 @@ describe('ReferenceFoodPicker', () => {
       screen.queryByText('Chicken, breast, lean flesh, raw'),
     ).not.toBeInTheDocument()
 
-    await vi.waitFor(() => expect(releaseRice).toBeTypeOf('function'))
-    releaseRice()
+    await rice.arrived
+    rice.release()
     expect(await screen.findByText('Rice, white')).toBeVisible()
   })
 
   it('searches the Food it is on now, even while the last one is still out', async () => {
     // Both answers are held, so the second search is issued *while* the first is
     // still in flight — which is the only window the re-entry policy decides.
-    let releaseChicken!: () => void
-    let releaseRice!: () => void
-    registerEndpoint('/api/reference-foods', async (event) => {
-      if (String(getQuery(event).q) === 'Chicken breast') {
-        await new Promise<void>((resolve) => {
-          releaseChicken = resolve
-        })
-        return referenceFoodSearch()
-      }
-      await new Promise<void>((resolve) => {
-        releaseRice = resolve
-      })
-      return referenceFoodSearch({
-        suggestedId: 303,
-        candidates: [referenceFoodCandidate({ id: 303, name: 'Rice, white' })],
-      })
-    })
+    chickenAndRiceFind()
+    const chickenSearch = heldSearch(chicken.name)
+    const rice = heldSearch('Jasmine rice')
+    server.use(chickenSearch.handler, rice.handler)
 
     const { rerender } = await renderSuspended(ReferenceFoodPicker, {
       props: { food: chicken },
     })
-    await vi.waitFor(() => expect(releaseChicken).toBeTypeOf('function'))
+    await chickenSearch.arrived
 
     await rerender({ food: { id: 2, name: 'Jasmine rice' } })
 
     // Every keystroke and every queue row asks a *different* question, so a
     // search issued while one is in flight supersedes it rather than being
     // dropped — dropped, the sheet would answer the Food it is no longer on.
-    await vi.waitFor(() => expect(releaseRice).toBeTypeOf('function'))
+    await rice.arrived
 
-    releaseChicken()
+    chickenSearch.release()
     // And the superseded answer never lands: it would list chicken under a sheet
     // titled "Match Jasmine rice", where a tap writes the wrong match (ADR 0027).
     await vi.waitFor(() =>
@@ -342,14 +352,12 @@ describe('ReferenceFoodPicker', () => {
       ).not.toBeInTheDocument(),
     )
 
-    releaseRice()
+    rice.release()
     expect(await screen.findByText('Rice, white')).toBeVisible()
   })
 
   it('stays quiet about not being sure when it has offered a candidate', async () => {
-    registerEndpoint('/api/reference-foods', () =>
-      referenceFoodSearch({ suggestedId: 101 }),
-    )
+    chickenFinds(referenceFoodSearch({ suggestedId: 101 }))
 
     await renderSuspended(ReferenceFoodPicker, { props: { food: chicken } })
 
@@ -360,11 +368,7 @@ describe('ReferenceFoodPicker', () => {
   })
 
   it('says nothing about the database when the box holds only spaces', async () => {
-    registerEndpoint('/api/reference-foods', (event) =>
-      String(getQuery(event).q).trim() === ''
-        ? referenceFoodSearch({ suggestedId: null, candidates: [] })
-        : referenceFoodSearch(),
-    )
+    chickenFinds()
     await renderSuspended(ReferenceFoodPicker, { props: { food: chicken } })
     const user = userEvent.setup()
     const box = screen.getByRole('textbox', {
@@ -392,11 +396,7 @@ describe('ReferenceFoodPicker', () => {
   })
 
   it('asks again after clearing, rather than leaving the old answer on screen', async () => {
-    registerEndpoint('/api/reference-foods', (event) =>
-      String(getQuery(event).q).trim() === ''
-        ? referenceFoodSearch({ suggestedId: null, candidates: [] })
-        : referenceFoodSearch(),
-    )
+    chickenFinds()
     await renderSuspended(ReferenceFoodPicker, { props: { food: chicken } })
     expect(
       await screen.findByText('Chicken, breast, lean flesh, raw'),
@@ -422,7 +422,7 @@ describe('ReferenceFoodPicker', () => {
   })
 
   it('leaves the caret in the box after clearing, ready for what comes next', async () => {
-    registerEndpoint('/api/reference-foods', () => referenceFoodSearch())
+    chickenFinds()
     await renderSuspended(ReferenceFoodPicker, { props: { food: chicken } })
 
     await userEvent
@@ -441,11 +441,8 @@ describe('ReferenceFoodPicker', () => {
     // Held failing rather than counted down: ofetch retries a 500 GET by itself,
     // so failing "the first call" heals before the component ever sees an error.
     let failing = true
-    registerEndpoint('/api/reference-foods', (event) => {
-      if (!failing) return referenceFoodSearch()
-      setResponseStatus(event, 500)
-      return { message: 'boom' }
-    })
+    chickenFinds()
+    server.use(failingRead('/api/reference-foods', () => failing))
 
     await renderSuspended(ReferenceFoodPicker, { props: { food: chicken } })
 
@@ -464,9 +461,7 @@ describe('ReferenceFoodPicker', () => {
   })
 
   it('says the database holds nothing like it rather than showing an empty list', async () => {
-    registerEndpoint('/api/reference-foods', () =>
-      referenceFoodSearch({ suggestedId: null, candidates: [] }),
-    )
+    // The baseline matches no Reference Food.
 
     await renderSuspended(ReferenceFoodPicker, { props: { food: chicken } })
 
@@ -481,18 +476,19 @@ describe('ReferenceFoodPicker', () => {
   })
 
   it('searches again for what the user types instead', async () => {
-    registerEndpoint('/api/reference-foods', (event) =>
-      getQuery(event).q === 'Chicken breast'
-        ? referenceFoodSearch({
-            candidates: [
-              referenceFoodCandidate({ id: 101, name: 'Chicken, breast, raw' }),
-            ],
-          })
-        : referenceFoodSearch({
-            candidates: [
-              referenceFoodCandidate({ id: 303, name: 'Turkey, breast, raw' }),
-            ],
-          }),
+    server.use(
+      referenceFoodsFor({
+        [chicken.name]: referenceFoodSearch({
+          candidates: [
+            referenceFoodCandidate({ id: 101, name: 'Chicken, breast, raw' }),
+          ],
+        }),
+        Turkey: referenceFoodSearch({
+          candidates: [
+            referenceFoodCandidate({ id: 303, name: 'Turkey, breast, raw' }),
+          ],
+        }),
+      }),
     )
     await renderSuspended(ReferenceFoodPicker, { props: { food: chicken } })
     expect(await screen.findByText('Chicken, breast, raw')).toBeVisible()
@@ -507,7 +503,7 @@ describe('ReferenceFoodPicker', () => {
   })
 
   it('says it will not guess when no candidate is confident enough, and still lists them', async () => {
-    registerEndpoint('/api/reference-foods', () =>
+    chickenFinds(
       referenceFoodSearch({
         suggestedId: null,
         candidates: [
@@ -532,7 +528,7 @@ describe('ReferenceFoodPicker', () => {
   })
 
   it('marks the one candidate it is confident enough to offer', async () => {
-    registerEndpoint('/api/reference-foods', () =>
+    chickenFinds(
       referenceFoodSearch({
         suggestedId: 202,
         candidates: [

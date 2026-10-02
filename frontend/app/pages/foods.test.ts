@@ -1,14 +1,15 @@
-import { describe, expect, it, vi } from 'vitest'
-import {
-  mockNuxtImport,
-  registerEndpoint,
-  renderSuspended,
-} from '@nuxt/test-utils/runtime'
-import { createError, setResponseStatus } from 'h3'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { mockNuxtImport, renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen, within } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import { food } from '~~/test/food-fixtures'
+import { foodCatalog } from '~~/test/mocks/handlers/catalog'
+import { catalogFails } from '~~/test/mocks/handlers/foods'
+import { held, http, noConnection } from '~~/test/mocks/http'
+import { server, useMswServer } from '~~/test/mocks/node'
 import Foods from './foods.vue'
+
+useMswServer()
 
 const { toastAdd } = vi.hoisted(() => ({ toastAdd: vi.fn() }))
 mockNuxtImport('useToast', () => () => ({
@@ -23,32 +24,36 @@ const oats = food({
   proteinPer100g: 13,
 })
 
-// One handler for both methods: the module-level registration is per-URL, so a
-// separate POST one would replace the catalog read.
-let holdSave: Promise<void> | null = null
-let savesLanded = 0
-let oatsTags: { id: number; name: string }[] = []
-registerEndpoint('/api/foods', async (event) => {
-  if (event.method !== 'POST') return [{ ...oats, tags: oatsTags }]
-  if (holdSave) await holdSave
-  savesLanded += 1
-  return { ...oats, id: 8, name: 'Skyr' }
+// A test stating its own catalog `use()`s it after this, which wins.
+beforeEach(() => {
+  toastAdd.mockClear()
+  server.use(...foodCatalog({ foods: [oats] }))
 })
 
-// The backend rejects deleting a Food that has logged Entries with a 400 whose
-// `{ message }` names the Food (issue #107). Mirror that exact shape.
-const rejection = "Oats has logged Entries and can't be deleted."
-registerEndpoint('/api/foods/7', {
-  method: 'DELETE',
-  handler: (event) => {
-    setResponseStatus(event, 400)
-    return { message: rejection }
-  },
-})
+/** Fills the open Add sheet with a Food named "Skyr" and saves it. */
+async function saveSkyr(
+  user: ReturnType<typeof userEvent.setup>,
+  sheet: HTMLElement,
+) {
+  await user.type(within(sheet).getByLabelText(/^name$/i), 'Skyr')
+  for (const macro of [
+    /protein \/100\s*g/i,
+    /carbs \/100\s*g/i,
+    /fat \/100\s*g/i,
+  ]) {
+    await user.click(within(sheet).getByLabelText(macro))
+    await user.keyboard('5')
+  }
+  // A number field commits its model on blur, so leave the last one.
+  await user.tab()
+  await user.click(within(sheet).getByRole('button', { name: /save food/i }))
+}
 
 describe('/foods deleting a food with logged entries', () => {
   it('surfaces the rule message as a persistent error with no Retry, and keeps the food listed', async () => {
-    toastAdd.mockClear()
+    // The backend refuses deleting a Food that has logged Entries with a 400
+    // whose `{ message }` names the Food.
+    server.use(...foodCatalog({ foods: [oats], logged: [oats.id] }))
     await renderSuspended(Foods)
 
     await userEvent.click(screen.getByRole('button', { name: 'Delete Oats' }))
@@ -68,7 +73,7 @@ describe('/foods deleting a food with logged entries', () => {
     // `toaster.max: 1`, and the confirm closing behind it is the other exit.
     expect(toastAdd.mock.calls.at(-1)![0]).toEqual({
       title: 'Could not delete food',
-      description: rejection,
+      description: "Oats has logged Entries and can't be deleted.",
       color: 'error',
       type: 'foreground',
       duration: Infinity,
@@ -86,23 +91,10 @@ describe('/foods deleting a food with logged entries', () => {
 
 describe('/foods saving a new food', () => {
   it('closes the Add sheet onto the catalog, which is the confirmation', async () => {
-    toastAdd.mockClear()
     const user = userEvent.setup()
     await renderSuspended(Foods, { route: '/foods?add=1' })
-    const sheet = screen.getByRole('dialog', { name: /add/i })
 
-    await user.type(within(sheet).getByLabelText(/^name$/i), 'Skyr')
-    for (const macro of [
-      /protein \/100\s*g/i,
-      /carbs \/100\s*g/i,
-      /fat \/100\s*g/i,
-    ]) {
-      await user.click(within(sheet).getByLabelText(macro))
-      await user.keyboard('5')
-    }
-    // A number field commits its model on blur, so leave the last one.
-    await user.tab()
-    await user.click(within(sheet).getByRole('button', { name: /save food/i }))
+    await saveSkyr(user, screen.getByRole('dialog', { name: /add/i }))
 
     // There is no "log it now" continuation to hold the sheet open any more
     // (ADR 0028), and no success toast either: the row in the list behind it is
@@ -110,6 +102,7 @@ describe('/foods saving a new food', () => {
     await vi.waitFor(() =>
       expect(screen.queryByRole('dialog', { name: /add/i })).toBeNull(),
     )
+    expect(await screen.findByText('Skyr')).toBeVisible()
     expect(toastAdd).not.toHaveBeenCalled()
   })
 
@@ -117,26 +110,13 @@ describe('/foods saving a new food', () => {
     // The save resolves whenever it resolves, which on a slow connection is
     // after the User has given up on it, dismissed the sheet and opened a fresh
     // one. Closing *that* sheet would take a half-typed Recipe with it.
-    let release!: () => void
-    holdSave = new Promise<void>((resolve) => {
-      release = resolve
-    })
-    savesLanded = 0
+    const { handler, release } = held('post', '/api/foods')
+    server.use(handler)
     const user = userEvent.setup()
     await renderSuspended(Foods, { route: '/foods?add=1' })
 
     const sheet = screen.getByRole('dialog', { name: /add/i })
-    await user.type(within(sheet).getByLabelText(/^name$/i), 'Skyr')
-    for (const macro of [
-      /protein \/100\s*g/i,
-      /carbs \/100\s*g/i,
-      /fat \/100\s*g/i,
-    ]) {
-      await user.click(within(sheet).getByLabelText(macro))
-      await user.keyboard('5')
-    }
-    await user.tab()
-    await user.click(within(sheet).getByRole('button', { name: /save food/i }))
+    await saveSkyr(user, sheet)
 
     // Dismissed while the save is still in flight, then reopened.
     await user.click(within(sheet).getByRole('button', { name: /close/i }))
@@ -148,26 +128,24 @@ describe('/foods saving a new food', () => {
 
     release()
 
-    // The reopened sheet survives the save that the previous one issued.
-    await vi.waitFor(() => expect(savesLanded).toBe(1))
+    // The reopened sheet survives the save that the previous one issued, whose
+    // Food the catalog behind it now lists.
+    expect(await screen.findByText('Skyr')).toBeInTheDocument()
     expect(screen.getByRole('dialog', { name: /add/i })).toBeVisible()
-    holdSave = null
   })
 })
 
 describe('/foods saving a Food’s Tags', () => {
   it('names a save that failed for want of a connection in its own error toast', async () => {
-    toastAdd.mockClear()
-    registerEndpoint('/api/tags', () => [
-      { id: 1, name: 'snack', foodCount: 0 },
-    ])
-    registerEndpoint('/api/foods/7/tags', {
-      method: 'PUT',
-      handler: (event) => {
-        setResponseStatus(event, 503)
-        return {}
-      },
-    })
+    server.use(
+      http.put('/api/foods/{id}/tags', ({ response }) =>
+        response(503).json(noConnection),
+      ),
+      ...foodCatalog({
+        foods: [oats],
+        tags: [{ id: 1, name: 'snack', foodCount: 0 }],
+      }),
+    )
     const user = userEvent.setup()
     await renderSuspended(Foods)
 
@@ -185,17 +163,11 @@ describe('/foods saving a Food’s Tags', () => {
 
 describe('/foods managing Tags', () => {
   it('re-reads the catalog once a Tag is deleted, so no row still wears it', async () => {
-    oatsTags = [{ id: 9, name: 'snack' }]
-    registerEndpoint('/api/tags', () =>
-      oatsTags.length ? [{ id: 9, name: 'snack', foodCount: 1 }] : [],
+    server.use(
+      ...foodCatalog({
+        foods: [{ ...oats, tags: [{ id: 9, name: 'snack' }] }],
+      }),
     )
-    registerEndpoint('/api/tags/9', {
-      method: 'DELETE',
-      handler: () => {
-        oatsTags = []
-        return null
-      },
-    })
     const user = userEvent.setup()
     await renderSuspended(Foods)
     expect(screen.getByText('snack')).toBeVisible()
@@ -214,13 +186,9 @@ describe('/foods managing Tags', () => {
   })
 })
 
-// Last of the describes that need a working catalog: this one re-registers
-// `/api/foods` to throw, and the override outlives the test.
 describe('/foods when the catalog fails to load', () => {
   it('shows a retryable error instead of the empty-catalog state', async () => {
-    registerEndpoint('/api/foods', () => {
-      throw createError({ statusCode: 500 })
-    })
+    server.use(catalogFails())
 
     await renderSuspended(Foods)
 
