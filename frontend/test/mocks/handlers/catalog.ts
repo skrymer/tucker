@@ -1,5 +1,5 @@
 import type { components } from '#open-fetch-schemas/api'
-import { food, type FoodResponse } from '../../food-fixtures'
+import { food, recipe, type FoodResponse } from '../../food-fixtures'
 import { http } from '../http'
 
 type Tag = components['schemas']['TagResponse']
@@ -44,6 +44,9 @@ const byName = ordered(fold)
  */
 export const byFoodName = ordered(foldAscii)
 
+/** SQL `ORDER BY` with no collation: byte order, so every capital first. */
+const inBytes = ordered((name) => name)
+
 /** How the server refuses a Tag name over 30 characters. */
 export const tagNameTooLong = 'a Tag name must be at most 30 characters'
 
@@ -57,6 +60,8 @@ function tagName(given: string): { name: string } | { refused: string } {
 
 type Row = Omit<FoodResponse, 'tags'> & { tagIds: number[] }
 type Shelved = { id: number; name: string; offCatalog: number }
+type Line = components['schemas']['CreateRecipeIngredient']
+type RecipeRequest = components['schemas']['CreateRecipeRequest']
 
 /**
  * A User's catalog as the backend keeps it: the Foods, the Tags they carry, the
@@ -66,7 +71,16 @@ type Shelved = { id: number; name: string; offCatalog: number }
  * - Foods are listed by name, ignoring the case of ASCII letters alone (SQL
  *   `lower()`). Saving one derives its calories from its macros (Atwater) and
  *   refuses a Tag the User does not have.
- *   Deleting one that has [logged] Entries is refused, naming it.
+ *   Deleting one that has [logged] Entries, or that a Recipe weighs in, is
+ *   refused, naming it — which is also what keeps every composition readable.
+ * - A Recipe is a Food row, composed of the lines [compositions] holds under
+ *   its id; a seed whose lines a Recipe row could not have is refused. Saving
+ *   one rolls its calories and protein up over the cooked weight (ADR 0019).
+ *   It is refused as the backend refuses it, in the backend's order: line by
+ *   line, a Food the User does not have (404), no grams or a Recipe as the
+ *   ingredient (400); then a blank name, no lines or no cooked weight (400);
+ *   then a Tag they do not have (404). Reading or updating an id that is not a
+ *   Recipe is a 404.
  * - Tags are listed by name ignoring case, each counted by the Foods carrying
  *   it — plus, where a [tags] entry states a `foodCount`, Foods outside this
  *   catalog that make up the difference. Creating a name the User already has
@@ -85,12 +99,14 @@ export function foodCatalog({
   candidates = [],
   referenceFoods = [],
   logged = [],
+  compositions: seeded = {},
 }: {
   foods?: FoodResponse[]
   tags?: ShelvedTag[]
   candidates?: Candidate[]
   referenceFoods?: ReferenceFood[]
   logged?: number[]
+  compositions?: Record<number, Line[]>
 } = {}) {
   const rows: Row[] = foods.map(({ tags: held = [], ...rest }) => ({
     ...rest,
@@ -127,10 +143,100 @@ export function foodCatalog({
       .map(({ id, name }): HeldTag => ({ id, name }))
       .sort(byName),
   })
-  const rowOf = (id: string) => rows.find((row) => row.id === Number(id))
+  const rowOf = (id: string | number) =>
+    rows.find((row) => row.id === Number(id))
   const shelved = (ids: number[]) => ids.every((id) => shelf.has(id))
+  const distinct = (ids: number[]) => [...new Set(ids)]
   const named = (name: string) =>
     [...shelf.values()].find((tag) => fold(tag.name) === fold(name))
+
+  const compositions = new Map<number, Line[]>(
+    Object.entries(seeded).map(([id, lines]) => [Number(id), lines]),
+  )
+  for (const [id, lines] of compositions) {
+    const row = rowOf(id)
+    if (row?.kind !== 'RECIPE') {
+      throw new Error(`Food ${id} is not a Recipe to compose`)
+    }
+    const unheld = lines.find(({ foodId }) => rowOf(foodId)?.kind !== 'FOOD')
+    if (unheld) {
+      throw new Error(
+        `${row.name} weighs in Food ${unheld.foodId}, which is not a plain Food here`,
+      )
+    }
+    if (row.ingredientCount !== lines.length) {
+      throw new Error(
+        `${row.name} counts ${row.ingredientCount} ingredients but is composed of ${lines.length}`,
+      )
+    }
+  }
+
+  /**
+   * The Recipe row [id] as [request] composes it, its calories and protein
+   * summed over the grams weighed in and re-expressed per 100 g of the cooked
+   * weight, in the backend's order of operations (`Recipe.nutrition()`) — or
+   * the refusal the backend would answer.
+   */
+  const compose = (
+    id: number,
+    request: RecipeRequest,
+  ): { row: Row } | { status: 400 | 404; message: string } => {
+    const { name, cookedWeightG, ingredients, tagIds } = request
+    // Line by line, as the backend resolves them: the first line it cannot
+    // take decides the refusal.
+    for (const { foodId, grams } of ingredients) {
+      const ingredient = rowOf(foodId)
+      if (!ingredient) {
+        return { status: 404, message: `no Food with id ${foodId}` }
+      }
+      if (!(grams > 0)) {
+        return {
+          status: 400,
+          message: `ingredient grams must be > 0, was ${grams}`,
+        }
+      }
+      if (ingredient.kind === 'RECIPE') {
+        return {
+          status: 400,
+          message: 'a recipe ingredient must be a plain Food, not a RECIPE',
+        }
+      }
+    }
+    if (!name.replace(EDGES, '')) {
+      return { status: 400, message: 'Recipe name must not be blank' }
+    }
+    if (ingredients.length === 0) {
+      return { status: 400, message: 'a Recipe needs at least one ingredient' }
+    }
+    if (!(cookedWeightG > 0)) {
+      return {
+        status: 400,
+        message: `cookedWeightG must be > 0, was ${cookedWeightG}`,
+      }
+    }
+    if (!shelved(tagIds)) {
+      return { status: 404, message: `no Tag among ${tagIds}` }
+    }
+    const total = (per100g: (row: Row) => number) =>
+      ingredients.reduce(
+        (sum, { foodId, grams }) =>
+          sum + (per100g(rowOf(foodId)!) * grams) / 100,
+        0,
+      )
+    const perCooked100g = 100 / cookedWeightG
+    const row: Row = {
+      ...recipe({
+        id,
+        name,
+        caloriesPer100g: total((f) => f.caloriesPer100g) * perCooked100g,
+        proteinPer100g: total((f) => f.proteinPer100g) * perCooked100g,
+        cookedWeightG,
+        ingredientCount: ingredients.length,
+      }),
+      tagIds: distinct(tagIds),
+    }
+    return { row }
+  }
 
   return [
     http.get('/api/foods', ({ response }) =>
@@ -145,19 +251,32 @@ export function foodCatalog({
       const row: Row = {
         ...food({ id: nextFoodId++, ...macros, barcode: barcode ?? null }),
         caloriesPer100g: 4 * p + 4 * c + 9 * f,
-        tagIds: [...new Set(tagIds)],
+        tagIds: distinct(tagIds),
       }
       rows.push(row)
       return response(201).json(described(row))
     }),
     http.delete('/api/foods/{id}', ({ params, response }) => {
       const row = rowOf(params.id)
-      if (row && logged.includes(row.id)) {
+      if (!row) return response(204).empty()
+      if (logged.includes(row.id)) {
         return response(400).json({
           message: `${row.name} has logged Entries and can't be deleted.`,
         })
       }
-      if (row) rows.splice(rows.indexOf(row), 1)
+      const usedIn = [...compositions]
+        .filter(([, lines]) => lines.some((l) => l.foodId === row.id))
+        .map(([id]) => rowOf(id)!)
+        .sort(inBytes)
+        .map(({ name }) => name)
+        .filter((name, at, names) => names.indexOf(name) === at)
+      if (usedIn.length > 0) {
+        return response(400).json({
+          message: `${row.name} is an ingredient of ${usedIn.join(', ')} and can't be deleted.`,
+        })
+      }
+      rows.splice(rows.indexOf(row), 1)
+      compositions.delete(row.id)
       return response(204).empty()
     }),
     http.put('/api/foods/{id}/tags', async ({ params, request, response }) => {
@@ -169,7 +288,7 @@ export function foodCatalog({
       if (!shelved(tagIds)) {
         return response(404).json({ message: `no Tag among ${tagIds}` })
       }
-      row.tagIds = [...new Set(tagIds)]
+      row.tagIds = distinct(tagIds)
       return response(200).json(described(row))
     }),
     http.put(
@@ -199,6 +318,49 @@ export function foodCatalog({
         row.referenceFoodName = null
       }
       return response(204).empty()
+    }),
+    http.post('/api/recipes', async ({ request, response }) => {
+      const body = await request.json()
+      const saved = compose(nextFoodId, body)
+      if ('status' in saved) {
+        return response(saved.status).json({ message: saved.message })
+      }
+      nextFoodId++
+      rows.push(saved.row)
+      compositions.set(saved.row.id, body.ingredients)
+      return response(201).json(described(saved.row))
+    }),
+    http.put('/api/recipes/{id}', async ({ params, request, response }) => {
+      const stored = rowOf(params.id)
+      if (stored?.kind !== 'RECIPE') {
+        return response(404).json({ message: `no recipe with id ${params.id}` })
+      }
+      const body = await request.json()
+      const saved = compose(stored.id, body)
+      if ('status' in saved) {
+        return response(saved.status).json({ message: saved.message })
+      }
+      rows[rows.indexOf(stored)] = saved.row
+      compositions.set(stored.id, body.ingredients)
+      return response(200).json(described(saved.row))
+    }),
+    http.get('/api/recipes/{id}', ({ params, response }) => {
+      const row = rowOf(params.id)
+      if (row?.kind !== 'RECIPE') {
+        return response(404).json({ message: `no recipe with id ${params.id}` })
+      }
+      const { tags } = described(row)
+      return response(200).json({
+        id: row.id,
+        name: row.name,
+        cookedWeightG: row.cookedWeightG!,
+        ingredients: compositions.get(row.id)!.map(({ foodId, grams }) => ({
+          foodId,
+          name: rowOf(foodId)!.name,
+          grams,
+        })),
+        tags,
+      })
     }),
     http.get('/api/foods/barcode/{barcode}', ({ params, response }) => {
       const owned = rows.find((row) => row.barcode === params.barcode)

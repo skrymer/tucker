@@ -121,6 +121,14 @@ or is stated as unchecked — an annotation in `e2e/` never answers a typing fin
   visible form at all — "asks for nothing while closed" — goes unpinned, and the PR
   body names it. A neighbouring test does not cover it: "a Tag created while the sheet
   was shut is offered once it opens" still passes with the picker reading while shut.
+- **A derived figure in a mock follows the backend's arithmetic, operation for
+  operation**, so it sends the same double the backend would (`compose` in
+  `foodCatalog`). A test that states the result picks inputs that divide exactly
+  rather than loosening to `toBeCloseTo`, which would also pass a mock that rounds.
+- **Seed state the backend could hold, and refuse the rest.** `foodCatalog`'s
+  `compositions` throws on lines seeded under a row that is not a Recipe, on a
+  line weighing in anything but a plain Food it holds, and on an `ingredientCount`
+  that disagrees with the lines — so a fixture cannot describe a dish two ways.
 - **The typed handler can only send what the spec declares.** `POST /api/tags`
   declares 200 alone, though the backend answers a new Tag with 201, so `foodCatalog`
   answers both with 200.

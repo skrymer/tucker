@@ -1,6 +1,6 @@
-import { expect, test } from './support/test'
-import { mockFoods } from './support/mock-api'
+import { expect, test } from './support/network'
 import { food, recipe } from '../test/food-fixtures'
+import { foodCatalog } from '../test/mocks/handlers/catalog'
 
 // F9 Slice 2: the catalog distinction + read-only composition view with /api
 // mocked, on both Desktop and Mobile Chrome (the responsive check). A recipe row
@@ -9,32 +9,27 @@ import { food, recipe } from '../test/food-fixtures'
 test('a recipe reads as a recipe in the catalog and opens its composition', async ({
   page,
   goto,
+  network,
 }) => {
-  await mockFoods(page, [
-    food({ id: 1, name: 'Chicken', caloriesPer100g: 100, proteinPer100g: 25 }),
-    recipe({
-      id: 2,
-      name: 'Cottage pie',
-      caloriesPer100g: 255,
-      proteinPer100g: 30,
-      cookedWeightG: 1400,
-      ingredientCount: 2,
-    }),
-  ])
-
-  // The composition detail fetch (GET /api/recipes/{id}) — distinct from the
-  // catalog's GET /api/foods, which mockFoods stubs.
-  await page.route('**/api/recipes/*', (route) =>
-    route.fulfill({
-      json: {
-        id: 2,
-        name: 'Cottage pie',
-        cookedWeightG: 1400,
-        ingredients: [
-          { foodId: 1, name: 'Beef mince', grams: 500 },
-          { foodId: 3, name: 'Potato', grams: 900 },
+  network.use(
+    ...foodCatalog({
+      foods: [
+        food({ id: 1, name: 'Beef mince' }),
+        food({ id: 3, name: 'Potato' }),
+        recipe({
+          id: 2,
+          name: 'Cottage pie',
+          caloriesPer100g: 255,
+          proteinPer100g: 30,
+          cookedWeightG: 1400,
+          ingredientCount: 2,
+        }),
+      ],
+      compositions: {
+        2: [
+          { foodId: 1, grams: 500 },
+          { foodId: 3, grams: 900 },
         ],
-        tags: [],
       },
     }),
   )
@@ -51,7 +46,7 @@ test('a recipe reads as a recipe in the catalog and opens its composition', asyn
   ).toBeVisible()
 
   // A plain Food row is unchanged: no chip, no view button.
-  const foodRow = page.getByRole('listitem').filter({ hasText: 'Chicken' })
+  const foodRow = page.getByRole('listitem').filter({ hasText: 'Potato' })
   await expect(foodRow.getByText('Recipe')).toHaveCount(0)
   await expect(
     foodRow.getByRole('button', { name: /view ingredients/i }),

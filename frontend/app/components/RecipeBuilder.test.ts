@@ -1,9 +1,14 @@
 import { describe, expect, it, vi } from 'vitest'
-import { registerEndpoint, renderSuspended } from '@nuxt/test-utils/runtime'
+import { renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen, within } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import { food, recipe } from '~~/test/food-fixtures'
+import { foodCatalog } from '~~/test/mocks/handlers/catalog'
+import { held } from '~~/test/mocks/http'
+import { server, useMswServer } from '~~/test/mocks/node'
 import RecipeBuilder from './RecipeBuilder.vue'
+
+useMswServer()
 
 const beefMince = food({
   id: 1,
@@ -288,10 +293,14 @@ describe('RecipeBuilder', () => {
   })
 
   it('saves the recipe carrying the Tags picked for it', async () => {
-    registerEndpoint('/api/tags', () => [
-      { id: 7, name: 'Batch cook', foodCount: 1 },
-      { id: 9, name: 'dinner', foodCount: 3 },
-    ])
+    server.use(
+      ...foodCatalog({
+        tags: [
+          { id: 7, name: 'Batch cook', foodCount: 1 },
+          { id: 9, name: 'dinner', foodCount: 3 },
+        ],
+      }),
+    )
     const onSubmit = vi.fn()
     const user = userEvent.setup()
     await renderSuspended(RecipeBuilder, {
@@ -313,18 +322,8 @@ describe('RecipeBuilder', () => {
   })
 
   it('holds Save until a typed Tag has been created, then saves carrying it', async () => {
-    let release!: () => void
-    const held = new Promise<void>((resolve) => {
-      release = resolve
-    })
-    registerEndpoint('/api/tags', { method: 'GET', handler: () => [] })
-    registerEndpoint('/api/tags', {
-      method: 'POST',
-      handler: async () => {
-        await held
-        return { id: 20, name: 'dinner', foodCount: 0 }
-      },
-    })
+    const create = held('post', '/api/tags')
+    server.use(create.handler, ...foodCatalog())
     const onSubmit = vi.fn()
     const user = userEvent.setup()
     await renderSuspended(RecipeBuilder, {
@@ -339,7 +338,7 @@ describe('RecipeBuilder', () => {
     const save = screen.getByRole('button', { name: /save recipe/i })
     await vi.waitFor(() => expect(save).toBeDisabled())
 
-    release()
+    create.release()
     await vi.waitFor(() => expect(save).toBeEnabled())
     await user.click(save)
     expect(onSubmit).toHaveBeenCalledWith(
@@ -348,18 +347,8 @@ describe('RecipeBuilder', () => {
   })
 
   it('keeps a Tag still being created while an ingredient is added', async () => {
-    let release!: () => void
-    const held = new Promise<void>((resolve) => {
-      release = resolve
-    })
-    registerEndpoint('/api/tags', { method: 'GET', handler: () => [] })
-    registerEndpoint('/api/tags', {
-      method: 'POST',
-      handler: async () => {
-        await held
-        return { id: 20, name: 'dinner', foodCount: 0 }
-      },
-    })
+    const create = held('post', '/api/tags')
+    server.use(create.handler, ...foodCatalog())
     const onSubmit = vi.fn()
     const user = userEvent.setup()
     await renderSuspended(RecipeBuilder, {
@@ -370,7 +359,8 @@ describe('RecipeBuilder', () => {
     await user.type(screen.getByRole('combobox', { name: 'Tags' }), 'dinner')
     await user.click(await screen.findByRole('option', { name: /dinner/ }))
     await user.click(screen.getByRole('button', { name: /add ingredient/i }))
-    release()
+    await create.arrived
+    create.release()
     await user.click(screen.getByRole('button', { name: /beef mince/i }))
     await user.type(screen.getByLabelText(/grams/i), '300')
     await user.click(screen.getByRole('button', { name: /^add$/i }))
@@ -470,10 +460,14 @@ describe('RecipeBuilder', () => {
   })
 
   it('shows the Tags an existing recipe carries and saves them as they were when left untouched', async () => {
-    registerEndpoint('/api/tags', () => [
-      { id: 7, name: 'Batch cook', foodCount: 1 },
-      { id: 9, name: 'dinner', foodCount: 3 },
-    ])
+    server.use(
+      ...foodCatalog({
+        tags: [
+          { id: 7, name: 'Batch cook', foodCount: 1 },
+          { id: 9, name: 'dinner', foodCount: 3 },
+        ],
+      }),
+    )
     const onSubmit = vi.fn()
     const user = userEvent.setup()
     await renderSuspended(RecipeBuilder, {
