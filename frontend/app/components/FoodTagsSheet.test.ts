@@ -39,6 +39,7 @@ function heldCreates(name?: string) {
   let release!: () => void
   const held = new Promise<void>((resolve) => (release = resolve))
   const handler = http.post('/api/tags', async ({ request }) => {
+    // A clone: the handler it falls through to reads the body too.
     if (name && (await request.clone().json()).name !== name) return undefined
     await held
     return undefined
@@ -89,6 +90,8 @@ describe('FoodTagsSheet', () => {
   })
 
   it('opens on an empty field, offering nothing until the Tags have loaded', async () => {
+    // A Tag is kept, so a read that landed would have something to offer.
+    keeps(snack)
     server.use(failingRead('/api/tags'))
     await renderSuspended(FoodTagsSheet, { props: { food: oats } })
     const picker = screen.getByRole('combobox', { name: 'Tags' })

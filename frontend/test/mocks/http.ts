@@ -1,4 +1,4 @@
-import { HttpResponse } from 'msw'
+import { HttpResponse, http as untypedHttp } from 'msw'
 import { createOpenApiHttp } from 'openapi-msw'
 import type { paths } from '#open-fetch-schemas/api'
 
@@ -18,6 +18,19 @@ export const http = createOpenApiHttp<paths>({ baseUrl: '*' })
  */
 export const serverError = () =>
   HttpResponse.json({ message: 'boom' }, { status: 500 })
+
+/**
+ * The last handler in either layer, for an `/api` request every handler above
+ * it let fall through. msw counts a handler that matched and returned nothing
+ * as handled and sends the request on to the network, so no unhandled-request
+ * callback ever sees it: this hands it to [record] and fails it instead.
+ */
+export function fellThrough(record: (request: Request) => void) {
+  return untypedHttp.all('*/api/*', ({ request }) => {
+    record(request)
+    throw new Error(`no handler for ${request.method} ${request.url}`)
+  })
+}
 
 /**
  * A read of [path] the server fails while [isDown] holds, falling through to the

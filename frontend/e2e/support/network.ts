@@ -1,6 +1,7 @@
 import type { AnyHandler } from 'msw'
 import { defineNetworkFixture, type NetworkFixture } from '@msw/playwright'
 import { handlers as baseline } from '../../test/mocks/handlers'
+import { fellThrough } from '../../test/mocks/http'
 import { expect, test as base } from './test'
 
 /**
@@ -23,15 +24,19 @@ export const test = base.extend<{
   network: [
     async ({ context, handlers }, use) => {
       const unhandled: string[] = []
+      const note = (request: Request) => {
+        const url = new URL(request.url)
+        unhandled.push(`${request.method} ${url.pathname}${url.search}`)
+      }
       const network = defineNetworkFixture({
         context,
-        handlers,
+        handlers: [...handlers, fellThrough(note)],
         onUnhandledFrame: ({ frame }) => {
           if (frame.protocol !== 'http') return
           const { request } = frame.data as { request: Request }
           const url = new URL(request.url)
           if (!url.pathname.startsWith('/api/')) return
-          unhandled.push(`${request.method} ${url.pathname}${url.search}`)
+          note(request)
           // Fails the request too, so it never reaches the server's /api proxy.
           throw new Error(`no handler for ${request.method} ${url.pathname}`)
         },

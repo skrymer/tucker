@@ -208,8 +208,8 @@ export function foodCatalog({
     http.get('/api/tags', ({ response }) =>
       response(200).json([...shelf.values()].sort(byName).map(counted)),
     ),
-    // A new Tag and one the User already had answer alike, as the spec
-    // declares no 201 for a create.
+    // A new Tag and one the User already had answer alike: the spec declares
+    // no 201 for the create the backend answers with one (#420).
     http.post('/api/tags', async ({ request, response }) => {
       const given = tagName((await request.json()).name)
       if ('refused' in given) {

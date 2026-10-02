@@ -18,6 +18,7 @@ function heldCreateOf(name: string) {
   const held = new Promise<void>((resolve) => (release = resolve))
   server.use(
     http.post('/api/tags', async ({ request }) => {
+      // A clone: the handler it falls through to reads the body too.
       if ((await request.clone().json()).name === name) await held
       return undefined
     }),

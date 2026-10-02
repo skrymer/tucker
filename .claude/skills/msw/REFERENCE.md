@@ -97,6 +97,34 @@ or is stated as unchecked — an annotation in `e2e/` never answers a typing fin
   went on to the server's proxy and failed there unnoticed, so a spec moved over can meet
   reads its old mocks never mentioned — a page's own, or the shell's on the way to it.
   The unhandled failure names each one; add it to the baseline.
+- **A matched handler that returns nothing is "handled".** With nothing under it to
+  answer, msw passes the request through to the real network ("fetch failed" in
+  Vitest, the server's `/api` proxy in Playwright) and never calls `onUnhandledFrame`,
+  so a hold or a predicate override with no handler beneath it escaped the
+  unhandled check entirely. Both layers end their handler list with `fellThrough`
+  (`test/mocks/http.ts`), which records the request and fails it; `node.test.ts` and
+  `e2e/network-fixture.spec.ts` pin it. Found because a held create released at the
+  end of one test landed, uncovered, during the next.
+- **A handler that reads the body and falls through reads a clone.** Measured: with
+  `await request.json()` the handler under it fails with "Body has already been
+  used", so a predicate on a body field reads `await request.clone().json()`.
+- **A held request released at the end of a test finishes in the next one.** Wait
+  for what it changes on screen after the release (the new row, the emptied list), so
+  the request lands inside the test that sent it.
+- **Act while a request is in flight by awaiting its arrival, not by counting.** The
+  holding handler resolves a promise (`arrived()`) before it waits, and the test awaits
+  that rather than `vi.waitFor(() => expect(calls).toBe(2))`.
+- **A re-read answered with the state from when it arrived** — the stale read a
+  superseded load must not land — is `getResponse(handlers, request)` (from `msw`)
+  inside the holding handler, returned once released (`ManageTagsSheet.test.ts`).
+- **"Sends nothing" is shown by what a send would have made visible**: the server's
+  refusal in its own words, which differ from the field's (`a Tag name must not be
+  blank`), or closing and reopening a sheet that reads afresh on open. "Asks for nothing
+  while closed" has no visible form at all; it becomes what reading on open is for — a
+  Tag created while the sheet was shut is offered once it opens.
+- **The typed handler can only send what the spec declares.** `POST /api/tags`
+  declares 200 alone, though the backend answers a new Tag with 201, so `foodCatalog`
+  answers both with 200 (#420).
 - **Coexistence in Vitest.** A path registered through `registerEndpoint` is answered by
   Nuxt even in an opted-in file, ahead of any MSW handler for it. The shim makes URLs
   absolute, which Nuxt's registry only knows relative, so it strips `location.origin` and
@@ -122,6 +150,12 @@ or is stated as unchecked — an annotation in `e2e/` never answers a typing fin
   handler file reaches it. In the spec copy, `test.use({ handlers: [copyBaseline, {
   option: true }] })` — wrapped, because Playwright reads a bare array as its
   `[value, options]` tuple and fails every test with `handlers.every is not a function`.
+- **Cap the e2e copies' timeout.** A never-answering break waits out the suite's
+  300 s test timeout once per test it reaches; #403's first sweep ran overnight on
+  three of them. The copies append `test.beforeEach(() => test.setTimeout(30_000))`.
+- **A break that changes nothing the User can tell apart proves nothing.** An offline
+  look-up that falls through lands on a miss, which the page answers identically by
+  design; the break that discriminates answers a candidate instead.
 - **Script it and read a kill matrix.** Generate every copy from one list of breaks, run
   them all, and tabulate which break turned each test red, per Playwright project. Include
   one **unbroken control copy**: it must pass, or the harness is what failed — the first

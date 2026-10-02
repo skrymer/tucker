@@ -222,7 +222,7 @@ describe('ManageTagsSheet', () => {
       http.get('/api/tags', async ({ request }) => {
         if (!holdNextRead) return undefined
         holdNextRead = false
-        const answer = await getResponse(shelf, request.clone())
+        const answer = await getResponse(shelf, request)
         arrived()
         await released
         return answer
@@ -284,9 +284,11 @@ describe('ManageTagsSheet', () => {
       expect(screen.getByRole('button', { name: /Delete tag/ })).toBeDisabled(),
     )
     release()
+    expect(await screen.findByText('No tags yet.')).toBeVisible()
   })
 
   it('holds the add button while a create is in flight', async () => {
+    keeps()
     const { handler, release } = heldWrites('post')
     server.use(handler)
     await renderSuspended(ManageTagsSheet, { props: { open: true } })
@@ -299,6 +301,7 @@ describe('ManageTagsSheet', () => {
       expect(screen.getByRole('button', { name: /Add/ })).toBeDisabled(),
     )
     release()
+    expect(await screen.findByText('Lunch')).toBeVisible()
   })
 
   it('names a delete that failed for want of a connection in its own error toast', async () => {
@@ -610,6 +613,12 @@ describe('ManageTagsSheet', () => {
       expect(screen.getByRole('button', { name: /Merge/ })).toBeDisabled(),
     )
     release()
+    // One Tag remains, under the spelling it already had, carrying both.
+    await vi.waitFor(() =>
+      expect(
+        screen.getAllByRole('listitem').map((row) => row.textContent),
+      ).toEqual([expect.stringMatching(/^Snack.*4 foods/)]),
+    )
   })
 
   it('refuses renaming a Tag to whitespace alone at the field, and sends nothing', async () => {

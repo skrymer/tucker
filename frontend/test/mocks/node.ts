@@ -2,11 +2,17 @@ import { afterAll, afterEach, beforeAll } from 'vitest'
 import { setupServer } from 'msw/node'
 import { createFetch } from 'ofetch'
 import { handlers } from './handlers'
+import { fellThrough } from './http'
 
 /** The Vitest server, holding the baseline. A test overrides it with `server.use()`. */
-export const server = setupServer(...handlers)
+export const server = setupServer(...handlers, fellThrough(noteUncovered))
 
 const unhandled: string[] = []
+
+function noteUncovered(request: Request) {
+  const { pathname, search } = new URL(request.url)
+  unhandled.push(`${request.method} ${pathname}${search}`)
+}
 
 /**
  * Throw naming every request no handler covered since the last call, then forget
@@ -43,9 +49,8 @@ export function useMswServer() {
     server.listen({
       onUnhandledFrame: ({ frame }) => {
         const { request } = frame.data as { request: Request }
-        const { pathname, search } = new URL(request.url)
-        unhandled.push(`${request.method} ${pathname}${search}`)
-        throw new Error(`no handler for ${request.method} ${pathname}`)
+        noteUncovered(request)
+        throw new Error(`no handler for ${request.method} ${request.url}`)
       },
     })
     globalThis.$fetch = createFetch({
