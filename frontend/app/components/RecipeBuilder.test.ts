@@ -5,10 +5,8 @@ import userEvent from '@testing-library/user-event'
 import { food, recipe } from '~~/test/food-fixtures'
 import { foodCatalog } from '~~/test/mocks/handlers/catalog'
 import { held } from '~~/test/mocks/http'
-import { server, useMswServer } from '~~/test/mocks/node'
+import { server } from '~~/test/mocks/node'
 import RecipeBuilder from './RecipeBuilder.vue'
-
-useMswServer()
 
 const beefMince = food({
   id: 1,

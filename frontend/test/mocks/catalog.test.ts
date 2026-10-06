@@ -2,9 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { components } from '#open-fetch-schemas/api'
 import { food, recipe } from '../food-fixtures'
 import { foodCatalog } from './handlers/catalog'
-import { server, useMswServer } from './node'
-
-useMswServer()
+import { server } from './node'
 
 type CreateRecipeRequest = components['schemas']['CreateRecipeRequest']
 

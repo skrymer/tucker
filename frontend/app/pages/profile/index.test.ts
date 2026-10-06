@@ -6,12 +6,10 @@ import type { components } from '#open-fetch-schemas/api'
 import { bodyAndPlan } from '~~/test/mocks/handlers/body'
 import { baselineProfile } from '~~/test/mocks/handlers/profile'
 import { failingRead, held, http } from '~~/test/mocks/http'
-import { server, useMswServer } from '~~/test/mocks/node'
+import { server } from '~~/test/mocks/node'
 import { reopenProfile } from '~~/test/profile-page'
 import { setupWebPush } from '~~/test/web-push-helpers'
 import Profile from './index.vue'
-
-useMswServer()
 
 type ProfileDto = components['schemas']['ProfileDto']
 type Reading = components['schemas']['WeightMeasurementResponse']

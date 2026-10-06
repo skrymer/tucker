@@ -7,10 +7,8 @@ import type { components } from '#open-fetch-schemas/api'
 import { bodyAndPlan } from '~~/test/mocks/handlers/body'
 import { baselineProfile } from '~~/test/mocks/handlers/profile'
 import { held, http, serverError } from '~~/test/mocks/http'
-import { server, useMswServer } from '~~/test/mocks/node'
+import { server } from '~~/test/mocks/node'
 import { useWeightLogging } from './useWeightLogging'
-
-useMswServer()
 
 const { toastAdd } = vi.hoisted(() => ({ toastAdd: vi.fn() }))
 mockNuxtImport('useToast', () => () => ({ add: toastAdd, remove: vi.fn() }))

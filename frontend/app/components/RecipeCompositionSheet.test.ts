@@ -6,10 +6,8 @@ import { settle } from '~~/test/async-gate'
 import { food, recipe } from '~~/test/food-fixtures'
 import { foodCatalog } from '~~/test/mocks/handlers/catalog'
 import { failingRead, held } from '~~/test/mocks/http'
-import { server, useMswServer } from '~~/test/mocks/node'
+import { server } from '~~/test/mocks/node'
 import RecipeCompositionSheet from './RecipeCompositionSheet.vue'
-
-useMswServer()
 
 const mince = food({
   id: 1,

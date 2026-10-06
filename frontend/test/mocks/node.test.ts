@@ -1,15 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { registerEndpoint } from '@nuxt/test-utils/runtime'
 import { baselineProfile } from './handlers/profile'
 import { http } from './http'
-import { assertNoUnhandledRequests, server, useMswServer } from './node'
-
-useMswServer()
+import { assertNoUnhandledRequests, server } from './node'
 
 // Not in the spec, so the baseline can never grow to cover it.
 const UNCOVERED = '/api/uncovered'
 
-describe('the MSW baseline under the Nuxt test environment', () => {
+describe('the MSW baseline, in every test file without an opt-in', () => {
   it('answers $fetch, with the query string reaching the handler', async () => {
     const summary = await $fetch('/api/summary', {
       query: { date: '2026-06-16' },
@@ -118,6 +115,15 @@ describe('the MSW baseline under the Nuxt test environment', () => {
     expect(await response.json()).toMatchObject({ tracksCalories: true })
   })
 
+  it('answers an icon lookup itself, so no test reaches the Iconify CDN', async () => {
+    const response = await fetch(
+      'https://api.iconify.design/lucide.json?icons=plus',
+    )
+
+    expect(response.status).toBe(404)
+    expect(() => assertNoUnhandledRequests()).not.toThrow()
+  })
+
   it('rejects a request its caller aborts while the handler is still answering', async () => {
     let release!: () => void
     const answered = new Promise<void>((resolve) => {
@@ -136,11 +142,5 @@ describe('the MSW baseline under the Nuxt test environment', () => {
     release()
 
     await expect(read).rejects.toThrow(/abort/i)
-  })
-
-  it('leaves a path registered through registerEndpoint to Nuxt', async () => {
-    registerEndpoint('/api/me', () => ({ email: 'nuxt@example.com' }))
-
-    expect(await $fetch('/api/me')).toEqual({ email: 'nuxt@example.com' })
   })
 })

@@ -1,4 +1,5 @@
 import { afterAll, afterEach, beforeAll } from 'vitest'
+import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
 import { createFetch } from 'ofetch'
 import { handlers } from './handlers'
@@ -6,8 +7,21 @@ import { describeRequest, fellThrough } from './http'
 
 const unhandled: string[] = []
 
+/**
+ * Nuxt Icon looks up an icon it was not bundled with on the Iconify CDN. A test
+ * never needs the glyph, so the lookup misses here instead of reaching the network.
+ */
+const iconLookup = http.get(
+  'https://api.iconify.design/*',
+  () => new HttpResponse(null, { status: 404 }),
+)
+
 /** The Vitest server, holding the baseline. A test overrides it with `server.use()`. */
-export const server = setupServer(...handlers, fellThrough(unhandled))
+export const server = setupServer(
+  ...handlers,
+  iconLookup,
+  fellThrough(unhandled),
+)
 
 /**
  * Throw naming every request no handler covered since the last call, then forget
@@ -24,8 +38,9 @@ export function assertNoUnhandledRequests(): void {
 type Fetch = typeof globalThis.fetch
 
 /**
- * Answer `/api` calls from the MSW baseline for every test in this file, and fail
- * any request no handler covers. Call once at the top of an opted-in test file.
+ * Answer `/api` calls from the MSW baseline for every test in a file, and fail
+ * any request no handler covers. `test/setup.ts` calls it, so it runs for every
+ * Vitest file.
  *
  * Stock `setupServer` cannot reach a request under `environment: 'nuxt'` alone:
  * Nuxt's test `fetch` answers an unregistered relative URL with a 404 before the
@@ -33,7 +48,7 @@ type Fetch = typeof globalThis.fetch
  * read. So `fetch` is wrapped to unwrap that `Request`, and `$fetch` is rebound to
  * resolve `/api/*` against the page's origin (ADR 0034).
  */
-export function useMswServer() {
+export function installMswServer() {
   let nuxtFetch: Fetch
   let nuxt$fetch: typeof globalThis.$fetch
 
@@ -67,32 +82,15 @@ export function useMswServer() {
   })
 }
 
-/**
- * Hand Nuxt's `fetch` a URL and an init rather than happy-dom's `Request`, and
- * send a path still registered through `registerEndpoint` to Nuxt's handler, which
- * only recognises it relative — that also covers the app manifest Nuxt registers
- * for itself.
- */
+/** Hand Nuxt's `fetch` a URL and an init rather than happy-dom's `Request`. */
 function unwrapRequests(nuxtFetch: Fetch): Fetch {
-  const viaNuxt = (url: string, init?: RequestInit) => {
-    const registry = (window as unknown as { __registry: Set<string> })
-      .__registry
-    if (url.startsWith(location.origin)) {
-      const relative = url.slice(location.origin.length)
-      if (registry.has(relative.split('?')[0]!) || registry.has(relative)) {
-        return nuxtFetch(relative, init)
-      }
-    }
-    return nuxtFetch(url, init)
-  }
-
   return (async (input: RequestInfo | URL, init?: RequestInit) => {
     if (input instanceof Request) {
       const body = ['GET', 'HEAD'].includes(input.method)
         ? undefined
         : await input.arrayBuffer()
       return abortable(
-        viaNuxt(input.url, {
+        nuxtFetch(input.url, {
           method: input.method,
           headers: input.headers,
           body,
@@ -101,7 +99,7 @@ function unwrapRequests(nuxtFetch: Fetch): Fetch {
         input.signal,
       )
     }
-    return viaNuxt(input instanceof URL ? input.href : input, init)
+    return nuxtFetch(input, init)
   }) as Fetch
 }
 

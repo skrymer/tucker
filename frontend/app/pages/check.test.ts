@@ -11,10 +11,8 @@ import {
   summaryWith,
 } from '~~/test/mocks/handlers/summary'
 import { http, serverError } from '~~/test/mocks/http'
-import { server, useMswServer } from '~~/test/mocks/node'
+import { server } from '~~/test/mocks/node'
 import Check from './check.vue'
-
-useMswServer()
 
 // The scanner is stubbed so a scan can be driven from a test: jsdom has no
 // camera, and the real composable's states are exercised by the Playwright

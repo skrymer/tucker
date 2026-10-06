@@ -1,9 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { baselineProfile } from './handlers/profile'
 import { bodyAndPlan } from './handlers/body'
-import { server, useMswServer } from './node'
-
-useMswServer()
+import { server } from './node'
 
 describe('bodyAndPlan', () => {
   it('smooths the trend as the backend does, decaying over the days between readings', async () => {

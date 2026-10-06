@@ -3,11 +3,9 @@ import { renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen, within } from '@testing-library/vue'
 import { useAuthGate } from '~/composables/useAuthGate'
 import { http } from '~~/test/mocks/http'
-import { server, useMswServer } from '~~/test/mocks/node'
+import { server } from '~~/test/mocks/node'
 import { profileOf, weightOnlyProfile } from '~~/test/mocks/handlers/profile'
 import DefaultLayout from './default.vue'
-
-useMswServer()
 
 // Driven through the real composable rather than a mock: it is one shared ref
 // and a setter, so a mock could only be a second copy of that. Its state is

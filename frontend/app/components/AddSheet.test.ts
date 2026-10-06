@@ -7,10 +7,8 @@ import { readBarcodes } from 'zxing-wasm/reader'
 import { food } from '~~/test/food-fixtures'
 import { foodCatalog } from '~~/test/mocks/handlers/catalog'
 import { held, http } from '~~/test/mocks/http'
-import { server, useMswServer } from '~~/test/mocks/node'
+import { server } from '~~/test/mocks/node'
 import AddSheet from './AddSheet.vue'
-
-useMswServer()
 
 // The camera scanner's hardware + WASM decoder are mocked (ADR 0006: the live
 // lifecycle is a real-stack smoke). These helpers drive the sheet's camera

@@ -4,14 +4,13 @@ import { screen } from '@testing-library/vue'
 import { withCalorieTracking } from '~~/test/calorie-tracking-helpers'
 import { goalInProgress } from '~~/test/mocks/handlers/goal'
 import { summaryOf, type SummaryDay } from '~~/test/mocks/handlers/summary'
-import { server, useMswServer } from '~~/test/mocks/node'
+import { server } from '~~/test/mocks/node'
 import { ref } from 'vue'
 import Today from './index.vue'
 
 // The baseline was last weighed on a day long past, so the weight tile offers
 // its create action, and it has no Goal — Maintenance Mode (ADR 0008) is the
 // quieter page.
-useMswServer()
 
 // jsdom reports the desktop breakpoint, so a phone-only branch needs saying.
 const viewport = vi.hoisted(() => ({ desktop: true }))

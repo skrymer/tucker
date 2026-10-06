@@ -4,10 +4,8 @@ import { screen } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import { foodCatalog } from '~~/test/mocks/handlers/catalog'
 import { held } from '~~/test/mocks/http'
-import { server, useMswServer } from '~~/test/mocks/node'
+import { server } from '~~/test/mocks/node'
 import AddFoodForm from './AddFoodForm.vue'
-
-useMswServer()
 
 /** Creates of [name] held until the returned release; others go through. */
 function heldCreateOf(name: string) {
