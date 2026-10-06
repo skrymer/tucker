@@ -49,11 +49,13 @@ const noLocalTzDates = [
 // The mocked suite answers `/api` from the shared MSW handlers (ADR 0034), whose
 // unhandled-request check a `route()` on `/api` would go around. So a `route()`
 // pattern is written out — a variable or a predicate would hide what it matches —
-// and may not name `/api`; a HAR replay is refused outright, since it answers
-// whatever it recorded. A route on anything else — a CDN abort, a fake camera —
+// and may neither name `/api` nor match every URL; a HAR replay is refused
+// outright, since it answers whatever it recorded. A route on anything else — a CDN abort, a fake camera —
 // stays legal, as does the smokes' offline abort against the real backend.
 const API_ROUTE_MESSAGE =
   'Do not route /api in the mocked e2e — answer it with the MSW baseline or network.use() (the msw skill, ADR 0034).'
+const CATCH_ALL_MESSAGE =
+  'A route() matching every URL answers /api too — name the host or path it is for (the msw skill, ADR 0034).'
 const ROUTE_CALL = "CallExpression[callee.property.name='route']"
 const API_PATH = '/\\/api(\\/|\\*|\\?|$)/'
 const noApiRoutes = [
@@ -77,6 +79,20 @@ const noApiRoutes = [
   {
     selector: "CallExpression[callee.property.name='routeFromHAR']",
     message: API_ROUTE_MESSAGE,
+  },
+  {
+    selector: `${ROUTE_CALL} > Literal.arguments:first-child[value=/^\\*{1,2}(\\/\\*{1,2})?$/]`,
+    message: CATCH_ALL_MESSAGE,
+  },
+  {
+    selector: `${ROUTE_CALL} > Literal.arguments:first-child[regex.pattern=/^\\^?\\.[*+]\\$?$/]`,
+    message: CATCH_ALL_MESSAGE,
+  },
+  {
+    selector:
+      'CallExpression[callee.computed=true][callee.property.value=/^route/]',
+    message:
+      'Call route() by name in the mocked e2e, so the /api ban can read it (the msw skill, ADR 0034).',
   },
 ]
 

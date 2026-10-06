@@ -106,9 +106,9 @@ page reads back. The test asserts only what the User sees.
   mocked suite's `test` (`e2e/support/test.ts`), so no file opts in and none can opt out
   by forgetting to. `registerEndpoint` and `page.route` for `/api` are gone, and ESLint
   refuses a `registerEndpoint` import and, in the mocked e2e, a `route()` on `/api`
-  (`eslint.config.mjs`). It can only read a pattern written out, so there a `route()`
-  pattern must be a literal, and a HAR replay is refused outright. The fixture that
-  serves the app from a real origin of its own (`expiredAccessOrigin`) switches the
-  handlers off while it lives, because that origin's redirects are the answer. A
-  `page.route` on another host stays legal, and the real-stack smokes never use the
-  handlers.
+  (`eslint.config.mjs`). It can only read a pattern written out, so there `route()` is
+  called by name with a literal pattern that neither names `/api` nor matches every URL,
+  and a HAR replay is refused outright. The fixture that serves the app from a real
+  origin of its own (`expiredAccessOrigin`) switches the handlers off while it lives,
+  because that origin's redirects are the answer. A `page.route` on another host stays
+  legal, and the real-stack smokes never use the handlers.
