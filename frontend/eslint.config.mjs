@@ -97,7 +97,7 @@ const noApiRoutes = [
   },
   {
     selector:
-      'CallExpression[callee.object.property.name=/^route(FromHAR)?$/][callee.property.name=/^(call|apply|bind)$/]',
+      'CallExpression[callee.object.property.name=/^route(FromHAR|WebSocket)?$/][callee.property.name=/^(call|apply|bind)$/]',
     message: READABLE_MESSAGE,
   },
   {

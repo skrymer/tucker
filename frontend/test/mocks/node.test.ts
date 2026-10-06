@@ -7,8 +7,9 @@ import { assertNoUnhandledRequests, server } from './node'
 const UNCOVERED = '/api/uncovered'
 
 // The `/api/profile` reads below are typed `unknown`: depending on the order
-// vue-tsc checks files in, inferring Nitro's route type for
-// `expect(await $fetch(...))` exceeds its stack depth.
+// vue-tsc checks files in, inferring Nitro's route type for them exceeds its
+// stack depth — first seen on `expect(await $fetch(...))`, and it moves to the
+// next read when one is fixed.
 
 describe('the MSW baseline, in every test file without an opt-in', () => {
   it('answers $fetch, with the query string reaching the handler', async () => {

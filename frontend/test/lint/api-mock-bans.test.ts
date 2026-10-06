@@ -78,6 +78,7 @@ describe('the mocked e2e refuses a route() that would answer /api', () => {
     "await page['route']('**/api/**', (r) => r.abort())",
     "const method = 'route'\nawait page[method]('**/api/**', (r) => r.abort())",
     "await page.route.call(page, '**/api/**', (r) => r.abort())",
+    "await page.routeWebSocket.call(page, '**/api/**', (ws) => ws.close())",
   ])('%s, which it cannot read', async (statements) => {
     expect(await mockedSpec(statements)).toContainEqual(
       expect.stringMatching(
