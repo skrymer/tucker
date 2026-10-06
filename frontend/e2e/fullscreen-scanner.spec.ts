@@ -1,5 +1,5 @@
 import type { Locator, Page } from '@playwright/test'
-import { expect, test } from './support/network'
+import { expect, test } from './support/test'
 import { blankCamera, cameraLightOn } from './support/fake-camera'
 
 // On a phone the barcode scanner fills the screen: a full-viewport Dialog
