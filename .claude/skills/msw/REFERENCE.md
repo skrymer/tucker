@@ -29,10 +29,11 @@ Under `environment: 'nuxt'` (happy-dom) two things stop it, independently:
    `fetch`, intercepting beneath it. Node's `fetch` cannot read a foreign `Request`: "Failed to
    parse URL from [object Request]".
 
-`useMswServer()` (in `beforeAll`): wrap `fetch` to unwrap a `Request` into URL + init, then
+`installMswServer()` (in `beforeAll`, from `test/setup.ts`, so for every file): wrap `fetch` to unwrap a `Request` into URL + init, then
 `server.listen`, then rebind `$fetch` with `createFetch({ fetch, defaults: { baseURL:
 location.origin } })` so relative `/api/*` becomes absolute and reaches the interceptor. It
-restores both in `afterAll`, so an unmigrated file is untouched. `useNuxtApp().$api` reads
+restores both in `afterAll`. The `server/**` tests run under the same environment, so the
+server is up for them too, harmlessly. `useNuxtApp().$api` reads
 `globalThis.$fetch` per call, so it follows the rebind.
 
 The unwrap cannot hand on the `Request`'s `signal` — Node's `fetch` refuses happy-dom's
@@ -40,8 +41,12 @@ The unwrap cannot hand on the `Request`'s `signal` — Node's `fetch` refuses ha
 against it instead. An aborted read rejects as it would in a browser, which
 `useOptionalFetch` and `useWindowedFetch` rely on when they supersede one.
 
-Each part is pinned by `test/mocks/node.test.ts`: without the unwrap all seven tests fail,
-without the rebind six do, without the registry branch the coexistence test does.
+Each part is pinned by `test/mocks/node.test.ts`, which does not install the server itself —
+its unhandled-request tests are what show the global wiring.
+
+Nuxt Icon looks up any icon it was not bundled with on `api.iconify.design`. The server
+answers that with a 404 (`iconLookup`), so no test reaches the CDN; the `[Icon] failed to
+load` lines on stderr are that, and harmless.
 
 Measured and rejected: jsdom (54 tests in 5 files fail, and relative URLs still need the
 rebind), nuxt-msw (msw 2 only, unpublished since 2024-11), a `getResponse` bridge (works, but
@@ -57,8 +62,11 @@ records and fails an `/api` request nothing above it answered; every other frame
 through to the server, and the fixture fails the test at teardown listing the recorded
 ones, e.g. `GET /api/goal/progress`.
 
-`page.route` beats `context.route`, so a spec's own route still wins — that is the
-migration's coexistence, and how non-API routes (zxing CDN abort) keep working.
+`page.route` beats `context.route`, so a spec's own route still wins — which is how non-API
+routes (zxing CDN abort) keep working, and why ESLint refuses one on `/api`.
+
+`mocksApi: false` builds the fixture without enabling it, so a spec that turns it off can
+still destructure `network` and nothing is routed.
 
 The package is pre-1.0 and calls its use of `page.route` an implementation detail. If it
 moves to a service worker, the Workbox coexistence has to be settled again.
@@ -191,10 +199,6 @@ or is stated as unchecked — an annotation in `e2e/` never answers a typing fin
 - **A body is written back in the DTO's field order**, because a test that lists
   fields (`toEqual` on rendered rows) reads that order. `savedProfile` builds the
   saved Profile field by field, never by spreading defaults under the body.
-- **Coexistence in Vitest.** A path registered through `registerEndpoint` is answered by
-  Nuxt even in an opted-in file, ahead of any MSW handler for it. The shim makes URLs
-  absolute, which Nuxt's registry only knows relative, so it strips `location.origin` and
-  hands a registered path to Nuxt's `fetch` itself. The last migration slice deletes it.
 
 ## Red-proof runs
 

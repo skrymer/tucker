@@ -44,7 +44,8 @@ page reads back. The test asserts only what the User sees.
 ## How each layer reaches MSW
 
 - **Vitest: stock `setupServer` from `msw/node`, behind a shim.**
-  `useMswServer()` (`test/mocks/node.ts`) installs it for the file that opts in.
+  `installMswServer()` (`test/mocks/node.ts`) installs it for every file, from
+  `test/setup.ts`.
   Unaided, it cannot work under `environment: 'nuxt'`, for two independent reasons,
   both measured:
   1. `@nuxt/test-utils` wraps `fetch` so that an unregistered relative URL answers 404
@@ -97,11 +98,20 @@ page reads back. The test asserts only what the User sees.
 - **`@msw/playwright` is pre-1.0**, and its README calls its reliance on `page.route` an
   implementation detail likely to change. If it moves to a service worker, the coexistence
   with Workbox has to be settled again. It routes the whole browser context, so every
-  request of an opted-in spec — the app's chunks and styles included — makes a trip
+  request of a mocked spec — the app's chunks and styles included — makes a trip
   through the test process before an asset falls through, where a `page.route` on `/api`
-  touched only the API. Not measured yet; worth measuring once every spec is opted in.
-- **Migration is per surface, both layers at once**, each migrated file opting in to the
-  baseline explicitly so that unmigrated files behave exactly as before. Playwright gives
-  a later `page.route` precedence over the fixture, and the Vitest shim sends a path
-  still registered through `registerEndpoint` to Nuxt's handler first. The last slice
-  makes the baseline global, deletes both old mechanisms, and bans them with ESLint.
+  touched only the API. Not measured.
+- **The migration is complete.** It went per surface, both layers at once, each migrated
+  file opting in explicitly so that an unmigrated one behaved exactly as before. Every
+  file is on the handlers now, so the baseline and the unhandled-request failure apply
+  without an opt-in: `test/setup.ts` installs the Vitest server for every file, and the
+  `network` fixture is an auto fixture of the mocked suite's `test`
+  (`e2e/support/test.ts`). `registerEndpoint` and the `page.route` helpers for `/api` are
+  deleted, and ESLint refuses either coming back for `/api` (`eslint.config.mjs`). A spec
+  whose `/api` is a real origin's — `signed-out.spec.ts`, whose redirects come from a
+  server of its own — turns the fixture off with `test.use({ mocksApi: false })`. A
+  `page.route` on another host stays legal, as do the real-stack smokes, which never used
+  the handlers.
+- **Going global found a test reaching the internet.** Files that never opted in fetched
+  any icon not bundled from the Iconify CDN; the Vitest server now answers that lookup
+  with a 404 itself.

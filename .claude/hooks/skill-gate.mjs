@@ -33,7 +33,7 @@ export const RULES = [
   },
   {
     id: 'msw-e2e',
-    path: /(^|\/)frontend\/e2e\/support\/network\.ts$/,
+    path: /(^|\/)frontend\/e2e\/support\/test\.ts$/,
     skills: ['playwright-best-practices', 'msw'],
   },
   {

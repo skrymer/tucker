@@ -1,6 +1,6 @@
 ---
 name: msw
-description: Mocking Tucker's /api in tests with MSW 3 — one typed handler set (openapi-msw) shared by Vitest (setupServer behind a Nuxt shim) and the mocked Playwright suite (@msw/playwright's network fixture), with a baseline User overridden per test and no request assertions. Use when writing or editing an API mock, a handler under frontend/test/mocks/, a test that overrides one with use(), or when moving a Vitest file off registerEndpoint or an e2e spec off page.route.
+description: Mocking Tucker's /api in tests with MSW 3 — one typed handler set (openapi-msw) shared by Vitest (setupServer behind a Nuxt shim) and the mocked Playwright suite (@msw/playwright's network fixture), with a baseline User overridden per test and no request assertions. Use when writing or editing an API mock, a handler under frontend/test/mocks/, or a test that overrides one with use(). Never registerEndpoint or page.route for /api — ESLint refuses both.
 ---
 
 # MSW (Tucker)
@@ -16,19 +16,18 @@ The real-stack smokes are untouched — they hit the live backend.
 | --- | --- |
 | Typed `http` (`createOpenApiHttp<paths>({ baseUrl: '*' })`) | `frontend/test/mocks/http.ts` |
 | Baseline, one file per domain | `frontend/test/mocks/handlers/<domain>.ts`, joined in `index.ts` |
-| Vitest opt-in: `useMswServer()` + `server` | `frontend/test/mocks/node.ts` |
-| Playwright opt-in: `test` with a `network` fixture | `frontend/e2e/support/network.ts` |
+| Vitest `server`, installed for every file by `test/setup.ts` | `frontend/test/mocks/node.ts` |
+| Playwright `test` with an auto `network` fixture | `frontend/e2e/support/test.ts` |
 
 The baseline is a neutral, consistent User, described in `handlers/index.ts`. Extend
-it when a newly migrated surface reads a new endpoint — never bend it to suit one test.
+it when a surface starts reading a new endpoint — never bend it to suit one test.
 
 ## Quick start
 
 ```ts
-// Vitest — top of the file, then override per test
+// Vitest — the baseline already answers; override per test
 import { http } from '~~/test/mocks/http'
-import { server, useMswServer } from '~~/test/mocks/node'
-useMswServer()
+import { server } from '~~/test/mocks/node'
 
 it('says the lookup did not get through', async () => {
   server.use(
@@ -41,8 +40,8 @@ it('says the lookup did not get through', async () => {
 ```
 
 ```ts
-// Playwright — import test/expect from the network support file
-import { expect, test } from './support/network'
+// Playwright — the mocked suite's own test/expect
+import { expect, test } from './support/test'
 import { http } from '../test/mocks/http'
 
 test('…', async ({ page, goto, network }) => {
@@ -97,41 +96,42 @@ handlers free of app auto-imports (`localToday()` etc.) — pass such values in.
 4. **Error overrides are not `{ once: true }`** on a GET, unless the call passes `retry: 0`:
    ofetch retries a failed GET by itself, and the retry reaches the baseline, so the error
    never shows.
-5. **Unhandled is a failure.** Both opt-ins fail the test on an `/api` request no handler
+5. **Unhandled is a failure.** Both layers fail the test on an `/api` request no handler
    covers — after it ends, so a page that caught the failed request still fails. That
    includes one an override matched and let fall through with nothing beneath it, which
    msw itself counts as handled and sends to the network: a terminal `fellThrough`
    handler (`test/mocks/http.ts`) catches it in both layers. Add the endpoint to the
    baseline (or the test) rather than loosening that. Never mock `/api` with
-   `registerEndpoint` or `page.route`: neither reaches that check.
+   `registerEndpoint` or `page.route`: neither reaches that check, and ESLint refuses
+   both (`eslint.config.mjs`). A spec whose `/api` is a real origin of its own turns the
+   fixture off with `test.use({ mocksApi: false })` — `signed-out.spec.ts` alone, whose
+   redirects come from a server it starts. A `page.route` on another host (a CDN abort,
+   a fake camera) is fine, and the smokes never use the handlers.
 6. **Overrides last one test.** `resetHandlers` runs after each test in Vitest, and the
    Playwright fixture is built per test, so a `use()` never leaks into the next.
-7. **Prove each migrated test still goes red** by breaking its handler's response once, on a
-   copy — Probity refuses hand-mutating a gated file. Save the output, naming each red test,
-   on both Playwright projects, to a file the sign-off pack cites. Build the harness during
-   the slice, but start the run the pack cites only once gate 3/4's fixes have landed and
-   every gate-3/4 agent has returned: gate 1 edits handlers, so an earlier run is always
-   superseded (#405 ran it twice, ~38 minutes each). Any later edit means another run.
+7. **Prove each new or changed test still goes red** by breaking its handler's response
+   once, on a copy — Probity refuses hand-mutating a gated file. Save the output, naming
+   each red test, on both Playwright projects, to a file the sign-off pack cites. Build
+   the harness during the slice, but start the run the pack cites only once gate 3/4's
+   fixes have landed and every gate-3/4 agent has returned: gate 1 edits handlers, so an
+   earlier run is always superseded (#405 ran it twice, ~38 minutes each). Any later edit
+   means another run.
    A response that never answers is a break too — it holds whatever the page awaits.
    Only a test decided by a setting seeded outside the API has no response to break:
    list it in the proof as such rather than inventing a break. How to run one:
    [REFERENCE.md, Red-proof runs](REFERENCE.md#red-proof-runs).
 
-## Moving a file over
+## Changing a handler
 
-- [ ] Vitest: `useMswServer()`; replace each `registerEndpoint` with baseline or `server.use()`.
-- [ ] e2e: import from `./support/network`; replace `page.route` on `/api` with baseline or
-      `network.use()`. Non-API routes (a CDN abort, a fake camera) stay `page.route`.
-- [ ] A stateful handler stands for the backend: before writing one, read the controller
-      and repository behind each endpoint it answers — the status for an absent or
-      foreign id, the order its refusals are checked in, and the `ORDER BY` — per
-      query, not per table (SQLite's `lower()` folds ASCII alone; a bare `ORDER BY`
-      compares bytes).
-- [ ] Delete request-capturing arrays; assert the rendered result instead. Before
-      deleting a request count, name the client regression it caught (a retry, a
-      missing re-ask, a second read) and check the replacement shows that one on
-      screen: a handler break cannot, since it changes the server, not the client.
-- [ ] Run green, then break each handler once and save the output naming each red test.
+- A stateful handler stands for the backend: before writing one, read the controller
+  and repository behind each endpoint it answers — the status for an absent or
+  foreign id, the order its refusals are checked in, and the `ORDER BY` — per
+  query, not per table (SQLite's `lower()` folds ASCII alone; a bare `ORDER BY`
+  compares bytes).
+- Before deleting a request count, name the client regression it caught (a retry, a
+  missing re-ask, a second read) and check the replacement shows that one on
+  screen: a handler break cannot, since it changes the server, not the client.
+- Run green, then break each handler once and save the output naming each red test.
 
-Why the shim exists, the fixture's internals, coexistence and every trap measured so far:
+Why the shim exists, the fixture's internals and every trap measured so far:
 [REFERENCE.md](REFERENCE.md).
