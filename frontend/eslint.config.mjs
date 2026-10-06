@@ -68,7 +68,7 @@ const noApiRoutes = [
     message: API_ROUTE_MESSAGE,
   },
   {
-    selector: `${ROUTE_CALL} > Literal.arguments:first-child[regex.pattern=/api/]`,
+    selector: `${ROUTE_CALL} > Literal.arguments:first-child[regex.pattern=/(^|\\/)api\\b/]`,
     message: API_ROUTE_MESSAGE,
   },
   {
@@ -84,11 +84,13 @@ const noApiRoutes = [
     message: READABLE_MESSAGE,
   },
   {
-    selector: 'CallExpression[callee.computed=true]',
+    selector:
+      'CallExpression[callee.computed=true]:matches([callee.property.value=/^route/], [callee.property.quasis.0.value.raw=/^route/])',
     message: READABLE_MESSAGE,
   },
   {
-    selector: 'CallExpression[callee.object.property.name=/^route/]',
+    selector:
+      'CallExpression[callee.object.property.name=/^route(FromHAR)?$/][callee.property.name=/^(call|apply|bind)$/]',
     message: READABLE_MESSAGE,
   },
   {
