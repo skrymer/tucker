@@ -1,19 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { registerEndpoint, renderSuspended } from '@nuxt/test-utils/runtime'
+import { renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen, within } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
+import { server, useMswServer } from '~~/test/mocks/node'
+import { profileOf, weightOnlyProfile } from '~~/test/mocks/handlers/profile'
 import AppNav from './AppNav.vue'
 
 // The network, not the composable: `AppNav` loads Calorie Tracking itself, so
-// stubbing `GET /api/profile` drives the real one (ADR 0013 — mock only the true
-// external boundary).
-let tracksCalories = true
-registerEndpoint('/api/profile', () => ({
-  sex: 'MALE',
-  birthDate: '1990-06-15',
-  heightCm: 180,
-  tracksCalories,
-}))
+// the Profile it reads drives the real one (ADR 0013 — mock only the true
+// external boundary). The baseline User counts calories.
+useMswServer()
 
 const TODAY = { label: 'Today', href: '/' }
 const LOG = { label: 'Log', href: '/log' }
@@ -58,14 +54,11 @@ function linkedRoutes(container: HTMLElement) {
 
 describe('AppNav', () => {
   it('carries Today, Log and Review in both navigations', async () => {
-    tracksCalories = true
-
     const three = [TODAY, LOG, REVIEW]
     expect(await renderBars()).toEqual([three, three])
   })
 
   it('offers Foods, Check and Profile under More in the side navigation', async () => {
-    tracksCalories = true
     await renderSuspended(AppNav)
 
     expect(linkedRoutes(screen.getByRole('group', { name: 'More' }))).toEqual([
@@ -76,7 +69,6 @@ describe('AppNav', () => {
   })
 
   it('opens the same three onto a sheet from the tab bar', async () => {
-    tracksCalories = true
     const user = userEvent.setup()
     await renderSuspended(AppNav)
 
@@ -86,7 +78,6 @@ describe('AppNav', () => {
   })
 
   it('closes the sheet once a destination in it is chosen', async () => {
-    tracksCalories = true
     const user = userEvent.setup()
     await renderSuspended(AppNav)
     const sheet = await openMoreSheet(user)
@@ -101,14 +92,14 @@ describe('AppNav', () => {
   })
 
   it('drops Log for a User who is not counting calories', async () => {
-    tracksCalories = false
+    server.use(profileOf(weightOnlyProfile))
 
     const two = [TODAY, REVIEW]
     expect(await renderBars()).toEqual([two, two])
   })
 
   it('leaves More holding Profile alone for that User', async () => {
-    tracksCalories = false
+    server.use(profileOf(weightOnlyProfile))
     await renderSuspended(AppNav)
 
     expect(linkedRoutes(screen.getByRole('group', { name: 'More' }))).toEqual([
@@ -119,7 +110,6 @@ describe('AppNav', () => {
   it('marks More as the current page while one of its destinations is open', async () => {
     // Otherwise nothing in the phone bar is lit on /foods, /check or /profile,
     // and the bar stops answering "where am I".
-    tracksCalories = true
     await renderSuspended(AppNav, { route: '/profile' })
 
     expect(
@@ -130,7 +120,6 @@ describe('AppNav', () => {
   })
 
   it('leaves More unmarked while a destination in the bar is open', async () => {
-    tracksCalories = true
     await renderSuspended(AppNav, { route: '/review' })
 
     expect(
@@ -143,7 +132,6 @@ describe('AppNav', () => {
   it('leaves the sheet open on a modified click, which opens a tab instead of navigating', async () => {
     // vue-router declines a cmd/ctrl/shift-click so the browser can open a new
     // tab; closing the sheet then returns the User to a page they did not leave.
-    tracksCalories = true
     const user = userEvent.setup()
     await renderSuspended(AppNav)
     const sheet = await openMoreSheet(user)

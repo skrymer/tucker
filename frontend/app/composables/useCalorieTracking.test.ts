@@ -1,22 +1,34 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent } from 'vue'
-import { registerEndpoint, renderSuspended } from '@nuxt/test-utils/runtime'
-import { createError } from 'h3'
+import { renderSuspended } from '@nuxt/test-utils/runtime'
 import userEvent from '@testing-library/user-event'
 import { screen } from '@testing-library/vue'
+import { http, serverError } from '~~/test/mocks/http'
+import { server, useMswServer } from '~~/test/mocks/node'
+import { baselineProfile } from '~~/test/mocks/handlers/profile'
 import { useCalorieTracking } from './useCalorieTracking'
 
-// What GET /api/profile answers for the test in hand: a Profile, or a status to
-// fail with.
-let profileResponse: { tracksCalories: boolean } | number
-let attempts = 0
-registerEndpoint('/api/profile', () => {
-  attempts++
-  if (typeof profileResponse === 'number') {
-    throw createError({ statusCode: profileResponse })
-  }
-  return profileResponse
-})
+useMswServer()
+
+/** What one read of the Profile answers: the setting it holds, or no Profile, or a failure. */
+type ProfileRead = boolean | 'none' | 'failure'
+
+/**
+ * GET /api/profile answering [first], then [later] on every read after it — so a
+ * read issued that should not have been, or not issued that should, changes what
+ * the setting settles on.
+ */
+function profileReads(first: ProfileRead, later: ProfileRead = first) {
+  let reads = 0
+  return http.get('/api/profile', ({ response }) => {
+    const answer = reads++ === 0 ? first : later
+    if (answer === 'none') {
+      return response(404).json({ message: 'profile not set' })
+    }
+    if (answer === 'failure') return response.untyped(serverError())
+    return response(200).json({ ...baselineProfile, tracksCalories: answer })
+  })
+}
 
 // The setting is app-wide state, so every test starts it at the opposite of the
 // answer it expects — a pass can never be the previous test's leftover.
@@ -58,7 +70,6 @@ const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
 beforeEach(async () => {
   warn.mockClear()
   await renderSuspended(resetHost)
-  attempts = 0
 })
 afterAll(() => warn.mockRestore())
 
@@ -74,7 +85,8 @@ describe('useCalorieTracking', () => {
   })
 
   it('joins the read already in flight rather than issuing a second', async () => {
-    profileResponse = { tracksCalories: false }
+    // A second read would answer otherwise, and the page would see it.
+    server.use(profileReads(false, true))
 
     // The shape AppNav and a page make together: the nav starts the read, and a
     // page's setup awaits the settled value while that read is still in flight.
@@ -98,11 +110,10 @@ describe('useCalorieTracking', () => {
 
     // The settled value, from one request — not the default, and not a second ask.
     expect(await screen.findByText('page saw false')).toBeVisible()
-    expect(attempts).toBe(1)
   })
 
   it('asks nothing further once the setting has settled', async () => {
-    profileResponse = { tracksCalories: false }
+    server.use(profileReads(false, true))
 
     const nav = defineComponent({
       async setup() {
@@ -112,7 +123,6 @@ describe('useCalorieTracking', () => {
       template: `<span>nav</span>`,
     })
     await renderSuspended(nav)
-    expect(attempts).toBe(1)
 
     // A page reached later by an in-app navigation, when that read is long over,
     // must not re-issue it — the shell already holds the answer.
@@ -127,11 +137,10 @@ describe('useCalorieTracking', () => {
     await renderSuspended(page)
 
     expect(await screen.findByText('page saw false')).toBeVisible()
-    expect(attempts).toBe(1)
   })
 
   it('takes the setting from the signed-in User’s Profile', async () => {
-    profileResponse = { tracksCalories: false }
+    server.use(profileReads(false))
 
     await loadTracking(true)
 
@@ -139,7 +148,7 @@ describe('useCalorieTracking', () => {
   })
 
   it('keeps counting calories, quietly, when the User has no Profile yet', async () => {
-    profileResponse = 404
+    server.use(profileReads('none'))
 
     await loadTracking(false)
 
@@ -149,7 +158,7 @@ describe('useCalorieTracking', () => {
   })
 
   it('leaves the setting as it stands when the Profile cannot be read, and says so', async () => {
-    profileResponse = 500
+    server.use(profileReads('failure'))
 
     await loadTracking(false)
 
@@ -161,7 +170,7 @@ describe('useCalorieTracking', () => {
   })
 
   it('re-asks on the next page when the read failed, rather than settling for the default', async () => {
-    profileResponse = 500
+    server.use(profileReads('failure', false))
 
     const nav = defineComponent({
       async setup() {
@@ -171,13 +180,11 @@ describe('useCalorieTracking', () => {
       template: `<span>nav</span>`,
     })
     await renderSuspended(nav)
-    expect(attempts).toBe(1)
 
     // A read that failed answered nothing, so the setting is still unknown and
     // the User is holding Tucker's default shape. One transient 502 must not
     // decide that for the rest of the session — the next page asks again, and a
     // weight-only User gets the app they chose.
-    profileResponse = { tracksCalories: false }
     const page = defineComponent({
       async setup() {
         const { tracksCalories, ready } = useCalorieTracking()
@@ -188,21 +195,19 @@ describe('useCalorieTracking', () => {
     })
     await renderSuspended(page)
 
-    expect(attempts).toBe(2)
     expect(await screen.findByText('page saw false')).toBeVisible()
   })
 
   it('asks once, so a failure does not double the wait the shell holds paint for', async () => {
-    profileResponse = 500
-
-    await loadTracking(false)
-    // Waiting on the settled value, not on the counter: `vi.waitFor` resolves on
-    // its first success, so it would pass in the gap before a retry was issued.
-    expect(await screen.findByText('false')).toBeVisible()
-
     // ofetch retries a failed GET once by default, and this read blocks the app
     // shell — a retry would buy a second round trip for an answer that falls
-    // back either way (ADR 0007).
-    expect(attempts).toBe(1)
+    // back either way (ADR 0007). Here a retry would succeed, and say so.
+    server.use(profileReads('failure', true))
+
+    await loadTracking(false)
+
+    // The failure is what the read settled on, so the setting stands.
+    await vi.waitFor(() => expect(warn).toHaveBeenCalledOnce())
+    expect(screen.getByText('false')).toBeVisible()
   })
 })
