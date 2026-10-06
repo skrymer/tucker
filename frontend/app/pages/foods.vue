@@ -18,6 +18,8 @@ await trackingSettled()
 
 const route = useRoute()
 const router = useRouter()
+// PROTOTYPE — throwaway; delete before any real slice.
+const prototyping = import.meta.dev && 'proto' in route.query
 const open = ref(opensAddSheet(route.query))
 const selectedFood = ref<FoodResponse | null>(null)
 // The recipe whose row's view button was tapped — non-null opens the read-only
@@ -248,7 +250,10 @@ function handleDeleteConfirm() {
       </UButton>
     </header>
 
+    <!-- PROTOTYPE — edit a Food over a demo catalog; `?proto` in dev only. -->
+    <PrototypeEditFoodsDemo v-if="prototyping" />
     <LoadErrorState
+      v-else
       :error="foodsError"
       title="Couldn't load your foods"
       @retry="refresh"

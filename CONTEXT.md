@@ -61,6 +61,12 @@ A Food referenced by at least one **Entry** — or used as an ingredient in a
 ingredients are part of its definition, so a referenced Food is rejected (it stays
 in the catalog) with a message naming what references it; only a Food that is
 neither logged nor an ingredient can be removed.
+A Food's name, macros and **Tags** can be **corrected**. A correction says the old
+figures were never true, not that the product changed — a reformulated product is a
+new Food. So it reaches everything that reads the Food *now*: every **Recipe** using
+it as an ingredient is re-rolled in the same save, and the User is shown which ones
+before saving. It never reaches what was already logged: **Entries** keep the
+figures they snapshotted.
 _Avoid_: food item, product
 
 **Recipe**:
