@@ -6,8 +6,9 @@ import { assertNoUnhandledRequests, server } from './node'
 // Not in the spec, so the baseline can never grow to cover it.
 const UNCOVERED = '/api/uncovered'
 
-// The reads below are typed `unknown`: inferring Nitro's route-typed result for
-// each one exhausts vue-tsc's stack depth once the program grows past a point.
+// The `/api/profile` reads below are typed `unknown`: depending on the order
+// vue-tsc checks files in, inferring Nitro's route type for
+// `expect(await $fetch(...))` exceeds its stack depth.
 
 describe('the MSW baseline, in every test file without an opt-in', () => {
   it('answers $fetch, with the query string reaching the handler', async () => {

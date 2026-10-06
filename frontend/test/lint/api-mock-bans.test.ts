@@ -13,6 +13,8 @@ const BANS = new Set(['no-restricted-syntax', 'no-restricted-imports'])
 /** What the bans report for [code] linted as if it lived at [filePath]. */
 async function refusals(code: string, filePath: string): Promise<string[]> {
   const [result] = await eslint.lintText(code, { filePath })
+  const fatal = result!.messages.find((message) => message.fatal)
+  if (fatal) throw new Error(`the sample does not parse: ${fatal.message}`)
   return result!.messages
     .filter((message) => message.ruleId && BANS.has(message.ruleId))
     .map((message) => message.message)
@@ -25,6 +27,12 @@ const mockedSpec = (statements: string) =>
     'e2e/lint-fixture.spec.ts',
   )
 
+it('refuses to judge a sample that does not parse, which no ban would report', async () => {
+  await expect(
+    mockedSpec("await page.route('**/api/**' (r) => r.abort())"),
+  ).rejects.toThrow(/does not parse/)
+})
+
 describe('the mocked e2e refuses a route() that would answer /api', () => {
   it.each([
     "await page.route('**/api/summary', (r) => r.abort())",
@@ -34,6 +42,8 @@ describe('the mocked e2e refuses a route() that would answer /api', () => {
     'await page.route(/\\/(api|x)\\//, (r) => r.abort())',
     'await page.route(/.*api.*/, (r) => r.abort())',
     "await context.routeFromHAR('api.har', { url: '**/api/**' })",
+    'await page.route(/\\/API\\//i, (r) => r.abort())',
+    "await page.routeWebSocket('**/api/**', (ws) => ws.close())",
   ])('%s', async (line) => {
     expect(await mockedSpec(line)).toEqual([
       expect.stringContaining('Do not route /api in the mocked e2e'),
@@ -47,6 +57,15 @@ describe('the mocked e2e refuses a route() that would answer /api', () => {
   ])('%s, which matches every URL', async (line) => {
     expect(await mockedSpec(line)).toEqual([
       expect.stringContaining('A route() matching every URL answers /api too'),
+    ])
+  })
+
+  // The date helper has a config block of its own, which carries its own copy.
+  it('in the e2e date helper too', async () => {
+    const helper = `import type { Page } from '@playwright/test'\n\nexport const stub = (page: Page) => page.route('**/api/**', (r) => r.abort())\n`
+
+    expect(await refusals(helper, 'e2e/support/date.ts')).toEqual([
+      expect.stringContaining('Do not route /api in the mocked e2e'),
     ])
   })
 
@@ -89,17 +108,29 @@ describe('the mocked e2e leaves alone what does not route /api', () => {
   })
 })
 
-describe('a Vitest file refuses registerEndpoint', () => {
-  it.each(['test/lint-fixture.test.ts', 'app/components/LintFixture.test.ts'])(
-    'in %s',
-    async (filePath) => {
-      const code = `import { registerEndpoint } from '@nuxt/test-utils/runtime'\n\nregisterEndpoint('/api/me', () => ({}))\n`
+describe('a test file refuses registerEndpoint', () => {
+  it.each([
+    'test/lint-fixture.test.ts',
+    'app/components/LintFixture.test.ts',
+    'server/routes/lint-fixture.test.ts',
+    'e2e/support/lint-fixture.ts',
+  ])('in %s', async (filePath) => {
+    const code = `import { registerEndpoint } from '@nuxt/test-utils/runtime'\n\nregisterEndpoint('/api/me', () => ({}))\n`
 
-      expect(await refusals(code, filePath)).toEqual([
-        expect.stringContaining(
-          'Mock /api with the MSW baseline or server.use()',
-        ),
-      ])
-    },
-  )
+    expect(await refusals(code, filePath)).toEqual([
+      expect.stringContaining(
+        'Mock /api with the MSW baseline or server.use()',
+      ),
+    ])
+  })
+
+  it('through a namespace import', async () => {
+    const code = `import * as runtime from '@nuxt/test-utils/runtime'\n\nruntime.registerEndpoint('/api/me', () => ({}))\n`
+
+    expect(await refusals(code, 'test/lint-fixture.test.ts')).toEqual([
+      expect.stringContaining(
+        'Mock /api with the MSW baseline or server.use()',
+      ),
+    ])
+  })
 })

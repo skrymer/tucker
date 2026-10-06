@@ -60,7 +60,7 @@ const READABLE_MESSAGE =
   'Call route() by name with a plain string or regex literal in the mocked e2e, so the /api ban can read it (the msw skill, ADR 0034).'
 const CATCH_ALL_MESSAGE =
   'A route() matching every URL answers /api too — name the host or path it is for (the msw skill, ADR 0034).'
-const ROUTE_CALL = "CallExpression[callee.property.name='route']"
+const ROUTE_CALL = 'CallExpression[callee.property.name=/^route(WebSocket)?$/]'
 const API_PATH = '/\\/api(\\/|\\*|\\?|$)/'
 const noApiRoutes = [
   {
@@ -68,7 +68,7 @@ const noApiRoutes = [
     message: API_ROUTE_MESSAGE,
   },
   {
-    selector: `${ROUTE_CALL} > Literal.arguments:first-child[regex.pattern=/(^|\\W)api\\b/]`,
+    selector: `${ROUTE_CALL} > Literal.arguments:first-child[regex.pattern=/(^|\\W)api\\b/i]`,
     message: API_ROUTE_MESSAGE,
   },
   {
