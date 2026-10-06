@@ -68,7 +68,7 @@ const noApiRoutes = [
     message: API_ROUTE_MESSAGE,
   },
   {
-    selector: `${ROUTE_CALL} > Literal.arguments:first-child[regex.pattern=/(^|\\/)api\\b/]`,
+    selector: `${ROUTE_CALL} > Literal.arguments:first-child[regex.pattern=/(^|\\W)api\\b/]`,
     message: API_ROUTE_MESSAGE,
   },
   {
@@ -87,6 +87,13 @@ const noApiRoutes = [
     selector:
       'CallExpression[callee.computed=true]:matches([callee.property.value=/^route/], [callee.property.quasis.0.value.raw=/^route/])',
     message: READABLE_MESSAGE,
+  },
+  {
+    // A computed key that is not written out could be `route`.
+    selector:
+      "CallExpression[callee.computed=true]:not([callee.property.type='Literal'], TemplateLiteral[expressions.length=0].callee.property)",
+    message:
+      'Call a method through a written-out key in the mocked e2e, so the /api ban can see a route() call (the msw skill, ADR 0034).',
   },
   {
     selector:
