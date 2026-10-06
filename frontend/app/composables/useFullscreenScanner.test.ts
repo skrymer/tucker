@@ -152,6 +152,38 @@ describe('useFullscreenScanner', () => {
     vi.useRealTimers()
   })
 
+  it('drops a pending stop once the scanner it was for has closed', async () => {
+    // Stop, then Start camera, inside the grace period: the new scan is not
+    // the one fullscreen was left on.
+    vi.useFakeTimers()
+    const { scanner, scope } = withScanner(true)
+    setFullscreenElement(null)
+    document.dispatchEvent(new Event('fullscreenchange'))
+
+    scanner.open.value = false
+    await nextTick()
+    scanner.open.value = true
+    await nextTick()
+    vi.runAllTimers()
+    vi.useRealTimers()
+
+    expect(scanner.stop).not.toHaveBeenCalled()
+    scope.stop()
+  })
+
+  it('keeps the fullscreen a scanner opens into', async () => {
+    // Scan another, tapped before the last scan's exit from fullscreen lands.
+    const exitFullscreen = stubExitFullscreen()
+    setFullscreenElement(document.documentElement)
+    const { scanner, scope } = withScanner(false)
+
+    scanner.open.value = true
+    await nextTick()
+
+    expect(exitFullscreen).not.toHaveBeenCalled()
+    scope.stop()
+  })
+
   it('keeps scanning as the page enters fullscreen', () => {
     vi.useFakeTimers()
     stubExitFullscreen()
@@ -202,11 +234,14 @@ describe('useFullscreenScanner', () => {
   })
 
   it('stops listening once its surface is gone', () => {
+    vi.useFakeTimers()
     const { scanner, scope } = withScanner(true)
     scope.stop()
 
     setFullscreenElement(null)
     document.dispatchEvent(new Event('fullscreenchange'))
+    vi.runAllTimers()
+    vi.useRealTimers()
 
     expect(scanner.stop).not.toHaveBeenCalled()
   })
