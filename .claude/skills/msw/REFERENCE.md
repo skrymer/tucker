@@ -160,7 +160,10 @@ or is stated as unchecked — an annotation in `e2e/` never answers a typing fin
 - **Waiting is not asserting.** Where nothing on screen tells a request landing apart
   from the state before it — a retried failure replacing an identical toast —
   `page.waitForResponse` synchronises the next step (`toast.spec.ts`). It never stands
-  in for proving what was sent; that is still a change on screen.
+  in for proving what was sent; that is still a change on screen. Under
+  `page.clock.install`, wait for the response that arms a timer, then `runFor` once —
+  never `runFor` inside `toPass`, which advances the clock a timing-dependent number
+  of times and burns its retry back-offs.
 - **Reading another factory's state through its own read** (rule 3):
   `micronutrientIntakeOver(catalog, answer)` calls `getResponse` on the catalog's
   handlers for `/api/foods`, so a match claimed through `foodCatalog` moves the next

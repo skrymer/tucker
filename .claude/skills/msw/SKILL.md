@@ -127,7 +127,10 @@ handlers free of app auto-imports (`localToday()` etc.) — pass such values in.
       foreign id, the order its refusals are checked in, and the `ORDER BY` — per
       query, not per table (SQLite's `lower()` folds ASCII alone; a bare `ORDER BY`
       compares bytes).
-- [ ] Delete request-capturing arrays; assert the rendered result instead.
+- [ ] Delete request-capturing arrays; assert the rendered result instead. Before
+      deleting a request count, name the client regression it caught (a retry, a
+      missing re-ask, a second read) and check the replacement shows that one on
+      screen: a handler break cannot, since it changes the server, not the client.
 - [ ] Run green, then break each handler once and save the output naming each red test.
 
 Why the shim exists, the fixture's internals, coexistence and every trap measured so far:
