@@ -182,7 +182,18 @@ Identical for both stacks; only step 1 and 2's commands differ.
    **Call a survivor "pre-existing" only after running that mutant against
    `main`.** A survivor on a line the change moved can look inherited and still be
    new. The same hand-mutated copy settles it. In F18 slice 3 this showed a sheet's
-   recorded "35 of 39" had been missing a survivor all along.
+   recorded "35 of 39" had been missing a survivor all along. Diffing the survivor
+   sets by **source line** (main's sweep vs the branch's) is the cheap way to do it
+   for a whole file at once; #435 did, and found one new survivor among 79.
+
+   **Re-run a survivor's line alone before triaging it** (`--mutate
+   "file.ts:14-14"`). A scoped sweep can leave survivors a targeted re-run kills — #435
+   saw two such full-run flakes.
+
+   **Check which test kills a mutant you wrote a test for** (`killedBy` in
+   `reports/mutation/mutation.json`). A kill by some other test can come from state
+   leaked between tests and depend on test order: in #435 a listener-teardown mutant
+   stayed "killed" by an unrelated test after its own test had gone vacuous.
 
    Never raise a threshold or narrow the scope to make a survivor go away.
 
@@ -250,7 +261,8 @@ tests (~1–5 tests, not all 473), which is what makes this affordable as a gate
 - A **timeout** verdict is not a survivor: it usually means an infinite loop, which
   counts as killed.
 - **A `.vue` file can come back entirely `NoCoverage`** although its test renders
-  it — `log.vue` did in one run and scored 43/57 in another; the cause is not
+  it — `log.vue` did in one run and scored 43/57 in another, and in #435 three at once
+  (`AddSheet.vue`, `check.vue`, `FullscreenScanner.vue`: 255 mutants); the cause is not
   diagnosed. A single-file config pointing the runner at that test ran no tests at
   all. Go straight to hand-mutating copies (False survivor, above) rather than
   debugging the runner.

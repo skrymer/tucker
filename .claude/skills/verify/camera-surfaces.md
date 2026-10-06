@@ -8,6 +8,11 @@ there is nothing to walk through at all.
 Only the **hardware** is faked. The app's real `zxing-wasm` decoder reads the frames, so
 the decode, the lookup, and every figure on screen are the real code paths.
 
+## Contents
+
+- The recipe
+- Gotchas
+
 ## The recipe
 
 ### 1. Seed a Food carrying the barcode
@@ -117,3 +122,22 @@ Then `git status --short` to prove it's gone. **Never commit the scratch PNG.**
   the smokes' Playwright build (the mocked e2e rebuilds `.nuxt/e2e` every run), not `pnpm dev`. If `pnpm dev` looks stale, restart it.
 - Reuse the same tab for both viewports — the stub lives in the page context and
   survives a resize, but not a reload.
+- **True fullscreen needs a real gesture.** `requestFullscreen()` is granted to a
+  claude-in-chrome ref click (`computer left_click` with a `ref`) but not to a DOM
+  `.click()` from `javascript_tool`, which the browser refuses silently. Drive every
+  "a tap goes fullscreen" probe with a ref click, and mark it so in the verdict. On
+  desktop Chrome, fullscreen widens the viewport past 1024px, so the page re-lays out
+  as desktop while it lasts.
+- **The extension cannot background a tab.** A new tab opens behind the current one,
+  so `visibilityState` never changes. Drive hiding and returning by overriding the
+  property and dispatching the event, which runs the app's own handlers, and label
+  those probes synthetic:
+  ```js
+  const vis = (s) => { Object.defineProperty(document, 'visibilityState', { value: s, configurable: true }); document.dispatchEvent(new Event('visibilitychange')) }
+  ```
+  `Reflect.deleteProperty(document, 'visibilityState')` afterwards. A
+  `fullscreenchange` with `fullscreenElement` overridden to `null` drives a system exit
+  from fullscreen the same way.
+- **A first visit to a camera page can reload it in dev** — Vite discovers
+  `zxing-wasm/reader` as a new dependency and reloads, dropping an injected stub. Visit
+  the page once before injecting.
