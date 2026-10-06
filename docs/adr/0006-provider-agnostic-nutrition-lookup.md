@@ -213,15 +213,30 @@ first paint or the rest of the app. Decoding needs only a **secure context**
 (HTTPS / localhost) — already satisfied by the Cloudflare-tunnel deployment — not
 any PWA/F6 feature.
 
-The scanner is hosted inside the existing `ResponsiveOverlay` (drawer/modal), not
-an all-in-one scanner library that would fight that idiom. **Manual barcode entry
+The scanner is Tucker's own UI, not an all-in-one scanner library that would
+fight the app's overlay idiom. **On phone the camera is fullscreen**, because a
+package is aimed at, and a viewfinder a few centimetres tall inside a sheet is a
+small target for a curved one. It opens in its own full-viewport Reka Dialog
+(ADR 0017's one overlay mechanism), over the Add-Food sheet or over Check, and
+closes on a decode so the outcome lands on the surface underneath — the
+pre-filled form, or the Check result. The Dialog is the baseline because it is
+the only fullscreen an **iPhone** has: WebKit, Chrome included, offers no element
+`requestFullscreen()`, and the installed PWA has no browser chrome to hide anyway.
+Where the browser does have it (Android Chrome), the Dialog also asks for true
+fullscreen — but only from a tap, which the API requires, so Check's camera that
+opens with the tab gets the Dialog alone and only "Scan again" goes further. The
+scanner shows a caption and a Stop button and nothing else: no aiming frame,
+because the decoder reads the whole frame and a box would invent a constraint.
+Desktop keeps an inline viewfinder — a webcam is not something you aim.
+**Manual barcode entry
 is a permanent peer to the camera**, not just an error fallback — it is the
 landing for a Provider miss, a denied/absent camera, *and* the offline case, and
 also serves "type the number under the barcode".
 
 **Never leave the camera light on.** The stream is released the moment the
-scanner stops being on screen — the sheet dismissed, or the Food tab left for the
-Recipe builder — and not merely when the component unmounts, because the overlay
+scanner stops being on screen — the sheet dismissed, the Food tab left for the
+Recipe builder, or true fullscreen left by the system's own back gesture, which
+the app does not initiate and so must listen for — and not merely when the component unmounts, because the overlay
 holds it mounted while closed. Two things ride on it: a camera light burning
 behind a dismissed sheet is alarming whatever the reason, and a live decoder in a
 surface the User has navigated away from can still fire, hijacking a sheet they
