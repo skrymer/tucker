@@ -17,7 +17,7 @@ The real-stack smokes are untouched — they hit the live backend.
 | Typed `http` (`createOpenApiHttp<paths>({ baseUrl: '*' })`) | `frontend/test/mocks/http.ts` |
 | Baseline, one file per domain | `frontend/test/mocks/handlers/<domain>.ts`, joined in `index.ts` |
 | Vitest `server`, installed for every file by `test/setup.ts` | `frontend/test/mocks/node.ts` |
-| Playwright `test` with an auto `network` fixture | `frontend/e2e/support/test.ts` |
+| Playwright `test` (`support/test.ts`) with the auto `network` fixture | `frontend/e2e/support/network.ts` |
 
 The baseline is a neutral, consistent User, described in `handlers/index.ts`. Extend
 it when a surface starts reading a new endpoint — never bend it to suit one test.
@@ -103,10 +103,10 @@ handlers free of app auto-imports (`localToday()` etc.) — pass such values in.
    handler (`test/mocks/http.ts`) catches it in both layers. Add the endpoint to the
    baseline (or the test) rather than loosening that. Never mock `/api` with
    `registerEndpoint` or `page.route`: neither reaches that check, and ESLint refuses
-   both (`eslint.config.mjs`). A spec whose `/api` is a real origin of its own turns the
-   fixture off with `test.use({ mocksApi: false })` — `signed-out.spec.ts` alone, whose
-   redirects come from a server it starts. A `page.route` on another host (a CDN abort,
-   a fake camera) is fine, and the smokes never use the handlers.
+   both (`eslint.config.mjs`). A fixture serving the app from a real origin of its own
+   switches the handlers off while it lives (`expiredAccessOrigin`). A `page.route` on
+   another host (a CDN abort, a fake camera) is fine, and the smokes never use the
+   handlers.
 6. **Overrides last one test.** `resetHandlers` runs after each test in Vitest, and the
    Playwright fixture is built per test, so a `use()` never leaks into the next.
 7. **Prove each new or changed test still goes red** by breaking its handler's response

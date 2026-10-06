@@ -101,17 +101,11 @@ page reads back. The test asserts only what the User sees.
   request of a mocked spec — the app's chunks and styles included — makes a trip
   through the test process before an asset falls through, where a `page.route` on `/api`
   touched only the API. Not measured.
-- **The migration is complete.** It went per surface, both layers at once, each migrated
-  file opting in explicitly so that an unmigrated one behaved exactly as before. Every
-  file is on the handlers now, so the baseline and the unhandled-request failure apply
-  without an opt-in: `test/setup.ts` installs the Vitest server for every file, and the
-  `network` fixture is an auto fixture of the mocked suite's `test`
-  (`e2e/support/test.ts`). `registerEndpoint` and the `page.route` helpers for `/api` are
-  deleted, and ESLint refuses either coming back for `/api` (`eslint.config.mjs`). A spec
-  whose `/api` is a real origin's — `signed-out.spec.ts`, whose redirects come from a
-  server of its own — turns the fixture off with `test.use({ mocksApi: false })`. A
-  `page.route` on another host stays legal, as do the real-stack smokes, which never used
-  the handlers.
-- **Going global found a test reaching the internet.** Files that never opted in fetched
-  any icon not bundled from the Iconify CDN; the Vitest server now answers that lookup
-  with a 404 itself.
+- **The migration is complete: the baseline is global.** `test/setup.ts` installs the
+  Vitest server for every file, and the `network` fixture is an auto fixture of the
+  mocked suite's `test` (`e2e/support/test.ts`), so no file opts in and none can opt out
+  by forgetting to. `registerEndpoint` and `page.route` for `/api` are gone, and ESLint
+  refuses either (`eslint.config.mjs`). The fixture that serves the app from a real
+  origin of its own (`expiredAccessOrigin`) switches the handlers off while it lives,
+  because that origin's redirects are the answer. A `page.route` on another host stays
+  legal, and the real-stack smokes never use the handlers.

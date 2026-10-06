@@ -29,20 +29,21 @@ Under `environment: 'nuxt'` (happy-dom) two things stop it, independently:
    `fetch`, intercepting beneath it. Node's `fetch` cannot read a foreign `Request`: "Failed to
    parse URL from [object Request]".
 
-`installMswServer()` (in `beforeAll`, from `test/setup.ts`, so for every file): wrap `fetch` to unwrap a `Request` into URL + init, then
-`server.listen`, then rebind `$fetch` with `createFetch({ fetch, defaults: { baseURL:
-location.origin } })` so relative `/api/*` becomes absolute and reaches the interceptor. It
-restores both in `afterAll`. The `server/**` tests run under the same environment, so the
-server is up for them too, harmlessly. `useNuxtApp().$api` reads
-`globalThis.$fetch` per call, so it follows the rebind.
+`installMswServer()`, in `beforeAll` and called from `test/setup.ts` for every file: wrap
+`fetch` to unwrap a `Request` into URL + init, then `server.listen`, then rebind `$fetch`
+with `createFetch({ fetch, defaults: { baseURL: location.origin } })` so relative `/api/*`
+becomes absolute and reaches the interceptor. It restores both in `afterAll`. The
+`server/**` tests run under the same environment, so the server is up for them too,
+harmlessly. `useNuxtApp().$api` reads `globalThis.$fetch` per call, so it follows the
+rebind.
 
 The unwrap cannot hand on the `Request`'s `signal` — Node's `fetch` refuses happy-dom's
 `AbortSignal` by brand check, failing every request — so the shim races the response
 against it instead. An aborted read rejects as it would in a browser, which
 `useOptionalFetch` and `useWindowedFetch` rely on when they supersede one.
 
-Each part is pinned by `test/mocks/node.test.ts`, which does not install the server itself —
-its unhandled-request tests are what show the global wiring.
+Each part is pinned by `test/mocks/node.test.ts`, which does not install the server
+itself — its unhandled-request tests are what show the global wiring.
 
 Nuxt Icon looks up any icon it was not bundled with on `api.iconify.design`. The server
 answers that with a 404 (`iconLookup`), so no test reaches the CDN; the `[Icon] failed to
@@ -65,8 +66,9 @@ ones, e.g. `GET /api/goal/progress`.
 `page.route` beats `context.route`, so a spec's own route still wins — which is how non-API
 routes (zxing CDN abort) keep working, and why ESLint refuses one on `/api`.
 
-`mocksApi: false` builds the fixture without enabling it, so a spec that turns it off can
-still destructure `network` and nothing is routed.
+`expiredAccessOrigin` calls `network.disable()` and re-enables it on teardown, in a
+`finally`: msw's `disable()` throws when already disabled, so the fixture's own teardown
+would otherwise fail every test that used the origin.
 
 The package is pre-1.0 and calls its use of `page.route` an implementation detail. If it
 moves to a service worker, the Workbox coexistence has to be settled again.

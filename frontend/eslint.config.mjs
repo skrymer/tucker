@@ -29,7 +29,7 @@ const noFocusedTests = [
   },
 ]
 
-// Date construction in e2e/ has a single home: e2e/support/date.ts (issue #85).
+// Date construction in e2e/ has a single home: e2e/support/date.ts.
 // Banning hand-rolled `toLocaleDateString` and bare `new Date()` elsewhere keeps
 // the suite's "today" explicit-UTC, so determinism no longer leans on the
 // process timezone.
@@ -100,7 +100,6 @@ export default withNuxt(
     },
   },
   {
-    // The date helper module itself is exempt from the date ban.
     name: 'tucker/e2e-mocked',
     files: ['e2e/**/*.ts'],
     ignores: ['e2e/support/date.ts', 'e2e/smoke/**'],
@@ -117,6 +116,17 @@ export default withNuxt(
     },
   },
   {
+    // The date helper is the one e2e file allowed to construct dates.
+    name: 'tucker/e2e-date-helper',
+    files: ['e2e/support/date.ts'],
+    languageOptions: {
+      parser: tsParser,
+    },
+    rules: {
+      'no-restricted-syntax': ['error', ...noFocusedTests, ...noApiRoutes],
+    },
+  },
+  {
     name: 'tucker/e2e-smoke',
     files: ['e2e/smoke/**/*.ts'],
     languageOptions: {
@@ -130,7 +140,7 @@ export default withNuxt(
     // Nuxt's endpoint registry answers a path ahead of the MSW handlers and
     // outside their unhandled-request check (ADR 0034).
     name: 'tucker/no-register-endpoint',
-    files: ['**/*.ts'],
+    files: ['**/*.test.ts', '**/*.spec.ts', 'test/**/*.ts', 'e2e/**/*.ts'],
     rules: {
       'no-restricted-imports': [
         'error',
