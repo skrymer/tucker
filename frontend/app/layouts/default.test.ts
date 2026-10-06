@@ -1,30 +1,31 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { registerEndpoint, renderSuspended } from '@nuxt/test-utils/runtime'
+import { renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen, within } from '@testing-library/vue'
 import { useAuthGate } from '~/composables/useAuthGate'
+import { http } from '~~/test/mocks/http'
+import { server, useMswServer } from '~~/test/mocks/node'
+import { profileOf, weightOnlyProfile } from '~~/test/mocks/handlers/profile'
 import DefaultLayout from './default.vue'
+
+useMswServer()
 
 // Driven through the real composable rather than a mock: it is one shared ref
 // and a setter, so a mock could only be a second copy of that. Its state is
 // app-wide, so every test states its own.
-let sessionEndsDuringTheProfileRead = false
-
 beforeEach(() => {
   useAuthGate().isSignedOut.value = false
-  sessionEndsDuringTheProfileRead = false
 })
 
-// Stands in for the auth-gate plugin: `/api/profile` is the read `AppNav`
-// suspends on, so the flag flips while the layout is still rendering.
-registerEndpoint('/api/profile', () => {
-  if (sessionEndsDuringTheProfileRead) useAuthGate().markSignedOut()
-  return {
-    sex: 'MALE',
-    birthDate: '1990-06-15',
-    heightCm: 180,
-    tracksCalories: false,
-  }
-})
+/**
+ * Stands in for the auth-gate plugin: `/api/profile` is the read `AppNav`
+ * suspends on, so the flag flips while the layout is still rendering. The read
+ * itself falls through to the baseline.
+ */
+const sessionEndsDuringTheProfileRead = () =>
+  http.get('/api/profile', () => {
+    useAuthGate().markSignedOut()
+    return undefined
+  })
 
 describe('default layout', () => {
   it('shows the signed-out interstitial instead of the page once the session has expired', async () => {
@@ -41,7 +42,7 @@ describe('default layout', () => {
   })
 
   it('shows the signed-out interstitial when the session ends while the shell is still loading', async () => {
-    sessionEndsDuringTheProfileRead = true
+    server.use(sessionEndsDuringTheProfileRead())
 
     await renderSuspended(DefaultLayout, {
       slots: { default: () => 'Page content' },
@@ -79,6 +80,8 @@ describe('default layout', () => {
   })
 
   it('shapes the navigation to the signed-in User’s Profile', async () => {
+    server.use(profileOf(weightOnlyProfile))
+
     await renderSuspended(DefaultLayout, {
       slots: { default: () => 'Page content' },
     })

@@ -52,6 +52,15 @@ function minusYears(day: string, years: number): string {
   return `${String(year).padStart(4, '0')}-${monthDay}`
 }
 
+const profileNotSet = { message: 'profile not set' }
+
+/** A User who has not set up a Profile yet. */
+export function noProfile() {
+  return http.get('/api/profile', ({ response }) =>
+    response(404).json(profileNotSet),
+  )
+}
+
 /**
  * A Profile that keeps what is saved to it — none yet, given null: [current]
  * reads what a save left, which is what a summary handler follows to carry the
@@ -69,7 +78,7 @@ export function savedProfile(
     handlers: [
       http.get('/api/profile', ({ response }) =>
         profile === null
-          ? response(404).json({ message: 'profile not set' })
+          ? response(404).json(profileNotSet)
           : response(200).json(profile),
       ),
       http.put('/api/profile', async ({ query, request, response }) => {
@@ -133,9 +142,19 @@ export function savedProfile(
   }
 }
 
-/** A Profile read as [profile], never saved. */
-export function profileOf(profile: Profile) {
-  return http.get('/api/profile', ({ response }) => response(200).json(profile))
+/**
+ * A Profile read as [profile], never saved — on the first read alone, given
+ * `{ once: true }`, so a read after it reaches the handler beneath.
+ */
+export function profileOf(
+  profile: Profile,
+  options?: Parameters<typeof http.get>[2],
+) {
+  return http.get(
+    '/api/profile',
+    ({ response }) => response(200).json(profile),
+    options,
+  )
 }
 
 export const profileHandlers = [profileOf(baselineProfile)]

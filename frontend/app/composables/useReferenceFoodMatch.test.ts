@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event'
 import { screen } from '@testing-library/vue'
 import { food } from '~~/test/food-fixtures'
 import { foodCatalog } from '~~/test/mocks/handlers/catalog'
-import { http, serverError } from '~~/test/mocks/http'
+import { failingWrite } from '~~/test/mocks/http'
 import { server, useMswServer } from '~~/test/mocks/node'
 import { useReferenceFoodMatch } from './useReferenceFoodMatch'
 
@@ -28,12 +28,6 @@ const catalogWith = (borrowed: number[] = []) =>
     ),
     referenceFoods: [cheddar],
   })
-
-/** A match the server fails while [isDown] holds. */
-const matchFails = (isDown: () => boolean) =>
-  http.put('/api/foods/{id}/reference-food', ({ response }) =>
-    isDown() ? response.untyped(serverError()) : undefined,
-  )
 
 /**
  * Drive the composable through a host that does what a page does with its
@@ -90,7 +84,7 @@ describe('useReferenceFoodMatch', () => {
   it('retries against the Food that failed, not whichever is open by then', async () => {
     let failing = true
     server.use(
-      matchFails(() => failing),
+      failingWrite('put', '/api/foods/{id}/reference-food', () => failing),
       ...catalogWith(),
     )
 
@@ -141,9 +135,7 @@ describe('useReferenceFoodMatch', () => {
   it('names the unmatch when taking the borrow back fails, and stays on that Food', async () => {
     toastAdd.mockClear()
     server.use(
-      http.delete('/api/foods/{id}/reference-food', ({ response }) =>
-        response.untyped(serverError()),
-      ),
+      failingWrite('delete', '/api/foods/{id}/reference-food'),
       ...catalogWith([cheese.id]),
     )
 

@@ -1,18 +1,17 @@
 import type { Page, TestType } from '@playwright/test'
-import { expect, test } from './support/test'
+import type { NetworkFixture } from '@msw/playwright'
+import { expect, test } from './support/network'
 import {
   TOAST_DELETION_MS,
   toast,
   toastLiveRegion,
   toastRegion,
 } from './support/toast'
-import {
-  mockFoods,
-  mockFrequentFoods,
-  mockProfile,
-  mockWeightList,
-} from './support/mock-api'
-import { estimatedEntry } from '../test/entry-fixtures'
+import { localDayOf, localTodayIso } from './support/date'
+import { failingWrite } from '../test/mocks/http'
+import { bodyAndPlan } from '../test/mocks/handlers/body'
+import { entryLog } from '../test/mocks/handlers/entries'
+import { baselineProfile, savedProfile } from '../test/mocks/handlers/profile'
 
 // The `goto` fixture's own type, taken from the `test` it belongs to rather
 // than restated — @nuxt/test-utils declares it but does not export it.
@@ -26,42 +25,37 @@ type Goto =
 const PHONE = { width: 375, height: 812 }
 const DESKTOP = { width: 1280, height: 800 }
 
-// The profile the stub below hands back, so the form loads populated.
-const SAVED = { sex: 'MALE', birthDate: '1990-06-15', heightCm: 180 }
-
 /**
- * Stub `/api/profile`: GET hands back the saved profile so the form loads
- * populated, and every PUT fails until the one numbered [succeedFrom]. Returns
- * the counter of PUTs that reached it, so a caller can tell a Retry that fired
- * from one that didn't.
+ * A Profile save the server fails while [isDown] holds, falling through to the
+ * baseline User's saved Profile once it does not, so a save that lands is read
+ * back on the next visit. A save is for [today], the page's local day.
  */
-async function failProfileSaves(page: Page, { succeedFrom = Infinity } = {}) {
-  const puts = { count: 0 }
-  await page.route('**/api/profile*', async (route) => {
-    const req = route.request()
-    if (req.method() === 'GET') return route.fulfill({ json: SAVED })
-    if (req.method() !== 'PUT') return route.fallback()
-    puts.count += 1
-    if (puts.count >= succeedFrom)
-      return route.fulfill({ json: req.postDataJSON() })
-    return route.fulfill({ status: 500, json: { message: 'boom' } })
-  })
-  return puts
+function profileSaves(today: string, isDown: () => boolean = () => true) {
+  return [
+    failingWrite('put', '/api/profile', isDown),
+    ...savedProfile(baselineProfile, { today }).handlers,
+  ]
+}
+
+/** Fill a new height in and save it, from the Profile page already open. */
+async function saveHeight(page: Page, heightCm: string) {
+  await page.getByLabel(/height/i).fill(heightCm)
+  await page.getByRole('button', { name: /save profile/i }).click()
 }
 
 test('at phone width a failed save anchors the error toast to the top, clear of the sheet and keyboard zone', async ({
   page,
   goto,
+  network,
 }) => {
   // The save fails, so it surfaces the persistent error toast instead of
   // dismissing silently.
-  await failProfileSaves(page)
+  network.use(...profileSaves(localTodayIso()))
 
   await page.setViewportSize(PHONE)
   await goto('/profile', { waitUntil: 'hydration' })
 
-  await page.getByLabel(/height/i).fill('182')
-  await page.getByRole('button', { name: /save profile/i }).click()
+  await saveHeight(page, '182')
 
   const failure = toast(page, 'Could not save profile')
   await expect(failure).toBeVisible()
@@ -82,14 +76,14 @@ test('at phone width a failed save anchors the error toast to the top, clear of 
 test('at desktop width the error toast stays at the bottom, where nothing competes for the corner', async ({
   page,
   goto,
+  network,
 }) => {
-  await failProfileSaves(page)
+  network.use(...profileSaves(localTodayIso()))
 
   await page.setViewportSize(DESKTOP)
   await goto('/profile', { waitUntil: 'hydration' })
 
-  await page.getByLabel(/height/i).fill('182')
-  await page.getByRole('button', { name: /save profile/i }).click()
+  await saveHeight(page, '182')
 
   const failure = toast(page, 'Could not save profile')
   await expect(failure).toBeVisible()
@@ -111,51 +105,65 @@ test('at desktop width the error toast stays at the bottom, where nothing compet
 test('the error toast Retry re-submits the save and dismisses once it succeeds', async ({
   page,
   goto,
+  network,
 }) => {
-  // The first PUT fails and the second succeeds, so Retry drives failure →
+  // The first save fails and the retried one lands, so Retry drives failure →
   // success.
-  const puts = await failProfileSaves(page, { succeedFrom: 2 })
+  let down = true
+  network.use(...profileSaves(localTodayIso(), () => down))
 
   await goto('/profile', { waitUntil: 'hydration' })
 
-  await page.getByLabel(/height/i).fill('182')
-  await page.getByRole('button', { name: /save profile/i }).click()
+  await saveHeight(page, '182')
 
   const failure = toast(page, 'Could not save profile')
   await expect(failure).toBeVisible()
 
+  down = false
   await failure.getByRole('button', { name: /retry/i }).click()
 
   // The retried save succeeds, so the persistent error toast is dismissed.
   await expect(failure).toHaveCount(0)
-  expect(puts.count).toBe(2)
+
+  // And it was the save that Retry re-sent: the next visit reads it back.
+  await page.reload()
+  await expect(page.getByLabel(/height/i)).toHaveValue('182')
 })
 
 test('a Retry that fails again leaves the error toast up, ready to retry once more', async ({
   page,
   goto,
+  network,
 }) => {
-  // Every PUT fails, so Retry drives failure → failure.
-  const puts = await failProfileSaves(page)
-
   // The deletion Nuxt UI arms on a close is a `setTimeout`, and both ends of this
   // test are that timer: the bug only bites when the retried failure lands
   // *inside* the window, and it only shows once the deletion has run. A wall-clock
   // wait controls neither — it waits out the second while racing the first. So the
   // clock is held still: the retried failure cannot fall outside a window that is
   // not advancing, and the deletion fires when this test says so.
-  await page.clock.install({ time: new Date('2026-06-15T12:00:00Z') })
+  const held = new Date('2026-06-15T12:00:00Z')
+  await page.clock.install({ time: held })
+
+  // Every save fails until the last Retry, so Retry drives failure → failure.
+  let down = true
+  network.use(...profileSaves(localDayOf(held), () => down))
 
   await goto('/profile', { waitUntil: 'hydration' })
 
-  await page.getByLabel(/height/i).fill('182')
-  await page.getByRole('button', { name: /save profile/i }).click()
+  await saveHeight(page, '182')
 
   const failure = toast(page, 'Could not save profile')
   await expect(failure).toBeVisible()
 
+  // Waited on rather than asserted: nothing on screen tells the retried failure
+  // landing apart from the toast it replaces, and the deletion below has to run
+  // after it.
+  const retriedFailure = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'PUT' && response.status() === 500,
+  )
   await failure.getByRole('button', { name: /retry/i }).click()
-  await expect.poll(() => puts.count).toBe(2)
+  await retriedFailure
 
   // Run the armed deletion. Under the bug the replacement has been merged into
   // the toast it was raised onto, so this takes both away.
@@ -165,27 +173,39 @@ test('a Retry that fails again leaves the error toast up, ready to retry once mo
   // One at a time, as ever: the toast the retry raises replaces the one it was
   // tapped on rather than stacking on it.
   await expect(toastRegion(page).getByRole('listitem')).toHaveCount(1)
-  // And the Retry on it still fires, which is the whole reason to leave it up.
+
+  // And the Retry on it still fires, which is the whole reason to leave it up:
+  // this time the save lands and dismisses the toast — on the same held timer,
+  // so it is run once the save has landed.
+  down = false
+  const landed = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'PUT' && response.status() === 200,
+  )
   await failure.getByRole('button', { name: /retry/i }).click()
-  await expect.poll(() => puts.count).toBe(3)
+  await landed
+  await page.clock.runFor(TOAST_DELETION_MS)
+  await expect(failure).toHaveCount(0)
 })
 
 /**
- * Drive a weight save from inside the Log-weight sheet and make it fail, leaving
- * the sheet open with its error toast up. Returns a counter of the saves that
- * reached the API, so a caller can tell a Retry that fired from one that didn't.
+ * Drive a weight save from inside the Log-weight sheet and make it fail while
+ * [isDown] holds, leaving the sheet open with its error toast up.
  */
-async function failASaveFromASheet(page: Page, goto: Goto) {
-  const saves = { count: 0 }
-  await mockProfile(page, SAVED)
-  await mockWeightList(page, [])
-  // Registered after the list stub, so it is matched first (Playwright tries
-  // routes newest-first) and hands the reads back to it.
-  await page.route('**/api/weight', (route) => {
-    if (route.request().method() !== 'POST') return route.fallback()
-    saves.count += 1
-    return route.fulfill({ status: 500, json: { message: 'boom' } })
-  })
+async function failASaveFromASheet(
+  page: Page,
+  goto: Goto,
+  network: NetworkFixture,
+  isDown: () => boolean = () => true,
+) {
+  network.use(
+    failingWrite('post', '/api/weight', isDown),
+    ...bodyAndPlan({
+      profile: baselineProfile,
+      readings: [],
+      today: localTodayIso(),
+    }),
+  )
 
   await goto('/profile', { waitUntil: 'hydration' })
 
@@ -194,14 +214,21 @@ async function failASaveFromASheet(page: Page, goto: Goto) {
   const sheet = page.getByRole('dialog', { name: /log weight/i })
   await sheet.getByLabel(/weight \(kg\)/i).fill('84.2')
   await sheet.getByRole('button', { name: /save weight/i }).click()
-  return saves
+  return { weight, sheet }
 }
 
 test('a failed save from inside a sheet reaches the accessibility tree, Retry and all', async ({
   page,
   goto,
+  network,
 }) => {
-  const saves = await failASaveFromASheet(page, goto)
+  let down = true
+  const { weight, sheet } = await failASaveFromASheet(
+    page,
+    goto,
+    network,
+    () => down,
+  )
 
   // Queried through the accessibility tree, which is the whole point: the sheet
   // is a Reka Dialog, and a dialog marks everything outside itself aria-hidden.
@@ -213,16 +240,19 @@ test('a failed save from inside a sheet reaches the accessibility tree, Retry an
 
   // Reachable, not merely present: the sheet's dim overlay covers the screen, so
   // a toast that fell behind it would read the same to `toBeVisible` and take no
-  // clicks at all.
+  // clicks at all. The Retry lands the save, which the page then shows.
+  down = false
   await failure.getByRole('button', { name: /retry/i }).click()
-  await expect.poll(() => saves.count).toBe(2)
+  await expect(sheet).toBeHidden()
+  await expect(weight.getByText('84.2 kg')).toBeVisible()
 })
 
 test('a failed save from inside a sheet is announced assertively, interrupting whatever else was being read', async ({
   page,
   goto,
+  network,
 }) => {
-  await failASaveFromASheet(page, goto)
+  await failASaveFromASheet(page, goto, network)
 
   await expect(toast(page, 'Could not save weight')).toBeVisible()
   // ADR 0005 makes a failed mutation assertive on purpose — it interrupts
@@ -234,24 +264,11 @@ test('a failed save from inside a sheet is announced assertively, interrupting w
 test('a logged entry is announced politely, waiting its turn rather than interrupting', async ({
   page,
   goto,
+  network,
 }) => {
-  await mockProfile(page, { ...SAVED, tracksCalories: true })
-  await mockFoods(page, [])
-  await mockFrequentFoods(page, [])
-  // The budget gate previews before it commits (CONTEXT.md — Budget Projection),
-  // so both endpoints need stubbing. The preview is registered last, hence
-  // matched first — though the commit glob would not swallow it either, since a
-  // Playwright pattern has to match the whole URL and `/preview` is left over.
-  await page.route('**/api/entries/estimated', (route) =>
-    route.fulfill({
-      json: estimatedEntry({ id: 1, label: 'Lunch out', calories: 600 }),
-    }),
-  )
-  await page.route('**/api/entries/estimated/preview', (route) =>
-    route.fulfill({
-      json: { wouldExceedBudget: false, projectedCaloriesConsumed: 600 },
-    }),
-  )
+  // The budget gate previews before it commits (CONTEXT.md — Budget
+  // Projection); both are answered by the Entry log.
+  network.use(...entryLog({ today: localTodayIso(), foods: [] }))
 
   await goto('/log', { waitUntil: 'hydration' })
 

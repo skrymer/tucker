@@ -24,15 +24,14 @@ export const ALLOWED_PAGE_NOISE: RegExp[] = [
 /**
  * Extra noise tolerated only in the **mocked** e2e suite (`pnpm test:e2e`).
  *
- * That suite stubs `/api/*` per-test with `page.route`, mocking only the
- * endpoints a given test asserts on; any other call reaches the backend-less
- * preview server and comes back `502`, which the browser logs as a resource
- * load error. Tests that deliberately exercise failure paths (e.g. the error
- * toast) add their own failed-load lines too. None of that is a regression in
- * the mocked suite, so we tolerate the browser's generic failed-load message
- * here — while still failing on uncaught exceptions and app-level console
- * errors. The real-stack smokes use only [ALLOWED_PAGE_NOISE], so a genuinely
- * failed request there still fails the test.
+ * Tests that deliberately exercise failure paths (e.g. the error toast) answer
+ * `/api` with a failure, which the browser logs as a resource load error. That
+ * is not a regression in the mocked suite — and in a spec on `./network.ts` an
+ * `/api` request no handler covers fails its test on its own — so we tolerate
+ * the browser's generic failed-load message here, while still failing on
+ * uncaught exceptions and app-level console errors. The real-stack smokes use
+ * only [ALLOWED_PAGE_NOISE], so a genuinely failed request there still fails
+ * the test.
  */
 export const MOCKED_E2E_NOISE: RegExp[] = [/Failed to load resource/]
 

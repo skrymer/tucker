@@ -85,9 +85,10 @@ or is stated as unchecked — an annotation in `e2e/` never answers a typing fin
   host zone and CI in UTC. `pinToLocalMorning(page)` (`e2e/support/date.ts`) returns the
   local day to let the handler answer alone; the red is the same spec run with
   `test.use({ timezoneId: 'UTC' })`. Why it is not `setFixedTime`: frontend-dev's gotchas.
-- **A read that fails, then recovers on Retry**, is a failure override with a predicate
-  (`catalogFails(() => down)`) that returns `undefined` once it is false, falling through
-  to the handler under it.
+- **A request that fails, then recovers on Retry**, is a failure override with a
+  predicate that returns `undefined` once it is false, falling through to the handler
+  under it: `failingRead(path, () => down)` for a read, `failingWrite(method, path,
+  () => down)` for a save (`test/mocks/http.ts`).
 - **A Check-only page still reads the shell's endpoints**: `/api/profile` always, and Today's
   `/api/weight/latest` and `/api/goal/progress` on any spec that starts at `/`.
 - **Holding a request open** is `held(method, path, matches?)` (`test/mocks/http.ts`): it
@@ -140,7 +141,29 @@ or is stated as unchecked — an annotation in `e2e/` never answers a typing fin
 - **"Not asked again" is a handler whose later reads answer differently.** A
   counter in the override (`reads++ === 0 ? A_FULL_DAY : nothingLogged`) turns a
   duplicate read into a change on screen. Check for it at the end, where a late read
-  would have landed.
+  would have landed. Over a baseline that answers otherwise, an override for the first
+  read alone does it with no counter: `profileOf(p, { once: true })` shows a read
+  that must not be repeated, and a failure whose predicate is true once shows one that
+  must not be retried (`retry: 0`: its retry would succeed, and say so) —
+  `useCalorieTracking.test.ts`. A read that *must* be issued again is the opposite: an
+  outage the test switches off before the re-read (`() => down`), never a first-call
+  failure, which a client retry would also get past (ADR 0007).
+- **A plugin's side effect mid-read is an override that does it and falls through.**
+  `default.test.ts` stands in for the auth-gate plugin with an `/api/profile` handler
+  that calls `markSignedOut()` and returns `undefined`, so the baseline Profile still
+  answers the read the layout suspends on.
+- **A held clock moves the day the page sends.** Under `page.clock.install({ time })`
+  the page stamps that instant's local day, so a factory guarding the day
+  (`savedProfile(p, { today })`) is given that day, not `localTodayIso()`. Given the
+  wrong one, every save is a 400 the page reads as a failure — which a test about a
+  failing save cannot tell from its own.
+- **Waiting is not asserting.** Where nothing on screen tells a request landing apart
+  from the state before it — a retried failure replacing an identical toast —
+  `page.waitForResponse` synchronises the next step (`toast.spec.ts`). It never stands
+  in for proving what was sent; that is still a change on screen. Under
+  `page.clock.install`, wait for the response that arms a timer, then `runFor` once —
+  never `runFor` inside `toPass`, which advances the clock a timing-dependent number
+  of times and burns its retry back-offs.
 - **Reading another factory's state through its own read** (rule 3):
   `micronutrientIntakeOver(catalog, answer)` calls `getResponse` on the catalog's
   handlers for `/api/foods`, so a match claimed through `foodCatalog` moves the next

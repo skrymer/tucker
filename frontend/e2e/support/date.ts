@@ -57,9 +57,12 @@ export function todayIso(): string {
  * no `timezoneId`, so a smoke's browser follows the runner and wants [todayIso].
  */
 export function localTodayIso(): string {
-  return new Date().toLocaleDateString('en-CA', {
-    timeZone: MOCKED_E2E_TIMEZONE,
-  })
+  return localDayOf(new Date())
+}
+
+/** The calendar day [instant] falls on in [MOCKED_E2E_TIMEZONE], as ISO `yyyy-mm-dd`. */
+export function localDayOf(instant: Date): string {
+  return instant.toLocaleDateString('en-CA', { timeZone: MOCKED_E2E_TIMEZONE })
 }
 
 /**

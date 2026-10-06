@@ -102,7 +102,8 @@ handlers free of app auto-imports (`localToday()` etc.) — pass such values in.
    includes one an override matched and let fall through with nothing beneath it, which
    msw itself counts as handled and sends to the network: a terminal `fellThrough`
    handler (`test/mocks/http.ts`) catches it in both layers. Add the endpoint to the
-   baseline (or the test) rather than loosening that.
+   baseline (or the test) rather than loosening that. Never mock `/api` with
+   `registerEndpoint` or `page.route`: neither reaches that check.
 6. **Overrides last one test.** `resetHandlers` runs after each test in Vitest, and the
    Playwright fixture is built per test, so a `use()` never leaks into the next.
 7. **Prove each migrated test still goes red** by breaking its handler's response once, on a
@@ -126,7 +127,10 @@ handlers free of app auto-imports (`localToday()` etc.) — pass such values in.
       foreign id, the order its refusals are checked in, and the `ORDER BY` — per
       query, not per table (SQLite's `lower()` folds ASCII alone; a bare `ORDER BY`
       compares bytes).
-- [ ] Delete request-capturing arrays; assert the rendered result instead.
+- [ ] Delete request-capturing arrays; assert the rendered result instead. Before
+      deleting a request count, name the client regression it caught (a retry, a
+      missing re-ask, a second read) and check the replacement shows that one on
+      screen: a handler break cannot, since it changes the server, not the client.
 - [ ] Run green, then break each handler once and save the output naming each red test.
 
 Why the shim exists, the fixture's internals, coexistence and every trap measured so far:
