@@ -262,6 +262,34 @@ describe('useBarcodeScanner', () => {
     expect(screen.getByTestId('interrupted')).toHaveTextContent('true')
   })
 
+  it('counts a refused camera as interrupted, so a return can ask again', async () => {
+    // The refusal's own way out is a trip to the settings app and back.
+    getUserMedia.mockRejectedValue(
+      new DOMException('Permission denied', 'NotAllowedError'),
+    )
+    await renderSuspended(Harness)
+    await tapScan()
+    await vi.waitFor(() => expect(stateText()).toBe('denied'))
+
+    setVisibility('hidden')
+    await nextTick()
+
+    expect(screen.getByTestId('interrupted')).toHaveTextContent('true')
+  })
+
+  it('does not count a scanner the User stopped as interrupted', async () => {
+    getUserMedia.mockResolvedValue(fakeStream().stream)
+    await renderSuspended(Harness)
+    await tapScan()
+    await vi.waitFor(() => expect(stateText()).toBe('scanning'))
+    await userEvent.setup().click(screen.getByRole('button', { name: 'stop' }))
+
+    setVisibility('hidden')
+    await nextTick()
+
+    expect(screen.getByTestId('interrupted')).toHaveTextContent('false')
+  })
+
   it('keeps the interruption on record as the app comes back', async () => {
     // A surface reads it on the same return, after this scanner hears it.
     getUserMedia.mockResolvedValue(fakeStream().stream)

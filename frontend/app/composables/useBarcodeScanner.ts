@@ -19,8 +19,8 @@ export function useBarcodeScanner() {
     () => state.value === 'requesting' || state.value === 'scanning',
   )
   /**
-   * The camera was let go because the app went to the background, not because
-   * anyone stopped it — the one release a surface may want to undo on return.
+   * The app went to the background with the scanner not stopped by anyone —
+   * running, or refused a camera — which a surface may retry on return.
    */
   const interrupted = ref(false)
 
@@ -228,9 +228,11 @@ export function useBarcodeScanner() {
   // release on visibility loss and page hide as well as on scope teardown.
   function onVisibilityChange() {
     if (document.visibilityState !== 'hidden') return
-    const wasOpen = open.value
+    // Only an idle scanner was stopped by someone; anything else — open, or a
+    // camera refused or missing — is worth asking again about on return.
+    const wasStopped = state.value === 'idle'
     stop()
-    interrupted.value = wasOpen
+    interrupted.value = !wasStopped
   }
   document.addEventListener('visibilitychange', onVisibilityChange)
   window.addEventListener('pagehide', stop)

@@ -510,6 +510,21 @@ describe('/check on a phone', () => {
     ).toBeVisible()
   })
 
+  it('closes the scanner onto the blocked alert when the camera is refused', async () => {
+    await renderSuspended(Check)
+    scanner.state.value = 'requesting'
+    await screen.findByRole('dialog', { name: 'Barcode scanner' })
+
+    scanner.state.value = 'denied'
+
+    expect(await screen.findByText('Camera access is blocked')).toBeVisible()
+    await vi.waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: 'Barcode scanner' }),
+      ).not.toBeInTheDocument(),
+    )
+  })
+
   it('asks for true fullscreen when Start camera is tapped', async () => {
     const requestFullscreen = stubTrueFullscreen()
     await renderSuspended(Check)

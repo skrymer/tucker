@@ -224,7 +224,8 @@ the only fullscreen an **iPhone** has: WebKit, Chrome included, offers no elemen
 `requestFullscreen()`, and the installed PWA has no browser chrome to hide anyway.
 Where the browser does have it (Android Chrome), the Dialog also asks for true
 fullscreen — but only from a tap, which the API requires, so Check's camera that
-opens with the tab gets the Dialog alone and only "Scan again" goes further. The
+opens with the tab gets the Dialog alone and only a tap ("Start camera", "Scan
+another") goes further. The
 scanner shows a caption and a Stop button and nothing else: no aiming frame,
 because the decoder reads the whole frame and a box would invent a constraint.
 Desktop keeps an inline viewfinder — a webcam is not something you aim.
@@ -341,8 +342,8 @@ Atwater derivation, and the stated-energy cross-check are all ownership-neutral.
   ordered chain with timeout/circuit-breaker/429 fall-through; the Provider chain
   + (future) credentials as deployment config. No new write path — Food creation
   stays `POST /api/foods`.
-- **Frontend:** a `zxing-wasm`-backed scanner hosted in `ResponsiveOverlay`,
-  lazy-loaded behind the Scan tap; an always-on manual-barcode input; the
+- **Frontend:** a `zxing-wasm`-backed scanner — fullscreen in its own Dialog on
+  phone, inline on desktop — lazy-loaded behind the Scan tap; an always-on manual-barcode input; the
   three-outcome branch (surface existing Food → offer log / pre-fill `AddFoodForm`
   from a Candidate / open blank manual entry with the barcode), which #164 makes
   four by saying so when the lookup was inconclusive; the "log it now"

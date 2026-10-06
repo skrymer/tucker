@@ -11,10 +11,17 @@ export function useFullscreenScanner(scanner: {
   stop: () => void
 }) {
   const isDesktop = useIsDesktop()
-  const fullscreen = ref(!isDesktop.value)
-  watchEffect(() => {
-    if (!scanner.open.value) fullscreen.value = !isDesktop.value
-  })
+  // Captured as the scanner opens — on the flush, not at the call, because a
+  // surface can open it in the very tick the breakpoint is first read.
+  const held = ref<boolean | null>(null)
+  watch(
+    scanner.open,
+    (open) => {
+      held.value = open ? !isDesktop.value : null
+    },
+    { immediate: true },
+  )
+  const fullscreen = computed(() => held.value ?? !isDesktop.value)
   /** Call straight from a tap: the browser grants fullscreen only to a gesture. */
   function startFromTap() {
     // A refusal leaves the Dialog, which already fills the viewport.
@@ -32,13 +39,20 @@ export function useFullscreenScanner(scanner: {
   // The system's back gesture leaves fullscreen without the app asking, and the
   // camera light must go off with it.
   function onFullscreenChange() {
-    // Closed, the change is the scanner's own exit, not the system's.
-    if (scanner.open.value && !document.fullscreenElement) scanner.stop()
+    if (scanner.open.value) {
+      if (!document.fullscreenElement) scanner.stop()
+    } else if (document.fullscreenElement) {
+      // A refused or missing camera settled before the request did.
+      document.exitFullscreen().catch(() => {})
+    }
+    // Closed and out of fullscreen: the scanner's own exit, nothing to do.
   }
   document.addEventListener('fullscreenchange', onFullscreenChange)
-  onScopeDispose(() =>
-    document.removeEventListener('fullscreenchange', onFullscreenChange),
-  )
+  onScopeDispose(() => {
+    document.removeEventListener('fullscreenchange', onFullscreenChange)
+    // The surface is going, and its open-watch with it before it can fire.
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {})
+  })
 
   return { fullscreen: readonly(fullscreen), startFromTap }
 }

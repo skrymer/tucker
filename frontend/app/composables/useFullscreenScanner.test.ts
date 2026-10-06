@@ -55,6 +55,19 @@ describe('useFullscreenScanner', () => {
     scope.stop()
   })
 
+  it('presents a scanner opened as the viewport settles by the viewport it settled on', async () => {
+    // The breakpoint is only read once mounted, and a surface may open its
+    // scanner in that same tick — Check does, on arrival.
+    const { scanner, surface, scope } = withScanner()
+
+    viewport.desktop.value = true
+    scanner.open.value = true
+    await nextTick()
+
+    expect(surface.fullscreen.value).toBe(false)
+    scope.stop()
+  })
+
   it('asks for true fullscreen from a tap on a phone, and starts the scanner', () => {
     const requestFullscreen = stubTrueFullscreen()
     const { scanner, surface, scope } = withScanner()
@@ -104,6 +117,7 @@ describe('useFullscreenScanner', () => {
   })
 
   it('keeps scanning as the page enters fullscreen', () => {
+    stubExitFullscreen()
     const { scanner, scope } = withScanner(true)
 
     setFullscreenElement(document.documentElement)
@@ -123,6 +137,29 @@ describe('useFullscreenScanner', () => {
 
     expect(scanner.stop).not.toHaveBeenCalled()
     scope.stop()
+  })
+
+  it('leaves fullscreen that arrives after the scanner has already closed', () => {
+    // A refused or missing camera can settle before the fullscreen request
+    // does, leaving the page fullscreen over nothing.
+    const exitFullscreen = stubExitFullscreen()
+    const { scope } = withScanner(false)
+
+    setFullscreenElement(document.documentElement)
+    document.dispatchEvent(new Event('fullscreenchange'))
+
+    expect(exitFullscreen).toHaveBeenCalledOnce()
+    scope.stop()
+  })
+
+  it('leaves fullscreen when its surface goes with the scanner open', () => {
+    const exitFullscreen = stubExitFullscreen()
+    setFullscreenElement(document.documentElement)
+    const { scope } = withScanner(true)
+
+    scope.stop()
+
+    expect(exitFullscreen).toHaveBeenCalledOnce()
   })
 
   it('stops listening once its surface is gone', () => {
