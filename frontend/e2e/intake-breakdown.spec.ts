@@ -1,4 +1,4 @@
-import { expect, test } from './support/network'
+import { expect, test } from './support/test'
 import { localTodayIso } from './support/date'
 import { weeklyReview } from '../test/review-fixtures'
 import {

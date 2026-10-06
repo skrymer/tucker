@@ -1,4 +1,4 @@
-import { expect, test } from './support/network'
+import { expect, test } from './support/test'
 import { profileOf, weightOnlyProfile } from '../test/mocks/handlers/profile'
 import {
   noIntakeTargets,

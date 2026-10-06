@@ -5,10 +5,8 @@ import type { components } from '#open-fetch-schemas/api'
 import { bodyAndPlan } from '~~/test/mocks/handlers/body'
 import { baselineProfile } from '~~/test/mocks/handlers/profile'
 import { failingRead } from '~~/test/mocks/http'
-import { server, useMswServer } from '~~/test/mocks/node'
+import { server } from '~~/test/mocks/node'
 import WeightHistory from './weight.vue'
-
-useMswServer()
 
 type Reading = components['schemas']['WeightMeasurementResponse']
 

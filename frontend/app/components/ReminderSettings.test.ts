@@ -6,7 +6,7 @@ import type { components } from '#open-fetch-schemas/api'
 import { baselineProfile, savedProfile } from '~~/test/mocks/handlers/profile'
 import { pushServiceFor } from '~~/test/mocks/handlers/push'
 import { http, serverError } from '~~/test/mocks/http'
-import { server, useMswServer } from '~~/test/mocks/node'
+import { server } from '~~/test/mocks/node'
 import { reopenProfile } from '~~/test/profile-page'
 import ReminderSettings from './ReminderSettings.vue'
 import {
@@ -15,8 +15,6 @@ import {
   setupWebPush,
 } from '../../test/web-push-helpers'
 import { setStandalone, setUserAgent, UA } from '../../test/pwa-install-helpers'
-
-useMswServer()
 
 // ReminderSettings composes the *real* useWebPush; the only things mocked are
 // the true external boundaries — the browser push machinery (setupWebPush) and

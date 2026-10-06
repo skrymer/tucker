@@ -1,4 +1,4 @@
-import { expect, test } from './support/network'
+import { expect, test } from './support/test'
 import { reachedGoal } from '../test/mocks/handlers/goal'
 import { summaryOf } from '../test/mocks/handlers/summary'
 

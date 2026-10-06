@@ -2,10 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen } from '@testing-library/vue'
 import { http } from '~~/test/mocks/http'
-import { server, useMswServer } from '~~/test/mocks/node'
+import { server } from '~~/test/mocks/node'
 import BuildTag from './BuildTag.vue'
-
-useMswServer()
 
 describe('BuildTag', () => {
   it('renders the running build and flags a SHA split between frontend and backend', async () => {

@@ -11,10 +11,8 @@ import {
   type ShelvedTag,
 } from '~~/test/mocks/handlers/catalog'
 import { failingRead, held, http, noConnection } from '~~/test/mocks/http'
-import { server, useMswServer } from '~~/test/mocks/node'
+import { server } from '~~/test/mocks/node'
 import ManageTagsSheet from './ManageTagsSheet.vue'
-
-useMswServer()
 
 // The rename field's autofocus is desktop-only, so the tests drive the viewport.
 const viewport = vi.hoisted(() => ({ desktop: true }))

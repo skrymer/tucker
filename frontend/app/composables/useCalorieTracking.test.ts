@@ -4,7 +4,7 @@ import { renderSuspended } from '@nuxt/test-utils/runtime'
 import userEvent from '@testing-library/user-event'
 import { screen } from '@testing-library/vue'
 import { failingRead } from '~~/test/mocks/http'
-import { server, useMswServer } from '~~/test/mocks/node'
+import { server } from '~~/test/mocks/node'
 import {
   noProfile,
   profileOf,
@@ -14,7 +14,6 @@ import { useCalorieTracking } from './useCalorieTracking'
 
 // The baseline User counts calories, so an override answering the first read
 // alone turns a read issued, or not issued, into a different setting.
-useMswServer()
 
 /** True on its first call alone. */
 function firstTimeOnly() {

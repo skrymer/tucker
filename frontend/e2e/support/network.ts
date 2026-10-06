@@ -1,25 +1,31 @@
+import type { BrowserContext, Fixtures } from '@playwright/test'
 import type { AnyHandler } from 'msw'
 import { defineNetworkFixture, type NetworkFixture } from '@msw/playwright'
+import { expect } from '@nuxt/test-utils/playwright'
 import { handlers as baseline } from '../../test/mocks/handlers'
 import { fellThrough } from '../../test/mocks/http'
-import { expect, test as base } from './test'
+
+export interface NetworkFixtures {
+  handlers: AnyHandler[]
+  network: NetworkFixture
+}
 
 /**
- * The mocked-e2e `test` whose `/api` is answered by the shared MSW handlers
- * (ADR 0034), the same baseline the Vitest suite uses. A spec overrides it with
- * `network.use(...)`, and a request to `/api` that no handler covers fails the
- * test. Anything else — the app's own pages, chunks and service worker — goes to
- * the server as before.
+ * Answers `/api` from the shared MSW handlers (ADR 0034), the same baseline the
+ * Vitest suite uses. A spec overrides it with `network.use(...)`, and a request
+ * to `/api` that no handler covers fails the test. Anything else — the app's own
+ * pages, chunks and service worker — goes to the server.
  *
  * Interception rides Playwright's own routing, not an MSW worker script, so the
  * app's Workbox service worker stays the only one on its scope. A `page.route`
  * registered by the spec still takes precedence over it, which is how a non-API
  * route (a CDN abort, a fake camera) is answered.
  */
-export const test = base.extend<{
-  handlers: AnyHandler[]
-  network: NetworkFixture
-}>({
+export const networkFixtures: Fixtures<
+  NetworkFixtures,
+  object,
+  { context: BrowserContext }
+> = {
   handlers: [baseline, { option: true }],
 
   network: [
@@ -42,6 +48,4 @@ export const test = base.extend<{
     },
     { auto: true },
   ],
-})
-
-export { expect }
+}

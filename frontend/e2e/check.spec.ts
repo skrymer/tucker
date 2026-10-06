@@ -1,4 +1,4 @@
-import { expect, test } from './support/network'
+import { expect, test } from './support/test'
 import { denyCamera, fakeBarcodeCamera } from './support/fake-camera'
 import { withOverflowNav } from './support/nav'
 import { pinToLocalMorning } from './support/date'

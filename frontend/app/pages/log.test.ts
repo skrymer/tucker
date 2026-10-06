@@ -10,10 +10,8 @@ import {
   frequentFoods,
   frequentFoodsFail,
 } from '~~/test/mocks/handlers/foods'
-import { server, useMswServer } from '~~/test/mocks/node'
+import { server } from '~~/test/mocks/node'
 import Log from './log.vue'
-
-useMswServer()
 
 // The page renders no toaster of its own, so the toast a User would read is
 // what `useToast` is handed.

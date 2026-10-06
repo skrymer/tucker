@@ -1,5 +1,5 @@
 import type { Locator } from '@playwright/test'
-import { expect, test } from './support/network'
+import { expect, test } from './support/test'
 import { goalInProgress } from '../test/mocks/handlers/goal'
 import { summaryOf, type SummaryDay } from '../test/mocks/handlers/summary'
 import { drawnHoleDiameter, inkWidth, rings } from './support/ring'

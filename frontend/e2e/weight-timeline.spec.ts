@@ -1,4 +1,4 @@
-import { expect, test } from './support/network'
+import { expect, test } from './support/test'
 import { isoShiftDays, localTodayIso } from './support/date'
 import { timelineLine } from './support/weight-timeline'
 import {

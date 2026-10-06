@@ -4,10 +4,8 @@ import { screen } from '@testing-library/vue'
 import { settle } from '~~/test/async-gate'
 import { baselineEmail } from '~~/test/mocks/handlers/identity'
 import { failingRead, held } from '~~/test/mocks/http'
-import { server, useMswServer } from '~~/test/mocks/node'
+import { server } from '~~/test/mocks/node'
 import IdentityByline from './IdentityByline.vue'
-
-useMswServer()
 
 describe('IdentityByline', () => {
   it('names the person whose data is on screen', async () => {

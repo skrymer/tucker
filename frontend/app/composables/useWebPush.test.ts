@@ -4,7 +4,7 @@ import { renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import { pushServiceFor } from '~~/test/mocks/handlers/push'
-import { server, useMswServer } from '~~/test/mocks/node'
+import { server } from '~~/test/mocks/node'
 import { useWebPush } from './useWebPush'
 import {
   fakePushSubscription,
@@ -12,8 +12,6 @@ import {
   setupWebPush,
 } from '../../test/web-push-helpers'
 import { setStandalone, setUserAgent, UA } from '../../test/pwa-install-helpers'
-
-useMswServer()
 
 // The true external boundaries are the browser's push machinery (stubbed via
 // setupWebPush) and the network, answered by the shared MSW handlers

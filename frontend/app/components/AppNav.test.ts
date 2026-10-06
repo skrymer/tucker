@@ -2,14 +2,13 @@ import { describe, expect, it } from 'vitest'
 import { renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen, within } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
-import { server, useMswServer } from '~~/test/mocks/node'
+import { server } from '~~/test/mocks/node'
 import { profileOf, weightOnlyProfile } from '~~/test/mocks/handlers/profile'
 import AppNav from './AppNav.vue'
 
 // The network, not the composable: `AppNav` loads Calorie Tracking itself, so
 // the Profile it reads drives the real one (ADR 0013 — mock only the true
 // external boundary). The baseline User counts calories.
-useMswServer()
 
 const TODAY = { label: 'Today', href: '/' }
 const LOG = { label: 'Log', href: '/log' }

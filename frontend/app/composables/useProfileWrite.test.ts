@@ -5,10 +5,8 @@ import userEvent from '@testing-library/user-event'
 import { screen } from '@testing-library/vue'
 import type { components } from '#open-fetch-schemas/api'
 import { savedProfile } from '~~/test/mocks/handlers/profile'
-import { server, useMswServer } from '~~/test/mocks/node'
+import { server } from '~~/test/mocks/node'
 import { useProfileWrite } from './useProfileWrite'
-
-useMswServer()
 
 type ProfileDto = components['schemas']['ProfileDto']
 

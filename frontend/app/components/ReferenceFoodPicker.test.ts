@@ -9,10 +9,8 @@ import {
 } from '~~/test/micronutrient-fixtures'
 import { referenceFoodsFor } from '~~/test/mocks/handlers/reference-foods'
 import { failingRead, held } from '~~/test/mocks/http'
-import { server, useMswServer } from '~~/test/mocks/node'
+import { server } from '~~/test/mocks/node'
 import ReferenceFoodPicker from './ReferenceFoodPicker.vue'
-
-useMswServer()
 
 type Search = components['schemas']['ReferenceFoodSearchResponse']
 

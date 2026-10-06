@@ -1,8 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { baselineProfile, savedProfile } from './handlers/profile'
-import { server, useMswServer } from './node'
-
-useMswServer()
+import { server } from './node'
 
 describe('savedProfile', () => {
   it('sets a first Profile up, completing what the save leaves out with the backend defaults', async () => {

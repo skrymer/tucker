@@ -1,4 +1,4 @@
-import { expect, test } from './support/network'
+import { expect, test } from './support/test'
 import { goalInProgress } from '../test/mocks/handlers/goal'
 import {
   profileOf,

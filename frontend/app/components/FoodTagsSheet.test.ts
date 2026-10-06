@@ -8,10 +8,8 @@ import {
   type ShelvedTag,
 } from '~~/test/mocks/handlers/catalog'
 import { failingRead, held, http, noConnection } from '~~/test/mocks/http'
-import { server, useMswServer } from '~~/test/mocks/node'
+import { server } from '~~/test/mocks/node'
 import FoodTagsSheet from './FoodTagsSheet.vue'
-
-useMswServer()
 
 const { toastAdd } = vi.hoisted(() => ({ toastAdd: vi.fn() }))
 mockNuxtImport('useToast', () => () => ({

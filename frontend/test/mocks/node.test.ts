@@ -1,15 +1,17 @@
 import { describe, expect, it } from 'vitest'
-import { registerEndpoint } from '@nuxt/test-utils/runtime'
 import { baselineProfile } from './handlers/profile'
 import { http } from './http'
-import { assertNoUnhandledRequests, server, useMswServer } from './node'
-
-useMswServer()
+import { assertNoUnhandledRequests, server } from './node'
 
 // Not in the spec, so the baseline can never grow to cover it.
 const UNCOVERED = '/api/uncovered'
 
-describe('the MSW baseline under the Nuxt test environment', () => {
+// The `/api/profile` reads below are typed `unknown`: depending on the order
+// vue-tsc checks files in, inferring Nitro's route type for them exceeds its
+// stack depth — first seen on `expect(await $fetch(...))`, and it moves to the
+// next read when one is fixed.
+
+describe('the MSW baseline, in every test file without an opt-in', () => {
   it('answers $fetch, with the query string reaching the handler', async () => {
     const summary = await $fetch('/api/summary', {
       query: { date: '2026-06-16' },
@@ -56,8 +58,8 @@ describe('the MSW baseline under the Nuxt test environment', () => {
       ),
     )
 
-    const first = await $fetch('/api/profile')
-    const second = await $fetch('/api/profile')
+    const first = await $fetch<unknown>('/api/profile')
+    const second = await $fetch<unknown>('/api/profile')
 
     expect(first).toMatchObject({ tracksCalories: false })
     expect(second).toMatchObject({ tracksCalories: true })
@@ -69,13 +71,13 @@ describe('the MSW baseline under the Nuxt test environment', () => {
         response(200).json({ ...baselineProfile, tracksCalories: false }),
       ),
     )
-    expect(await $fetch('/api/profile')).toMatchObject({
+    expect(await $fetch<unknown>('/api/profile')).toMatchObject({
       tracksCalories: false,
     })
 
     server.resetHandlers()
 
-    expect(await $fetch('/api/profile')).toMatchObject({
+    expect(await $fetch<unknown>('/api/profile')).toMatchObject({
       tracksCalories: true,
     })
   })
@@ -118,6 +120,15 @@ describe('the MSW baseline under the Nuxt test environment', () => {
     expect(await response.json()).toMatchObject({ tracksCalories: true })
   })
 
+  it('answers an icon lookup itself, so no test reaches the Iconify CDN', async () => {
+    const response = await fetch(
+      'https://api.iconify.design/lucide.json?icons=plus',
+    )
+
+    expect(response.status).toBe(404)
+    expect(() => assertNoUnhandledRequests()).not.toThrow()
+  })
+
   it('rejects a request its caller aborts while the handler is still answering', async () => {
     let release!: () => void
     const answered = new Promise<void>((resolve) => {
@@ -131,16 +142,10 @@ describe('the MSW baseline under the Nuxt test environment', () => {
     )
     const controller = new AbortController()
 
-    const read = $fetch('/api/profile', { signal: controller.signal })
+    const read = $fetch<unknown>('/api/profile', { signal: controller.signal })
     controller.abort()
     release()
 
     await expect(read).rejects.toThrow(/abort/i)
-  })
-
-  it('leaves a path registered through registerEndpoint to Nuxt', async () => {
-    registerEndpoint('/api/me', () => ({ email: 'nuxt@example.com' }))
-
-    expect(await $fetch('/api/me')).toEqual({ email: 'nuxt@example.com' })
   })
 })

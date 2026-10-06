@@ -5,12 +5,10 @@ import { openGate } from '~~/test/async-gate'
 import { food } from '~~/test/food-fixtures'
 import { entryLog } from '~~/test/mocks/handlers/entries'
 import { http, serverError } from '~~/test/mocks/http'
-import { server, useMswServer } from '~~/test/mocks/node'
+import { server } from '~~/test/mocks/node'
 import userEvent from '@testing-library/user-event'
 import { screen } from '@testing-library/vue'
 import { useEstimatedEntryLog, useWeighedEntryLog } from './useEntryLogging'
-
-useMswServer()
 
 const { toastAdd } = vi.hoisted(() => ({ toastAdd: vi.fn() }))
 mockNuxtImport('useToast', () => () => ({ add: toastAdd, remove: vi.fn() }))
