@@ -6,6 +6,9 @@ import { assertNoUnhandledRequests, server } from './node'
 // Not in the spec, so the baseline can never grow to cover it.
 const UNCOVERED = '/api/uncovered'
 
+// The reads below are typed `unknown`: inferring Nitro's route-typed result for
+// each one exhausts vue-tsc's stack depth once the program grows past a point.
+
 describe('the MSW baseline, in every test file without an opt-in', () => {
   it('answers $fetch, with the query string reaching the handler', async () => {
     const summary = await $fetch('/api/summary', {
@@ -53,8 +56,8 @@ describe('the MSW baseline, in every test file without an opt-in', () => {
       ),
     )
 
-    const first = await $fetch('/api/profile')
-    const second = await $fetch('/api/profile')
+    const first = await $fetch<unknown>('/api/profile')
+    const second = await $fetch<unknown>('/api/profile')
 
     expect(first).toMatchObject({ tracksCalories: false })
     expect(second).toMatchObject({ tracksCalories: true })
@@ -66,13 +69,13 @@ describe('the MSW baseline, in every test file without an opt-in', () => {
         response(200).json({ ...baselineProfile, tracksCalories: false }),
       ),
     )
-    expect(await $fetch('/api/profile')).toMatchObject({
+    expect(await $fetch<unknown>('/api/profile')).toMatchObject({
       tracksCalories: false,
     })
 
     server.resetHandlers()
 
-    expect(await $fetch('/api/profile')).toMatchObject({
+    expect(await $fetch<unknown>('/api/profile')).toMatchObject({
       tracksCalories: true,
     })
   })
@@ -137,7 +140,7 @@ describe('the MSW baseline, in every test file without an opt-in', () => {
     )
     const controller = new AbortController()
 
-    const read = $fetch('/api/profile', { signal: controller.signal })
+    const read = $fetch<unknown>('/api/profile', { signal: controller.signal })
     controller.abort()
     release()
 

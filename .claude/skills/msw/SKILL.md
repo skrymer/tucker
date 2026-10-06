@@ -105,9 +105,11 @@ handlers free of app auto-imports (`localToday()` etc.) — pass such values in.
    `registerEndpoint` or `page.route`: neither reaches that check, and ESLint refuses
    both (`eslint.config.mjs`). In the mocked e2e `route()` is called by name with a
    plain string or regex literal that is not a catch-all, so the ban can read it; it
-   guards the usual spellings, not a pattern built to slip past it. A fixture serving
-   the app from a real origin of its own switches the handlers off while it lives
-   (`expiredAccessOrigin`). A `page.route` on another host (a CDN abort, a fake
+   guards the usual spellings, not a pattern built to slip past it. A selector edit
+   goes through `test/lint/api-mock-bans.test.ts`, which lists what must be refused
+   and what must stay legal; add the form you meant to catch there first. A fixture
+   serving the app from a real origin of its own switches the handlers off while it
+   lives (`expiredAccessOrigin`). A `page.route` on another host (a CDN abort, a fake
    camera) is fine, and the smokes never use the handlers.
 6. **Overrides last one test.** `resetHandlers` runs after each test in Vitest, and the
    Playwright fixture is built per test, so a `use()` never leaks into the next.
