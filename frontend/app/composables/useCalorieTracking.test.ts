@@ -167,8 +167,9 @@ describe('useCalorieTracking', () => {
   })
 
   it('re-asks on the next page when the read failed, rather than settling for the default', async () => {
+    let down = true
     server.use(
-      failingRead('/api/profile', firstTimeOnly()),
+      failingRead('/api/profile', () => down),
       profileOf(weightOnlyProfile),
     )
 
@@ -185,6 +186,7 @@ describe('useCalorieTracking', () => {
     // the User is holding Tucker's default shape. One transient 502 must not
     // decide that for the rest of the session — the next page asks again, and a
     // weight-only User gets the app they chose.
+    down = false
     const page = defineComponent({
       async setup() {
         const { tracksCalories, ready } = useCalorieTracking()

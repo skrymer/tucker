@@ -142,11 +142,12 @@ or is stated as unchecked — an annotation in `e2e/` never answers a typing fin
   counter in the override (`reads++ === 0 ? A_FULL_DAY : nothingLogged`) turns a
   duplicate read into a change on screen. Check for it at the end, where a late read
   would have landed. Over a baseline that answers otherwise, an override for the first
-  read alone does it with no counter: `profileOf(p, { once: true })`, or a failure
-  whose predicate is true once. That shows a read that must not be repeated, one that
-  *must* be issued again (a failure, then the answer the re-read has to land), and one
-  that must not be retried (`retry: 0`: a failure whose retry would succeed, and say
-  so) — `useCalorieTracking.test.ts`.
+  read alone does it with no counter: `profileOf(p, { once: true })` shows a read
+  that must not be repeated, and a failure whose predicate is true once shows one that
+  must not be retried (`retry: 0`: its retry would succeed, and say so) —
+  `useCalorieTracking.test.ts`. A read that *must* be issued again is the opposite: an
+  outage the test switches off before the re-read (`() => down`), never a first-call
+  failure, which a client retry would also get past (ADR 0007).
 - **A plugin's side effect mid-read is an override that does it and falls through.**
   `default.test.ts` stands in for the auth-gate plugin with an `/api/profile` handler
   that calls `markSignedOut()` and returns `undefined`, so the baseline Profile still
