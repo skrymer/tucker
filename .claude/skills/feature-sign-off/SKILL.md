@@ -184,6 +184,9 @@ needs it.
    path of every agent the run spawned**. A control the pack cites is saved output at a
    named path: the agent is read-only, so a question only a run can answer needs that
    run supplied — or the brief allows a throwaway copy in the scratchpad and says so.
+   Take it on the file as committed — after Prettier and the pre-commit hook — and
+   stamp it with `git rev-parse HEAD:<file>`: #408's lint proof named a pre-format blob,
+   and gate 5 rejected it though the rules were identical.
    That copy runs lint and typecheck but **not Vitest**, which cannot resolve modules
    through the symlinked `node_modules` (measured, #402), so any test result the agent
    may need goes in the pack as saved output.
@@ -343,6 +346,12 @@ opposing conclusions **on the same question**, you do not arbitrate. Spawn the b
 arbiter (Brief B), which states its own rules of evidence — including that it may
 answer "the precedents point both ways" and pick nothing, a real finding meaning the
 repo owes a written criterion it does not have.
+
+The arbiter is for a judgement. A split one reproducible run decides — does this lint
+rule refuse that line, does this test go red — is settled by the run instead: save its
+output, cite it in gate 5's pack, and record there that the agents split and why no
+arbiter was spawned. #408 settled such a split by a lint run and left it unrecorded,
+which gate 5 sent back.
 
 Gate 1's three-agent fan-out is where this happens most, but the rule is not scoped
 there: gate 3 and gate 4 can split the same way, when a correctness fix runs into a
