@@ -47,9 +47,11 @@ const noLocalTzDates = [
 ]
 
 // The mocked suite answers `/api` from the shared MSW handlers (ADR 0034), whose
-// unhandled-request check a `page.route` on `/api` would go around. A route on
-// anything else — a CDN abort, a fake camera — stays legal, as does the
-// smokes' offline abort against the real backend.
+// unhandled-request check a `route()` on `/api` would go around. So a `route()`
+// pattern is written out — a variable or a predicate would hide what it matches —
+// and may not name `/api`; a HAR replay is refused outright, since it answers
+// whatever it recorded. A route on anything else — a CDN abort, a fake camera —
+// stays legal, as does the smokes' offline abort against the real backend.
 const API_ROUTE_MESSAGE =
   'Do not route /api in the mocked e2e — answer it with the MSW baseline or network.use() (the msw skill, ADR 0034).'
 const ROUTE_CALL = "CallExpression[callee.property.name='route']"
@@ -65,6 +67,15 @@ const noApiRoutes = [
   },
   {
     selector: `${ROUTE_CALL} > TemplateLiteral.arguments:first-child > TemplateElement[value.raw=${API_PATH}]`,
+    message: API_ROUTE_MESSAGE,
+  },
+  {
+    selector: `${ROUTE_CALL} > .arguments:first-child:not(Literal, TemplateLiteral[expressions.length=0])`,
+    message:
+      'Write a route() pattern out as a literal in the mocked e2e, so the /api ban can read it (the msw skill, ADR 0034).',
+  },
+  {
+    selector: "CallExpression[callee.property.name='routeFromHAR']",
     message: API_ROUTE_MESSAGE,
   },
 ]

@@ -103,7 +103,8 @@ handlers free of app auto-imports (`localToday()` etc.) — pass such values in.
    handler (`test/mocks/http.ts`) catches it in both layers. Add the endpoint to the
    baseline (or the test) rather than loosening that. Never mock `/api` with
    `registerEndpoint` or `page.route`: neither reaches that check, and ESLint refuses
-   both (`eslint.config.mjs`). A fixture serving the app from a real origin of its own
+   both (`eslint.config.mjs`). In the mocked e2e a `route()` pattern must be a literal,
+   so the ban can read it. A fixture serving the app from a real origin of its own
    switches the handlers off while it lives (`expiredAccessOrigin`). A `page.route` on
    another host (a CDN abort, a fake camera) is fine, and the smokes never use the
    handlers.
