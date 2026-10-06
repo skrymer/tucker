@@ -61,12 +61,15 @@ A Food referenced by at least one **Entry** — or used as an ingredient in a
 ingredients are part of its definition, so a referenced Food is rejected (it stays
 in the catalog) with a message naming what references it; only a Food that is
 neither logged nor an ingredient can be removed.
-A Food's name, macros and **Tags** can be **corrected**. A correction says the old
+A Food's name, macros, **Tags** and **Reference Food** match can be **corrected**; its barcode cannot — a
+barcode comes from the scanner, so a wrong one is fixed by deleting the Food and
+scanning again. A correction says the old
 figures were never true, not that the product changed — a reformulated product is a
 new Food. So it reaches everything that reads the Food *now*: every **Recipe** using
 it as an ingredient is re-rolled in the same save, and the User is shown which ones
 before saving. It never reaches what was already logged: **Entries** keep the
-figures they snapshotted.
+figures they snapshotted. Correcting the name or macros leaves the Reference Food
+match as it is; it is changed or cleared deliberately, never as a side effect.
 _Avoid_: food item, product
 
 **Recipe**:
@@ -316,7 +319,9 @@ An Entry's **name** is what the user recognises it by: its **Food**'s name when
 it was weighed, its own label when it was estimated. The backend states it — a
 client that reassembled it from the two would have to answer what an Entry with
 neither is called, and an Entry always has a name. It is the same idea an
-**Intake Breakdown** slice states, under the same word.
+**Intake Breakdown** slice states, under the same word. An Entry snapshots its
+figures, not its Food's name: a corrected name reaches every past Entry, because
+the old spelling was never true either.
 _Avoid_: display name, title, description
 
 **Weighed Entry**:

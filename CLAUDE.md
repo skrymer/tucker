@@ -1932,6 +1932,22 @@ null` now means two things that earn opposite messages — the same trap
     new-name field takes focus on desktop only, as `LogGramsSheet` does — on a phone
     that focus pops the keyboard over the sheet.
 
+- **F19** — **Correct a Food**: fix a Food's name, macros and Tags in one Edit
+  sheet (PRD [#431](https://github.com/skrymer/tucker/issues/431)). Design pass
+  **done**, see
+  [ADR 0035](docs/adr/0035-editing-a-food-is-a-correction.md) and the Food / Entry
+  terms in `CONTEXT.md`; signed off against a throwaway prototype (branch
+  `prototype/edit-food`, `/foods?proto`). An edit means the old values were
+  **never true**, not that the product changed: every Recipe using the Food is
+  recalculated in the same transaction, and the sheet lists those Recipes,
+  collapsed, with before → after figures updating on each keystroke. Entries keep
+  their snapshotted figures but take a corrected name. The barcode is not editable,
+  and the Reference Food match moves into the sheet without being touched by a
+  correction. Three slices: [#432](https://github.com/skrymer/tucker/issues/432)
+  correct a Food (with the Recipe recalculation), [#433](https://github.com/skrymer/tucker/issues/433)
+  the Recipes it reaches, [#434](https://github.com/skrymer/tucker/issues/434) one
+  Edit per row.
+
 ## Architecture
 
 **Architecture diagrams live in [`docs/architecture.md`](docs/architecture.md)**
