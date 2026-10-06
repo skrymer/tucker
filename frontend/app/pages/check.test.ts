@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { ref } from 'vue'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { computed, nextTick, ref } from 'vue'
 import { mockNuxtImport, renderSuspended } from '@nuxt/test-utils/runtime'
-import { screen } from '@testing-library/vue'
+import { screen, within } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import { nutellaCheck } from '~~/test/check-fixtures'
 import { checkOnlyOn } from '~~/test/mocks/handlers/check'
@@ -12,19 +12,33 @@ import {
 } from '~~/test/mocks/handlers/summary'
 import { http, serverError } from '~~/test/mocks/http'
 import { server } from '~~/test/mocks/node'
+import {
+  resetPageStubs,
+  setVisibility,
+  stubTrueFullscreen,
+} from '~~/test/page-visibility-helpers'
 import Check from './check.vue'
 
 // The scanner is stubbed so a scan can be driven from a test: jsdom has no
 // camera, and the real composable's states are exercised by the Playwright
 // suites against a fake media stream.
+const state = ref('idle')
 const scanner = {
-  state: ref('idle'),
+  state,
+  open: computed(
+    () => state.value === 'requesting' || state.value === 'scanning',
+  ),
+  interrupted: ref(false),
   barcode: ref<string | null>(null),
   videoEl: ref(null),
   start: vi.fn(),
   stop: vi.fn(),
 }
 mockNuxtImport('useBarcodeScanner', () => () => scanner)
+
+// Desktop by default, as jsdom resolves it; the phone's fullscreen scanner opts in.
+const viewport = vi.hoisted(() => ({ desktop: true }))
+mockNuxtImport('useIsDesktop', () => () => ref(viewport.desktop))
 
 type Lookup = Parameters<typeof http.get<'/api/check/{barcode}'>>[1]
 
@@ -68,6 +82,8 @@ function recoveringSource() {
   }
 }
 
+afterEach(resetPageStubs)
+
 /** Decode [barcode] off the stubbed camera. */
 function scan(barcode: string) {
   scanner.barcode.value = barcode
@@ -77,7 +93,9 @@ function scan(barcode: string) {
 // The scanner mock is module state: without this, "the camera started" passes on
 // a call some earlier test made.
 beforeEach(() => {
+  viewport.desktop = true
   scanner.state.value = 'idle'
+  scanner.interrupted.value = false
   scanner.barcode.value = null
   scanner.start.mockClear()
   scanner.stop.mockClear()
@@ -384,6 +402,80 @@ describe('/check with a calorie budget', () => {
     expect(sawLookingUp).toBe(false)
   })
 
+  it('keeps a desktop camera inline, never asking for fullscreen', async () => {
+    const requestFullscreen = stubTrueFullscreen()
+    await renderSuspended(Check)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Start camera' }))
+    scanner.state.value = 'scanning'
+
+    expect(
+      await screen.findByText('Point the camera at a barcode'),
+    ).toBeVisible()
+    expect(
+      screen.queryByRole('dialog', { name: 'Barcode scanner' }),
+    ).not.toBeInTheDocument()
+    expect(requestFullscreen).not.toHaveBeenCalled()
+  })
+
+  it('leaves a stopped camera off when the User returns to the app', async () => {
+    await renderSuspended(Check)
+    // Stopped by the User before leaving: the paused viewfinder.
+    scanner.state.value = 'idle'
+    await screen.findByRole('button', { name: 'Start camera' })
+    scanner.start.mockClear()
+
+    setVisibility('hidden')
+    setVisibility('visible')
+
+    expect(scanner.start).not.toHaveBeenCalled()
+  })
+
+  it('keeps the camera off while the app is in the background', async () => {
+    await renderSuspended(Check)
+    scanner.state.value = 'scanning'
+    await screen.findByText('Point the camera at a barcode')
+    scanner.start.mockClear()
+    // The scanner hears the app hide first: it lets go, and says why.
+    scanner.state.value = 'idle'
+    scanner.interrupted.value = true
+    await nextTick()
+
+    setVisibility('hidden')
+
+    expect(scanner.start).not.toHaveBeenCalled()
+  })
+
+  it('restarts a camera the app was left with when the User returns', async () => {
+    await renderSuspended(Check)
+    scanner.state.value = 'scanning'
+    await screen.findByText('Point the camera at a barcode')
+    scanner.start.mockClear()
+
+    setVisibility('hidden')
+    // The scanner releases the camera itself as the app goes to the background,
+    // and says that is why.
+    scanner.state.value = 'idle'
+    scanner.interrupted.value = true
+    await nextTick()
+    setVisibility('visible')
+
+    expect(scanner.start).toHaveBeenCalledOnce()
+  })
+
+  it('stops the camera when true fullscreen ends, whatever layout it widened to', async () => {
+    // A desktop browser in fullscreen is wider than the phone breakpoint, so
+    // the page lays out for desktop until fullscreen ends — the scanner must
+    // still stop then.
+    await renderSuspended(Check)
+    scanner.state.value = 'scanning'
+    await screen.findByText('Point the camera at a barcode')
+
+    document.dispatchEvent(new Event('fullscreenchange'))
+
+    await vi.waitFor(() => expect(scanner.stop).toHaveBeenCalledOnce())
+  })
+
   it('clears the previous result and restarts the camera on Scan another', async () => {
     await renderSuspended(Check)
 
@@ -396,5 +488,89 @@ describe('/check with a calorie budget', () => {
     expect(scanner.start).toHaveBeenCalled()
     expect(screen.queryByText('Nutella')).not.toBeInTheDocument()
     expect(screen.queryByText('Costs')).not.toBeInTheDocument()
+  })
+})
+
+describe('/check on a phone', () => {
+  beforeEach(() => {
+    viewport.desktop = false
+  })
+
+  it('opens the fullscreen scanner on arrival, without a tap', async () => {
+    await renderSuspended(Check)
+    expect(scanner.start).toHaveBeenCalled()
+
+    scanner.state.value = 'scanning'
+
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Barcode scanner',
+    })
+    expect(
+      within(dialog).getByText('Point the camera at a barcode'),
+    ).toBeVisible()
+  })
+
+  it('closes the scanner onto the blocked alert when the camera is refused', async () => {
+    await renderSuspended(Check)
+    scanner.state.value = 'requesting'
+    await screen.findByRole('dialog', { name: 'Barcode scanner' })
+
+    scanner.state.value = 'denied'
+
+    expect(await screen.findByText('Camera access is blocked')).toBeVisible()
+    await vi.waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: 'Barcode scanner' }),
+      ).not.toBeInTheDocument(),
+    )
+  })
+
+  it('asks for true fullscreen when Start camera is tapped', async () => {
+    const requestFullscreen = stubTrueFullscreen()
+    await renderSuspended(Check)
+    // Stopped: the paused viewfinder, with its button.
+    scanner.state.value = 'idle'
+    scanner.start.mockClear()
+
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Start camera' }),
+    )
+
+    expect(requestFullscreen).toHaveBeenCalledOnce()
+    expect(scanner.start).toHaveBeenCalledOnce()
+  })
+
+  it('asks for true fullscreen when Scan another is tapped', async () => {
+    const requestFullscreen = stubTrueFullscreen()
+    await renderSuspended(Check)
+    scan('3017620422003')
+    expect(await screen.findByText('Nutella')).toBeVisible()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Scan another' }))
+
+    expect(requestFullscreen).toHaveBeenCalledOnce()
+  })
+
+  it('stops onto the paused viewfinder, the scanner out of the way', async () => {
+    const requestFullscreen = stubTrueFullscreen()
+    await renderSuspended(Check)
+    scanner.state.value = 'scanning'
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Barcode scanner',
+    })
+    // Arriving on the tab is no gesture, so it got the Dialog alone.
+    expect(requestFullscreen).not.toHaveBeenCalled()
+
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Stop' }))
+    expect(scanner.stop).toHaveBeenCalledOnce()
+    scanner.state.value = 'idle'
+
+    expect(
+      await screen.findByRole('button', { name: 'Start camera' }),
+    ).toBeVisible()
+    expect(screen.getByText('Camera paused')).toBeVisible()
+    expect(
+      screen.queryByRole('dialog', { name: 'Barcode scanner' }),
+    ).not.toBeInTheDocument()
   })
 })

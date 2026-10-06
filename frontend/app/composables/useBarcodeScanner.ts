@@ -14,6 +14,15 @@ export function useBarcodeScanner() {
   const state = ref<ScannerState>('idle')
   const barcode = ref<string | null>(null)
   const videoEl = ref<HTMLVideoElement | null>(null)
+  /** On screen: from the camera request until a decode, a stop or a failure. */
+  const open = computed(
+    () => state.value === 'requesting' || state.value === 'scanning',
+  )
+  /**
+   * The app went to the background with the scanner not stopped by anyone —
+   * running, or refused a camera — which a surface may retry on return.
+   */
+  const interrupted = ref(false)
 
   // Decode no more than ~8 times a second: a barcode doesn't change frame to
   // frame, so polling the full 60fps just burns battery and CPU on the phone.
@@ -218,7 +227,12 @@ export function useBarcodeScanner() {
   // backgrounded or the screen locks unless we stop the tracks ourselves, so
   // release on visibility loss and page hide as well as on scope teardown.
   function onVisibilityChange() {
-    if (document.visibilityState === 'hidden') stop()
+    if (document.visibilityState !== 'hidden') return
+    // Only an idle scanner was stopped by someone; anything else — open, or a
+    // camera refused or missing — is worth asking again about on return.
+    const wasStopped = state.value === 'idle'
+    stop()
+    interrupted.value = !wasStopped
   }
   document.addEventListener('visibilitychange', onVisibilityChange)
   window.addEventListener('pagehide', stop)
@@ -228,5 +242,5 @@ export function useBarcodeScanner() {
     releaseCamera()
   })
 
-  return { state, barcode, videoEl, start, stop }
+  return { state, open, interrupted, barcode, videoEl, start, stop }
 }

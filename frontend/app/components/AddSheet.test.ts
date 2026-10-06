@@ -1,14 +1,27 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { HttpResponse } from 'msw'
-import { renderSuspended } from '@nuxt/test-utils/runtime'
-import { screen } from '@testing-library/vue'
+import { ref } from 'vue'
+import { mockNuxtImport, renderSuspended } from '@nuxt/test-utils/runtime'
+import { screen, within } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import { readBarcodes } from 'zxing-wasm/reader'
 import { food } from '~~/test/food-fixtures'
 import { foodCatalog } from '~~/test/mocks/handlers/catalog'
 import { held, http } from '~~/test/mocks/http'
 import { server } from '~~/test/mocks/node'
+import {
+  resetPageStubs,
+  stubTrueFullscreen,
+} from '~~/test/page-visibility-helpers'
 import AddSheet from './AddSheet.vue'
+
+// Desktop by default, as jsdom resolves it; the phone's fullscreen scanner opts in.
+const viewport = vi.hoisted(() => ({ desktop: true }))
+mockNuxtImport('useIsDesktop', () => () => ref(viewport.desktop))
+beforeEach(() => {
+  viewport.desktop = true
+})
+afterEach(resetPageStubs)
 
 // The camera scanner's hardware + WASM decoder are mocked (ADR 0006: the live
 // lifecycle is a real-stack smoke). These helpers drive the sheet's camera
@@ -733,6 +746,39 @@ describe('AddSheet camera scanning', () => {
     expect(screen.getByRole('button', { name: /stop/i })).toBeVisible()
   })
 
+  it('releases the camera when true fullscreen ends, whatever layout it widened to', async () => {
+    // A desktop browser in fullscreen is wider than the phone breakpoint, so
+    // the sheet lays out for desktop until fullscreen ends — the camera must
+    // still be released then.
+    const { track } = mockCameraGranted()
+    await renderSuspended(AddSheet, { props: { open: true } })
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: /scan barcode/i }))
+    await screen.findByText(/point the camera/i)
+
+    document.dispatchEvent(new Event('fullscreenchange'))
+
+    await vi.waitFor(() => expect(track.stop).toHaveBeenCalled())
+  })
+
+  it('keeps the desktop viewfinder inline, never fullscreen', async () => {
+    // A webcam is not something you aim (ADR 0006).
+    mockCameraGranted()
+    const requestFullscreen = stubTrueFullscreen()
+    await renderSuspended(AddSheet, { props: { open: true } })
+
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: /scan barcode/i }))
+    await screen.findByText(/point the camera/i)
+
+    expect(
+      screen.queryByRole('dialog', { name: 'Barcode scanner' }),
+    ).not.toBeInTheDocument()
+    expect(requestFullscreen).not.toHaveBeenCalled()
+  })
+
   it('runs the lookup on a decoded barcode and pre-fills the candidate', async () => {
     // A decoded barcode must branch identically to a typed one (ADR 0006).
     mockCameraGranted(CANDIDATE_BARCODE)
@@ -853,6 +899,114 @@ describe('AddSheet camera scanning', () => {
     expect(
       await screen.findByText(/scanning isn't available here/i),
     ).toBeVisible()
+    expect(screen.getByLabelText(/barcode/i)).toBeVisible()
+  })
+})
+
+describe('AddSheet camera scanning on a phone', () => {
+  beforeEach(() => {
+    viewport.desktop = false
+  })
+
+  it('opens a full-viewport scanner over the sheet on Scan', async () => {
+    mockCameraGranted()
+    await renderSuspended(AddSheet, { props: { open: true } })
+
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: /scan barcode/i }))
+
+    const scanner = await screen.findByRole('dialog', {
+      name: 'Barcode scanner',
+    })
+    expect(
+      await within(scanner).findByText('Point the camera at a barcode'),
+    ).toBeVisible()
+    expect(within(scanner).getByRole('button', { name: 'Stop' })).toBeVisible()
+  })
+
+  it('opens the scanner while the camera permission is pending', async () => {
+    // The permission wait gets the scanner's own feedback, not a button.
+    Object.defineProperty(navigator, 'mediaDevices', {
+      value: { getUserMedia: vi.fn(() => new Promise(() => {})) },
+      configurable: true,
+      writable: true,
+    })
+    await renderSuspended(AddSheet, { props: { open: true } })
+
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: /scan barcode/i }))
+
+    const scanner = await screen.findByRole('dialog', {
+      name: 'Barcode scanner',
+    })
+    expect(within(scanner).getByText('Starting the camera…')).toBeVisible()
+  })
+
+  it('closes on a decode onto the sheet, filled from the lookup', async () => {
+    mockCameraGranted(CANDIDATE_BARCODE)
+    await renderSuspended(AddSheet, { props: { open: true } })
+
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: /scan barcode/i }))
+    await screen.findByText('Point the camera at a barcode')
+    primeVideoFrame()
+
+    expect(
+      await screen.findByDisplayValue('Skyr Natural', undefined, {
+        timeout: 3000,
+      }),
+    ).toBeVisible()
+    expect(screen.getByLabelText(/barcode/i)).toHaveValue(CANDIDATE_BARCODE)
+    expect(
+      screen.queryByRole('dialog', { name: 'Barcode scanner' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('stops back onto the untouched sheet, releasing the camera', async () => {
+    const { track } = mockCameraGranted()
+    await renderSuspended(AddSheet, { props: { open: true } })
+    const user = userEvent.setup()
+    await user.type(screen.getByLabelText('Name'), 'Oat milk')
+
+    await user.click(screen.getByRole('button', { name: /scan barcode/i }))
+    await screen.findByText('Point the camera at a barcode')
+    await user.click(screen.getByRole('button', { name: 'Stop' }))
+
+    expect(track.stop).toHaveBeenCalled()
+    expect(
+      screen.queryByRole('dialog', { name: 'Barcode scanner' }),
+    ).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Name')).toHaveValue('Oat milk')
+    expect(screen.getByLabelText(/barcode/i)).toHaveValue('')
+  })
+
+  it('asks for true fullscreen from the Scan tap', async () => {
+    mockCameraGranted()
+    const requestFullscreen = stubTrueFullscreen()
+    await renderSuspended(AddSheet, { props: { open: true } })
+
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: /scan barcode/i }))
+
+    expect(requestFullscreen).toHaveBeenCalledOnce()
+  })
+
+  it('closes onto the sheet’s alert when the camera is denied', async () => {
+    mockCameraDenied()
+    await renderSuspended(AddSheet, { props: { open: true } })
+
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: /scan barcode/i }))
+
+    expect(await screen.findByText('Camera access is blocked')).toBeVisible()
+    expect(
+      screen.queryByRole('dialog', { name: 'Barcode scanner' }),
+    ).not.toBeInTheDocument()
     expect(screen.getByLabelText(/barcode/i)).toBeVisible()
   })
 })

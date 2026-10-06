@@ -3,6 +3,8 @@ import { writeBarcode } from 'zxing-wasm/writer'
 
 /** Where the stub records acquisitions. Private — read it via [cameraStarts]. */
 const CAMERA_STARTS_KEY = '__cameraStarts'
+/** Every stream handed out. Private — read it via [cameraLightOn]. */
+const CAMERA_STREAMS_KEY = '__cameraStreams'
 
 /**
  * Replace `getUserMedia` on [page] before it navigates. [barcodePng] is a raster
@@ -17,8 +19,12 @@ const CAMERA_STARTS_KEY = '__cameraStarts'
  * `getImageData` (and so the decoder) could not read its frames.
  */
 async function stubGetUserMedia(page: Page, barcodePng: string | null) {
-  const args = { dataUrl: barcodePng, startsKey: CAMERA_STARTS_KEY }
-  await page.addInitScript(({ dataUrl, startsKey }) => {
+  const args = {
+    dataUrl: barcodePng,
+    startsKey: CAMERA_STARTS_KEY,
+    streamsKey: CAMERA_STREAMS_KEY,
+  }
+  await page.addInitScript(({ dataUrl, startsKey, streamsKey }) => {
     if (!navigator.mediaDevices) {
       Object.defineProperty(navigator, 'mediaDevices', {
         value: {},
@@ -66,7 +72,10 @@ async function stubGetUserMedia(page: Page, barcodePng: string | null) {
         // fake barcode within seconds and issues its own look-up, so request
         // counts and a retrying toBeVisible() both sail straight past it.
         counter[startsKey]++
-        return canvas.captureStream(30)
+        const stream = canvas.captureStream(30)
+        const streams = window as unknown as Record<string, MediaStream[]>
+        ;(streams[streamsKey] ??= []).push(stream)
+        return stream
       },
     })
   }, args)
@@ -79,6 +88,27 @@ export async function fakeBarcodeCamera(page: Page, barcode: string) {
     await image!.arrayBuffer(),
   ).toString('base64')}`
   await stubGetUserMedia(page, pngDataUrl)
+}
+
+/**
+ * Feed [page] a camera pointed at nothing: a live stream that never decodes, so
+ * the scanner stays open for as long as a test needs it. Call before navigating.
+ */
+export async function blankCamera(page: Page) {
+  // An empty data-URL never loads, so the canvas paints plain white.
+  await stubGetUserMedia(page, '')
+}
+
+/** Whether any camera stream [page] was handed still has a live track. */
+export function cameraLightOn(page: Page): Promise<boolean> {
+  return page.evaluate(
+    (key) =>
+      ((window as unknown as Record<string, MediaStream[]>)[key] ?? []).some(
+        (stream) =>
+          stream.getTracks().some((track) => track.readyState === 'live'),
+      ),
+    CAMERA_STREAMS_KEY,
+  )
 }
 
 /**
