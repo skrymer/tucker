@@ -52,9 +52,9 @@ real production code with a rule of its own (it must never overwrite a Cloudflar
 assertion with the dev token), and no browser-level layer can reach it.
 
 - **`/api` is mocked with MSW** in both mocked layers — one typed handler set, a baseline
-  overridden per test, and no request assertions (the **msw** skill, ADR 0034). Files not
-  yet moved still use `registerEndpoint` / `page.route`; move a surface's Vitest and e2e
-  files together.
+  overridden per test, and no request assertions (the **msw** skill, ADR 0034). A file
+  opts in (`useMswServer()`, `./support/network`); never mock `/api` with
+  `registerEndpoint` or `page.route`.
 - One test at a time, RED first (the `tdd` skill). A **deep module** (an interface worth
   specifying) gets its own test; thin glue is covered by the integrated / smoke test — never call
   these "isolation tests". (ADR 0013.)
@@ -120,11 +120,6 @@ assertion with the dev token), and no browser-level layer can reach it.
   the typed text **100 ms later** (`resetSearchTermOnBlur`), so anything that reads the field
   after the list shuts only works inside that window. An e2e holds it with `page.clock.install()`
   before `goto`, then `page.clock.pauseAt(...)` around the close (`e2e/food-tags.spec.ts`).
-- **Adding a query param to a request breaks every `page.route` glob that ends at
-  its path** (specs not yet on MSW). `**/api/check/123` stops matching `/api/check/123?clientToday=…`, and
-  the spec fails as a timeout, not as a routing error. End the glob with `**` (the
-  `e2e/support/mock-api.ts` convention), which matches with and without a query, and
-  grep `e2e/` for routes on the path whenever a request gains one.
 - **Proving a client sends its *local* day belongs in the mocked e2e.** Vitest runs in
   the host's zone and CI in UTC, so an assertion there passes a page that sends the
   UTC date everywhere but a Brisbane morning. The mocked browser runs in
