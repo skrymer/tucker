@@ -69,6 +69,12 @@ reproduces real user behaviour (focus, key sequences, pointer events). Call
 - For mutually-exclusive states, also assert the alternatives are absent
   (`queryBy*` + `.not.toBeInTheDocument()`) — a positive-only check still passes
   if a regression renders two states at once.
+- **A "did not happen" assertion is only as late as the reaction it waits for.** When a
+  change defers a reaction — a timer, a debounce, a `nextTick` — every test asserting
+  that reaction did *not* happen must now let it run (`vi.useFakeTimers()` +
+  `vi.runAllTimers()`) before asserting, or it passes whatever the code does. #435
+  deferred a stop by 250 ms and its "stops listening once its surface is gone" test
+  went silently vacuous; re-audit those tests in the same change.
 - Never assert on CSS classes, DOM structure, `wrapper.vm`, or emitted internals.
 - A toast never renders under `renderSuspended`, which mounts no toaster. Mock
   `useToast` with `mockNuxtImport` and assert what `add` is handed — the title and

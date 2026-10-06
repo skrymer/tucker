@@ -10,6 +10,17 @@ neutrally" is a claim with evidence behind it, not a claim about how careful the
 author felt. The repo makes this move elsewhere: `app/utils/exits.ts` and
 `RunAsCallSitesTest` exist so that a rule stated in three files is executable in one.
 
+## Contents
+
+- The prompt contract — what every brief carries and never carries
+- The `/simplify` angles — gate 1's three angle lines
+- Brief A — the adversary (gate 3)
+- Brief B — the blind arbiter (on a split)
+- Brief C — the verdict auditor (gate 6)
+- Brief D — the acceptance ledger (gate 3)
+- Brief E — the lesson miner (retro)
+- Brief F — the diagram auditor (gate 3)
+
 ## The prompt contract
 
 Applies to **every** agent any gate spawns — the `/simplify` three, the agents
@@ -79,6 +90,38 @@ same counter-precedent from opposite directions. A defence narrows the question 
 itself, which is subtler than agreement and is why the rule is about the brief rather
 than about the agent.
 
+## The `/simplify` angles — gate 1
+
+**Fires:** every sign-off, three agents in one message. Paste the angle line verbatim;
+the rest of each brief is the contract's (description, diff, pack, read-only, output).
+These lines exist because a freehand angle is where an instance slips in: #358, #400
+and #435 each sent one ("including across the two consumers and across tests"), and in
+#435 the agent's first two findings were exactly that instance.
+
+```
+Angle: REUSE and SIMPLIFICATION.
+- Reuse: new code that re-implements something the codebase already has. Search the
+  shared modules and the files beside the change, and name the existing helper to
+  call instead.
+- Simplification: complexity the diff adds that a simpler form would remove —
+  redundant or derivable state, copy-paste with slight variation, dead code left
+  behind, doc comments that restate the signature or narrate history.
+```
+
+```
+Angle: EFFICIENCY. Wasted work the diff introduces: redundant computation or I/O,
+work added to a hot path, listeners or closures that outlive their use,
+independent operations run in sequence, slow or redundant tests. Name the cheaper
+alternative and the cost.
+```
+
+```
+Angle: ALTITUDE. Does each change sit at the right depth — fixing the root cause in
+the underlying mechanism, rather than patching a symptom, special-casing shared
+infrastructure, or splitting one concern across layers? Where it does not, name the
+change at the right depth and what it would absorb.
+```
+
 ## Brief A — the adversary
 
 **Fires:** every sign-off, launched in the same message as gates 3 and 4.
@@ -91,7 +134,7 @@ which touches nothing but remote refs.
 
 Repo: <path> (<a git worktree | the main checkout> — stay in it).
 The change: cd <worktree path> && git fetch -q origin &&
-  git diff $(git merge-base origin/main HEAD)
+  git diff $(git merge-base origin/main HEAD) HEAD
 The issue it claims to fix: read it yourself with `gh issue view <n>` — do not
 take anyone's summary of it.
 Already read by other agents, so start here: <context-pack files>
@@ -225,7 +268,7 @@ edit, create, delete or move any file. Read-only shell commands only, apart from
 
 Repo: <path> (<a git worktree | the main checkout> — stay in it).
 The change: cd <worktree path> && git fetch -q origin &&
-  git diff $(git merge-base origin/main HEAD)
+  git diff $(git merge-base origin/main HEAD) HEAD
 The issue it claims to deliver: read it yourself with `gh issue view <n>` — do not
 take anyone's summary of it. Where the slot names several, there is an issue for
 each: ledger them in turn, under their own headings. Where it reads "none" there is
@@ -392,7 +435,7 @@ from `git fetch`, which touches nothing but remote refs.
 
 Repo: <path> (<a git worktree | the main checkout> — stay in it).
 The change: cd <worktree path> && git fetch -q origin &&
-  git diff $(git merge-base origin/main HEAD)
+  git diff $(git merge-base origin/main HEAD) HEAD
 The diagrams: docs/architecture.md — every ```mermaid block in it, as it stands on
 this branch.
 Already read by other agents, so start here: <context-pack files>

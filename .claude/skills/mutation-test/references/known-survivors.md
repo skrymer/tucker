@@ -13,6 +13,61 @@ same category the `avoidCallsTo` and `$$inlined$` filters in
 Established by closing [#239](https://github.com/skrymer/tucker/issues/239) (backend)
 and [#237](https://github.com/skrymer/tucker/issues/237) (frontend).
 
+## Contents
+
+- Where the score stands
+- Frontend — StrykerJS
+  - Vue compiler macros break the run before it starts
+  - Presentation tokens (8) — accepted, deliberately unasserted
+  - `components/DateField.vue` — 3 of 30
+  - `components/ProfileForm.vue` — 2 of 58
+  - `composables/useCalorieTracking.ts` — 1 of 17
+  - The two rings — 40 of 40
+  - `app/app.vue` — 30 of 30, and the engine never ran a test
+  - `composables/useWeightLogging.ts` — 0 of 12
+  - `WeightSection.vue` and `WeightTile.vue` — hand-check only
+  - `components/IntakeBreakdownSection.vue` — `no cov` alone, 6 of 54 in company
+  - `components/ReferenceFoodPicker.vue` — 4 of 52
+  - `composables/useReferenceFoodMatch.ts` — 0 of 27
+  - `components/DaySummary.vue` — 0 of 17
+  - `server/routes/sign-in.get.ts` — 2 of 2, both reported `no cov`
+  - `plugins/auth-gate.client.ts` — 10 of 10
+  - `plugins/pwa-install.client.ts` — 2 of 2, and both are false survivors
+  - `composables/useOptionalFetch.ts` — 2 of 33
+  - `composables/useCalorieTracking.ts` — 4 of 37
+  - `utils/intakeBreakdown.ts` + `utils/entry.ts` — 1 of 48
+  - `utils/catalog.ts` — 0 of 21, and the score was a lie
+  - `pages/log.vue` — 14 of 57
+  - `components/AddSheet.vue` — 21 of 118
+  - `pages/foods.vue` — 19 of 71, and 18 with no coverage
+  - `composables/useAsyncAction.ts` + `composables/useApiMutation.ts` — 24 of 158
+- Backend — pitest
+  - Excluded from `--targetClasses` (28) — false survivors the tool cannot see
+  - `config.KotlinNullableModelConverter` — 3 of 23
+  - `security.AccessJwtDecoderKt` — 3 of 14
+  - `persistence.OwnerEmailPlaceholderConfig` — 1 of 1
+  - `provider.OpenFoodFactsProvider` — 22 of 69
+  - `domain` — 8 of 411
+  - `api` — 12 of 226
+  - `domain.ReferenceFoodQuery$Companion.startsAt` (1) — false survivor
+  - `persistence` and `service` — the class 6 glue
+  - Micronutrient Intake — 5 of 145, every one a false survivor
+  - Micronutrient Intake, Recipes contributing — 107 of 115
+  - Weight Timeline, frontend — 60 of 63, then 100% on the two files that owed tests
+  - Weight Timeline — 63 of 68, and the one new report is a `MEMORY_ERROR`
+  - Weight Timeline, the intake half — `weightTimeline.ts` 128 of 131
+  - Weight Timeline, the plan — `weightTimeline.ts` + the section, 247 of 260
+  - `date.ts`'s cached `Intl.DateTimeFormat` — 7 false survivors, settled by hand
+  - Weight Timeline, the intake half — backend 87 of 90
+  - Tags, backend — 159 of 178
+  - Tags, frontend — `FoodTagsSheet.vue` 35 of 39, `rowTags.ts` 10 of 10
+  - Tags on a Recipe — `RecipeBuilder.vue` 93 of 147, 44 of them already there
+  - Tags on Log — `catalog.ts` 48 of 54, `log.vue` and `TagChips.vue` unattributed
+  - Manage tags — `ManageTagsSheet.vue` 56 of 61, then 2 carried
+  - Rename and merge a Tag — `ManageTagsSheet.vue` 41 of 48, backend 24 of 28
+  - Noise removed at the source
+- What the score still cannot ask for
+
 ## Where the score stands
 
 Backend, whole sweep (`TZ=Etc/UTC ./gradlew mutationTest`, ~17 min):

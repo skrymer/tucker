@@ -62,8 +62,14 @@ assertion with the dev token), and no browser-level layer can reach it.
 
 - **Auto-imports** — `app/utils/` + `app/composables/` auto-import; a util is addressed by export
   name, not path, so renaming the file is safe.
-- **Vitest defaults to DESKTOP** (jsdom) — `useIsDesktop` reads `true`; drive phone-only branches
-  with an explicit viewport override.
+- **`useIsDesktop` reads phone (`false`) until its own `onMounted`** — in the browser too, so a
+  desktop page is "phone" for its whole `setup`. A sibling `onMounted` registered after it sees the
+  real value, but anything a deferred effect captures in that same tick (a `watchEffect` latch)
+  can capture the phone default: #435 shipped desktop Check its phone scanner that way, past every
+  test. Tests rarely see it — jsdom resolves desktop, and the usual mock
+  (`mockNuxtImport('useIsDesktop', () => () => ref(viewport.desktop))`) is settled before setup. A
+  test of code that *captures* the viewport flips a live ref and opens the thing in the same tick
+  (`useFullscreenScanner.test.ts`). Drive phone-only branches with an explicit viewport override.
 - **`UProgress`** — pass `:model-value` (not `:value`) and clamp it to `:max`; a wrong `:value` is
   silently ignored → an indeterminate bar. Name it with **`:get-value-label`**, never `aria-label`:
   the attribute falls through to UProgress's root `div`, which carries no role, while Reka names the

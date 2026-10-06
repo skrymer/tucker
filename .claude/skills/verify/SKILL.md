@@ -82,9 +82,12 @@ shapes a real user's data comes in, and drive at least one of each:
 | A list | none, one, the cap, one past the cap |
 | A date | today, a local midnight, a day the rule spans |
 | A new request-body field | read the saved record back through the API after the save, since a form can look right and send nothing (`GET /api/foods` showing the new `tags`, not the chips on screen) |
+| A threshold the code *reads* | a breakpoint, a timer, a grace period, a debounce — value−1 and value, both sides. #435's 1024px breakpoint and 250 ms grace were first walked at 555/2133px and 80/680 ms, which bracket them and prove neither edge |
 
 Then the states: empty/zero, the error path, the reset. Two of those, chosen by what the
-change could plausibly have broken.
+change could plausibly have broken. **And the case each fix commit since gate 0 was
+written for** — `git log` the branch and drive each fix's own scenario: #435's last
+commit fixed a stop landing on the next scan, and the first walk-through never drove it.
 
 The rule this replaces let two user-facing bugs through in one slice. F16 slice 2's
 filter was walked with three queries — `oli`, `skyr`, `quinoa` — all lowercase and all

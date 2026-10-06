@@ -43,7 +43,8 @@ needs it.
    shipping, not a draft. Re-run the relevant tests after it applies fixes.
 
    It fans out to **three** review agents in parallel — reuse+simplification (one
-   agent, one angle), efficiency, and altitude. Not four: reuse and simplification
+   agent, one angle), efficiency, and altitude — each sent its angle line verbatim
+   from [`references/agent-briefs.md`](references/agent-briefs.md#the-simplify-angles--gate-1). Not four: reuse and simplification
    independently report the same findings — measured at 3 of 3 shared in one run —
    and the duplicate costs an agent on the gate's critical path.
 
@@ -115,7 +116,8 @@ needs it.
    not: not whether the change should exist, nor whether it is too much, but whether
    it is enough. It emits one row per acceptance criterion, then once, at the end,
    behaviour in the diff that no criterion asked for — and nothing else. See
-   *Nothing else asks whether it is finished* in the notes for why no other gate
+   *Nothing else asks whether it is finished* in
+   [`references/rationale.md`](references/rationale.md) for why no other gate
    asks this; Brief D in the reference for the rows it emits, what pins each, and
    why it is not a fifth reviewer.
 
@@ -154,15 +156,31 @@ needs it.
    none edits the tree, and you apply all five sets of findings afterwards — so
    running them back to back spends the shorter one's wall-clock for nothing
    (4–7 min against code-review's 12 in the run this was measured on). The cost
-   is that the other four judge pre-fix code. When code-review's fixes land,
-   re-check **only the files they touched** against the constraints `/check-adrs`
-   cited and the rows the ledger and the diagram auditor returned — a read of a handful of lines rather
-   than a second run. The adversary needs no re-check: it argues the premise, and
-   a correctness fix does not move that. **Gate 2's verdicts do need one:** re-run
-   the scoped mutation sweep over the files the fixes touched, because a verdict
-   on a changed line no longer stands. Measured in F18 slice 5: an "equivalent,
-   guard mode never aborts" survivor became a real gap the moment a gate-3 fix
-   switched that read to `latest`, and a second survivor appeared beside it.
+   is that the other four judge pre-fix code.
+
+   **Commit before launching them, and point every brief at the commit**
+   (`git diff <base> <sha>`, `git show <sha>:<path>`), never at the working tree.
+   `/code-review` runs inline in this same message and its fixes start landing while
+   the four still read; in #435 `/check-adrs` reported the composable changing under
+   it, and the ledger judged a semantics that no longer shipped.
+
+   When code-review's fixes land, re-check **only the files they touched** against
+   the constraints `/check-adrs` cited and the rows the ledger and the diagram
+   auditor returned — a read of a handful of lines rather than a second run. A
+   ledger row is re-checked against **the criterion's own words**, not the ADRs: a
+   fix that now answers a different criterion than the one filed is UNSOUND and goes
+   to the user, exactly as the ledger's own UNSOUND would. #435's denied-camera fix
+   honoured every ADR and silently contradicted AC6 as written; gate 5 caught it.
+   Likewise any item an agent explicitly marks "the user's call" goes to the user —
+   the pack does not decide it. The adversary needs no re-check: it argues the
+   premise, and a correctness fix does not move that.
+
+   **Gate 2's verdicts do need one, after every later fix** — gate 3's, a gate-5
+   re-resolution's, a gate-6 fix's: re-run the scoped mutation sweep over the files
+   the fix touched, because a verdict on a changed line no longer stands. Measured in
+   F18 slice 5: an "equivalent, guard mode never aborts" survivor became a real gap
+   the moment a gate-3 fix switched that read to `latest`. Measured in #435: two
+   fixes written after gate 5 each left a new real gap only the re-sweep found.
    The one exception is a fix confined to a `.vue` template: Stryker mutates the
    `<script>` block only, so there is nothing new to sweep — say so in the pack
    rather than skipping silently.
@@ -361,19 +379,7 @@ override it, that override goes into gate 5's pack as its own finding-and-resolu
 pair; a rule that forbade the override outright would be unenforceable, since you
 write the code either way.
 
-### What this costs
-
-| Addition | Agents | Wall-clock |
-| --- | --- | --- |
-| The adversary | +1 | **none** — it rides in gate 3's message and finishes inside the longest gate |
-| The acceptance ledger | +1 | **none** — same message, same argument; it reads one issue and one diff |
-| The diagram auditor | +1 | **none** — same message; it reads one doc and one diff |
-| The verdict auditor (`/verify`, gate 6) | +1 | serial, a few minutes, after the browser work |
-| The blind arbiter | +1 *when a split fires* | serial, on the critical path — most runs never spawn it |
-| Gate 5 reading transcripts | none | a handful of extra tool calls inside an agent that already runs |
-
-For scale: the session that carried gates 3–6 of the #331 sign-off spawned three
-agents. The four standing additions take a run of that shape from three to seven.
+The agent count and wall-clock each addition costs: [references/rationale.md](references/rationale.md#what-the-fan-out-costs).
 
 ## Spending the agents well
 
@@ -463,82 +469,12 @@ justified):
 
 ## Reporting
 
-Emit a short sign-off summary the user (and PR reviewer) can replay:
-
-```
-## Feature sign-off — <feature/issue>
-
-0. /verify (reach) ✅ /goal loads and the form submits at 1468px
-1. /simplify       ✅ applied 1 cleanup (consolidated kg formatter)
-2. /mutation-test  ⚠️ 27/29 killed on 2 files → 1 gap closed (new test), 1 equivalent
-3. /code-review md ⚠️ 2 findings → both fixed (double-render, banner copy); 4 by-design
-   adversary       ✅ SHOULD MERGE — closest attack: "unreachable from the UI" (it isn't; /log posts it)
-   acceptance      ⚠️ 6 criteria: 4 MET (AC3 by probe only → gate 6) · 1 PARTIAL (holds only at the cap) → fixed
-                   1 MISSING (AC6) → test added; nothing in the diff outside the issue's scope
-   diagrams        ⚠️ 10 diagrams: 9 CURRENT · 1 STALE (ER: new column) → fixed, render checked
-   blind arbiter   — not spawned (no split)
-4. /check-adrs     ⚠️ 1 FAIL → fixed CONTEXT.md (stale auto-deactivate wording)
-5. resolutions     ⚠️ 9 judged → 8 upheld; 1 dismissal rejected ("pre-existing" — the diff moved that line) → fixed
-                   pack faithful to 6 transcripts; briefs clean
-6. /verify (walk)  ✅ desktop + phone; probes: 0 kg ✅ · 300 kg ✅ · goal already reached ✅ · AC3 (ledger) ✅
-   verdict audit   ⚠️ 1 UNCOVERED (start date = today) → drove it ✅
-5′. resolutions    — not re-run (gate 6 changed no code); else "N fixes judged → …"
-
-Suites green (detekt/build, lint/test). Committed + pushed to <branch>.
-retro              3 lessons → verify (headless hides scrollbars), mutation-test
-                   (hand-mutate copies outside app/), 1 memory; PR #<n> on <process-branch>
-```
+Emit a short sign-off summary the user (and PR reviewer) can replay, in the shape of [references/report-template.md](references/report-template.md).
 
 ## Notes
 
-- **Order is load-bearing, and the two overlaps are not.** Reachability first
-  (don't review code that doesn't run), simplify before mutation-test (mutate the
-  shipping code, not a draft), mutation-test before review (its new tests are part
-  of what gets reviewed), and the full walk-through last so nothing changes under
-  it. Don't reorder those for convenience. `/check-adrs` is the one that may run
-  *alongside* review rather than after it, because it edits nothing — that is a
-  concurrency, not a reorder, and the re-check on review's changed files is what
-  pays for it.
-- **A gate that finds the most and runs late is not a scheduling accident.**
-  `/code-review` found this list's two worst defects — both user-facing, both past
-  759 tests and a 100% mutation score — and it runs fourth by design: it reads the
-  simplified code and the tests gate 2 added (mutation-test). What that says is not "move it", it
-  is that the gates before it must stop handing it the same class of bug. Gate 0/6's
-  input probes and `mutation-test`'s recorded blind spots are how.
-- **A green mutation score is not a green test suite.** `/mutation-test` reaches
-  the Vitest and fast-JUnit layers only. Fixture defaults that production can't
-  produce, unanchored aria-snapshot regexes, and substring `getByText` matchers
-  all sail through it — as does a wrong tuning constant, which pitest's operators
-  never touch. Check those by hand while reviewing the diff's tests.
-- **`/simplify` + `/code-review medium` are complementary, not redundant.**
-  `/simplify` owns cleanup and *applies* it; `/code-review` at medium owns the
-  correctness hunt and *reports* it. The overlap only appears if you run
-  `/code-review` high (it re-adds the cleanup angles). Keep gate 3 at medium so
-  each kind of work happens exactly once.
-- **Nothing approves its own fix.** Gates 1, 3 and 4 already put the *finding* in
-  a fresh context; gate 5 does the same for the *resolution*, the half this
-  context still settled alone. Its position is as load-bearing as its presence:
-  after every fix has landed, and before the walk-through, so gate 6 is the last
-  word on code some reviewer has actually read — and when gate 6 itself changes
-  code, gate 5 runs again on that change, or the walk-through's fixes are the one
-  part of the diff nobody but its author read. Borrowed from oh-my-claudecode's
-  rule that an approval pass may not run in the context that authored the work.
-- **Nothing else asks whether it is finished.** The three gates *Keeping the fan-out
-  independent* lists are each scoped to the diff as the context that wrote the diff
-  understands it, and so is the adversary — which asks whether the change should
-  exist, and whether it is too much, but never whether it is enough. So a misread
-  criterion is invisible twice: the feature works, and gate 6 walks through the
-  wrong feature working. A change can be sound in premise, clean, well-tested,
-  ADR-compliant and deliver three of five criteria with every gate still green,
-  which is why the ledger enumerates its rows from the issue and not from the diff.
-- **A briefed agent is not an independent one.** Fresh context is not a fresh
-  position — but the evidence for that is weaker than it first looked, and the
-  transcripts are what weakened it. The framed agent in the run this was written
-  from did *not* simply agree: it tested the claim and called its stated reason
-  circular, and both agents found the same counter-precedent. What the framing
-  bought was a narrower question, asked in the author's terms. That is a milder
-  defect than agreement, and it is still the defect the contract exists for — a
-  claim to test beats a claim to check.
+Why the gates sit in this order, why two overlap, and why a briefed agent is not an independent one: [references/rationale.md](references/rationale.md). The rules:
+
 - **Don't rubber-stamp.** A gate that found nothing is a result worth stating;
   a gate skipped is a gap. If you skip one (e.g. `/verify` SKIP for a docs-only
   change), say which and why.
@@ -547,6 +483,12 @@ retro              3 lessons → verify (headless hides scrollbars), mutation-te
   dismissed a "move the test config" fix and never answered the "set it in code"
   alternative beside it, and gate 5 rejected the dismissal. An unaddressed finding means
   the sign-off isn't done.
+- **"Verify on device" is a resolution only once the probe is in the issue.** A risk
+  deferred to a post-deploy or on-device check is written into that acceptance
+  criterion, with the exact steps, in the same step as the deferral — or nothing will
+  ever run it. #435 deferred an Android event-order risk and the safe-area insets to an
+  on-device criterion that listed neither; gate 5 rejected both. Prefer designing the
+  dependency out (the event order became code with both orders tested) over deferring.
 - **A fix is pinned only by a test that fails when the fix's wiring is removed.** Prove
   it with that control — delete the call, show the named test red — and save the output.
   A check installed in a hook (`afterEach`) is pinned only through the hook: in Vitest

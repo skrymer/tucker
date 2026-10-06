@@ -6,6 +6,15 @@ Upstream docs: [mswjs.io](https://mswjs.io/) — [Node.js integration](https://m
 [network behavior overrides](https://mswjs.io/docs/best-practices/network-behavior-overrides),
 [`@msw/playwright`](https://github.com/mswjs/playwright), [`openapi-msw`](https://github.com/christoph-fricke/openapi-msw).
 
+## Contents
+
+- msw 3 names
+- Vitest: why stock `setupServer` needs a shim
+- Playwright: the `network` fixture
+- Typing
+- Traps measured so far
+- Red-proof runs
+
 ## msw 3 names
 
 - `server.listen({ onUnhandledFrame: 'error' })` — msw 3's name for what msw 2 called
