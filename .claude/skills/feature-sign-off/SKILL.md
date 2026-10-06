@@ -53,7 +53,10 @@ needs it.
    says. Delete changelog prose ("used to…", "previously…", "changed so…"),
    issue/PR numbers, and narration of the bug that prompted the code — git
    history and ADRs hold the why-it-changed. Rationale longer than a sentence or
-   two belongs in an ADR the comment links.
+   two belongs in an ADR the comment links. A layout finding (a line too long, a
+   comment to rewrap) is closed by measuring it, not by assuming an edit or the
+   formatter reflowed it: #407 recorded a rewrap as done, and gate 5 found the
+   111-character line still there.
 
 2. **`/mutation-test` — do the tests actually catch bugs?** Run the engine for
    **each stack the diff touches** — StrykerJS over Vitest in `frontend/`, pitest
@@ -145,7 +148,9 @@ needs it.
    either a code fix or a same-PR doc fix (per `[[prefer-source-fix-over-adr]]`)
    — the user's call, surfaced.
 
-   **Launch it in the same message as gate 3.** All five are pure read-and-report —
+   **Launch it in the same message as gate 3**, as a background agent briefed to
+   follow `.claude/skills/check-adrs/SKILL.md` — that is this gate's standard form,
+   not an adaptation for the pack to record. All five are pure read-and-report —
    none edits the tree, and you apply all five sets of findings afterwards — so
    running them back to back spends the shorter one's wall-clock for nothing
    (4–7 min against code-review's 12 in the run this was measured on). The cost
