@@ -61,7 +61,9 @@ handlers free of app auto-imports (`localToday()` etc.) — pass such values in.
    asserts the page after the re-read — or, where the page shows the response itself (a
    toast naming what was logged), derives that response from the body (`entryLog`
    scales a Food's per-100 g figures by the grams sent), so what the User reads proves
-   what was sent. A fixed reply proves nothing about the body. A windowed read
+   what was sent. A fixed reply proves nothing about the body. A field the page sends
+   and never shows (a zone, a push device) is accepted only when it is the right one
+   (`savedProfile`'s `timezone`, `pushServiceFor`). A windowed read
    (`?from=&to=`) is answered per width and only for a window ending on the day the
    test passes in (`intakeBreakdownByPeriod`, `weightTimelineByWidth`), and the test
    asserts each window's own content.
@@ -76,7 +78,8 @@ handlers free of app auto-imports (`localToday()` etc.) — pass such values in.
    `checkOnlyOn(day)`), never a copy per layer — the copies drift. A mutation re-read on
    its own endpoint is a factory returning a plain array with the state in a closure
    (`weightMeasurements`, and `foodCatalog`, which answers every endpoint of the
-   catalog, its Recipes, its Tags and its barcode look-up from one state); one whose re-read lands
+   catalog, its Recipes, its Tags and its barcode look-up from one state, and
+   `bodyAndPlan`, which does the same for the Profile, the readings and the Goals); one whose re-read lands
    on **another** endpoint returns
    `{ handlers, <state getter> }` (`reachedGoal`, `savedProfile`), and the other
    endpoint's handler reads the getter (`summaryOf(() => …)`) — or, where the state

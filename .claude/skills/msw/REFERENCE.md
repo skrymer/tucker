@@ -145,6 +145,29 @@ or is stated as unchecked — an annotation in `e2e/` never answers a typing fin
   `micronutrientIntakeOver(catalog, answer)` calls `getResponse` on the catalog's
   handlers for `/api/foods`, so a match claimed through `foodCatalog` moves the next
   intake, and `foodCatalog` stays a plain array for its many callers.
+- **A value the page sends and never shows is held by a guard.** Nothing on screen
+  says which zone a Profile holds or which device a Push Subscription names, so
+  storing it proves nothing. The factory takes the right value and refuses any other,
+  standing in for a page that sent the wrong one: `savedProfile(p, { timezone })`,
+  `pushServiceFor(device)`, and `today` on both Profile and `bodyAndPlan` saves.
+- **A component seeded from props shows no re-read**, so its save is read back by
+  reopening the page that loads it. `ReminderSettings.test.ts` unmounts and renders
+  `/profile`, then reads the switch, the hour and the details form.
+- **A composable harness reads back too.** It awaits the mutation, reads the endpoint
+  the page would re-read, and prints it (`useProfileWrite.test.ts`,
+  `useWeightLogging.test.ts`).
+- **State another device changed is a write through the same handlers.** For "the
+  trend moved after the form loaded", `page.evaluate(() => fetch(...))` posts a
+  reading into `bodyAndPlan`, so the page holds a stale trend that the next save is
+  judged against. An override answering a different trend would leave the readings
+  saying otherwise.
+- **A browser stub replaces only the member a test needs.** Handlers run in the
+  test's globals, so a stub of a whole constructor reaches them too: replacing
+  `Intl.DateTimeFormat` to fake the device's zone broke `savedProfile`'s zone
+  check. `setTimezone` spies on `resolvedOptions` alone.
+- **A body is written back in the DTO's field order**, because a test that lists
+  fields (`toEqual` on rendered rows) reads that order. `savedProfile` builds the
+  saved Profile field by field, never by spreading defaults under the body.
 - **Coexistence in Vitest.** A path registered through `registerEndpoint` is answered by
   Nuxt even in an opted-in file, ahead of any MSW handler for it. The shim makes URLs
   absolute, which Nuxt's registry only knows relative, so it strips `location.origin` and

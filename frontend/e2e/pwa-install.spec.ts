@@ -1,10 +1,5 @@
-import { expect, test } from './support/test'
+import { expect, test } from './support/network'
 import { offerInstall } from './support/install-offer'
-import {
-  mockNoActiveGoal,
-  mockNoProfile,
-  mockSummary,
-} from './support/mock-api'
 import { withOverflowNav } from './support/nav'
 
 // The browser offers the install once per page load — in practice on Today, long
@@ -14,10 +9,6 @@ test('offers the install after the browser made its one-shot offer on an earlier
   page,
   goto,
 }) => {
-  await mockSummary(page)
-  await mockNoProfile(page)
-  await mockNoActiveGoal(page)
-
   await goto('/', { waitUntil: 'hydration' })
   await offerInstall(page)
 

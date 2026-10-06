@@ -1,26 +1,21 @@
-import { expect, test } from './support/test'
-import {
-  mockProfile,
-  mockWeightList,
-  mockWeightTrend,
-  mockGoals,
-} from './support/mock-api'
+import { expect, test } from './support/network'
+import { bodyAndPlan } from '../test/mocks/handlers/body'
+import { baselineProfile } from '../test/mocks/handlers/profile'
+import { localTodayIso, pinToLocalMorning } from './support/date'
 
 test('setting a goal on /profile replaces the form with the new goal card', async ({
   page,
   goto,
+  network,
 }) => {
-  await mockProfile(page, {
-    sex: 'MALE',
-    birthDate: '1990-06-15',
-    heightCm: 180,
-  })
-  await mockWeightList(page, [
-    { id: 1, measuredOn: '2026-05-28', weightKg: 84.2 },
-  ])
-  // The start is anchored on the live trend, not the raw reading (ADR 0016).
-  await mockWeightTrend(page, { trendKg: 84.2, asOf: '2026-05-28' })
-  await mockGoals(page, [], { currentTrendKg: 84.2 })
+  // One reading: the live trend stands where it does, at 84.2 kg.
+  network.use(
+    ...bodyAndPlan({
+      profile: baselineProfile,
+      readings: [{ id: 1, measuredOn: '2026-05-28', weightKg: 84.2 }],
+      today: localTodayIso(),
+    }),
+  )
 
   await goto('/profile', { waitUntil: 'hydration' })
 
@@ -47,19 +42,16 @@ test('setting a goal on /profile replaces the form with the new goal card', asyn
 test('a target at or above the trend is rejected with a field error, no submit', async ({
   page,
   goto,
+  network,
 }) => {
-  await mockProfile(page, {
-    sex: 'MALE',
-    birthDate: '1990-06-15',
-    heightCm: 180,
-  })
-  await mockWeightList(page, [
-    { id: 1, measuredOn: '2026-05-28', weightKg: 85.0 },
-  ])
   // The form validates the target against the trend it fetched (ADR 0016), so a
   // target at/above 84.0 is caught client-side — no request leaves the page.
-  await mockWeightTrend(page, { trendKg: 84.0, asOf: '2026-05-28' })
-  await mockGoals(page, [], { currentTrendKg: 84.0 })
+  network.use(
+    ...bodyAndPlan({
+      profile: baselineProfile,
+      readings: [{ id: 1, measuredOn: '2026-05-28', weightKg: 84.0 }],
+    }),
+  )
 
   await goto('/profile', { waitUntil: 'hydration' })
 
@@ -78,41 +70,49 @@ test('a target at or above the trend is rejected with a field error, no submit',
   await expect(
     goal.getByRole('button', { name: /set a new goal/i }),
   ).toHaveCount(0)
+  // A submit that reached the server would be refused in its own words.
+  await expect(goal.getByText(/below your current trend weight/i)).toHaveCount(
+    0,
+  )
 })
 
 test('a backend-rejected target keeps the replacement form open and shows the error', async ({
   page,
   goto,
+  network,
 }) => {
-  await mockProfile(page, {
-    sex: 'MALE',
-    birthDate: '1990-06-15',
-    heightCm: 180,
-  })
-  await mockWeightList(page, [
-    { id: 1, measuredOn: '2026-05-28', weightKg: 85.0 },
-  ])
-  // The form's fetched trend (85.0) is momentarily stale: a reading logged after
-  // it loaded moved the live trend to 84.0. So the client passes a target of 84.5
-  // (< 85.0) that the backend re-derives against and rejects (ADR 0016) — the path
-  // that must keep the form open rather than closing it optimistically.
-  await mockWeightTrend(page, { trendKg: 85.0, asOf: '2026-05-28' })
-  await mockGoals(
-    page,
-    [
-      {
-        id: 9,
-        startedOn: '2026-05-01',
-        startWeightKg: 90,
-        targetWeightKg: 80,
-        rateKgPerWeek: 0.5,
-        active: true,
-      },
-    ],
-    { currentTrendKg: 84.0 },
+  network.use(
+    ...bodyAndPlan({
+      profile: baselineProfile,
+      readings: [{ id: 1, measuredOn: '2026-05-28', weightKg: 85.0 }],
+      goals: [
+        {
+          id: 9,
+          startedOn: '2026-05-01',
+          startWeightKg: 90,
+          targetWeightKg: 80,
+          rateKgPerWeek: 0.5,
+          active: true,
+          reachedOn: null,
+        },
+      ],
+    }),
   )
 
   await goto('/profile', { waitUntil: 'hydration' })
+
+  // The form's fetched trend (85.0) goes stale: a reading logged on another
+  // device after it loaded moves the live trend to 84.0 — a tenth of 75 kg on
+  // nine tenths of 85. So the client passes a target of 84.5 (< 85.0) that the
+  // backend re-derives against and rejects (ADR 0016) — the path that must keep
+  // the form open rather than closing it optimistically.
+  await page.evaluate(async (clientToday) => {
+    await fetch('/api/weight', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ date: '2026-05-29', weightKg: 75, clientToday }),
+    })
+  }, localTodayIso())
 
   const goal = page.getByRole('region', { name: /^goal$/i })
 
@@ -124,28 +124,34 @@ test('a backend-rejected target keeps the replacement form open and shows the er
 
   // The form must not close optimistically on submit — otherwise the backend
   // rejection would have nowhere to render and the user would get no feedback.
-  await expect(goal.getByText(/below your current trend weight/i)).toBeVisible()
+  await expect(
+    goal.getByText(/below your current trend weight \(84\.0 kg\)/i),
+  ).toBeVisible()
   await expect(goal.getByLabel(/target weight/i)).toBeVisible()
 })
 
 test('a rate the user cannot afford is refused under the rate field, not the target', async ({
   page,
   goto,
+  network,
 }) => {
-  // A 50 kg, 160 cm woman maintains on ~1595 kcal, while 1.5 kg/week demands
-  // 1650 — refused at creation (ADR 0030) while the rate control is still in
-  // her hand. Two inputs on this form can each be refused, so the message has
-  // to land on the one that is wrong.
-  await mockProfile(page, {
-    sex: 'FEMALE',
-    birthDate: '1986-05-22',
-    heightCm: 160,
-  })
-  await mockWeightList(page, [
-    { id: 1, measuredOn: '2026-05-28', weightKg: 50.0 },
-  ])
-  await mockWeightTrend(page, { trendKg: 50.0, asOf: '2026-05-28' })
-  await mockGoals(page, [], { currentTrendKg: 50.0, maintenanceKcal: 1594.6 })
+  // A 50 kg, 160 cm woman of 40 maintains on ~1595 kcal, while 1.5 kg/week
+  // demands 1650 — refused at creation (ADR 0030) while the rate control is
+  // still in her hand. Two inputs on this form can each be refused, so the
+  // message has to land on the one that is wrong. The clock is pinned because
+  // her age, and so her Maintenance, is taken on the day the page sends.
+  await pinToLocalMorning(page)
+  network.use(
+    ...bodyAndPlan({
+      profile: {
+        ...baselineProfile,
+        sex: 'FEMALE',
+        birthDate: '1986-05-22',
+        heightCm: 160,
+      },
+      readings: [{ id: 1, measuredOn: '2026-05-28', weightKg: 50.0 }],
+    }),
+  )
 
   await goto('/profile', { waitUntil: 'hydration' })
 

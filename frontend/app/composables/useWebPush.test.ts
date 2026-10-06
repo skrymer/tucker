@@ -1,9 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent } from 'vue'
-import { registerEndpoint, renderSuspended } from '@nuxt/test-utils/runtime'
-import { readBody } from 'h3'
+import { renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
+import { pushServiceFor } from '~~/test/mocks/handlers/push'
+import { server, useMswServer } from '~~/test/mocks/node'
 import { useWebPush } from './useWebPush'
 import {
   fakePushSubscription,
@@ -12,30 +13,11 @@ import {
 } from '../../test/web-push-helpers'
 import { setStandalone, setUserAgent, UA } from '../../test/pwa-install-helpers'
 
+useMswServer()
+
 // The true external boundaries are the browser's push machinery (stubbed via
-// setupWebPush) and the network. The VAPID key + subscribe/unsubscribe calls go
-// over `$api`, mocked here with registerEndpoint (ADR 0013).
-let postedSubscription: Record<string, unknown> | undefined
-let deletedSubscription: Record<string, unknown> | undefined
-registerEndpoint('/api/push/vapid-public-key', () => ({
-  // A valid base64url so the urlBase64ToUint8Array conversion doesn't throw.
-  publicKey:
-    'BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QTpQtUbVlUls0VJXg7A8u-Ts1XbjhazAkj7I99e8QcYP7DkM',
-}))
-registerEndpoint('/api/push/subscriptions', {
-  method: 'POST',
-  handler: async (event) => {
-    postedSubscription = await readBody(event)
-    return {}
-  },
-})
-registerEndpoint('/api/push/subscriptions', {
-  method: 'DELETE',
-  handler: async (event) => {
-    deletedSubscription = await readBody(event)
-    return {}
-  },
-})
+// setupWebPush) and the network, answered by the shared MSW handlers
+// (ADR 0013, ADR 0034).
 
 // Surface the composable's reactive state into the DOM and drive enable()/
 // disable() through buttons, the way the ReminderSettings component would.
@@ -63,8 +45,6 @@ const Harness = defineComponent({
 const text = (id: string) => screen.getByTestId(id).textContent
 
 beforeEach(() => {
-  postedSubscription = undefined
-  deletedSubscription = undefined
   setUserAgent(UA.desktop, { maxTouchPoints: 0, standalone: undefined })
   setStandalone(false)
 })
@@ -115,27 +95,25 @@ describe('useWebPush', () => {
   })
 
   it('enable() requests permission, subscribes via PushManager, and stores the subscription', async () => {
+    const created = fakePushSubscription('https://push.example/new-device')
     const env = setupWebPush({
       supported: true,
       permission: 'granted',
-      created: fakePushSubscription('https://push.example/new-device'),
+      created,
     })
+    server.use(...pushServiceFor({ ...created.toJSON(), label: 'Pixel 7' }))
     await renderSuspended(Harness)
 
     await userEvent.click(screen.getByRole('button', { name: 'enable' }))
 
-    await vi.waitFor(() => expect(postedSubscription).toBeDefined())
+    // Subscribed only once the server has stored this device's subscription.
+    await vi.waitFor(() => expect(text('subscribed')).toBe('true'))
     expect(env.requestPermission).toHaveBeenCalledOnce()
     expect(env.subscribe).toHaveBeenCalledOnce()
-    expect(postedSubscription).toMatchObject({
-      endpoint: 'https://push.example/new-device',
-      keys: { p256dh: 'BDeviceKey', auth: 'AuthSecret' },
-      label: 'Pixel 7',
-    })
-    await vi.waitFor(() => expect(text('subscribed')).toBe('true'))
   })
 
   it('does not subscribe when notification permission is denied', async () => {
+    // No push service is stubbed, so a subscription sent anyway fails the test.
     const env = setupWebPush({ supported: true, permission: 'denied' })
     await renderSuspended(Harness)
 
@@ -144,24 +122,21 @@ describe('useWebPush', () => {
     // Permission was asked once (from the gesture) but nothing was subscribed.
     expect(env.requestPermission).toHaveBeenCalledOnce()
     expect(env.subscribe).not.toHaveBeenCalled()
-    expect(postedSubscription).toBeUndefined()
     expect(text('subscribed')).toBe('false')
   })
 
   it('disable() unsubscribes the device and forgets its stored subscription', async () => {
     const existing = fakePushSubscription('https://push.example/device-a')
     setupWebPush({ supported: true, existing })
+    server.use(...pushServiceFor(existing.toJSON()))
     await renderSuspended(Harness)
     await vi.waitFor(() => expect(text('subscribed')).toBe('true'))
 
     await userEvent.click(screen.getByRole('button', { name: 'disable' }))
 
-    await vi.waitFor(() => expect(deletedSubscription).toBeDefined())
-    expect(existing.unsubscribe).toHaveBeenCalledOnce()
-    expect(deletedSubscription).toEqual({
-      endpoint: 'https://push.example/device-a',
-    })
+    // Not subscribed only once the server has forgotten this device.
     await vi.waitFor(() => expect(text('subscribed')).toBe('false'))
+    expect(existing.unsubscribe).toHaveBeenCalledOnce()
   })
 
   it('captures the browser IANA timezone, which the settings control saves on the Profile', async () => {

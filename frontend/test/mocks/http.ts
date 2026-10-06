@@ -20,8 +20,24 @@ export const http = createOpenApiHttp<paths>({ baseUrl: '*' })
 export const serverError = () =>
   HttpResponse.json({ message: 'boom' }, { status: 500 })
 
+/** [value] as Kotlin prints a Double in a refusal: `0.0`, never `0`. */
+export const kotlinDouble = (value: number) =>
+  Number.isInteger(value) ? value.toFixed(1) : String(value)
+
 /** The body of a 503: the server could not be reached. */
 export const noConnection = { message: 'no connection to the server' }
+
+export const DAY_MS = 24 * 60 * 60 * 1000
+
+/**
+ * The refusal for a request stamped with [given] when the test says it is
+ * [today], or null when it is that day or no day was given. The real endpoints
+ * refuse only a day implausibly far off; this stands in for a page that sent
+ * the wrong one (ADR 0014).
+ */
+export function wrongDay(given: string | null | undefined, today?: string) {
+  return today && given !== today ? { message: `${given} is not today` } : null
+}
 
 /** A window a windowed read asks about: both bounds inclusive, [days] wide. */
 export type AskedWindow = { from: string; to: string; days: number }
@@ -40,13 +56,12 @@ export function askedWindow(
   const from = query.get('from')
   const to = query.get('to')
   const days =
-    from && to
-      ? (Date.parse(to) - Date.parse(from)) / (24 * 60 * 60 * 1000) + 1
-      : NaN
+    from && to ? (Date.parse(to) - Date.parse(from)) / DAY_MS + 1 : NaN
   if (!from || !to || !(days >= 1)) {
     return { refused: 'a window must not end before it starts' }
   }
-  if (today && to !== today) return { refused: `${to} is not today` }
+  const notToday = wrongDay(to, today)
+  if (notToday) return { refused: notToday.message }
   return { from, to, days }
 }
 
