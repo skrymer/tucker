@@ -3,31 +3,27 @@ import { defineComponent } from 'vue'
 import { renderSuspended } from '@nuxt/test-utils/runtime'
 import userEvent from '@testing-library/user-event'
 import { screen } from '@testing-library/vue'
-import { http, serverError } from '~~/test/mocks/http'
+import { failingRead } from '~~/test/mocks/http'
 import { server, useMswServer } from '~~/test/mocks/node'
-import { baselineProfile } from '~~/test/mocks/handlers/profile'
+import {
+  noProfile,
+  profileOf,
+  weightOnlyProfile,
+} from '~~/test/mocks/handlers/profile'
 import { useCalorieTracking } from './useCalorieTracking'
 
+// The baseline User counts calories, so an override answering the first read
+// alone turns a read issued, or not issued, into a different setting.
 useMswServer()
 
-/** What one read of the Profile answers: the setting it holds, or no Profile, or a failure. */
-type ProfileRead = boolean | 'none' | 'failure'
-
-/**
- * GET /api/profile answering [first], then [later] on every read after it — so a
- * read issued that should not have been, or not issued that should, changes what
- * the setting settles on.
- */
-function profileReads(first: ProfileRead, later: ProfileRead = first) {
-  let reads = 0
-  return http.get('/api/profile', ({ response }) => {
-    const answer = reads++ === 0 ? first : later
-    if (answer === 'none') {
-      return response(404).json({ message: 'profile not set' })
-    }
-    if (answer === 'failure') return response.untyped(serverError())
-    return response(200).json({ ...baselineProfile, tracksCalories: answer })
-  })
+/** True on its first call alone. */
+function firstTimeOnly() {
+  let first = true
+  return () => {
+    const answer = first
+    first = false
+    return answer
+  }
 }
 
 // The setting is app-wide state, so every test starts it at the opposite of the
@@ -85,8 +81,9 @@ describe('useCalorieTracking', () => {
   })
 
   it('joins the read already in flight rather than issuing a second', async () => {
-    // A second read would answer otherwise, and the page would see it.
-    server.use(profileReads(false, true))
+    // A second read would reach the baseline's calorie counter, and the page
+    // would see it.
+    server.use(profileOf(weightOnlyProfile, { once: true }))
 
     // The shape AppNav and a page make together: the nav starts the read, and a
     // page's setup awaits the settled value while that read is still in flight.
@@ -113,7 +110,7 @@ describe('useCalorieTracking', () => {
   })
 
   it('asks nothing further once the setting has settled', async () => {
-    server.use(profileReads(false, true))
+    server.use(profileOf(weightOnlyProfile, { once: true }))
 
     const nav = defineComponent({
       async setup() {
@@ -140,7 +137,7 @@ describe('useCalorieTracking', () => {
   })
 
   it('takes the setting from the signed-in User’s Profile', async () => {
-    server.use(profileReads(false))
+    server.use(profileOf(weightOnlyProfile))
 
     await loadTracking(true)
 
@@ -148,7 +145,7 @@ describe('useCalorieTracking', () => {
   })
 
   it('keeps counting calories, quietly, when the User has no Profile yet', async () => {
-    server.use(profileReads('none'))
+    server.use(noProfile())
 
     await loadTracking(false)
 
@@ -158,7 +155,7 @@ describe('useCalorieTracking', () => {
   })
 
   it('leaves the setting as it stands when the Profile cannot be read, and says so', async () => {
-    server.use(profileReads('failure'))
+    server.use(failingRead('/api/profile'))
 
     await loadTracking(false)
 
@@ -170,7 +167,10 @@ describe('useCalorieTracking', () => {
   })
 
   it('re-asks on the next page when the read failed, rather than settling for the default', async () => {
-    server.use(profileReads('failure', false))
+    server.use(
+      failingRead('/api/profile', firstTimeOnly()),
+      profileOf(weightOnlyProfile),
+    )
 
     const nav = defineComponent({
       async setup() {
@@ -201,8 +201,9 @@ describe('useCalorieTracking', () => {
   it('asks once, so a failure does not double the wait the shell holds paint for', async () => {
     // ofetch retries a failed GET once by default, and this read blocks the app
     // shell — a retry would buy a second round trip for an answer that falls
-    // back either way (ADR 0007). Here a retry would succeed, and say so.
-    server.use(profileReads('failure', true))
+    // back either way (ADR 0007). Here a retry would reach the baseline's calorie
+    // counter, and say so.
+    server.use(failingRead('/api/profile', firstTimeOnly()))
 
     await loadTracking(false)
 

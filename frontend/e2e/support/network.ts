@@ -13,7 +13,8 @@ import { expect, test as base } from './test'
  *
  * Interception rides Playwright's own routing, not an MSW worker script, so the
  * app's Workbox service worker stays the only one on its scope. A `page.route`
- * registered by the spec still takes precedence over it.
+ * registered by the spec still takes precedence over it, which is how a non-API
+ * route (a CDN abort, a fake camera) is answered.
  */
 export const test = base.extend<{
   handlers: AnyHandler[]

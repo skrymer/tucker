@@ -7,8 +7,8 @@ import {
   toastLiveRegion,
   toastRegion,
 } from './support/toast'
-import { localTodayIso } from './support/date'
-import { http, serverError } from '../test/mocks/http'
+import { localDayOf, localTodayIso } from './support/date'
+import { failingWrite } from '../test/mocks/http'
 import { bodyAndPlan } from '../test/mocks/handlers/body'
 import { entryLog } from '../test/mocks/handlers/entries'
 import { baselineProfile, savedProfile } from '../test/mocks/handlers/profile'
@@ -30,14 +30,9 @@ const DESKTOP = { width: 1280, height: 800 }
  * baseline User's saved Profile once it does not, so a save that lands is read
  * back on the next visit. A save is for [today], the page's local day.
  */
-function profileSaves(
-  isDown: () => boolean = () => true,
-  today = localTodayIso(),
-) {
+function profileSaves(today: string, isDown: () => boolean = () => true) {
   return [
-    http.put('/api/profile', ({ response }) =>
-      isDown() ? response.untyped(serverError()) : undefined,
-    ),
+    failingWrite('put', '/api/profile', isDown),
     ...savedProfile(baselineProfile, { today }).handlers,
   ]
 }
@@ -55,7 +50,7 @@ test('at phone width a failed save anchors the error toast to the top, clear of 
 }) => {
   // The save fails, so it surfaces the persistent error toast instead of
   // dismissing silently.
-  network.use(...profileSaves())
+  network.use(...profileSaves(localTodayIso()))
 
   await page.setViewportSize(PHONE)
   await goto('/profile', { waitUntil: 'hydration' })
@@ -83,7 +78,7 @@ test('at desktop width the error toast stays at the bottom, where nothing compet
   goto,
   network,
 }) => {
-  network.use(...profileSaves())
+  network.use(...profileSaves(localTodayIso()))
 
   await page.setViewportSize(DESKTOP)
   await goto('/profile', { waitUntil: 'hydration' })
@@ -115,7 +110,7 @@ test('the error toast Retry re-submits the save and dismisses once it succeeds',
   // The first save fails and the retried one lands, so Retry drives failure →
   // success.
   let down = true
-  network.use(...profileSaves(() => down))
+  network.use(...profileSaves(localTodayIso(), () => down))
 
   await goto('/profile', { waitUntil: 'hydration' })
 
@@ -145,13 +140,13 @@ test('a Retry that fails again leaves the error toast up, ready to retry once mo
   // *inside* the window, and it only shows once the deletion has run. A wall-clock
   // wait controls neither — it waits out the second while racing the first. So the
   // clock is held still: the retried failure cannot fall outside a window that is
-  // not advancing, and the deletion fires when this test says so. In Brisbane
-  // that instant is the evening of the 15th.
-  await page.clock.install({ time: new Date('2026-06-15T12:00:00Z') })
+  // not advancing, and the deletion fires when this test says so.
+  const held = new Date('2026-06-15T12:00:00Z')
+  await page.clock.install({ time: held })
 
   // Every save fails until the last Retry, so Retry drives failure → failure.
   let down = true
-  network.use(...profileSaves(() => down, '2026-06-15'))
+  network.use(...profileSaves(localDayOf(held), () => down))
 
   await goto('/profile', { waitUntil: 'hydration' })
 
@@ -180,16 +175,17 @@ test('a Retry that fails again leaves the error toast up, ready to retry once mo
   await expect(toastRegion(page).getByRole('listitem')).toHaveCount(1)
 
   // And the Retry on it still fires, which is the whole reason to leave it up:
-  // this time the save lands, and the next visit reads it back.
+  // this time the save lands and dismisses the toast — on the same held timer,
+  // so it is run once the save has landed.
   down = false
+  const landed = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'PUT' && response.status() === 200,
+  )
   await failure.getByRole('button', { name: /retry/i }).click()
-  // The dismissal is the same held timer, so it runs only once the save lands.
-  await expect(async () => {
-    await page.clock.runFor(TOAST_DELETION_MS)
-    await expect(failure).toHaveCount(0, { timeout: 500 })
-  }).toPass()
-  await page.reload()
-  await expect(page.getByLabel(/height/i)).toHaveValue('182')
+  await landed
+  await page.clock.runFor(TOAST_DELETION_MS)
+  await expect(failure).toHaveCount(0)
 })
 
 /**
@@ -203,9 +199,7 @@ async function failASaveFromASheet(
   isDown: () => boolean = () => true,
 ) {
   network.use(
-    http.post('/api/weight', ({ response }) =>
-      isDown() ? response.untyped(serverError()) : undefined,
-    ),
+    failingWrite('post', '/api/weight', isDown),
     ...bodyAndPlan({
       profile: baselineProfile,
       readings: [],

@@ -102,6 +102,20 @@ export function failingRead(
 }
 
 /**
+ * A [method] request to [path] the server fails while [isDown] holds, falling
+ * through to the handler under it once it does not.
+ */
+export function failingWrite<M extends 'post' | 'put' | 'delete'>(
+  method: M,
+  path: Parameters<(typeof http)[M]>[0],
+  isDown: () => boolean = () => true,
+) {
+  return untypedHttp[method](`*${path.replace(/\{(\w+)\}/g, ':$1')}`, () =>
+    isDown() ? serverError() : undefined,
+  )
+}
+
+/**
  * [method] requests to [path] — those [matches] admits, if given — held until
  * `release()`, then passed to the handler under it, which must answer them.
  * `arrived` resolves once the first is held. [matches] reads a copy of the
