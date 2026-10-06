@@ -6,6 +6,9 @@ import { SIGN_IN_PATH } from '../app/utils/exits'
 // real server, which `page.route` cannot produce (see the fixture's helper).
 // The suite's auto error-guard carries the other half — an uncaught exception
 // on this path fails the test.
+//
+// So `/api` is not mocked here: the origin's own redirects are the answer.
+test.use({ mocksApi: false })
 
 test('offers the way back in once the Access session has expired', async ({
   page,

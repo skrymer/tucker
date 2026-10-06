@@ -6,7 +6,7 @@ import type { ConfigOptions } from '@nuxt/test-utils/playwright'
 import { MOCKED_E2E_TIMEZONE } from './e2e/support/date'
 
 // Browser end-to-end tests with the backend API mocked by the shared MSW
-// handlers (see e2e/support/network.ts). Fast, deterministic, no external services.
+// handlers (see e2e/support/test.ts). Fast, deterministic, no external services.
 // For real-stack smoke tests against the Docker backend see
 // playwright.smoke.config.ts.
 //

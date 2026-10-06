@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test'
-import { expect, test } from './support/network'
+import { expect, test } from './support/test'
 import { food } from '../test/food-fixtures'
 import { catalogOf } from '../test/mocks/handlers/foods'
 import { pickFoodToLog } from './support/log-page'

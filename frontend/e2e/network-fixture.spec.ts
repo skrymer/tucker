@@ -1,4 +1,4 @@
-import { expect, test } from './support/network'
+import { expect, test } from './support/test'
 import { http } from '../test/mocks/http'
 
 test('lets a request outside /api go to the server, even one whose path carries /api/', async ({

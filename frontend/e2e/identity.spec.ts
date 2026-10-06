@@ -1,4 +1,4 @@
-import { expect, test } from './support/network'
+import { expect, test } from './support/test'
 import { baselineEmail } from '../test/mocks/handlers/identity'
 
 test.describe('the identity byline', () => {

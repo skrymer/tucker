@@ -1,4 +1,4 @@
-import { expect, test } from './support/network'
+import { expect, test } from './support/test'
 import { visibleNav } from './support/nav'
 
 const PHONE = { width: 375, height: 812 }

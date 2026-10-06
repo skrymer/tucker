@@ -1,4 +1,4 @@
-import { expect, test } from './support/network'
+import { expect, test } from './support/test'
 import { summaryOf } from '../test/mocks/handlers/summary'
 
 // Maintenance Mode (ADR 0008, F7 slice 1): no active Goal (goal endpoints 404)

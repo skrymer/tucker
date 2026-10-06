@@ -1,6 +1,6 @@
 import type { Page, TestType } from '@playwright/test'
 import type { NetworkFixture } from '@msw/playwright'
-import { expect, test } from './support/network'
+import { expect, test } from './support/test'
 import {
   TOAST_DELETION_MS,
   toast,

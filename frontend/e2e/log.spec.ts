@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test'
 import type { NetworkFixture } from '@msw/playwright'
-import { expect, test } from './support/network'
+import { expect, test } from './support/test'
 import { food, recipe, type FoodResponse } from '../test/food-fixtures'
 import { entryLog } from '../test/mocks/handlers/entries'
 import {

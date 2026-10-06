@@ -1,4 +1,4 @@
-import { expect, test } from './support/network'
+import { expect, test } from './support/test'
 import { bodyAndPlan } from '../test/mocks/handlers/body'
 import { baselineProfile } from '../test/mocks/handlers/profile'
 import { localTodayIso, pinToLocalMorning } from './support/date'

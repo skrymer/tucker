@@ -1,4 +1,4 @@
-import { expect, test } from './support/network'
+import { expect, test } from './support/test'
 
 // The real @nuxtjs/color-mode effect — the `.dark` class flipping on <html> and
 // the choice persisting via cookie across a reload — only runs in a real browser

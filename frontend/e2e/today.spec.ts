@@ -7,7 +7,7 @@ import {
   type SummaryDay,
 } from '../test/mocks/handlers/summary'
 import { weightMeasurements } from '../test/mocks/handlers/weight'
-import { expect, test } from './support/network'
+import { expect, test } from './support/test'
 import { rings } from './support/ring'
 
 // The baseline was last weighed on a day long past and has no Goal, so

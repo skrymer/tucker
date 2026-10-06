@@ -1,4 +1,4 @@
-import { expect, test } from './support/network'
+import { expect, test } from './support/test'
 import { food, recipe } from '../test/food-fixtures'
 import { foodCatalog } from '../test/mocks/handlers/catalog'
 
