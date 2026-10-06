@@ -38,9 +38,19 @@ export function useFullscreenScanner(scanner: {
 
   // The system's back gesture leaves fullscreen without the app asking, and the
   // camera light must go off with it.
+  // Switching apps can end fullscreen a moment before the page reports hidden,
+  // so the stop waits this long to tell Android's back gesture (still in view)
+  // from leaving the app (hidden, which the scanner releases as interrupted).
+  const APP_SWITCH_GRACE_MS = 250
+  function stopUnlessLeavingTheApp() {
+    if (scanner.open.value && document.visibilityState !== 'hidden')
+      scanner.stop()
+  }
+
   function onFullscreenChange() {
     if (scanner.open.value) {
-      if (!document.fullscreenElement) scanner.stop()
+      if (!document.fullscreenElement)
+        setTimeout(stopUnlessLeavingTheApp, APP_SWITCH_GRACE_MS)
     } else if (document.fullscreenElement) {
       // A refused or missing camera settled before the request did.
       document.exitFullscreen().catch(() => {})

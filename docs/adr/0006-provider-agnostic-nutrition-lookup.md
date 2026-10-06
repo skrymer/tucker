@@ -225,9 +225,9 @@ the only fullscreen an **iPhone** has: WebKit, Chrome included, offers no elemen
 Where the browser does have it (Android Chrome), the Dialog also asks for true
 fullscreen — but only from a tap, which the API requires, so Check's camera that
 opens with the tab gets the Dialog alone and only a tap ("Start camera", "Scan
-another") goes further. The
-scanner shows a caption and a Stop button and nothing else: no aiming frame,
-because the decoder reads the whole frame and a box would invent a constraint.
+another") goes further. The scanner shows a caption and a Stop button and
+nothing else: no aiming frame, because the decoder reads the whole frame and a
+box would invent a constraint.
 Desktop keeps an inline viewfinder — a webcam is not something you aim.
 **Manual barcode entry
 is a permanent peer to the camera**, not just an error fallback — it is the
@@ -343,8 +343,8 @@ Atwater derivation, and the stated-energy cross-check are all ownership-neutral.
   + (future) credentials as deployment config. No new write path — Food creation
   stays `POST /api/foods`.
 - **Frontend:** a `zxing-wasm`-backed scanner — fullscreen in its own Dialog on
-  phone, inline on desktop — lazy-loaded behind the Scan tap; an always-on manual-barcode input; the
-  three-outcome branch (surface existing Food → offer log / pre-fill `AddFoodForm`
+  phone, inline on desktop — lazy-loaded behind the Scan tap; an always-on
+  manual-barcode input; the three-outcome branch (surface existing Food → offer log / pre-fill `AddFoodForm`
   from a Candidate / open blank manual entry with the barcode), which #164 makes
   four by saying so when the lookup was inconclusive; the "log it now"
   step (both withdrawn by 0028 — a catalog hit is named, not logged, and the

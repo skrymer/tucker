@@ -473,7 +473,7 @@ describe('/check with a calorie budget', () => {
 
     document.dispatchEvent(new Event('fullscreenchange'))
 
-    expect(scanner.stop).toHaveBeenCalledOnce()
+    await vi.waitFor(() => expect(scanner.stop).toHaveBeenCalledOnce())
   })
 
   it('clears the previous result and restarts the camera on Scan another', async () => {

@@ -4,6 +4,7 @@ import { mockNuxtImport } from '@nuxt/test-utils/runtime'
 import {
   resetPageStubs,
   setFullscreenElement,
+  setVisibility,
   stubExitFullscreen,
   stubTrueFullscreen,
 } from '~~/test/page-visibility-helpers'
@@ -106,22 +107,60 @@ describe('useFullscreenScanner', () => {
   })
 
   it('stops an open scanner when the system takes the page out of fullscreen', () => {
-    // Android's back gesture leaves fullscreen without the app asking.
+    // Android's back gesture leaves fullscreen without the app asking, and the
+    // app stays in view.
+    vi.useFakeTimers()
     const { scanner, scope } = withScanner(true)
 
     setFullscreenElement(null)
     document.dispatchEvent(new Event('fullscreenchange'))
+    vi.runAllTimers()
 
     expect(scanner.stop).toHaveBeenCalledOnce()
     scope.stop()
+    vi.useRealTimers()
+  })
+
+  it('leaves the stop to the app going to the background when fullscreen ends on the way out', () => {
+    // Switching apps can end fullscreen a moment before the page reports
+    // hidden. That is an interruption, which the scanner's own backgrounding
+    // records — a stop here would mark it as one the User chose.
+    vi.useFakeTimers()
+    const { scanner, scope } = withScanner(true)
+
+    setFullscreenElement(null)
+    document.dispatchEvent(new Event('fullscreenchange'))
+    setVisibility('hidden')
+    vi.runAllTimers()
+
+    expect(scanner.stop).not.toHaveBeenCalled()
+    scope.stop()
+    vi.useRealTimers()
+  })
+
+  it('leaves the stop to the app going to the background when it hides before fullscreen ends', () => {
+    vi.useFakeTimers()
+    const { scanner, scope } = withScanner(true)
+
+    setVisibility('hidden')
+    setFullscreenElement(null)
+    document.dispatchEvent(new Event('fullscreenchange'))
+    vi.runAllTimers()
+
+    expect(scanner.stop).not.toHaveBeenCalled()
+    scope.stop()
+    vi.useRealTimers()
   })
 
   it('keeps scanning as the page enters fullscreen', () => {
+    vi.useFakeTimers()
     stubExitFullscreen()
     const { scanner, scope } = withScanner(true)
 
     setFullscreenElement(document.documentElement)
     document.dispatchEvent(new Event('fullscreenchange'))
+    vi.runAllTimers()
+    vi.useRealTimers()
 
     expect(scanner.stop).not.toHaveBeenCalled()
     scope.stop()
