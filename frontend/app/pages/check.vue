@@ -186,13 +186,19 @@ const retryActions = computed(() => [
  * mode — the accepted trade for keeping a Check a two-second interaction.
  */
 function useScanSurface() {
+  const scanner = useBarcodeScanner()
   const {
     state: scanState,
     videoEl,
     barcode: scannedBarcode,
+    interrupted,
     start: startScan,
     stop: stopScan,
-  } = useBarcodeScanner()
+  } = scanner
+  // On a phone the camera is fullscreen while it runs, over the page, which
+  // keeps only the paused viewfinder. Arriving on the tab is no tap, so it gets
+  // the Dialog without true fullscreen.
+  const { fullscreen, startFromTap } = useFullscreenScanner(scanner)
 
   // A decoded barcode goes straight to the lookup — there is no confirm step,
   // because a Check commits to nothing.
@@ -218,8 +224,10 @@ function useScanSurface() {
   // The composable releases the camera when the app is backgrounded, which on a
   // phone is one app-switch away — and this screen is used in a shop. Bring it
   // back on return, or the tab is a dead black box until the user finds a button.
+  // Only a camera the backgrounding took: one the User stopped stays stopped.
   function onVisible() {
-    if (document.visibilityState === 'visible') startIfReady()
+    if (document.visibilityState === 'visible' && interrupted.value)
+      startIfReady()
   }
   document.addEventListener('visibilitychange', onVisible)
   // Leaving the tab must release the camera; the composable also drops it on
@@ -231,7 +239,7 @@ function useScanSurface() {
 
   function scanAgain() {
     reset()
-    startScan()
+    startFromTap()
   }
 
   // Each state says what is actually true — an idle viewfinder claiming to be
@@ -264,16 +272,20 @@ function useScanSurface() {
   return {
     scanState,
     videoEl,
-    startScan,
+    startFromTap,
+    stopScan,
     scanAgain,
     cameraAlert,
     viewfinderCaption,
+    fullscreen,
   }
 }
 const {
   scanState,
   videoEl,
-  startScan,
+  startFromTap,
+  stopScan,
+  fullscreen,
   scanAgain,
   cameraAlert,
   viewfinderCaption,
@@ -314,12 +326,16 @@ const {
           :description="cameraAlert.description"
         />
 
-        <!-- The viewfinder, until something is decoded. -->
+        <!-- The viewfinder, until something is decoded. On a phone the camera
+             runs in the fullscreen scanner, so this card holds no video and
+             needs a height of its own for its caption and button. -->
         <div
           v-else-if="scanState !== 'decoded'"
           class="relative mx-auto w-full max-w-md overflow-hidden rounded-[20px] bg-black"
+          :class="{ 'h-48': fullscreen }"
         >
           <video
+            v-if="!fullscreen"
             ref="videoEl"
             class="max-h-[60vh] w-full object-cover"
             playsinline
@@ -337,7 +353,7 @@ const {
             class="absolute inset-x-0 bottom-4 mx-auto w-fit"
             color="primary"
             icon="i-lucide-scan-search"
-            @click="startScan"
+            @click="startFromTap"
           >
             Start camera
           </UButton>
@@ -406,6 +422,13 @@ const {
             Scan another
           </UButton>
         </div>
+
+        <FullscreenScanner
+          v-if="fullscreen"
+          v-model:video-el="videoEl"
+          :state="scanState"
+          @stop="stopScan"
+        />
       </template>
     </LoadErrorState>
   </section>

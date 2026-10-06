@@ -135,13 +135,16 @@ const { barcode, looking, branch, inconclusive, lookup, cancel, reset } =
 
 // The camera scanner is a peer input to the manual field, lazy-loading
 // zxing-wasm behind the Scan tap (ADR 0006).
+const scanner = useBarcodeScanner()
 const {
   state: scanState,
   videoEl,
   barcode: scannedBarcode,
-  start: startScan,
   stop: stopScan,
-} = useBarcodeScanner()
+} = scanner
+// On a phone the camera is fullscreen, over the sheet.
+const { fullscreen: scanFullscreen, startFromTap: scanFromTap } =
+  useFullscreenScanner(scanner)
 
 // A camera-decoded barcode runs the exact same lookup/branch as a typed one.
 watch(scannedBarcode, (code) => {
@@ -299,7 +302,7 @@ const existingFood = computed<Food | null>(() =>
                 icon="i-lucide-scan-barcode"
                 color="primary"
                 variant="subtle"
-                @click="startScan"
+                @click="scanFromTap"
               >
                 Scan barcode
               </UButton>
@@ -316,7 +319,7 @@ const existingFood = computed<Food | null>(() =>
               </UButton>
 
               <div
-                v-else-if="scanState === 'scanning'"
+                v-else-if="!scanFullscreen && scanState === 'scanning'"
                 class="relative overflow-hidden rounded-lg bg-black"
               >
                 <video
@@ -405,5 +408,12 @@ const existingFood = computed<Food | null>(() =>
         </template>
       </UTabs>
     </div>
+
+    <FullscreenScanner
+      v-if="scanFullscreen"
+      v-model:video-el="videoEl"
+      :state="scanState"
+      @stop="stopScan"
+    />
   </ResponsiveOverlay>
 </template>

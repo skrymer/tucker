@@ -4,6 +4,7 @@ import { renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import { readBarcodes } from 'zxing-wasm/reader'
+import { resetPageStubs, setVisibility } from '~~/test/page-visibility-helpers'
 import { useBarcodeScanner } from './useBarcodeScanner'
 
 // The camera and the WASM decoder are the two things a unit test can't run for
@@ -49,6 +50,8 @@ const Harness = defineComponent({
     <div>
       <span data-testid="state">{{ state }}</span>
       <span data-testid="barcode">{{ barcode ?? '' }}</span>
+      <span data-testid="open">{{ open }}</span>
+      <span data-testid="interrupted">{{ interrupted }}</span>
       <video ref="videoEl"></video>
       <button @click="start">scan</button>
       <button @click="stop">stop</button>
@@ -84,6 +87,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.restoreAllMocks()
+  resetPageStubs()
 })
 
 describe('useBarcodeScanner', () => {
@@ -104,6 +108,27 @@ describe('useBarcodeScanner', () => {
 
     grant(fakeStream().stream)
     await vi.waitFor(() => expect(stateText()).toBe('scanning'))
+  })
+
+  it('is open from the camera request until it stops', async () => {
+    let grant: (s: MediaStream) => void = () => {}
+    getUserMedia.mockReturnValue(
+      new Promise<MediaStream>((resolve) => {
+        grant = resolve
+      }),
+    )
+    await renderSuspended(Harness)
+    expect(screen.getByTestId('open')).toHaveTextContent('false')
+
+    await tapScan()
+    await nextTick()
+    expect(screen.getByTestId('open')).toHaveTextContent('true')
+    grant(fakeStream().stream)
+    await vi.waitFor(() => expect(stateText()).toBe('scanning'))
+    expect(screen.getByTestId('open')).toHaveTextContent('true')
+
+    await userEvent.setup().click(screen.getByRole('button', { name: 'stop' }))
+    expect(screen.getByTestId('open')).toHaveTextContent('false')
   })
 
   it('exposes the decoded barcode and enters decoded when one is read', async () => {
@@ -218,13 +243,36 @@ describe('useBarcodeScanner', () => {
 
     // The user switches apps or locks the screen — iOS keeps the camera light
     // on unless we explicitly stop the tracks.
-    Object.defineProperty(document, 'visibilityState', {
-      value: 'hidden',
-      configurable: true,
-    })
-    document.dispatchEvent(new Event('visibilitychange'))
+    setVisibility('hidden')
 
     await vi.waitFor(() => expect(track.stop).toHaveBeenCalled())
     expect(stateText()).toBe('idle')
+  })
+
+  it('records a scan the app was backgrounded out of as interrupted', async () => {
+    getUserMedia.mockResolvedValue(fakeStream().stream)
+    await renderSuspended(Harness)
+    await tapScan()
+    await vi.waitFor(() => expect(stateText()).toBe('scanning'))
+    expect(screen.getByTestId('interrupted')).toHaveTextContent('false')
+
+    setVisibility('hidden')
+    await nextTick()
+
+    expect(screen.getByTestId('interrupted')).toHaveTextContent('true')
+  })
+
+  it('keeps the interruption on record as the app comes back', async () => {
+    // A surface reads it on the same return, after this scanner hears it.
+    getUserMedia.mockResolvedValue(fakeStream().stream)
+    await renderSuspended(Harness)
+    await tapScan()
+    await vi.waitFor(() => expect(stateText()).toBe('scanning'))
+
+    setVisibility('hidden')
+    setVisibility('visible')
+    await nextTick()
+
+    expect(screen.getByTestId('interrupted')).toHaveTextContent('true')
   })
 })
