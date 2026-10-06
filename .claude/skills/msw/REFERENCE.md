@@ -140,7 +140,23 @@ or is stated as unchecked — an annotation in `e2e/` never answers a typing fin
 - **"Not asked again" is a handler whose later reads answer differently.** A
   counter in the override (`reads++ === 0 ? A_FULL_DAY : nothingLogged`) turns a
   duplicate read into a change on screen. Check for it at the end, where a late read
-  would have landed.
+  would have landed. The same handler shows a read that *must* be issued again (a
+  failure, then the answer the re-read has to land) and one that must not be retried
+  (`retry: 0`: a failure whose retry would succeed, and say so): `profileReads(first,
+  later)` in `useCalorieTracking.test.ts`.
+- **A plugin's side effect mid-read is an override that does it and falls through.**
+  `default.test.ts` stands in for the auth-gate plugin with an `/api/profile` handler
+  that calls `markSignedOut()` and returns `undefined`, so the baseline Profile still
+  answers the read the layout suspends on.
+- **A held clock moves the day the page sends.** Under `page.clock.install({ time })`
+  the page stamps that instant's local day, so a factory guarding the day
+  (`savedProfile(p, { today })`) is given that day, not `localTodayIso()`. Given the
+  wrong one, every save is a 400 the page reads as a failure — which a test about a
+  failing save cannot tell from its own.
+- **Waiting is not asserting.** Where nothing on screen tells a request landing apart
+  from the state before it — a retried failure replacing an identical toast —
+  `page.waitForResponse` synchronises the next step (`toast.spec.ts`). It never stands
+  in for proving what was sent; that is still a change on screen.
 - **Reading another factory's state through its own read** (rule 3):
   `micronutrientIntakeOver(catalog, answer)` calls `getResponse` on the catalog's
   handlers for `/api/foods`, so a match claimed through `foodCatalog` moves the next
