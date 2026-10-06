@@ -103,11 +103,12 @@ handlers free of app auto-imports (`localToday()` etc.) — pass such values in.
    handler (`test/mocks/http.ts`) catches it in both layers. Add the endpoint to the
    baseline (or the test) rather than loosening that. Never mock `/api` with
    `registerEndpoint` or `page.route`: neither reaches that check, and ESLint refuses
-   both (`eslint.config.mjs`). In the mocked e2e a `route()` pattern must be a literal
-   that does not match every URL, so the ban can read it. A fixture serving the app
-   from a real origin of its own switches the handlers off while it lives
-   (`expiredAccessOrigin`). A `page.route` on another host (a CDN abort, a fake camera)
-   is fine, and the smokes never use the handlers.
+   both (`eslint.config.mjs`). In the mocked e2e `route()` is called by name with a
+   plain string or regex literal that is not a catch-all, so the ban can read it; it
+   guards the usual spellings, not a pattern built to slip past it. A fixture serving
+   the app from a real origin of its own switches the handlers off while it lives
+   (`expiredAccessOrigin`). A `page.route` on another host (a CDN abort, a fake
+   camera) is fine, and the smokes never use the handlers.
 6. **Overrides last one test.** `resetHandlers` runs after each test in Vitest, and the
    Playwright fixture is built per test, so a `use()` never leaks into the next.
 7. **Prove each new or changed test still goes red** by breaking its handler's response

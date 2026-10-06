@@ -47,13 +47,17 @@ const noLocalTzDates = [
 ]
 
 // The mocked suite answers `/api` from the shared MSW handlers (ADR 0034), whose
-// unhandled-request check a `route()` on `/api` would go around. So a `route()`
-// pattern is written out — a variable or a predicate would hide what it matches —
-// and may neither name `/api` nor match every URL; a HAR replay is refused
-// outright, since it answers whatever it recorded. A route on anything else — a CDN abort, a fake camera —
-// stays legal, as does the smokes' offline abort against the real backend.
+// unhandled-request check a `route()` on `/api` would go around. A lint rule can
+// only read what is written out, so `route()` is called by name, directly, with a
+// plain string or regex literal, and that literal may neither name `/api` nor be
+// a catch-all; a HAR replay is refused outright. This is a guard against the
+// usual ways of writing one, not a proof: a pattern built to slip past it will.
+// A route on anything else — a CDN abort, a fake camera — stays legal, as does
+// the smokes' offline abort against the real backend.
 const API_ROUTE_MESSAGE =
   'Do not route /api in the mocked e2e — answer it with the MSW baseline or network.use() (the msw skill, ADR 0034).'
+const READABLE_MESSAGE =
+  'Call route() by name with a plain string or regex literal in the mocked e2e, so the /api ban can read it (the msw skill, ADR 0034).'
 const CATCH_ALL_MESSAGE =
   'A route() matching every URL answers /api too — name the host or path it is for (the msw skill, ADR 0034).'
 const ROUTE_CALL = "CallExpression[callee.property.name='route']"
@@ -68,19 +72,6 @@ const noApiRoutes = [
     message: API_ROUTE_MESSAGE,
   },
   {
-    selector: `${ROUTE_CALL} > TemplateLiteral.arguments:first-child > TemplateElement[value.raw=${API_PATH}]`,
-    message: API_ROUTE_MESSAGE,
-  },
-  {
-    selector: `${ROUTE_CALL} > .arguments:first-child:not(Literal, TemplateLiteral[expressions.length=0])`,
-    message:
-      'Write a route() pattern out as a literal in the mocked e2e, so the /api ban can read it (the msw skill, ADR 0034).',
-  },
-  {
-    selector: "CallExpression[callee.property.name='routeFromHAR']",
-    message: API_ROUTE_MESSAGE,
-  },
-  {
     selector: `${ROUTE_CALL} > Literal.arguments:first-child[value=/^\\*{1,2}(\\/\\*{1,2})?$/]`,
     message: CATCH_ALL_MESSAGE,
   },
@@ -89,10 +80,20 @@ const noApiRoutes = [
     message: CATCH_ALL_MESSAGE,
   },
   {
-    selector:
-      'CallExpression[callee.computed=true][callee.property.value=/^route/]',
-    message:
-      'Call route() by name in the mocked e2e, so the /api ban can read it (the msw skill, ADR 0034).',
+    selector: `${ROUTE_CALL} > .arguments:first-child:not(Literal)`,
+    message: READABLE_MESSAGE,
+  },
+  {
+    selector: 'CallExpression[callee.computed=true]',
+    message: READABLE_MESSAGE,
+  },
+  {
+    selector: 'CallExpression[callee.object.property.name=/^route/]',
+    message: READABLE_MESSAGE,
+  },
+  {
+    selector: "CallExpression[callee.property.name='routeFromHAR']",
+    message: API_ROUTE_MESSAGE,
   },
 ]
 
