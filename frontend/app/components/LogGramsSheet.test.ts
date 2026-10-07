@@ -255,6 +255,16 @@ describe('LogGramsSheet', () => {
       expect(screen.getByRole('radio', { name: /^Today/ })).toHaveFocus()
     })
 
+    it('is one tab stop, on the day chosen', async () => {
+      await renderSuspended(LogGramsSheet, { props: { food: skyr } })
+      const user = userEvent.setup()
+      await user.click(screen.getByRole('radio', { name: /^Today/ }))
+
+      await user.tab()
+
+      expect(screen.getByRole('button', { name: 'Log entry' })).toHaveFocus()
+    })
+
     it('relabels the submit "Log for tomorrow" once Tomorrow is chosen', async () => {
       await renderSuspended(LogGramsSheet, { props: { food: skyr } })
       const user = userEvent.setup()

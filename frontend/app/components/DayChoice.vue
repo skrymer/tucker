@@ -45,6 +45,7 @@ async function step(event: KeyboardEvent, by: 1 | -1) {
       :key="option.value"
       role="radio"
       :aria-checked="day === option.value"
+      :tabindex="day === option.value ? 0 : -1"
       :icon="option.icon"
       :color="day === option.value ? 'primary' : 'neutral'"
       :variant="day === option.value ? 'solid' : 'ghost'"
