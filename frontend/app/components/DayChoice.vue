@@ -18,10 +18,28 @@ const options = computed(() =>
     label: `${RELATIVE_DAYS[value].label} · ${formatDayHeadingFromISO(date)}`,
   })),
 )
+
+/** An arrow key moves the choice to the neighbouring day, wrapping, and focus with it. */
+async function step(event: KeyboardEvent, by: 1 | -1) {
+  const group = event.currentTarget as HTMLElement
+  const values = options.value.map((option) => option.value)
+  const next = (values.indexOf(day.value) + by + values.length) % values.length
+  day.value = values[next]!
+  await nextTick()
+  group.querySelector<HTMLElement>('[aria-checked="true"]')?.focus()
+}
 </script>
 
 <template>
-  <div role="radiogroup" aria-label="Day to log for" class="flex gap-2">
+  <div
+    role="radiogroup"
+    aria-label="Day to log for"
+    class="flex gap-2"
+    @keydown.arrow-right.prevent="step($event, 1)"
+    @keydown.arrow-down.prevent="step($event, 1)"
+    @keydown.arrow-left.prevent="step($event, -1)"
+    @keydown.arrow-up.prevent="step($event, -1)"
+  >
     <UButton
       v-for="option in options"
       :key="option.value"

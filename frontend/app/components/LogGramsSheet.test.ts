@@ -235,6 +235,26 @@ describe('LogGramsSheet', () => {
       ).not.toBeInTheDocument()
     })
 
+    it('moves the choice with the arrow keys, as a radio group does', async () => {
+      await renderSuspended(LogGramsSheet, { props: { food: skyr } })
+      const user = userEvent.setup()
+      // Clicked rather than focused: the sheet's own autofocus would take a
+      // focus set before it settles.
+      await user.click(screen.getByRole('radio', { name: /^Today/ }))
+
+      await user.keyboard('{ArrowRight}')
+
+      const tomorrow = screen.getByRole('radio', { name: /^Tomorrow/ })
+      expect(tomorrow).toBeChecked()
+      expect(tomorrow).toHaveFocus()
+      expect(screen.getByRole('radio', { name: /^Today/ })).not.toBeChecked()
+
+      await user.keyboard('{ArrowLeft}')
+
+      expect(screen.getByRole('radio', { name: /^Today/ })).toBeChecked()
+      expect(screen.getByRole('radio', { name: /^Today/ })).toHaveFocus()
+    })
+
     it('relabels the submit "Log for tomorrow" once Tomorrow is chosen', async () => {
       await renderSuspended(LogGramsSheet, { props: { food: skyr } })
       const user = userEvent.setup()
