@@ -96,6 +96,11 @@ not restate them.
   everything that references it be rebuilt alongside it?", not "is this a rebuild?". An
   unowned row is **adopted, never deleted**, guarded on there being exactly one User.
   (ADR 0021.)
+- **A rule that reads the client's day needs a test where the client's and server's days
+  differ** — `clientToday` = server + 1 and `date` = client + 1. In MockMvc the two agree, so
+  every other test passes whichever day the code resolved. Extending a rule to a sibling
+  endpoint means porting each of the sibling's tests: #444 copied all but this one, and only
+  pitest (`getClientToday → null` alive) noticed.
 - **Direct-bean tests need `@WithTuckerUser`.** MockMvc requests are signed in for you by a
   `MockMvcBuilderCustomizer`; a test that touches a scoped repository directly is not, and
   fails naming the repository rather than the missing identity.

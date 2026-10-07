@@ -469,7 +469,8 @@ Report one row per diagram, in the file's order:
 - CURRENT — nothing the diff moved is something this diagram draws, or it already
   draws it right. One line saying which.
 - STALE — name each element, edge or label that no longer matches, cite the code
-  (file:line) it should match, and write the replacement Mermaid line.
+  (file:line) it should match, and write the replacement Mermaid line. A mismatch
+  this diff did not cause is still STALE; never report it as an aside.
 
 Then once, at the end:
 - MISSING — something the diff adds that no diagram draws but a diagram at that

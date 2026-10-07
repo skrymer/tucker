@@ -65,7 +65,10 @@ handlers free of app auto-imports (`localToday()` etc.) — pass such values in.
    (`savedProfile`'s `timezone`, `pushServiceFor`). A windowed read
    (`?from=&to=`) is answered per width and only for a window ending on the day the
    test passes in (`intakeBreakdownByPeriod`, `weightTimelineByWidth`), and the test
-   asserts each window's own content.
+   asserts each window's own content. Nor can a mocked e2e test a **backend decision**:
+   if an assertion holds only because a handler encodes the rule (no Budget with Calorie
+   Tracking off), it proves the mock — put that case in MockMvc. #444's mocked
+   tracking-off spec was replaced by an `EntryPreviewApiTest` case at gate 1.
 2. **Type every response.** `response(status).json(body)` checks the status against the
    spec and the body against that status' schema. `response.untyped(...)` only for a
    status the spec does not declare: an unexpected failure is
