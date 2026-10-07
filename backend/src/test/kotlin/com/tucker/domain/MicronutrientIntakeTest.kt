@@ -20,10 +20,13 @@ class MicronutrientIntakeTest {
     private val day = LocalDate.of(2026, 8, 27)
     private val weekStart = day.minusDays(6)
 
+    private fun weighed(date: LocalDate, food: Food, grams: Double) =
+        WeighedEntry.log(date, food, grams, today = day)
+
     @Test
     fun `a window shorter than the trailing seven days is refused`() {
         val chicken = food(id = 1, name = "Chicken breast")
-        val entries = listOf(WeighedEntry.log(day, chicken, grams = 200.0))
+        val entries = listOf(weighed(day, chicken, grams = 200.0))
         val refused = assertFailsWith<IllegalArgumentException> {
             MicronutrientIntake.of(day, day, entries, joined(mapOf(1L to chicken), emptyMap()), emptyMap())
         }
@@ -40,7 +43,7 @@ class MicronutrientIntakeTest {
     @Test
     fun `a matched Food supplies its Reference Food's nutrients, by grams, as a day's average`() {
         val chicken = food(id = 1, name = "Chicken breast", referenceFoodId = 42)
-        val entries = listOf(WeighedEntry.log(day, chicken, grams = 700.0))
+        val entries = listOf(weighed(day, chicken, grams = 700.0))
 
         val read = intake(entries, mapOf(1L to chicken), cheddarLikeIron(1.0))
 
@@ -109,7 +112,7 @@ class MicronutrientIntakeTest {
     @Test
     fun `a body with no published figures is told apart from a window with no matches`() {
         val chicken = food(id = 1, name = "Chicken breast", referenceFoodId = 42)
-        val entries = listOf(WeighedEntry.log(day, chicken, grams = 700.0))
+        val entries = listOf(weighed(day, chicken, grams = 700.0))
 
         val noBody = intake(entries, mapOf(1L to chicken), cheddarLikeIron(1.0))
         val body = intake(
@@ -132,7 +135,7 @@ class MicronutrientIntakeTest {
     @Test
     fun `a body the published bands do not reach has no lines, whatever it ate`() {
         val chicken = food(id = 1, name = "Chicken breast", referenceFoodId = 42)
-        val entries = listOf(WeighedEntry.log(day, chicken, grams = 700.0))
+        val entries = listOf(weighed(day, chicken, grams = 700.0))
 
         // A Profile that resolved to nothing — the bands open at 14, so a body below
         // that has no published line, which is not the same as having no body.
@@ -151,10 +154,10 @@ class MicronutrientIntakeTest {
     fun `a window states how many of its days were logged`() {
         val chicken = food(id = 1, name = "Chicken breast")
         val entries = listOf(
-            WeighedEntry.log(day, chicken, grams = 100.0),
-            WeighedEntry.log(day.minusDays(1), chicken, grams = 100.0),
+            weighed(day, chicken, grams = 100.0),
+            weighed(day.minusDays(1), chicken, grams = 100.0),
             // Same day as the first, so it adds a meal and not a day.
-            WeighedEntry.log(day, chicken, grams = 50.0),
+            weighed(day, chicken, grams = 50.0),
         )
 
         val read = intake(entries, mapOf(1L to chicken))
@@ -223,7 +226,7 @@ class MicronutrientIntakeTest {
     fun `the unmatched share is never scaled up to fill the gap`() {
         val chicken = food(id = 1, name = "Chicken breast", referenceFoodId = 42)
         val references = cheddarLikeIron(1.0)
-        val eaten = listOf(WeighedEntry.log(day, chicken, grams = 700.0))
+        val eaten = listOf(weighed(day, chicken, grams = 700.0))
         val takeaway = EstimatedEntry(
             id = null,
             loggedOn = day,
@@ -252,7 +255,7 @@ class MicronutrientIntakeTest {
     @Test
     fun `an unmatched Food is queued with its share of the window`() {
         val chicken = food(id = 1, name = "Chicken breast")
-        val entries = listOf(WeighedEntry.log(day, chicken, grams = 200.0))
+        val entries = listOf(weighed(day, chicken, grams = 200.0))
 
         val read = intake(entries, mapOf(1L to chicken))
 
@@ -291,7 +294,7 @@ class MicronutrientIntakeTest {
         // 900 g of ingredients cooked down to 600 — so the cooked weight this test is
         // named for is not the ingredient total, and dividing by the wrong one shows.
         val bolognese = Recipe(id = 3, name = "Bolognese", ingredients = lines, cookedWeightG = 600.0)
-        val entries = listOf(WeighedEntry.log(day, bolognese.asFood(), grams = 200.0))
+        val entries = listOf(weighed(day, bolognese.asFood(), grams = 200.0))
 
         val read = intake(
             entries,
@@ -321,7 +324,7 @@ class MicronutrientIntakeTest {
             RecipeIngredient(food(id = 5, name = "Brown onion"), grams = 200.0),
         )
         val chilli = Recipe(id = 6, name = "Chilli", ingredients = lines, cookedWeightG = 1000.0)
-        val entries = listOf(WeighedEntry.log(day, chilli.asFood(), grams = 500.0))
+        val entries = listOf(weighed(day, chilli.asFood(), grams = 500.0))
 
         val read = intake(
             entries,
@@ -357,7 +360,7 @@ class MicronutrientIntakeTest {
         )
         val lines = listOf(RecipeIngredient(chicken, grams = 300.0), RecipeIngredient(oil, grams = 100.0))
         val traybake = Recipe(id = 3, name = "Traybake", ingredients = lines, cookedWeightG = 1000.0)
-        val entries = listOf(WeighedEntry.log(day, traybake.asFood(), grams = 500.0))
+        val entries = listOf(weighed(day, traybake.asFood(), grams = 500.0))
 
         val read = intake(entries, referenceFoods = aBorrow, recipes = listOf(traybake))
 
@@ -378,8 +381,8 @@ class MicronutrientIntakeTest {
         val lines = listOf(RecipeIngredient(mince, grams = 300.0), RecipeIngredient(passata, grams = 300.0))
         val chilli = Recipe(id = 4, name = "Chilli", ingredients = lines, cookedWeightG = 500.0)
         val entries = listOf(
-            WeighedEntry.log(day, chilli.asFood(), grams = 250.0),
-            WeighedEntry.log(day, yoghurt, grams = 200.0),
+            weighed(day, chilli.asFood(), grams = 250.0),
+            weighed(day, yoghurt, grams = 200.0),
         )
 
         val read = intake(entries, mapOf(3L to yoghurt), recipes = listOf(chilli))
@@ -404,7 +407,7 @@ class MicronutrientIntakeTest {
             val lines = listOf(RecipeIngredient(mince, grams = 300.0), RecipeIngredient(oil, grams = 100.0))
             val curry = Recipe(id = 3, name = "Keema curry", ingredients = lines, cookedWeightG = 350.0)
             return intake(
-                listOf(WeighedEntry.log(day, curry.asFood(), grams = 350.0)),
+                listOf(weighed(day, curry.asFood(), grams = 350.0)),
                 referenceFoods = mapOf(
                     42L to referenceFood("Beef, mince, regular, raw", Micronutrient.IRON to 3.5, id = 42),
                 ),
@@ -460,8 +463,8 @@ class MicronutrientIntakeTest {
         val lines = listOf(RecipeIngredient(rice, grams = 300.0))
         val curry = Recipe(id = 2, name = "Curry", ingredients = lines, cookedWeightG = 300.0)
         val entries = listOf(
-            WeighedEntry.log(day, rice, grams = 100.0),
-            WeighedEntry.log(day, curry.asFood(), grams = 300.0),
+            weighed(day, rice, grams = 100.0),
+            weighed(day, curry.asFood(), grams = 300.0),
         )
 
         val read = intake(entries, mapOf(1L to rice), recipes = listOf(curry))
@@ -478,7 +481,7 @@ class MicronutrientIntakeTest {
     @Test
     fun `an Entry naming a Food the caller did not supply is refused, not quietly dropped`() {
         val chicken = food(id = 1, name = "Chicken breast")
-        val entries = listOf(WeighedEntry.log(day, chicken, grams = 200.0))
+        val entries = listOf(weighed(day, chicken, grams = 200.0))
 
         assertFailsWith<NoSuchElementException> {
             MicronutrientIntake.of(weekStart, day, entries, eaten = emptyMap(), references = null)
@@ -490,7 +493,7 @@ class MicronutrientIntakeTest {
         val mince = food(id = 1, name = "Beef mince")
         val lines = listOf(RecipeIngredient(mince, grams = 900.0))
         val bolognese = Recipe(id = 3, name = "Bolognese", ingredients = lines, cookedWeightG = 900.0)
-        val entries = listOf(WeighedEntry.log(day, bolognese.asFood(), grams = 300.0))
+        val entries = listOf(weighed(day, bolognese.asFood(), grams = 300.0))
 
         val read = intake(entries, recipes = listOf(bolognese))
 
@@ -507,7 +510,7 @@ class MicronutrientIntakeTest {
     fun `an Estimated Entry contributes nothing and is not something to match`() {
         val chicken = food(id = 1, name = "Chicken breast", referenceFoodId = 42)
         val entries = listOf(
-            WeighedEntry.log(day, chicken, grams = 200.0),
+            weighed(day, chicken, grams = 200.0),
             EstimatedEntry(id = null, loggedOn = day, label = "Work canteen", calories = 312.8, protein = null),
         )
 
@@ -532,8 +535,8 @@ class MicronutrientIntakeTest {
         val chicken = food(id = 1, name = "Chicken breast", referenceFoodId = 42)
         val rice = food(id = 2, name = "Jasmine rice")
         val entries = listOf(
-            WeighedEntry.log(day, chicken, grams = 200.0),
-            WeighedEntry.log(day, rice, grams = 200.0),
+            weighed(day, chicken, grams = 200.0),
+            weighed(day, rice, grams = 200.0),
         )
 
         val read = intake(entries, mapOf(1L to chicken, 2L to rice), aBorrow)
@@ -550,7 +553,7 @@ class MicronutrientIntakeTest {
     private fun weekOf(grams: Double, iron: Double, reference: ReferenceIntake): MicronutrientIntake {
         val chicken = food(id = 1, name = "Chicken breast", referenceFoodId = 42)
         return intake(
-            listOf(WeighedEntry.log(day, chicken, grams = grams)),
+            listOf(weighed(day, chicken, grams = grams)),
             mapOf(1L to chicken),
             cheddarLikeIron(iron),
             mapOf(Micronutrient.IRON to reference),
@@ -571,8 +574,8 @@ class MicronutrientIntakeTest {
             nutrition = Nutrition.fromMacros(proteinPer100g = 0.0, carbsPer100g = 0.0, fatPer100g = 100.0),
         )
         val entries = listOf(
-            WeighedEntry.log(day, lettuce, grams = 1000.0),
-            WeighedEntry.log(day, oil, grams = 100.0),
+            weighed(day, lettuce, grams = 1000.0),
+            weighed(day, oil, grams = 100.0),
         )
 
         val read = intake(entries, mapOf(1L to lettuce, 2L to oil), aBorrow)

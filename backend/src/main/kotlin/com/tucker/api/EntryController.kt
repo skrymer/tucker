@@ -182,7 +182,7 @@ class EntryController(
     fun logWeighed(@RequestBody request: LogWeighedEntryRequest): EntryResponse {
         val food = foods.findById(request.foodId)
             ?: throw NotFoundException("no Food with id ${request.foodId}")
-        return entries.insert(WeighedEntry.log(request.date, food, request.grams))
+        return entries.insert(WeighedEntry.log(request.date, food, request.grams, today = request.date))
             .toResponse(foodName = food.name)
     }
 
@@ -194,7 +194,7 @@ class EntryController(
     fun previewWeighed(@RequestBody request: LogWeighedEntryRequest): BudgetProjectionResponse {
         val food = foods.findById(request.foodId)
             ?: throw NotFoundException("no Food with id ${request.foodId}")
-        return projectionFor(request.date, WeighedEntry.log(request.date, food, request.grams))
+        return projectionFor(request.date, WeighedEntry.log(request.date, food, request.grams, today = request.date))
     }
 
     /**

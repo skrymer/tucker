@@ -46,4 +46,22 @@ class EntryTest {
             "expected message to mention grams, was '${ex.message}'"
         }
     }
+
+    private val rice = Food.plain(
+        id = 1L,
+        name = "Rice",
+        barcode = null,
+        nutrition = Nutrition(caloriesPer100g = 130.0, proteinPer100g = 2.7, carbsPer100g = null, fatPer100g = null),
+    )
+
+    @Test
+    fun `a weighed Entry dated the day after tomorrow is refused`() {
+        // Tomorrow is the furthest ahead an Entry can be dated (ADR 0035).
+        val ex = assertThrows<IllegalArgumentException> {
+            WeighedEntry.log(today.plusDays(2), rice, grams = 100.0, today = today)
+        }
+        assert(ex.message!!.contains("tomorrow", ignoreCase = true)) {
+            "expected message to mention tomorrow, was '${ex.message}'"
+        }
+    }
 }
