@@ -92,7 +92,7 @@ class EntryPreviewApiTest {
 
         mockMvc.get("/api/entries") { param("date", "$date") }.andExpect {
             status { isOk() }
-            jsonPath("$.length()") { value(0) }
+            jsonPath("$.entries.length()") { value(0) }
         }
     }
 
@@ -124,7 +124,7 @@ class EntryPreviewApiTest {
 
         mockMvc.get("/api/entries") { param("date", "$date") }.andExpect {
             status { isOk() }
-            jsonPath("$.length()") { value(0) }
+            jsonPath("$.entries.length()") { value(0) }
         }
     }
 

@@ -108,10 +108,12 @@ test('editing a recipe recalibrates future logs while leaving a past log untouch
     const entriesList = await request.get(`${API}/entries`, {
       params: { date: todayIso() },
     })
-    const entries = (await entriesList.json()) as Array<{
-      id: number
-      calories: number
-    }>
+    const { entries } = (await entriesList.json()) as {
+      entries: Array<{
+        id: number
+        calories: number
+      }>
+    }
     const firstAfter = entries.find((e) => e.id === firstEntryId)
     expect(firstAfter?.calories).toBeCloseTo(200, 1)
   } finally {

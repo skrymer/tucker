@@ -65,11 +65,13 @@ test('user logs a Weighed entry from Log and the toast names it', async ({
     const list = await request.get('http://localhost:8080/api/entries', {
       params: { date: today },
     })
-    const entries = (await list.json()) as Array<{
-      id: number
-      foodName?: string
-      grams?: number
-    }>
+    const { entries } = (await list.json()) as {
+      entries: Array<{
+        id: number
+        foodName?: string
+        grams?: number
+      }>
+    }
     const entry = entries.find((e) => e.foodName === foodName)
     expect(
       entry,

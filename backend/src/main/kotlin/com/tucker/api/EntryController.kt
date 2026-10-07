@@ -53,6 +53,13 @@ data class EntryResponse(
     val name: String,
 )
 
+/** A day's Entries and the calories they total — one Daily Log on the wire. */
+data class DailyLogResponse(
+    val date: LocalDate,
+    val entries: List<EntryResponse>,
+    val caloriesConsumed: Double,
+)
+
 /** Request to log a weighed Entry — a Food eaten at a measured weight. */
 data class LogWeighedEntryRequest(
     val date: LocalDate,
@@ -161,7 +168,14 @@ class EntryController(
     @GetMapping
     fun byDate(
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) date: LocalDate,
-    ): List<EntryResponse> = entries.findByDate(date).toResponses(foods)
+    ): DailyLogResponse {
+        val log = DailyLog(date, entries.findByDate(date))
+        return DailyLogResponse(
+            date = date,
+            entries = log.entries.toResponses(foods),
+            caloriesConsumed = log.caloriesConsumed(),
+        )
+    }
 
     @PostMapping("/weighed")
     @ResponseStatus(HttpStatus.CREATED)

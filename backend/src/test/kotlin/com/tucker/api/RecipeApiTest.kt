@@ -322,7 +322,7 @@ class RecipeApiTest {
         // History is safe: the earlier Entry keeps its 170 kcal snapshot after the edit.
         val listJson = mockMvc.get("/api/entries") { param("date", "2026-01-01") }
             .andExpect { status { isOk() } }.andReturn().response.contentAsString
-        val logged = objectMapper.readTree(listJson).first { it.get("id").asLong() == entryId }
+        val logged = objectMapper.readTree(listJson).get("entries").first { it.get("id").asLong() == entryId }
         assertEquals(170.0, logged.get("calories").asDouble(), 0.1)
 
         // A fresh log of the same 100 g portion now uses the new density: 340 kcal.

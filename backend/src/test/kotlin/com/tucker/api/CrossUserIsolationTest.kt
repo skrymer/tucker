@@ -165,8 +165,8 @@ class CrossUserIsolationTest {
             param("date", "$day")
         }.andExpect {
             status { isOk() }
-            jsonPath("$.length()") { value(1) }
-            jsonPath("$[0].label") { value("Bob's porridge") }
+            jsonPath("$.entries.length()") { value(1) }
+            jsonPath("$.entries[0].label") { value("Bob's porridge") }
         }
     }
 

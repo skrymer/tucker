@@ -51,11 +51,13 @@ test('user logs an Estimated entry from Log and the toast names it', async ({
     params: { date: today },
   })
   expect(list.ok()).toBe(true)
-  const entries = (await list.json()) as Array<{
-    id: number
-    label?: string
-    calories?: number
-  }>
+  const { entries } = (await list.json()) as {
+    entries: Array<{
+      id: number
+      label?: string
+      calories?: number
+    }>
+  }
   const created = entries.find((e) => e.label === label)
   expect(
     created,
