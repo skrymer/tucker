@@ -145,8 +145,9 @@ needs it.
 
 4. **`/check-adrs` — honour the recorded decisions.** Verify the diff against the
    ADRs in `docs/adr/` and the ubiquitous language in `CONTEXT.md`. A FAIL is
-   either a code fix or a same-PR doc fix (per `[[prefer-source-fix-over-adr]]`)
-   — the user's call, surfaced.
+   either a code fix or a same-PR doc fix — the user's call, surfaced.
+   `[[prefer-source-fix-over-adr]]` picks a fix's form, never its content: an amended
+   ADR transcribes the ruling and adds no clause (#411 added one; gate 5 caught it).
 
    **Launch it in the same message as gate 3**, as a background agent briefed to
    follow `.claude/skills/check-adrs/SKILL.md` — that is this gate's standard form,
@@ -395,14 +396,14 @@ losing a finding:
   is also what stops it wandering — and it must carry the contract's
   read-anything-else sentence, so the pack cannot double as a fence.
 - **Batch the fixes, not one test run each.** Findings arrive in groups and most are
-  independent. Apply a whole gate's worth, then run the touched spec once. The
-  exception is a fix you intend to prove by hand-mutation — those stay one at a
-  time, because the point is watching that single mutant die. So does a test that
-  passes on write because the code already delivers it (a gate-3 ledger gap, say):
-  show its red on a throwaway copy, or with `-PmutationFullMatrix` on the backend —
+  independent. Apply a whole gate's worth, then run the touched spec once. Except a fix
+  you prove by hand-mutation — one at a time, to watch that single mutant die — and a
+  test that passes on write because the code already delivers it (a gate-3 ledger gap,
+  say): show its red on a throwaway copy, or with `-PmutationFullMatrix` on the backend,
   never by mutating the source in place, which the TDD hook refuses. `mutation-test`
-  carries both recipes. "It passes on write, so it can't go RED" is never a reason
-  to leave behaviour unpinned, and gate 5 rejects it. **Save every red as it fails.**
+  carries both recipes. "It passes on write, so it can't go RED" never leaves behaviour
+  unpinned; gate 5 rejects it. **Save every red as it fails.** A fix that corrects a
+  claim first `git grep`s its wording: #411 fixed CLAUDE.md, missed the hook's comment.
 
   Every gate fix follows a large agent report, which is exactly when Probity loses
   the run's test history and refuses a genuine RED as circular. Re-run the target

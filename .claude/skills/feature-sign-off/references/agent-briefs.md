@@ -53,9 +53,10 @@ agent, and the six below.
   overwrites only the same-day record)". It is not a defence, but it is a finding
   handed over: in #358 that example became the check's first FAIL, and in #400 an
   efficiency angle's "e.g. every request now passing through a router" became that
-  agent's first finding. It applies to **every** angle line, the `/simplify` three's
-  included, which have no template to copy and so are where it slips in. Name the kind
-  of thing to look for, never an instance of it.
+  agent's first finding. It applies to **every** angle line, the `/simplify` three's and
+  `/check-adrs`' included, which have no template to copy and so are where it slips in:
+  #411's check-adrs brief named two ADRs "e.g." and both came back UNCERTAIN. Name the
+  kind of thing to look for, never an instance of it.
 - The conclusion of another agent in the same run. Two briefs are exempt because that
   material *is* their subject: the arbiter's, which is given both positions, and the
   **resolutions agent's**, which is given every finding, every dismissal and the
@@ -142,8 +143,8 @@ which touches nothing but remote refs.
 Repo: <path> (<a git worktree | the main checkout> — stay in it).
 The change: cd <worktree path> && git fetch -q origin &&
   git diff $(git merge-base origin/main HEAD) HEAD
-The issue it claims to fix: read it yourself with `gh issue view <n>` — do not
-take anyone's summary of it.
+The issue it claims to fix: read it yourself with `gh issue view <n> --comments`
+— rulings are often comments — and do not take anyone's summary of it.
 Already read by other agents, so start here: <context-pack files>
 You may read anything else in the repo, including docs/adr/ and CONTEXT.md.
 
