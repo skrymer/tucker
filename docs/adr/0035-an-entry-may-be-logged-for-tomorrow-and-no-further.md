@@ -54,7 +54,7 @@ night, or ten minutes ago, logs today's lunch onto tomorrow without noticing,
 because the control is not where their attention is when they commit.
 
 So the choice sits in the sheet, beside the button, and the button names it ("Log
-for tomorrow"). Every sheet opens on **Today** — the choice is not carried to the
+for tomorrow", "Log estimate for tomorrow"). Every sheet opens on **Today** — the choice is not carried to the
 next sheet, even within one visit, since carrying it reintroduces the forgetting
 one sheet later. Evening prep pays one extra tap per meal for that.
 
