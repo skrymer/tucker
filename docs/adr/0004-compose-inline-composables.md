@@ -42,6 +42,11 @@ consumer justifies the move.
   composables have no independent existence and are covered by their component's
   tests — if an inline composable needs its own test, that is the signal to
   extract it.
+- A component too long for the lint limits (`vue/max-lines-per-block`,
+  `max-lines`) is split by **Extract Component**, not by moving a single-consumer
+  composable to `app/composables/`: each composable moves with the one child that
+  uses it and stays inline there, so size never becomes a second reason to
+  extract. A long inline composable is split into smaller inline ones.
 - Pure helpers with no reactivity are plain functions in `app/utils/` (e.g.
   `localToday`, `formatDateFromISO`), not composables.
 
