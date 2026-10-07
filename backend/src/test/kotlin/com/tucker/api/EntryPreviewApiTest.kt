@@ -160,4 +160,16 @@ class EntryPreviewApiTest {
             jsonPath("$.calorieBudget", closeTo(2000.0, 1e-6))
         }
     }
+
+    @Test
+    fun `previewing a weighed entry dated after the client's tomorrow is refused with 400`() {
+        val clientToday = LocalDate.now()
+        val dayAfterTomorrow = clientToday.plusDays(2)
+        val foodId = seedFoodAt100KcalPer100g()
+
+        mockMvc.post("/api/entries/weighed/preview") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"date":"$dayAfterTomorrow","foodId":$foodId,"grams":60.0,"clientToday":"$clientToday"}"""
+        }.andExpect { status { isBadRequest() } }
+    }
 }
