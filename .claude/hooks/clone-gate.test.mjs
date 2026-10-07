@@ -9,7 +9,6 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
-  realpathSync,
   rmSync,
   writeFileSync,
 } from 'node:fs'
@@ -118,7 +117,10 @@ test('a new test is refused while a branch file clones another source file', () 
   assert.match(reason, /inline composable/)
   assert.match(reason, /app\/utils\//)
   assert.match(reason, /green tests that already cover both copies/)
-  assert.match(reason, /jscpd:ignore-start/)
+  assert.match(
+    reason,
+    /jscpd:ignore-start \/ jscpd:ignore-end with a one-line reason/,
+  )
 })
 
 test('a clone the branch did not touch never blocks', () => {
@@ -435,32 +437,6 @@ test('a test written into another checkout is gated on that checkout', () => {
   const verdict = runHook(dir, 'Write', newVitestTest(dir), { cwd: elsewhere })
 
   assert.equal(verdict?.hookSpecificOutput?.permissionDecision, 'deny')
-})
-
-test("a scan stopped at its time limit removes its own baseline worktree, and no other session's", () => {
-  const dir = repoWithBranchClone()
-  const tmp = tempDir('clone-gate-tmp-')
-  // Another session's scan, mid-flight, with a baseline worktree of its own.
-  const theirs = join(tmp, 'cpd-base-ref-1-0')
-  git(dir, 'worktree', 'add', '-q', '--detach', theirs, 'origin/main')
-  // jscpd builds its baseline in a worktree named after its own pid.
-  const hook = hookInCheckout(
-    '#!/bin/sh\ngit worktree add -q --detach "$TMPDIR/cpd-base-ref-$$-0" origin/main\nexec sleep 5\n',
-  )
-
-  runHook(dir, 'Write', newVitestTest(dir), {
-    hook,
-    env: { CLONE_GATE_TIMEOUT_MS: '500', TMPDIR: tmp },
-  })
-
-  const worktrees = git(dir, 'worktree', 'list', '--porcelain')
-    .toString()
-    .split('\n')
-    .filter((line) => line.startsWith('worktree '))
-  assert.deepEqual(worktrees, [
-    `worktree ${realpathSync(dir)}`,
-    `worktree ${realpathSync(theirs)}`,
-  ])
 })
 
 test('a payload that is not JSON is let through with the parse error said', () => {

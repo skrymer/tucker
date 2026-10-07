@@ -80,7 +80,10 @@ function findClones(repo) {
   }
 }
 
-/** Runs jscpd over [repo], writing its JSON report into [out]. */
+/**
+ * Runs jscpd over [repo], writing its JSON report into [out]. A timeout kills only
+ * jscpd's node wrapper: its native scan runs on and removes its own baseline worktree.
+ */
 function runJscpd(repo, out) {
   try {
     execFileSync(
@@ -102,21 +105,7 @@ function runJscpd(repo, out) {
     )
   } catch (error) {
     if (error.code !== 'ETIMEDOUT') throw error
-    removeBaselineWorktrees(repo, error.pid)
     throw new Error(`jscpd took longer than ${TIMEOUT_MS / 1000} s`)
-  }
-}
-
-/**
- * Removes the worktrees a killed jscpd [pid] registered for its baseline, which
- * it would have removed itself: they live in the repo's shared `.git`.
- */
-function removeBaselineWorktrees(repo, pid) {
-  for (const line of git(repo, 'worktree', 'list', '--porcelain')) {
-    const path = line.match(/^worktree (.*\/cpd-base-ref-(\d+)-\d+)$/)
-    if (path && Number(path[2]) === pid) {
-      git(repo, 'worktree', 'remove', '--force', path[1])
-    }
   }
 }
 
