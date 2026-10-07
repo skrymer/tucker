@@ -4,6 +4,7 @@ import com.tucker.domain.DailyLog
 import com.tucker.domain.Entry
 import com.tucker.domain.EntryKind
 import com.tucker.domain.EstimatedEntry
+import com.tucker.domain.Food
 import com.tucker.domain.WeighedEntry
 import com.tucker.persistence.EntryRepository
 import com.tucker.persistence.FoodRepository
@@ -187,11 +188,8 @@ class EntryController(
     @PostMapping("/weighed")
     @ResponseStatus(HttpStatus.CREATED)
     fun logWeighed(@RequestBody request: LogWeighedEntryRequest): EntryResponse {
-        val food = foods.findById(request.foodId)
-            ?: throw NotFoundException("no Food with id ${request.foodId}")
-        val today = userToday.resolve(request.clientToday)
-        return entries.insert(WeighedEntry.log(request.date, food, request.grams, today))
-            .toResponse(foodName = food.name)
+        val (food, entry) = weighed(request)
+        return entries.insert(entry).toResponse(foodName = food.name)
     }
 
     /**
@@ -199,11 +197,15 @@ class EntryController(
      * day over the Calorie Budget? Nothing is written — this only forecasts.
      */
     @PostMapping("/weighed/preview")
-    fun previewWeighed(@RequestBody request: LogWeighedEntryRequest): BudgetProjectionResponse {
+    fun previewWeighed(@RequestBody request: LogWeighedEntryRequest): BudgetProjectionResponse =
+        projectionFor(request.date, weighed(request).second)
+
+    /** The Weighed Entry [request] describes, with the Food it weighs. */
+    private fun weighed(request: LogWeighedEntryRequest): Pair<Food, WeighedEntry> {
+        val today = userToday.resolve(request.clientToday)
         val food = foods.findById(request.foodId)
             ?: throw NotFoundException("no Food with id ${request.foodId}")
-        val today = userToday.resolve(request.clientToday)
-        return projectionFor(request.date, WeighedEntry.log(request.date, food, request.grams, today))
+        return food to WeighedEntry.log(request.date, food, request.grams, today)
     }
 
     /**
