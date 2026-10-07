@@ -21,7 +21,7 @@ const loggedToday = computed(
 
 <template>
   <UCard>
-    <h2 class="text-sm font-medium text-muted">Today's weight</h2>
+    <h2 class="text-lg font-bold text-highlighted">Today's weight</h2>
 
     <template v-if="loggedToday">
       <div class="mt-1 flex items-center justify-between gap-3">

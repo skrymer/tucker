@@ -50,7 +50,7 @@ const description = computed(() =>
 <template>
   <UCard>
     <div class="flex items-center justify-between gap-2">
-      <h2 class="text-sm font-medium text-muted">Maintaining</h2>
+      <h2 class="text-lg font-bold text-highlighted">Maintaining</h2>
       <UBadge :color="drift.color" variant="subtle" size="sm">
         {{ drift.label }}
       </UBadge>

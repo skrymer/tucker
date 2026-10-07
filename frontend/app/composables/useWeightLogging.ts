@@ -1,6 +1,6 @@
 interface WeightLoggingOptions {
-  /** The user's local day, sent as the server-side validation anchor (#24). */
-  today: string
+  /** The user's local day, sent as the server-side validation anchor. Read at save time. */
+  today: MaybeRefOrGetter<string>
   /** Side effect after a successful save (e.g. refresh the dashboard/list). */
   onSaved: () => void | Promise<void>
   /** Success toast title. Omit for a silent save (e.g. the dashboard tile). */
@@ -26,7 +26,7 @@ export function useWeightLogging(options: WeightLoggingOptions) {
     (payload: { date: string; weightKg: number }) =>
       $api('/api/weight', {
         method: 'POST',
-        body: { ...payload, clientToday: options.today },
+        body: { ...payload, clientToday: toValue(options.today) },
       }),
     {
       successTitle: options.successTitle,

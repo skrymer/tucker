@@ -2,9 +2,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   daysInWindow,
   formatDateFromISO,
+  formatDayHeadingFromISO,
   formatDayMonthFromISO,
   localDaysAgo,
   localToday,
+  localTomorrow,
   localYearsAgo,
   localYesterday,
   trailingWindow,
@@ -13,6 +15,12 @@ import {
 describe('formatDayMonthFromISO', () => {
   it('drops the year, which every tick on one axis shares', () => {
     expect(formatDayMonthFromISO('2026-06-03')).toBe('3 Jun')
+  })
+})
+
+describe('formatDayHeadingFromISO', () => {
+  it('names the weekday before the day and short month, without the year', () => {
+    expect(formatDayHeadingFromISO('2026-10-07')).toBe('Wed 7 Oct')
   })
 })
 
@@ -60,6 +68,27 @@ describe('localYearsAgo', () => {
 
     expect(localYearsAgo(0)).toBe('2026-09-11')
     expect(localYearsAgo(120)).toBe('1906-09-11')
+  })
+})
+
+describe('localTomorrow', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('steps forward across a month and a year boundary', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(2026, 9, 31, 23, 30))
+    expect(localTomorrow()).toBe('2026-11-01')
+
+    vi.setSystemTime(new Date(2026, 11, 31, 8, 30))
+    expect(localTomorrow()).toBe('2027-01-01')
+  })
+
+  it('counts from a given day rather than the clock when handed one', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(2026, 9, 7, 8, 30))
+    expect(localTomorrow('2026-10-31')).toBe('2026-11-01')
   })
 })
 

@@ -28,6 +28,11 @@ export function formatDayMonthFromISO(iso: string): string {
   return formatISO(iso, DAY_MONTH)
 }
 
+/** Format an ISO `yyyy-mm-dd` date as e.g. `Wed 7 Oct`, for a day list's heading. */
+export function formatDayHeadingFromISO(iso: string): string {
+  return formatISO(iso, WEEKDAY_DAY_MONTH)
+}
+
 /**
  * `days` before an ISO `yyyy-mm-dd` day — the user's local today unless another
  * is given — as an ISO string; `0` is that day itself.
@@ -51,6 +56,11 @@ export function localDaysAgo(
 export function localYearsAgo(years: number): string {
   const [y, m, d] = isoParts(localToday())
   return new Date(y - years, m - 1, d).toLocaleDateString('en-CA')
+}
+
+/** The day after an ISO day — the user's local today unless another is given. */
+export function localTomorrow(from: string = localToday()): string {
+  return localDaysAgo(-1, from)
 }
 
 /** The day before the user's local today, as an ISO string. */
@@ -93,6 +103,11 @@ const DAY_MONTH_YEAR = new Intl.DateTimeFormat('en-GB', {
   day: 'numeric',
   month: 'short',
   year: 'numeric',
+})
+const WEEKDAY_DAY_MONTH = new Intl.DateTimeFormat('en-GB', {
+  weekday: 'short',
+  day: 'numeric',
+  month: 'short',
 })
 const DAY_MONTH = new Intl.DateTimeFormat('en-GB', {
   day: 'numeric',

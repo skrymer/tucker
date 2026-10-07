@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { defineComponent, ref } from 'vue'
+import { defineComponent, ref, type Ref } from 'vue'
 import { mockNuxtImport, renderSuspended } from '@nuxt/test-utils/runtime'
 import userEvent from '@testing-library/user-event'
 import { screen } from '@testing-library/vue'
@@ -23,7 +23,7 @@ const scale = (today: string) =>
 // context (matching how the rest of the suite exercises composables). The host
 // prints `sheetOpen` so a test can read it without reaching into internals,
 // and once a save lands it reads the readings back, as a page does.
-const host = (today: string) =>
+const host = (today: string | Ref<string>) =>
   defineComponent({
     setup() {
       const { $api } = useNuxtApp()
@@ -48,6 +48,21 @@ const host = (today: string) =>
   })
 
 describe('useWeightLogging', () => {
+  it('stamps the day it is at save time, not the day the page opened on', async () => {
+    // Today stays open across midnight: the anchor must follow the clock, or a
+    // morning reading is validated against yesterday.
+    const today = ref('2026-06-03')
+    server.use(...scale('2026-06-04'))
+    await renderSuspended(host(today))
+
+    today.value = '2026-06-04'
+    await userEvent.click(screen.getByRole('button', { name: 'log' }))
+
+    expect(await screen.findByRole('listitem')).toHaveTextContent(
+      '2026-06-01: 84 kg',
+    )
+  })
+
   it('saves the weight stamped with the client local day, then runs onSaved', async () => {
     server.use(...scale('2026-06-03'))
     await renderSuspended(host('2026-06-03'))
