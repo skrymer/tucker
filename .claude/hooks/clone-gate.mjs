@@ -44,8 +44,8 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '../..')
 const JSCPD = join(ROOT, 'node_modules/.bin/jscpd')
 
 /**
- * What the scan counts — the threshold, the formats and the files left out — so
- * a bare `npx jscpd` at the root sees what this gate sees. SQL is not among the
+ * What the scan reads — the threshold, the formats and the files left out — so a
+ * bare `npx jscpd` at the root scans what this gate scans. SQL is not among the
  * formats: a migration can never be marked, since an edit changes its checksum.
  */
 const CONFIG = join(ROOT, '.jscpd.json')
