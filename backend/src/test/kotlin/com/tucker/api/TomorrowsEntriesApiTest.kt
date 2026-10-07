@@ -94,4 +94,21 @@ class TomorrowsEntriesApiTest {
             content = """{"date":"$dayAfterTomorrow","foodId":$oats,"grams":60.0,"clientToday":"$clientToday"}"""
         }.andExpect { status { isBadRequest() } }
     }
+
+    @Test
+    fun `a weighed Entry dated the client's tomorrow is logged when the client is a day ahead of the server`() {
+        // Past the client's midnight but not the server's: the client's tomorrow is
+        // two days past the server's date, and the client's day is the one honoured.
+        val clientToday = LocalDate.now().plusDays(1)
+        val clientTomorrow = clientToday.plusDays(1)
+        val oats = createFood("Rolled oats")
+
+        mockMvc.post("/api/entries/weighed") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"date":"$clientTomorrow","foodId":$oats,"grams":60.0,"clientToday":"$clientToday"}"""
+        }.andExpect {
+            status { isCreated() }
+            jsonPath("$.loggedOn") { value("$clientTomorrow") }
+        }
+    }
 }
