@@ -30,16 +30,21 @@ export function useBudgetGate<TPayload>(options: BudgetGateOptions<TPayload>) {
   // superseded token is stale and must not warn or commit (the user has since
   // changed the food/grams it was computed for).
   let token = 0
+  // The entry the showing warning was projected for, serialised.
+  let warnedFor: string | null = null
 
   async function attempt(payload: TPayload) {
     if (pending.value) return // a projection is already in flight — ignore the re-tap
 
-    // A warning is already showing — this tap is the deliberate "Log anyway".
-    if (warning.value) {
+    // A warning is already showing for this very entry — this tap is the
+    // deliberate "Log anyway". One stamped differently since (a later day, after
+    // midnight) was never projected, so it is checked afresh.
+    if (warning.value && JSON.stringify(payload) === warnedFor) {
       warning.value = null
       await options.commit(payload)
       return
     }
+    warning.value = null
 
     const attemptToken = ++token
     const fresh = () => attemptToken === token
@@ -68,6 +73,7 @@ export function useBudgetGate<TPayload>(options: BudgetGateOptions<TPayload>) {
           overByKcal: projection.overByKcal,
           calorieBudget: projection.calorieBudget,
         }
+        warnedFor = JSON.stringify(payload)
         return
       }
       await options.commit(payload)

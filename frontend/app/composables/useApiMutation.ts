@@ -1,8 +1,11 @@
 interface ApiMutationOptions<TArgs extends unknown[], TResult> {
   /** Toast title shown when the mutation throws. */
   errorTitle: string
-  /** Toast title shown on success. Omit for a silent success. */
-  successTitle?: string
+  /**
+   * Toast title shown on success. Omit for a silent success; a function when
+   * the title depends on the result or the arguments.
+   */
+  successTitle?: string | ((result: TResult, ...args: TArgs) => string)
   /**
    * Second line of the success toast, naming *which* record landed — e.g. the
    * Entry the server just recorded, in the words the Today row uses for it
@@ -192,7 +195,10 @@ export function useApiMutation<TArgs extends unknown[], TResult>(
       // Polite live region (Reka defaults to assertive) — a confirmation
       // should never interrupt.
       toast.add({
-        title: options.successTitle,
+        title:
+          typeof options.successTitle === 'function'
+            ? options.successTitle(outcome.value, ...args)
+            : options.successTitle,
         description: options.successDescription?.(outcome.value),
         color: 'success',
         type: 'background',

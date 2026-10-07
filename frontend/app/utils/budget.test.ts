@@ -14,6 +14,12 @@ describe('formatBudgetWarning', () => {
     ).toBe('This puts you ~106 kcal over your 1970 budget.')
   })
 
+  it("names tomorrow's budget for an Entry logged for tomorrow", () => {
+    expect(
+      formatBudgetWarning({ overByKcal: 180, calorieBudget: 2000 }, 'tomorrow'),
+    ).toBe("This puts you ~180 kcal over tomorrow's 2000 budget.")
+  })
+
   it('has no message when within budget', () => {
     expect(formatBudgetWarning(null)).toBeNull()
     expect(formatBudgetWarning(undefined)).toBeNull()

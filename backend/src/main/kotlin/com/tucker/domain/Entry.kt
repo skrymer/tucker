@@ -43,8 +43,11 @@ data class WeighedEntry(
 
     companion object {
         /** Log [grams] of [food] on [date], computing the calories and protein. */
-        fun log(date: LocalDate, food: Food, grams: Double): WeighedEntry {
+        fun log(date: LocalDate, food: Food, grams: Double, today: LocalDate): WeighedEntry {
             require(food.id != null) { "food must be persisted before it can be logged" }
+            require(!date.isAfter(today.plusDays(1))) {
+                "an Entry can be dated no later than tomorrow (was $date, today is $today)"
+            }
             return WeighedEntry(
                 id = null,
                 loggedOn = date,

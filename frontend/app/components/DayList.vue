@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import type { components } from '#open-fetch-schemas/api'
+import type { RelativeDay } from '~/utils/day'
 
 type EntryResponse = components['schemas']['EntryResponse']
 
 const props = defineProps<{
-  day: 'today' | 'tomorrow'
+  day: RelativeDay
   date: string
   entries: EntryResponse[]
   caloriesConsumed: number
@@ -14,17 +15,9 @@ const emit = defineEmits<{
   delete: [EntryResponse]
 }>()
 
-// The sun for a day under way, sunrise for one that has not begun.
-const DAYS = {
-  today: { label: 'Today', icon: 'i-lucide-sun' },
-  tomorrow: { label: 'Tomorrow', icon: 'i-lucide-sunrise' },
-} as const
-
 // Static per day: both lists can share a page, and each names its own region.
 const headingId = `day-list-${props.day}`
-const heading = computed(
-  () => `${DAYS[props.day].label} · ${formatDayHeadingFromISO(props.date)}`,
-)
+const heading = computed(() => relativeDayHeading(props.day, props.date))
 // Cap the list so a long day never buries what sits below it. Entries arrive
 // oldest-first (ORDER BY id), so the most recent few — a just-logged one
 // included — are the visible tail.
@@ -54,7 +47,11 @@ const tally = computed(() =>
         :id="headingId"
         class="flex items-center gap-2 text-lg font-bold text-highlighted"
       >
-        <UIcon :name="DAYS[day].icon" class="size-5 text-muted" aria-hidden />
+        <UIcon
+          :name="RELATIVE_DAYS[day].icon"
+          class="size-5 text-muted"
+          aria-hidden
+        />
         {{ heading }}
       </h2>
       <p class="text-sm text-muted tabular-nums">

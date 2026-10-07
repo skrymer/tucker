@@ -97,9 +97,13 @@ on the neighbouring cell in the **Frequent Foods** grid, or a grams field that
 silently kept a stale value, both produce a message identical to the correct
 outcome (issue #206). Since this toast is by
 design the *only* confirmation the user gets, it carries the thing worth
-confirming: the title stays `Entry logged` and the **description** names the
-Entry — `Banana — 107 kcal · 12 g protein`, `Cafe lunch — 600 kcal` — which is
-also the title-plus-detail shape the error path already uses.
+confirming: the title says which day the Entry went to — `Entry logged`, or
+`Logged for tomorrow` for one dated tomorrow
+([ADR 0035](0035-an-entry-may-be-logged-for-tomorrow-and-no-further.md)), read off
+the response's `loggedOn` rather than the sheet, which is back on Today by the time
+the save answers — and the **description** names the Entry — `Banana — 107 kcal ·
+12 g protein`, `Cafe lunch — 600 kcal` — which is also the title-plus-detail shape
+the error path already uses.
 
 The description carries **both** figures wherever both are known, not calories
 alone (the protein clause is dropped when there is no figure — see below).
@@ -247,10 +251,11 @@ own Retry click.
   toast with `duration: Infinity` (the Reka value that disables the auto-dismiss
   timer), `close: true`, an `id` held until the toast it names is closed (see
   above), and a Retry action that replays the same call. The success path stays
-  optional via `successTitle`.
+  optional via `successTitle`, a string or a function of the result and the
+  call's arguments.
 - Adding a `successTitle` to a flow whose result is already visible is a
   regression — the default is silent. Only entry-log mutations pass one
-  ("Entry logged"), and since [ADR 0028](0028-logging-is-its-own-destination.md)
+  ("Entry logged", or "Logged for tomorrow"), and since [ADR 0028](0028-logging-is-its-own-destination.md)
   they are the two on the **Log** destination — a Food picked out of the grid or
   the catalog, and an estimate — whose Entry lands on Today while the user stays
   on `/log`. Both pass `successDescription: formatEntryName`; a
