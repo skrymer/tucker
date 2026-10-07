@@ -8,7 +8,7 @@ import {
   frequentFoods,
   frequentFoodsFail,
 } from '../test/mocks/handlers/foods'
-import { pinToLocalMorning } from './support/date'
+import { isoShiftDays, pinToLocalMorning } from './support/date'
 import { visibleNav } from './support/nav'
 import { enterGrams, pickFoodToLog } from './support/log-page'
 import { toast } from './support/toast'
@@ -159,6 +159,43 @@ test('logs a weighed entry for the food whose cell was tapped', async ({
   await expect(sheet).toBeHidden()
   // The oats, 80 g of them, on the local day.
   await expect(loggedToast(page)).toContainText(
+    'Rolled oats — 303 kcal · 11 g protein',
+  )
+})
+
+test("logs a weighed entry onto the User's local tomorrow when Tomorrow is chosen", async ({
+  page,
+  goto,
+  network,
+}) => {
+  // The log takes the local today and the local tomorrow and nothing else, and
+  // refuses a clientToday that is not the local day: a page stamping UTC dates
+  // fails the save, and one stamping today would be confirmed "Entry logged".
+  const today = await pinToLocalMorning(page)
+  network.use(
+    frequentFoods(RANKED),
+    catalogOf(RANKED),
+    ...entryLog({ today, tomorrow: isoShiftDays(today, 1), foods: RANKED }),
+  )
+
+  await goto('/log', { waitUntil: 'hydration' })
+  const sheet = await pickFoodToLog(page, {
+    section: 'Frequent foods',
+    food: 'Rolled oats',
+  })
+  await sheet.getByRole('radio', { name: 'Tomorrow · Wed 17 Jun' }).click()
+  await expect(sheet.getByRole('radiogroup', { name: 'Day to log for' }))
+    .toMatchAriaSnapshot(`
+    - radiogroup "Day to log for":
+      - /children: deep-equal
+      - radio "Today · Tue 16 Jun" [checked=false]
+      - radio "Tomorrow · Wed 17 Jun" [checked]
+  `)
+  await enterGrams(page, sheet, 80)
+  await sheet.getByRole('button', { name: 'Log for tomorrow' }).click()
+
+  await expect(sheet).toBeHidden()
+  await expect(toast(page, 'Logged for tomorrow')).toContainText(
     'Rolled oats — 303 kcal · 11 g protein',
   )
 })
