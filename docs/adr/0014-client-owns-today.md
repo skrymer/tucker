@@ -107,8 +107,10 @@ the user's own zone is a move toward this ADR's model rather than away from it.
   frontend sends its `localToday()` on each. `/profile` has two writers and both
   replace the whole Profile, so the stamp lives in one `useProfileWrite` composable
   rather than at each call site. `GET /api/check/{barcode}` takes it too, as the
-  one read that needs it — the summary and the Budget Projection carry the day
-  as `date`.
+  one read that needs it — the summary carries the day as `date`. Since
+  [0035](0035-an-entry-may-be-logged-for-tomorrow-and-no-further.md) the Weighed
+  Entry log and its Budget Projection take it beside `date`, which may be tomorrow
+  and no further; `useEntryLogging` stamps both at the Log tap.
 - The #84 UTC pin is retained as a safety net, not a crutch.
 
 ## References
