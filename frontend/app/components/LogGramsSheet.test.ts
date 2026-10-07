@@ -216,6 +216,25 @@ describe('LogGramsSheet', () => {
       ).not.toBeChecked()
     })
 
+    it('moves both labels on a day when midnight passes with the sheet open', async () => {
+      vi.setSystemTime(new Date(2026, 9, 7, 23, 59, 59, 600))
+      await renderSuspended(LogGramsSheet, { props: { food: skyr } })
+      expect(
+        screen.getByRole('radio', { name: 'Today · Wed 7 Oct' }),
+      ).toBeVisible()
+
+      // The faked clock keeps ticking, so midnight arrives on its own.
+      expect(
+        await screen.findByRole('radio', { name: 'Today · Thu 8 Oct' }),
+      ).toBeChecked()
+      expect(
+        screen.getByRole('radio', { name: 'Tomorrow · Fri 9 Oct' }),
+      ).not.toBeChecked()
+      expect(
+        screen.queryByRole('radio', { name: 'Today · Wed 7 Oct' }),
+      ).not.toBeInTheDocument()
+    })
+
     it('relabels the submit "Log for tomorrow" once Tomorrow is chosen', async () => {
       await renderSuspended(LogGramsSheet, { props: { food: skyr } })
       const user = userEvent.setup()
