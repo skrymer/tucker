@@ -248,16 +248,16 @@ describe('LogGramsSheet', () => {
     })
 
     it("names tomorrow's budget in the warning for a tomorrow Entry, and still offers Log anyway", async () => {
-      const { rerender } = await renderSuspended(LogGramsSheet, {
-        props: { food: skyr },
+      await renderSuspended(LogGramsSheet, {
+        props: {
+          food: skyr,
+          warning: { overByKcal: 180, calorieBudget: 1900 },
+        },
       })
-      const user = userEvent.setup()
-      await user.click(screen.getByRole('radio', { name: /^Tomorrow/ }))
 
-      await rerender({
-        food: skyr,
-        warning: { overByKcal: 180, calorieBudget: 1900 },
-      })
+      await userEvent
+        .setup()
+        .click(screen.getByRole('radio', { name: /^Tomorrow/ }))
 
       expect(
         screen.getByText(
