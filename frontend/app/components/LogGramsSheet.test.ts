@@ -270,6 +270,23 @@ describe('LogGramsSheet', () => {
       ).not.toBeInTheDocument()
     })
 
+    it('emits "edited" when the day changes, since a showing warning weighed the other day', async () => {
+      const onEdited = vi.fn()
+      await renderSuspended(LogGramsSheet, {
+        props: {
+          food: skyr,
+          warning: { overByKcal: 180, calorieBudget: 1900 },
+          onEdited,
+        },
+      })
+
+      await userEvent
+        .setup()
+        .click(screen.getByRole('radio', { name: /^Tomorrow/ }))
+
+      expect(onEdited).toHaveBeenCalled()
+    })
+
     it('emits log with the day chosen', async () => {
       const onLog = vi.fn()
       await renderSuspended(LogGramsSheet, { props: { food: skyr, onLog } })

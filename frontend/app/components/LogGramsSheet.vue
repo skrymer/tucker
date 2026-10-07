@@ -45,12 +45,9 @@ watch(
   },
 )
 
-// Editing the grams clears any showing budget warning so the next Save
-// re-checks against the new number (no stale "Log anyway").
-watch(
-  () => state.grams,
-  () => emit('edited'),
-)
+// Editing the grams or the day clears any showing budget warning so the next
+// Save re-checks the entry as it now stands (no stale "Log anyway").
+watch([() => state.grams, day], () => emit('edited'))
 
 const warningMessage = computed(() =>
   formatBudgetWarning(props.warning, day.value),
