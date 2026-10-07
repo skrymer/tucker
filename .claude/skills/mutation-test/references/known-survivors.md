@@ -65,6 +65,7 @@ and [#237](https://github.com/skrymer/tucker/issues/237) (frontend).
   - Tags on Log — `catalog.ts` 48 of 54, `log.vue` and `TagChips.vue` unattributed
   - Manage tags — `ManageTagsSheet.vue` 56 of 61, then 2 carried
   - Rename and merge a Tag — `ManageTagsSheet.vue` 41 of 48, backend 24 of 28
+  - Log for tomorrow (#443) — `useBudgetGate.ts` 9 of 42, backend 6 carried from #442
   - Noise removed at the source
 - What the score still cannot ask for
 
@@ -1358,6 +1359,38 @@ Backend: every mutant on the new code (`Tag.renamedTo`, `TagRename`, `TagService
 `TagRepository.rename` / `merge`, `TagController.rename`) killed. The four survivors
 are `TagRepository.insert`'s #385 pair (L102/L103, moved from L71/L72) and
 `findByIds`' false survivor, both recorded above.
+
+### Log for tomorrow (#443) — `useBudgetGate.ts` 9 of 42, backend 6 carried from #442
+
+All 15 survive identically on `main` (swept from a byte-identical copy and a base
+worktree), and none had a verdict. Line numbers are #443's.
+
+`useBudgetGate.ts`:
+
+- **`if (fresh()) await options.commit(payload)` → `true` (L63) — real gap, closed.**
+  A projection that *fails* after the form was edited still committed the stale
+  entry; only the resolved-preview path was pinned. _commits nothing when a
+  projection fails after the form was edited_ kills it.
+- **The three-part over-budget guard (L68–L70: `ConditionalExpression` ×3, `||` ×2)
+  — equivalent.** `DailyLog.project` returns `overByKcal` non-null exactly when
+  `wouldExceedBudget`, and only with a budget (none → `(false, null)`), so every
+  relaxed guard reads the same projection the same way.
+- **`++token` → `--token` (L49) and `token++` → `token--` in `reset` (L86) —
+  equivalent.** Either direction makes a reset attempt stale; the collision a
+  reversed counter could produce needs a second attempt while the first is in
+  flight, which the `pending` guard refuses.
+- **The `console.warn` message → `""` (L60) — equivalent**: a log line only.
+
+Backend, from #442's day read:
+
+- **`EntryControllerKt` — `warnUnresolved` call removed (L135) and its
+  `isNotEmpty()` negated ×2 (L162) — noise**, the log-message construction category
+  above: each changes only whether a `logger.warn` line is written.
+- **`EntryResponse.getFoodId` / `getFoodName` / `getGrams` — real gap, accepted by
+  decision**, the `api` DTO-accessor category above.
+
+`useApiMutation.ts` scores **76 of 84** with #443's function-valued `successTitle`;
+its four new mutants are killed, and the survivors are the ones recorded above.
 
 ### Noise removed at the source
 

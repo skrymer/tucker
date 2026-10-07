@@ -79,6 +79,12 @@ reproduces real user behaviour (focus, key sequences, pointer events). Call
 - A toast never renders under `renderSuspended`, which mounts no toaster. Mock
   `useToast` with `mockNuxtImport` and assert what `add` is handed — the title and
   description are the words the User reads (`app/pages/log.test.ts`).
+- **`rerender({...})` re-runs a prop watcher even when the prop is the same
+  object**, so state a `watch` resets on open (a sheet's chosen day) is reset by
+  the rerender, not by anything a User did. Put the state under test into the first
+  render instead (#443).
+- **A sheet's autofocus takes back a `.focus()` set during the render.** To start a
+  keyboard test on a control inside an overlay, `await user.click()` it.
 - After writing tests, run `pnpm test` and only proceed when green.
 
 ## Anti-patterns
