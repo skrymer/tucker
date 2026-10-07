@@ -361,7 +361,7 @@ so an edit that still parses can reshuffle a diagram.
   mutations surface a persistent (no auto-dismiss) error toast with a Retry
   action, centralized in `useApiMutation`; a success toast appears only when the
   result isn't already visible at the point of focus (in practice, only "Entry
-  logged"). Errors are assertive (`type: 'foreground'`), success is polite
+  logged", or "Logged for tomorrow"). Errors are assertive (`type: 'foreground'`), success is polite
   (`type: 'background'`), and `toaster.max` is 1. Those two words only become an
   announcement because the toaster is portalled into a Tucker-owned
   `<div aria-live>` teleported to `body` (`app.vue`) — **don't move it back**:

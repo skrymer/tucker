@@ -81,4 +81,46 @@ class TomorrowsEntriesApiTest {
             jsonPath("$.totalCalories", closeTo(150.0, 1e-6))
         }
     }
+
+    @Test
+    fun `a weighed Entry dated after the client's tomorrow is refused with 400`() {
+        val clientToday = LocalDate.now()
+        val oats = createFood("Rolled oats")
+
+        val dayAfterTomorrow = clientToday.plusDays(2)
+
+        mockMvc.post("/api/entries/weighed") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"date":"$dayAfterTomorrow","foodId":$oats,"grams":60.0,"clientToday":"$clientToday"}"""
+        }.andExpect { status { isBadRequest() } }
+    }
+
+    @Test
+    fun `a weighed Entry dated the client's tomorrow is logged when the client is a day ahead of the server`() {
+        // Past the client's midnight but not the server's: the client's tomorrow is
+        // two days past the server's date, and the client's day is the one honoured.
+        val clientToday = LocalDate.now().plusDays(1)
+        val clientTomorrow = clientToday.plusDays(1)
+        val oats = createFood("Rolled oats")
+
+        mockMvc.post("/api/entries/weighed") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"date":"$clientTomorrow","foodId":$oats,"grams":60.0,"clientToday":"$clientToday"}"""
+        }.andExpect {
+            status { isCreated() }
+            jsonPath("$.loggedOn") { value("$clientTomorrow") }
+        }
+    }
+
+    @Test
+    fun `a weighed Entry with an implausible clientToday is refused with 400`() {
+        // No real timezone puts the client two days ahead — a bad clock, not tomorrow.
+        val clientToday = LocalDate.now().plusDays(2)
+        val oats = createFood("Rolled oats")
+
+        mockMvc.post("/api/entries/weighed") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"date":"$clientToday","foodId":$oats,"grams":60.0,"clientToday":"$clientToday"}"""
+        }.andExpect { status { isBadRequest() } }
+    }
 }

@@ -160,4 +160,53 @@ class EntryPreviewApiTest {
             jsonPath("$.calorieBudget", closeTo(2000.0, 1e-6))
         }
     }
+
+    @Test
+    fun `previewing a weighed entry dated after the client's tomorrow is refused with 400`() {
+        val clientToday = LocalDate.now()
+        val dayAfterTomorrow = clientToday.plusDays(2)
+        val foodId = seedFoodAt100KcalPer100g()
+
+        mockMvc.post("/api/entries/weighed/preview") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"date":"$dayAfterTomorrow","foodId":$foodId,"grams":60.0,"clientToday":"$clientToday"}"""
+        }.andExpect { status { isBadRequest() } }
+    }
+
+    @Test
+    fun `previewing a weighed entry with an implausible clientToday is refused with 400`() {
+        val clientToday = LocalDate.now().plusDays(2)
+        val foodId = seedFoodAt100KcalPer100g()
+
+        mockMvc.post("/api/entries/weighed/preview") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"date":"$clientToday","foodId":$foodId,"grams":60.0,"clientToday":"$clientToday"}"""
+        }.andExpect { status { isBadRequest() } }
+    }
+
+    @Test
+    fun `previewing a weighed entry for tomorrow totals tomorrow's Entries, not today's`() {
+        val clientToday = LocalDate.now()
+        val tomorrow = clientToday.plusDays(1)
+        seedBudget(2000.0, on = clientToday)
+        val foodId = seedFoodAt100KcalPer100g()
+        mockMvc.post("/api/entries/estimated") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"date":"$clientToday","label":"today's lunch","calories":1500.0,"protein":null}"""
+        }.andExpect { status { isCreated() } }
+        mockMvc.post("/api/entries/estimated") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"date":"$tomorrow","label":"tomorrow's breakfast","calories":300.0,"protein":null}"""
+        }.andExpect { status { isCreated() } }
+
+        mockMvc.post("/api/entries/weighed/preview") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"date":"$tomorrow","foodId":$foodId,"grams":600.0,"clientToday":"$clientToday"}"""
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.projectedCaloriesConsumed", closeTo(900.0, 1e-6)) // 300 + 600, not 1,500 + 600
+            jsonPath("$.wouldExceedBudget") { value(false) }
+            jsonPath("$.calorieBudget", closeTo(2000.0, 1e-6))
+        }
+    }
 }

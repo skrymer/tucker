@@ -4,6 +4,7 @@ import com.tucker.domain.DailyLog
 import com.tucker.domain.Entry
 import com.tucker.domain.EntryKind
 import com.tucker.domain.EstimatedEntry
+import com.tucker.domain.Food
 import com.tucker.domain.WeighedEntry
 import com.tucker.persistence.EntryRepository
 import com.tucker.persistence.FoodRepository
@@ -60,11 +61,17 @@ data class DailyLogResponse(
     val caloriesConsumed: Double,
 )
 
-/** Request to log a weighed Entry — a Food eaten at a measured weight. */
+/**
+ * Request to log a weighed Entry — a Food eaten at a measured weight.
+ *
+ * [clientToday] is the user's local date, which bounds [date] at tomorrow
+ * (ADR 0014, ADR 0035); omitted, the server's date stands in.
+ */
 data class LogWeighedEntryRequest(
     val date: LocalDate,
     val foodId: Long,
     val grams: Double,
+    val clientToday: LocalDate? = null,
 )
 
 /** Request to log an estimated Entry — a meal that could not be weighed. */
@@ -163,6 +170,7 @@ class EntryController(
     private val entries: EntryRepository,
     private val foods: FoodRepository,
     private val weeklyReview: WeeklyReviewService,
+    private val userToday: UserToday,
 ) {
 
     @GetMapping
@@ -180,10 +188,8 @@ class EntryController(
     @PostMapping("/weighed")
     @ResponseStatus(HttpStatus.CREATED)
     fun logWeighed(@RequestBody request: LogWeighedEntryRequest): EntryResponse {
-        val food = foods.findById(request.foodId)
-            ?: throw NotFoundException("no Food with id ${request.foodId}")
-        return entries.insert(WeighedEntry.log(request.date, food, request.grams))
-            .toResponse(foodName = food.name)
+        val (food, entry) = weighed(request)
+        return entries.insert(entry).toResponse(foodName = food.name)
     }
 
     /**
@@ -191,10 +197,15 @@ class EntryController(
      * day over the Calorie Budget? Nothing is written — this only forecasts.
      */
     @PostMapping("/weighed/preview")
-    fun previewWeighed(@RequestBody request: LogWeighedEntryRequest): BudgetProjectionResponse {
+    fun previewWeighed(@RequestBody request: LogWeighedEntryRequest): BudgetProjectionResponse =
+        projectionFor(request.date, weighed(request).second)
+
+    /** The Weighed Entry [request] describes, with the Food it weighs. */
+    private fun weighed(request: LogWeighedEntryRequest): Pair<Food, WeighedEntry> {
+        val today = userToday.resolve(request.clientToday)
         val food = foods.findById(request.foodId)
             ?: throw NotFoundException("no Food with id ${request.foodId}")
-        return projectionFor(request.date, WeighedEntry.log(request.date, food, request.grams))
+        return food to WeighedEntry.log(request.date, food, request.grams, today)
     }
 
     /**

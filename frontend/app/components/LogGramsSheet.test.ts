@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ref } from 'vue'
 import { renderSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime'
-import { screen, waitFor } from '@testing-library/vue'
+import { screen, waitFor, within } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import { food } from '~~/test/food-fixtures'
 import LogGramsSheet from './LogGramsSheet.vue'
@@ -71,7 +71,7 @@ describe('LogGramsSheet', () => {
     await user.type(screen.getByLabelText(/weight \(g\)/i), '150')
     await user.click(screen.getByRole('button', { name: /log entry/i }))
 
-    expect(onLog).toHaveBeenCalledWith({ foodId: 1, grams: 150 })
+    expect(onLog).toHaveBeenCalledWith({ foodId: 1, grams: 150, day: 'today' })
   })
 
   it('logs a fraction of a gram as weighed', async () => {
@@ -84,7 +84,7 @@ describe('LogGramsSheet', () => {
     await user.type(screen.getByLabelText(/weight \(g\)/i), '12.5')
     await user.click(screen.getByRole('button', { name: /log entry/i }))
 
-    expect(onLog).toHaveBeenCalledWith({ foodId: 1, grams: 12.5 })
+    expect(onLog).toHaveBeenCalledWith({ foodId: 1, grams: 12.5, day: 'today' })
   })
 
   it('shows the "enter weight" message when the form is submitted empty', async () => {
@@ -191,6 +191,168 @@ describe('LogGramsSheet', () => {
     await user.tab()
 
     expect(onEdited).toHaveBeenCalled()
+  })
+
+  describe('the day to log for', () => {
+    beforeEach(() => {
+      // Only the date is faked, and it keeps ticking: a frozen clock or faked
+      // timers stop the number field committing what was typed.
+      vi.useFakeTimers({ toFake: ['Date'], shouldAdvanceTime: true })
+      vi.setSystemTime(new Date(2026, 9, 7, 21, 15))
+    })
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('offers Today and Tomorrow, each with its date, and opens on Today', async () => {
+      await renderSuspended(LogGramsSheet, { props: { food: skyr } })
+
+      const choice = screen.getByRole('radiogroup', { name: 'Day to log for' })
+      expect(
+        within(choice).getByRole('radio', { name: 'Today · Wed 7 Oct' }),
+      ).toBeChecked()
+      expect(
+        within(choice).getByRole('radio', { name: 'Tomorrow · Thu 8 Oct' }),
+      ).not.toBeChecked()
+    })
+
+    it('moves both labels on a day when midnight passes with the sheet open', async () => {
+      vi.setSystemTime(new Date(2026, 9, 7, 23, 59, 59, 900))
+      await renderSuspended(LogGramsSheet, { props: { food: skyr } })
+      expect(
+        screen.getByRole('radio', { name: 'Today · Wed 7 Oct' }),
+      ).toBeVisible()
+
+      // The faked clock keeps ticking, so midnight arrives on its own.
+      expect(
+        await screen.findByRole('radio', { name: 'Today · Thu 8 Oct' }),
+      ).toBeChecked()
+      expect(
+        screen.getByRole('radio', { name: 'Tomorrow · Fri 9 Oct' }),
+      ).not.toBeChecked()
+      expect(
+        screen.queryByRole('radio', { name: 'Today · Wed 7 Oct' }),
+      ).not.toBeInTheDocument()
+    })
+
+    it('moves the choice with the arrow keys, as a radio group does', async () => {
+      await renderSuspended(LogGramsSheet, { props: { food: skyr } })
+      const user = userEvent.setup()
+      // Clicked rather than focused: the sheet's own autofocus would take a
+      // focus set before it settles.
+      await user.click(screen.getByRole('radio', { name: /^Today/ }))
+
+      await user.keyboard('{ArrowRight}')
+
+      const tomorrow = screen.getByRole('radio', { name: /^Tomorrow/ })
+      expect(tomorrow).toBeChecked()
+      expect(tomorrow).toHaveFocus()
+      expect(screen.getByRole('radio', { name: /^Today/ })).not.toBeChecked()
+
+      await user.keyboard('{ArrowLeft}')
+
+      expect(screen.getByRole('radio', { name: /^Today/ })).toBeChecked()
+      expect(screen.getByRole('radio', { name: /^Today/ })).toHaveFocus()
+    })
+
+    it('is one tab stop, on the day chosen', async () => {
+      await renderSuspended(LogGramsSheet, { props: { food: skyr } })
+      const user = userEvent.setup()
+      await user.click(screen.getByRole('radio', { name: /^Today/ }))
+
+      await user.tab()
+
+      expect(screen.getByRole('button', { name: 'Log entry' })).toHaveFocus()
+    })
+
+    it('relabels the submit "Log for tomorrow" once Tomorrow is chosen', async () => {
+      await renderSuspended(LogGramsSheet, { props: { food: skyr } })
+      const user = userEvent.setup()
+
+      await user.click(screen.getByRole('radio', { name: /^Tomorrow/ }))
+
+      expect(screen.getByRole('radio', { name: /^Tomorrow/ })).toBeChecked()
+      expect(screen.getByRole('radio', { name: /^Today/ })).not.toBeChecked()
+      expect(
+        screen.getByRole('button', { name: 'Log for tomorrow' }),
+      ).toBeVisible()
+      expect(
+        screen.queryByRole('button', { name: 'Log entry' }),
+      ).not.toBeInTheDocument()
+    })
+
+    it('opens on Today again after Tomorrow was chosen in the previous sheet', async () => {
+      const { rerender } = await renderSuspended(LogGramsSheet, {
+        props: { food: skyr },
+      })
+      const user = userEvent.setup()
+
+      await user.click(screen.getByRole('radio', { name: /^Tomorrow/ }))
+      await rerender({ food: null })
+      await rerender({ food: food({ id: 2, name: 'Oats' }) })
+
+      expect(screen.getByRole('radio', { name: /^Today/ })).toBeChecked()
+      expect(screen.getByRole('radio', { name: /^Tomorrow/ })).not.toBeChecked()
+      expect(screen.getByRole('button', { name: 'Log entry' })).toBeVisible()
+    })
+
+    it("names tomorrow's budget in the warning for a tomorrow Entry, and still offers Log anyway", async () => {
+      await renderSuspended(LogGramsSheet, {
+        props: {
+          food: skyr,
+          warning: { overByKcal: 180, calorieBudget: 1900 },
+        },
+      })
+
+      await userEvent
+        .setup()
+        .click(screen.getByRole('radio', { name: /^Tomorrow/ }))
+
+      expect(
+        screen.getByText(
+          "This puts you ~180 kcal over tomorrow's 1900 budget.",
+        ),
+      ).toBeVisible()
+      expect(screen.getByRole('button', { name: 'Log anyway' })).toBeVisible()
+      expect(
+        screen.queryByRole('button', { name: 'Log for tomorrow' }),
+      ).not.toBeInTheDocument()
+    })
+
+    it('emits "edited" when the day changes, since a showing warning weighed the other day', async () => {
+      const onEdited = vi.fn()
+      await renderSuspended(LogGramsSheet, {
+        props: {
+          food: skyr,
+          warning: { overByKcal: 180, calorieBudget: 1900 },
+          onEdited,
+        },
+      })
+
+      await userEvent
+        .setup()
+        .click(screen.getByRole('radio', { name: /^Tomorrow/ }))
+
+      expect(onEdited).toHaveBeenCalled()
+    })
+
+    it('emits log with the day chosen', async () => {
+      const onLog = vi.fn()
+      await renderSuspended(LogGramsSheet, { props: { food: skyr, onLog } })
+      const user = userEvent.setup()
+
+      await user.click(screen.getByRole('radio', { name: /^Tomorrow/ }))
+      await user.type(screen.getByLabelText(/weight \(g\)/i), '150')
+      await user.click(screen.getByRole('button', { name: 'Log for tomorrow' }))
+
+      await waitFor(() =>
+        expect(onLog).toHaveBeenCalledWith({
+          foodId: 1,
+          grams: 150,
+          day: 'tomorrow',
+        }),
+      )
+    })
   })
 
   it('locks the action while the projection or the save is in flight', async () => {

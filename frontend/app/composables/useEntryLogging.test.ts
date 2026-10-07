@@ -22,12 +22,17 @@ const oats = food({
 })
 
 /**
- * Logging against today, under a Calorie Budget of [calorieBudget]: 120 kcal
- * leaves the host's 300 kcal weighed entry 180 over, 460 leaves its 640 kcal
- * estimate 180 over.
+ * Logging against today (or tomorrow), under a Calorie Budget of
+ * [calorieBudget]: 120 kcal leaves the host's 300 kcal weighed entry 180 over,
+ * 460 leaves its 640 kcal estimate 180 over.
  */
 const logEntries = (calorieBudget?: number) =>
-  entryLog({ today: localToday(), foods: [oats], calorieBudget })
+  entryLog({
+    today: localToday(),
+    tomorrow: localTomorrow(),
+    foods: [oats],
+    calorieBudget,
+  })
 
 /** Drive a gate through a minimal host, so it runs in a real component context. */
 const host = (onLogged?: () => void) =>
@@ -39,11 +44,14 @@ const host = (onLogged?: () => void) =>
         weighed,
         estimated,
         logWeighed: () => weighed.log({ foodId: 7, grams: 80 }),
+        logWeighedForTomorrow: () =>
+          weighed.log({ foodId: 7, grams: 80, day: 'tomorrow' }),
         logEstimated: () =>
           estimated.log({ label: 'Work canteen', calories: 640 }),
       }
     },
     template: `<button @click="logWeighed">weighed</button>
+      <button @click="logWeighedForTomorrow">weighed for tomorrow</button>
       <button @click="logEstimated">estimated</button>
       <button @click="weighed.reset">edit</button>
       <p>warning: {{ weighed.warning.value?.overByKcal ?? 'none' }}</p>
@@ -119,6 +127,70 @@ describe('useEntryLogging', () => {
       title: 'Entry logged',
       description: 'Oats — 300 kcal · 10 g protein',
     })
+  })
+
+  it('confirms a weighed entry logged for tomorrow as logged for tomorrow', async () => {
+    // The handler takes tomorrow as well as today, and the toast is read off the
+    // day the Entry landed on — so one stamped with today says "Entry logged".
+    server.use(...logEntries())
+    await renderSuspended(host())
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'weighed for tomorrow' }),
+    )
+
+    await vi.waitFor(() => expect(toastAdd).toHaveBeenCalled())
+    expect(lastToast()).toMatchObject({
+      title: 'Logged for tomorrow',
+      description: 'Oats — 300 kcal · 10 g protein',
+    })
+  })
+
+  it('dates a tomorrow Entry by the day of the tap, not the day the page opened', async () => {
+    // Only the date is faked, and it keeps ticking, so the render runs as usual.
+    vi.useFakeTimers({ toFake: ['Date'], shouldAdvanceTime: true })
+    vi.setSystemTime(new Date(2026, 9, 7, 23, 59))
+    try {
+      // The log knows only the day after midnight: an Entry stamped from the
+      // evening before is refused, and the save reported as failed.
+      server.use(
+        ...entryLog({
+          today: '2026-10-08',
+          tomorrow: '2026-10-09',
+          foods: [oats],
+        }),
+      )
+      await renderSuspended(host())
+
+      vi.setSystemTime(new Date(2026, 9, 8, 0, 1))
+      await userEvent.click(
+        screen.getByRole('button', { name: 'weighed for tomorrow' }),
+      )
+
+      await vi.waitFor(() => expect(toastAdd).toHaveBeenCalled())
+      expect(lastToast()).toMatchObject({ title: 'Logged for tomorrow' })
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('commits a "log anyway" for tomorrow onto tomorrow', async () => {
+    // 120 kcal budget on every day the handler knows: tomorrow's 300 kcal is as
+    // far over as today's would be, so the gate warns before committing.
+    server.use(...logEntries(120))
+    await renderSuspended(host())
+    const forTomorrow = screen.getByRole('button', {
+      name: 'weighed for tomorrow',
+    })
+    await userEvent.click(forTomorrow)
+    await vi.waitFor(() =>
+      expect(screen.getByText('warning: 180')).toBeVisible(),
+    )
+
+    await userEvent.click(forTomorrow)
+
+    await vi.waitFor(() => expect(toastAdd).toHaveBeenCalled())
+    expect(lastToast()).toMatchObject({ title: 'Logged for tomorrow' })
   })
 
   it("logs an estimate the same way, against today's date", async () => {

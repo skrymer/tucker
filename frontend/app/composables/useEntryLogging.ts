@@ -1,4 +1,5 @@
 import type { components } from '#open-fetch-schemas/api'
+import type { RelativeDay } from '~/utils/day'
 
 type EntryResponse = components['schemas']['EntryResponse']
 type BudgetProjectionResponse =
@@ -7,12 +8,15 @@ type BudgetProjectionResponse =
 /** A Weighed Entry as the page composes it — the day is stamped here, not there. */
 type WeighedEntry = Omit<
   components['schemas']['LogWeighedEntryRequest'],
-  'date'
+  'date' | 'clientToday'
 >
 type EstimatedEntry = Omit<
   components['schemas']['LogEstimatedEntryRequest'],
   'date'
 >
+
+/** An Entry with its day stamped: the date it is logged on, and the user's local today. */
+type Stamped<TEntry> = TEntry & { date: string; clientToday: string }
 
 export interface EntryLogOptions {
   /** Run after the Entry is committed — refresh whatever the page shows of it. */
@@ -39,14 +43,12 @@ export interface EntryLogOptions {
  */
 function useGatedEntryLog<TEntry extends object>(
   endpoints: {
-    commit: (payload: TEntry & { date: string }) => Promise<EntryResponse>
-    preview: (
-      payload: TEntry & { date: string },
-    ) => Promise<BudgetProjectionResponse>
+    commit: (payload: Stamped<TEntry>) => Promise<EntryResponse>
+    preview: (payload: Stamped<TEntry>) => Promise<BudgetProjectionResponse>
   },
   options: EntryLogOptions,
 ) {
-  type Payload = TEntry & { date: string }
+  type Payload = Stamped<TEntry>
 
   const { pending: saving, execute: commit } = useApiMutation(
     endpoints.commit,
@@ -55,7 +57,12 @@ function useGatedEntryLog<TEntry extends object>(
       // never the page that logged it, so the toast is the only sign it worked
       // (ADR 0005). One run-on line, which is all a toast has room for — Today
       // states the same name and figures, laid out over two.
-      successTitle: 'Entry logged',
+      // Read off the day the Entry landed on, not the sheet, which is back on
+      // Today by the time the save answers.
+      successTitle: (entry, payload) =>
+        entry.loggedOn > payload.clientToday
+          ? 'Logged for tomorrow'
+          : 'Entry logged',
       successDescription: formatEntryName,
       errorTitle: 'Could not save entry',
       onSuccess: () => options.onLogged?.(),
@@ -72,8 +79,11 @@ function useGatedEntryLog<TEntry extends object>(
   return {
     warning,
     pending: computed(() => projecting.value || saving.value),
-    log: (entry: TEntry) =>
-      attempt({ ...entry, date: localToday() } as Payload),
+    log: ({ day = 'today', ...entry }: TEntry & { day?: RelativeDay }) => {
+      const today = localToday()
+      const date = day === 'tomorrow' ? localTomorrow(today) : today
+      return attempt({ ...entry, date, clientToday: today } as Payload)
+    },
     reset,
   }
 }
