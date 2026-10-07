@@ -1,4 +1,5 @@
 import type { BudgetWarning } from '~/composables/useBudgetGate'
+import type { RelativeDay } from './day'
 
 /**
  * The over-budget heads-up copy (CONTEXT.md — Budget Projection): how far logging
@@ -9,7 +10,7 @@ import type { BudgetWarning } from '~/composables/useBudgetGate'
  */
 export function formatBudgetWarning(
   warning: BudgetWarning | null | undefined,
-  day: 'today' | 'tomorrow' = 'today',
+  day: RelativeDay = 'today',
 ): string | null {
   const whose = day === 'tomorrow' ? "tomorrow's" : 'your'
   return warning

@@ -1,19 +1,23 @@
 <script setup lang="ts">
-const day = defineModel<'today' | 'tomorrow'>({ required: true })
+import type { RelativeDay } from '~/utils/day'
 
+const day = defineModel<RelativeDay>({ required: true })
+
+// Labelled from the local day as it stands, so a sheet left open over midnight
+// names the day it will now log on.
 const today = useLocalDay()
-const options = computed(() => [
-  {
-    value: 'today' as const,
-    icon: 'i-lucide-sun',
-    label: `Today · ${formatDayHeadingFromISO(today.value)}`,
-  },
-  {
-    value: 'tomorrow' as const,
-    icon: 'i-lucide-sunrise',
-    label: `Tomorrow · ${formatDayHeadingFromISO(localTomorrow(today.value))}`,
-  },
-])
+const options = computed(() =>
+  (
+    [
+      ['today', today.value],
+      ['tomorrow', localTomorrow(today.value)],
+    ] as const
+  ).map(([value, date]) => ({
+    value,
+    icon: RELATIVE_DAYS[value].icon,
+    label: `${RELATIVE_DAYS[value].label} · ${formatDayHeadingFromISO(date)}`,
+  })),
+)
 </script>
 
 <template>

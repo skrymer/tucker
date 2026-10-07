@@ -2,6 +2,7 @@
 import { z } from 'zod'
 import type { components } from '#open-fetch-schemas/api'
 import type { BudgetWarning } from '~/composables/useBudgetGate'
+import type { RelativeDay } from '~/utils/day'
 
 type FoodResponse = components['schemas']['FoodResponse']
 
@@ -14,7 +15,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  log: [{ foodId: number; grams: number; day: 'today' | 'tomorrow' }]
+  log: [{ foodId: number; grams: number; day: RelativeDay }]
   edited: []
   close: []
 }>()
@@ -28,7 +29,7 @@ const schema = z.object({ grams: gramsSchema })
 
 const state = reactive({ grams: undefined as number | undefined })
 
-const day = ref<'today' | 'tomorrow'>('today')
+const day = ref<RelativeDay>('today')
 
 // Reset on every (re)open so a previous session's grams don't linger. The
 // form's `:key` remounts the field but not this state, which the number field's

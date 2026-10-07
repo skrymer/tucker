@@ -1,4 +1,5 @@
 import type { components } from '#open-fetch-schemas/api'
+import type { RelativeDay } from '~/utils/day'
 
 type EntryResponse = components['schemas']['EntryResponse']
 type BudgetProjectionResponse =
@@ -13,9 +14,6 @@ type EstimatedEntry = Omit<
   components['schemas']['LogEstimatedEntryRequest'],
   'date'
 >
-
-/** The day an Entry is logged for — tomorrow at the furthest (ADR 0035). */
-export type LoggingDay = 'today' | 'tomorrow'
 
 /** An Entry with its day stamped: the date it is logged on, and the user's local today. */
 type Stamped<TEntry> = TEntry & { date: string; clientToday: string }
@@ -81,7 +79,7 @@ function useGatedEntryLog<TEntry extends object>(
   return {
     warning,
     pending: computed(() => projecting.value || saving.value),
-    log: ({ day = 'today', ...entry }: TEntry & { day?: LoggingDay }) => {
+    log: ({ day = 'today', ...entry }: TEntry & { day?: RelativeDay }) => {
       const today = localToday()
       const date = day === 'tomorrow' ? localTomorrow(today) : today
       return attempt({ ...entry, date, clientToday: today } as Payload)
