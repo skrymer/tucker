@@ -6,8 +6,7 @@ import { baselineCalorieBudget } from './summary'
 
 /**
  * Logging an Entry on [today], gated by its Budget Projection against a
- * [calorieBudget] of which nothing is eaten yet on any day — or, given `null`,
- * against none, as for a User whose review carries no intake targets. A Weighed Entry's
+ * [calorieBudget] of which nothing is eaten yet on any day. A Weighed Entry's
  * calories and protein are its Food's per-100 g figures scaled by the grams
  * sent; an estimate echoes its label and figures. A Food not among [foods] is a
  * 404, as the real endpoint answers. An Entry dated any day but [today] is a
@@ -28,7 +27,7 @@ export function entryLog({
   today: string
   tomorrow?: string
   foods: FoodResponse[]
-  calorieBudget?: number | null
+  calorieBudget?: number
 }) {
   const consumed = new Map<string, number>()
   let nextId = 1
@@ -37,13 +36,12 @@ export function entryLog({
     consumed.set(date, (consumed.get(date) ?? 0) + calories)
   const projection = (date: string, calories: number) => {
     const projected = (consumed.get(date) ?? 0) + calories
-    const overBy = calorieBudget === null ? null : projected - calorieBudget
-    const over = overBy !== null && overBy > 0
+    const over = projected > calorieBudget
     return {
       wouldExceedBudget: over,
       projectedCaloriesConsumed: projected,
       calorieBudget,
-      overByKcal: over ? overBy : null,
+      overByKcal: over ? projected - calorieBudget : null,
     }
   }
   /** Why an Entry stamped with [date] and [clientToday] is refused, if it is. */
@@ -56,18 +54,10 @@ export function entryLog({
   }) =>
     wrongDay(clientToday, today) ??
     (date === tomorrow ? null : wrongDay(date, today))
-  /** A weighed portion, or why it is refused. */
-  const weigh = (
-    stamp: { date: string; clientToday?: string | null },
-    foodId: number,
-    grams: number,
-  ):
-    | { status: 400 | 404; message: string }
-    | { food: FoodResponse; calories: number; protein: number } => {
-    const refused = misdated(stamp)
-    if (refused) return { status: 400, ...refused }
+  /** A weighed portion of the Food [foodId], or null for a Food not held. */
+  const weigh = (foodId: number, grams: number) => {
     const food = foods.find((f) => f.id === foodId)
-    if (!food) return { status: 404, message: 'no such food' }
+    if (!food) return null
     return {
       food,
       calories: (food.caloriesPer100g * grams) / 100,
@@ -78,18 +68,18 @@ export function entryLog({
   return [
     http.post('/api/entries/weighed/preview', async ({ request, response }) => {
       const { date, clientToday, foodId, grams } = await request.json()
-      const portion = weigh({ date, clientToday }, foodId, grams)
-      if ('status' in portion) {
-        return response(portion.status).json({ message: portion.message })
-      }
+      const refused = misdated({ date, clientToday })
+      if (refused) return response(400).json(refused)
+      const portion = weigh(foodId, grams)
+      if (!portion) return response(404).json({ message: 'no such food' })
       return response(200).json(projection(date, portion.calories))
     }),
     http.post('/api/entries/weighed', async ({ request, response }) => {
       const { date, clientToday, foodId, grams } = await request.json()
-      const portion = weigh({ date, clientToday }, foodId, grams)
-      if ('status' in portion) {
-        return response(portion.status).json({ message: portion.message })
-      }
+      const refused = misdated({ date, clientToday })
+      if (refused) return response(400).json(refused)
+      const portion = weigh(foodId, grams)
+      if (!portion) return response(404).json({ message: 'no such food' })
       eat(date, portion.calories)
       return response(201).json(
         weighedEntry({

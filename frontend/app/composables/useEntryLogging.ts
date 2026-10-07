@@ -79,7 +79,7 @@ function useGatedEntryLog<TEntry extends object>(
   return {
     warning,
     pending: computed(() => projecting.value || saving.value),
-    log: ({ day = 'today', ...entry }: TEntry & { day?: RelativeDay }) => {
+    log: ({ day, ...entry }: TEntry & { day: RelativeDay }) => {
       const today = localToday()
       const date = day === 'tomorrow' ? localTomorrow(today) : today
       return attempt({ ...entry, date, clientToday: today } as Payload)

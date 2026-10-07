@@ -18,17 +18,9 @@ const emit = defineEmits<{
 }>()
 
 // The form mounts afresh each time its sheet opens, so it opens on Today.
-const day = ref<RelativeDay>('today')
-
-const warningMessage = computed(() =>
-  formatBudgetWarning(props.warning, day.value),
-)
-
-const submitLabel = computed(() => {
-  if (warningMessage.value) return 'Log anyway'
-  return day.value === 'tomorrow'
-    ? 'Log estimate for tomorrow'
-    : 'Log estimated entry'
+const { day, warningMessage, submitLabel } = useLogDay(() => props.warning, {
+  today: 'Log estimated entry',
+  tomorrow: 'Log estimate for tomorrow',
 })
 
 const schema = z.object({
