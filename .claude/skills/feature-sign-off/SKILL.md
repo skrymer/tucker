@@ -138,11 +138,10 @@ needs it.
 
    **Check a diagram edit against its render, not its source.** Mermaid parses a
    diagram that no longer reads, and the C4 renderer places elements by statement
-   order, so one new element can push a label through a box. Push the branch and
-   read the file in GitHub's preview, or paste the block into mermaid.live. A
-   headless render (mermaid-cli, puppeteer) is **not** a check for the native C4
-   blocks: their rows wrap at `screen.availWidth`, which headless Chrome reports as
-   800px, so it draws two elements per row whatever `UpdateLayoutConfig` says.
+   order, so one new element can push a label through a box. For a C4 block read
+   GitHub's preview: headless Chrome reports `screen.availWidth` as 800px, so it
+   draws two per row whatever `UpdateLayoutConfig` says. A flowchart or ER block is
+   checked headless ([recipe](references/rationale.md#rendering-a-diagram)).
 
 4. **`/check-adrs` — honour the recorded decisions.** Verify the diff against the
    ADRs in `docs/adr/` and the ubiquitous language in `CONTEXT.md`. A FAIL is

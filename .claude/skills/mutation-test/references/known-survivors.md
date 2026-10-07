@@ -934,7 +934,7 @@ the tool, the same move as narrowing a scope.
 ### `api` — 12 of 226
 
 DTO accessors on `GoalResponse` (3), `WeeklyReviewResponse` (3), `FoodResponse` (2),
-`GoalProgressResponse` (2), `DailySummaryResponse` (1), `EntryResponse.isEstimate` (1).
+`GoalProgressResponse` (2), `DailySummaryResponse` (1), `EntryResponse.isEstimate` (2: the true and the false return).
 
 **Verdict: real gap, accepted by decision** — the backend twin of the frontend's
 presentation tokens. Asserting them pins that a constructor argument reached the
@@ -1383,11 +1383,20 @@ worktree), and none had a verdict. Line numbers are #443's.
 
 Backend, from #442's day read:
 
-- **`EntryControllerKt` — `warnUnresolved` call removed (L135) and its
-  `isNotEmpty()` negated ×2 (L162) — noise**, the log-message construction category
+- **`EntryControllerKt` — the `warnUnresolved` call in `toResponses` removed, and
+  `isNotEmpty()` in `warnUnresolved` negated ×2 — noise** (cited by function: lines
+  move with every request field added above them), the log-message construction category
   above: each changes only whether a `logger.warn` line is written.
 - **`EntryResponse.getFoodId` / `getFoodName` / `getGrams` — real gap, accepted by
   decision**, the `api` DTO-accessor category above.
+
+From #444's estimate-form slice, `LogGramsSheet.vue` (17 of 19):
+
+- **`reactive({ grams: undefined })` → `reactive({})` — equivalent**: `grams` reads
+  `undefined` either way, and the reactive proxy tracks the key once it is set.
+- **`if (food)` → `if (true)` in the reset-on-open watch — equivalent**: it also resets
+  as the sheet closes (`food` null), and every open resets again, so no state reaches
+  the User.
 
 `useApiMutation.ts` scores **76 of 84** with #443's function-valued `successTitle`;
 its four new mutants are killed, and the survivors are the ones recorded above.

@@ -22,11 +22,19 @@ const TEST_RUN =
 /** Output piped into a filter that drops lines. */
 const FILTER = /\|\s*(grep|head)\b/
 
-/** The deny the hook answers with, or null when the command may run. */
+/** Whether one command list (no `;`, `&&`, `||` or newline) filters a test run. */
+const filtersARun = (segment) => {
+  const filter = segment.search(FILTER)
+  return filter >= 0 && TEST_RUN.test(segment.slice(0, filter))
+}
+
+/**
+ * The deny the hook answers with, or null when the command may run. Judged per
+ * command list, so a run saved whole to a file may be grepped by a later one.
+ */
 export function decide(command) {
   if (typeof command !== 'string') return null
-  const filter = command.search(FILTER)
-  if (filter < 0 || !TEST_RUN.test(command.slice(0, filter))) return null
+  if (!command.split(/;|&&|\|\||\n/).some(filtersARun)) return null
   return {
     hookSpecificOutput: {
       hookEventName: 'PreToolUse',

@@ -94,3 +94,12 @@ test asserts containment, not only line count.
 
 For scale: the session that carried gates 3–6 of the #331 sign-off spawned three
 agents. The four standing additions take a run of that shape from three to seven.
+
+## Rendering a diagram
+
+`npx @mermaid-js/mermaid-cli -p pup.json -i block.mmd -o block.png`, where `pup.json`
+is `{"executablePath": "<~/.cache/ms-playwright/chromium-*/chrome-linux64/chrome>",
+"args": ["--no-sandbox"]}` — without it mmdc exits 2 here. Extract the block with
+`awk` from the heading to its closing fence. Don't spend screenshots on GitHub's
+preview of a non-C4 block: its mermaid frame froze `Page.captureScreenshot` in two
+tabs (#444).

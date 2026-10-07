@@ -82,8 +82,8 @@ shapes a real user's data comes in, and drive at least one of each:
 | A capped, trimmed name | the cap and cap+1 **padded with spaces**, the cap counted in UTF-16 (16 × 😀 is 32 units), a character the two sides trim differently, **both ways** — `"\u001F"` (JS keeps it, Kotlin's `trim()` strips it) and `"﻿"` (JS strips it, Kotlin keeps it) — driven alone *and* in front of a real value (`"\u001FSnack"`) through **every** client-side decision the name feeds (a duplicate check, a merge preview), not only the server's refusal: F18 slice 6 drove `"\u001F"` to the blank refusal alone, and the untested branch was an unannounced merge |
 | A number | zero, the boundary of its rule, one past it, a decimal where an integer is expected |
 | A list | none, one, the cap, one past the cap |
-| A date | today, a local midnight, a day the rule spans — and for a derived day (tomorrow, a window edge) the last day of a month, 31 Dec, and 28 Feb in a leap year. To get there in the real browser, swap `window.Date` for a subclass with an offset and fire `document.dispatchEvent(new Event('visibilitychange'))` so `useLocalDay` re-reads it (#443); label those probes "page clock shifted", not typed entry |
-| A server-side rule the UI can't reach | a domain bound or a ±N plausibility check: the edge, one past it, and the field omitted — over the dev proxy, on every endpoint that runs it. #443's walk-through drove only what the sheet can send, and the audit sent it back for `clientToday` ±1/+2/absent and `date = today + 2` |
+| A date | today, a local midnight, a day the rule spans — and for a derived day (tomorrow, a window edge) the last day of a month, 31 Dec, and 28 Feb in a leap year. To get there in the real browser, swap `window.Date` for a subclass with an offset and fire `document.dispatchEvent(new Event('visibilitychange'))` so `useLocalDay` re-reads it (#443); label those probes "page clock shifted", not typed entry. A clock shifted past ±1 day makes every `clientToday` write a 400, so it proves rollover **labels**, never a stored rollover date — pin that with a unit test |
+| A server-side rule the UI can't reach | a domain bound or a ±N plausibility check: both edges of the window, one past each, and the field omitted — over the dev proxy, on every endpoint that runs it. A bound **anchored to the client's day** is only told apart from one on the server's day with the client off by one: `clientToday` +1 with `date` client+2 (accepted) and client+3 (refused), `clientToday` −1 with `date` server+1 (refused). #443's audit sent the walk-through back for `clientToday` ±1/+2/absent and `date = today + 2`; #444's for −2 and the client offset |
 | A new request-body field | read the saved record back through the API after the save, since a form can look right and send nothing (`GET /api/foods` showing the new `tags`, not the chips on screen) |
 | A threshold the code *reads* | a breakpoint, a timer, a grace period, a debounce — value−1 and value, both sides. #435's 1024px breakpoint and 250 ms grace were first walked at 555/2133px and 80/680 ms, which bracket them and prove neither edge |
 
@@ -161,6 +161,10 @@ Related, all cheap:
   but it is **not typed entry** — it skips the keystroke and blur timing where F18 slice 5's
   bug lived. Label such probes in the verdict, and drive the golden path and one boundary
   with real keystrokes (or Playwright `pressSequentially`).
+- **A sheet stuck in `data-state="closed"` invalidates reopen and reset probes.** It never
+  unmounts, so a DOM click reopens the same instance with its old state — a false FAIL
+  (#444: "still on Tomorrow, fields filled"; a focused headless Pixel 7 reopened on Today,
+  blank, at 0/50/100/400 ms). Drive reopen probes in a Playwright context and label them.
 
 ## Camera-gated surfaces
 

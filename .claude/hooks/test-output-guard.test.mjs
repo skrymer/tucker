@@ -38,6 +38,17 @@ test('refuses a Gradle test or build filtered through grep, and a run cut by hea
   assert.equal(refused('pnpm test 2>&1 | head -20'), true)
 })
 
+test('lets a run saved whole to a file be filtered by a later command', () => {
+  assert.equal(
+    refused('./gradlew test --tests X > out.txt 2>&1; grep -n FAILED out.txt | head'),
+    false,
+  )
+  assert.equal(
+    refused('./gradlew test --tests X 2>&1 | tail -3 && grep -c killed report.txt'),
+    false,
+  )
+})
+
 const HOOK = join(dirname(fileURLToPath(import.meta.url)), 'test-output-guard.mjs')
 const runHook = (stdin) =>
   execFileSync('node', [HOOK], { input: stdin, encoding: 'utf8' })

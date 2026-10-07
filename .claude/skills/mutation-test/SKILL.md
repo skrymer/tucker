@@ -171,7 +171,11 @@ Identical for both stacks; only step 1 and 2's commands differ.
      copy, never the line in place — the TDD hook refuses an in-place mutant as an
      untested production change. For a page or component, copy it (and the test)
      outside `frontend/app/`, have the copy import its siblings explicitly, and run
-     `vitest --config` pointed at the copy; for the backend, a copy of `backend/`.
+     `vitest --config` pointed at the copy; for the backend, a copy of `backend/`
+     with `dev/` (and `frontend/`) symlinked beside it — `build.gradle.kts` copies
+     `../dev/access-key` into the test resources, so without it every test fails
+     on `/access/signing-key.json is missing`. Save the copy's `diff -u` against the
+     source beside the red, or the RED cannot be replayed.
      Backend gotchas carry the mechanism and a worked example.
 
    **Check [`references/known-survivors.md`](references/known-survivors.md) first.**
