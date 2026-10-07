@@ -247,6 +247,29 @@ describe('LogGramsSheet', () => {
       expect(screen.getByRole('button', { name: 'Log entry' })).toBeVisible()
     })
 
+    it("names tomorrow's budget in the warning for a tomorrow Entry, and still offers Log anyway", async () => {
+      const { rerender } = await renderSuspended(LogGramsSheet, {
+        props: { food: skyr },
+      })
+      const user = userEvent.setup()
+      await user.click(screen.getByRole('radio', { name: /^Tomorrow/ }))
+
+      await rerender({
+        food: skyr,
+        warning: { overByKcal: 180, calorieBudget: 1900 },
+      })
+
+      expect(
+        screen.getByText(
+          "This puts you ~180 kcal over tomorrow's 1900 budget.",
+        ),
+      ).toBeVisible()
+      expect(screen.getByRole('button', { name: 'Log anyway' })).toBeVisible()
+      expect(
+        screen.queryByRole('button', { name: 'Log for tomorrow' }),
+      ).not.toBeInTheDocument()
+    })
+
     it('emits log with the day chosen', async () => {
       const onLog = vi.fn()
       await renderSuspended(LogGramsSheet, { props: { food: skyr, onLog } })

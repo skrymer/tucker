@@ -52,7 +52,9 @@ watch(
   () => emit('edited'),
 )
 
-const warningMessage = computed(() => formatBudgetWarning(props.warning))
+const warningMessage = computed(() =>
+  formatBudgetWarning(props.warning, day.value),
+)
 
 function onSubmit() {
   emit('log', { foodId: props.food!.id, grams: state.grams!, day: day.value })

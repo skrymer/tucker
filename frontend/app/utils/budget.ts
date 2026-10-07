@@ -9,8 +9,10 @@ import type { BudgetWarning } from '~/composables/useBudgetGate'
  */
 export function formatBudgetWarning(
   warning: BudgetWarning | null | undefined,
+  day: 'today' | 'tomorrow' = 'today',
 ): string | null {
+  const whose = day === 'tomorrow' ? "tomorrow's" : 'your'
   return warning
-    ? `This puts you ~${Math.round(warning.overByKcal)} kcal over your ${Math.round(warning.calorieBudget)} budget.`
+    ? `This puts you ~${Math.round(warning.overByKcal)} kcal over ${whose} ${Math.round(warning.calorieBudget)} budget.`
     : null
 }
