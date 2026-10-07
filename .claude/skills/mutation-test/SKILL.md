@@ -19,6 +19,13 @@ Testcontainers e2e are far too slow to re-run per mutant. Gaps there (unanchored
 aria-snapshot regexes, substring `getByText`, fixture defaults that can't occur in
 production) are still found by hand.
 
+**So are the Claude Code hooks** (`.claude/hooks/*.mjs`): neither engine reaches them.
+Sweep a hook by hand — a list of named mutants, each an exact string replacement that
+must match once, applied to a scratch copy of `.claude/hooks/` with `node_modules`
+symlinked in, then `node --test` per copy; re-sweep after every later fix. A mutant
+killed by a test that fakes an external tool proves nothing about the real tool, so
+check the fake has the tool's process structure (#411: `.bin/jscpd` is a node wrapper).
+
 ## Run each sweep bounded, and one at a time
 
 **Both sweeps go through `scripts/bounded-run.sh`**, which puts the command in a
