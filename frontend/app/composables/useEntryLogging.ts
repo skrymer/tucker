@@ -12,7 +12,7 @@ type WeighedEntry = Omit<
 >
 type EstimatedEntry = Omit<
   components['schemas']['LogEstimatedEntryRequest'],
-  'date'
+  'date' | 'clientToday'
 >
 
 /** An Entry with its day stamped: the date it is logged on, and the user's local today. */

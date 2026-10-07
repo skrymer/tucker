@@ -1,4 +1,6 @@
 import { expect, test } from './support/test'
+import { entryLog } from '../test/mocks/handlers/entries'
+import { catalogOf, frequentFoods } from '../test/mocks/handlers/foods'
 import { goalInProgress } from '../test/mocks/handlers/goal'
 import {
   profileOf,
@@ -10,8 +12,11 @@ import {
   baselineReading,
   weightMeasurements,
 } from '../test/mocks/handlers/weight'
+import { isoShiftDays, pinToLocalMorning } from './support/date'
 import { denyCamera } from './support/fake-camera'
+import { enterEstimate, openEstimateToLog } from './support/log-page'
 import { visibleNav, withOverflowNav } from './support/nav'
+import { toast } from './support/toast'
 
 // Tucker takes the shape of the Calorie Tracking choice. With it off there is no
 // log half — no Log destination, no Foods or Check, no day summary and no
@@ -117,6 +122,42 @@ test.describe('with Calorie Tracking off', () => {
       .click()
 
     await expect(page.getByText('84.4 kg')).toBeVisible()
+  })
+
+  test('an estimate is logged for tomorrow from Log with no budget heads-up', async ({
+    page,
+    goto,
+    network,
+  }) => {
+    // The review carries no intake targets, so no projection has a Budget to
+    // exceed, however large the estimate (ADR 0024).
+    const today = await pinToLocalMorning(page)
+    network.use(
+      catalogOf([]),
+      frequentFoods([]),
+      ...entryLog({
+        today,
+        tomorrow: isoShiftDays(today, 1),
+        foods: [],
+        calorieBudget: null,
+      }),
+    )
+
+    await goto('/log', { waitUntil: 'hydration' })
+    const sheet = await openEstimateToLog(page)
+    await sheet.getByRole('radio', { name: /^Tomorrow · / }).click()
+    await enterEstimate(page, sheet, {
+      label: 'Birthday dinner',
+      calories: 4000,
+    })
+    await sheet
+      .getByRole('button', { name: 'Log estimate for tomorrow' })
+      .click()
+
+    await expect(sheet).toBeHidden()
+    await expect(toast(page, 'Logged for tomorrow')).toContainText(
+      'Birthday dinner — 4000 kcal',
+    )
   })
 
   test('the Foods catalog is still reachable by a direct link', async ({
