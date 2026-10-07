@@ -438,6 +438,59 @@ describe('/ when the day turns over while Today is open', () => {
     ).not.toBeInTheDocument()
     expect(screen.getByText('228 / 2000 kcal')).toBeVisible()
   })
+  it('never shows the new today as tomorrow while the next day is still being read', async () => {
+    const day = localDay.value
+    const next = localTomorrow(day)
+    const afterNext = localTomorrow(next)
+    const oats = weighedEntry({
+      id: 3,
+      loggedOn: next,
+      calories: 228,
+      protein: 8,
+      foodId: 9,
+      foodName: 'Rolled oats',
+      grams: 60,
+    })
+    let release!: () => void
+    const nextRead = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    server.use(
+      http.get('/api/summary', ({ query, response }) => {
+        const date = query.get('date')!
+        const entries = date === next ? [oats] : [todaysSalmon]
+        return response(200).json({
+          ...DAY,
+          date,
+          caloriesConsumed: entries[0]!.calories,
+          entries,
+        })
+      }),
+      http.get('/api/entries', async ({ query, response }) => {
+        const date = query.get('date')!
+        // The day after the new today answers late, as a slow network would.
+        if (date === afterNext) await nextRead
+        const entries = date === next ? [oats] : []
+        return response(200).json({ date, entries, caloriesConsumed: 0 })
+      }),
+    )
+    await renderToday()
+    await screen.findByRole('region', { name: /^Tomorrow · / })
+
+    localDay.value = next
+
+    try {
+      await screen.findByRole('region', {
+        name: `Today · ${formatDayHeadingFromISO(next)}`,
+      })
+      expect(
+        screen.queryByRole('region', { name: /^Tomorrow · / }),
+      ).not.toBeInTheDocument()
+    } finally {
+      release()
+    }
+  })
+
   it("stops calling yesterday's reading today's, and logs the next one on the new day", async () => {
     const day = localDay.value
     const next = localTomorrow(day)

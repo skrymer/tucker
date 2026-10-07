@@ -169,8 +169,10 @@ const {
         title="Couldn't load tomorrow's entries"
         @retry="refreshTomorrow"
       >
+        <!-- Only once the read is for the current tomorrow: across a turnover the
+             previous one would otherwise stand under the day that is now today. -->
         <DayList
-          v-if="tomorrowsLog?.entries.length"
+          v-if="tomorrowsLog?.entries.length && tomorrowsLog.date === tomorrow"
           day="tomorrow"
           :date="tomorrowsLog.date"
           :entries="tomorrowsLog.entries"
