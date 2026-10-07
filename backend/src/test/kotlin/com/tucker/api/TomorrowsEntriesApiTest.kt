@@ -123,4 +123,60 @@ class TomorrowsEntriesApiTest {
             content = """{"date":"$clientToday","foodId":$oats,"grams":60.0,"clientToday":"$clientToday"}"""
         }.andExpect { status { isBadRequest() } }
     }
+
+    @Test
+    fun `an estimated Entry dated after the client's tomorrow is refused with 400`() {
+        val clientToday = LocalDate.now()
+        val dayAfterTomorrow = clientToday.plusDays(2)
+
+        mockMvc.post("/api/entries/estimated") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"date":"$dayAfterTomorrow","label":"Café dinner","calories":800.0,"protein":null,""" +
+                """"clientToday":"$clientToday"}"""
+        }.andExpect { status { isBadRequest() } }
+    }
+
+    @Test
+    fun `an estimated Entry dated the client's tomorrow is logged on it, as an estimate`() {
+        val clientToday = LocalDate.now()
+        val clientTomorrow = clientToday.plusDays(1)
+
+        mockMvc.post("/api/entries/estimated") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"date":"$clientTomorrow","label":"Café dinner","calories":800.0,"protein":null,""" +
+                """"clientToday":"$clientToday"}"""
+        }.andExpect {
+            status { isCreated() }
+            jsonPath("$.loggedOn") { value("$clientTomorrow") }
+            jsonPath("$.label") { value("Café dinner") }
+            jsonPath("$.isEstimate") { value(true) }
+        }
+    }
+
+    @Test
+    fun `an estimated Entry dated the client's tomorrow is logged when the client is a day ahead of the server`() {
+        // Two days past the server's date, so only the client's day admits it.
+        val clientToday = LocalDate.now().plusDays(1)
+        val clientTomorrow = clientToday.plusDays(1)
+
+        mockMvc.post("/api/entries/estimated") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"date":"$clientTomorrow","label":"Café dinner","calories":800.0,"protein":null,""" +
+                """"clientToday":"$clientToday"}"""
+        }.andExpect {
+            status { isCreated() }
+            jsonPath("$.loggedOn") { value("$clientTomorrow") }
+        }
+    }
+
+    @Test
+    fun `an estimated Entry with an implausible clientToday is refused with 400`() {
+        val clientToday = LocalDate.now().plusDays(2)
+
+        mockMvc.post("/api/entries/estimated") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"date":"$clientToday","label":"Café dinner","calories":800.0,"protein":null,""" +
+                """"clientToday":"$clientToday"}"""
+        }.andExpect { status { isBadRequest() } }
+    }
 }

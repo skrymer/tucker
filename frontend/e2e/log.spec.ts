@@ -10,7 +10,12 @@ import {
 } from '../test/mocks/handlers/foods'
 import { isoShiftDays, pinToLocalMorning } from './support/date'
 import { visibleNav } from './support/nav'
-import { enterGrams, pickFoodToLog } from './support/log-page'
+import {
+  enterEstimate,
+  enterGrams,
+  openEstimateToLog,
+  pickFoodToLog,
+} from './support/log-page'
 import { toast } from './support/toast'
 
 // The Log destination: Frequent Foods as a grid, an estimate as its peer, and
@@ -197,6 +202,39 @@ test("logs a weighed entry onto the User's local tomorrow when Tomorrow is chose
   await expect(sheet).toBeHidden()
   await expect(toast(page, 'Logged for tomorrow')).toContainText(
     'Rolled oats — 303 kcal · 11 g protein',
+  )
+})
+
+test("logs an estimate onto the User's local tomorrow when Tomorrow is chosen", async ({
+  page,
+  goto,
+  network,
+}) => {
+  // As for a weighed entry: only the local today and tomorrow are accepted, and
+  // only with the local day as clientToday.
+  const today = await pinToLocalMorning(page)
+  network.use(
+    frequentFoods(RANKED),
+    catalogOf(RANKED),
+    ...entryLog({ today, tomorrow: isoShiftDays(today, 1), foods: RANKED }),
+  )
+
+  await goto('/log', { waitUntil: 'hydration' })
+  const sheet = await openEstimateToLog(page)
+  await expect(sheet.getByRole('radiogroup', { name: 'Day to log for' }))
+    .toMatchAriaSnapshot(`
+    - radiogroup "Day to log for":
+      - /children: deep-equal
+      - radio "Today · Tue 16 Jun" [checked]
+      - radio "Tomorrow · Wed 17 Jun" [checked=false]
+  `)
+  await sheet.getByRole('radio', { name: 'Tomorrow · Wed 17 Jun' }).click()
+  await enterEstimate(page, sheet, { label: 'Café dinner', calories: 800 })
+  await sheet.getByRole('button', { name: 'Log estimate for tomorrow' }).click()
+
+  await expect(sheet).toBeHidden()
+  await expect(toast(page, 'Logged for tomorrow')).toContainText(
+    'Café dinner — 800 kcal',
   )
 })
 

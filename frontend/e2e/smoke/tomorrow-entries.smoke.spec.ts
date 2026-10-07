@@ -1,12 +1,17 @@
 import { test, expect } from './support/smoke-test'
 import { isoShiftDays, todayIso } from '../support/date'
 import { create } from './support/seeding'
-import { enterGrams, pickFoodToLog } from '../support/log-page'
+import {
+  enterEstimate,
+  enterGrams,
+  openEstimateToLog,
+  pickFoodToLog,
+} from '../support/log-page'
 import { toast } from '../support/toast'
 
 // An Entry logged ahead for tomorrow (ADR 0035) is listed on Today under its own
 // day and deleted from there, against the real backend — and one logged for
-// tomorrow from Log lands there. The first is seeded through the API,
+// tomorrow from Log, weighed or estimated, lands there. The first is seeded through the API,
 // which accepts a tomorrow date. The per-test reset wipes the seed.
 
 test("a tomorrow Entry is listed apart from today's and can be deleted", async ({
@@ -88,5 +93,33 @@ test('a Weighed Entry logged for tomorrow from Log lands in the Tomorrow list', 
   await expect(tomorrowsList).toContainText('1 entry · 383 kcal')
   await expect(tomorrowsList).toContainText(foodName)
   // Nothing landed today, so today has no list at all.
+  await expect(page.getByRole('region', { name: /^Today · / })).toBeHidden()
+})
+
+test('an estimate logged for tomorrow from Log lands in the Tomorrow list, flagged', async ({
+  page,
+  goto,
+}) => {
+  const label = `Smoke dinner ${Date.now()}`
+
+  await goto('/log', { waitUntil: 'hydration' })
+  const sheet = await openEstimateToLog(page)
+  await sheet.getByRole('radio', { name: /^Tomorrow · / }).click()
+  await enterEstimate(page, sheet, { label, calories: 640 })
+  await sheet.getByRole('button', { name: 'Log estimate for tomorrow' }).click()
+
+  await expect(sheet).toBeHidden()
+  await expect(
+    toast(page, 'Logged for tomorrow').getByText(`${label} — 640 kcal`, {
+      exact: true,
+    }),
+  ).toBeVisible()
+
+  await goto('/', { waitUntil: 'hydration' })
+  const tomorrowsList = page.getByRole('region', { name: /^Tomorrow · / })
+  await expect(tomorrowsList).toContainText('1 entry · 640 kcal')
+  await expect(
+    tomorrowsList.getByRole('listitem').filter({ hasText: label }),
+  ).toContainText('est.')
   await expect(page.getByRole('region', { name: /^Today · / })).toBeHidden()
 })

@@ -45,9 +45,7 @@ data class WeighedEntry(
         /** Log [grams] of [food] on [date], computing the calories and protein. */
         fun log(date: LocalDate, food: Food, grams: Double, today: LocalDate): WeighedEntry {
             require(food.id != null) { "food must be persisted before it can be logged" }
-            require(!date.isAfter(today.plusDays(1))) {
-                "an Entry can be dated no later than tomorrow (was $date, today is $today)"
-            }
+            requireNoLaterThanTomorrow(date, today)
             return WeighedEntry(
                 id = null,
                 loggedOn = date,
@@ -78,5 +76,20 @@ data class EstimatedEntry(
         require(label.isNotBlank()) { "an estimated Entry needs a label" }
         require(calories >= 0) { "calories must be >= 0" }
         require(protein == null || protein >= 0) { "protein must be >= 0 when given" }
+    }
+
+    companion object {
+        /** Log an estimate of [calories] and [protein] under [label] on [date]. */
+        fun log(date: LocalDate, label: String, calories: Double, protein: Double?, today: LocalDate): EstimatedEntry {
+            requireNoLaterThanTomorrow(date, today)
+            return EstimatedEntry(null, date, label, calories, protein)
+        }
+    }
+}
+
+/** Tomorrow is the furthest ahead an Entry can be dated (ADR 0035). */
+private fun requireNoLaterThanTomorrow(date: LocalDate, today: LocalDate) {
+    require(!date.isAfter(today.plusDays(1))) {
+        "an Entry can be dated no later than tomorrow (was $date, today is $today)"
     }
 }

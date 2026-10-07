@@ -74,12 +74,18 @@ data class LogWeighedEntryRequest(
     val clientToday: LocalDate? = null,
 )
 
-/** Request to log an estimated Entry — a meal that could not be weighed. */
+/**
+ * Request to log an estimated Entry — a meal that could not be weighed.
+ *
+ * [clientToday] is the user's local date, which bounds [date] at tomorrow
+ * (ADR 0014, ADR 0035); omitted, the server's date stands in.
+ */
 data class LogEstimatedEntryRequest(
     val date: LocalDate,
     val label: String,
     val calories: Double,
     val protein: Double?,
+    val clientToday: LocalDate? = null,
 )
 
 /**
@@ -229,9 +235,17 @@ class EntryController(
     @PostMapping("/estimated")
     @ResponseStatus(HttpStatus.CREATED)
     fun logEstimated(@RequestBody request: LogEstimatedEntryRequest): EntryResponse =
-        entries.insert(
-            EstimatedEntry(null, request.date, request.label, request.calories, request.protein),
-        ).toResponse(foodName = null)
+        entries.insert(estimated(request)).toResponse(foodName = null)
+
+    /** The Estimated Entry [request] describes. */
+    private fun estimated(request: LogEstimatedEntryRequest): EstimatedEntry =
+        EstimatedEntry.log(
+            request.date,
+            request.label,
+            request.calories,
+            request.protein,
+            userToday.resolve(request.clientToday),
+        )
 
     /**
      * A non-persisting Budget Projection: would logging this estimated Entry push the
@@ -239,10 +253,7 @@ class EntryController(
      */
     @PostMapping("/estimated/preview")
     fun previewEstimated(@RequestBody request: LogEstimatedEntryRequest): BudgetProjectionResponse =
-        projectionFor(
-            request.date,
-            EstimatedEntry(null, request.date, request.label, request.calories, request.protein),
-        )
+        projectionFor(request.date, estimated(request))
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)

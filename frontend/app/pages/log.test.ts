@@ -396,6 +396,32 @@ describe('/log', () => {
       within(sheet).getByRole('button', { name: /log estimated entry/i }),
     ).toBeVisible()
   })
+
+  it('opens the estimate sheet on Today after Tomorrow was chosen in the last one', async () => {
+    // Last night's Tomorrow must not catch today's lunch.
+    const user = userEvent.setup()
+    await renderSuspended(Log)
+    const open = async () => {
+      await user.click(
+        screen.getByRole('button', { name: /log an estimate instead/i }),
+      )
+      return screen.findByRole('dialog', { name: /log an estimate/i })
+    }
+
+    let sheet = await open()
+    await user.click(within(sheet).getByRole('radio', { name: /^Tomorrow/ }))
+    await user.click(within(sheet).getByRole('button', { name: /close/i }))
+
+    sheet = await open()
+
+    expect(within(sheet).getByRole('radio', { name: /^Today/ })).toBeChecked()
+    expect(
+      within(sheet).getByRole('radio', { name: /^Tomorrow/ }),
+    ).not.toBeChecked()
+    expect(
+      within(sheet).getByRole('button', { name: 'Log estimated entry' }),
+    ).toBeVisible()
+  })
 })
 
 describe('/log narrowed by a Tag', () => {

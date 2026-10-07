@@ -181,7 +181,8 @@ flowchart TD
   principal --> csrf
   csrf --> controllers
   controllers --> services
-  controllers -- "simple reads" --> repos
+  controllers -- "reads and simple writes" --> repos
+  controllers -- "simple use cases" --> domain
   services --> domain
   services --> repos
   repos -- "reads owner from" --> current
