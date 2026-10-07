@@ -57,7 +57,7 @@ and [#237](https://github.com/skrymer/tucker/issues/237) (frontend).
   - Weight Timeline — 63 of 68, and the one new report is a `MEMORY_ERROR`
   - Weight Timeline, the intake half — `weightTimeline.ts` 128 of 131
   - Weight Timeline, the plan — `weightTimeline.ts` + the section, 247 of 260
-  - `date.ts`'s cached `Intl.DateTimeFormat` — 7 false survivors, settled by hand
+  - `date.ts`'s cached `Intl.DateTimeFormat` — every literal of a module-level formatter, false survivors, settled by hand
   - Weight Timeline, the intake half — backend 87 of 90
   - Tags, backend — 159 of 178
   - Tags, frontend — `FoodTagsSheet.vue` 35 of 39, `rowTags.ts` 10 of 10
@@ -1162,14 +1162,18 @@ the marker accessor on a timeline with no plan), and the section's `() => props.
 getter (no component test called `dayTick`, so the chart could have been wired to
 nothing and the day axis would simply have been blank).
 
-### `date.ts`'s cached `Intl.DateTimeFormat` — 7 false survivors, settled by hand
+### `date.ts`'s cached `Intl.DateTimeFormat` — every literal of a module-level formatter, false survivors, settled by hand
 
-Every mutant of the two module-level formatters' arguments survives
-(`'en-GB'` → `""`, `month: 'short'` → `""`, …). They are **false survivors**: a
-module-level initialiser runs at import, before Stryker sets the active mutant, so
-the mutated literal is never the one the formatter was built from. Hand-mutating
-`month: 'short'` → `'long'` fails **7 tests** across `date.test.ts` and
-`weightTimeline.test.ts`.
+Every mutant of a module-level formatter's arguments survives (`'en-GB'` → `""`,
+`month: 'short'` → `""`, …) — 7 across `DAY_MONTH_YEAR` and `DAY_MONTH`, and 4 more
+across `WEEKDAY_DAY_MONTH` once #442 lands (11 of 47 on the file). They are **false
+survivors**: a module-level initialiser runs at import, before Stryker sets the active
+mutant, so the mutated literal is never the one the formatter was built from.
+Hand-mutating `month: 'short'` → `'long'` fails **7 tests** across `date.test.ts` and
+`weightTimeline.test.ts`; on `WEEKDAY_DAY_MONTH`, `weekday` or `month` `'short'` →
+`'long'` each fails `formatDayHeadingFromISO`'s test ("Wednesday 7 Oct", "Wed 7
+October"). A new formatter added here joins this entry: hand-mutate one option and
+record it, rather than re-triaging the class.
 
 The same wall as the backend's Spring-context entries above, in a different engine:
 suspect anything evaluated once at load time. The cache is worth its blind spot —

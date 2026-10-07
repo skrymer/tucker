@@ -5,6 +5,8 @@ for when a gate's order or overlap looks arbitrary and you are tempted to change
 
 ## Contents
 - The design notes
+- Citations
+- Ablation
 - What the fan-out costs
 
 ## The design notes
@@ -57,6 +59,27 @@ for when a gate's order or overlap looks arbitrary and you are tempted to change
   bought was a narrower question, asked in the author's terms. That is a milder
   defect than agreement, and it is still the defect the contract exists for — a
   claim to test beats a claim to check.
+
+## Citations
+
+A dismissal's source is a claim, and gate 5 checks it against the thing it names.
+#403 dismissed a doc comment's issue number on "REFERENCE cites issues throughout
+(#402, #358)"; gate 5 found exactly one. #442 cited three sources that did not say
+what was claimed: #443's scope (its midnight criterion is the logging sheet's, not
+Today's), ADR 0014 (it says the client owns today, not that a page reads it once)
+and a deleted prototype in place of PRD #441, which did hold the tally format. All
+three were rejected, and the first turned out to be a regression the user then ruled
+into the change. Quoting the source at the moment of writing is what catches it.
+
+## Ablation
+
+#442's phone fix was a header row's `flex-wrap` plus `whitespace-nowrap` on the
+heading and the tally. Its test asserted each sat on one line. Ablating one class at
+a time showed the test pinned neither: without `flex-wrap` both still sat on one
+line while the tally spilled 16px out of the card at 412px (106px at 320), and
+without the two `nowrap`s nothing changed down to 320px. The test now also asserts
+the tally's right edge sits inside the card, and the dead classes are gone. A layout
+test asserts containment, not only line count.
 
 ## What the fan-out costs
 

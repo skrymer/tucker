@@ -38,12 +38,14 @@ explicitly in the verdict.
    by another worktree's server running other code. Confirm the listener is yours
    (`ss -ltnp | grep :<port>`, then `readlink /proc/<pid>/cwd`) before the first
    navigation.
-   **A fresh worktree has no `frontend/.env`, so every `/api` call 401s** until the
-   proxy has a dev assertion to attach: `printf 'TUCKER_DEV_ACCESS_TOKEN=%s\n'
+   **Walk through as a disposable User, always** — even when a `frontend/.env`
+   already exists (back it up first): `printf 'TUCKER_DEV_ACCESS_TOKEN=%s\n'
    "$(node scripts/mint-dev-token.mjs --email verify-<slice>@tucker.invalid
-   --expires-in 1d)" > .env` in `frontend/`. A fresh `--email` is a fresh User, so
-   the walk-through never touches the developer's own dev data. **Delete the
-   `.env` at cleanup** — it breaks the mocked e2e locally. And restart a dev server
+   --expires-in 1d)" > .env` in `frontend/`, then restart the dev server, which reads
+   `.env` only at start. A fresh `--email` is a fresh User, so no probe is skipped to
+   protect the developer's data — #442's first pass skipped one and the audit flagged
+   it. **At cleanup, restore the backed-up `.env` (or delete a new one)** — a stray
+   `.env` breaks the mocked e2e locally. And restart a dev server
    that has been running across the gates' fixes before the walk-through: one that
    had served the whole sign-off answered a 500 ("Cannot read properties of null")
    until restarted.
@@ -80,7 +82,7 @@ shapes a real user's data comes in, and drive at least one of each:
 | A capped, trimmed name | the cap and cap+1 **padded with spaces**, the cap counted in UTF-16 (16 × 😀 is 32 units), a character the two sides trim differently, **both ways** — `"\u001F"` (JS keeps it, Kotlin's `trim()` strips it) and `"﻿"` (JS strips it, Kotlin keeps it) — driven alone *and* in front of a real value (`"\u001FSnack"`) through **every** client-side decision the name feeds (a duplicate check, a merge preview), not only the server's refusal: F18 slice 6 drove `"\u001F"` to the blank refusal alone, and the untested branch was an unannounced merge |
 | A number | zero, the boundary of its rule, one past it, a decimal where an integer is expected |
 | A list | none, one, the cap, one past the cap |
-| A date | today, a local midnight, a day the rule spans |
+| A date | today, a local midnight, a day the rule spans — and for a derived day (tomorrow, a window edge) the last day of a month, 31 Dec, and 28 Feb in a leap year |
 | A new request-body field | read the saved record back through the API after the save, since a form can look right and send nothing (`GET /api/foods` showing the new `tags`, not the chips on screen) |
 | A threshold the code *reads* | a breakpoint, a timer, a grace period, a debounce — value−1 and value, both sides. #435's 1024px breakpoint and 250 ms grace were first walked at 555/2133px and 80/680 ms, which bracket them and prove neither edge |
 
@@ -108,10 +110,11 @@ resemble** — a value that looks like the happy path is not a probe.
   **Mobile Chrome** project and label the verdict so, rather than stalling the gate.
   Issue #379 is about replacing this driver.
 - **A maximized window silently refuses to resize** (no `wmctrl`/`xdotool` under
-  Wayland). If two resize attempts don't move `innerWidth`, first open a **fresh tab**
-  with `tabs_create_mcp` and resize that to 412×915 — one session reports it landing
-  first time (not yet re-confirmed). Only if that fails too, **ask the user to
-  unmaximize the Chrome window** — one sentence, and the next resize works.
+  Wayland). A **fresh tab** (`tabs_create_mcp`, then resize to 412×915) landed in one
+  session and failed in #442, so it counts as one of the two attempts above, not a
+  third route. After two, **ask the user to unmaximize the Chrome window**, or take the
+  labelled fallback — a Pixel 7 Playwright context against
+  the same dev server and data works for a single live probe too.
 - **Ask before the desktop pass, not after it.** The resize only fails at the
   *phone* step, which is halfway through the gate, so the question lands after the
   stack is up and the desktop walk is done — and then everything waits on a human.
@@ -119,8 +122,7 @@ resemble** — a value that looks like the happy path is not a probe.
   and moves the question to a moment where the user can answer it while you seed
   data.
 - **An un-maximized window floors at ~555px wide** (586px measured on another run), so
-  Pixel-7 width (412px) is unreachable that way — the fresh tab above is the one route
-  reported to reach it. The floor is
+  Pixel-7 width (412px) is unreachable that way — a fresh tab reached it once. The floor is
   still under Tucker's 1024px breakpoint, so the phone layout *is* genuinely exercised
   — say which width you actually used. For a true 412px check, lean on the Playwright
   **Mobile Chrome** project.
@@ -149,7 +151,7 @@ Related, all cheap:
 - **Batch with `browser_batch`** whenever you can predict two steps ahead: click,
   type, Tab, assert. Each standalone call is a round trip.
 - **Typing can stop landing too**, silently: the field has focus, the tool reports the
-  keys, the value stays empty — seen once the window lost OS focus, alongside a sheet
+  keys, the value stays empty — seen twice (once in #442, a weight field) when the window lost OS focus, alongside a sheet
   stuck in `data-state="closed"` (its exit animation never ran). Check the value after
   every type. Setting it through the native setter plus an `input` event drives v-model,
   but it is **not typed entry** — it skips the keystroke and blur timing where F18 slice 5's
