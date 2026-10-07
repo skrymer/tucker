@@ -203,8 +203,9 @@ The refactor step of a TDD cycle is enforced too, by a hook rather than by prose
 ([#411](https://github.com/skrymer/tucker/issues/411)): `.claude/hooks/clone-gate.mjs`
 refuses a write that **adds a test** while the branch holds a clone of Kotlin, TS or
 Vue source that `origin/main` does not (jscpd's `--baseline-from-ref`; tests, SQL and
-import-only clones never count). What counts is `.jscpd.json`, so a bare `npx jscpd`
-at the root sees what the gate sees. The way out is a refactoring from the
+import-only clones never count). What it scans is `.jscpd.json`, so a bare `npx jscpd`
+at the root scans the same files at the same threshold — and also lists the clones
+`origin/main` already has, which the gate leaves alone. The way out is a refactoring from the
 [catalog](https://refactoring.com/catalog/) — Extract Function, Slide Statements, Pull
 Up Method — or, when the duplication is meant, wrapping the kept side in
 `jscpd:ignore-start` / `jscpd:ignore-end` with a one-line reason, which review then

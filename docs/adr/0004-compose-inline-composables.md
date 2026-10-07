@@ -37,7 +37,8 @@ consumer justifies the move.
   toast, post-success side effects — lives in the shared `useApiMutation` factory;
   concern composables build on it rather than re-implementing it.
 - **Extracted, shared** composables and utils get their own red-green unit tests
-  (e.g. `useWeightLogging.test.ts`, `useApiMutation.test.ts`). **Inline**
+  (e.g. `useWeightLogging.test.ts`, `useApiMutation.test.ts`), written after the
+  extraction when it removed duplicated code (ADR 0013, rule 5). **Inline**
   composables have no independent existence and are covered by their component's
   tests — if an inline composable needs its own test, that is the signal to
   extract it.
