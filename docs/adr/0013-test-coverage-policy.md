@@ -39,7 +39,11 @@ glue's failing red simply lives in the integrated test, not in a unit test.
 3. **Glue is driven by the integrated test**, not a standalone one.
 4. **Every vertical slice ships one real-stack smoke** (`pnpm test:smoke` against the
    live backend container) — the end-to-end golden path, no API mocks.
-5. **New shared composables and utils get their own red-green tests.**
+5. **New shared composables and utils get their own red-green tests.** One written by
+   extracting duplicated code is the exception: it is extracted as a refactor, under the
+   green tests that already cover both copies, and its own tests follow once the clone
+   is gone, with their red shown on a mutant (the clone gate refuses any new test while
+   a clone stands; #411).
 6. **Tests are named by behaviour, never by implementation or issue number.**
 
 ### The test layers this produces

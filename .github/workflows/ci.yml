@@ -187,8 +187,15 @@ jobs:
         with:
           node-version: 22
 
-      # No dependencies to install: the scripts and their tests are plain ESM on
-      # node:test.
+      # The scripts and their tests are plain ESM on node:test. clone-gate needs
+      # jscpd, at the version package.json pins; `npm ci` would also pull probity's
+      # tree, ~1.5 GB against jscpd's ~40 MB, so jscpd is installed on its own.
+      - name: Install jscpd
+        run: |
+          npm install --prefix "$RUNNER_TEMP/jscpd" --no-save --no-package-lock \
+            "jscpd@$(node -p "require('./package.json').devDependencies.jscpd")"
+          ln -s "$RUNNER_TEMP/jscpd/node_modules" node_modules
+
       - name: Test the hook scripts
         run: node --test .claude/hooks/*.test.mjs
 

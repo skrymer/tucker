@@ -1,0 +1,6 @@
+{
+  "minTokens": 30,
+  "format": ["kotlin", "typescript", "vue"],
+  "ignore": ["**/*.test.ts", "backend/src/test/**"],
+  "path": ["backend/src", "frontend/app"]
+}
