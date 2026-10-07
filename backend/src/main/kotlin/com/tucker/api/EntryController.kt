@@ -60,11 +60,17 @@ data class DailyLogResponse(
     val caloriesConsumed: Double,
 )
 
-/** Request to log a weighed Entry — a Food eaten at a measured weight. */
+/**
+ * Request to log a weighed Entry — a Food eaten at a measured weight.
+ *
+ * [clientToday] is the user's local date, which bounds [date] at tomorrow
+ * (ADR 0014, ADR 0035); omitted, the server's date stands in.
+ */
 data class LogWeighedEntryRequest(
     val date: LocalDate,
     val foodId: Long,
     val grams: Double,
+    val clientToday: LocalDate? = null,
 )
 
 /** Request to log an estimated Entry — a meal that could not be weighed. */
@@ -163,6 +169,7 @@ class EntryController(
     private val entries: EntryRepository,
     private val foods: FoodRepository,
     private val weeklyReview: WeeklyReviewService,
+    private val userToday: UserToday,
 ) {
 
     @GetMapping
@@ -182,7 +189,8 @@ class EntryController(
     fun logWeighed(@RequestBody request: LogWeighedEntryRequest): EntryResponse {
         val food = foods.findById(request.foodId)
             ?: throw NotFoundException("no Food with id ${request.foodId}")
-        return entries.insert(WeighedEntry.log(request.date, food, request.grams, today = request.date))
+        val today = userToday.resolve(request.clientToday)
+        return entries.insert(WeighedEntry.log(request.date, food, request.grams, today))
             .toResponse(foodName = food.name)
     }
 

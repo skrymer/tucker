@@ -81,4 +81,17 @@ class TomorrowsEntriesApiTest {
             jsonPath("$.totalCalories", closeTo(150.0, 1e-6))
         }
     }
+
+    @Test
+    fun `a weighed Entry dated after the client's tomorrow is refused with 400`() {
+        val clientToday = LocalDate.now()
+        val oats = createFood("Rolled oats")
+
+        val dayAfterTomorrow = clientToday.plusDays(2)
+
+        mockMvc.post("/api/entries/weighed") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"date":"$dayAfterTomorrow","foodId":$oats,"grams":60.0,"clientToday":"$clientToday"}"""
+        }.andExpect { status { isBadRequest() } }
+    }
 }
