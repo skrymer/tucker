@@ -146,6 +146,25 @@ describe('useEntryLogging', () => {
     })
   })
 
+  it('commits a "log anyway" for tomorrow onto tomorrow', async () => {
+    // 120 kcal budget on every day the handler knows: tomorrow's 300 kcal is as
+    // far over as today's would be, so the gate warns before committing.
+    server.use(...logEntries(120))
+    await renderSuspended(host())
+    const forTomorrow = screen.getByRole('button', {
+      name: 'weighed for tomorrow',
+    })
+    await userEvent.click(forTomorrow)
+    await vi.waitFor(() =>
+      expect(screen.getByText('warning: 180')).toBeVisible(),
+    )
+
+    await userEvent.click(forTomorrow)
+
+    await vi.waitFor(() => expect(toastAdd).toHaveBeenCalled())
+    expect(lastToast()).toMatchObject({ title: 'Logged for tomorrow' })
+  })
+
   it("logs an estimate the same way, against today's date", async () => {
     server.use(...logEntries())
     await renderSuspended(host())
