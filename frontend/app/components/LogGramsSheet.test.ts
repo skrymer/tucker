@@ -232,6 +232,21 @@ describe('LogGramsSheet', () => {
       ).not.toBeInTheDocument()
     })
 
+    it('opens on Today again after Tomorrow was chosen in the previous sheet', async () => {
+      const { rerender } = await renderSuspended(LogGramsSheet, {
+        props: { food: skyr },
+      })
+      const user = userEvent.setup()
+
+      await user.click(screen.getByRole('radio', { name: /^Tomorrow/ }))
+      await rerender({ food: null })
+      await rerender({ food: food({ id: 2, name: 'Oats' }) })
+
+      expect(screen.getByRole('radio', { name: /^Today/ })).toBeChecked()
+      expect(screen.getByRole('radio', { name: /^Tomorrow/ })).not.toBeChecked()
+      expect(screen.getByRole('button', { name: 'Log entry' })).toBeVisible()
+    })
+
     it('emits log with the day chosen', async () => {
       const onLog = vi.fn()
       await renderSuspended(LogGramsSheet, { props: { food: skyr, onLog } })

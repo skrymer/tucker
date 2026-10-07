@@ -36,7 +36,12 @@ const day = ref<'today' | 'tomorrow'>('today')
 watch(
   () => props.food,
   (food) => {
-    if (food) state.grams = undefined
+    if (food) {
+      state.grams = undefined
+      // Every sheet opens on Today, so last night's Tomorrow can't catch
+      // today's lunch.
+      day.value = 'today'
+    }
   },
 )
 
