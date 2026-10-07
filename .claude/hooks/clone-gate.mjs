@@ -101,9 +101,22 @@ function runJscpd(repo, out) {
       { cwd: repo, stdio: 'pipe', timeout: TIMEOUT_MS },
     )
   } catch (error) {
-    if (error.code === 'ETIMEDOUT')
-      throw new Error(`jscpd took longer than ${TIMEOUT_MS / 1000} s`)
-    throw error
+    if (error.code !== 'ETIMEDOUT') throw error
+    removeBaselineWorktrees(repo, error.pid)
+    throw new Error(`jscpd took longer than ${TIMEOUT_MS / 1000} s`)
+  }
+}
+
+/**
+ * Removes the worktrees a killed jscpd [pid] registered for its baseline, which
+ * it would have removed itself: they live in the repo's shared `.git`.
+ */
+function removeBaselineWorktrees(repo, pid) {
+  for (const line of git(repo, 'worktree', 'list', '--porcelain')) {
+    const path = line.match(/^worktree (.*\/cpd-base-ref-(\d+)-\d+)$/)
+    if (path && Number(path[2]) === pid) {
+      git(repo, 'worktree', 'remove', '--force', path[1])
+    }
   }
 }
 
@@ -121,6 +134,13 @@ const git = (cwd, ...args) =>
     .split('\n')
     .filter(Boolean)
 
+/** The nearest directory at or above [path] that exists: a new test's folder may not yet. */
+function existingDir(path) {
+  let dir = dirname(path)
+  while (!existsSync(dir)) dir = dirname(dir)
+  return dir
+}
+
 /** The deny naming each clone and the two ways out of it. */
 function refusal(clones) {
   const pairs = clones.map((pair) =>
@@ -133,9 +153,12 @@ function refusal(clones) {
       permissionDecisionReason:
         `Refactor before the next test: ${pairs.join(', ')} duplicate each other. ` +
         'Remove it with a refactoring from https://refactoring.com/catalog/ — Extract ' +
-        'Function (a component or composable, in Vue), Slide Statements first when the ' +
-        'copies are interleaved with other code, or Pull Up Method when they sit in ' +
-        'sibling classes. If the duplication is meant, wrap the side you keep in ' +
+        'Function (in Vue, an inline composable when both copies share a file, a shared ' +
+        'one or a component when they do not, and a function in app/utils/ for pure ' +
+        'code), Slide Statements first when the copies are interleaved with other code, ' +
+        'or Pull Up Method when they sit in sibling classes. Extract under the green ' +
+        "tests that already cover both copies; the new module's own spec comes once the " +
+        'clone is gone. If the duplication is meant, wrap the side you keep in ' +
         'jscpd:ignore-start / jscpd:ignore-end with a one-line reason.',
     },
   }
@@ -145,7 +168,11 @@ function main() {
   const payload = JSON.parse(readFileSync(0, 'utf8'))
   const input = payload.tool_input ?? {}
   if (!TEST_FILE.test(input.file_path ?? '') || !addsTest(input)) return
-  const [repo] = git(payload.cwd, 'rev-parse', '--show-toplevel')
+  const [repo] = git(
+    existingDir(input.file_path),
+    'rev-parse',
+    '--show-toplevel',
+  )
   const clones = findClones(repo)
   if (clones.length > 0) process.stdout.write(JSON.stringify(refusal(clones)))
 }
