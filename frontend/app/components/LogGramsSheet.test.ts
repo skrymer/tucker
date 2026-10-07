@@ -217,7 +217,7 @@ describe('LogGramsSheet', () => {
     })
 
     it('moves both labels on a day when midnight passes with the sheet open', async () => {
-      vi.setSystemTime(new Date(2026, 9, 7, 23, 59, 59, 600))
+      vi.setSystemTime(new Date(2026, 9, 7, 23, 59, 59, 900))
       await renderSuspended(LogGramsSheet, { props: { food: skyr } })
       expect(
         screen.getByRole('radio', { name: 'Today · Wed 7 Oct' }),

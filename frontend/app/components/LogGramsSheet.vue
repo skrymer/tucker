@@ -53,6 +53,10 @@ watch([() => state.grams, day], () => emit('edited'))
 const warningMessage = computed(() =>
   formatBudgetWarning(props.warning, day.value),
 )
+const submitLabel = computed(() => {
+  if (warningMessage.value) return 'Log anyway'
+  return day.value === 'tomorrow' ? 'Log for tomorrow' : 'Log entry'
+})
 
 function onSubmit() {
   emit('log', { foodId: props.food!.id, grams: state.grams!, day: day.value })
@@ -95,13 +99,7 @@ function onSubmit() {
       <DayChoice v-model="day" />
 
       <UButton type="submit" color="primary" class="w-full" :loading="pending">
-        {{
-          warningMessage
-            ? 'Log anyway'
-            : day === 'tomorrow'
-              ? 'Log for tomorrow'
-              : 'Log entry'
-        }}
+        {{ submitLabel }}
       </UButton>
     </UForm>
   </ResponsiveOverlay>

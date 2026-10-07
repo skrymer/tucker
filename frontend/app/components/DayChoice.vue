@@ -6,18 +6,18 @@ const day = defineModel<RelativeDay>({ required: true })
 // Labelled from the local day as it stands, so a sheet left open over midnight
 // names the day it will now log on.
 const today = useLocalDay()
-const options = computed(() =>
-  (
-    [
-      ['today', today.value],
-      ['tomorrow', localTomorrow(today.value)],
-    ] as const
-  ).map(([value, date]) => ({
-    value,
-    icon: RELATIVE_DAYS[value].icon,
-    label: `${RELATIVE_DAYS[value].label} · ${formatDayHeadingFromISO(date)}`,
-  })),
-)
+const options = computed(() => [
+  {
+    value: 'today' as const,
+    icon: RELATIVE_DAYS.today.icon,
+    label: relativeDayHeading('today', today.value),
+  },
+  {
+    value: 'tomorrow' as const,
+    icon: RELATIVE_DAYS.tomorrow.icon,
+    label: relativeDayHeading('tomorrow', localTomorrow(today.value)),
+  },
+])
 
 /** An arrow key moves the choice to the neighbouring day, wrapping, and focus with it. */
 async function step(event: KeyboardEvent, by: 1 | -1) {

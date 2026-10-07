@@ -2,8 +2,8 @@ interface ApiMutationOptions<TArgs extends unknown[], TResult> {
   /** Toast title shown when the mutation throws. */
   errorTitle: string
   /**
-   * Toast title shown on success. Omit for a silent success. A function when
-   * the title depends on what landed — the day an Entry went to.
+   * Toast title shown on success. Omit for a silent success; a function when
+   * the title depends on the result or the arguments.
    */
   successTitle?: string | ((result: TResult, ...args: TArgs) => string)
   /**

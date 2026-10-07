@@ -17,10 +17,7 @@ const emit = defineEmits<{
 
 // Static per day: both lists can share a page, and each names its own region.
 const headingId = `day-list-${props.day}`
-const heading = computed(
-  () =>
-    `${RELATIVE_DAYS[props.day].label} · ${formatDayHeadingFromISO(props.date)}`,
-)
+const heading = computed(() => relativeDayHeading(props.day, props.date))
 // Cap the list so a long day never buries what sits below it. Entries arrive
 // oldest-first (ORDER BY id), so the most recent few — a just-logged one
 // included — are the visible tail.
