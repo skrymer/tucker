@@ -67,7 +67,14 @@ agent, and the six below.
 or widened for a change they do not fit — a docs-only diff has no UI to be reachable
 through — but gate 5 checks a brief against its template and cannot see which
 *direction* an edit went, so a cut and a justified swap read identically. Note the
-change and why, in the pack, whenever a brief departs from its template.
+change and why, in the pack, whenever a brief departs from its template. Pointing a
+template's `HEAD` at the committed sha the gate judges is **not** an adaptation — the
+skill's gate 4 requires it — so it needs no note.
+
+**The pack copies, it does not recount.** A figure in it is copied from the saved
+output's own summary line, and every finding an agent returns gets a row, a
+"harmless" nit included. #443's pack recounted a hand-mutation run as "11/12" (the
+file said 10 of 11) and dropped a one-line nit; gate 5 had to correct both.
 
 **Where a justification has to be tested, it is presented as a claim, attributed to
 nobody**: "It is claimed that `startedOn` is the only way to create a backdated Goal.

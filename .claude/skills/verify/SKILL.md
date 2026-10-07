@@ -82,7 +82,8 @@ shapes a real user's data comes in, and drive at least one of each:
 | A capped, trimmed name | the cap and cap+1 **padded with spaces**, the cap counted in UTF-16 (16 × 😀 is 32 units), a character the two sides trim differently, **both ways** — `"\u001F"` (JS keeps it, Kotlin's `trim()` strips it) and `"﻿"` (JS strips it, Kotlin keeps it) — driven alone *and* in front of a real value (`"\u001FSnack"`) through **every** client-side decision the name feeds (a duplicate check, a merge preview), not only the server's refusal: F18 slice 6 drove `"\u001F"` to the blank refusal alone, and the untested branch was an unannounced merge |
 | A number | zero, the boundary of its rule, one past it, a decimal where an integer is expected |
 | A list | none, one, the cap, one past the cap |
-| A date | today, a local midnight, a day the rule spans — and for a derived day (tomorrow, a window edge) the last day of a month, 31 Dec, and 28 Feb in a leap year |
+| A date | today, a local midnight, a day the rule spans — and for a derived day (tomorrow, a window edge) the last day of a month, 31 Dec, and 28 Feb in a leap year. To get there in the real browser, swap `window.Date` for a subclass with an offset and fire `document.dispatchEvent(new Event('visibilitychange'))` so `useLocalDay` re-reads it (#443); label those probes "page clock shifted", not typed entry |
+| A server-side rule the UI can't reach | a domain bound or a ±N plausibility check: the edge, one past it, and the field omitted — over the dev proxy, on every endpoint that runs it. #443's walk-through drove only what the sheet can send, and the audit sent it back for `clientToday` ±1/+2/absent and `date = today + 2` |
 | A new request-body field | read the saved record back through the API after the save, since a form can look right and send nothing (`GET /api/foods` showing the new `tags`, not the chips on screen) |
 | A threshold the code *reads* | a breakpoint, a timer, a grace period, a debounce — value−1 and value, both sides. #435's 1024px breakpoint and 250 ms grace were first walked at 555/2133px and 80/680 ms, which bracket them and prove neither edge |
 
@@ -90,6 +91,9 @@ Then the states: empty/zero, the error path, the reset. Two of those, chosen by 
 change could plausibly have broken. **And the case each fix commit since gate 0 was
 written for** — `git log` the branch and drive each fix's own scenario: #435's last
 commit fixed a stop landing on the next scan, and the first walk-through never drove it.
+**And every other caller of a shared path the diff changed** — #443 changed the
+entry-logging composable both sheets share, and only the audit sent the walk-through to
+the estimate form.
 
 The rule this replaces let two user-facing bugs through in one slice. F16 slice 2's
 filter was walked with three queries — `oli`, `skyr`, `quinoa` — all lowercase and all

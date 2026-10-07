@@ -185,6 +185,10 @@ Identical for both stacks; only step 1 and 2's commands differ.
    recorded "35 of 39" had been missing a survivor all along. Diffing the survivor
    sets by **source line** (main's sweep vs the branch's) is the cheap way to do it
    for a whole file at once; #435 did, and found one new survivor among 79.
+   **"Pre-existing" says where a survivor came from, not what it is** — one missing
+   from known-survivors still gets one of the four verdicts and an entry there. #443
+   called 15 survivors pre-existing; triaged, one was a real gap in `useBudgetGate`
+   (a failed projection after an edit committed the stale entry).
 
    **Re-run a survivor's line alone before triaging it** (`--mutate
    "file.ts:14-14"`). A scoped sweep can leave survivors a targeted re-run kills — #435

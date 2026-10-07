@@ -105,6 +105,10 @@ assertion with the dev token), and no browser-level layer can reach it.
   lands in a *later* Edit is turned into `const` first (`prefer-const`), and the test
   fails with "Assignment to constant variable". Write the `let` and its reassignment
   in one Edit.
+- **Arrow keys are `.arrow-right` / `.arrow-left` in a Vue key modifier** — `.right`
+  and `.left` are the mouse buttons, and the handler silently never fires. In an
+  async handler, read `event.currentTarget` before the first `await`: it is `null`
+  once the event has finished dispatching (#443's day choice hit both).
 - **Keyboard bugs in a Reka component need Playwright.** Some Reka handlers `await nextTick()`
   and then check `event.defaultPrevented` (Reka's `TagsInputInput` on Enter is one). A browser
   runs a microtask checkpoint between listeners, so that check happens *before* an ancestor's
@@ -139,6 +143,9 @@ assertion with the dev token), and no browser-level layer can reach it.
   `e2e/log.spec.ts`) — never the request's query. It uses `setSystemTime`, so the
   clock keeps running: `setFixedTime` freezes `Date.now`, and a `UInputNumber` then
   never commits what was typed, so a sheet that submits grams refuses them as empty.
+  Vitest has the same trap: a test that fakes the clock and submits such a form needs
+  exactly `vi.useFakeTimers({ toFake: ['Date'], shouldAdvanceTime: true })` — faked
+  timers, or a `Date` that does not tick, left the submit with zero calls in #443.
 - **Stale Playwright build** — the mocked e2e rebuilds `.nuxt/e2e` from scratch every run, so it cannot
   serve a stale build; the smokes still build through `@nuxt/test-utils`, so if a UI change doesn't show
   in a smoke run, `rm -rf frontend/.nuxt/test`.
