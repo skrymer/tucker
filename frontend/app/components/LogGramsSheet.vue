@@ -90,7 +90,13 @@ function onSubmit() {
       <DayChoice v-model="day" />
 
       <UButton type="submit" color="primary" class="w-full" :loading="pending">
-        {{ warningMessage ? 'Log anyway' : 'Log entry' }}
+        {{
+          warningMessage
+            ? 'Log anyway'
+            : day === 'tomorrow'
+              ? 'Log for tomorrow'
+              : 'Log entry'
+        }}
       </UButton>
     </UForm>
   </ResponsiveOverlay>

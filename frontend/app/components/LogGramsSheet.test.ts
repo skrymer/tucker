@@ -215,6 +215,22 @@ describe('LogGramsSheet', () => {
         within(choice).getByRole('radio', { name: 'Tomorrow · Thu 8 Oct' }),
       ).not.toBeChecked()
     })
+
+    it('relabels the submit "Log for tomorrow" once Tomorrow is chosen', async () => {
+      await renderSuspended(LogGramsSheet, { props: { food: skyr } })
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+
+      await user.click(screen.getByRole('radio', { name: /^Tomorrow/ }))
+
+      expect(screen.getByRole('radio', { name: /^Tomorrow/ })).toBeChecked()
+      expect(screen.getByRole('radio', { name: /^Today/ })).not.toBeChecked()
+      expect(
+        screen.getByRole('button', { name: 'Log for tomorrow' }),
+      ).toBeVisible()
+      expect(
+        screen.queryByRole('button', { name: 'Log entry' }),
+      ).not.toBeInTheDocument()
+    })
   })
 
   it('locks the action while the projection or the save is in flight', async () => {
