@@ -5,6 +5,7 @@ import type { components } from '#open-fetch-schemas/api'
 type Candidate = components['schemas']['FoodCandidateResponse']
 type Food = components['schemas']['FoodResponse']
 type NewFood = components['schemas']['CreateFoodRequest']
+type BarcodeLookup = components['schemas']['BarcodeLookupResponse']
 
 const props = defineProps<{
   open: boolean
@@ -43,27 +44,22 @@ type Branch =
   | { kind: 'candidate'; candidate: Candidate }
   | { kind: 'existing'; food: Food }
 
-function useBarcodeLookup() {
-  const { $api } = useNuxtApp()
-  const barcode = ref('')
-  const branch = ref<Branch>({ kind: 'manual' })
-  /**
-   * Whether the blank form arrived without a verdict behind it. A miss stays
-   * false and says something true by saying nothing — nothing has this barcode,
-   * so an empty form *is* the answer. An **Inconclusive Lookup** is the opposite:
-   * the same blank form would assert the product is unknown, which is precisely
-   * what nobody managed to find out (ADR 0006, issue #164).
-   */
-  const inconclusive = ref(false)
+function branchFor(result: BarcodeLookup): Branch {
+  if (result.outcome === 'EXISTING' && result.food)
+    return { kind: 'existing', food: result.food }
+  if (result.candidate)
+    return { kind: 'candidate', candidate: result.candidate }
+  return { kind: 'manual' }
+}
 
-  // The look-up runs through the shared async primitive (ADR 0007): a newer
-  // barcode supersedes an in-flight one (`latest`), a hung connection times out
-  // to manual entry, and `busy` is the delayed flag the Look-up button shows.
-  const {
-    busy: looking,
-    run,
-    cancel,
-  } = useAsyncAction(
+/**
+ * The look-up runs through the shared async primitive (ADR 0007): a newer
+ * barcode supersedes an in-flight one (`latest`), a hung connection times out
+ * to manual entry, and `busy` is the delayed flag the Look-up button shows.
+ */
+function useBarcodeRequest() {
+  const { $api } = useNuxtApp()
+  return useAsyncAction(
     (signal: AbortSignal, code: string) =>
       $api('/api/foods/barcode/{barcode}', {
         path: { barcode: code },
@@ -73,12 +69,31 @@ function useBarcodeLookup() {
         cache: 'no-store',
         // No auto-retry: ofetch retries a GET once by default and 503 is in its
         // stock retryStatusCodes, which re-adds one layer up the Provider-load
-        // multiplication the backend deliberately refuses (issue #164, ADR 0007).
+        // multiplication the backend deliberately refuses (ADR 0007).
         retry: 0,
         signal,
       }),
     { mode: 'latest', timeoutMs: 8000 },
   )
+}
+
+function useBarcodeLookup() {
+  const barcode = ref('')
+  const branch = ref<Branch>({ kind: 'manual' })
+  /**
+   * Whether the blank form arrived without a verdict behind it. A miss stays
+   * false and says something true by saying nothing — nothing has this barcode,
+   * so an empty form *is* the answer. An **Inconclusive Lookup** is the opposite:
+   * the same blank form would assert the product is unknown, which is precisely
+   * what nobody managed to find out (ADR 0006).
+   */
+  const inconclusive = ref(false)
+  const { busy: looking, run, cancel } = useBarcodeRequest()
+
+  function settle(next: Branch, unanswered: boolean) {
+    branch.value = next
+    inconclusive.value = unanswered
+  }
 
   async function lookup() {
     const code = barcode.value.trim()
@@ -92,28 +107,17 @@ function useBarcodeLookup() {
       // A hung connection settles nothing, exactly like an unreachable source, so
       // it drops the same way: back to manual entry. That withdraws the previous
       // candidate's provenance, its barcode, *and* its values: `formInitial`
-      // stops supplying them, and an untouched field mirrors its seed (ADR 0007,
-      // issue #180), so they clear with it. The note tells the user to fill in
-      // the details above, and they must not be another product's details.
-      if (outcome.status === 'timedOut') {
-        branch.value = { kind: 'manual' }
-        inconclusive.value = true
-        return
-      }
-      const result = outcome.value
-      branch.value =
-        result.outcome === 'EXISTING' && result.food
-          ? { kind: 'existing', food: result.food }
-          : result.candidate
-            ? { kind: 'candidate', candidate: result.candidate }
-            : { kind: 'manual' }
+      // stops supplying them, and an untouched field mirrors its seed (ADR 0007),
+      // so they clear with it. The note tells the user to fill in the details
+      // above, and they must not be another product's details.
+      if (outcome.status === 'timedOut') settle({ kind: 'manual' }, true)
+      else settle(branchFor(outcome.value), false)
     } catch (error) {
       // Either way manual entry carries the barcode, exactly where a deliberate
       // manual add starts — but only a 404 has earned the silence. Anything else
       // means no source could be reached, and saying nothing would let the blank
       // form imply the product does not exist.
-      branch.value = { kind: 'manual' }
-      inconclusive.value = !isNotFound(error)
+      settle({ kind: 'manual' }, !isNotFound(error))
     }
   }
 
@@ -123,8 +127,7 @@ function useBarcodeLookup() {
     // continuation stays quiet.
     cancel()
     barcode.value = ''
-    branch.value = { kind: 'manual' }
-    inconclusive.value = false
+    settle({ kind: 'manual' }, false)
   }
 
   return { barcode, looking, branch, inconclusive, lookup, cancel, reset }
@@ -133,43 +136,13 @@ function useBarcodeLookup() {
 const { barcode, looking, branch, inconclusive, lookup, cancel, reset } =
   useBarcodeLookup()
 
-// The camera scanner is a peer input to the manual field, lazy-loading
-// zxing-wasm behind the Scan tap (ADR 0006).
-const scanner = useBarcodeScanner()
-const {
-  state: scanState,
-  videoEl,
-  barcode: scannedBarcode,
-  stop: stopScan,
-} = scanner
-// On a phone the camera is fullscreen, over the sheet.
-const { fullscreen: scanFullscreen, startFromTap: scanFromTap } =
-  useFullscreenScanner(scanner)
-
-// A camera-decoded barcode runs the exact same lookup/branch as a typed one.
-watch(scannedBarcode, (code) => {
-  if (!code) return
-  barcode.value = code
-  lookup()
-})
-
-// Leaving the Food tab must release the camera: the scanner lives in this
-// sheet's scope (not the tab panel), so switching to the Recipe builder wouldn't
-// otherwise stop it — leaving the light on, and letting a stray decode hijack
-// the sheet (ADR 0006, "never leave the camera light on").
-watch(mode, (current) => {
-  if (current !== 'food') stopScan()
-})
-
 watch(
   () => props.open,
   (open) => {
     if (!open) {
-      // Release the camera the moment the sheet is dismissed — by the overlay or
-      // by the parent flipping `open` after a save. The overlay keeps this
-      // component mounted while closed, so onScopeDispose alone would leave the
-      // light on. `cancel()` goes with it so a late look-up can't resurface.
-      stopScan()
+      // The overlay keeps this component mounted while closed, so a late
+      // look-up must be cancelled here or it could resurface. The barcode
+      // pre-fill releases the camera on the same signal.
       cancel()
       return
     }
@@ -273,125 +246,15 @@ const existingFood = computed<Food | null>(() =>
             class="mt-4"
             @submit="(payload) => emit('submit', payload)"
           >
-            <!-- Optional barcode pre-fill, between the fields and Save so a scanned
-             result lands right above the Save button. -->
-            <USeparator label="or pre-fill from a barcode" />
-
-            <div class="flex flex-col gap-3">
-              <p class="text-center text-xs text-muted">
-                Scan or type a product's barcode to fill in the details above.
-              </p>
-
-              <!-- No source could be reached, so the blank form above would
-                   otherwise assert something nobody established (issue #164).
-                   An inline note, not a toast: this surface is already in focus,
-                   and a look-up failure is not a mutation failure (ADR 0005 /
-                   0007). No Retry button either — "Look up" is right below. -->
-              <UAlert
-                v-if="inconclusive"
-                icon="i-lucide-cloud-off"
-                color="warning"
-                variant="subtle"
-                title="Couldn't look that up"
-                description="The lookup didn't get through, so Tucker can't say whether this product is known. Try again in a moment, or just fill in the details above."
-              />
-
-              <UButton
-                v-if="scanState === 'idle' || scanState === 'decoded'"
-                block
-                icon="i-lucide-scan-barcode"
-                color="primary"
-                variant="subtle"
-                @click="scanFromTap"
-              >
-                Scan barcode
-              </UButton>
-
-              <UButton
-                v-else-if="scanState === 'requesting'"
-                block
-                color="primary"
-                variant="subtle"
-                loading
-                disabled
-              >
-                Requesting camera…
-              </UButton>
-
-              <div
-                v-else-if="!scanFullscreen && scanState === 'scanning'"
-                class="relative overflow-hidden rounded-lg bg-black"
-              >
-                <video
-                  ref="videoEl"
-                  class="max-h-[45vh] w-full object-cover"
-                  playsinline
-                  muted
-                  autoplay
-                  aria-hidden="true"
-                ></video>
-                <p
-                  class="absolute inset-x-0 top-2 text-center text-sm font-medium text-white drop-shadow"
-                >
-                  Point the camera at a barcode
-                </p>
-                <UButton
-                  class="absolute inset-x-0 bottom-3 mx-auto w-fit"
-                  color="neutral"
-                  variant="solid"
-                  icon="i-lucide-square"
-                  @click="stopScan"
-                >
-                  Stop
-                </UButton>
-              </div>
-
-              <UAlert
-                v-if="scanState === 'denied'"
-                icon="i-lucide-camera-off"
-                color="warning"
-                variant="subtle"
-                title="Camera access is blocked"
-                description="Enable it in your device settings, or enter the barcode below."
-              />
-
-              <UAlert
-                v-else-if="scanState === 'unsupported'"
-                icon="i-lucide-camera-off"
-                color="neutral"
-                variant="subtle"
-                title="Camera scanning isn't available here"
-                description="Enter the barcode below instead."
-              />
-
-              <!-- Not a <form>: this lives inside AddFoodForm's <form>, and nested
-               forms are invalid. Look up is a button; Enter triggers it too. -->
-              <div class="flex items-end gap-2">
-                <UFormField
-                  label="Barcode"
-                  hint="optional"
-                  name="barcode"
-                  class="flex-1"
-                >
-                  <UInput
-                    v-model="barcode"
-                    inputmode="numeric"
-                    placeholder="Type a barcode number"
-                    class="w-full"
-                    @keydown.enter.prevent="lookup"
-                  />
-                </UFormField>
-                <UButton
-                  type="button"
-                  color="neutral"
-                  variant="subtle"
-                  :loading="looking"
-                  @click="lookup"
-                >
-                  Look up
-                </UButton>
-              </div>
-            </div>
+            <!-- Optional barcode pre-fill, between the fields and Save so a
+                 scanned result lands right above the Save button. -->
+            <BarcodePrefill
+              v-model:barcode="barcode"
+              :active="open && mode === 'food'"
+              :looking="looking"
+              :inconclusive="inconclusive"
+              @lookup="lookup"
+            />
           </AddFoodForm>
         </template>
 
@@ -408,12 +271,5 @@ const existingFood = computed<Food | null>(() =>
         </template>
       </UTabs>
     </div>
-
-    <FullscreenScanner
-      v-if="scanFullscreen"
-      v-model:video-el="videoEl"
-      :state="scanState"
-      @stop="stopScan"
-    />
   </ResponsiveOverlay>
 </template>
