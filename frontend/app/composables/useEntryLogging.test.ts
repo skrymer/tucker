@@ -146,6 +146,34 @@ describe('useEntryLogging', () => {
     })
   })
 
+  it('dates a tomorrow Entry by the day of the tap, not the day the page opened', async () => {
+    // Only the date is faked, and it keeps ticking, so the render runs as usual.
+    vi.useFakeTimers({ toFake: ['Date'], shouldAdvanceTime: true })
+    vi.setSystemTime(new Date(2026, 9, 7, 23, 59))
+    try {
+      // The log knows only the day after midnight: an Entry stamped from the
+      // evening before is refused, and the save reported as failed.
+      server.use(
+        ...entryLog({
+          today: '2026-10-08',
+          tomorrow: '2026-10-09',
+          foods: [oats],
+        }),
+      )
+      await renderSuspended(host())
+
+      vi.setSystemTime(new Date(2026, 9, 8, 0, 1))
+      await userEvent.click(
+        screen.getByRole('button', { name: 'weighed for tomorrow' }),
+      )
+
+      await vi.waitFor(() => expect(toastAdd).toHaveBeenCalled())
+      expect(lastToast()).toMatchObject({ title: 'Logged for tomorrow' })
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('commits a "log anyway" for tomorrow onto tomorrow', async () => {
     // 120 kcal budget on every day the handler knows: tomorrow's 300 kcal is as
     // far over as today's would be, so the gate warns before committing.
