@@ -26,8 +26,8 @@ const entryName = computed(() =>
   >
     <template #body>
       <p class="text-sm text-default">
-        <span class="font-medium">{{ entryName }}</span> will be removed from
-        today's entries. The day's totals re-derive without it.
+        <span class="font-medium">{{ entryName }}</span> will be removed, and
+        that day's totals re-derive without it.
       </p>
     </template>
 

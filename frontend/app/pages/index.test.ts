@@ -1,11 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mockNuxtImport, renderSuspended } from '@nuxt/test-utils/runtime'
-import { screen } from '@testing-library/vue'
+import { screen, within } from '@testing-library/vue'
+import userEvent from '@testing-library/user-event'
 import { withCalorieTracking } from '~~/test/calorie-tracking-helpers'
+import { estimatedEntry, weighedEntry } from '~~/test/entry-fixtures'
+import { dailyLogs } from '~~/test/mocks/handlers/entries'
+import { weightMeasurements } from '~~/test/mocks/handlers/weight'
 import { goalInProgress } from '~~/test/mocks/handlers/goal'
 import { summaryOf, type SummaryDay } from '~~/test/mocks/handlers/summary'
+import { http, serverError } from '~~/test/mocks/http'
 import { server } from '~~/test/mocks/node'
-import { ref } from 'vue'
+import { ref, type Ref } from 'vue'
 import Today from './index.vue'
 
 // The baseline was last weighed on a day long past, so the weight tile offers
@@ -15,6 +20,10 @@ import Today from './index.vue'
 // jsdom reports the desktop breakpoint, so a phone-only branch needs saying.
 const viewport = vi.hoisted(() => ({ desktop: true }))
 mockNuxtImport('useIsDesktop', () => () => ref(viewport.desktop))
+
+// The day Today shows, held here so a test can turn it over as the clock would.
+let localDay: Ref<string>
+mockNuxtImport('useLocalDay', () => () => localDay)
 
 const tracking = { tracksCalories: true }
 const renderToday = () =>
@@ -46,6 +55,7 @@ const suspendedDay = (): SummaryDay => ({
 
 // A test overriding the day `use()`s its own after this, which wins.
 beforeEach(() => {
+  localDay = ref(localToday())
   server.use(summaryOf(DAY))
 })
 
@@ -209,5 +219,305 @@ describe('/ with Calorie Tracking on', () => {
     await renderToday()
 
     expect(screen.getByText('1500 / 2000 kcal')).toBeVisible()
+  })
+})
+
+const todaysSalmon = weighedEntry({
+  id: 1,
+  loggedOn: localToday(),
+  calories: 312,
+  protein: 33,
+  foodId: 7,
+  foodName: 'Salmon',
+  grams: 150,
+})
+/** Today with one Entry on it, its figures agreeing with that Entry. */
+const todayWithSalmon: SummaryDay = {
+  ...DAY,
+  caloriesConsumed: 312,
+  entries: [todaysSalmon],
+}
+
+describe("/ with today's Entries", () => {
+  it('shows no day list on a day with nothing logged', async () => {
+    await renderToday()
+
+    expect(screen.getByText('1500 / 2000 kcal')).toBeVisible()
+    expect(screen.queryByRole('region')).not.toBeInTheDocument()
+    expect(screen.queryByRole('list')).not.toBeInTheDocument()
+  })
+
+  it("drops a deleted Entry from today's list", async () => {
+    let entries = [todaysSalmon]
+    server.use(
+      summaryOf(() => ({
+        ...DAY,
+        caloriesConsumed: entries.reduce((sum, e) => sum + e.calories, 0),
+        entries,
+      })),
+      http.delete('/api/entries/{id}', ({ params, response }) => {
+        entries = entries.filter((e) => e.id !== Number(params.id))
+        return response(204).empty()
+      }),
+    )
+    await renderToday()
+    const user = userEvent.setup()
+
+    expect(
+      await screen.findByRole('region', { name: /^Today · / }),
+    ).toHaveTextContent('1 entry · 312 kcal')
+    await user.click(
+      screen.getByRole('button', {
+        name: 'Delete Salmon — 312 kcal · 33 g protein',
+      }),
+    )
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', {
+        name: 'Delete',
+      }),
+    )
+
+    await vi.waitFor(() =>
+      expect(screen.queryByRole('region')).not.toBeInTheDocument(),
+    )
+    expect(screen.getByText('0 / 2000 kcal')).toBeVisible()
+  })
+})
+
+describe('/ with Entries logged for tomorrow', () => {
+  const preppedLunch = estimatedEntry({
+    id: 2,
+    loggedOn: localTomorrow(),
+    calories: 620,
+    label: 'Prepped chicken & rice',
+  })
+  const tomorrowsOats = weighedEntry({
+    id: 3,
+    loggedOn: localTomorrow(),
+    calories: 228,
+    protein: 8,
+    foodId: 9,
+    foodName: 'Rolled oats',
+    grams: 60,
+  })
+
+  beforeEach(() => {
+    server.use(
+      summaryOf(todayWithSalmon),
+      ...dailyLogs({ [localTomorrow()]: [preppedLunch, tomorrowsOats] }),
+    )
+  })
+
+  it("lists them in a Tomorrow list below today's, apart from today's", async () => {
+    await renderToday()
+
+    const [today, tomorrow] = await screen.findAllByRole('region')
+    expect(today).toHaveAccessibleName(/^Today · /)
+    expect(within(today!).getByText('1 entry · 312 kcal')).toBeVisible()
+    expect(within(today!).queryByText('Rolled oats')).not.toBeInTheDocument()
+
+    expect(tomorrow).toHaveAccessibleName(
+      `Tomorrow · ${formatDayHeadingFromISO(localTomorrow())}`,
+    )
+    expect(within(tomorrow!).getByText('2 entries · 848 kcal')).toBeVisible()
+    expect(within(tomorrow!).getByText('Prepped chicken & rice')).toBeVisible()
+    expect(within(tomorrow!).getByText('Rolled oats')).toBeVisible()
+    expect(within(tomorrow!).queryByText('Salmon')).not.toBeInTheDocument()
+  })
+  it("drops a deleted Entry from tomorrow's list and leaves today's as it was", async () => {
+    await renderToday()
+    const user = userEvent.setup()
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'Delete Rolled oats — 228 kcal · 8 g protein',
+      }),
+    )
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', {
+        name: 'Delete',
+      }),
+    )
+
+    const tomorrow = screen.getByRole('region', { name: /^Tomorrow · / })
+    await vi.waitFor(() =>
+      expect(
+        within(tomorrow).queryByText('Rolled oats'),
+      ).not.toBeInTheDocument(),
+    )
+    expect(within(tomorrow).getByText('1 entry · 620 kcal')).toBeVisible()
+    expect(within(tomorrow).getByText('Prepped chicken & rice')).toBeVisible()
+    const today = screen.getByRole('region', { name: /^Today · / })
+    expect(within(today).getByText('1 entry · 312 kcal')).toBeVisible()
+    expect(within(today).getByText('Salmon')).toBeVisible()
+    expect(screen.getByText('312 / 2000 kcal')).toBeVisible()
+  })
+
+  it('shows neither list with Calorie Tracking off', async () => {
+    tracking.tracksCalories = false
+    await renderToday()
+
+    expect(screen.queryByRole('region')).not.toBeInTheDocument()
+    expect(screen.queryByText('Rolled oats')).not.toBeInTheDocument()
+    expect(screen.queryByText('Salmon')).not.toBeInTheDocument()
+  })
+})
+
+describe('/ with nothing logged for tomorrow', () => {
+  it("shows today's list alone, with no empty Tomorrow card", async () => {
+    server.use(summaryOf(todayWithSalmon))
+    await renderToday()
+
+    expect(await screen.findByRole('region')).toHaveAccessibleName(/^Today · /)
+    expect(screen.getAllByRole('region')).toHaveLength(1)
+    expect(screen.queryByText(/^Tomorrow/)).not.toBeInTheDocument()
+  })
+})
+
+describe("/ when tomorrow's entries cannot be read", () => {
+  it("says so with a Retry, and keeps today's list", async () => {
+    server.use(
+      summaryOf(todayWithSalmon),
+      http.get('/api/entries', ({ response }) =>
+        response.untyped(serverError()),
+      ),
+    )
+    await renderToday()
+
+    expect(
+      await screen.findByRole('heading', {
+        name: "Couldn't load tomorrow's entries",
+      }),
+    ).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeVisible()
+    expect(screen.getByRole('region', { name: /^Today · / })).toBeVisible()
+    expect(screen.getByText('312 / 2000 kcal')).toBeVisible()
+  })
+})
+
+describe('/ when the day turns over while Today is open', () => {
+  it("moves both lists on a day: tomorrow's Entries become today's", async () => {
+    const day = localDay.value
+    const next = localTomorrow(day)
+    const oats = weighedEntry({
+      id: 3,
+      loggedOn: next,
+      calories: 228,
+      protein: 8,
+      foodId: 9,
+      foodName: 'Rolled oats',
+      grams: 60,
+    })
+    server.use(
+      http.get('/api/summary', ({ query, response }) => {
+        const date = query.get('date')!
+        const entries = date === next ? [oats] : [todaysSalmon]
+        return response(200).json({
+          ...DAY,
+          date,
+          caloriesConsumed: entries[0]!.calories,
+          entries,
+        })
+      }),
+      ...dailyLogs({ [next]: [oats] }),
+    )
+    await renderToday()
+    expect(
+      await screen.findByRole('region', { name: /^Tomorrow · / }),
+    ).toHaveTextContent('Rolled oats')
+
+    localDay.value = next
+
+    const today = await screen.findByRole('region', {
+      name: `Today · ${formatDayHeadingFromISO(next)}`,
+    })
+    expect(today).toHaveTextContent('Rolled oats')
+    expect(today).not.toHaveTextContent('Salmon')
+    expect(
+      screen.queryByRole('region', { name: /^Tomorrow · / }),
+    ).not.toBeInTheDocument()
+    expect(screen.getByText('228 / 2000 kcal')).toBeVisible()
+  })
+  it('never shows the new today as tomorrow while the next day is still being read', async () => {
+    const day = localDay.value
+    const next = localTomorrow(day)
+    const afterNext = localTomorrow(next)
+    const oats = weighedEntry({
+      id: 3,
+      loggedOn: next,
+      calories: 228,
+      protein: 8,
+      foodId: 9,
+      foodName: 'Rolled oats',
+      grams: 60,
+    })
+    let release!: () => void
+    const nextRead = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    server.use(
+      http.get('/api/summary', ({ query, response }) => {
+        const date = query.get('date')!
+        const entries = date === next ? [oats] : [todaysSalmon]
+        return response(200).json({
+          ...DAY,
+          date,
+          caloriesConsumed: entries[0]!.calories,
+          entries,
+        })
+      }),
+      http.get('/api/entries', async ({ query, response }) => {
+        const date = query.get('date')!
+        // The day after the new today answers late, as a slow network would.
+        if (date === afterNext) await nextRead
+        const entries = date === next ? [oats] : []
+        return response(200).json({ date, entries, caloriesConsumed: 0 })
+      }),
+    )
+    await renderToday()
+    await screen.findByRole('region', { name: /^Tomorrow · / })
+
+    localDay.value = next
+
+    try {
+      await screen.findByRole('region', {
+        name: `Today · ${formatDayHeadingFromISO(next)}`,
+      })
+      expect(
+        screen.queryByRole('region', { name: /^Tomorrow · / }),
+      ).not.toBeInTheDocument()
+    } finally {
+      release()
+    }
+  })
+
+  it("stops calling yesterday's reading today's, and logs the next one on the new day", async () => {
+    const day = localDay.value
+    const next = localTomorrow(day)
+    server.use(
+      ...weightMeasurements({ id: 1, measuredOn: day, weightKg: 84.2 }),
+    )
+    await renderToday()
+    expect(await screen.findByText('84.2 kg')).toBeVisible()
+
+    localDay.value = next
+
+    expect(await screen.findByText('No weight logged today.')).toBeVisible()
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: 'Log weight' }))
+    const sheet = await screen.findByRole('dialog', { name: /log weight/i })
+    const weight = within(sheet).getByLabelText(/weight \(kg\)/i)
+    await user.clear(weight)
+    await user.type(weight, '83.9')
+    await user.tab()
+    await user.click(
+      within(sheet).getByRole('button', { name: /save weight/i }),
+    )
+
+    // Shown as today's only because it was saved on the new day.
+    expect(await screen.findByText('83.9 kg')).toBeVisible()
+    expect(
+      screen.getByRole('button', { name: "Edit today's weight" }),
+    ).toBeVisible()
   })
 })

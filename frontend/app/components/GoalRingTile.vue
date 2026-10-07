@@ -60,7 +60,7 @@ const { kgToGo, trend, target, pace } = useGoalReadout()
           <div>
             <div class="mb-1 flex items-center gap-2">
               <span class="size-2.5 rounded bg-primary" />
-              <h2 class="text-sm font-semibold text-default">Goal progress</h2>
+              <h2 class="text-lg font-bold text-highlighted">Goal progress</h2>
               <UBadge
                 v-if="pace"
                 :color="pace.color"

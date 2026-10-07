@@ -5,7 +5,7 @@ import { entryRow } from '../support/entry-row'
 // Issue #113 smoke: delete a mislogged Entry from Today through its row's trash
 // icon + the confirm, against the real backend. Seeds two Estimated entries on
 // today, deletes one (the other and the re-derived running total remain), then
-// deletes the last (the entries card collapses entirely). With no budget yet,
+// deletes the last (today's list collapses entirely). With no budget yet,
 // DaySummary's plain "X kcal, Y g protein" card shows the running total, so the
 // re-derivation is observable. The per-test reset wipes the seed — no cleanup.
 const API = 'http://localhost:8080/api'
@@ -50,14 +50,12 @@ test('user deletes a mislogged entry from Today and the day re-derives', async (
   await expect(entryRow(page, keep)).toContainText('200 kcal')
   await expect(page.getByText('200 kcal, 10 g protein')).toBeVisible()
 
-  // Deleting the last entry collapses the entries card entirely.
+  // Deleting the last entry collapses today's list entirely.
   await page.getByRole('button', { name: `Delete ${keep} — 200 kcal` }).click()
   await expect(confirm).toBeVisible()
   await confirm.getByRole('button', { name: /^delete$/i }).click()
 
   await expect(confirm).toBeHidden()
-  await expect(
-    page.getByRole('heading', { name: "Today's entries" }),
-  ).toBeHidden()
+  await expect(page.getByRole('region', { name: /^Today · / })).toBeHidden()
   await expect(page.getByText('0 kcal, 0 g protein')).toBeVisible()
 })

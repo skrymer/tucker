@@ -3114,10 +3114,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/EntryResponse"
-                  }
+                  "$ref": "#/components/schemas/DailyLogResponse"
                 }
               }
             }
@@ -5332,6 +5329,30 @@
           },
           "merged": {
             "type": "boolean"
+          }
+        }
+      },
+      "DailyLogResponse": {
+        "required": [
+          "caloriesConsumed",
+          "date",
+          "entries"
+        ],
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EntryResponse"
+            }
+          },
+          "caloriesConsumed": {
+            "type": "number",
+            "format": "double"
           }
         }
       }

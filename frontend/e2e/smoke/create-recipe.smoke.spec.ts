@@ -134,10 +134,12 @@ test('user builds a recipe, saves it, and logs a portion onto Today', async ({
     const entriesList = await request.get('http://localhost:8080/api/entries', {
       params: { date: todayIso() },
     })
-    const entries = (await entriesList.json()) as Array<{
-      id: number
-      foodName?: string
-    }>
+    const { entries } = (await entriesList.json()) as {
+      entries: Array<{
+        id: number
+        foodName?: string
+      }>
+    }
     const entry = entries.find((e) => e.foodName === recipeName)
     expect(
       entry,

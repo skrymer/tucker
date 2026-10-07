@@ -1,5 +1,6 @@
 import { estimatedEntry, weighedEntry } from '../test/entry-fixtures'
 import { http } from '../test/mocks/http'
+import { dailyLogs } from '../test/mocks/handlers/entries'
 import { goalInProgress } from '../test/mocks/handlers/goal'
 import {
   summaryFails,
@@ -8,13 +9,17 @@ import {
 } from '../test/mocks/handlers/summary'
 import { weightMeasurements } from '../test/mocks/handlers/weight'
 import { expect, test } from './support/test'
+import { pinToLocalMorning } from './support/date'
 import { rings } from './support/ring'
 
 // The baseline was last weighed on a day long past and has no Goal, so
 // Today offers to log a weight and shows no Goal ring unless a test says so.
 
-/** An on-target day with one Entry on it — the resting shape Today renders. */
-const DAY_WITH_AN_ENTRY: SummaryDay = {
+/**
+ * An on-target day with two Entries on it — the resting shape Today renders.
+ * The Entries add up to the day's figures, as the backend's would.
+ */
+const DAY_WITH_ENTRIES: SummaryDay = {
   caloriesConsumed: 1500,
   proteinConsumed: 140,
   estimatedCalorieShare: 0,
@@ -32,6 +37,12 @@ const DAY_WITH_AN_ENTRY: SummaryDay = {
       foodName: 'Oats',
       grams: 60,
     }),
+    estimatedEntry({
+      id: 2,
+      calories: 1260,
+      protein: 132,
+      label: 'Steak dinner',
+    }),
   ],
 }
 
@@ -40,7 +51,9 @@ test('the Today page shows the daily summary from the API', async ({
   goto,
   network,
 }) => {
-  network.use(summaryOf(DAY_WITH_AN_ENTRY))
+  // Pinned, because the day lists are headed with the date.
+  await pinToLocalMorning(page)
+  network.use(summaryOf(DAY_WITH_ENTRIES))
 
   await goto('/', { waitUntil: 'hydration' })
 
@@ -49,6 +62,132 @@ test('the Today page shows the daily summary from the API', async ({
   // Playwright keeps one baseline per project (Desktop / Mobile Chrome), and
   // with the FAB gone the two now read alike.
   await expect(page.getByRole('main')).toMatchAriaSnapshot()
+})
+
+test("tomorrow's Entries are listed below today's, under their own day", async ({
+  page,
+  goto,
+  network,
+}) => {
+  await pinToLocalMorning(page)
+  network.use(
+    summaryOf(DAY_WITH_ENTRIES),
+    ...dailyLogs({
+      '2026-06-17': [
+        estimatedEntry({
+          id: 3,
+          loggedOn: '2026-06-17',
+          calories: 620,
+          protein: 48,
+          label: 'Prepped chicken & rice',
+        }),
+        weighedEntry({
+          id: 4,
+          loggedOn: '2026-06-17',
+          calories: 568,
+          protein: 20,
+          foodId: 3,
+          foodName: 'Oats',
+          grams: 150,
+        }),
+      ],
+    }),
+  )
+
+  await goto('/', { waitUntil: 'hydration' })
+
+  // Today's figures are unchanged by tomorrow's Entries: the ring, the verdict
+  // and today's list read exactly as on the page without them.
+  await expect(page.getByRole('main')).toMatchAriaSnapshot()
+})
+
+test('a day list never breaks its day or its tally across lines', async ({
+  page,
+  goto,
+  network,
+}) => {
+  await pinToLocalMorning(page)
+  network.use(
+    summaryOf(DAY_WITH_ENTRIES),
+    ...dailyLogs({
+      '2026-06-17': [
+        estimatedEntry({
+          id: 3,
+          loggedOn: '2026-06-17',
+          calories: 1188,
+          label: 'Prepped chicken & rice',
+        }),
+      ],
+    }),
+  )
+
+  await goto('/', { waitUntil: 'hydration' })
+
+  // A header too wide for one phone row: the tally must move under the day,
+  // inside the card, rather than squeeze either one onto a second line.
+  const tomorrow = page.getByRole('region', { name: 'Tomorrow · Wed 17 Jun' })
+  for (const part of [
+    tomorrow.getByRole('heading'),
+    tomorrow.getByText('1 entry · 1,188 kcal'),
+  ]) {
+    const lines = await part.evaluate(
+      (el) =>
+        el.getBoundingClientRect().height /
+        parseFloat(getComputedStyle(el).lineHeight),
+    )
+    expect(Math.round(lines)).toBe(1)
+  }
+  const overflow = await tomorrow.evaluate((section) => {
+    const tally = [...section.querySelectorAll('p')].find((p) =>
+      p.textContent?.includes('1,188 kcal'),
+    )!
+    return (
+      tally.getBoundingClientRect().right -
+      (section.getBoundingClientRect().right -
+        parseFloat(getComputedStyle(section).paddingRight))
+    )
+  })
+  expect(overflow).toBeLessThanOrEqual(0)
+})
+
+test('an open Today moves on to the next day at local midnight', async ({
+  page,
+  goto,
+  network,
+}) => {
+  // 23:59:30 on 16 June in the mocked browser's zone (Brisbane, UTC+10).
+  await page.clock.install({ time: new Date('2026-06-16T13:59:30Z') })
+  network.use(
+    summaryOf(DAY_WITH_ENTRIES),
+    ...dailyLogs({
+      '2026-06-17': [
+        estimatedEntry({
+          id: 3,
+          loggedOn: '2026-06-17',
+          calories: 620,
+          label: 'Prepped chicken & rice',
+        }),
+      ],
+    }),
+  )
+
+  await goto('/', { waitUntil: 'hydration' })
+  await expect(
+    page.getByRole('region', { name: 'Today · Tue 16 Jun' }),
+  ).toBeVisible()
+  await expect(
+    page.getByRole('region', { name: 'Tomorrow · Wed 17 Jun' }),
+  ).toBeVisible()
+
+  await page.clock.runFor(60_000)
+
+  await expect(
+    page.getByRole('region', { name: 'Today · Wed 17 Jun' }),
+  ).toBeVisible()
+  // The 18th has nothing logged, so there is no Tomorrow list left to show.
+  await expect(page.getByRole('region', { name: /^Tomorrow · / })).toHaveCount(
+    0,
+  )
 })
 
 test("logging a weight from the tile shows it as today's weight", async ({
@@ -139,7 +278,7 @@ test('the day ring and the goal ring are peers at the same size', async ({
   network,
 }) => {
   network.use(
-    summaryOf({ ...DAY_WITH_AN_ENTRY, trendWeightKg: 86, entries: [] }),
+    summaryOf({ ...DAY_WITH_ENTRIES, trendWeightKg: 86, entries: [] }),
     goalInProgress(),
   )
 
@@ -169,7 +308,7 @@ test('a name long enough to clip never squeezes the flag beside it', async ({
 }) => {
   network.use(
     summaryOf({
-      ...DAY_WITH_AN_ENTRY,
+      ...DAY_WITH_ENTRIES,
       entries: [
         estimatedEntry({ id: 1, calories: 240, protein: 8, label: 'Toast' }),
         estimatedEntry({

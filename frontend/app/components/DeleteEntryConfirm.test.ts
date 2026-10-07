@@ -51,4 +51,12 @@ describe('DeleteEntryConfirm', () => {
 
     expect(onCancel).toHaveBeenCalledOnce()
   })
+
+  it("names no particular day, since the entry may be today's or tomorrow's", async () => {
+    await renderSuspended(DeleteEntryConfirm, { props: { entry: banana } })
+
+    expect(screen.getByRole('dialog')).toHaveTextContent(
+      "Banana — 107 kcal · 12 g protein will be removed, and that day's totals re-derive without it.",
+    )
+  })
 })

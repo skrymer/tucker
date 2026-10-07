@@ -42,3 +42,9 @@ export function formatAgainstTarget(
 ): string {
   return `${Math.round(consumed)} / ${Math.round(target)} ${unit}`
 }
+
+/** A day list's tally: `3 entries · 1,188 kcal`. */
+export function formatDayTally(count: number, calories: number): string {
+  const noun = count === 1 ? 'entry' : 'entries'
+  return `${count} ${noun} · ${Math.round(calories).toLocaleString('en-GB')} kcal`
+}

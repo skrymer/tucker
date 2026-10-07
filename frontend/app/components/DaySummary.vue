@@ -5,10 +5,6 @@ const props = defineProps<{
   summary: components['schemas']['DailySummaryResponse']
 }>()
 
-const emit = defineEmits<{
-  delete: [components['schemas']['EntryResponse']]
-}>()
-
 // Budget and floor are absent until the first weekly review has run.
 const hasBudget = computed(() => props.summary.calorieBudget != null)
 
@@ -16,23 +12,6 @@ const hasBudget = computed(() => props.summary.calorieBudget != null)
 // none — the Day Ring carries the numbers instead. Presentation mapping lives in
 // the shared util, alongside its drift/pace siblings.
 const verdict = computed(() => dayStatusVerdict(props.summary.dayStatus))
-
-// Cap the day's entries so the ledger never buries the at-a-glance numbers or
-// the Log-entry action. Entries arrive oldest-first (ORDER BY id), so the most
-// recent few — including a just-logged one — are the visible tail; the rest fold
-// behind a "Show all" expander.
-function useEntryLog() {
-  const VISIBLE = 3
-  const entries = computed(() => props.summary.entries)
-  const { expanded, label, toggle } = useExpander(() => entries.value.length)
-  const canExpand = computed(() => entries.value.length > VISIBLE)
-  const visibleEntries = computed(() =>
-    expanded.value ? entries.value : entries.value.slice(-VISIBLE),
-  )
-  return { visibleEntries, canExpand, expanderLabel: label, toggle }
-}
-
-const { visibleEntries, canExpand, expanderLabel, toggle } = useEntryLog()
 
 // A budget carried forward rather than corrected, and the one thing that would
 // let the engine correct it. Quiet by design (ADR 0031): a held budget is stale
@@ -93,49 +72,6 @@ const heldNote = computed(() =>
       <p class="mt-2 text-sm text-muted">
         No budget yet — log your weight and run a weekly review.
       </p>
-    </UCard>
-
-    <UCard v-if="summary.entries.length">
-      <h2 class="text-sm font-medium text-muted">Today's entries</h2>
-      <ul class="mt-2 divide-y divide-default">
-        <li
-          v-for="entry in visibleEntries"
-          :key="entry.id"
-          class="flex items-center justify-between gap-2 py-2"
-        >
-          <FigureRow
-            class="flex-1"
-            :name="entry.name"
-            :figures="formatIntakeFigures(entry.calories, entry.protein)"
-          >
-            <template #marker>
-              <EstimateBadge v-if="entry.isEstimate" />
-            </template>
-          </FigureRow>
-          <UButton
-            :aria-label="`Delete ${formatEntryName(entry)}`"
-            icon="i-lucide-trash-2"
-            color="neutral"
-            variant="ghost"
-            square
-            class="size-9 shrink-0 text-muted hover:text-default"
-            :ui="{ base: 'justify-center' }"
-            @click="emit('delete', entry)"
-          />
-        </li>
-      </ul>
-
-      <UButton
-        v-if="canExpand"
-        variant="ghost"
-        color="neutral"
-        size="sm"
-        block
-        class="mt-2"
-        @click="toggle"
-      >
-        {{ expanderLabel }}
-      </UButton>
     </UCard>
   </div>
 </template>

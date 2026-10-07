@@ -1,4 +1,5 @@
 import { checkHandlers } from './check'
+import { entryHandlers } from './entries'
 import { foodHandlers } from './foods'
 import { goalHandlers } from './goal'
 import { identityHandlers } from './identity'
@@ -16,7 +17,7 @@ import { weightTimelineHandlers } from './weight-timeline'
 /**
  * The baseline every opted-in test inherits: a neutral, consistent User —
  * set up, counting calories, reminders off, weighed in once, no Goal, an
- * empty catalog and no Tags, nothing logged today or this week, one Weekly
+ * empty catalog and no Tags, nothing logged today, tomorrow or this week, one Weekly
  * Review (the first, which set the Budget), too few readings for a Weight
  * Timeline, and no Reference Food matching anything. A test `use()`s only the
  * variation it is about (ADR 0034).
@@ -26,6 +27,7 @@ export const handlers = [
   ...profileHandlers,
   ...pushHandlers,
   ...summaryHandlers,
+  ...entryHandlers,
   ...weightHandlers,
   ...goalHandlers,
   ...foodHandlers,

@@ -11,8 +11,13 @@
     - progressbar "Protein against the Protein Floor"
     - paragraph: 140 / 140 g
     - paragraph: On target
-    - heading "Today's entries" [level=2]
-    - list:
-        - listitem:
-            - text: Oats 240 kcal · 8 g protein
-            - button "Delete Oats — 240 kcal · 8 g protein"
+    - region "Today · Tue 16 Jun":
+        - heading "Today · Tue 16 Jun" [level=2]
+        - paragraph: 2 entries · 1,500 kcal
+        - list:
+            - listitem:
+                - text: Oats 240 kcal · 8 g protein
+                - button "Delete Oats — 240 kcal · 8 g protein"
+            - listitem:
+                - text: Steak dinner est. 1260 kcal · 132 g protein
+                - button "Delete Steak dinner — 1260 kcal · 132 g protein"

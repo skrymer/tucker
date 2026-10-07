@@ -3,8 +3,11 @@ import type { components } from '#open-fetch-schemas/api'
 
 type EntryResponse = components['schemas']['EntryResponse']
 
-// The day to show — the user's local date.
-const today = localToday()
+// The day to show — the user's local date, following the clock so a Today left
+// open past midnight moves on with it — and the one after it, which may already
+// hold Entries logged ahead (ADR 0035).
+const today = useLocalDay()
+const tomorrow = computed(() => localTomorrow(today.value))
 
 // With Calorie Tracking off the log half of Today is not hidden decoration —
 // there is nothing to log against, so the day summary and the budget banner go
@@ -13,13 +16,19 @@ const { tracksCalories } = useCalorieTracking()
 
 const { $api } = useNuxtApp()
 
+// Tomorrow reads the day's Entries, never its summary: the summary read runs the
+// Weekly Review catch-up, which must not stamp a review on a day not yet begun
+// (ADR 0035). The two reads are independent, so they run together.
+const [summaryRead, tomorrowsLogRead] = await Promise.all([
+  useApi('/api/summary', { query: { date: today } }),
+  useApi('/api/entries', { query: { date: tomorrow } }),
+])
+const { data: summary, error: summaryError, refresh } = summaryRead
 const {
-  data: summary,
-  error: summaryError,
-  refresh,
-} = await useApi('/api/summary', {
-  query: { date: today },
-})
+  data: tomorrowsLog,
+  error: tomorrowsLogError,
+  refresh: refreshTomorrow,
+} = tomorrowsLogRead
 
 // 404 (no measurements yet) is an expected state, not a failure.
 const {
@@ -73,9 +82,9 @@ const { execute: switchToMaintenance } = useApiMutation(
   },
 )
 
-// Delete a mislogged Entry (issue #113) — today's only, so it never rewrites
+// Delete a mislogged Entry — today's or tomorrow's only, so it never rewrites
 // intake a Weekly Review has already counted. A tapped trash icon selects the
-// row; confirming removes it and refreshes the day, whose totals/dayStatus then
+// row; confirming removes it and refreshes both days, whose totals then
 // re-derive without it. No success toast (ADR 0005): the vanishing row is the
 // feedback.
 const selectedEntry = ref<EntryResponse | null>(null)
@@ -85,9 +94,9 @@ const { execute: deleteEntry } = useApiMutation(
     $api('/api/entries/{id}', { method: 'DELETE', path: { id: entry.id } }),
   {
     errorTitle: 'Could not delete entry',
-    onSuccess: () => {
+    onSuccess: async () => {
       selectedEntry.value = null
-      return refresh()
+      await Promise.all([refresh(), refreshTomorrow()])
     },
   },
 )
@@ -145,11 +154,32 @@ const {
       <SuspendedDeficitBanner
         v-if="summary?.deficitSuspended && tracksCalories"
       />
-      <DaySummary
-        v-if="summary && tracksCalories"
-        :summary="summary"
+      <DaySummary v-if="summary && tracksCalories" :summary="summary" />
+      <DayList
+        v-if="summary?.entries.length && tracksCalories"
+        day="today"
+        :date="summary.date"
+        :entries="summary.entries"
+        :calories-consumed="summary.caloriesConsumed"
         @delete="selectedEntry = $event"
       />
+      <LoadErrorState
+        v-if="tracksCalories"
+        :error="tomorrowsLogError"
+        title="Couldn't load tomorrow's entries"
+        @retry="refreshTomorrow"
+      >
+        <!-- Only once the read is for the current tomorrow: across a turnover the
+             previous one would otherwise stand under the day that is now today. -->
+        <DayList
+          v-if="tomorrowsLog?.entries.length && tomorrowsLog.date === tomorrow"
+          day="tomorrow"
+          :date="tomorrowsLog.date"
+          :entries="tomorrowsLog.entries"
+          :calories-consumed="tomorrowsLog.caloriesConsumed"
+          @delete="selectedEntry = $event"
+        />
+      </LoadErrorState>
       <LoadErrorState
         :error="goalProgressError"
         title="Couldn't load your goal"

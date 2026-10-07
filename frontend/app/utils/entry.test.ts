@@ -99,3 +99,13 @@ describe('formatAgainstTarget', () => {
     expect(formatAgainstTarget(120, 160, 'g')).toBe('120 / 160 g')
   })
 })
+
+describe('formatDayTally', () => {
+  it('counts the entries and states their rounded calories with a thousands separator', () => {
+    expect(formatDayTally(3, 1187.6)).toBe('3 entries · 1,188 kcal')
+  })
+
+  it('says entry in the singular for one', () => {
+    expect(formatDayTally(1, 620)).toBe('1 entry · 620 kcal')
+  })
+})
