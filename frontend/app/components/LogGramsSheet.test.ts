@@ -71,7 +71,7 @@ describe('LogGramsSheet', () => {
     await user.type(screen.getByLabelText(/weight \(g\)/i), '150')
     await user.click(screen.getByRole('button', { name: /log entry/i }))
 
-    expect(onLog).toHaveBeenCalledWith({ foodId: 1, grams: 150 })
+    expect(onLog).toHaveBeenCalledWith({ foodId: 1, grams: 150, day: 'today' })
   })
 
   it('logs a fraction of a gram as weighed', async () => {
@@ -84,7 +84,7 @@ describe('LogGramsSheet', () => {
     await user.type(screen.getByLabelText(/weight \(g\)/i), '12.5')
     await user.click(screen.getByRole('button', { name: /log entry/i }))
 
-    expect(onLog).toHaveBeenCalledWith({ foodId: 1, grams: 12.5 })
+    expect(onLog).toHaveBeenCalledWith({ foodId: 1, grams: 12.5, day: 'today' })
   })
 
   it('shows the "enter weight" message when the form is submitted empty', async () => {
@@ -195,9 +195,9 @@ describe('LogGramsSheet', () => {
 
   describe('the day to log for', () => {
     beforeEach(() => {
-      // Advancing on its own, so the render's own timers still run; the tests
-      // move it past midnight by hand.
-      vi.useFakeTimers({ shouldAdvanceTime: true })
+      // Only the date is faked, and it keeps ticking: a frozen clock or faked
+      // timers stop the number field committing what was typed.
+      vi.useFakeTimers({ toFake: ['Date'], shouldAdvanceTime: true })
       vi.setSystemTime(new Date(2026, 9, 7, 21, 15))
     })
     afterEach(() => {
@@ -218,7 +218,7 @@ describe('LogGramsSheet', () => {
 
     it('relabels the submit "Log for tomorrow" once Tomorrow is chosen', async () => {
       await renderSuspended(LogGramsSheet, { props: { food: skyr } })
-      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+      const user = userEvent.setup()
 
       await user.click(screen.getByRole('radio', { name: /^Tomorrow/ }))
 
@@ -230,6 +230,24 @@ describe('LogGramsSheet', () => {
       expect(
         screen.queryByRole('button', { name: 'Log entry' }),
       ).not.toBeInTheDocument()
+    })
+
+    it('emits log with the day chosen', async () => {
+      const onLog = vi.fn()
+      await renderSuspended(LogGramsSheet, { props: { food: skyr, onLog } })
+      const user = userEvent.setup()
+
+      await user.click(screen.getByRole('radio', { name: /^Tomorrow/ }))
+      await user.type(screen.getByLabelText(/weight \(g\)/i), '150')
+      await user.click(screen.getByRole('button', { name: 'Log for tomorrow' }))
+
+      await waitFor(() =>
+        expect(onLog).toHaveBeenCalledWith({
+          foodId: 1,
+          grams: 150,
+          day: 'tomorrow',
+        }),
+      )
     })
   })
 

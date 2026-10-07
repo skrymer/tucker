@@ -14,7 +14,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  log: [{ foodId: number; grams: number }]
+  log: [{ foodId: number; grams: number; day: 'today' | 'tomorrow' }]
   edited: []
   close: []
 }>()
@@ -50,7 +50,7 @@ watch(
 const warningMessage = computed(() => formatBudgetWarning(props.warning))
 
 function onSubmit() {
-  emit('log', { foodId: props.food!.id, grams: state.grams! })
+  emit('log', { foodId: props.food!.id, grams: state.grams!, day: day.value })
 }
 </script>
 
