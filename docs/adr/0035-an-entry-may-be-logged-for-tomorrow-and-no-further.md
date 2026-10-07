@@ -54,9 +54,10 @@ night, or ten minutes ago, logs today's lunch onto tomorrow without noticing,
 because the control is not where their attention is when they commit.
 
 So the choice sits in the sheet, beside the button, and the button names it ("Log
-for tomorrow", "Log estimate for tomorrow"). Every sheet opens on **Today** — the choice is not carried to the
-next sheet, even within one visit, since carrying it reintroduces the forgetting
-one sheet later. Evening prep pays one extra tap per meal for that.
+for tomorrow", "Log estimate for tomorrow"). Every sheet opens on **Today** — the
+choice is not carried to the next sheet, even within one visit, since carrying
+it reintroduces the forgetting one sheet later. Evening prep pays one extra tap
+per meal for that.
 
 The day is resolved when Log is tapped, not when the sheet opened — ADR 0014's
 rule for today, applied to both choices — and the chip labels follow the clock,
