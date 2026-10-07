@@ -482,7 +482,12 @@ describe('/check with a calorie budget', () => {
     scan('3017620422003')
     expect(await screen.findByText('Nutella')).toBeVisible()
 
-    scanner.start.mockClear()
+    // As the real scanner does: a start drops the decoded barcode before its
+    // first await.
+    scanner.start.mockClear().mockImplementationOnce(() => {
+      scanner.barcode.value = null
+      scanner.state.value = 'requesting'
+    })
     await userEvent.click(screen.getByRole('button', { name: 'Scan another' }))
 
     expect(scanner.start).toHaveBeenCalled()
