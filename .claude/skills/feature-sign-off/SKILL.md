@@ -40,13 +40,12 @@ needs it.
 1. **`/simplify` — clean it up.** Apply reuse / simplification / efficiency /
    altitude cleanups to the changed code. It *edits* the working tree, so run it
    before the bug hunt — the reviewer then reads the code you're actually
-   shipping, not a draft. Re-run the relevant tests after it applies fixes.
+   shipping, not a draft. Re-run the relevant tests after it applies fixes. A fix that
+   changes what a User sees or refreshes is read against the issue's criteria first.
 
    It fans out to **three** review agents in parallel — reuse+simplification (one
-   agent, one angle), efficiency, and altitude — each sent its angle line verbatim
-   from [`references/agent-briefs.md`](references/agent-briefs.md#the-simplify-angles--gate-1). Not four: reuse and simplification
-   independently report the same findings — measured at 3 of 3 shared in one run —
-   and the duplicate costs an agent on the gate's critical path.
+   agent: the two shared 3 of 3 findings when split), efficiency, and altitude — each
+   sent its angle line verbatim from [`references/agent-briefs.md`](references/agent-briefs.md#the-simplify-angles--gate-1).
 
    **Sweep the doc comments in the same pass.** Every JSDoc/KDoc the diff adds or
    touches must be brief, present-tense, and non-obvious: it says what the thing
@@ -83,10 +82,10 @@ needs it.
    gain. Medium gives cleanup-once (gate 1) + correctness-once (gate 3) with no
    overlap. Triage every finding: fix the genuine ones, and for each you *don't*
    fix, say why (by-design per an ADR, pre-existing, out of scope). Don't let an
-   unexplained finding through. **A dismissal that cites precedent ("the file does
-   this throughout") is checked with `git grep` on `origin/main` before it is
-   written** — #403 dismissed a doc comment's issue number on "REFERENCE cites
-   issues throughout (#402, #358)", and gate 5 found exactly one.
+   unexplained finding through. **Every source a dismissal cites is quoted as it
+   stands when the dismissal is written** — an ADR, another issue's scope
+   (`gh issue view`), a precedent (`git grep` on `origin/main`) — never a handoff or
+   prototype that no longer exists ([rationale](references/rationale.md#citations)).
    **"Pre-existing" holds only if the harm is reachable on `main`** — a root cause that predates the diff, given a new consumer
    by it, is the diff's harm: F18 slice 6 called a JS/Kotlin trim split pre-existing,
    and gate 5 rejected it because the slice's own merge preview turned a harmless
@@ -175,8 +174,8 @@ needs it.
    the pack does not decide it. The adversary needs no re-check: it argues the
    premise, and a correctness fix does not move that.
 
-   **Gate 2's verdicts do need one, after every later fix** — gate 3's, a gate-5
-   re-resolution's, a gate-6 fix's: re-run the scoped mutation sweep over the files
+   **Gate 2's verdicts do need one, after every later fix** — gate 2's own triage's,
+   gate 3's, a gate-5 re-resolution's, a gate-6 fix's: re-run the scoped mutation sweep over the files
    the fix touched, because a verdict on a changed line no longer stands. Measured in
    F18 slice 5: an "equivalent, guard mode never aborts" survivor became a real gap
    the moment a gate-3 fix switched that read to `latest`. Measured in #435: two
@@ -404,7 +403,7 @@ losing a finding:
   show its red on a throwaway copy, or with `-PmutationFullMatrix` on the backend —
   never by mutating the source in place, which the TDD hook refuses. `mutation-test`
   carries both recipes. "It passes on write, so it can't go RED" is never a reason
-  to leave behaviour unpinned, and gate 5 rejects it.
+  to leave behaviour unpinned, and gate 5 rejects it. **Save every red as it fails.**
 
   Every gate fix follows a large agent report, which is exactly when Probity loses
   the run's test history and refuses a genuine RED as circular. Re-run the target
@@ -494,6 +493,7 @@ Why the gates sit in this order, why two overlap, and why a briefed agent is not
   A check installed in a hook (`afterEach`) is pinned only through the hook: in Vitest
   that is an `it.fails` test, since a hook error counts as its expected failure. #400's
   first fix called the assertion directly; removing it from `afterEach` left the suite
-  green, and gate 5 rejected it.
+  green, and gate 5 rejected it. A fix of several parts is ablated **part by part**; a
+  part whose removal changes nothing is deleted ([rationale](references/rationale.md#ablation)).
 - This skill assumes the work is built and tested. It is the *exit* gate, not a
   substitute for red-green TDD during development.
