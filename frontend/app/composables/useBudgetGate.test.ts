@@ -122,6 +122,27 @@ describe('useBudgetGate', () => {
     expect(gate.warning.value).toBeNull()
   })
 
+  it('commits nothing when a projection fails after the form was edited', async () => {
+    // Failing open logs what the User asked for — not values they have since changed.
+    let failPreview!: (error: Error) => void
+    const preview = vi.fn(
+      () =>
+        new Promise<never>((_, reject) => {
+          failPreview = reject
+        }),
+    )
+    const commit = vi.fn()
+    const gate = useBudgetGate<Payload>({ preview, commit })
+
+    const inFlight = gate.attempt(payload)
+    gate.reset()
+    failPreview(new Error('network down'))
+    await inFlight
+
+    expect(commit).not.toHaveBeenCalled()
+    expect(gate.pending.value).toBe(false)
+  })
+
   it('logs anyway when the projection cannot be computed (fails open)', async () => {
     const commit = vi.fn()
     const preview = vi.fn().mockRejectedValue(new Error('network down'))
