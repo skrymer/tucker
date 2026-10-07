@@ -301,9 +301,17 @@ deficiency, deficit, RDA score, nutrient gap, micros
 **Entry**:
 One occurrence of the user eating a Food — a date, a quantity, and the resulting
 calories, with protein where it is known. Creating an Entry is what "logging"
-means. A mislogged Entry can be
-deleted to undo it — in practice only the current day's, so deletion never
-rewrites intake a Weekly Review has already counted (a review is irreversible).
+means. An Entry may be dated on a day that has not begun yet — food prepped the
+evening before is logged on the day it will be eaten — and it is then an ordinary
+Entry, not a plan awaiting confirmation: the user who preps a meal eats what they
+prepped, and one who doesn't deletes it on the day. The furthest ahead an Entry
+can be dated is **tomorrow**, the user's local tomorrow — judged against the
+day the client supplies, as for a **Weight Measurement**: that covers the evening
+prep, and a date further out is far likelier a slip than a plan — an Entry parked
+weeks ahead would go unseen until it skewed that day. A mislogged Entry can be
+deleted to undo it — in practice only the current day's, or tomorrow's, so
+deletion never rewrites intake a Weekly Review has already counted (a review is
+irreversible, and none can have counted a day that has not begun).
 _Avoid_: log, record
 
 An Entry's **name** is what the user recognises it by: its **Food**'s name when
