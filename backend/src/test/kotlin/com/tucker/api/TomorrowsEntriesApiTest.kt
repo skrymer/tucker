@@ -111,4 +111,16 @@ class TomorrowsEntriesApiTest {
             jsonPath("$.loggedOn") { value("$clientTomorrow") }
         }
     }
+
+    @Test
+    fun `a weighed Entry with an implausible clientToday is refused with 400`() {
+        // No real timezone puts the client two days ahead — a bad clock, not tomorrow.
+        val clientToday = LocalDate.now().plusDays(2)
+        val oats = createFood("Rolled oats")
+
+        mockMvc.post("/api/entries/weighed") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"date":"$clientToday","foodId":$oats,"grams":60.0,"clientToday":"$clientToday"}"""
+        }.andExpect { status { isBadRequest() } }
+    }
 }
