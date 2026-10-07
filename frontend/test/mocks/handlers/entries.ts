@@ -12,7 +12,8 @@ import { baselineCalorieBudget } from './summary'
  * 404, as the real endpoint answers. An Entry dated any day but [today] is a
  * 400 the real endpoint does not send: it stands in for a page that stamped the
  * wrong day, so that page fails its test (ADR 0014). Given [tomorrow], a
- * Weighed Entry may be dated that day too (ADR 0035).
+ * Weighed Entry may be dated that day too (ADR 0035), and a Weighed Entry
+ * whose `clientToday` is not [today] is a 400 for the same reason.
  *
  * Built per test: what is logged counts against its own day's Budget for the
  * next projection.
@@ -45,13 +46,15 @@ export function entryLog({
   }
   /** A weighed portion, or why it is refused. */
   const weigh = (
-    date: string,
+    { date, clientToday }: { date: string; clientToday?: string | null },
     foodId: number,
     grams: number,
   ):
     | { status: 400 | 404; message: string }
     | { food: FoodResponse; calories: number; protein: number } => {
-    const refused = date === tomorrow ? null : wrongDay(date, today)
+    const refused =
+      wrongDay(clientToday, today) ??
+      (date === tomorrow ? null : wrongDay(date, today))
     if (refused) return { status: 400, ...refused }
     const food = foods.find((f) => f.id === foodId)
     if (!food) return { status: 404, message: 'no such food' }
@@ -64,16 +67,16 @@ export function entryLog({
 
   return [
     http.post('/api/entries/weighed/preview', async ({ request, response }) => {
-      const { date, foodId, grams } = await request.json()
-      const portion = weigh(date, foodId, grams)
+      const { date, clientToday, foodId, grams } = await request.json()
+      const portion = weigh({ date, clientToday }, foodId, grams)
       if ('status' in portion) {
         return response(portion.status).json({ message: portion.message })
       }
       return response(200).json(projection(date, portion.calories))
     }),
     http.post('/api/entries/weighed', async ({ request, response }) => {
-      const { date, foodId, grams } = await request.json()
-      const portion = weigh(date, foodId, grams)
+      const { date, clientToday, foodId, grams } = await request.json()
+      const portion = weigh({ date, clientToday }, foodId, grams)
       if ('status' in portion) {
         return response(portion.status).json({ message: portion.message })
       }
