@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ref } from 'vue'
 import { renderSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime'
-import { screen, waitFor } from '@testing-library/vue'
+import { screen, waitFor, within } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import { food } from '~~/test/food-fixtures'
 import LogGramsSheet from './LogGramsSheet.vue'
@@ -191,6 +191,30 @@ describe('LogGramsSheet', () => {
     await user.tab()
 
     expect(onEdited).toHaveBeenCalled()
+  })
+
+  describe('the day to log for', () => {
+    beforeEach(() => {
+      // Advancing on its own, so the render's own timers still run; the tests
+      // move it past midnight by hand.
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+      vi.setSystemTime(new Date(2026, 9, 7, 21, 15))
+    })
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('offers Today and Tomorrow, each with its date, and opens on Today', async () => {
+      await renderSuspended(LogGramsSheet, { props: { food: skyr } })
+
+      const choice = screen.getByRole('radiogroup', { name: 'Day to log for' })
+      expect(
+        within(choice).getByRole('radio', { name: 'Today · Wed 7 Oct' }),
+      ).toBeChecked()
+      expect(
+        within(choice).getByRole('radio', { name: 'Tomorrow · Thu 8 Oct' }),
+      ).not.toBeChecked()
+    })
   })
 
   it('locks the action while the projection or the save is in flight', async () => {

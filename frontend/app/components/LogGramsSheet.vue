@@ -28,6 +28,8 @@ const schema = z.object({ grams: gramsSchema })
 
 const state = reactive({ grams: undefined as number | undefined })
 
+const day = ref<'today' | 'tomorrow'>('today')
+
 // Reset on every (re)open so a previous session's grams don't linger. The
 // form's `:key` remounts the field but not this state, which the number field's
 // blur-scoped commit hides from a test that types without leaving the field.
@@ -84,6 +86,8 @@ function onSubmit() {
         icon="i-lucide-triangle-alert"
         :title="warningMessage"
       />
+
+      <DayChoice v-model="day" />
 
       <UButton type="submit" color="primary" class="w-full" :loading="pending">
         {{ warningMessage ? 'Log anyway' : 'Log entry' }}
