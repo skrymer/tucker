@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { z } from 'zod'
 import type { BudgetWarning } from '~/composables/useBudgetGate'
+import type { RelativeDay } from '~/utils/day'
 
 const props = defineProps<{
   /** Over-budget heads-up for the entry being composed; null/absent when within budget. */
@@ -10,11 +11,17 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  submit: [{ label: string; calories: number; protein?: number }]
+  submit: [
+    { label: string; calories: number; protein?: number; day: RelativeDay },
+  ]
   edited: []
 }>()
 
-const warningMessage = computed(() => formatBudgetWarning(props.warning))
+// The form mounts afresh each time its sheet opens, so it opens on Today.
+const { day, warningMessage, submitLabel } = useLogDay(() => props.warning, {
+  today: 'Log estimated entry',
+  tomorrow: 'Log estimate for tomorrow',
+})
 
 const schema = z.object({
   label: z.string().min(1, 'Enter a label for this entry'),
@@ -28,10 +35,10 @@ const state = reactive({
   protein: undefined as number | undefined,
 })
 
-// Editing any field clears a showing budget warning so the next Save re-checks
-// against the new numbers (no stale "Log anyway").
+// Editing any field or the day clears a showing budget warning so the next Save
+// re-checks the entry as it now stands (no stale "Log anyway").
 watch(
-  () => [state.label, state.calories, state.protein],
+  () => [state.label, state.calories, state.protein, day.value],
   () => emit('edited'),
 )
 
@@ -40,6 +47,7 @@ function onSubmit() {
     label: state.label,
     calories: state.calories!,
     protein: state.protein,
+    day: day.value,
   })
 }
 </script>
@@ -75,8 +83,10 @@ function onSubmit() {
       :title="warningMessage"
     />
 
+    <DayChoice v-model="day" />
+
     <UButton type="submit" color="primary" class="w-full" :loading="pending">
-      {{ warningMessage ? 'Log anyway' : 'Log estimated entry' }}
+      {{ submitLabel }}
     </UButton>
   </UForm>
 </template>

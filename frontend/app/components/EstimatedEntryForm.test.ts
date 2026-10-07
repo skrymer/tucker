@@ -1,6 +1,6 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderSuspended } from '@nuxt/test-utils/runtime'
-import { screen } from '@testing-library/vue'
+import { screen, waitFor, within } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import EstimatedEntryForm from './EstimatedEntryForm.vue'
 
@@ -35,6 +35,7 @@ describe('EstimatedEntryForm', () => {
       label: 'Cafe lunch',
       calories: 600,
       protein: undefined,
+      day: 'today',
     })
   })
 
@@ -58,6 +59,7 @@ describe('EstimatedEntryForm', () => {
       label: 'Half a pastry',
       calories: 212.5,
       protein: 3.5,
+      day: 'today',
     })
   })
 
@@ -123,5 +125,99 @@ describe('EstimatedEntryForm', () => {
       screen.queryByText('Enter a label for this entry'),
     ).not.toBeInTheDocument()
     expect(onSubmit).not.toHaveBeenCalled()
+  })
+
+  describe('the day to log for', () => {
+    beforeEach(() => {
+      // Only the date is faked, and it keeps ticking: a frozen clock or faked
+      // timers stop the number field committing what was typed.
+      vi.useFakeTimers({ toFake: ['Date'], shouldAdvanceTime: true })
+      vi.setSystemTime(new Date(2026, 9, 7, 21, 15))
+    })
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('offers Today and Tomorrow, each with its date, and opens on Today', async () => {
+      await renderSuspended(EstimatedEntryForm, { props: {} })
+
+      const choice = screen.getByRole('radiogroup', { name: 'Day to log for' })
+      expect(
+        within(choice).getByRole('radio', { name: 'Today · Wed 7 Oct' }),
+      ).toBeChecked()
+      expect(
+        within(choice).getByRole('radio', { name: 'Tomorrow · Thu 8 Oct' }),
+      ).not.toBeChecked()
+    })
+
+    it('relabels the submit "Log estimate for tomorrow" once Tomorrow is chosen', async () => {
+      await renderSuspended(EstimatedEntryForm, { props: {} })
+      const user = userEvent.setup()
+
+      await user.click(screen.getByRole('radio', { name: /^Tomorrow/ }))
+
+      expect(screen.getByRole('radio', { name: /^Tomorrow/ })).toBeChecked()
+      expect(
+        screen.getByRole('button', { name: 'Log estimate for tomorrow' }),
+      ).toBeVisible()
+      expect(
+        screen.queryByRole('button', { name: 'Log estimated entry' }),
+      ).not.toBeInTheDocument()
+    })
+
+    it("names tomorrow's budget in the warning for a tomorrow estimate, and still offers Log anyway", async () => {
+      await renderSuspended(EstimatedEntryForm, {
+        props: { warning: { overByKcal: 180, calorieBudget: 1900 } },
+      })
+
+      await userEvent
+        .setup()
+        .click(screen.getByRole('radio', { name: /^Tomorrow/ }))
+
+      expect(
+        screen.getByText(
+          "This puts you ~180 kcal over tomorrow's 1900 budget.",
+        ),
+      ).toBeVisible()
+      expect(screen.getByRole('button', { name: 'Log anyway' })).toBeVisible()
+      expect(
+        screen.queryByRole('button', { name: 'Log estimate for tomorrow' }),
+      ).not.toBeInTheDocument()
+    })
+
+    it('emits "edited" when the day changes, since a showing warning weighed the other day', async () => {
+      const onEdited = vi.fn()
+      await renderSuspended(EstimatedEntryForm, {
+        props: { warning: { overByKcal: 180, calorieBudget: 1900 }, onEdited },
+      })
+
+      await userEvent
+        .setup()
+        .click(screen.getByRole('radio', { name: /^Tomorrow/ }))
+
+      expect(onEdited).toHaveBeenCalled()
+    })
+
+    it('submits the estimate with the day chosen', async () => {
+      const onSubmit = vi.fn()
+      await renderSuspended(EstimatedEntryForm, { props: { onSubmit } })
+      const user = userEvent.setup()
+
+      await user.click(screen.getByRole('radio', { name: /^Tomorrow/ }))
+      await user.type(screen.getByLabelText('Label'), 'Café dinner')
+      await user.type(screen.getByLabelText('Calories'), '800')
+      await user.click(
+        screen.getByRole('button', { name: 'Log estimate for tomorrow' }),
+      )
+
+      await waitFor(() =>
+        expect(onSubmit).toHaveBeenCalledWith({
+          label: 'Café dinner',
+          calories: 800,
+          protein: undefined,
+          day: 'tomorrow',
+        }),
+      )
+    })
   })
 })

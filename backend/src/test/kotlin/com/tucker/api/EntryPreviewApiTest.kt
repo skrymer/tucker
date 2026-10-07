@@ -15,6 +15,7 @@ import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
+import org.springframework.test.web.servlet.put
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
 
@@ -208,5 +209,81 @@ class EntryPreviewApiTest {
             jsonPath("$.wouldExceedBudget") { value(false) }
             jsonPath("$.calorieBudget", closeTo(2000.0, 1e-6))
         }
+    }
+
+    @Test
+    fun `previewing an estimated entry dated after the client's tomorrow is refused with 400`() {
+        val clientToday = LocalDate.now()
+        val dayAfterTomorrow = clientToday.plusDays(2)
+
+        mockMvc.post("/api/entries/estimated/preview") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"date":"$dayAfterTomorrow","label":"Café dinner","calories":800.0,"protein":null,""" +
+                """"clientToday":"$clientToday"}"""
+        }.andExpect { status { isBadRequest() } }
+    }
+
+    @Test
+    fun `previewing an estimated entry for tomorrow is judged against tomorrow's Entries`() {
+        val clientToday = LocalDate.now()
+        val tomorrow = clientToday.plusDays(1)
+        seedBudget(2000.0, on = clientToday)
+        mockMvc.post("/api/entries/estimated") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"date":"$clientToday","label":"today's lunch","calories":1500.0,"protein":null}"""
+        }.andExpect { status { isCreated() } }
+        mockMvc.post("/api/entries/estimated") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"date":"$tomorrow","label":"tomorrow's breakfast","calories":1800.0,"protein":null}"""
+        }.andExpect { status { isCreated() } }
+
+        mockMvc.post("/api/entries/estimated/preview") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"date":"$tomorrow","label":"Café dinner","calories":400.0,"protein":null,""" +
+                """"clientToday":"$clientToday"}"""
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.projectedCaloriesConsumed", closeTo(2200.0, 1e-6)) // 1,800 + 400, not 1,500 + 400
+            jsonPath("$.wouldExceedBudget") { value(true) }
+            jsonPath("$.overByKcal", closeTo(200.0, 1e-6))
+            jsonPath("$.calorieBudget", closeTo(2000.0, 1e-6))
+        }
+    }
+
+    @Test
+    fun `previewing an estimated entry for tomorrow with Calorie Tracking off reports no budget to exceed`() {
+        val clientToday = LocalDate.now()
+        mockMvc.put("/api/profile") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"sex":"MALE","birthDate":"1986-05-22","heightCm":180.0,"tracksCalories":false}"""
+        }.andExpect { status { isOk() } }
+        mockMvc.post("/api/weight") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"date":"$clientToday","weightKg":86.0}"""
+        }.andExpect { status { isOk() } }
+        mockMvc.post("/api/weekly-review").andExpect { status { isOk() } }
+
+        mockMvc.post("/api/entries/estimated/preview") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"date":"${clientToday.plusDays(1)}","label":"Birthday dinner","calories":4000.0,""" +
+                """"protein":null,"clientToday":"$clientToday"}"""
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.wouldExceedBudget") { value(false) }
+            jsonPath("$.calorieBudget") { value(null) }
+            jsonPath("$.overByKcal") { value(null) }
+            jsonPath("$.projectedCaloriesConsumed", closeTo(4000.0, 1e-6))
+        }
+    }
+
+    @Test
+    fun `previewing an estimated entry with an implausible clientToday is refused with 400`() {
+        val clientToday = LocalDate.now().plusDays(2)
+
+        mockMvc.post("/api/entries/estimated/preview") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"date":"$clientToday","label":"Café dinner","calories":800.0,"protein":null,""" +
+                """"clientToday":"$clientToday"}"""
+        }.andExpect { status { isBadRequest() } }
     }
 }

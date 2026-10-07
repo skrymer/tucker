@@ -29,7 +29,10 @@ const schema = z.object({ grams: gramsSchema })
 
 const state = reactive({ grams: undefined as number | undefined })
 
-const day = ref<RelativeDay>('today')
+const { day, warningMessage, submitLabel } = useLogDay(() => props.warning, {
+  today: 'Log entry',
+  tomorrow: 'Log for tomorrow',
+})
 
 // Reset on every (re)open so a previous session's grams don't linger. The
 // form's `:key` remounts the field but not this state, which the number field's
@@ -49,14 +52,6 @@ watch(
 // Editing the grams or the day clears any showing budget warning so the next
 // Save re-checks the entry as it now stands (no stale "Log anyway").
 watch([() => state.grams, day], () => emit('edited'))
-
-const warningMessage = computed(() =>
-  formatBudgetWarning(props.warning, day.value),
-)
-const submitLabel = computed(() => {
-  if (warningMessage.value) return 'Log anyway'
-  return day.value === 'tomorrow' ? 'Log for tomorrow' : 'Log entry'
-})
 
 function onSubmit() {
   emit('log', { foodId: props.food!.id, grams: state.grams!, day: day.value })

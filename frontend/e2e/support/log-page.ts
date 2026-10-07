@@ -38,3 +38,24 @@ export async function enterGrams(page: Page, sheet: Locator, grams: number) {
   await page.keyboard.type(String(grams))
   await page.keyboard.press('Tab')
 }
+
+/** Open the **Log** destination's estimate sheet and return it. */
+export async function openEstimateToLog(page: Page): Promise<Locator> {
+  await page.getByRole('button', { name: 'Log an estimate instead' }).click()
+  return page.getByRole('dialog', { name: 'Log an estimate' })
+}
+
+/**
+ * Describe an estimate in an open estimate sheet, leaving the calorie field so
+ * its value commits (see [enterGrams]).
+ */
+export async function enterEstimate(
+  page: Page,
+  sheet: Locator,
+  estimate: { label: string; calories: number },
+) {
+  await sheet.getByLabel('Label').fill(estimate.label)
+  await sheet.getByLabel('Calories').click()
+  await page.keyboard.type(String(estimate.calories))
+  await page.keyboard.press('Tab')
+}

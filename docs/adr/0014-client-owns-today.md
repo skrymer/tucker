@@ -33,8 +33,8 @@ against today — takes the client's local date and acts on it:
   a stamp but a comparison, and it needs the client's day for the same reason: at a
   UTC offset the server's day and the user's differ, so the server's would refuse a
   date the picker in front of them offers.
-- `POST /api/entries/weighed` and its preview — the Entry's `date` is judged against
-  the client's day: tomorrow at the furthest
+- `POST /api/entries/weighed`, `POST /api/entries/estimated` and their previews —
+  the Entry's `date` is judged against the client's day: tomorrow at the furthest
   ([0035](0035-an-entry-may-be-logged-for-tomorrow-and-no-further.md)).
 - `GET /api/check/{barcode}`: a read, not a write, but it states the targets
   *standing on* the User's day (the review dated on or before it; see **Weekly
@@ -112,8 +112,8 @@ the user's own zone is a move toward this ADR's model rather than away from it.
   rather than at each call site. `GET /api/check/{barcode}` takes it too, as the
   one read that needs it — the summary carries the day as `date`. Since
   [0035](0035-an-entry-may-be-logged-for-tomorrow-and-no-further.md) the Weighed
-  Entry log and its Budget Projection take it beside `date`, which may be tomorrow
-  and no further; `useEntryLogging` stamps both at the Log tap.
+  and Estimated Entry logs and their Budget Projections take it beside `date`, which
+  may be tomorrow and no further; `useEntryLogging` stamps both at the Log tap.
 - The #84 UTC pin is retained as a safety net, not a crutch.
 
 ## References

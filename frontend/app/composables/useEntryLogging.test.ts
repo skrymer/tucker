@@ -43,11 +43,15 @@ const host = (onLogged?: () => void) =>
       return {
         weighed,
         estimated,
-        logWeighed: () => weighed.log({ foodId: 7, grams: 80 }),
+        logWeighed: () => weighed.log({ foodId: 7, grams: 80, day: 'today' }),
         logWeighedForTomorrow: () =>
           weighed.log({ foodId: 7, grams: 80, day: 'tomorrow' }),
         logEstimated: () =>
-          estimated.log({ label: 'Work canteen', calories: 640 }),
+          estimated.log({
+            label: 'Work canteen',
+            calories: 640,
+            day: 'today',
+          }),
       }
     },
     template: `<button @click="logWeighed">weighed</button>

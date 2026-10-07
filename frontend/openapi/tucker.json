@@ -4352,6 +4352,11 @@
             "type": "number",
             "format": "double",
             "nullable": true
+          },
+          "clientToday": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
           }
         }
       },
