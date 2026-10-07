@@ -4234,6 +4234,11 @@
           "grams": {
             "type": "number",
             "format": "double"
+          },
+          "clientToday": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
           }
         }
       },
