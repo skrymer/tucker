@@ -172,4 +172,15 @@ class EntryPreviewApiTest {
             content = """{"date":"$dayAfterTomorrow","foodId":$foodId,"grams":60.0,"clientToday":"$clientToday"}"""
         }.andExpect { status { isBadRequest() } }
     }
+
+    @Test
+    fun `previewing a weighed entry with an implausible clientToday is refused with 400`() {
+        val clientToday = LocalDate.now().plusDays(2)
+        val foodId = seedFoodAt100KcalPer100g()
+
+        mockMvc.post("/api/entries/weighed/preview") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"date":"$clientToday","foodId":$foodId,"grams":60.0,"clientToday":"$clientToday"}"""
+        }.andExpect { status { isBadRequest() } }
+    }
 }
