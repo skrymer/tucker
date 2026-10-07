@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 /**
- * Claude Code PreToolUse hook — refuses a new test while code the branch changed
- * duplicates other source code, so the refactor step of a TDD cycle happens
- * before the next red rather than at sign-off. Probity's TDD rule sees only the
- * file being written, so duplication against another file is invisible to it.
+ * Claude Code PreToolUse hook — refuses a new test while the branch holds a clone
+ * of source code that `origin/main` does not, so the refactor step of a TDD cycle
+ * happens before the next red rather than at sign-off. Probity's TDD rule sees only
+ * the file being written, so duplication against another file is invisible to it.
  *
- * Fails open on any error, and says so: a skipped scan must not read as a clean one.
+ * Fails open on any error, and says so.
  */
 
 import { execFileSync } from 'node:child_process'
@@ -14,7 +14,8 @@ import { tmpdir } from 'node:os'
 import { dirname, join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const TEST_FILE = /(^|\/)(backend\/src\/test\/.*\.kt|frontend\/app\/.*\.test\.ts)$/
+const TEST_FILE =
+  /(^|\/)(backend\/src\/test\/.*\.kt|frontend\/app\/.*\.test\.ts)$/
 
 const TEST_DECLARATION = /(?<![\w.])(?:it|test)\s*\(|@Test\b/g
 
@@ -24,7 +25,8 @@ const TEST_DECLARATION = /(?<![\w.])(?:it|test)\s*\(|@Test\b/g
  */
 function addsTest(input) {
   const count = (text) => (text ?? '').match(TEST_DECLARATION)?.length ?? 0
-  const replaced = 'old_string' in input ? input.old_string : currentContent(input.file_path)
+  const replaced =
+    'old_string' in input ? input.old_string : currentContent(input.file_path)
   return count(input.new_string ?? input.content) > count(replaced)
 }
 
@@ -34,42 +36,74 @@ function currentContent(path) {
 
 const SOURCE_TREES = ['backend/src', 'frontend/app']
 
-const JSCPD = join(
-  dirname(fileURLToPath(import.meta.url)),
-  '../../node_modules/.bin/jscpd',
-)
+/** Below the hook's own harness timeout, so a slow scan ends in a skip that says so. */
+const TIMEOUT_MS = Number(process.env.CLONE_GATE_TIMEOUT_MS ?? 8000)
 
-/** The clones jscpd finds in [repo]'s source, each a pair of repo-relative `{ file, start, end }`. */
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '../..')
+
+const JSCPD = join(ROOT, 'node_modules/.bin/jscpd')
+
+/**
+ * What the scan counts — the threshold, the formats and the files left out — so
+ * a bare `npx jscpd` at the root sees what this gate sees. SQL is not among the
+ * formats: a migration can never be marked, since an edit changes its checksum.
+ */
+const CONFIG = join(ROOT, '.jscpd.json')
+
+/**
+ * The clones in [repo]'s source that `origin/main` does not already have, each a
+ * pair of repo-relative `{ file, start }`. A clone made of nothing but preamble
+ * is left out.
+ */
 function findClones(repo) {
   if (!existsSync(JSCPD)) {
-    throw new Error('jscpd is not installed. Run `npm install` at the repo root.')
+    throw new Error(
+      'jscpd is not installed. Run `npm install` at the repo root.',
+    )
   }
   const out = mkdtempSync(join(tmpdir(), 'clone-gate-'))
+  try {
+    runJscpd(repo, out)
+    const report = JSON.parse(
+      readFileSync(join(out, 'jscpd-report.json'), 'utf8'),
+    )
+    // A Vue file's halves are named `File.vue:html` and `File.vue:typescript`.
+    const side = ({ name, start }) => ({
+      file: relative(repo, name.replace(/:\w+$/, '')),
+      start,
+    })
+    return report.duplicates
+      .filter((clone) => clone.isNew && !isPreamble(clone.fragment))
+      .map((clone) => [side(clone.firstFile), side(clone.secondFile)])
+  } finally {
+    rmSync(out, { recursive: true, force: true })
+  }
+}
+
+/** Runs jscpd over [repo], writing its JSON report into [out]. */
+function runJscpd(repo, out) {
   try {
     execFileSync(
       JSCPD,
       [
-        '--min-tokens', '30',
-        // A positive list: a migration can never be marked, since an edit changes its checksum.
-        '--format', 'kotlin,typescript,vue',
-        '--ignore', '**/*.test.ts,backend/src/test/**',
-        '-a', '-s', '-r', 'json', '-o', out,
+        '--config',
+        CONFIG,
+        '--baseline-from-ref',
+        'origin/main',
+        '-a',
+        '-s',
+        '-r',
+        'json',
+        '-o',
+        out,
         ...SOURCE_TREES.filter((tree) => existsSync(join(repo, tree))),
       ],
-      { cwd: repo, stdio: 'pipe' },
+      { cwd: repo, stdio: 'pipe', timeout: TIMEOUT_MS },
     )
-    const report = JSON.parse(readFileSync(join(out, 'jscpd-report.json'), 'utf8'))
-    // A Vue file's halves are named `File.vue:html` and `File.vue:typescript`.
-    const side = ({ name, start, end }) => ({
-      file: relative(repo, name.replace(/:\w+$/, '')),
-      start,
-      end,
-    })
-    return report.duplicates
-      .filter((clone) => !isPreamble(clone.fragment))
-      .map((clone) => [side(clone.firstFile), side(clone.secondFile)])
-  } finally {
-    rmSync(out, { recursive: true, force: true })
+  } catch (error) {
+    if (error.code === 'ETIMEDOUT')
+      throw new Error(`jscpd took longer than ${TIMEOUT_MS / 1000} s`)
+    throw error
   }
 }
 
@@ -77,54 +111,32 @@ const PREAMBLE_LINE = /^\s*(package\s|import\s|\/\/|\/\*|\*)/
 
 /** Whether a cloned fragment is only package lines, imports and comments: nothing to extract. */
 const isPreamble = (fragment) =>
-  fragment.split('\n').every((line) => line.trim() === '' || PREAMBLE_LINE.test(line))
+  fragment
+    .split('\n')
+    .every((line) => line.trim() === '' || PREAMBLE_LINE.test(line))
 
 const git = (cwd, ...args) =>
-  execFileSync('git', args, { cwd, stdio: 'pipe' }).toString().split('\n').filter(Boolean)
-
-/**
- * The lines the branch added or changed since it left `origin/main`, committed
- * or not, as a map from file to line numbers. An untracked file maps to `ALL`.
- */
-function branchLines(repo) {
-  const [base] = git(repo, 'merge-base', 'origin/main', 'HEAD')
-  const changed = new Map()
-  let lines
-  for (const row of git(repo, 'diff', '-U0', '--no-color', base)) {
-    const file = row.match(/^\+\+\+ b\/(.*)$/)
-    if (file) changed.set(file[1], (lines = new Set()))
-    const hunk = row.match(/^@@ -\S+ \+(\d+)(?:,(\d+))? @@/)
-    if (hunk) {
-      const [from, count] = [Number(hunk[1]), Number(hunk[2] ?? 1)]
-      for (let n = from; n < from + count; n++) lines.add(n)
-    }
-  }
-  for (const file of git(repo, 'ls-files', '--others', '--exclude-standard')) {
-    changed.set(file, ALL)
-  }
-  return changed
-}
-
-const ALL = { has: () => true }
-
-const touches = (changed) => ({ file, start, end }) => {
-  const lines = changed.get(file)
-  if (!lines) return false
-  for (let n = start; n <= end; n++) if (lines.has(n)) return true
-  return false
-}
+  execFileSync('git', args, { cwd, stdio: 'pipe', timeout: TIMEOUT_MS })
+    .toString()
+    .split('\n')
+    .filter(Boolean)
 
 /** The deny naming each clone and the two ways out of it. */
 function refusal(clones) {
-  const pairs = clones.map((pair) => pair.map(({ file, start }) => `${file}:${start}`).join(' ↔ '))
+  const pairs = clones.map((pair) =>
+    pair.map(({ file, start }) => `${file}:${start}`).join(' ↔ '),
+  )
   return {
     hookSpecificOutput: {
       hookEventName: 'PreToolUse',
       permissionDecision: 'deny',
       permissionDecisionReason:
-        `Refactor before the next test: ${pairs.join(', ')}. ` +
-        'Extract the shared code, or wrap the side you keep in jscpd:ignore-start / ' +
-        'jscpd:ignore-end with a one-line reason.',
+        `Refactor before the next test: ${pairs.join(', ')} duplicate each other. ` +
+        'Remove it with a refactoring from https://refactoring.com/catalog/ — Extract ' +
+        'Function (a component or composable, in Vue), Slide Statements first when the ' +
+        'copies are interleaved with other code, or Pull Up Method when they sit in ' +
+        'sibling classes. If the duplication is meant, wrap the side you keep in ' +
+        'jscpd:ignore-start / jscpd:ignore-end with a one-line reason.',
     },
   }
 }
@@ -134,8 +146,7 @@ function main() {
   const input = payload.tool_input ?? {}
   if (!TEST_FILE.test(input.file_path ?? '') || !addsTest(input)) return
   const [repo] = git(payload.cwd, 'rev-parse', '--show-toplevel')
-  const changed = touches(branchLines(repo))
-  const clones = findClones(repo).filter((pair) => pair.some(changed))
+  const clones = findClones(repo)
   if (clones.length > 0) process.stdout.write(JSON.stringify(refusal(clones)))
 }
 
@@ -145,13 +156,19 @@ function main() {
  * given: `allow` would also skip the user's permission prompt.
  */
 function skipped(error) {
-  // A failed command's own stderr says why; its message only repeats the command line.
-  const cause = String(error?.stderr || error?.message || error).trim().split('\n')[0]
+  // A failed command's stderr ends with why; its message only repeats the command line.
+  const cause = String(error?.stderr || error?.message || error)
+    .trim()
+    .split('\n')
+    .at(-1)
   const message = `clone-gate skipped: ${cause}`
   process.stdout.write(
     JSON.stringify({
       systemMessage: message,
-      hookSpecificOutput: { hookEventName: 'PreToolUse', additionalContext: message },
+      hookSpecificOutput: {
+        hookEventName: 'PreToolUse',
+        additionalContext: message,
+      },
     }),
   )
 }

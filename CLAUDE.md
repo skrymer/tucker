@@ -201,12 +201,15 @@ staged frontend files via a pre-commit hook — enable it once per clone with
 
 The refactor step of a TDD cycle is enforced too, by a hook rather than by prose
 ([#411](https://github.com/skrymer/tucker/issues/411)): `.claude/hooks/clone-gate.mjs`
-refuses a write that **adds a test** while jscpd finds a clone overlapping lines the
-branch changed, in Kotlin, TS or Vue source (tests, SQL and import-only clones are
-never counted). The way out is to extract the shared code, or — when the duplication
-is meant — to wrap the kept side in `jscpd:ignore-start` / `jscpd:ignore-end` with a
-one-line reason, which review then sees. It needs `npm install` at the repo root;
-when it can't run, it lets the write through and says so rather than reading as clean.
+refuses a write that **adds a test** while the branch holds a clone of Kotlin, TS or
+Vue source that `origin/main` does not (jscpd's `--baseline-from-ref`; tests, SQL and
+import-only clones never count). What counts is `.jscpd.json`, so a bare `npx jscpd`
+at the root sees what the gate sees. The way out is a refactoring from the
+[catalog](https://refactoring.com/catalog/) — Extract Function, Slide Statements, Pull
+Up Method — or, when the duplication is meant, wrapping the kept side in
+`jscpd:ignore-start` / `jscpd:ignore-end` with a one-line reason, which review then
+sees. It needs `npm install` at the repo root; when it can't run, it lets the write
+through and says so rather than reading as clean.
 
 The frontend is built **test-first (red-green TDD)**. Increments:
 

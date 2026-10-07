@@ -2,7 +2,7 @@
  * Tests for the clone-gate hook. Run with: node --test .claude/hooks/*.test.mjs
  */
 
-import { test } from 'node:test'
+import { after, test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
   copyFileSync,
@@ -22,6 +22,18 @@ const HOOK = join(HERE, 'clone-gate.mjs')
 const FIXTURES = join(HERE, 'fixtures', 'clone-gate')
 const COMPONENTS = 'frontend/app/components'
 
+const tempDirs = []
+after(() =>
+  tempDirs.forEach((dir) => rmSync(dir, { recursive: true, force: true })),
+)
+
+/** A fresh directory under the OS temp dir, removed when the file's tests finish. */
+function tempDir(prefix) {
+  const dir = mkdtempSync(join(tmpdir(), prefix))
+  tempDirs.push(dir)
+  return dir
+}
+
 const git = (cwd, ...args) =>
   execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', ...args], {
     cwd,
@@ -35,8 +47,8 @@ const addFixture = (repo, name) =>
  * A repo on a `feature` branch off `origin/main`. [onMain] are fixture files
  * committed to main, [onBranch] are committed on the branch.
  */
-function repo({ onMain, onBranch = [] }) {
-  const dir = mkdtempSync(join(tmpdir(), 'clone-gate-'))
+function repo({ onMain = [], onBranch = [] } = {}) {
+  const dir = tempDir('clone-gate-')
   mkdirSync(join(dir, COMPONENTS), { recursive: true })
   mkdirSync(join(dir, 'backend/src/main'), { recursive: true })
   git(dir, 'init', '-q', '-b', 'main')
@@ -52,10 +64,7 @@ function repo({ onMain, onBranch = [] }) {
   return dir
 }
 
-/**
- * The grams sheet on main and the estimate form added on the branch, as #444
- * stood before its gate-1 extraction.
- */
+/** The grams sheet on main, and the estimate form that clones it added on the branch. */
 const repoWithBranchClone = () =>
   repo({ onMain: ['LogGramsSheet.vue'], onBranch: ['EstimatedEntryForm.vue'] })
 
@@ -64,7 +73,12 @@ const repoWithBranchClone = () =>
  * or null. [hook] defaults to the one beside this file, whose jscpd is the
  * repo's, and [cwd] to the repo root.
  */
-function runHook(repo, toolName, toolInput, { hook = HOOK, cwd = repo } = {}) {
+function runHook(
+  repo,
+  toolName,
+  toolInput,
+  { hook = HOOK, cwd = repo, env = {} } = {},
+) {
   const out = execFileSync('node', [hook], {
     cwd,
     input: JSON.stringify({
@@ -73,7 +87,7 @@ function runHook(repo, toolName, toolInput, { hook = HOOK, cwd = repo } = {}) {
       tool_name: toolName,
       tool_input: toolInput,
     }),
-    env: { ...process.env, CLAUDE_PROJECT_DIR: repo },
+    env: { ...process.env, ...env },
   }).toString()
   return out.trim() === '' ? null : JSON.parse(out)
 }
@@ -92,11 +106,21 @@ test('a new test is refused while a branch file clones another source file', () 
   const reason = verdict.hookSpecificOutput.permissionDecisionReason
   assert.match(reason, /frontend\/app\/components\/EstimatedEntryForm\.vue:21/)
   assert.match(reason, /frontend\/app\/components\/LogGramsSheet\.vue:51/)
+  assert.match(reason, /refactoring\.com\/catalog/)
+  for (const move of [
+    'Extract Function',
+    'Slide Statements',
+    'Pull Up Method',
+  ]) {
+    assert.match(reason, new RegExp(move), move)
+  }
   assert.match(reason, /jscpd:ignore-start/)
 })
 
 test('a clone the branch did not touch never blocks', () => {
-  const legacy = repo({ onMain: ['LogGramsSheet.vue', 'EstimatedEntryForm.vue'] })
+  const legacy = repo({
+    onMain: ['LogGramsSheet.vue', 'EstimatedEntryForm.vue'],
+  })
 
   assert.equal(runHook(legacy, 'Write', newVitestTest(legacy)), null)
 })
@@ -117,10 +141,13 @@ function editLine(file, n, change) {
   writeFileSync(file, lines.join('\n'))
 }
 
-test('an uncommitted edit inside a clone is refused', () => {
+test('a clone created in a tracked file and not yet committed is refused', () => {
   const dir = repo({ onMain: ['LogGramsSheet.vue', 'EstimatedEntryForm.vue'] })
-  // Trailing whitespace: a changed line to git, the same tokens to jscpd.
-  editLine(join(dir, COMPONENTS, 'EstimatedEntryForm.vue'), 23, (line) => `${line}  `)
+  const form = join(dir, COMPONENTS, 'EstimatedEntryForm.vue')
+  writeFileSync(form, '<template><p>an estimate</p></template>\n')
+  git(dir, 'commit', '-q', '-am', 'the form, before it copies the sheet')
+  git(dir, 'update-ref', 'refs/remotes/origin/main', 'HEAD')
+  addFixture(dir, 'EstimatedEntryForm.vue')
 
   const verdict = runHook(dir, 'Write', newVitestTest(dir))
 
@@ -159,8 +186,10 @@ test('an edit to a test file that adds no test passes', () => {
 
   const verdict = runHook(dir, 'Edit', {
     file_path: join(dir, COMPONENTS, 'EstimatedEntryForm.test.ts'),
-    old_string: "it('logs the estimate', async () => {\n  expect(logged).toBe(1)",
-    new_string: "it('logs the estimate', async () => {\n  expect(logged).toBe(2)",
+    old_string:
+      "it('logs the estimate', async () => {\n  expect(logged).toBe(1)",
+    new_string:
+      "it('logs the estimate', async () => {\n  expect(logged).toBe(2)",
   })
 
   assert.equal(verdict, null)
@@ -183,18 +212,23 @@ test('a new Kotlin test is refused while a branch clone exists', () => {
   const dir = repoWithBranchClone()
 
   const verdict = runHook(dir, 'Write', {
-    file_path: join(dir, 'backend/src/test/kotlin/com/tucker/domain/EntryTest.kt'),
-    content: 'class EntryTest {\n  @Test\n  fun `an entry may be logged for tomorrow`() {}\n}\n',
+    file_path: join(
+      dir,
+      'backend/src/test/kotlin/com/tucker/domain/EntryTest.kt',
+    ),
+    content:
+      'class EntryTest {\n  @Test\n  fun `an entry may be logged for tomorrow`() {}\n}\n',
   })
 
   assert.equal(verdict?.hookSpecificOutput?.permissionDecision, 'deny')
 })
 
 test('duplication between test files never blocks', () => {
-  const dir = repo({ onMain: [] })
+  const dir = repo()
   const cases = Array.from(
     { length: 12 },
-    (_, i) => `  expect(format(${i}, 'g', [${i}, ${i + 1}])).toBe('${i} g of ${i + 1}')`,
+    (_, i) =>
+      `  expect(format(${i}, 'g', [${i}, ${i + 1}])).toBe('${i} g of ${i + 1}')`,
   ).join('\n')
   for (const file of [
     `${COMPONENTS}/First.test.ts`,
@@ -217,12 +251,15 @@ test('without origin/main to diff against, the test is let through with the caus
 
   assert.equal(verdict?.hookSpecificOutput?.permissionDecision, undefined)
   assert.match(verdict?.systemMessage, /^clone-gate skipped: .*origin\/main/)
-  assert.equal(verdict.hookSpecificOutput.additionalContext, verdict.systemMessage)
+  assert.equal(
+    verdict.hookSpecificOutput.additionalContext,
+    verdict.systemMessage,
+  )
 })
 
 /** A copy of the hook in a checkout of its own, whose node_modules holds [jscpd] if given. */
 function hookInCheckout(jscpd) {
-  const checkout = mkdtempSync(join(tmpdir(), 'clone-gate-checkout-'))
+  const checkout = tempDir('clone-gate-checkout-')
   const hook = join(checkout, '.claude/hooks/clone-gate.mjs')
   mkdirSync(dirname(hook), { recursive: true })
   copyFileSync(HOOK, hook)
@@ -260,13 +297,17 @@ test('a session working from a subdirectory is gated on the whole repo', () => {
 test('an edit elsewhere in a file holding a legacy clone passes', () => {
   const dir = repo({ onMain: ['LogGramsSheet.vue', 'EstimatedEntryForm.vue'] })
   // Line 60 closes the submit handler, outside both clones.
-  editLine(join(dir, COMPONENTS, 'EstimatedEntryForm.vue'), 60, (line) => `${line}  `)
+  editLine(
+    join(dir, COMPONENTS, 'EstimatedEntryForm.vue'),
+    60,
+    (line) => `${line}  `,
+  )
 
   assert.equal(runHook(dir, 'Write', newVitestTest(dir)), null)
 })
 
 test('a clone of nothing but package lines, imports and comments never blocks', () => {
-  const dir = repo({ onMain: [] })
+  const dir = repo()
   const header = [
     'package com.tucker.api',
     '',
@@ -283,15 +324,24 @@ test('a clone of nothing but package lines, imports and comments never blocks', 
   ].join('\n')
   const api = join(dir, 'backend/src/main/kotlin/com/tucker/api')
   mkdirSync(api, { recursive: true })
-  writeFileSync(join(api, 'FoodController.kt'), `${header}\n\nclass FoodController\n`)
-  writeFileSync(join(api, 'TagController.kt'), `${header}\n\nobject TagController {}\n`)
+  writeFileSync(
+    join(api, 'FoodController.kt'),
+    `${header}\n\nclass FoodController\n`,
+  )
+  writeFileSync(
+    join(api, 'TagController.kt'),
+    `${header}\n\nobject TagController {}\n`,
+  )
 
   assert.equal(runHook(dir, 'Write', newVitestTest(dir)), null)
 })
 
 test('a clone between SQL migrations never blocks, since a migration cannot be marked', () => {
-  const dir = repo({ onMain: [] })
-  const table = Array.from({ length: 10 }, (_, i) => `    col_${i} INTEGER NOT NULL DEFAULT ${i},`)
+  const dir = repo()
+  const table = Array.from(
+    { length: 10 },
+    (_, i) => `    col_${i} INTEGER NOT NULL DEFAULT ${i},`,
+  )
   const migrations = join(dir, 'backend/src/main/resources/db/migration')
   mkdirSync(migrations, { recursive: true })
   for (const [file, name] of [
@@ -318,9 +368,29 @@ test('a repo with only one of the two source trees is still scanned', () => {
 
 test('when jscpd fails, its own error is what the skip names', () => {
   const dir = repoWithBranchClone()
-  const hook = hookInCheckout('#!/bin/sh\necho "Error: the scan broke" >&2\nexit 1\n')
+  const hook = hookInCheckout(
+    '#!/bin/sh\necho "Error: the scan broke" >&2\nexit 1\n',
+  )
 
   const verdict = runHook(dir, 'Write', newVitestTest(dir), { hook })
 
-  assert.equal(verdict?.systemMessage, 'clone-gate skipped: Error: the scan broke')
+  assert.equal(
+    verdict?.systemMessage,
+    'clone-gate skipped: Error: the scan broke',
+  )
+})
+
+test('a scan that outlasts its time limit is let through with the limit named', () => {
+  const dir = repoWithBranchClone()
+  const hook = hookInCheckout('#!/bin/sh\nexec sleep 5\n')
+
+  const verdict = runHook(dir, 'Write', newVitestTest(dir), {
+    hook,
+    env: { CLONE_GATE_TIMEOUT_MS: '200' },
+  })
+
+  assert.equal(
+    verdict?.systemMessage,
+    'clone-gate skipped: jscpd took longer than 0.2 s',
+  )
 })
