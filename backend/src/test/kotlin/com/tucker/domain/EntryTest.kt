@@ -64,4 +64,12 @@ class EntryTest {
             "expected message to mention tomorrow, was '${ex.message}'"
         }
     }
+
+    @Test
+    fun `a weighed Entry dated tomorrow is logged on tomorrow`() {
+        val entry = WeighedEntry.log(today.plusDays(1), rice, grams = 100.0, today = today)
+
+        assertEquals(today.plusDays(1), entry.loggedOn)
+        assertEquals(130.0, entry.calories)
+    }
 }
