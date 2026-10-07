@@ -312,6 +312,7 @@ test('a clone of nothing but package lines, imports and comments never blocks', 
     'package com.tucker.api',
     '',
     '/** A controller. */',
+    '// The endpoints below are owned per User.',
     ...[
       'org.springframework.http.HttpStatus',
       'org.springframework.web.bind.annotation.DeleteMapping',
@@ -393,4 +394,32 @@ test('a scan that outlasts its time limit is let through with the limit named', 
     verdict?.systemMessage,
     'clone-gate skipped: jscpd took longer than 0.2 s',
   )
+})
+
+test('a call that only ends in it( or test( is not a new test', () => {
+  const dir = repoWithBranchClone()
+
+  const verdict = runHook(dir, 'Edit', {
+    file_path: join(dir, COMPONENTS, 'EstimatedEntryForm.test.ts'),
+    old_string: '  await user.click(button)\n',
+    new_string:
+      '  await submit(form)\n  expect(/\\d+ g/.test(text)).toBe(true)\n',
+  })
+
+  assert.equal(verdict, null)
+})
+
+test('a source write that declares a function named test is not a new test', () => {
+  const dir = repoWithBranchClone()
+
+  const verdict = runHook(dir, 'Write', {
+    file_path: join(
+      dir,
+      'backend/src/main/kotlin/com/tucker/domain/LabelRule.kt',
+    ),
+    content:
+      'object LabelRule {\n  fun test(label: String) = label.isNotBlank()\n}\n',
+  })
+
+  assert.equal(verdict, null)
 })

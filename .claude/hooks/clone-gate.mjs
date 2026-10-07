@@ -156,8 +156,8 @@ function main() {
  * given: `allow` would also skip the user's permission prompt.
  */
 function skipped(error) {
-  // A failed command's stderr ends with why; its message only repeats the command line.
-  const cause = String(error?.stderr || error?.message || error)
+  // A failed command's message ends with its stderr, whose last line says why.
+  const cause = String(error?.message ?? error)
     .trim()
     .split('\n')
     .at(-1)
