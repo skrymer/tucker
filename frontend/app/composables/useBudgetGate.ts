@@ -44,6 +44,7 @@ export function useBudgetGate<TPayload>(options: BudgetGateOptions<TPayload>) {
       await options.commit(payload)
       return
     }
+    warning.value = null
 
     const attemptToken = ++token
     const fresh = () => attemptToken === token

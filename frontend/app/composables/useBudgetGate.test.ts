@@ -82,6 +82,21 @@ describe('useBudgetGate', () => {
     expect(gate.warning.value).toEqual({ overByKcal: 180, calorieBudget: 2000 })
   })
 
+  it('drops a warning about another day once the entry is projected afresh within budget', async () => {
+    const commit = vi.fn()
+    const preview = vi
+      .fn()
+      .mockResolvedValueOnce(over)
+      .mockResolvedValueOnce(within)
+    const gate = useBudgetGate<Payload & { date: string }>({ preview, commit })
+
+    await gate.attempt({ ...payload, date: '2026-10-08' })
+    await gate.attempt({ ...payload, date: '2026-10-09' })
+
+    expect(commit).toHaveBeenCalledWith({ ...payload, date: '2026-10-09' })
+    expect(gate.warning.value).toBeNull()
+  })
+
   it('logs anyway on a second attempt once the warning is showing', async () => {
     const commit = vi.fn()
     const preview = vi.fn().mockResolvedValue(over)
