@@ -187,8 +187,11 @@ jobs:
         with:
           node-version: 22
 
-      # No dependencies to install: the scripts and their tests are plain ESM on
-      # node:test.
+      # The scripts and their tests are plain ESM on node:test; the one
+      # dependency is clone-gate's jscpd, from the repo-root package.json.
+      - name: Install the hook dependencies
+        run: npm ci
+
       - name: Test the hook scripts
         run: node --test .claude/hooks/*.test.mjs
 

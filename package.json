@@ -3,6 +3,7 @@
   "private": true,
   "description": "Repo-root dev tooling only. The application lives in backend/ (Gradle) and frontend/ (pnpm).",
   "devDependencies": {
-    "@nizos/probity": "1.10.0"
+    "@nizos/probity": "1.10.0",
+    "jscpd": "5.4.0"
   }
 }

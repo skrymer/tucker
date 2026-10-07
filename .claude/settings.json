@@ -21,6 +21,12 @@
             "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/skill-gate.mjs\"",
             "timeout": 5,
             "statusMessage": "Checking the skills this file needs"
+          },
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/clone-gate.mjs\"",
+            "timeout": 10,
+            "statusMessage": "Checking the branch for duplicated code"
           }
         ]
       },
