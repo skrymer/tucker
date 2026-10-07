@@ -33,6 +33,9 @@ against today — takes the client's local date and acts on it:
   a stamp but a comparison, and it needs the client's day for the same reason: at a
   UTC offset the server's day and the user's differ, so the server's would refuse a
   date the picker in front of them offers.
+- `POST /api/entries/weighed` and its preview — the Entry's `date` is judged against
+  the client's day: tomorrow at the furthest
+  ([0035](0035-an-entry-may-be-logged-for-tomorrow-and-no-further.md)).
 - `GET /api/check/{barcode}`: a read, not a write, but it states the targets
   *standing on* the User's day (the review dated on or before it; see **Weekly
   Review** in `CONTEXT.md`), so it needs that day to pick the review. The summary and

@@ -49,7 +49,6 @@ async function step(event: KeyboardEvent, by: 1 | -1) {
       :icon="option.icon"
       :color="day === option.value ? 'primary' : 'neutral'"
       :variant="day === option.value ? 'solid' : 'ghost'"
-      class="rounded-full"
       @click="day = option.value"
     >
       {{ option.label }}
