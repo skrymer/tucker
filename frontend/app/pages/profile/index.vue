@@ -49,6 +49,24 @@ function useProfileForm() {
   return { profile, error, load, save, saving }
 }
 
+type GoalPayload = {
+  startedOn: string
+  targetWeightKg: number
+  rateKgPerWeek: number
+}
+type GoalRefusal = { target?: string; rate?: string; form?: string }
+
+/**
+ * Each refusal lands on the input it names. One that names none is not about an
+ * input at all — a skewed client clock, or no weight logged — so it goes above
+ * the submit rather than under a field the user got right.
+ */
+function refusalFor(message: string, field?: string): GoalRefusal {
+  if (field === 'rateKgPerWeek') return { rate: message }
+  if (field === 'targetWeightKg') return { target: message }
+  return { form: message }
+}
+
 // Setting a Goal — the backend replaces the active one and preserves history.
 function useGoalSubmission(onSubmitted: () => void | Promise<void>) {
   const { $api } = useNuxtApp()
@@ -59,16 +77,10 @@ function useGoalSubmission(onSubmitted: () => void | Promise<void>) {
   // The rate has a rule of its own that only the backend can apply, since only it
   // holds Maintenance (ADR 0030), so the refusal is routed by the field it names
   // rather than assumed to be about the target.
-  const targetError = ref<string | undefined>(undefined)
-  const rateError = ref<string | undefined>(undefined)
-  const formError = ref<string | undefined>(undefined)
+  const refusal = ref<GoalRefusal>({})
 
   const { pending, execute } = useApiMutation(
-    (payload: {
-      startedOn: string
-      targetWeightKg: number
-      rateKgPerWeek: number
-    }) =>
+    (payload: GoalPayload) =>
       // The client owns "today" (ADR 0014): send the user's local day so the
       // forced review recompute lands on it, not the server's wall-clock day.
       $api('/api/goal', {
@@ -80,31 +92,20 @@ function useGoalSubmission(onSubmitted: () => void | Promise<void>) {
       errorTitle: 'Could not set goal',
       onSuccess: onSubmitted,
       onValidationError: (message, field) => {
-        // Each refusal lands on the input it names. One that names none is not
-        // about an input at all — a skewed client clock, or no weight logged —
-        // so it goes above the submit rather than under a field the user got right.
-        if (field === 'rateKgPerWeek') rateError.value = message
-        else if (field === 'targetWeightKg') targetError.value = message
-        else formError.value = message
+        refusal.value = refusalFor(message, field)
       },
     },
   )
 
-  async function submit(payload: {
-    startedOn: string
-    targetWeightKg: number
-    rateKgPerWeek: number
-  }) {
+  async function submit(payload: GoalPayload) {
     // Drop any prior rejection before re-attempting, so a corrected input that
-    // now succeeds doesn't leave a stale error behind — both of them, since a
-    // resubmit may fix either and be refused on the other.
-    targetError.value = undefined
-    rateError.value = undefined
-    formError.value = undefined
+    // now succeeds doesn't leave a stale error behind — all of it, since a
+    // resubmit may fix one field and be refused on another.
+    refusal.value = {}
     await execute(payload)
   }
 
-  return { submit, targetError, rateError, formError, pending }
+  return { submit, refusal, pending }
 }
 
 const {
@@ -177,9 +178,7 @@ const {
 })
 const {
   submit: submitGoal,
-  targetError: goalTargetError,
-  rateError: goalRateError,
-  formError: goalFormError,
+  refusal: goalRefusal,
   pending: savingGoal,
 } = useGoalSubmission(refreshGoals)
 
@@ -209,9 +208,7 @@ await Promise.all([loadProfile(), refreshCurrentTrend()])
       <GoalSection
         :goals="goals ?? []"
         :current-trend="currentTrend"
-        :target-error="goalTargetError"
-        :rate-error="goalRateError"
-        :form-error="goalFormError"
+        :refusal="goalRefusal"
         :pending="savingGoal"
         :disabled="!gating.goalEnabled"
         @submit="submitGoal"
