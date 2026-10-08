@@ -14,15 +14,9 @@ const rollup = computed(() =>
   rollupRecipe(props.lines, props.cookedWeightG ?? 0),
 )
 
-// The cook-down bar: the finished dish's weight as a fraction of the raw sum.
-// A dish that cooks down reads as a shorter (denser) bar; one that absorbs water
-// fills the track.
-const cookDownPct = computed(() => {
-  const raw = rollup.value.rawSumG
-  const cooked = props.cookedWeightG ?? 0
-  if (raw <= 0 || cooked <= 0) return 0
-  return Math.min(100, (cooked / raw) * 100)
-})
+const cookDownPct = computed(() =>
+  cookDownPercent(rollup.value.rawSumG, props.cookedWeightG ?? 0),
+)
 </script>
 
 <template>

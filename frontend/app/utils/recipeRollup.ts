@@ -46,3 +46,13 @@ export function rollupRecipe(
 export function contribution(per100g: number, grams: number): number {
   return (per100g * grams) / 100
 }
+
+/**
+ * The cook-down bar: the finished dish's weight as a share of the raw
+ * ingredients, so a dish that cooks down reads as a shorter (denser) bar and
+ * one that absorbs water fills the track.
+ */
+export function cookDownPercent(rawSumG: number, cookedWeightG: number) {
+  if (rawSumG <= 0) return 0
+  return Math.min(100, (cookedWeightG / rawSumG) * 100)
+}
