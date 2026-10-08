@@ -5,6 +5,7 @@ import com.tucker.jooq.Tables.USER
 import com.tucker.jooq.tables.records.UserRecord
 import org.jooq.DSLContext
 import org.springframework.stereotype.Repository
+import org.springframework.transaction.annotation.Transactional
 
 /**
  * Persistence for [User].
@@ -61,6 +62,10 @@ class UserRepository(private val dsl: DSLContext, ids: IdSequence) : AggregateRe
             "insertIfAbsent neither inserted ${user.email} nor found it"
         }
     }
+
+    /** Store a User for [email] under a newly drawn id, or return the one stored first. */
+    @Transactional
+    fun provision(email: String): User = insertIfAbsent(User(nextId(), email))
 
     private fun UserRecord.toUser(): User = User(id = id!!.toLong(), email = email)
 }

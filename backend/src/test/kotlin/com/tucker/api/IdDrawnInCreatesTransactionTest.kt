@@ -41,7 +41,7 @@ class IdDrawnInCreatesTransactionTest {
     @Autowired lateinit var dsl: DSLContext
 
     @BeforeEach
-    fun forgetEarlierDraws() = draws.inTransaction.clear()
+    fun forgetEarlierDraws() = draws.clear()
 
     @Test
     fun `creating a Tag draws its id inside the transaction that stores it`() {
@@ -51,7 +51,7 @@ class IdDrawnInCreatesTransactionTest {
         }.andExpect { status { isCreated() } }.andReturn().response.contentAsString
 
         mockMvc.delete("/api/tags/${objectMapper.readTree(json).get("id").asLong()}")
-        assertEquals(listOf(true), draws.inTransaction.take(1), "the Tag's id was drawn in a commit of its own")
+        assertEquals(listOf(true), draws.of("tag"), "the Tag's id was drawn in a commit of its own")
     }
 
     @Test
@@ -63,7 +63,7 @@ class IdDrawnInCreatesTransactionTest {
         }.andExpect { status { isOk() } }
 
         dsl.deleteFrom(USER).where(USER.EMAIL.eq(newcomer)).execute()
-        assertEquals(listOf(true), draws.inTransaction.take(1), "the User's id was drawn in a commit of its own")
+        assertEquals(listOf(true), draws.of("user"), "the User's id was drawn in a commit of its own")
     }
 
     @TestConfiguration
@@ -73,13 +73,22 @@ class IdDrawnInCreatesTransactionTest {
         @Bean fun drawListener(draws: SequenceDraws): ExecuteListenerProvider = DefaultExecuteListenerProvider(draws)
     }
 
-    /** For every id drawn from `id_sequence`, whether a transaction was open around it. */
+    /**
+     * For every id drawn from `id_sequence`, by the table it was drawn for, whether a
+     * transaction was open around it — by table, because a request's first draw can be
+     * the User its sign-in provisions rather than the row it creates.
+     */
     class SequenceDraws : ExecuteListener {
-        val inTransaction = mutableListOf<Boolean>()
+        private val inTransaction = mutableListOf<Pair<Any?, Boolean>>()
+
+        fun clear() = inTransaction.clear()
+
+        fun of(table: String): List<Boolean> = inTransaction.filter { it.first == table }.map { it.second }
 
         override fun executeStart(ctx: ExecuteContext) {
             if (ctx.sql()?.lowercase()?.startsWith("update id_sequence") == true) {
-                inTransaction += TransactionSynchronizationManager.isActualTransactionActive()
+                val table = ctx.query()?.bindValues?.last()
+                inTransaction += table to TransactionSynchronizationManager.isActualTransactionActive()
             }
         }
     }
