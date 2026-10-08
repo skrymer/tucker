@@ -55,6 +55,7 @@ class RepositoryRoundTripTest {
 
     @Test
     fun `a Food is stored under the id it was built with`() {
+        foods.nextId() // taken and never used, so the table's own next rowid is not this id
         val id = foods.nextId()
 
         foods.insert(Food.plain(id, "Rolled oats", null, Nutrition(389.0, 16.9, 66.3, 6.9)))
@@ -102,6 +103,7 @@ class RepositoryRoundTripTest {
     @Test
     fun `an Entry is stored under the id it was built with`() {
         val date = LocalDate.of(2026, 5, 22)
+        entries.nextId() // taken and never used, so the table's own next rowid is not this id
         val id = entries.nextId()
 
         entries.insert(EstimatedEntry(id, date, "Restaurant pasta", 800.0, null))
@@ -122,6 +124,7 @@ class RepositoryRoundTripTest {
     @Test
     fun `a weight measurement is stored under the id it was built with`() {
         val date = LocalDate.of(2026, 5, 22)
+        weights.nextId() // taken and never used, so the table's own next rowid is not this id
         val id = weights.nextId()
 
         weights.save(WeightMeasurement(id, date, 88.4))
@@ -150,6 +153,7 @@ class RepositoryRoundTripTest {
 
     @Test
     fun `a Goal is stored under the id it was built with`() {
+        goals.nextId() // taken and never used, so the table's own next rowid is not this id
         val id = goals.nextId()
 
         goals.insert(Goal(id, LocalDate.of(2026, 5, 1), 90.0, 80.0, 0.5, active = true))
@@ -205,6 +209,7 @@ class RepositoryRoundTripTest {
     @Test
     fun `a review is stored under the id it was built with`() {
         val day = LocalDate.of(2026, 6, 10)
+        reviews.nextId() // taken and never used, so the table's own next rowid is not this id
         val id = reviews.nextId()
 
         reviews.insert(WeeklyReview(id, day, trendWeightKg = 86.0, intakeTargets = null))
