@@ -46,8 +46,7 @@ class RepositoryRoundTripTest {
     @Test
     fun `a Food round-trips`() {
         val saved = foods.insert(Food.plain(foods.nextId(), "Rolled oats", null, Nutrition(389.0, 16.9, 66.3, 6.9)))
-        assertNotNull(saved.id)
-        val loaded = foods.findById(saved.id!!)
+        val loaded = foods.findById(saved.id)
         assertNotNull(loaded)
         assertEquals("Rolled oats", loaded.name)
         assertEquals(FoodKind.FOOD, loaded.kind)
@@ -288,9 +287,7 @@ class RepositoryRoundTripTest {
                 cookedWeightG = 360.0,
             ),
         )
-        assertNotNull(saved.id)
-
-        val loaded = recipes.findById(saved.id!!)
+        val loaded = recipes.findById(saved.id)
         assertNotNull(loaded)
         assertEquals(2, loaded.ingredients.size)
         // (389*0.8 + 64*3.0) = 503.2 kcal over 360 g of finished dish

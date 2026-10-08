@@ -37,7 +37,7 @@ class TagServiceTest {
         service.rename(breakfast, TagName("morning"))
 
         assertEquals(listOf("morning" to 1), tags.findAllWithFoodCounts().map { it.tag.name.value to it.foodCount })
-        assertEquals(setOf(breakfast), foods.findById(oats.id!!)!!.tagIds)
+        assertEquals(setOf(breakfast), foods.findById(oats.id)!!.tagIds)
     }
 
     @Test
@@ -52,7 +52,7 @@ class TagServiceTest {
 
         assertEquals(listOf("Snack" to 3), tags.findAllWithFoodCounts().map { it.tag.name.value to it.foodCount })
         listOf(apple, chocolate, biscuit).forEach {
-            assertEquals(setOf(snack), foods.findById(it.id!!)!!.tagIds, it.name)
+            assertEquals(setOf(snack), foods.findById(it.id)!!.tagIds, it.name)
         }
     }
 

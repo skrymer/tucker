@@ -613,9 +613,9 @@ class MicronutrientIntakeTest {
         day,
         entries,
         joined(
-            foods + recipes.associate { it.id!! to it.asFood() },
+            foods + recipes.associate { it.id to it.asFood() },
             referenceFoods,
-            recipes.associate { it.id!! to it.ingredients },
+            recipes.associate { it.id to it.ingredients },
         ),
         references,
     )
