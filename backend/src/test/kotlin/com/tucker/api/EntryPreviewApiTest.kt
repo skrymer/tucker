@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.tucker.domain.IntakeTargets
 import com.tucker.domain.Maintenance
 import com.tucker.domain.WeeklyReview
+import com.tucker.persistence.EntryRepository
 import com.tucker.persistence.WeeklyReviewRepository
 import com.tucker.security.WithTuckerUser
 import org.hamcrest.Matchers.closeTo
@@ -18,6 +19,7 @@ import org.springframework.test.web.servlet.post
 import org.springframework.test.web.servlet.put
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
+import kotlin.test.assertEquals
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -28,6 +30,7 @@ class EntryPreviewApiTest {
     @Autowired lateinit var mockMvc: MockMvc
     @Autowired lateinit var objectMapper: ObjectMapper
     @Autowired lateinit var reviews: WeeklyReviewRepository
+    @Autowired lateinit var entries: EntryRepository
 
     private val date = LocalDate.of(2026, 6, 18)
 
@@ -285,5 +288,30 @@ class EntryPreviewApiTest {
             content = """{"date":"$clientToday","label":"Café dinner","calories":800.0,"protein":null,""" +
                 """"clientToday":"$clientToday"}"""
         }.andExpect { status { isBadRequest() } }
+    }
+
+    @Test
+    fun `previewing a weighed entry takes no Entry id`() {
+        val foodId = seedFoodAt100KcalPer100g()
+        val before = entries.nextId()
+
+        mockMvc.post("/api/entries/weighed/preview") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"date":"$date","foodId":$foodId,"grams":100.0}"""
+        }.andExpect { status { isOk() } }
+
+        assertEquals(before + 1, entries.nextId(), "the preview drew nothing from the Entry sequence")
+    }
+
+    @Test
+    fun `previewing an estimated entry takes no Entry id`() {
+        val before = entries.nextId()
+
+        mockMvc.post("/api/entries/estimated/preview") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"date":"$date","label":"Café dinner","calories":800.0,"protein":null}"""
+        }.andExpect { status { isOk() } }
+
+        assertEquals(before + 1, entries.nextId(), "the preview drew nothing from the Entry sequence")
     }
 }

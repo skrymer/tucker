@@ -112,6 +112,9 @@ private val logger = LoggerFactory.getLogger(EntryController::class.java)
  */
 private const val UNRESOLVED_FOOD_NAME = "Unknown food"
 
+/** The id a previewed Entry is built with: it is never stored, so it takes none from the sequence. */
+private const val PROSPECTIVE_ENTRY_ID = 0L
+
 /**
  * [foodName] is the name of the Food a weighed Entry ate, and is ignored by the
  * estimated arm, which names itself. It has no default: the one caller that can
@@ -195,7 +198,7 @@ class EntryController(
     @PostMapping("/weighed")
     @ResponseStatus(HttpStatus.CREATED)
     fun logWeighed(@RequestBody request: LogWeighedEntryRequest): EntryResponse {
-        val (food, entry) = weighed(request)
+        val (food, entry) = weighed(request, entries.nextId())
         return entries.insert(entry).toResponse(foodName = food.name)
     }
 
@@ -205,14 +208,14 @@ class EntryController(
      */
     @PostMapping("/weighed/preview")
     fun previewWeighed(@RequestBody request: LogWeighedEntryRequest): BudgetProjectionResponse =
-        projectionFor(request.date, weighed(request).second)
+        projectionFor(request.date, weighed(request, PROSPECTIVE_ENTRY_ID).second)
 
-    /** The Weighed Entry [request] describes, with the Food it weighs. */
-    private fun weighed(request: LogWeighedEntryRequest): Pair<Food, WeighedEntry> {
+    /** The Weighed Entry [request] describes, built with [id], with the Food it weighs. */
+    private fun weighed(request: LogWeighedEntryRequest, id: Long): Pair<Food, WeighedEntry> {
         val today = userToday.resolve(request.clientToday)
         val food = foods.findById(request.foodId)
             ?: throw NotFoundException("no Food with id ${request.foodId}")
-        return food to WeighedEntry.log(entries.nextId(), request.date, food, request.grams, today)
+        return food to WeighedEntry.log(id, request.date, food, request.grams, today)
     }
 
     /**
@@ -236,12 +239,12 @@ class EntryController(
     @PostMapping("/estimated")
     @ResponseStatus(HttpStatus.CREATED)
     fun logEstimated(@RequestBody request: LogEstimatedEntryRequest): EntryResponse =
-        entries.insert(estimated(request)).toResponse(foodName = null)
+        entries.insert(estimated(request, entries.nextId())).toResponse(foodName = null)
 
-    /** The Estimated Entry [request] describes. */
-    private fun estimated(request: LogEstimatedEntryRequest): EstimatedEntry =
+    /** The Estimated Entry [request] describes, built with [id]. */
+    private fun estimated(request: LogEstimatedEntryRequest, id: Long): EstimatedEntry =
         EstimatedEntry.log(
-            entries.nextId(),
+            id,
             request.date,
             MealEstimate(request.label, request.calories, request.protein),
             userToday.resolve(request.clientToday),
@@ -253,7 +256,7 @@ class EntryController(
      */
     @PostMapping("/estimated/preview")
     fun previewEstimated(@RequestBody request: LogEstimatedEntryRequest): BudgetProjectionResponse =
-        projectionFor(request.date, estimated(request))
+        projectionFor(request.date, estimated(request, PROSPECTIVE_ENTRY_ID))
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
