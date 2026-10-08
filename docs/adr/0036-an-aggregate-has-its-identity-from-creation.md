@@ -24,7 +24,7 @@ domain, and the domain stays free of persistence: it receives a number, not a
 generator.
 
 `nextId()` reads a per-table row of an `id_sequence` table — incremented with
-`UPDATE … RETURNING` in the caller's transaction, if any, and seeded past every id
+`UPDATE … RETURNING` in the transaction that stores the row, and seeded past every id
 the table has handed out: the larger of its `max(id)` and its `sqlite_sequence`
 entry, since `AUTOINCREMENT` never reissued a deleted row's id — and the insert
 writes the id explicitly. SQLite accepts an explicit value in an `INTEGER PRIMARY
