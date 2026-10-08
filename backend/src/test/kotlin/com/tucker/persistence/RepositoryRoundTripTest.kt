@@ -121,6 +121,15 @@ class RepositoryRoundTripTest {
     }
 
     @Test
+    fun `a Goal is stored under the id it was built with`() {
+        val id = goals.nextId()
+
+        goals.insert(Goal(id, LocalDate.of(2026, 5, 1), 90.0, 80.0, 0.5, active = true))
+
+        assertEquals(id, goals.findActive()?.id)
+    }
+
+    @Test
     fun `the Profile round-trips`() {
         profiles.save(Profile(Sex.MALE, LocalDate.of(1985, 6, 15), 182.0))
         val loaded = profiles.get()

@@ -25,7 +25,11 @@ import java.time.LocalDate
 class GoalRepository(
     private val dsl: DSLContext,
     private val currentUser: CurrentUser,
+    private val ids: IdSequence,
 ) {
+
+    /** The id the next Goal is built with (ADR 0036). */
+    fun nextId(): Long = ids.next(GOAL)
 
     fun findActive(): Goal? =
         dsl.selectFrom(GOAL)
@@ -42,6 +46,7 @@ class GoalRepository(
 
     fun insert(goal: Goal): Goal {
         val rec = dsl.newRecord(GOAL)
+        rec.id = goal.id?.toInt()
         rec.userId = currentUser.ownerId
         rec.startedOn = goal.startedOn.toString()
         rec.startWeightKg = goal.startWeightKg
