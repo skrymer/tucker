@@ -1,15 +1,17 @@
 import type { Ref } from 'vue'
 
+interface Scanner {
+  open: Readonly<Ref<boolean>>
+  start: () => void
+  stop: () => void
+}
+
 /**
  * How a surface presents its barcode scanner (ADR 0006): fullscreen on a
  * phone, inline on desktop. The choice holds while the scanner is open: true
  * fullscreen can itself widen a window past the breakpoint.
  */
-export function useFullscreenScanner(scanner: {
-  open: Readonly<Ref<boolean>>
-  start: () => void
-  stop: () => void
-}) {
+export function useFullscreenScanner(scanner: Scanner) {
   const isDesktop = useIsDesktop()
   // Captured as the scanner opens — on the flush, not at the call, because a
   // surface can open it in the very tick the breakpoint is first read.
@@ -30,6 +32,17 @@ export function useFullscreenScanner(scanner: {
     scanner.start()
   }
 
+  useFullscreenSync(scanner)
+
+  return { fullscreen: readonly(fullscreen), startFromTap }
+}
+
+/**
+ * True fullscreen and the scanner, kept in step: fullscreen belongs to the
+ * scanner, so it goes when the scanner does, and leaving fullscreen by the
+ * system's back gesture stops the camera.
+ */
+function useFullscreenSync(scanner: Scanner) {
   // The system's back gesture leaves fullscreen without the app asking, and the
   // camera light must go off with it. Switching apps can end fullscreen a
   // moment before the page reports hidden, so the stop waits this long to tell
@@ -66,6 +79,4 @@ export function useFullscreenScanner(scanner: {
     // The surface is going, and its open-watch with it before it can fire.
     if (document.fullscreenElement) document.exitFullscreen().catch(() => {})
   })
-
-  return { fullscreen: readonly(fullscreen), startFromTap }
 }

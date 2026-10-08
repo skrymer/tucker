@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { rollupRecipe } from './recipeRollup'
+import { contribution, cookDownPercent, rollupRecipe } from './recipeRollup'
 
 describe('rollupRecipe', () => {
   it('re-expresses the ingredient totals per 100 g of the cooked weight', () => {
@@ -41,5 +41,26 @@ describe('rollupRecipe', () => {
     expect(rollup.totalKcal).toBe(500)
     expect(rollup.per100gKcal).toBe(0)
     expect(rollup.per100gProtein).toBe(0)
+  })
+})
+
+describe('contribution', () => {
+  it('is what a weighed line adds to the batch: grams × per-100 g ÷ 100', () => {
+    expect(contribution(170, 250)).toBe(425)
+    expect(contribution(41, 0)).toBe(0)
+  })
+})
+
+describe('cookDownPercent', () => {
+  it('is the cooked weight as a share of the raw ingredients', () => {
+    expect(cookDownPercent(300, 200)).toBeCloseTo(66.67, 2)
+  })
+
+  it('fills the bar, no further, for a dish that took on water', () => {
+    expect(cookDownPercent(300, 450)).toBe(100)
+  })
+
+  it('is empty until there are ingredients to weigh against', () => {
+    expect(cookDownPercent(0, 250)).toBe(0)
   })
 })

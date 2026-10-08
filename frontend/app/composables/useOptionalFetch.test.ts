@@ -70,6 +70,25 @@ describe('useOptionalFetch', () => {
     expect(fetcher).toHaveBeenCalledTimes(1)
   })
 
+  it('keeps the answer on screen while a load it ignores is dropped', async () => {
+    let answer!: (value: { id: number }) => void
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce({ id: 1 })
+      .mockImplementationOnce(
+        () => new Promise<{ id: number }>((r) => (answer = r)),
+      )
+    const { data, load } = useOptionalFetch(fetcher)
+    await load()
+
+    const held = load()
+    await load()
+
+    expect(data.value).toEqual({ id: 1 })
+    answer({ id: 2 })
+    await held
+  })
+
   it('lets a newer load supersede an older one when each call asks a different question', async () => {
     const resolvers: ((value: { id: number }) => void)[] = []
     const fetcher = vi.fn(

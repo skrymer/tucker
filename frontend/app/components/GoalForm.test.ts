@@ -95,11 +95,13 @@ describe('GoalForm', () => {
   it('surfaces a server-rejected target as an error under the target field', async () => {
     // The client validates target < the trend it was given, but the backend
     // re-derives the anchor and is authoritative (ADR 0016); its 400 is fed
-    // back in as targetError.
+    // back in as the refusal's target.
     await renderSuspended(GoalForm, {
       props: {
         currentTrend,
-        targetError: 'a weight-loss Goal needs a target below the start weight',
+        refusal: {
+          target: 'a weight-loss Goal needs a target below the start weight',
+        },
       },
     })
 
@@ -117,8 +119,9 @@ describe('GoalForm', () => {
     await renderSuspended(GoalForm, {
       props: {
         currentTrend,
-        rateError:
-          'at your current maintenance of 1595 kcal a day, 1.5 kg a week would leave you nothing to eat — choose a slower rate',
+        refusal: {
+          rate: 'at your current maintenance of 1595 kcal a day, 1.5 kg a week would leave you nothing to eat — choose a slower rate',
+        },
       },
     })
 
@@ -139,8 +142,9 @@ describe('GoalForm', () => {
     await renderSuspended(GoalForm, {
       props: {
         currentTrend,
-        formError:
-          'clientToday 2026-09-19 is implausible relative to the server date (2026-09-16)',
+        refusal: {
+          form: 'clientToday 2026-09-19 is implausible relative to the server date (2026-09-16)',
+        },
       },
     })
 
@@ -161,7 +165,7 @@ describe('GoalForm', () => {
     await renderSuspended(GoalForm, {
       props: {
         currentTrend,
-        rateError: '1.5 kg a week would leave you nothing to eat',
+        refusal: { rate: '1.5 kg a week would leave you nothing to eat' },
       },
     })
     expect(screen.getByText(/nothing to eat/)).toBeVisible()
@@ -181,7 +185,7 @@ describe('GoalForm', () => {
     await renderSuspended(GoalForm, {
       props: {
         currentTrend,
-        rateError: '1.5 kg a week would leave you nothing to eat',
+        refusal: { rate: '1.5 kg a week would leave you nothing to eat' },
       },
     })
 

@@ -10,11 +10,24 @@ import {
 import { referenceFoodsFor } from '~~/test/mocks/handlers/reference-foods'
 import { failingRead, held } from '~~/test/mocks/http'
 import { server } from '~~/test/mocks/node'
+import { besideCatalog, catalog, catalogOnceReread } from '~~/test/catalog-host'
+import { food } from '~~/test/food-fixtures'
+import { foodCatalog } from '~~/test/mocks/handlers/catalog'
 import ReferenceFoodPicker from './ReferenceFoodPicker.vue'
 
 type Search = components['schemas']['ReferenceFoodSearchResponse']
 
 const chicken = { id: 1, name: 'Chicken breast', referenceFoodName: null }
+
+/** A catalog holding the chicken, with [referenceFoods] to borrow from. */
+function chickenCatalog(referenceFoods: { id: number; name: string }[]) {
+  server.use(
+    ...foodCatalog({
+      foods: [food({ id: chicken.id, name: chicken.name })],
+      referenceFoods,
+    }),
+  )
+}
 
 /** The search for the chicken's own name answered with [search]. */
 const chickenFinds = (search: Search = referenceFoodSearch()) =>
@@ -116,7 +129,8 @@ describe('ReferenceFoodPicker', () => {
     expect(await screen.findByText('Iron 0.4 mg · Zinc 0.8 mg')).toBeVisible()
   })
 
-  it('claims the match for the candidate the user taps', async () => {
+  it('claims the borrow it is tapped on, then closes and tells its page', async () => {
+    chickenCatalog([{ id: 202, name: 'Chicken, breast, roasted' }])
     chickenFinds(
       referenceFoodSearch({
         candidates: [
@@ -125,22 +139,63 @@ describe('ReferenceFoodPicker', () => {
         ],
       }),
     )
-    const onMatch = vi.fn()
-    await renderSuspended(ReferenceFoodPicker, {
-      props: { food: chicken, onMatch },
+    const onClose = vi.fn()
+    const onChanged = vi.fn()
+    await renderSuspended(besideCatalog(ReferenceFoodPicker), {
+      props: { food: chicken, onClose, onChanged },
     })
 
-    await userEvent.setup().click(
-      await screen.findByRole('button', {
-        name: /Chicken, breast, roasted/,
-      }),
-    )
+    await userEvent
+      .setup()
+      .click(
+        await screen.findByRole('button', { name: /Chicken, breast, roasted/ }),
+      )
 
-    expect(onMatch).toHaveBeenCalledWith(202)
+    await vi.waitFor(() => expect(onChanged).toHaveBeenCalledOnce())
+    expect(onClose).toHaveBeenCalledOnce()
+    expect(
+      (await catalogOnceReread()).getByText(
+        'Vitamins and minerals from Chicken, breast, roasted',
+      ),
+    ).toBeVisible()
   })
 
-  it('lets a matched Food take its borrow back, naming what it borrows now', async () => {
-    const onUnmatch = vi.fn()
+  it('takes the borrow back on Unmatch, then closes and tells its page', async () => {
+    const cheddar = { id: 101, name: 'Cheese, cheddar, natural, regular fat' }
+    const cheeseCatalog = foodCatalog({
+      foods: [
+        food({
+          id: 1,
+          name: 'Tasty cheese',
+          referenceFoodId: cheddar.id,
+          referenceFoodName: cheddar.name,
+        }),
+      ],
+      referenceFoods: [cheddar],
+    })
+    server.use(...cheeseCatalog)
+    const onClose = vi.fn()
+    const onChanged = vi.fn()
+    await renderSuspended(besideCatalog(ReferenceFoodPicker), {
+      props: {
+        food: { id: 1, name: 'Tasty cheese', referenceFoodName: cheddar.name },
+        onClose,
+        onChanged,
+      },
+    })
+
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: 'Unmatch' }))
+
+    await vi.waitFor(() => expect(onChanged).toHaveBeenCalledOnce())
+    expect(onClose).toHaveBeenCalledOnce()
+    expect(
+      (await catalogOnceReread()).queryByText(/vitamins and minerals from/i),
+    ).not.toBeInTheDocument()
+  })
+
+  it('names what a matched Food borrows now, beside the way to take it back', async () => {
     await renderSuspended(ReferenceFoodPicker, {
       props: {
         food: {
@@ -148,7 +203,6 @@ describe('ReferenceFoodPicker', () => {
           name: 'Tasty cheese',
           referenceFoodName: 'Cheese, cheddar, natural, regular fat',
         },
-        onUnmatch,
       },
     })
 
@@ -157,11 +211,7 @@ describe('ReferenceFoodPicker', () => {
     expect(
       screen.getByText(/Cheese, cheddar, natural, regular fat/),
     ).toBeVisible()
-    await userEvent
-      .setup()
-      .click(screen.getByRole('button', { name: 'Unmatch' }))
-
-    expect(onUnmatch).toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'Unmatch' })).toBeVisible()
   })
 
   it('carries the attribution the figures it shows are licensed under', async () => {
@@ -208,12 +258,14 @@ describe('ReferenceFoodPicker', () => {
       }),
     )
 
-    await renderSuspended(ReferenceFoodPicker, {
-      props: { food: chicken, matching: true },
-    })
+    chickenCatalog([{ id: 101, name: 'Chicken, breast, lean flesh, raw' }])
+    const claim = held('put', '/api/foods/{id}/reference-food')
+    server.use(claim.handler)
+    await renderSuspended(ReferenceFoodPicker, { props: { food: chicken } })
     await userEvent
       .setup()
       .click(await screen.findByText('Chicken, breast, lean flesh, raw'))
+    await claim.arrived
 
     // The sheet stays open until the server answers, so without a signal on the
     // control that was tapped there is nothing at all between the tap and the
@@ -229,6 +281,7 @@ describe('ReferenceFoodPicker', () => {
     expect(
       within(rows[1]!).queryByLabelText('Matching'),
     ).not.toBeInTheDocument()
+    claim.release()
   })
 
   it('reports the results busy while a search is still in flight', async () => {
@@ -261,17 +314,19 @@ describe('ReferenceFoodPicker', () => {
   })
 
   it('closes when dismissed, leaving the Food as it was', async () => {
+    chickenCatalog([])
     chickenFinds()
     const onClose = vi.fn()
-    const onMatch = vi.fn()
-    await renderSuspended(ReferenceFoodPicker, {
-      props: { food: chicken, onClose, onMatch },
+    await renderSuspended(besideCatalog(ReferenceFoodPicker), {
+      props: { food: chicken, onClose },
     })
 
     await userEvent.setup().click(screen.getByRole('button', { name: 'Close' }))
 
     expect(onClose).toHaveBeenCalled()
-    expect(onMatch).not.toHaveBeenCalled()
+    expect(
+      catalog().queryByText(/vitamins and minerals from/i),
+    ).not.toBeInTheDocument()
   })
 
   it('clears the seeded query in one tap, so a different food can be searched for', async () => {

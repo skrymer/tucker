@@ -253,6 +253,62 @@ describe('RecipeBuilder', () => {
     expect(row).toHaveTextContent('340 kcal')
   })
 
+  it('counts a cooked weight stepped with the keyboard as weighed', async () => {
+    const user = userEvent.setup()
+    await renderSuspended(RecipeBuilder, { props: { foods: sampleFoods } })
+    await addBeefMince(user)
+
+    await user.click(screen.getByLabelText(/cooked weight/i))
+    await user.keyboard('{ArrowUp}')
+    await user.tab()
+    await addIngredient(user, /potato/i, '100')
+
+    expect(screen.queryByText(/^estimated$/i)).not.toBeInTheDocument()
+    expect(screen.getByLabelText(/cooked weight/i)).toHaveDisplayValue('310')
+  })
+
+  it('reweighs the second ingredient in place', async () => {
+    const user = userEvent.setup()
+    await renderSuspended(RecipeBuilder, { props: { foods: sampleFoods } })
+    await addBeefMince(user)
+    await addIngredient(user, /potato/i, '100')
+
+    await user.click(screen.getByRole('button', { name: /potato/i }))
+    await user.clear(screen.getByLabelText(/grams/i))
+    await user.type(screen.getByLabelText(/grams/i), '400')
+    await user.click(screen.getByRole('button', { name: /update/i }))
+
+    expect(screen.getAllByRole('button', { name: /potato/i })).toHaveLength(1)
+    expect(screen.getByRole('button', { name: /potato/i })).toHaveTextContent(
+      '400 g',
+    )
+  })
+
+  it('asks for an ingredient again once the last one is removed', async () => {
+    const user = userEvent.setup()
+    await renderSuspended(RecipeBuilder, { props: { foods: sampleFoods } })
+    await addBeefMince(user)
+
+    await user.click(screen.getByRole('button', { name: /beef mince/i }))
+    await user.click(screen.getByRole('button', { name: /remove/i }))
+
+    expect(screen.getByText('Add at least one ingredient.')).toBeVisible()
+  })
+
+  it('goes back from adding a new food to the list of foods', async () => {
+    const user = userEvent.setup()
+    await renderSuspended(RecipeBuilder, { props: { foods: sampleFoods } })
+    await user.click(screen.getByRole('button', { name: /add ingredient/i }))
+    await user.click(screen.getByRole('button', { name: /add a new food/i }))
+
+    await user.click(screen.getByRole('button', { name: /back/i }))
+
+    expect(screen.getByRole('button', { name: /beef mince/i })).toBeVisible()
+    expect(
+      screen.getByRole('button', { name: /add a new food/i }),
+    ).toBeVisible()
+  })
+
   it('removes an ingredient row', async () => {
     const user = userEvent.setup()
     await renderSuspended(RecipeBuilder, { props: { foods: sampleFoods } })
@@ -493,49 +549,64 @@ describe('RecipeBuilder', () => {
     )
   })
 
-  it('hands a brand-new food up to the parent, then continues once it is selected', async () => {
-    const onCreateFood = vi.fn()
+  it('adds a brand-new food to the catalog, then weighs it into the recipe', async () => {
+    server.use(...foodCatalog({ foods: sampleFoods }))
     const user = userEvent.setup()
-    const { rerender } = await renderSuspended(RecipeBuilder, {
-      // Keyed to the emit name (`create-food`), not its camelCase form.
-      props: { foods: sampleFoods, 'onCreate-food': onCreateFood },
+    await renderSuspended(RecipeBuilder, {
+      props: { foods: sampleFoods },
     })
 
     await user.click(screen.getByRole('button', { name: /add ingredient/i }))
     await user.click(screen.getByRole('button', { name: /add a new food/i }))
-
-    // The inline Add-Food form hands the create up to the page (which owns the
-    // catalog and its mutations) rather than POSTing from the builder.
     await user.type(screen.getByLabelText(/^name$/i), 'Carrot')
     await user.type(screen.getByLabelText(/protein \/100\s*g/i), '0.9')
     await user.type(screen.getByLabelText(/carbs \/100\s*g/i), '10')
     await user.type(screen.getByLabelText(/fat \/100\s*g/i), '0.2')
     await user.click(screen.getByRole('button', { name: /save food/i }))
 
-    expect(onCreateFood).toHaveBeenCalledWith({
-      name: 'Carrot',
-      proteinPer100g: 0.9,
-      carbsPer100g: 10,
-      fatPer100g: 0.2,
-      tagIds: [],
-    })
-
-    // The parent persists it and hands it back; the builder selects it and
-    // continues to the grams step.
-    const carrot = food({ id: 99, name: 'Carrot', caloriesPer100g: 41 })
-    await rerender({
-      foods: [...sampleFoods, carrot],
-      createdIngredient: carrot,
-      onCreateFood,
-    })
-
+    // The builder went straight on to weighing what it created.
     expect(await screen.findByText('Carrot')).toBeVisible()
     await user.type(screen.getByLabelText(/grams/i), '100')
     await user.click(screen.getByRole('button', { name: /^add$/i }))
 
-    // The new Food is now an ingredient row (41 kcal /100g → 100 g = 41 kcal).
+    // The server's figure for it, 45.4 kcal /100g (Atwater) → 100 g = 45 kcal.
     const row = screen.getByRole('button', { name: /carrot/i })
     expect(row).toHaveTextContent('100 g')
-    expect(row).toHaveTextContent('41 kcal')
+    expect(row).toHaveTextContent('45 kcal')
+  })
+
+  it('leaves the User on the recipe when a new food lands after they backed out of the picker', async () => {
+    const create = held('post', '/api/foods')
+    server.use(create.handler, ...foodCatalog({ foods: sampleFoods }))
+    const user = userEvent.setup()
+    await renderSuspended(RecipeBuilder, {
+      props: { foods: sampleFoods },
+    })
+    await user.click(screen.getByRole('button', { name: /add ingredient/i }))
+    await user.click(screen.getByRole('button', { name: /add a new food/i }))
+    await user.type(screen.getByLabelText(/^name$/i), 'Carrot')
+    await user.type(screen.getByLabelText(/protein \/100\s*g/i), '0.9')
+    await user.type(screen.getByLabelText(/carbs \/100\s*g/i), '10')
+    await user.type(screen.getByLabelText(/fat \/100\s*g/i), '0.2')
+    await user.click(screen.getByRole('button', { name: /save food/i }))
+    await create.arrived
+
+    // Back out of the new food, then out of the picker, before the save lands.
+    await user.click(screen.getByRole('button', { name: /back/i }))
+    await user.click(screen.getByRole('button', { name: /back/i }))
+    create.release()
+
+    // A late save never pulls the User back into weighing it.
+    await vi.waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: /add ingredient/i }),
+      ).toBeVisible(),
+    )
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(screen.queryByLabelText(/grams/i)).not.toBeInTheDocument()
+    expect(screen.queryByText('Carrot')).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /add ingredient/i }),
+    ).toBeVisible()
   })
 })

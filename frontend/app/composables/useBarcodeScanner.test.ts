@@ -3,7 +3,7 @@ import { defineComponent, nextTick } from 'vue'
 import { renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
-import { readBarcodes } from 'zxing-wasm/reader'
+import { readBarcodes, setZXingModuleOverrides } from 'zxing-wasm/reader'
 import { resetPageStubs, setVisibility } from '~~/test/page-visibility-helpers'
 import { useBarcodeScanner } from './useBarcodeScanner'
 
@@ -58,6 +58,23 @@ const Harness = defineComponent({
     </div>
   `,
 })
+
+/** Let the decode loop grab a frame: a <video> with one, and a 2D context. */
+function primeVideoFrame() {
+  const video = screen
+    .getByTestId('state')
+    .parentElement!.querySelector('video')!
+  Object.defineProperty(video, 'readyState', { value: 4, configurable: true })
+  Object.defineProperty(video, 'videoWidth', { value: 640, configurable: true })
+  Object.defineProperty(video, 'videoHeight', {
+    value: 480,
+    configurable: true,
+  })
+  vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
+    drawImage: vi.fn(),
+    getImageData: vi.fn(() => ({ data: new Uint8ClampedArray(4) })),
+  } as unknown as CanvasRenderingContext2D)
+}
 
 function stateText() {
   return screen.getByTestId('state').textContent
@@ -162,6 +179,261 @@ describe('useBarcodeScanner', () => {
 
     await vi.waitFor(() => expect(stateText()).toBe('decoded'))
     expect(screen.getByTestId('barcode').textContent).toBe('5701234567890')
+  })
+
+  it('drops a decoded barcode as soon as the next scan is asked for', async () => {
+    getUserMedia.mockResolvedValueOnce(fakeStream().stream)
+    readBarcodesMock.mockResolvedValue([
+      { isValid: true, text: '5701234567890' },
+    ] as unknown as Awaited<ReturnType<typeof readBarcodes>>)
+    await renderSuspended(Harness)
+    const video = screen
+      .getByTestId('state')
+      .parentElement!.querySelector('video')!
+    Object.defineProperty(video, 'readyState', { value: 4, configurable: true })
+    Object.defineProperty(video, 'videoWidth', {
+      value: 640,
+      configurable: true,
+    })
+    Object.defineProperty(video, 'videoHeight', {
+      value: 480,
+      configurable: true,
+    })
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
+      drawImage: vi.fn(),
+      getImageData: vi.fn(() => ({ data: new Uint8ClampedArray(4) })),
+    } as unknown as CanvasRenderingContext2D)
+    await tapScan()
+    await vi.waitFor(() => expect(stateText()).toBe('decoded'))
+
+    // The next camera request never answers: what shows is what start() did
+    // before its first await, which is what a surface keyed on `decoded` and
+    // the barcode reads the moment Scan again is tapped.
+    getUserMedia.mockReturnValueOnce(new Promise(() => {}))
+    await tapScan()
+
+    expect(stateText()).toBe('requesting')
+    expect(screen.getByTestId('barcode').textContent).toBe('')
+  })
+
+  it('releases a camera granted after the scanner was stopped', async () => {
+    let grant: (s: MediaStream) => void = () => {}
+    getUserMedia.mockReturnValue(new Promise((resolve) => (grant = resolve)))
+    const { stream, track } = fakeStream()
+    await renderSuspended(Harness)
+    await tapScan()
+    await userEvent.setup().click(screen.getByRole('button', { name: 'stop' }))
+
+    grant(stream)
+
+    await vi.waitFor(() => expect(track.stop).toHaveBeenCalled())
+    expect(stateText()).toBe('idle')
+  })
+
+  it('leaves the scan that replaced one still waiting on its prompt alone', async () => {
+    let grantFirst: (s: MediaStream) => void = () => {}
+    getUserMedia.mockReturnValueOnce(
+      new Promise((resolve) => (grantFirst = resolve)),
+    )
+    const first = fakeStream()
+    const second = fakeStream()
+    await renderSuspended(Harness)
+    primeVideoFrame()
+    await tapScan()
+    await userEvent.setup().click(screen.getByRole('button', { name: 'stop' }))
+    getUserMedia.mockResolvedValueOnce(second.stream)
+    await tapScan()
+    await vi.waitFor(() => expect(stateText()).toBe('scanning'))
+
+    grantFirst(first.stream)
+
+    await vi.waitFor(() => expect(first.track.stop).toHaveBeenCalled())
+    await new Promise((resolve) => setTimeout(resolve, 300))
+    expect(stateText()).toBe('scanning')
+    expect(second.track.stop).not.toHaveBeenCalled()
+  })
+
+  it('drops a code decoded after the scanner was stopped', async () => {
+    getUserMedia.mockResolvedValue(fakeStream().stream)
+    let decode: (r: unknown) => void = () => {}
+    readBarcodesMock.mockReturnValueOnce(
+      new Promise<unknown>((resolve) => (decode = resolve)) as ReturnType<
+        typeof readBarcodes
+      >,
+    )
+    await renderSuspended(Harness)
+    primeVideoFrame()
+    await tapScan()
+    await vi.waitFor(() => expect(readBarcodesMock).toHaveBeenCalled())
+
+    await userEvent.setup().click(screen.getByRole('button', { name: 'stop' }))
+    decode([{ isValid: true, text: '5701234567890' }])
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(stateText()).toBe('idle')
+    expect(screen.getByTestId('barcode').textContent).toBe('')
+  })
+
+  it('ignores a code from before a stop once scanning again', async () => {
+    getUserMedia.mockResolvedValue(fakeStream().stream)
+    let decode: (r: unknown) => void = () => {}
+    readBarcodesMock.mockReturnValueOnce(
+      new Promise<unknown>((resolve) => (decode = resolve)) as ReturnType<
+        typeof readBarcodes
+      >,
+    )
+    await renderSuspended(Harness)
+    primeVideoFrame()
+    await tapScan()
+    await vi.waitFor(() => expect(readBarcodesMock).toHaveBeenCalled())
+    await userEvent.setup().click(screen.getByRole('button', { name: 'stop' }))
+    await tapScan()
+    await vi.waitFor(() => expect(stateText()).toBe('scanning'))
+
+    decode([{ isValid: true, text: 'OLD' }])
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(stateText()).toBe('scanning')
+    expect(screen.getByTestId('barcode').textContent).toBe('')
+  })
+
+  it('ignores a code from before it was started again mid-scan', async () => {
+    getUserMedia.mockResolvedValue(fakeStream().stream)
+    let decode: (r: unknown) => void = () => {}
+    readBarcodesMock.mockReturnValueOnce(
+      new Promise<unknown>((resolve) => (decode = resolve)) as ReturnType<
+        typeof readBarcodes
+      >,
+    )
+    await renderSuspended(Harness)
+    primeVideoFrame()
+    await tapScan()
+    await vi.waitFor(() => expect(readBarcodesMock).toHaveBeenCalled())
+    await tapScan()
+    await vi.waitFor(() => expect(stateText()).toBe('scanning'))
+
+    decode([{ isValid: true, text: 'OLD' }])
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(stateText()).toBe('scanning')
+    expect(screen.getByTestId('barcode').textContent).toBe('')
+  })
+
+  it('decodes no more than once while the frames come faster than its tick', async () => {
+    getUserMedia.mockResolvedValue(fakeStream().stream)
+    const frames: FrameRequestCallback[] = []
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => {
+      frames.push(cb)
+      return frames.length
+    })
+    await renderSuspended(Harness)
+    primeVideoFrame()
+    await tapScan()
+    await vi.waitFor(() => expect(stateText()).toBe('scanning'))
+
+    // Eight frames 16 ms apart: 112 ms, inside one 120 ms tick.
+    for (let at = 1000; at <= 1112; at += 16) {
+      frames.shift()?.(at)
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    }
+
+    expect(readBarcodesMock).toHaveBeenCalledOnce()
+  })
+
+  it('releases the camera when the surface holding it goes away', async () => {
+    const { stream, track } = fakeStream()
+    getUserMedia.mockResolvedValue(stream)
+    const { unmount } = await renderSuspended(Harness)
+    await tapScan()
+    await vi.waitFor(() => expect(stateText()).toBe('scanning'))
+
+    unmount()
+
+    expect(track.stop).toHaveBeenCalled()
+  })
+
+  it('ends unsupported, never showing the camera, when its decoder cannot load', async () => {
+    const { stream, track } = fakeStream()
+    getUserMedia.mockResolvedValue(stream)
+    vi.mocked(setZXingModuleOverrides).mockImplementationOnce(() => {
+      throw new Error('could not load the decoder')
+    })
+    await renderSuspended(Harness)
+
+    await tapScan()
+
+    await vi.waitFor(() => expect(stateText()).toBe('unsupported'))
+    expect(track.stop).toHaveBeenCalled()
+    expect(HTMLMediaElement.prototype.play).not.toHaveBeenCalled()
+  })
+
+  it('releases the camera once a code is read', async () => {
+    const { stream, track } = fakeStream()
+    getUserMedia.mockResolvedValue(stream)
+    readBarcodesMock.mockResolvedValue([
+      { isValid: true, text: '5701234567890' },
+    ] as unknown as Awaited<ReturnType<typeof readBarcodes>>)
+    await renderSuspended(Harness)
+    primeVideoFrame()
+
+    await tapScan()
+
+    await vi.waitFor(() => expect(stateText()).toBe('decoded'))
+    expect(track.stop).toHaveBeenCalled()
+  })
+
+  it('reads nothing once stopped while its decoder was loading', async () => {
+    getUserMedia.mockResolvedValue(fakeStream().stream)
+    readBarcodesMock.mockResolvedValue([
+      { isValid: true, text: '5701234567890' },
+    ] as unknown as Awaited<ReturnType<typeof readBarcodes>>)
+    await renderSuspended(Harness)
+    const video = screen
+      .getByTestId('state')
+      .parentElement!.querySelector('video')!
+    Object.defineProperty(video, 'readyState', { value: 4, configurable: true })
+    Object.defineProperty(video, 'videoWidth', {
+      value: 640,
+      configurable: true,
+    })
+    Object.defineProperty(video, 'videoHeight', {
+      value: 480,
+      configurable: true,
+    })
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
+      drawImage: vi.fn(),
+      getImageData: vi.fn(() => ({ data: new Uint8ClampedArray(4) })),
+    } as unknown as CanvasRenderingContext2D)
+    // The app goes to the background while the decoder is still loading,
+    // which stops the scanner.
+    vi.mocked(setZXingModuleOverrides).mockImplementationOnce(() =>
+      setVisibility('hidden'),
+    )
+
+    await tapScan()
+    // Long enough for several decode ticks to have run, were any running.
+    await new Promise((resolve) => setTimeout(resolve, 400))
+
+    expect(stateText()).toBe('idle')
+    expect(screen.getByTestId('barcode').textContent).toBe('')
+  })
+
+  it('reads nothing once stopped after being started again mid-scan', async () => {
+    getUserMedia.mockResolvedValue(fakeStream().stream)
+    await renderSuspended(Harness)
+    primeVideoFrame()
+    await tapScan()
+    await vi.waitFor(() => expect(stateText()).toBe('scanning'))
+    await tapScan()
+    await vi.waitFor(() => expect(stateText()).toBe('scanning'))
+
+    await userEvent.setup().click(screen.getByRole('button', { name: 'stop' }))
+    const readsAtStop = readBarcodesMock.mock.calls.length
+    // Long enough for several decode ticks to have run, were any running.
+    await new Promise((resolve) => setTimeout(resolve, 400))
+
+    expect(stateText()).toBe('idle')
+    expect(readBarcodesMock.mock.calls.length).toBe(readsAtStop)
   })
 
   it('gives up when the decoder itself cannot run', async () => {

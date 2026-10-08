@@ -1,8 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
+import { defineComponent } from 'vue'
 import { renderSuspended } from '@nuxt/test-utils/runtime'
-import { screen } from '@testing-library/vue'
+import { screen, within } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import { settle } from '~~/test/async-gate'
+import { besideCatalog, catalogOnceReread, tagsOn } from '~~/test/catalog-host'
 import { food, recipe } from '~~/test/food-fixtures'
 import { foodCatalog } from '~~/test/mocks/handlers/catalog'
 import { failingRead, held } from '~~/test/mocks/http'
@@ -182,32 +184,72 @@ describe('RecipeCompositionSheet', () => {
     expect(screen.getByRole('button', { name: /save changes/i })).toBeVisible()
   })
 
-  it('emits the edited payload when the builder saves', async () => {
+  it('saves the edited recipe, then closes', async () => {
     server.use(...kitchen())
-    const onSubmitEdit = vi.fn()
+    const onClose = vi.fn()
     const user = userEvent.setup()
-    await renderSuspended(RecipeCompositionSheet, {
-      // Keyed to the emit name (`submit-edit`), not its camelCase form.
-      props: {
-        recipe: cottagePie,
-        foods: catalog,
-        'onSubmit-edit': onSubmitEdit,
-      },
+    await renderSuspended(besideCatalog(RecipeCompositionSheet), {
+      props: { recipe: cottagePie, foods: catalog, onClose },
     })
 
-    await screen.findByText('Mince')
-    await user.click(screen.getByRole('button', { name: /edit recipe/i }))
+    await user.click(
+      await screen.findByRole('button', { name: /edit recipe/i }),
+    )
+    const cooked = screen.getByLabelText(/cooked weight/i)
+    await user.clear(cooked)
+    await user.type(cooked, '1500')
+    await user.tab()
     await user.click(screen.getByRole('button', { name: /save changes/i }))
 
-    expect(onSubmitEdit).toHaveBeenCalledWith({
-      name: 'Cottage Pie',
-      cookedWeightG: 1400,
-      ingredients: [
-        { foodId: 1, grams: 500 },
-        { foodId: 2, grams: 900 },
-      ],
-      tagIds: [],
+    await vi.waitFor(() => expect(onClose).toHaveBeenCalledOnce())
+    const shown = await catalogOnceReread()
+    expect(shown.getByText('Cottage pie')).toBeVisible()
+    expect(shown.getByText('2 ingredients · makes 1,500 g')).toBeVisible()
+  })
+
+  it('seeds the edit builder with each ingredient under its own food', async () => {
+    server.use(...kitchen())
+    const user = userEvent.setup()
+    await renderSuspended(RecipeCompositionSheet, {
+      props: { recipe: cottagePie, foods: catalog },
     })
+
+    await user.click(
+      await screen.findByRole('button', { name: /edit recipe/i }),
+    )
+
+    expect(screen.getByRole('button', { name: /mince/i })).toHaveTextContent(
+      '500 g',
+    )
+    expect(screen.getByRole('button', { name: /potato/i })).toHaveTextContent(
+      '900 g',
+    )
+  })
+
+  it('shows the edited recipe wherever the catalog is shown', async () => {
+    server.use(...kitchen())
+    const page = defineComponent({
+      components: { RecipeCompositionSheet },
+      async setup() {
+        const { data } = await useFoodCatalog()
+        return { data, cottagePie, catalog }
+      },
+      template: `<ul><li v-for="row in data ?? []" :key="row.id">{{ row.name }} {{ row.cookedWeightG }}</li></ul>
+        <RecipeCompositionSheet :recipe="cottagePie" :foods="catalog" />`,
+    })
+    await renderSuspended(page)
+    const user = userEvent.setup()
+
+    await user.click(
+      await screen.findByRole('button', { name: /edit recipe/i }),
+    )
+    const cooked = screen.getByLabelText(/cooked weight/i)
+    await user.clear(cooked)
+    await user.type(cooked, '1500')
+    await user.tab()
+    await user.click(screen.getByRole('button', { name: /save changes/i }))
+
+    expect(await screen.findByText('Cottage Pie 1500')).toBeVisible()
   })
 
   it('seeds the edit builder with the Tags read beside the composition, not the catalog row', async () => {
@@ -222,25 +264,29 @@ describe('RecipeCompositionSheet', () => {
         compositions: { 4: cottagePieLines },
       }),
     )
-    const onSubmitEdit = vi.fn()
+    const onClose = vi.fn()
     const user = userEvent.setup()
-    await renderSuspended(RecipeCompositionSheet, {
+    await renderSuspended(besideCatalog(RecipeCompositionSheet), {
       props: {
         recipe: { ...cottagePie, tags: [{ id: 9, name: 'dinner' }] },
         foods: catalog,
-        'onSubmit-edit': onSubmitEdit,
+        onClose,
       },
     })
 
-    await screen.findByText('Mince')
-    await user.click(screen.getByRole('button', { name: /edit recipe/i }))
-    expect(screen.getByText('Batch cook')).toBeVisible()
+    await user.click(
+      await screen.findByRole('button', { name: /edit recipe/i }),
+    )
+    expect(
+      within(screen.getByRole('dialog')).getByText('Batch cook'),
+    ).toBeVisible()
     expect(screen.queryByText('dinner')).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /save changes/i }))
 
-    expect(onSubmitEdit).toHaveBeenCalledWith(
-      expect.objectContaining({ tagIds: [7] }),
-    )
+    await vi.waitFor(() => expect(onClose).toHaveBeenCalledOnce())
+    expect(tagsOn(await catalogOnceReread(), 'Cottage pie')).toEqual([
+      'Batch cook',
+    ])
   })
 
   it('surfaces an error instead of an empty composition when the recipe is gone', async () => {

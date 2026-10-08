@@ -1,3 +1,49 @@
+import type { Ref } from 'vue'
+
+type Picked = Ref<{ id: number } | null>
+
+/*
+ * The Food is read once, at the tap, and travels as an argument — never off the
+ * picker's state at request time. `useApiMutation`'s Retry replays the arguments
+ * of the attempt that failed, so a Food read later would retry against whichever
+ * one the picker happens to hold by then, or throw when it holds none.
+ *
+ * No success toast for either: the queue, the coverage figure and the catalog
+ * subline all change where the User is already looking (ADR 0005).
+ */
+
+/** Claiming the Reference Food the picked Food borrows from. */
+function useMatchClaim(food: Picked, settled: () => Promise<void>) {
+  const { $api } = useNuxtApp()
+  const { execute, pending } = useApiMutation(
+    (target: { foodId: number; referenceFoodId: number }) =>
+      $api('/api/foods/{id}/reference-food', {
+        method: 'PUT',
+        path: { id: target.foodId },
+        body: { referenceFoodId: target.referenceFoodId },
+      }),
+    { errorTitle: 'Could not match this food', onSuccess: settled },
+  )
+  const claim = (referenceFoodId: number) =>
+    food.value && execute({ foodId: food.value.id, referenceFoodId })
+  return { claim, matching: pending }
+}
+
+/** Taking the picked Food's borrow back. */
+function useMatchClear(food: Picked, settled: () => Promise<void>) {
+  const { $api } = useNuxtApp()
+  const { execute, pending } = useApiMutation(
+    (foodId: number) =>
+      $api('/api/foods/{id}/reference-food', {
+        method: 'DELETE',
+        path: { id: foodId },
+      }),
+    { errorTitle: 'Could not unmatch this food', onSuccess: settled },
+  )
+  const clear = () => food.value && execute(food.value.id)
+  return { clear, unmatching: pending }
+}
+
 /**
  * Claiming and taking back the borrow a **Food** makes of a **Reference Food**
  * (ADR 0027), for the two surfaces that own a picker: the match queue on
@@ -9,54 +55,15 @@
  * What differs per page is only what [onChanged] refreshes.
  */
 export function useReferenceFoodMatch(
-  food: Ref<{ id: number } | null>,
+  food: Picked,
   onChanged: () => void | Promise<void>,
 ) {
-  const { $api } = useNuxtApp()
-
   const settled = async () => {
     food.value = null
     await onChanged()
   }
-
-  const { execute: claimFor, pending: matching } = useApiMutation(
-    (target: { foodId: number; referenceFoodId: number }) =>
-      $api('/api/foods/{id}/reference-food', {
-        method: 'PUT',
-        path: { id: target.foodId },
-        body: { referenceFoodId: target.referenceFoodId },
-      }),
-    // No success toast on either page: the queue, the coverage figure and the
-    // catalog subline all change where the User is already looking (ADR 0005).
-    { errorTitle: 'Could not match this food', onSuccess: settled },
-  )
-
-  const { execute: clearFor, pending: unmatching } = useApiMutation(
-    (foodId: number) =>
-      $api('/api/foods/{id}/reference-food', {
-        method: 'DELETE',
-        path: { id: foodId },
-      }),
-    { errorTitle: 'Could not unmatch this food', onSuccess: settled },
-  )
-
-  /**
-   * The Food is read once, at the tap, and travels as an argument — never off
-   * [food] at request time. `useApiMutation`'s Retry replays the arguments of the
-   * attempt that failed, so a Food read later would retry against whichever one
-   * the picker happens to hold by then, or throw when it holds none.
-   */
-  const claim = (referenceFoodId: number) => {
-    const target = food.value
-    return target && claimFor({ foodId: target.id, referenceFoodId })
-  }
-  const clear = () => {
-    const target = food.value
-    return target && clearFor(target.id)
-  }
-
   // `matching` and `unmatching` are the picker's in-flight signal: the sheet
   // deliberately stays open until the server answers, so without them there is
   // nothing at all between the tap and the close (ADR 0007).
-  return { claim, clear, matching, unmatching }
+  return { ...useMatchClaim(food, settled), ...useMatchClear(food, settled) }
 }

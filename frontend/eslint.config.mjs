@@ -3,6 +3,7 @@
 import withNuxt from './.nuxt/eslint.config.mjs'
 import eslintConfigPrettier from 'eslint-config-prettier'
 import tsParser from '@typescript-eslint/parser'
+import sonarjs from 'eslint-plugin-sonarjs'
 
 // `no-restricted-syntax` is one rule, so a later config object matching a file
 // replaces an earlier one's selectors rather than adding to them. Each group of
@@ -192,6 +193,56 @@ export default withNuxt(
           ],
         },
       ],
+    },
+  },
+  {
+    // Each hit is a smell with a named move in the refactoring catalog — the
+    // tdd skill's refactoring.md maps rule to move. Tests are exempt: a test
+    // reads top to bottom, and its length is its arrange-act-assert.
+    // Cognitive complexity, not cyclomatic: cyclomatic scores a flat switch or
+    // a row of guard clauses as high as deep nesting, so it punishes the shapes
+    // the refactor step aims for.
+    name: 'tucker/refactoring-signals',
+    files: ['app/**/*.{ts,vue}', 'server/**/*.ts'],
+    ignores: ['**/*.test.ts', 'app/pages/design.vue'],
+    plugins: { sonarjs },
+    rules: {
+      'sonarjs/cognitive-complexity': ['error', 8],
+      'max-lines-per-function': [
+        'error',
+        { max: 30, skipBlankLines: true, skipComments: true },
+      ],
+      'max-lines': [
+        'error',
+        { max: 300, skipBlankLines: true, skipComments: true },
+      ],
+      'max-depth': ['error', 3],
+      'max-params': ['error', 4],
+      'max-nested-callbacks': ['error', 3],
+      'no-nested-ternary': 'error',
+      'no-else-return': ['error', { allowElseIf: false }],
+      'no-lonely-if': 'error',
+      'no-param-reassign': 'error',
+      'no-useless-return': 'error',
+      'sonarjs/prefer-single-boolean-return': 'error',
+      'sonarjs/no-collapsible-if': 'error',
+      'sonarjs/no-inverted-boolean-check': 'error',
+    },
+  },
+  {
+    name: 'tucker/vue-refactoring-signals',
+    files: ['app/**/*.vue'],
+    ignores: ['app/pages/design.vue'],
+    rules: {
+      'vue/max-lines-per-block': [
+        'error',
+        { script: 200, template: 150, skipBlankLines: true },
+      ],
+      'vue/max-props': ['error', { maxProps: 6 }],
+      'vue/max-template-depth': ['error', { maxDepth: 8 }],
+      'vue/no-unused-properties': ['error', { groups: ['props', 'setup'] }],
+      'vue/no-unused-refs': 'error',
+      'vue/no-unused-emit-declarations': 'error',
     },
   },
   // Prettier owns formatting; switch off ESLint rules that would conflict.

@@ -4,26 +4,15 @@ import type { components } from '#open-fetch-schemas/api'
 
 type CurrentTrend = components['schemas']['WeightTrendResponse']
 
-type GoalPayload = {
-  startedOn: string
-  targetWeightKg: number
-  rateKgPerWeek: number
-}
-
 const props = defineProps<{
   currentTrend: CurrentTrend
-  // The client validates against the trend it was handed, but the backend
-  // re-derives the anchor at creation and is authoritative (ADR 0016); a 400 is
-  // fed back here as a field error.
-  targetError?: string
-  // A rate the user's Maintenance cannot supply is refused at creation
-  // (ADR 0030) — a rule only the backend can apply, since only it holds
-  // Maintenance. Routed here by the field the refusal names.
-  rateError?: string
-  // A refusal that names no field, so it is about neither input — a skewed
-  // client clock, or no weight logged yet. Shown above the submit rather than
-  // under whichever field the client would otherwise have to guess.
-  formError?: string
+  // The backend's refusal of a submit, by what it is about. The client validates
+  // against the trend it was handed, but the backend re-derives the anchor at
+  // creation and is authoritative (ADR 0016) — a refused target lands on its
+  // field; so does a rate the user's Maintenance cannot supply (ADR 0030), a rule
+  // only the backend can apply. One naming no field is about neither input — a
+  // skewed client clock, or no weight logged yet — and is shown above the submit.
+  refusal?: GoalRefusal
   /** The create mutation's in-flight flag — shows on the submit (ADR 0007). */
   pending?: boolean
 }>()
@@ -54,7 +43,7 @@ const state = reactive({
 // message as `error || schemaError` — so a standing one outranks the schema and
 // would go on naming a figure the user has since changed. Each is held locally
 // and dropped the moment its own input moves; editing the other says nothing
-// about it. `formError` is about neither input, so nothing local clears it.
+// about it. `refusal.form` is about neither input, so nothing local clears it.
 function useServerRefusals() {
   const refusals = reactive({
     targetWeightKg: undefined as string | undefined,
@@ -62,7 +51,7 @@ function useServerRefusals() {
   })
 
   watch(
-    () => [props.targetError, props.rateError] as const,
+    () => [props.refusal?.target, props.refusal?.rate] as const,
     ([target, rate]) => {
       refusals.targetWeightKg = target
       refusals.rateKgPerWeek = rate
@@ -137,8 +126,8 @@ function onSubmit() {
       />
     </UFormField>
 
-    <p v-if="props.formError" role="alert" class="text-sm text-error">
-      {{ props.formError }}
+    <p v-if="props.refusal?.form" role="alert" class="text-sm text-error">
+      {{ props.refusal.form }}
     </p>
 
     <UButton type="submit" color="primary" class="w-full" :loading="pending">

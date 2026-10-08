@@ -154,6 +154,26 @@ describe('/check with a calorie budget', () => {
     expect(screen.queryByText("Couldn't look that up")).not.toBeInTheDocument()
   })
 
+  it('checks a product against the day the page opened on, after midnight has passed', async () => {
+    vi.useFakeTimers({ toFake: ['Date'], shouldAdvanceTime: true })
+    try {
+      vi.setSystemTime(new Date(2026, 9, 8, 23, 59))
+      server.use(checkOnlyOn('2026-10-08'))
+      await renderSuspended(Check)
+
+      // The page still shows that day's summary, so its Check must match it.
+      vi.setSystemTime(new Date(2026, 9, 9, 0, 1))
+      scan('3017620422003')
+
+      expect(await screen.findByText('Nutella')).toBeVisible()
+      expect(
+        screen.queryByText("Couldn't look that up"),
+      ).not.toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('states the product in sentence case however the label shouts it', async () => {
     // A product whose label shouts its own name, as many do.
     lookupOf('5004444444444', ({ response }) =>
@@ -476,13 +496,33 @@ describe('/check with a calorie budget', () => {
     await vi.waitFor(() => expect(scanner.stop).toHaveBeenCalledOnce())
   })
 
+  it('keeps an answer on screen when the User comes back to the app', async () => {
+    await renderSuspended(Check)
+    scan('3017620422003')
+    expect(await screen.findByText('Nutella')).toBeVisible()
+    scanner.start.mockClear()
+
+    setVisibility('hidden')
+    scanner.interrupted.value = true
+    await nextTick()
+    setVisibility('visible')
+
+    expect(scanner.start).not.toHaveBeenCalled()
+    expect(screen.getByText('Nutella')).toBeVisible()
+  })
+
   it('clears the previous result and restarts the camera on Scan another', async () => {
     await renderSuspended(Check)
 
     scan('3017620422003')
     expect(await screen.findByText('Nutella')).toBeVisible()
 
-    scanner.start.mockClear()
+    // As the real scanner does: a start drops the decoded barcode before its
+    // first await.
+    scanner.start.mockClear().mockImplementationOnce(() => {
+      scanner.barcode.value = null
+      scanner.state.value = 'requesting'
+    })
     await userEvent.click(screen.getByRole('button', { name: 'Scan another' }))
 
     expect(scanner.start).toHaveBeenCalled()

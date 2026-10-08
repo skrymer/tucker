@@ -27,18 +27,30 @@ const {
 
 // Persisting reminder prefs is a Profile write: merge the changed fields onto
 // the full profile so a save never clobbers the user's body stats or hour.
-function useReminderPrefs() {
-  const write = useProfileWrite()
-  const enabled = ref(props.profile.remindersEnabled)
+const write = useProfileWrite()
+const persist = (prefs: Partial<ProfileDto>) => write(props.profile, prefs)
+
+// The hour picker validates through its Zod schema before saving (ADR 0003);
+// an out-of-range hour never reaches the Profile.
+function useReminderHour() {
   const hourForm = reactive({ reminderHour: props.profile.reminderHour })
+  const { execute: saveHour } = useApiMutation(
+    () => persist({ reminderHour: hourForm.reminderHour }),
+    {
+      errorTitle: 'Could not save reminder time',
+      onSuccess: () => emit('saved'),
+    },
+  )
+  return { hourForm, saveHour }
+}
 
-  const persist = (prefs: Partial<ProfileDto>) => write(props.profile, prefs)
-
-  // The toggle is the only place notification permission is requested — from
-  // this gesture, never on load. Subscribing the device and saving the opt-in is
-  // one mutation, so any failure (subscribe, POST, the profile write) surfaces
-  // the persistent retry toast (ADR 0005); `enabled` flips only once the whole
-  // flow succeeds, so a failed enable can't strand the switch in the on state.
+// The toggle is the only place notification permission is requested — from
+// this gesture, never on load. Subscribing the device and saving the opt-in is
+// one mutation, so any failure (subscribe, POST, the profile write) surfaces
+// the persistent retry toast (ADR 0005); `enabled` flips only once the whole
+// flow succeeds, so a failed enable can't strand the switch in the on state.
+function useReminderToggle(hour: () => number) {
+  const enabled = ref(props.profile.remindersEnabled)
   const { execute: toggle } = useApiMutation(
     async (next: boolean) => {
       if (next) {
@@ -47,7 +59,7 @@ function useReminderPrefs() {
         if (!isSubscribed.value) return
         await persist({
           timezone: timezone.value,
-          reminderHour: hourForm.reminderHour,
+          reminderHour: hour(),
           remindersEnabled: true,
         })
         enabled.value = true
@@ -62,21 +74,11 @@ function useReminderPrefs() {
       onSuccess: () => emit('saved'),
     },
   )
-
-  // The hour picker validates through its Zod schema before saving (ADR 0003);
-  // an out-of-range hour never reaches the Profile.
-  const { execute: saveHour } = useApiMutation(
-    () => persist({ reminderHour: hourForm.reminderHour }),
-    {
-      errorTitle: 'Could not save reminder time',
-      onSuccess: () => emit('saved'),
-    },
-  )
-
-  return { enabled, hourForm, toggle, saveHour }
+  return { enabled, toggle }
 }
 
-const { enabled, hourForm, toggle, saveHour } = useReminderPrefs()
+const { hourForm, saveHour } = useReminderHour()
+const { enabled, toggle } = useReminderToggle(() => hourForm.reminderHour)
 </script>
 
 <template>

@@ -70,7 +70,7 @@ function ring(share: number, stroke: string) {
  * same class as the Day Ring's arc sweep, not a rule re-derived in Vue
  * (ADR 0022, ADR 0002).
  */
-const inPortion = (per100g: number) => (per100g * portionG.value) / 100
+const inPortion = (per100g: number) => contribution(per100g, portionG.value)
 
 /**
  * The two peer rings: what the portion costs against the Calorie Budget and what

@@ -241,8 +241,9 @@ the app does not initiate and so must listen for — and not merely when the com
 holds it mounted while closed. Two things ride on it: a camera light burning
 behind a dismissed sheet is alarming whatever the reason, and a live decoder in a
 surface the User has navigated away from can still fire, hijacking a sheet they
-are using for something else. The scanner therefore lives in the sheet's scope
-rather than the tab panel's, and every exit from that scope stops it explicitly.
+are using for something else. The scanner is therefore stopped explicitly on
+every exit from the surface it is shown in — the sheet closing, the Food tab
+left — rather than left to an unmount that a hidden overlay or tab never does.
 
 **Liquids:** a Provider value published per 100 ml is treated as per 100 g —
 density assumed **1 g/ml (water)**, not a per-product density. The error is ≲5%

@@ -42,6 +42,19 @@ consumer justifies the move.
   composables have no independent existence and are covered by their component's
   tests — if an inline composable needs its own test, that is the signal to
   extract it.
+- A component too long for the lint limits (`vue/max-lines-per-block`,
+  `max-lines`) is split by **Extract Component**, not by moving a single-consumer
+  composable to `app/composables/`: each composable moves with the one child that
+  uses it and stays inline there, so size never becomes a second reason to
+  extract. A long inline composable is split into smaller inline ones.
+- A sheet or dialog that issues a mutation **owns** it — the page does not run
+  every mutation on a sheet's behalf and thread the result back down. A sheet
+  whose whole job is that one mutation closes itself once it lands; a sheet that
+  manages several (`ManageTagsSheet`'s create, rename and delete) stays open.
+- The Food catalog is **one keyed read** (`useFoodCatalog`) that every catalog
+  mutation re-reads directly (`refreshFoodCatalog`), rather than a `changed`
+  event relayed up through each parent. A sheet emits `changed` only for data
+  its page alone holds (the micronutrient intake on `/review`).
 - Pure helpers with no reactivity are plain functions in `app/utils/` (e.g.
   `localToday`, `formatDateFromISO`), not composables.
 

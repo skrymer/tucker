@@ -95,6 +95,7 @@ export function tagsOnOffer(foods: FoodResponse[]): FoodResponse['tags'] {
   return [...byId.values()].sort((a, b) => {
     const x = a.name.toLowerCase()
     const y = b.name.toLowerCase()
-    return x < y ? -1 : x > y ? 1 : 0
+    if (x === y) return 0
+    return x < y ? -1 : 1
   })
 }

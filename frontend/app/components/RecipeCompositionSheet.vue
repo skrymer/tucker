@@ -12,19 +12,39 @@ const props = withDefaults(
     recipe: FoodResponse | null
     /** The catalog, so the edit builder can resolve its pre-filled ingredients. */
     foods?: FoodResponse[]
-    /** True while an edit save is in flight, to lock the builder's Save. */
-    pending?: boolean
-    /** A Food just persisted from the edit builder's inline "Add a new food". */
-    createdIngredient?: FoodResponse | null
   }>(),
-  { foods: () => [], createdIngredient: null },
+  { foods: () => [] },
 )
 // Stryker restore all
 const emit = defineEmits<{
   close: []
-  'submit-edit': [RecipePayload]
-  'create-food': [components['schemas']['CreateFoodRequest']]
 }>()
+
+/**
+ * Editing a recipe recalibrates it in place (PUT keeps the same Food id), so
+ * logged Entries still resolve and their snapshots stand — only future logs see
+ * the new density (ADR 0019). A save closes the sheet.
+ */
+function useRecipeEdit() {
+  const { $api } = useNuxtApp()
+  const { execute, pending } = useApiMutation(
+    (id: number, payload: RecipePayload) =>
+      $api('/api/recipes/{id}', { method: 'PUT', path: { id }, body: payload }),
+    {
+      errorTitle: 'Could not save recipe',
+      onSuccess: () => {
+        emit('close')
+        return refreshFoodCatalog()
+      },
+    },
+  )
+  // The id is read at the tap: a Retry replays the failed attempt's arguments.
+  function save(payload: RecipePayload) {
+    if (props.recipe) execute(props.recipe.id, payload)
+  }
+  return { save, pending }
+}
+const { save: saveEdit, pending } = useRecipeEdit()
 
 /**
  * The open recipe's composition, fetched from `GET /api/recipes/{id}` (the
@@ -143,9 +163,7 @@ const round = (n: number) => Math.round(n)
         :initial="editInitial"
         :foods="foods"
         :pending="pending"
-        :created-ingredient="createdIngredient"
-        @submit="(payload) => emit('submit-edit', payload)"
-        @create-food="(payload) => emit('create-food', payload)"
+        @submit="saveEdit"
       />
 
       <!-- View: the read-only composition, with an Edit affordance. -->

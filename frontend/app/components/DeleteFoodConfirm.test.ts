@@ -1,9 +1,18 @@
 import { describe, expect, it, vi } from 'vitest'
-import { renderSuspended } from '@nuxt/test-utils/runtime'
+import { mockNuxtImport, renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
+import { besideCatalog, catalog, catalogOnceReread } from '~~/test/catalog-host'
 import { food } from '~~/test/food-fixtures'
+import { foodCatalog } from '~~/test/mocks/handlers/catalog'
+import { server } from '~~/test/mocks/node'
 import DeleteFoodConfirm from './DeleteFoodConfirm.vue'
+
+const { toastAdd } = vi.hoisted(() => ({ toastAdd: vi.fn() }))
+mockNuxtImport('useToast', () => () => ({
+  add: toastAdd,
+  remove: vi.fn(),
+}))
 
 const oats = food({
   id: 7,
@@ -49,29 +58,60 @@ describe('DeleteFoodConfirm', () => {
     ).toBeVisible()
   })
 
-  it('confirms the deletion when the user clicks Delete', async () => {
-    const onConfirm = vi.fn()
-    await renderSuspended(DeleteFoodConfirm, {
-      props: { food: oats, onConfirm },
+  it('deletes the food on Delete, then closes itself', async () => {
+    const bread = food({ id: 8, name: 'Bread' })
+    server.use(...foodCatalog({ foods: [oats, bread] }))
+    const onClose = vi.fn()
+    await renderSuspended(besideCatalog(DeleteFoodConfirm), {
+      props: { food: oats, onClose },
     })
 
     await userEvent
       .setup()
       .click(screen.getByRole('button', { name: /^delete$/i }))
 
-    expect(onConfirm).toHaveBeenCalledOnce()
+    await vi.waitFor(() => expect(onClose).toHaveBeenCalledOnce())
+    const shown = await catalogOnceReread()
+    expect(shown.getByText('Bread')).toBeVisible()
+    expect(shown.queryByText('Oats')).not.toBeInTheDocument()
+  })
+
+  it('states why a food with logged entries was not deleted, and closes', async () => {
+    server.use(...foodCatalog({ foods: [oats], logged: [oats.id] }))
+    const onClose = vi.fn()
+    await renderSuspended(besideCatalog(DeleteFoodConfirm), {
+      props: { food: oats, onClose },
+    })
+
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: /^delete$/i }))
+
+    await vi.waitFor(() => expect(onClose).toHaveBeenCalledOnce())
+    // Persistent and dismissible with no Retry: the refusal is permanent, so
+    // trying again could never succeed (ADR 0005).
+    expect(toastAdd).toHaveBeenCalledExactlyOnceWith({
+      title: 'Could not delete food',
+      description: "Oats has logged Entries and can't be deleted.",
+      color: 'error',
+      type: 'foreground',
+      duration: Infinity,
+      close: true,
+      progress: false,
+    })
+    expect(catalog().getByText('Oats')).toBeVisible()
   })
 
   it('cancels the deletion when the user clicks Cancel', async () => {
-    const onCancel = vi.fn()
+    const onClose = vi.fn()
     await renderSuspended(DeleteFoodConfirm, {
-      props: { food: oats, onCancel },
+      props: { food: oats, onClose },
     })
 
     await userEvent
       .setup()
       .click(screen.getByRole('button', { name: /cancel/i }))
 
-    expect(onCancel).toHaveBeenCalledOnce()
+    expect(onClose).toHaveBeenCalledOnce()
   })
 })

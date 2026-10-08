@@ -19,23 +19,13 @@ const entryName = computed(() =>
 </script>
 
 <template>
-  <UModal
+  <ConfirmDeleteDialog
     :open="entry !== null"
     title="Delete this entry?"
-    @update:open="(value) => !value && emit('cancel')"
+    @cancel="emit('cancel')"
+    @confirm="emit('confirm')"
   >
-    <template #body>
-      <p class="text-sm text-default">
-        <span class="font-medium">{{ entryName }}</span> will be removed, and
-        that day's totals re-derive without it.
-      </p>
-    </template>
-
-    <template #footer>
-      <div class="flex justify-end gap-2">
-        <UButton variant="ghost" @click="emit('cancel')">Cancel</UButton>
-        <UButton color="error" @click="emit('confirm')">Delete</UButton>
-      </div>
-    </template>
-  </UModal>
+    <span class="font-medium">{{ entryName }}</span> will be removed, and that
+    day's totals re-derive without it.
+  </ConfirmDeleteDialog>
 </template>

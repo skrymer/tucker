@@ -4,25 +4,15 @@ import type { components } from '#open-fetch-schemas/api'
 type GoalResponse = components['schemas']['GoalResponse']
 type CurrentTrend = components['schemas']['WeightTrendResponse']
 
-type GoalPayload = {
-  startedOn: string
-  targetWeightKg: number
-  rateKgPerWeek: number
-}
-
 const props = defineProps<{
   goals: GoalResponse[]
   // The live Trend Weight a Goal anchors its start on (ADR 0016); null until a
   // weight is logged, which also gates the form.
   currentTrend: CurrentTrend | null
-  // A backend rejection of the target (the trend-weight rule, ADR 0016), shown
-  // on the form's target field.
-  targetError?: string
-  // A backend rejection of the rate (it outruns Maintenance, ADR 0030), shown on
-  // the form's rate field.
-  rateError?: string
-  // A backend rejection naming no field, shown above the form's submit.
-  formError?: string
+  // The backend's refusal of a submit, by what it is about: the target (the
+  // trend-weight rule, ADR 0016) and the rate (it outruns Maintenance, ADR 0030)
+  // on their fields, and one naming no field above the form's submit.
+  refusal?: GoalRefusal
   pending?: boolean
   disabled?: boolean
 }>()
@@ -101,9 +91,7 @@ watch(
       <GoalForm
         v-if="formOpen && props.currentTrend"
         :current-trend="props.currentTrend"
-        :target-error="props.targetError"
-        :rate-error="props.rateError"
-        :form-error="props.formError"
+        :refusal="props.refusal"
         :pending="props.pending"
         @submit="emit('submit', $event)"
       />

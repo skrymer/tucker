@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { Ref } from 'vue'
 import type { components } from '#open-fetch-schemas/api'
 
 type FoodResponse = components['schemas']['FoodResponse']
@@ -31,7 +32,7 @@ const {
 // empty catalog from a quiet month. Issued before the ranking is awaited so the
 // two overlap, rather than costing the app's most-opened destination two round
 // trips before it paints.
-const catalogRead = useApi('/api/foods')
+const catalogRead = useFoodCatalog()
 const [{ data: catalog, error: catalogError, refresh: refreshCatalog }] =
   await Promise.all([catalogRead, refreshFrequent()])
 
@@ -72,6 +73,23 @@ function useCatalogFilter() {
       tagId: tag.value?.id ?? null,
     }),
   )
+  return {
+    query,
+    tagId,
+    tags,
+    trimmed,
+    filtering,
+    shown,
+    ...useFilterWording(tag, trimmed, filtering),
+  }
+}
+
+/** What the grid's heading and its empty state say about the filter applied. */
+function useFilterWording(
+  tag: Ref<{ name: string } | undefined>,
+  trimmed: Ref<string>,
+  filtering: Ref<boolean>,
+) {
   const heading = computed(() => {
     if (!filtering.value) return 'All foods'
     if (!tag.value) return 'Matching foods'
@@ -83,16 +101,7 @@ function useCatalogFilter() {
       ? `No ${tag.value.name} foods match “${trimmed.value}”.`
       : `No foods match “${trimmed.value}”.`,
   )
-  return {
-    query,
-    tagId,
-    tags,
-    trimmed,
-    filtering,
-    shown,
-    heading,
-    nothingFound,
-  }
+  return { heading, nothingFound }
 }
 const filter = useCatalogFilter()
 

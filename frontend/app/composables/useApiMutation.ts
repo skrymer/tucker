@@ -58,6 +58,131 @@ function useSpentErrorToasts() {
   return useState<Record<string, number>>('spent-error-toasts', () => ({}))
 }
 
+/** The failure toast itself, under [id], its Retry calling [onRetry]. */
+function failureToast(id: string, title: string, onRetry: () => unknown) {
+  return {
+    id,
+    title,
+    description: CONNECTION_ERROR_MESSAGE,
+    color: 'error' as const,
+    // A failed save is high-stakes on a phone: persist until the user
+    // acknowledges it, with an assertive live region and an explicit close.
+    type: 'foreground' as const,
+    duration: Infinity,
+    close: true,
+    // No countdown bar — there's no auto-dismiss to count down to.
+    progress: false,
+    actions: [{ label: 'Retry', onClick: onRetry }],
+  }
+}
+
+/**
+ * A mutation's ADR 0005 failure toast: persistent, assertive, and carrying a
+ * Retry. One id per mutation, so a repeated identical failure pulses the
+ * existing toast instead of stacking — held until the toast it names is closed,
+ * and replaced then.
+ */
+function useMutationErrorToast(title: string) {
+  const toast = useToast()
+  const baseId = `mutation-error:${title}`
+  const spent = useSpentErrorToasts()
+  const id = () => `${baseId}#${spent.value[baseId] ?? 0}`
+
+  /**
+   * Give up the id of a toast that has been closed. Nuxt UI deletes a closed
+   * toast a fraction of a second later, and a re-`add` under its id in the
+   * meantime is merged into the dying toast rather than mounting a new one — so
+   * the next failure would be swept away with it. See ADR 0005, "Errors — a
+   * persistent retryable snackbar".
+   */
+  function spend() {
+    spent.value[baseId] = (spent.value[baseId] ?? 0) + 1
+  }
+
+  /** Take down the toast, if it still has one up. */
+  function dismiss() {
+    toast.remove(id())
+    spend()
+  }
+
+  /** Tapping the Retry is itself a close, which Nuxt UI gives no way to opt out of. */
+  function announce(retry: () => unknown) {
+    toast.add(
+      failureToast(id(), title, () => {
+        spend()
+        return retry()
+      }),
+    )
+  }
+  return { announce, dismiss }
+}
+
+/**
+ * The success toast, when the caller asked for one. Polite live region (Reka
+ * defaults to assertive) — a confirmation should never interrupt.
+ */
+function useSuccessToast<TArgs extends unknown[], TResult>(
+  options: ApiMutationOptions<TArgs, TResult>,
+) {
+  const toast = useToast()
+  return (result: TResult, args: TArgs) => {
+    const { successTitle: title } = options
+    if (!title) return
+    toast.add({
+      title: typeof title === 'function' ? title(result, ...args) : title,
+      description: options.successDescription?.(result),
+      color: 'success',
+      type: 'background',
+    })
+  }
+}
+
+/** What a mutation's failure, or its outcome, tells the User. */
+function useMutationFeedback<TArgs extends unknown[], TResult>(
+  options: ApiMutationOptions<TArgs, TResult>,
+) {
+  const errors = useMutationErrorToast(options.errorTitle)
+  const announceSuccess = useSuccessToast(options)
+
+  function failed(error: unknown, retry: () => unknown) {
+    // An expired session already switches the whole app to the signed-out
+    // interstitial (useAuthGate) — the generic "check your connection, Retry"
+    // toast would be exactly the wrong advice DESIGN.md's Feedback states
+    // section warns against layering on top of it, and Retry would just repeat
+    // the same expired-session failure forever.
+    if (useAuthGate().isSignedOut.value) return
+    const rejection = validationRejection(error)
+    if (!rejection || !options.onValidationError) return errors.announce(retry)
+    // A wrong input, not a flaky connection: hand it to the form and clear any
+    // stale transient toast rather than offering a pointless retry.
+    errors.dismiss()
+    options.onValidationError(rejection.message, rejection.field)
+  }
+
+  function settled(
+    outcome: AsyncOutcome<TResult>,
+    args: TArgs,
+    retry: () => unknown,
+  ) {
+    if (useAuthGate().isSignedOut.value) return
+    // Neither unfinished outcome may clear a failure it never resolved or
+    // confirm a save that may not have landed — but they are opposites past
+    // that (ADR 0007). Something newer owns the screen after a supersede, so
+    // this one says nothing; after a timeout nothing does, and the caller is
+    // the only one who can explain the silence — which for a mutation is
+    // ADR 0005's failure toast. Neither is reachable as this factory stands
+    // (`guard` mode with no `cancel` rules out one, no `timeoutMs` the other),
+    // so each states what it would owe rather than sharing an answer.
+    if (outcome.status === 'superseded') return
+    if (outcome.status === 'timedOut') return errors.announce(retry)
+    // A successful (re)try clears any persistent failure toast for this
+    // mutation — the snackbar is dismissed only by success or by the user.
+    errors.dismiss()
+    announceSuccess(outcome.value, args)
+  }
+  return { failed, settled }
+}
+
 /**
  * Wraps a `$api` mutation with the boilerplate every form shares: a `pending`
  * flag, a re-entry guard, a failure toast, and post-success side effects.
@@ -70,8 +195,6 @@ export function useApiMutation<TArgs extends unknown[], TResult>(
   mutate: (...args: TArgs) => Promise<TResult>,
   options: ApiMutationOptions<TArgs, TResult>,
 ) {
-  const toast = useToast()
-
   // The pending lifecycle + re-entry guard live in the shared primitive
   // (ADR 0007); this factory layers the ADR-0005 toast policy on top. A
   // mutation is `guard` mode — a double-tap must not fire two writes — and the
@@ -88,122 +211,26 @@ export function useApiMutation<TArgs extends unknown[], TResult>(
       return result
     },
   )
-
-  // One id per mutation, so a repeated identical failure pulses the existing
-  // toast instead of stacking — held until the toast it names is closed, and
-  // replaced then (see [spendErrorToastId]).
-  const errorToastBaseId = `mutation-error:${options.errorTitle}`
-  const spent = useSpentErrorToasts()
-
-  /** The id this mutation's error toast currently occupies. */
-  function errorToastId() {
-    return `${errorToastBaseId}#${spent.value[errorToastBaseId] ?? 0}`
-  }
+  const feedback = useMutationFeedback(options)
 
   /**
-   * Give up the id of a toast that has been closed. Nuxt UI deletes a closed
-   * toast a fraction of a second later, and a re-`add` under its id in the
-   * meantime is merged into the dying toast rather than mounting a new one — so
-   * the next failure would be swept away with it. See ADR 0005, "Errors — a
-   * persistent retryable snackbar".
+   * Replay a failed call with the attempt's own arguments — through the
+   * caller's [options.retry] when it queues its own attempts.
    */
-  function spendErrorToastId() {
-    spent.value[errorToastBaseId] = (spent.value[errorToastBaseId] ?? 0) + 1
-  }
-
-  /** Take down this mutation's error toast, if it still has one up. */
-  function dismissErrorToast() {
-    toast.remove(errorToastId())
-    spendErrorToastId()
-  }
-
-  /**
-   * Replay the failed call from the Retry on its own error toast. Tapping an
-   * action is itself a close, which Nuxt UI gives no way to opt out of.
-   */
-  function retry(...args: TArgs) {
-    spendErrorToastId()
+  function retry(...args: TArgs): void | Promise<void> {
     if (options.retry) return options.retry(...args)
     return execute(...args)
   }
 
-  /**
-   * ADR 0005's failure toast: persistent, assertive, and carrying a Retry that
-   * replays this attempt's own arguments.
-   */
-  function announceFailure(...args: TArgs) {
-    toast.add({
-      id: errorToastId(),
-      title: options.errorTitle,
-      description: CONNECTION_ERROR_MESSAGE,
-      color: 'error',
-      // A failed save is high-stakes on a phone: persist until the user
-      // acknowledges it, with an assertive live region and an explicit close.
-      type: 'foreground',
-      duration: Infinity,
-      close: true,
-      // No countdown bar — there's no auto-dismiss to count down to.
-      progress: false,
-      // Retry replays the same call — `args` is captured from this attempt,
-      // so no re-entry of the form is needed. The pending guard stops a
-      // double-tap from firing two mutations.
-      actions: [{ label: 'Retry', onClick: () => retry(...args) }],
-    })
-  }
-
-  async function execute(...args: TArgs) {
+  async function execute(...args: TArgs): Promise<void> {
     if (pending.value) return
     let outcome: AsyncOutcome<TResult>
     try {
       outcome = await run(...args)
     } catch (error) {
-      // An expired session already switches the whole app to the signed-out
-      // interstitial (useAuthGate) — the generic "check your connection,
-      // Retry" toast would be exactly the wrong advice DESIGN.md's Feedback
-      // states section warns against layering on top of it, and Retry would
-      // just repeat the same expired-session failure forever.
-      if (useAuthGate().isSignedOut.value) return
-      const rejection = validationRejection(error)
-      if (rejection && options.onValidationError) {
-        // A wrong input, not a flaky connection: hand it to the form and clear
-        // any stale transient toast rather than offering a pointless retry.
-        dismissErrorToast()
-        options.onValidationError(rejection.message, rejection.field)
-        return
-      }
-      announceFailure(...args)
-      return
+      return feedback.failed(error, () => retry(...args))
     }
-    if (useAuthGate().isSignedOut.value) return
-    // Neither unfinished outcome may clear a failure it never resolved or
-    // confirm a save that may not have landed — but they are opposites past
-    // that (ADR 0007). Something newer owns the screen after a supersede, so
-    // this one says nothing; after a timeout nothing does, and the caller is
-    // the only one who can explain the silence — which for a mutation is
-    // ADR 0005's failure toast. Neither is reachable as this factory stands
-    // (`guard` mode with no `cancel` rules out one, no `timeoutMs` the other),
-    // so each states what it would owe rather than sharing an answer.
-    if (outcome.status === 'superseded') return
-    if (outcome.status === 'timedOut') {
-      announceFailure(...args)
-      return
-    }
-    // A successful (re)try clears any persistent failure toast for this
-    // mutation — the snackbar is dismissed only by success or by the user.
-    dismissErrorToast()
-    if (options.successTitle) {
-      // Polite live region (Reka defaults to assertive) — a confirmation
-      // should never interrupt.
-      toast.add({
-        title:
-          typeof options.successTitle === 'function'
-            ? options.successTitle(outcome.value, ...args)
-            : options.successTitle,
-        description: options.successDescription?.(outcome.value),
-        color: 'success',
-        type: 'background',
-      })
-    }
+    feedback.settled(outcome, args, () => retry(...args))
   }
 
   return { pending, busy, execute }

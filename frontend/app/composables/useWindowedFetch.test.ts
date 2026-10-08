@@ -25,10 +25,8 @@ describe('useWindowedFetch', () => {
     await load()
 
     selection.value = 90
-    await nextTick()
-    await Promise.resolve()
 
-    expect(data.value).toEqual({ days: 90 })
+    await vi.waitFor(() => expect(data.value).toEqual({ days: 90 }))
   })
 
   it('supersedes a load still in flight rather than dropping the new question', async () => {

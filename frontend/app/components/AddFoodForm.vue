@@ -38,7 +38,19 @@ const emit = defineEmits<{
   submit: [components['schemas']['CreateFoodRequest']]
 }>()
 
-type Macro = 'proteinPer100g' | 'carbsPer100g' | 'fatPer100g'
+const MACROS = ['proteinPer100g', 'carbsPer100g', 'fatPer100g'] as const
+type Macro = (typeof MACROS)[number]
+
+/** The fields a seed supplies, its absent ones blank. */
+function seedOf(initial: typeof props.initial) {
+  return {
+    name: initial?.name ?? '',
+    proteinPer100g: initial?.proteinPer100g,
+    carbsPer100g: initial?.carbsPer100g,
+    fatPer100g: initial?.fatPer100g,
+  }
+}
+type Draft = ReturnType<typeof seedOf>
 
 /**
  * The form's fields, and which of them are the user's rather than the seed's.
@@ -48,12 +60,7 @@ type Macro = 'proteinPer100g' | 'carbsPer100g' | 'fatPer100g'
  * touched, so a slow look-up can't wipe what they typed.
  */
 function useFoodDraft() {
-  const state = reactive({
-    name: props.initial?.name ?? '',
-    proteinPer100g: props.initial?.proteinPer100g,
-    carbsPer100g: props.initial?.carbsPer100g,
-    fatPer100g: props.initial?.fatPer100g,
-  })
+  const state = reactive(seedOf(props.initial))
   const touched = reactive({
     name: false,
     proteinPer100g: false,
@@ -74,25 +81,29 @@ function useFoodDraft() {
     state[field] = value
     markTouched(field)
   }
-  // An untouched field mirrors its seed (`initial`) — including when the seed
-  // says nothing. Its value can only have come from a seed (the user's own
-  // values are, by definition, touched), so one the current seed doesn't supply
-  // belongs to a previous one, and leaving it there is how a withdrawn
-  // candidate's name gets saved under the next barcode (issue #180).
-  // Only `name` needs a blank spelled out, because its state is a `string`; an
-  // absent macro is already the `undefined` its own blank is.
+  useSeedMirror(state, touched)
+
+  return { state, markTouched, updateMacro }
+}
+
+/**
+ * An untouched field mirrors its seed (`initial`) — including when the seed says
+ * nothing. Its value can only have come from a seed (the user's own values are,
+ * by definition, touched), so one the current seed doesn't supply belongs to a
+ * previous one, and leaving it there is how a withdrawn candidate's name gets
+ * saved under the next barcode.
+ */
+function useSeedMirror(state: Draft, touched: Record<keyof Draft, boolean>) {
   watch(
     () => props.initial,
     (next) => {
       if (!next) return
-      if (!touched.name) state.name = next.name ?? ''
-      if (!touched.proteinPer100g) state.proteinPer100g = next.proteinPer100g
-      if (!touched.carbsPer100g) state.carbsPer100g = next.carbsPer100g
-      if (!touched.fatPer100g) state.fatPer100g = next.fatPer100g
+      const seed = seedOf(next)
+      if (!touched.name) state.name = seed.name
+      for (const macro of MACROS)
+        if (!touched[macro]) state[macro] = seed[macro]
     },
   )
-
-  return { state, markTouched, updateMacro }
 }
 
 const { state, markTouched, updateMacro } = useFoodDraft()
