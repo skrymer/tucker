@@ -7,7 +7,7 @@ import java.time.LocalDate
  * behind goal progress and the adaptive Maintenance correction.
  */
 data class WeightMeasurement(
-    val id: Long?,
+    val id: Long,
     val measuredOn: LocalDate,
     val weightKg: Double,
 ) {
@@ -16,11 +16,11 @@ data class WeightMeasurement(
     }
 
     companion object {
-        fun recorded(measuredOn: LocalDate, weightKg: Double, today: LocalDate): WeightMeasurement {
+        fun recorded(id: Long, measuredOn: LocalDate, weightKg: Double, today: LocalDate): WeightMeasurement {
             require(!measuredOn.isAfter(today)) {
                 "measuredOn must not be in the future (was $measuredOn, today is $today)"
             }
-            return WeightMeasurement(id = null, measuredOn = measuredOn, weightKg = weightKg)
+            return WeightMeasurement(id = id, measuredOn = measuredOn, weightKg = weightKg)
         }
     }
 }

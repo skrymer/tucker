@@ -20,7 +20,7 @@ class WeightTimelineTest {
     private fun daily(vararg kg: Double, endingOn: LocalDate = to) =
         kg.mapIndexed { index, weight ->
             WeightMeasurement(
-                id = null,
+                id = index.toLong(),
                 measuredOn = endingOn.minusDays((kg.size - 1 - index).toLong()),
                 weightKg = weight,
             )

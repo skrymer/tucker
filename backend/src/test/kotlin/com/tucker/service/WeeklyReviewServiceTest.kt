@@ -45,15 +45,15 @@ class WeeklyReviewServiceTest {
 
     private fun seedSetupWithWeights() {
         seedProfileAndGoal()
-        weights.save(WeightMeasurement(null, today.minusDays(1), 86.0))
-        weights.save(WeightMeasurement(null, today, 85.8))
+        weights.save(WeightMeasurement(weights.nextId(),today.minusDays(1), 86.0))
+        weights.save(WeightMeasurement(weights.nextId(),today, 85.8))
     }
 
     /** Maintenance Mode setup: a profile and weights, but deliberately no Goal. */
     private fun seedProfileAndWeightsNoGoal(tracksCalories: Boolean = true) {
         profiles.save(Profile(Sex.MALE, LocalDate.of(1986, 5, 22), 180.0, tracksCalories = tracksCalories))
-        weights.save(WeightMeasurement(null, today.minusDays(1), 86.0))
-        weights.save(WeightMeasurement(null, today, 85.8))
+        weights.save(WeightMeasurement(weights.nextId(),today.minusDays(1), 86.0))
+        weights.save(WeightMeasurement(weights.nextId(),today, 85.8))
     }
 
     @Test
@@ -68,7 +68,7 @@ class WeeklyReviewServiceTest {
         // it cannot fail on a trend that is wrong.
         profiles.save(Profile(Sex.MALE, LocalDate.of(1986, 5, 22), 180.0))
         for (week in 6 downTo 0) {
-            weights.save(WeightMeasurement(null, today.minusWeeks(week.toLong()), 84.0 + week))
+            weights.save(WeightMeasurement(weights.nextId(),today.minusWeeks(week.toLong()), 84.0 + week))
         }
 
         val review = service.runReview(today)
@@ -79,8 +79,8 @@ class WeeklyReviewServiceTest {
 
     /** A flat trend (every reading 86.0) so the adaptive weight-change term is zero. */
     private fun seedFlatTrend() {
-        weights.save(WeightMeasurement(null, today.minusDays(14), 86.0))
-        weights.save(WeightMeasurement(null, today, 86.0))
+        weights.save(WeightMeasurement(weights.nextId(),today.minusDays(14), 86.0))
+        weights.save(WeightMeasurement(weights.nextId(),today, 86.0))
     }
 
     /**
@@ -89,8 +89,8 @@ class WeeklyReviewServiceTest {
      * fall across the days between them.
      */
     private fun seedTrendFalling(anchorDaysAgo: Long, latestDaysAgo: Long = 0) {
-        weights.save(WeightMeasurement(null, today.minusDays(anchorDaysAgo), 86.0))
-        weights.save(WeightMeasurement(null, today.minusDays(latestDaysAgo), 84.0))
+        weights.save(WeightMeasurement(weights.nextId(),today.minusDays(anchorDaysAgo), 86.0))
+        weights.save(WeightMeasurement(weights.nextId(),today.minusDays(latestDaysAgo), 84.0))
     }
 
     /** Log 2000 kcal on each window day in [offsets] (days before today). */
@@ -146,8 +146,8 @@ class WeeklyReviewServiceTest {
     @Test
     fun `with little history the review uses the formula seed`() {
         seedProfileAndGoal()
-        weights.save(WeightMeasurement(null, today.minusDays(1), 86.0))
-        weights.save(WeightMeasurement(null, today, 85.8))
+        weights.save(WeightMeasurement(weights.nextId(),today.minusDays(1), 86.0))
+        weights.save(WeightMeasurement(weights.nextId(),today, 85.8))
 
         val review = service.runReview(today)
 
@@ -177,7 +177,7 @@ class WeeklyReviewServiceTest {
         // A weight at the window start (so the trend has an anchor) but nothing
         // logged since — adaptive has no intake to correct against, so deriving
         // maintenance from a phantom zero-calorie diet would be nonsense.
-        weights.save(WeightMeasurement(null, today.minusDays(14), 86.0))
+        weights.save(WeightMeasurement(weights.nextId(),today.minusDays(14), 86.0))
 
         val review = service.runReview(today)
 
@@ -191,7 +191,7 @@ class WeeklyReviewServiceTest {
         // 16 days of measurements trending down, ~2000 kcal logged each window day.
         for (offset in 16 downTo 0) {
             val day = today.minusDays(offset.toLong())
-            weights.save(WeightMeasurement(null, day, 86.0 - (16 - offset) * 0.06))
+            weights.save(WeightMeasurement(weights.nextId(),day, 86.0 - (16 - offset) * 0.06))
             entries.insert(EstimatedEntry(null, day, "Day's intake", 2000.0, 130.0))
         }
 
@@ -299,7 +299,7 @@ class WeeklyReviewServiceTest {
         // Adapting would leave the weight term at zero and Maintenance at the intake
         // average exactly — telling a User who is losing that they maintain on what
         // they eat.
-        weights.save(WeightMeasurement(null, today.minusDays(20), 86.0))
+        weights.save(WeightMeasurement(weights.nextId(),today.minusDays(20), 86.0))
         logIntakeDays(14 downTo 5) // 2000 kcal on 10 of the 14 window days
 
         val review = service.runReview(today)
@@ -318,8 +318,8 @@ class WeeklyReviewServiceTest {
         // be true: the balance comes out at 800 - 1100 = -300 kcal, against a body that
         // burns 1810 at rest. Counting logged *days* cannot see a day logged only as far
         // as breakfast; this contradiction is the only evidence of one the engine gets.
-        weights.save(WeightMeasurement(null, today.minusDays(14), 86.0))
-        weights.save(WeightMeasurement(null, today, 106.0))
+        weights.save(WeightMeasurement(weights.nextId(),today.minusDays(14), 86.0))
+        weights.save(WeightMeasurement(weights.nextId(),today, 106.0))
         logIntakeDays(14 downTo 5, kcal = 800.0)
 
         val review = service.runReview(today)
@@ -345,7 +345,7 @@ class WeeklyReviewServiceTest {
         // "Log more of your days" is false here and cannot be acted on: the window
         // cannot hold more days than the User has existed for. Only time lifts it.
         for (offset in 7 downTo 0) {
-            weights.save(WeightMeasurement(null, today.minusDays(offset.toLong()), 86.0))
+            weights.save(WeightMeasurement(weights.nextId(),today.minusDays(offset.toLong()), 86.0))
         }
         logIntakeDays(7 downTo 0)
 
@@ -365,7 +365,7 @@ class WeeklyReviewServiceTest {
         // there is no reading to measure a change *from*. Telling this User to weigh
         // in is false: they cannot do anything, and next week the anchor arrives.
         for (offset in 7 downTo 0) {
-            weights.save(WeightMeasurement(null, today.minusDays(offset.toLong()), 86.0))
+            weights.save(WeightMeasurement(weights.nextId(),today.minusDays(offset.toLong()), 86.0))
         }
         logIntakeDays(14 downTo 5)
 
@@ -383,7 +383,7 @@ class WeeklyReviewServiceTest {
         seedReviewOn(today.minusDays(7))
         // The log is fine — ten of fourteen days — so "log more days" would be wrong
         // advice. One weighing re-opens the adaptive path the same day.
-        weights.save(WeightMeasurement(null, today.minusDays(20), 86.0))
+        weights.save(WeightMeasurement(weights.nextId(),today.minusDays(20), 86.0))
         logIntakeDays(14 downTo 5)
 
         val review = service.runReview(today)
@@ -398,7 +398,7 @@ class WeeklyReviewServiceTest {
         // carries a Maintenance forward. ADR 0018's seed is the cold-start device, and
         // this is a cold start; what it must not be is the intake average dressed as a
         // measurement.
-        weights.save(WeightMeasurement(null, today.minusDays(20), 86.0))
+        weights.save(WeightMeasurement(weights.nextId(),today.minusDays(20), 86.0))
         logIntakeDays(14 downTo 5)
 
         val review = service.runReview(today)
@@ -432,8 +432,8 @@ class WeeklyReviewServiceTest {
         // that the weight term alone clears the basal rate. Without the zero-intake
         // guard the estimate is that term by itself — Maintenance derived from the
         // scale with nothing eaten to balance it against (ADR 0018).
-        weights.save(WeightMeasurement(null, today.minusDays(14), 86.0))
-        weights.save(WeightMeasurement(null, today, 46.0))
+        weights.save(WeightMeasurement(weights.nextId(),today.minusDays(14), 86.0))
+        weights.save(WeightMeasurement(weights.nextId(),today, 46.0))
         logIntakeDays(14 downTo 5, kcal = 0.0)
 
         val review = service.runReview(today)
@@ -673,7 +673,7 @@ class WeeklyReviewServiceTest {
         // demands 1650. This used to refuse the review outright and take
         // GET /api/summary down with it.
         profiles.save(Profile(Sex.FEMALE, LocalDate.of(1986, 5, 22), 160.0))
-        weights.save(WeightMeasurement(null, today, 50.0))
+        weights.save(WeightMeasurement(weights.nextId(),today, 50.0))
         goals.insert(Goal(goals.nextId(),today.minusMonths(1), 50.0, 45.0, 1.5, active = true))
 
         service.catchUpIfDue(today)

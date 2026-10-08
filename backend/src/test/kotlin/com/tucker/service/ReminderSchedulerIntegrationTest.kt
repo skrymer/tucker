@@ -147,7 +147,7 @@ class ReminderSchedulerIntegrationTest {
             ),
         )
         subscriptions.claim(PushSubscription(endpoint, "BKey", "Auth", null))
-        weights.save(WeightMeasurement(null, today.minusDays(1), 86.0))
+        weights.save(WeightMeasurement(weights.nextId(),today.minusDays(1), 86.0))
         reviews.insert(
             WeeklyReview(
                 null, today.minusDays(OVERDUE_BY_DAYS), 86.0,

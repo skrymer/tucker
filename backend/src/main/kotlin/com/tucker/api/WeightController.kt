@@ -49,7 +49,7 @@ data class SaveWeightRequest(
 )
 
 private fun WeightMeasurement.toResponse() = WeightMeasurementResponse(
-    id = persistedId(id),
+    id = id,
     measuredOn = measuredOn,
     weightKg = weightKg,
 )
@@ -79,6 +79,7 @@ class WeightController(
         val today = userToday.resolve(request.clientToday)
         return weightService.save(
             WeightMeasurement.recorded(
+                id = weights.nextId(),
                 measuredOn = request.date,
                 weightKg = request.weightKg,
                 today = today,

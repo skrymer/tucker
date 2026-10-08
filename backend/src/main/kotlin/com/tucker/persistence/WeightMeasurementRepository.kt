@@ -66,12 +66,12 @@ class WeightMeasurementRepository(
             return measurement.copy(id = existing.id!!.toLong())
         }
         val rec = dsl.newRecord(WEIGHT_MEASUREMENT)
-        rec.id = measurement.id?.toInt()
+        rec.id = measurement.id.toInt()
         rec.userId = currentUser.ownerId
         rec.measuredOn = measurement.measuredOn.toString()
         rec.weightKg = measurement.weightKg
         rec.store()
-        return measurement.copy(id = rec.id!!.toLong())
+        return measurement
     }
 
     private fun WeightMeasurementRecord.toDomain(): WeightMeasurement = WeightMeasurement(
