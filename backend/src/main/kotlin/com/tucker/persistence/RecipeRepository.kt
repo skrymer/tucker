@@ -21,8 +21,10 @@ class RecipeRepository(
     private val dsl: DSLContext,
     private val foods: FoodRepository,
     private val currentUser: CurrentUser,
-    ids: IdSequence,
-) : AggregateRepository(ids, FOOD) {
+) {
+
+    /** The id the next Recipe is built with — a Food's, since a Recipe is stored as one. */
+    fun nextId(): Long = foods.nextId()
 
     /** Persist a Recipe: its rolled-up Food, then its ingredient lines, atomically. */
     @Transactional
@@ -54,17 +56,16 @@ class RecipeRepository(
      */
     @Transactional
     fun update(recipe: Recipe): Food? {
-        val recipeId = recipe.id
         val updated = foods.update(recipe.asFood()) ?: return null
         dsl.deleteFrom(RECIPE_INGREDIENT)
-            .where(RECIPE_INGREDIENT.RECIPE_ID.eq(recipeId.toInt()))
+            .where(RECIPE_INGREDIENT.RECIPE_ID.eq(recipe.id.toInt()))
             .and(
                 RECIPE_INGREDIENT.RECIPE_ID.`in`(
                     DSL.select(FOOD.ID).from(FOOD).where(FOOD.USER_ID.eq(currentUser.ownerId)),
                 ),
             )
             .execute()
-        writeIngredientLines(recipeId, recipe.ingredients)
+        writeIngredientLines(recipe.id, recipe.ingredients)
         return updated
     }
 

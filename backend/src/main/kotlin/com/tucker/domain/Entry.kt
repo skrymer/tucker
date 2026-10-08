@@ -78,7 +78,7 @@ data class EstimatedEntry(
     }
 
     companion object {
-        /** Log [estimate] on [date]. */
+        /** Log [estimate] on [date]. Refused when [date] is later than tomorrow. */
         fun log(id: Long, date: LocalDate, estimate: MealEstimate, today: LocalDate): EstimatedEntry {
             requireNoLaterThanTomorrow(date, today)
             return EstimatedEntry(id, date, estimate.label, estimate.calories, estimate.protein)

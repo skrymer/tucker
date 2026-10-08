@@ -90,16 +90,15 @@ class FoodRepository(
      */
     @Transactional
     fun update(food: Food): Food? {
-        val id = food.id
         val rec = dsl.newRecord(FOOD)
         rec.applyFrom(food)
         val rowsChanged = dsl.update(FOOD)
             .set(rec)
-            .where(FOOD.ID.eq(id.toInt()))
+            .where(FOOD.ID.eq(food.id.toInt()))
             .and(FOOD.USER_ID.eq(currentUser.ownerId))
             .execute()
         if (rowsChanged == 0) return null
-        dsl.replaceTagsOf(id.toInt(), food.tagIds, currentUser.ownerId)
+        dsl.replaceTagsOf(food.id.toInt(), food.tagIds, currentUser.ownerId)
         return food
     }
 

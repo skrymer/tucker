@@ -64,5 +64,5 @@ class TagController(private val tags: TagRepository, private val tagService: Tag
     @ResponseStatus(HttpStatus.NO_CONTENT)
     fun delete(@PathVariable id: Long) = tags.delete(id)
 
-    private fun TagWithFoodCount.toResponse() = TagResponse(tag.id,tag.name.value, foodCount)
+    private fun TagWithFoodCount.toResponse() = TagResponse(tag.id, tag.name.value, foodCount)
 }
