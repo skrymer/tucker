@@ -149,6 +149,13 @@ assertion with the dev token), and no browser-level layer can reach it.
 - **Stale Playwright build** — the mocked e2e rebuilds `.nuxt/e2e` from scratch every run, so it cannot
   serve a stale build; the smokes still build through `@nuxt/test-utils`, so if a UI change doesn't show
   in a smoke run, `rm -rf frontend/.nuxt/test`.
+- **Extract Component moves a lifetime, not just code.** What the moved code reads
+  once (a day, a clock), owns (a scanner, a canvas) or emits after an `await` now lives
+  and dies with the child's `v-if` or `:key`, not the parent's. Compare each against the
+  parent before and after. #454 found all three, and both code reviewers called the
+  moves behaviour-preserving: a Check that re-read `localToday()` on every mount, a
+  scanner canvas rebuilt on every sheet opening, and an `emit` that hit an unmounted
+  picker.
 
 ## Refactor step — the lint names the smell
 

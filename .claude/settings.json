@@ -49,6 +49,12 @@
             "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/test-output-guard.mjs\"",
             "timeout": 5,
             "statusMessage": "Checking the test output stays whole"
+          },
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/gated-write-guard.mjs\"",
+            "timeout": 5,
+            "statusMessage": "Checking the command writes no Probity-gated file"
           }
         ]
       }

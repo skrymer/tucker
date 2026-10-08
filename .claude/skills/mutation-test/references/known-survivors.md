@@ -119,8 +119,11 @@ Not survivors — the sweep dies. Stryker rewrites a `.vue` SFC's `<script setup
 same way it rewrites a `.ts` file, and Vue's compiler macros are not ordinary calls, so
 two rewrites are illegal in ways only the browser finds out:
 
-- a bare `defineProps<T>()` wrapped in Stryker's `if/else` is no longer a top-level
-  statement, and the compiler never replaces it → `defineProps is not defined`.
+- a bare `defineProps<T>()` or `defineEmits<T>()` wrapped in Stryker's `if/else` is no
+  longer a top-level statement, and the compiler never replaces it → `defineProps is not
+  defined` / `defineEmits is not defined`. The dry run reports it as "failing tests",
+  and the failing tests differ between runs, so it reads as state leaking between files
+  (#454 chased that first): search the sandbox run's output for `is not defined`.
 - `defineModel(…)`, `withDefaults(…)` and `defineOptions(…)` have their **arguments**
   mutated in place, and the compiler hoists those arguments out of `setup()` — past the
   point where Stryker's `stryMutAct_9fa48` helper is in scope → `stryMutAct_9fa48 is not

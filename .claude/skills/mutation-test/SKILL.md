@@ -280,7 +280,12 @@ tests (~1–5 tests, not all 473), which is what makes this affordable as a gate
   (`AddSheet.vue`, `check.vue`, `FullscreenScanner.vue`: 255 mutants); the cause is not
   diagnosed. A single-file config pointing the runner at that test ran no tests at
   all. Go straight to hand-mutating copies (False survivor, above) rather than
-  debugging the runner.
+  debugging the runner. Single **Survived** mutants are false the same way when their
+  only killer is the page test that mounts the component (`foods.test.ts`): Stryker's
+  related-test set left the page tests out, and #454's 3 false survivors were these.
+- **A dry run that fails on "failing tests" after Extract Component** is a bare
+  `defineEmits` / `defineProps` in the new child — give it its `// Stryker disable
+  next-line all` at extraction ([known-survivors.md](references/known-survivors.md)).
 - **No mutator can flag the normalising call that isn't there.** This is about the
   *missing* fold, and no engine reaches it: there is no call node to mutate, so
   `fold(a).includes(fold(b))` scores exactly the same as `a.includes(fold(b))`.
