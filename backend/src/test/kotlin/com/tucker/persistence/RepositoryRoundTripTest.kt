@@ -45,7 +45,7 @@ class RepositoryRoundTripTest {
 
     @Test
     fun `a Food round-trips`() {
-        val saved = foods.insert(Food.plain(null, "Rolled oats", null, Nutrition(389.0, 16.9, 66.3, 6.9)))
+        val saved = foods.insert(Food.plain(foods.nextId(), "Rolled oats", null, Nutrition(389.0, 16.9, 66.3, 6.9)))
         assertNotNull(saved.id)
         val loaded = foods.findById(saved.id!!)
         assertNotNull(loaded)
@@ -65,9 +65,9 @@ class RepositoryRoundTripTest {
 
     @Test
     fun `foods are listed alphabetically ignoring case`() {
-        foods.insert(Food.plain(null, "banana", null, Nutrition(89.0, 1.1, 22.8, 0.3)))
-        foods.insert(Food.plain(null, "Cherry", null, Nutrition(50.0, 1.0, 12.0, 0.3)))
-        foods.insert(Food.plain(null, "apple", null, Nutrition(52.0, 0.3, 13.8, 0.2)))
+        foods.insert(Food.plain(foods.nextId(), "banana", null, Nutrition(89.0, 1.1, 22.8, 0.3)))
+        foods.insert(Food.plain(foods.nextId(), "Cherry", null, Nutrition(50.0, 1.0, 12.0, 0.3)))
+        foods.insert(Food.plain(foods.nextId(), "apple", null, Nutrition(52.0, 0.3, 13.8, 0.2)))
 
         val listed = foods.findAll().map { it.name }
             .filter { it in setOf("banana", "Cherry", "apple") }
@@ -79,7 +79,7 @@ class RepositoryRoundTripTest {
 
     @Test
     fun `a weighed Entry round-trips with computed calories`() {
-        val banana = foods.insert(Food.plain(null, "Banana", null, Nutrition(89.0, 1.1, 22.8, 0.3)))
+        val banana = foods.insert(Food.plain(foods.nextId(), "Banana", null, Nutrition(89.0, 1.1, 22.8, 0.3)))
         val date = LocalDate.of(2026, 5, 22)
         entries.insert(WeighedEntry.log(entries.nextId(), date, banana, 120.0, today = date))
 
@@ -278,11 +278,11 @@ class RepositoryRoundTripTest {
 
     @Test
     fun `a Recipe rolls up its ingredients and round-trips`() {
-        val oats = foods.insert(Food.plain(null, "Oats", null, Nutrition(389.0, 16.9, 66.3, 6.9)))
-        val milk = foods.insert(Food.plain(null, "Milk", null, Nutrition(64.0, 3.4, 4.8, 3.6)))
+        val oats = foods.insert(Food.plain(foods.nextId(), "Oats", null, Nutrition(389.0, 16.9, 66.3, 6.9)))
+        val milk = foods.insert(Food.plain(foods.nextId(), "Milk", null, Nutrition(64.0, 3.4, 4.8, 3.6)))
         val saved = recipes.insert(
             Recipe(
-                id = null,
+                id = recipes.nextId(),
                 name = "Porridge",
                 ingredients = listOf(RecipeIngredient(oats, 80.0), RecipeIngredient(milk, 300.0)),
                 cookedWeightG = 360.0,

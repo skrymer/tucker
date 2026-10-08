@@ -191,9 +191,7 @@ data class MicronutrientIntake(
                 // Keyed by id rather than by the Food: the same ingredient read through
                 // two Recipes is two equal objects, and one of them may also have been
                 // eaten on its own — that is one row to tap, not two.
-                // The id is non-null by construction: every contribution's Food came
-                // out of a repository read, so it is a persisted row.
-                .groupBy { it.borrowed.food.id!! }
+                .groupBy { it.borrowed.food.id }
                 .map { (foodId, parts) ->
                     UnmatchedFood(
                         foodId = foodId,

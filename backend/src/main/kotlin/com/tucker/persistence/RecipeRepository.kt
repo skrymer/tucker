@@ -27,10 +27,9 @@ class RecipeRepository(
     /** Persist a Recipe: its rolled-up Food, then its ingredient lines, atomically. */
     @Transactional
     fun insert(recipe: Recipe): Recipe {
-        val recipeFood = foods.insert(recipe.asFood())
-        val recipeId = recipeFood.id!!
-        writeIngredientLines(recipeId, recipe.ingredients)
-        return recipe.copy(id = recipeId)
+        foods.insert(recipe.asFood())
+        writeIngredientLines(recipe.id, recipe.ingredients)
+        return recipe
     }
 
     /**
@@ -55,7 +54,7 @@ class RecipeRepository(
      */
     @Transactional
     fun update(recipe: Recipe): Food? {
-        val recipeId = requireNotNull(recipe.id) { "cannot update a Recipe without an id" }
+        val recipeId = recipe.id
         val updated = foods.update(recipe.asFood()) ?: return null
         dsl.deleteFrom(RECIPE_INGREDIENT)
             .where(RECIPE_INGREDIENT.RECIPE_ID.eq(recipeId.toInt()))
@@ -72,12 +71,9 @@ class RecipeRepository(
     /** Insert a Recipe's ingredient lines (shared by insert and update). */
     private fun writeIngredientLines(recipeId: Long, ingredients: List<RecipeIngredient>) {
         ingredients.forEach { line ->
-            val ingredientId = requireNotNull(line.ingredient.id) {
-                "ingredient '${line.ingredient.name}' must be persisted before the recipe"
-            }
             val rec = dsl.newRecord(RECIPE_INGREDIENT)
             rec.recipeId = recipeId.toInt()
-            rec.ingredientFoodId = ingredientId.toInt()
+            rec.ingredientFoodId = line.ingredient.id.toInt()
             rec.grams = line.grams
             rec.store()
         }

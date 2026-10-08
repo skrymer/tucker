@@ -44,7 +44,7 @@ class LinkTableOwnerPredicateTest {
         val snack = dsl.insertInto(TAG, TAG.USER_ID, TAG.NAME).values(currentUser.ownerId, "snack")
             .returning(TAG.ID).fetchOne()!!.id!!.toLong()
         val oats = foods.insert(
-            Food.plain(null, "Rolled oats", null, Nutrition.fromMacros(13.0, 60.0, 7.0)),
+            Food.plain(foods.nextId(), "Rolled oats", null, Nutrition.fromMacros(13.0, 60.0, 7.0)),
         )
 
         recorder.statements.clear()
@@ -55,9 +55,9 @@ class LinkTableOwnerPredicateTest {
 
     @Test
     fun `editing a Recipe removes its old ingredient lines only through the owner`() {
-        val oats = foods.insert(Food.plain(null, "Oats", null, Nutrition.fromMacros(16.9, 66.3, 6.9)))
+        val oats = foods.insert(Food.plain(foods.nextId(), "Oats", null, Nutrition.fromMacros(16.9, 66.3, 6.9)))
         val porridge = recipes.insert(
-            Recipe(null, "Porridge", listOf(RecipeIngredient(oats, 80.0)), cookedWeightG = 300.0),
+            Recipe(recipes.nextId(), "Porridge", listOf(RecipeIngredient(oats, 80.0)), cookedWeightG = 300.0),
         )
 
         recorder.statements.clear()
@@ -70,7 +70,8 @@ class LinkTableOwnerPredicateTest {
     fun `merging a Tag moves its links only through the owner`() {
         val snack = tags.insert(TagName("snack")).id!!
         val treats = tags.insert(TagName("treats")).id!!
-        foods.insert(Food.plain(null, "Biscuit", null, Nutrition.fromMacros(6.0, 70.0, 20.0)).retagged(listOf(treats)))
+        val biscuit = Food.plain(foods.nextId(), "Biscuit", null, Nutrition.fromMacros(6.0, 70.0, 20.0))
+        foods.insert(biscuit.retagged(listOf(treats)))
 
         recorder.statements.clear()
         tags.merge(from = treats, into = snack)

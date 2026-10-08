@@ -25,7 +25,7 @@ class TagServiceTest {
     @Autowired lateinit var foods: FoodRepository
 
     private fun food(name: String, vararg tagIds: Long): Food = foods.insert(
-        Food.plain(null, name, null, Nutrition.fromMacros(10.0, 10.0, 1.0)).retagged(tagIds.toList()),
+        Food.plain(foods.nextId(), name, null, Nutrition.fromMacros(10.0, 10.0, 1.0)).retagged(tagIds.toList()),
     )
 
     @Test

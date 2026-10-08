@@ -105,7 +105,7 @@ data class BudgetChange(
             val after = latest.intakeTargets
             if (before == null || after == null) return null
             val change = BudgetChange(
-                reviewId = latest.id!!,
+                reviewId = latest.id,
                 previousBudgetKcal = before.calorieBudgetKcal.roundToLong(),
                 newBudgetKcal = after.calorieBudgetKcal.roundToLong(),
                 previousFloorG = before.proteinFloorG.roundToLong(),

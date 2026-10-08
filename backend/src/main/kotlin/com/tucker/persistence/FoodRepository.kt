@@ -66,11 +66,11 @@ class FoodRepository(
     @Transactional
     fun insert(food: Food): Food {
         val rec = dsl.newRecord(FOOD)
-        rec.id = food.id?.toInt()
+        rec.id = food.id.toInt()
         rec.applyFrom(food)
         rec.store()
-        dsl.linkTags(rec.id!!, food.tagIds, currentUser.ownerId)
-        return food.copy(id = rec.id!!.toLong())
+        dsl.linkTags(rec.id, food.tagIds, currentUser.ownerId)
+        return food
     }
 
     /**
@@ -90,7 +90,7 @@ class FoodRepository(
      */
     @Transactional
     fun update(food: Food): Food? {
-        val id = requireNotNull(food.id) { "cannot update a Food without an id" }
+        val id = food.id
         val rec = dsl.newRecord(FOOD)
         rec.applyFrom(food)
         val rowsChanged = dsl.update(FOOD)
@@ -123,7 +123,7 @@ class FoodRepository(
         val tagIdsByFood = dsl.select(FOOD_TAG.FOOD_ID, FOOD_TAG.TAG_ID)
             .from(FOOD_TAG)
             .join(FOOD).on(FOOD.ID.eq(FOOD_TAG.FOOD_ID))
-            .where(FOOD_TAG.FOOD_ID.`in`(foods.map { it.id!!.toInt() }))
+            .where(FOOD_TAG.FOOD_ID.`in`(foods.map { it.id.toInt() }))
             .and(FOOD.USER_ID.eq(currentUser.ownerId))
             .fetchGroups({ it[FOOD_TAG.FOOD_ID]!!.toLong() }, { it[FOOD_TAG.TAG_ID]!!.toLong() })
         return foods.map { it.copy(tagIds = tagIdsByFood[it.id].orEmpty().toSet()) }

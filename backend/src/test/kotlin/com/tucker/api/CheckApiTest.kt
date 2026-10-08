@@ -288,7 +288,7 @@ class CheckApiTest {
         seedTargets()
         foods.insert(
             Food.plain(
-                id = null,
+                id = foods.nextId(),
                 name = "My skyr",
                 barcode = "5701234567890",
                 nutrition = Nutrition.fromMacros(proteinPer100g = 10.0, carbsPer100g = 4.0, fatPer100g = 0.2),

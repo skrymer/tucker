@@ -56,12 +56,12 @@ data class RecipeResponse(
 )
 
 private fun Recipe.toResponse(tags: List<FoodTagResponse>) = RecipeResponse(
-    id = persistedId(id),
+    id = id,
     name = name,
     cookedWeightG = cookedWeightG,
     ingredients = ingredients.map { line ->
         RecipeIngredientResponse(
-            foodId = persistedId(line.ingredient.id),
+            foodId = line.ingredient.id,
             name = line.ingredient.name,
             grams = line.grams,
         )
@@ -87,7 +87,7 @@ class RecipeController(
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     fun create(@RequestBody request: CreateRecipeRequest): FoodResponse {
-        val recipe = request.toRecipe(id = null)
+        val recipe = request.toRecipe(id = recipes.nextId())
         val created = foodService.createRecipe(recipe) ?: throw NotFoundException("no Tag among ${request.tagIds}")
         return describer.describe(created)
     }
@@ -123,7 +123,7 @@ class RecipeController(
     }
 
     /** Resolve this request's ingredient Foods and build a [Recipe] with the given [id]. */
-    private fun CreateRecipeRequest.toRecipe(id: Long?): Recipe {
+    private fun CreateRecipeRequest.toRecipe(id: Long): Recipe {
         val byId = foods.findByIds(ingredients.map { it.foodId }).associateBy { it.id }
         val lines = ingredients.map { line ->
             // 404, matching POST /api/entries/weighed — a foreign id must answer as an

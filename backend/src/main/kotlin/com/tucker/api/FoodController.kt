@@ -130,7 +130,7 @@ internal fun Food.toResponse(
     ingredientCount: Int? = null,
     referenceFoodName: String? = null,
 ) = FoodResponse(
-    id = persistedId(id),
+    id = id,
     name = name,
     kind = kind,
     barcode = barcode,
@@ -251,7 +251,7 @@ class FoodController(
     @ResponseStatus(HttpStatus.CREATED)
     fun create(@RequestBody request: CreateFoodRequest): FoodResponse {
         val food = Food.plain(
-            id = null,
+            id = foods.nextId(),
             name = request.name,
             barcode = request.barcode,
             nutrition = Nutrition.fromMacros(

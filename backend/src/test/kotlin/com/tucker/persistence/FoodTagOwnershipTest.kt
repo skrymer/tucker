@@ -32,7 +32,7 @@ class FoodTagOwnershipTest {
         val theirTag = dsl.insertInto(TAG, TAG.USER_ID, TAG.NAME).values(someoneElse, "breakfast")
             .returning(TAG.ID).fetchOne()!!.id!!.toLong()
         val oats = foods.insert(
-            Food.plain(null, "Rolled oats", null, Nutrition.fromMacros(13.0, 60.0, 7.0)),
+            Food.plain(foods.nextId(), "Rolled oats", null, Nutrition.fromMacros(13.0, 60.0, 7.0)),
         )
 
         foods.update(oats.retagged(listOf(theirTag)))

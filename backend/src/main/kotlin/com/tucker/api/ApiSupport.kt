@@ -6,13 +6,6 @@ import com.tucker.domain.WeighedEntry
 import com.tucker.persistence.FoodRepository
 
 /**
- * The id of an entity that has already been persisted — loading from or saving to
- * the database always sets it. A null here is a bug, not a client error.
- */
-internal fun persistedId(id: Long?): Long =
-    id ?: error("a persisted entity is missing its id")
-
-/**
  * The catalog and every Provider were asked about [barcode], and none knew it.
  * Shared by every surface a scan can land on, so the miss/no-answer split is made
  * once rather than per endpoint — see [providersUnreachable] for its counterpart.
@@ -38,7 +31,7 @@ internal fun providersUnreachable(barcode: String) =
  */
 internal fun FoodRepository.foodsOf(entries: List<Entry>): Map<Long, Food> =
     findByIds(entries.filterIsInstance<WeighedEntry>().map { it.foodId }.distinct())
-        .associateBy { persistedId(it.id) }
+        .associateBy { it.id }
 
 /** [foodsOf] narrowed to what most callers want: the name to print beside an Entry. */
 internal fun FoodRepository.namesOf(entries: List<Entry>): Map<Long, String> =

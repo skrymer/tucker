@@ -21,7 +21,7 @@ class RecipeTest {
         // 500 g @ 100 kcal + 500 g @ 200 kcal = 1500 kcal total; 50 g + 100 g = 150 g protein.
         // Re-expressed over a 750 g finished dish: 1500 / 750 * 100 = 200 kcal, 20 g protein /100g.
         val recipe = Recipe(
-            id = null,
+            id = 1,
             name = "Stew",
             ingredients = listOf(
                 RecipeIngredient(food("Broth", caloriesPer100g = 100.0, proteinPer100g = 10.0), grams = 500.0),
@@ -39,7 +39,7 @@ class RecipeTest {
     @Test
     fun `nutrition leaves carbs and fat null in the rollup`() {
         val recipe = Recipe(
-            id = null,
+            id = 1,
             name = "Stew",
             ingredients = listOf(RecipeIngredient(food("Beef", 200.0, 20.0), grams = 500.0)),
             cookedWeightG = 500.0,
@@ -58,8 +58,8 @@ class RecipeTest {
             RecipeIngredient(food("Beef", 200.0, 20.0), grams = 500.0),
         )
         // Same 1500 kcal total; the denser (750 g) batch reads higher per 100g than the raw 1000 g sum.
-        val cookedDown = Recipe(null, "Stew", ingredients, cookedWeightG = 750.0).nutrition()
-        val uncooked = Recipe(null, "Stew", ingredients, cookedWeightG = 1000.0).nutrition()
+        val cookedDown = Recipe(1, "Stew", ingredients, cookedWeightG = 750.0).nutrition()
+        val uncooked = Recipe(1, "Stew", ingredients, cookedWeightG = 1000.0).nutrition()
 
         assertEquals(200.0, cookedDown.caloriesPer100g, 1e-9)
         assertEquals(150.0, uncooked.caloriesPer100g, 1e-9)
@@ -68,21 +68,21 @@ class RecipeTest {
     @Test
     fun `a blank name is rejected`() {
         assertThrows<IllegalArgumentException> {
-            Recipe(null, "  ", listOf(RecipeIngredient(food("Beef", 200.0, 20.0), 500.0)), cookedWeightG = 500.0)
+            Recipe(1, "  ", listOf(RecipeIngredient(food("Beef", 200.0, 20.0), 500.0)), cookedWeightG = 500.0)
         }
     }
 
     @Test
     fun `a recipe with no ingredients is rejected`() {
         assertThrows<IllegalArgumentException> {
-            Recipe(null, "Stew", emptyList(), cookedWeightG = 500.0)
+            Recipe(1, "Stew", emptyList(), cookedWeightG = 500.0)
         }
     }
 
     @Test
     fun `a non-positive cooked weight is rejected`() {
         assertThrows<IllegalArgumentException> {
-            Recipe(null, "Stew", listOf(RecipeIngredient(food("Beef", 200.0, 20.0), 500.0)), cookedWeightG = 0.0)
+            Recipe(1, "Stew", listOf(RecipeIngredient(food("Beef", 200.0, 20.0), 500.0)), cookedWeightG = 0.0)
         }
     }
 
