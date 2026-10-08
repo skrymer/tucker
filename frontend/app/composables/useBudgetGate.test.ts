@@ -111,6 +111,32 @@ describe('useBudgetGate', () => {
     expect(preview).toHaveBeenCalledTimes(1)
   })
 
+  it('warns again about the entry it warned about once an edit dropped the warning', async () => {
+    const commit = vi.fn()
+    const preview = vi.fn().mockResolvedValue(over)
+    const gate = useBudgetGate<Payload>({ preview, commit })
+    await gate.attempt(payload)
+
+    gate.reset()
+    await gate.attempt(payload)
+
+    expect(commit).not.toHaveBeenCalled()
+    expect(preview).toHaveBeenCalledTimes(2)
+    expect(gate.warning.value).toEqual({ overByKcal: 180, calorieBudget: 2000 })
+  })
+
+  it('takes its warning down once the entry is logged anyway', async () => {
+    const commit = vi.fn()
+    const preview = vi.fn().mockResolvedValue(over)
+    const gate = useBudgetGate<Payload>({ preview, commit })
+    await gate.attempt(payload)
+
+    await gate.attempt(payload)
+
+    expect(commit).toHaveBeenCalledOnce()
+    expect(gate.warning.value).toBeNull()
+  })
+
   it('drops the warning when the form is edited so the next tap re-checks', async () => {
     const commit = vi.fn()
     const preview = vi.fn().mockResolvedValue(over)

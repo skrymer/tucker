@@ -4,6 +4,7 @@ import { renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import { pushServiceFor } from '~~/test/mocks/handlers/push'
+import { held } from '~~/test/mocks/http'
 import { server } from '~~/test/mocks/node'
 import { useWebPush } from './useWebPush'
 import {
@@ -135,6 +136,37 @@ describe('useWebPush', () => {
     // Not subscribed only once the server has forgotten this device.
     await vi.waitFor(() => expect(text('subscribed')).toBe('false'))
     expect(existing.unsubscribe).toHaveBeenCalledOnce()
+  })
+
+  it('turns reminders off on a device whose browser has already dropped its subscription', async () => {
+    const existing = fakePushSubscription('https://push.example/device-a')
+    const env = setupWebPush({ supported: true, existing })
+    server.use(...pushServiceFor(existing.toJSON()))
+    await renderSuspended(Harness)
+    await vi.waitFor(() => expect(text('subscribed')).toBe('true'))
+    env.getSubscription.mockResolvedValue(null)
+
+    await userEvent.click(screen.getByRole('button', { name: 'disable' }))
+
+    await vi.waitFor(() => expect(text('subscribed')).toBe('false'))
+  })
+
+  it('stays subscribed until the server has forgotten the device', async () => {
+    const existing = fakePushSubscription('https://push.example/device-a')
+    setupWebPush({ supported: true, existing })
+    server.use(...pushServiceFor(existing.toJSON()))
+    const forget = held('delete', '/api/push/subscriptions')
+    server.use(forget.handler)
+    await renderSuspended(Harness)
+    await vi.waitFor(() => expect(text('subscribed')).toBe('true'))
+
+    await userEvent.click(screen.getByRole('button', { name: 'disable' }))
+    await vi.waitFor(() => expect(existing.unsubscribe).toHaveBeenCalled())
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(text('subscribed')).toBe('true')
+    forget.release()
+    await vi.waitFor(() => expect(text('subscribed')).toBe('false'))
   })
 
   it('captures the browser IANA timezone, which the settings control saves on the Profile', async () => {
