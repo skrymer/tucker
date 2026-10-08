@@ -47,6 +47,9 @@ consumer justifies the move.
   composable to `app/composables/`: each composable moves with the one child that
   uses it and stays inline there, so size never becomes a second reason to
   extract. A long inline composable is split into smaller inline ones.
+- A sheet or dialog that issues a mutation **owns** it and emits `changed` for
+  its page to re-read, as `ManageTagsSheet` does — the page does not run every
+  catalog mutation on a sheet's behalf and thread the result back down.
 - Pure helpers with no reactivity are plain functions in `app/utils/` (e.g.
   `localToday`, `formatDateFromISO`), not composables.
 
