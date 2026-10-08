@@ -53,12 +53,13 @@ function useIngredientLines() {
 const ingredients = useIngredientLines()
 
 /**
- * The cooked weight starts from the raw ingredient total (a tagged estimate) and
+ * The recipe's form: its name, and its cooked weight. The weight starts from the
+ * raw ingredient total (a tagged estimate) and
  * tracks it until the user replaces it with the finished dish's scale weight.
  * When editing, the recorded cooked weight is a real value, not an estimate, so
  * it starts "edited" and the raw-sum tracker never overwrites it.
  */
-function useCookedWeight(rawSumG: Readonly<Ref<number>>) {
+function useRecipeForm(rawSumG: Readonly<Ref<number>>) {
   const form = reactive({
     name: props.initial?.name ?? '',
     cookedWeightG: props.initial?.cookedWeightG,
@@ -90,7 +91,7 @@ const {
   edited: cookedWeightEdited,
   markEdited: markCookedWeightEdited,
   update: updateCookedWeight,
-} = useCookedWeight(ingredients.rawSumG)
+} = useRecipeForm(ingredients.rawSumG)
 
 const tags = ref<FoodTag[]>([...(props.initial?.tags ?? [])])
 const creatingTag = ref(false)
@@ -109,6 +110,7 @@ interface Weighing {
 function useAddIngredientFlow() {
   const step = ref<'build' | 'pick' | 'grams'>('build')
   const weighing = ref<Weighing | null>(null)
+  const editingIndex = computed(() => weighing.value?.index ?? null)
 
   function weigh(next: Weighing) {
     weighing.value = next
@@ -118,26 +120,35 @@ function useAddIngredientFlow() {
     const line = ingredients.lines.value[index]
     if (line) weigh({ ...line, index })
   }
-  function confirm(grams: number) {
-    const index = weighing.value?.index ?? null
-    if (index === null) ingredients.add(weighing.value!.food, grams)
-    else ingredients.reweigh(index, grams)
-    step.value = 'build'
-  }
-  function remove() {
-    const index = weighing.value?.index ?? null
-    if (index !== null) ingredients.remove(index)
-    step.value = 'build'
-  }
   // Leaving the grams step: a mis-picked new ingredient returns to the picker;
   // cancelling an edit returns to the build home, leaving the row untouched.
   function backFromGrams() {
-    step.value = weighing.value?.index == null ? 'pick' : 'build'
+    step.value = editingIndex.value === null ? 'pick' : 'build'
   }
-  return { step, weighing, weigh, edit, confirm, remove, backFromGrams }
+  return { step, weighing, editingIndex, weigh, edit, backFromGrams }
 }
-const { step, weighing, weigh, edit, confirm, remove, backFromGrams } =
-  useAddIngredientFlow()
+const flow = useAddIngredientFlow()
+const { step, weighing, editingIndex, weigh, edit, backFromGrams } = flow
+
+/** What the grams step settles: a new line, the edited one reweighed, or removed. */
+function useWeighingResult({
+  step,
+  weighing,
+  editingIndex,
+}: ReturnType<typeof useAddIngredientFlow>) {
+  function confirm(grams: number) {
+    const index = editingIndex.value
+    if (index !== null) ingredients.reweigh(index, grams)
+    else if (weighing.value) ingredients.add(weighing.value.food, grams)
+    step.value = 'build'
+  }
+  function remove() {
+    if (editingIndex.value !== null) ingredients.remove(editingIndex.value)
+    step.value = 'build'
+  }
+  return { confirm, remove }
+}
+const { confirm, remove } = useWeighingResult(flow)
 
 // Zod is the single source of truth for the form's required fields and messages
 // (ADR 0003). The backend re-validates every guard on save.
@@ -279,7 +290,7 @@ function onSave() {
       v-else-if="step === 'grams' && weighing"
       :food="weighing.food"
       :grams="weighing.grams"
-      :editing="weighing.index !== null"
+      :editing="editingIndex !== null"
       @back="backFromGrams"
       @confirm="confirm"
       @remove="remove"

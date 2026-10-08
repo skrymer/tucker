@@ -20,10 +20,6 @@ const emit = defineEmits<{
 const schema = z.object({ grams: gramsSchema })
 const state = reactive({ grams: props.grams })
 const presets = [50, 100, 150, 200]
-
-function submit() {
-  if (state.grams && state.grams > 0) emit('confirm', state.grams)
-}
 </script>
 
 <template>
@@ -31,7 +27,7 @@ function submit() {
     :state="state"
     :schema="schema"
     class="flex flex-col gap-4"
-    @submit="submit"
+    @submit="(event) => emit('confirm', event.data.grams)"
   >
     <UButton
       icon="i-lucide-arrow-left"

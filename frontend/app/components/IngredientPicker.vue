@@ -25,57 +25,55 @@ function useNewFood() {
   return { adding, create }
 }
 const { adding, create } = useNewFood()
+
+/** Back out of adding a new food to the list, or out of the list to the recipe. */
+function back() {
+  if (adding.value) adding.value = false
+  else emit('back')
+}
 </script>
 
 <template>
-  <div v-if="adding" class="flex flex-col gap-3">
+  <div class="flex flex-col gap-3">
     <UButton
       icon="i-lucide-arrow-left"
       color="neutral"
       variant="ghost"
       class="self-start"
-      @click="adding = false"
+      @click="back"
     >
       Back
     </UButton>
-    <AddFoodForm @submit="create" />
-  </div>
 
-  <div v-else class="flex flex-col gap-3">
-    <UButton
-      icon="i-lucide-arrow-left"
-      color="neutral"
-      variant="ghost"
-      class="self-start"
-      @click="emit('back')"
-    >
-      Back
-    </UButton>
-    <UButton
-      icon="i-lucide-plus"
-      color="primary"
-      variant="subtle"
-      block
-      @click="adding = true"
-    >
-      Add a new food
-    </UButton>
+    <AddFoodForm v-if="adding" @submit="create" />
 
-    <ul role="list" class="flex flex-col gap-2">
-      <li v-for="food in pickableFoods" :key="food.id">
-        <button
-          type="button"
-          class="flex w-full items-center justify-between gap-3 rounded-lg border border-default px-3 py-2 text-left"
-          @click="emit('choose', food)"
-        >
-          <span class="font-medium text-default">{{
-            formatName(food.name)
-          }}</span>
-          <span class="text-sm text-muted">
-            {{ Math.round(food.caloriesPer100g) }} kcal /100g
-          </span>
-        </button>
-      </li>
-    </ul>
+    <template v-else>
+      <UButton
+        icon="i-lucide-plus"
+        color="primary"
+        variant="subtle"
+        block
+        @click="adding = true"
+      >
+        Add a new food
+      </UButton>
+
+      <ul role="list" class="flex flex-col gap-2">
+        <li v-for="food in pickableFoods" :key="food.id">
+          <button
+            type="button"
+            class="flex w-full items-center justify-between gap-3 rounded-lg border border-default px-3 py-2 text-left"
+            @click="emit('choose', food)"
+          >
+            <span class="font-medium text-default">{{
+              formatName(food.name)
+            }}</span>
+            <span class="text-sm text-muted">
+              {{ Math.round(food.caloriesPer100g) }} kcal /100g
+            </span>
+          </button>
+        </li>
+      </ul>
+    </template>
   </div>
 </template>
