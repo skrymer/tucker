@@ -21,7 +21,8 @@ class RecipeRepository(
     private val dsl: DSLContext,
     private val foods: FoodRepository,
     private val currentUser: CurrentUser,
-) {
+    ids: IdSequence,
+) : AggregateRepository(ids, FOOD) {
 
     /** Persist a Recipe: its rolled-up Food, then its ingredient lines, atomically. */
     @Transactional

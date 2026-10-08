@@ -268,6 +268,15 @@ class RepositoryRoundTripTest {
     }
 
     @Test
+    fun `a Recipe takes its id from the same sequence as a Food, since it is stored as one`() {
+        val foodId = foods.nextId()
+
+        val recipeId = recipes.nextId()
+
+        assertEquals(listOf(foodId + 1, foodId + 2), listOf(recipeId, foods.nextId()))
+    }
+
+    @Test
     fun `a Recipe rolls up its ingredients and round-trips`() {
         val oats = foods.insert(Food.plain(null, "Oats", null, Nutrition(389.0, 16.9, 66.3, 6.9)))
         val milk = foods.insert(Food.plain(null, "Milk", null, Nutrition(64.0, 3.4, 4.8, 3.6)))
