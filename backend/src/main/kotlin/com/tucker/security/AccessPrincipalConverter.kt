@@ -7,6 +7,7 @@ import org.springframework.security.authentication.AbstractAuthenticationToken
 import org.springframework.security.oauth2.jwt.Jwt
 import org.springframework.security.web.authentication.preauth.PreAuthenticatedAuthenticationToken
 import org.springframework.stereotype.Component
+import org.springframework.transaction.annotation.Transactional
 
 /**
  * Turns a verified assertion into the [TuckerPrincipal] the rest of the
@@ -30,6 +31,7 @@ class AccessPrincipalConverter(
     private val users: UserRepository,
 ) : Converter<Jwt, AbstractAuthenticationToken> {
 
+    @Transactional
     override fun convert(source: Jwt): AbstractAuthenticationToken {
         // `lowercase()` with no argument is locale-independent, and that is
         // load-bearing rather than tidy. Ordinary ASCII case is already handled by the

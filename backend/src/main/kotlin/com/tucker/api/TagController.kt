@@ -8,6 +8,7 @@ import com.tucker.persistence.TagWithFoodCount
 import com.tucker.service.TagService
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -41,6 +42,7 @@ class TagController(private val tags: TagRepository, private val tagService: Tag
      * duplicate ever being an error (ADR 0033).
      */
     @PostMapping
+    @Transactional
     fun create(@RequestBody request: CreateTagRequest): ResponseEntity<TagResponse> {
         val name = TagName(request.name)
         tags.findByName(name)?.let { return ResponseEntity.ok(it.toResponse()) }
