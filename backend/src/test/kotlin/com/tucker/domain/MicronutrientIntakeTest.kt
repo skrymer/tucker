@@ -21,7 +21,7 @@ class MicronutrientIntakeTest {
     private val weekStart = day.minusDays(6)
 
     private fun weighed(date: LocalDate, food: Food, grams: Double) =
-        WeighedEntry.log(date, food, grams, today = day)
+        WeighedEntry.log(1, date, food, grams, today = day)
 
     @Test
     fun `a window shorter than the trailing seven days is refused`() {

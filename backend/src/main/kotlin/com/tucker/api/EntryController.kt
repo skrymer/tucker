@@ -211,7 +211,7 @@ class EntryController(
         val today = userToday.resolve(request.clientToday)
         val food = foods.findById(request.foodId)
             ?: throw NotFoundException("no Food with id ${request.foodId}")
-        return food to WeighedEntry.log(request.date, food, request.grams, today)
+        return food to WeighedEntry.log(entries.nextId(), request.date, food, request.grams, today)
     }
 
     /**

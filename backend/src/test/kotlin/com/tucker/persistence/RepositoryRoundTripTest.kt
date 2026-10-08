@@ -72,7 +72,7 @@ class RepositoryRoundTripTest {
     fun `a weighed Entry round-trips with computed calories`() {
         val banana = foods.insert(Food.plain(null, "Banana", null, Nutrition(89.0, 1.1, 22.8, 0.3)))
         val date = LocalDate.of(2026, 5, 22)
-        entries.insert(WeighedEntry.log(date, banana, 120.0, today = date))
+        entries.insert(WeighedEntry.log(entries.nextId(), date, banana, 120.0, today = date))
 
         val onDate = entries.findByDate(date)
         assertEquals(1, onDate.size)

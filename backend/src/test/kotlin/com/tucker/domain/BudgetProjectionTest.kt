@@ -26,7 +26,7 @@ class BudgetProjectionTest {
 
         // A 600 g serving = 600 kcal → projected 2,100, over the 2,000 budget.
         val projection = log.project(
-            WeighedEntry.log(date, food, grams = 600.0, today = date),
+            WeighedEntry.log(1, date, food, grams = 600.0, today = date),
             calorieBudgetKcal = 2000.0,
             proteinFloorG = 150.0,
         )
@@ -40,7 +40,7 @@ class BudgetProjectionTest {
 
         // A 400 g serving = 400 kcal → projected 1,900, under the 2,000 budget.
         val projection = log.project(
-            WeighedEntry.log(date, food, grams = 400.0, today = date),
+            WeighedEntry.log(1, date, food, grams = 400.0, today = date),
             calorieBudgetKcal = 2000.0,
             proteinFloorG = 150.0,
         )
@@ -54,7 +54,7 @@ class BudgetProjectionTest {
         val log = DailyLog(date, listOf(EstimatedEntry(null, date, "lunch out", 1500.0, null)))
 
         val projection = log.project(
-            WeighedEntry.log(date, food, grams = 600.0, today = date),
+            WeighedEntry.log(1, date, food, grams = 600.0, today = date),
             calorieBudgetKcal = 2000.0,
             proteinFloorG = 150.0,
         )
@@ -68,7 +68,7 @@ class BudgetProjectionTest {
         val log = DailyLog(date, listOf(EstimatedEntry(null, date, "lunch out", 1500.0, null)))
 
         val projection = log.project(
-            WeighedEntry.log(date, food, grams = 400.0, today = date),
+            WeighedEntry.log(1, date, food, grams = 400.0, today = date),
             calorieBudgetKcal = 2000.0,
             proteinFloorG = 150.0,
         )
@@ -82,7 +82,7 @@ class BudgetProjectionTest {
 
         // Before the first review there is no Calorie Budget — report the total only.
         val projection = log.project(
-            WeighedEntry.log(date, food, grams = 600.0, today = date),
+            WeighedEntry.log(1, date, food, grams = 600.0, today = date),
             calorieBudgetKcal = null,
             proteinFloorG = null,
         )
@@ -98,7 +98,7 @@ class BudgetProjectionTest {
 
         // A 500 g serving = 500 kcal → projected exactly 2,000: at budget is on-target, not over.
         val projection = log.project(
-            WeighedEntry.log(date, food, grams = 500.0, today = date),
+            WeighedEntry.log(1, date, food, grams = 500.0, today = date),
             calorieBudgetKcal = 2000.0,
             proteinFloorG = 150.0,
         )
