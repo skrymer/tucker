@@ -13,6 +13,7 @@ import com.tucker.service.WeeklyReviewService
 import org.slf4j.LoggerFactory
 import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.http.HttpStatus
+import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -197,6 +198,7 @@ class EntryController(
 
     @PostMapping("/weighed")
     @ResponseStatus(HttpStatus.CREATED)
+    @Transactional
     fun logWeighed(@RequestBody request: LogWeighedEntryRequest): EntryResponse {
         val (food, entry) = weighed(request, entries.nextId())
         return entries.insert(entry).toResponse(foodName = food.name)
@@ -238,6 +240,7 @@ class EntryController(
 
     @PostMapping("/estimated")
     @ResponseStatus(HttpStatus.CREATED)
+    @Transactional
     fun logEstimated(@RequestBody request: LogEstimatedEntryRequest): EntryResponse =
         entries.insert(estimated(request, entries.nextId())).toResponse(foodName = null)
 

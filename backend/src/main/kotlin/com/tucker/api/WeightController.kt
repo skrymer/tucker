@@ -5,6 +5,7 @@ import com.tucker.domain.WeightTrend
 import com.tucker.persistence.WeightMeasurementRepository
 import com.tucker.service.WeightMeasurementService
 import org.springframework.http.HttpStatus
+import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -75,6 +76,7 @@ class WeightController(
             ?: throw NotFoundException("no weight measurements recorded yet")
 
     @PostMapping
+    @Transactional
     fun save(@RequestBody request: SaveWeightRequest): WeightMeasurementResponse {
         val today = userToday.resolve(request.clientToday)
         return weightService.save(

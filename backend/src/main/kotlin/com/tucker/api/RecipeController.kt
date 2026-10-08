@@ -6,6 +6,7 @@ import com.tucker.persistence.FoodRepository
 import com.tucker.persistence.RecipeRepository
 import com.tucker.service.FoodService
 import org.springframework.http.HttpStatus
+import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
@@ -86,6 +87,7 @@ class RecipeController(
      */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @Transactional
     fun create(@RequestBody request: CreateRecipeRequest): FoodResponse {
         val recipe = request.toRecipe(id = recipes.nextId())
         val created = foodService.createRecipe(recipe) ?: throw NotFoundException("no Tag among ${request.tagIds}")

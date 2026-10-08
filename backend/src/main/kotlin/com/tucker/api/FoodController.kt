@@ -249,6 +249,7 @@ class FoodController(
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @Transactional
     fun create(@RequestBody request: CreateFoodRequest): FoodResponse {
         val food = Food.plain(
             id = foods.nextId(),
