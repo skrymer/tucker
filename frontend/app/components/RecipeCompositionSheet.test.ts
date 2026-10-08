@@ -1,11 +1,11 @@
 import { describe, expect, it, vi } from 'vitest'
 import { defineComponent } from 'vue'
-import { getResponse } from 'msw'
 import { renderSuspended } from '@nuxt/test-utils/runtime'
-import { screen } from '@testing-library/vue'
+import { screen, within } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import { settle } from '~~/test/async-gate'
-import { food, recipe, type FoodResponse } from '~~/test/food-fixtures'
+import { besideCatalog, catalogOnceReread, tagsOn } from '~~/test/catalog-host'
+import { food, recipe } from '~~/test/food-fixtures'
 import { foodCatalog } from '~~/test/mocks/handlers/catalog'
 import { failingRead, held } from '~~/test/mocks/http'
 import { server } from '~~/test/mocks/node'
@@ -185,16 +185,16 @@ describe('RecipeCompositionSheet', () => {
   })
 
   it('saves the edited recipe, then closes', async () => {
-    const handlers = kitchen()
-    server.use(...handlers)
+    server.use(...kitchen())
     const onClose = vi.fn()
     const user = userEvent.setup()
-    await renderSuspended(RecipeCompositionSheet, {
+    await renderSuspended(besideCatalog(RecipeCompositionSheet), {
       props: { recipe: cottagePie, foods: catalog, onClose },
     })
 
-    await screen.findByText('Mince')
-    await user.click(screen.getByRole('button', { name: /edit recipe/i }))
+    await user.click(
+      await screen.findByRole('button', { name: /edit recipe/i }),
+    )
     const cooked = screen.getByLabelText(/cooked weight/i)
     await user.clear(cooked)
     await user.type(cooked, '1500')
@@ -202,14 +202,9 @@ describe('RecipeCompositionSheet', () => {
     await user.click(screen.getByRole('button', { name: /save changes/i }))
 
     await vi.waitFor(() => expect(onClose).toHaveBeenCalledOnce())
-    const read = new Request('http://localhost/api/foods')
-    const held: FoodResponse[] = await (await getResponse(
-      handlers,
-      read,
-    ))!.json()
-    expect(held.find((row) => row.id === cottagePie.id)).toEqual(
-      expect.objectContaining({ name: 'Cottage Pie', cookedWeightG: 1500 }),
-    )
+    const shown = await catalogOnceReread()
+    expect(shown.getByText('Cottage pie')).toBeVisible()
+    expect(shown.getByText('2 ingredients · makes 1,500 g')).toBeVisible()
   })
 
   it('seeds the edit builder with each ingredient under its own food', async () => {
@@ -260,17 +255,18 @@ describe('RecipeCompositionSheet', () => {
   it('seeds the edit builder with the Tags read beside the composition, not the catalog row', async () => {
     // The server holds Cottage Pie with "Batch cook"; the catalog row the sheet
     // was handed is an older read, still showing "dinner".
-    const handlers = foodCatalog({
-      foods: [
-        ...catalog,
-        { ...cottagePie, tags: [{ id: 7, name: 'Batch cook' }] },
-      ],
-      compositions: { 4: cottagePieLines },
-    })
-    server.use(...handlers)
+    server.use(
+      ...foodCatalog({
+        foods: [
+          ...catalog,
+          { ...cottagePie, tags: [{ id: 7, name: 'Batch cook' }] },
+        ],
+        compositions: { 4: cottagePieLines },
+      }),
+    )
     const onClose = vi.fn()
     const user = userEvent.setup()
-    await renderSuspended(RecipeCompositionSheet, {
+    await renderSuspended(besideCatalog(RecipeCompositionSheet), {
       props: {
         recipe: { ...cottagePie, tags: [{ id: 9, name: 'dinner' }] },
         foods: catalog,
@@ -278,20 +274,18 @@ describe('RecipeCompositionSheet', () => {
       },
     })
 
-    await screen.findByText('Mince')
-    await user.click(screen.getByRole('button', { name: /edit recipe/i }))
-    expect(screen.getByText('Batch cook')).toBeVisible()
+    await user.click(
+      await screen.findByRole('button', { name: /edit recipe/i }),
+    )
+    expect(
+      within(screen.getByRole('dialog')).getByText('Batch cook'),
+    ).toBeVisible()
     expect(screen.queryByText('dinner')).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /save changes/i }))
 
     await vi.waitFor(() => expect(onClose).toHaveBeenCalledOnce())
-    const read = new Request('http://localhost/api/foods')
-    const held: FoodResponse[] = await (await getResponse(
-      handlers,
-      read,
-    ))!.json()
-    expect(held.find((row) => row.id === cottagePie.id)?.tags).toEqual([
-      { id: 7, name: 'Batch cook' },
+    expect(tagsOn(await catalogOnceReread(), 'Cottage pie')).toEqual([
+      'Batch cook',
     ])
   })
 

@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
-import { getResponse } from 'msw'
 import { mockNuxtImport, renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
-import { food, type FoodResponse } from '~~/test/food-fixtures'
+import { besideCatalog, catalog, catalogOnceReread } from '~~/test/catalog-host'
+import { food } from '~~/test/food-fixtures'
 import { foodCatalog } from '~~/test/mocks/handlers/catalog'
 import { server } from '~~/test/mocks/node'
 import DeleteFoodConfirm from './DeleteFoodConfirm.vue'
@@ -20,23 +20,6 @@ const oats = food({
   caloriesPer100g: 380,
   proteinPer100g: 13,
 })
-
-/**
- * A catalog holding [foods], [logged] ones carrying Entries. Returns a read of
- * the names it holds, as the page's own re-read would see them.
- */
-function catalogHolding(foods: FoodResponse[], logged: number[] = []) {
-  const catalog = foodCatalog({ foods, logged })
-  server.use(...catalog)
-  return async () => {
-    const read = new Request('http://localhost/api/foods')
-    const held: FoodResponse[] = await (await getResponse(
-      catalog,
-      read,
-    ))!.json()
-    return held.map((row) => row.name)
-  }
-}
 
 describe('DeleteFoodConfirm', () => {
   it('asks the user to confirm deleting the named food', async () => {
@@ -77,9 +60,9 @@ describe('DeleteFoodConfirm', () => {
 
   it('deletes the food on Delete, then closes itself', async () => {
     const bread = food({ id: 8, name: 'Bread' })
-    const namesHeld = catalogHolding([oats, bread])
+    server.use(...foodCatalog({ foods: [oats, bread] }))
     const onClose = vi.fn()
-    await renderSuspended(DeleteFoodConfirm, {
+    await renderSuspended(besideCatalog(DeleteFoodConfirm), {
       props: { food: oats, onClose },
     })
 
@@ -88,13 +71,15 @@ describe('DeleteFoodConfirm', () => {
       .click(screen.getByRole('button', { name: /^delete$/i }))
 
     await vi.waitFor(() => expect(onClose).toHaveBeenCalledOnce())
-    expect(await namesHeld()).toEqual(['Bread'])
+    const shown = await catalogOnceReread()
+    expect(shown.getByText('Bread')).toBeVisible()
+    expect(shown.queryByText('Oats')).not.toBeInTheDocument()
   })
 
   it('states why a food with logged entries was not deleted, and closes', async () => {
-    const namesHeld = catalogHolding([oats], [oats.id])
+    server.use(...foodCatalog({ foods: [oats], logged: [oats.id] }))
     const onClose = vi.fn()
-    await renderSuspended(DeleteFoodConfirm, {
+    await renderSuspended(besideCatalog(DeleteFoodConfirm), {
       props: { food: oats, onClose },
     })
 
@@ -114,7 +99,7 @@ describe('DeleteFoodConfirm', () => {
       close: true,
       progress: false,
     })
-    expect(await namesHeld()).toEqual(['Oats'])
+    expect(catalog().getByText('Oats')).toBeVisible()
   })
 
   it('cancels the deletion when the user clicks Cancel', async () => {

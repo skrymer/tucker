@@ -1,11 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { HttpResponse, getResponse } from 'msw'
+import { HttpResponse } from 'msw'
 import { defineComponent, ref } from 'vue'
 import { mockNuxtImport, renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen, within } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import { readBarcodes } from 'zxing-wasm/reader'
-import { food, type FoodResponse } from '~~/test/food-fixtures'
+import { besideCatalog, catalogOnceReread, tagsOn } from '~~/test/catalog-host'
+import { food } from '~~/test/food-fixtures'
 import { foodCatalog } from '~~/test/mocks/handlers/catalog'
 import { held, http } from '~~/test/mocks/http'
 import { server } from '~~/test/mocks/node'
@@ -15,17 +16,17 @@ import {
 } from '~~/test/page-visibility-helpers'
 import AddSheet from './AddSheet.vue'
 
-/**
- * A catalog with [contents]. Returns a read of the Foods it holds, as the
- * page's own re-read would see them.
- */
+/** A catalog with [contents]. */
 function catalogHolding(contents: Parameters<typeof foodCatalog>[0] = {}) {
-  const catalog = foodCatalog(contents)
-  server.use(...catalog)
-  return async (): Promise<FoodResponse[]> => {
-    const read = new Request('http://localhost/api/foods')
-    return (await getResponse(catalog, read))!.json()
-  }
+  server.use(...foodCatalog(contents))
+}
+
+/** Looks [barcode] up in a newly opened sheet, as a User checking what they saved would. */
+async function lookUpInAFreshSheet(barcode: string) {
+  await renderSuspended(AddSheet, { props: { open: true } })
+  const user = userEvent.setup()
+  await user.type(screen.getByLabelText(/barcode/i), barcode)
+  await user.click(screen.getByRole('button', { name: /look up/i }))
 }
 
 // Desktop by default, as jsdom resolves it; the phone's fullscreen scanner opts in.
@@ -167,13 +168,16 @@ const unreachableFor = (barcode: string) =>
     ),
   )
 
-/** A look-up of [barcode] that fails as an unreachable network does. */
-const offlineFor = (barcode: string) =>
+/** A look-up of [barcode] that fails as an unreachable network does, until it is back. */
+function offlineFor(barcode: string) {
+  let offline = true
   server.use(
     http.get('/api/foods/barcode/{barcode}', ({ params }) =>
-      params.barcode === barcode ? HttpResponse.error() : undefined,
+      offline && params.barcode === barcode ? HttpResponse.error() : undefined,
     ),
   )
+  return { backOnline: () => (offline = false) }
+}
 
 /** A look-up of [barcode] that never answers. */
 const hangsFor = (barcode: string) =>
@@ -253,7 +257,7 @@ describe('AddSheet', () => {
   })
 
   it('saves a provider candidate carrying the Tags picked for it', async () => {
-    const foodsHeld = catalogHolding({
+    catalogHolding({
       tags: [
         { id: 7, name: 'Breakfast', foodCount: 1 },
         { id: 9, name: 'snack', foodCount: 3 },
@@ -271,7 +275,7 @@ describe('AddSheet', () => {
       ],
     })
     const onUpdateOpen = vi.fn()
-    await renderSuspended(AddSheet, {
+    const { unmount } = await renderSuspended(besideCatalog(AddSheet), {
       props: { open: true, 'onUpdate:open': onUpdateOpen },
     })
     const user = userEvent.setup()
@@ -286,16 +290,15 @@ describe('AddSheet', () => {
     await vi.waitFor(() =>
       expect(onUpdateOpen).toHaveBeenCalledExactlyOnceWith(false),
     )
-    expect(await foodsHeld()).toEqual([
-      expect.objectContaining({
-        name: 'Peanut Butter',
-        barcode: FULL_CANDIDATE_BARCODE,
-        proteinPer100g: 25.1,
-        carbsPer100g: 12.2,
-        fatPer100g: 50.3,
-        tags: [{ id: 9, name: 'snack' }],
-      }),
-    ])
+    // Its figures follow from its macros (4·25.1 + 4·12.2 + 9·50.3 kcal).
+    const shown = await catalogOnceReread()
+    expect(shown.getByText('Peanut butter')).toBeVisible()
+    expect(shown.getByText('602 kcal · 25 g protein /100g')).toBeVisible()
+    expect(tagsOn(shown, 'Peanut butter')).toEqual(['snack'])
+    // The barcode rode along: looking it up again finds the saved Food.
+    unmount()
+    await lookUpInAFreshSheet(FULL_CANDIDATE_BARCODE)
+    expect(await screen.findByText(/already in your catalog/i)).toBeVisible()
   })
 
   it('does not look up a barcode of nothing but whitespace', async () => {
@@ -523,9 +526,9 @@ describe('AddSheet', () => {
   it('drops to a blank form carrying the barcode on a miss', async () => {
     // Neither the catalog nor the provider knows MISS_BARCODE, so it 404s.
     const MISS_BARCODE = '0000000000000'
-    const foodsHeld = catalogHolding()
+    catalogHolding()
     const onUpdateOpen = vi.fn()
-    await renderSuspended(AddSheet, {
+    const { unmount } = await renderSuspended(besideCatalog(AddSheet), {
       props: { open: true, 'onUpdate:open': onUpdateOpen },
     })
     const user = userEvent.setup()
@@ -551,9 +554,10 @@ describe('AddSheet', () => {
     await vi.waitFor(() =>
       expect(onUpdateOpen).toHaveBeenCalledExactlyOnceWith(false),
     )
-    expect(await foodsHeld()).toEqual([
-      expect.objectContaining({ name: 'Hand typed', barcode: MISS_BARCODE }),
-    ])
+    expect((await catalogOnceReread()).getByText('Hand typed')).toBeVisible()
+    unmount()
+    await lookUpInAFreshSheet(MISS_BARCODE)
+    expect(await screen.findByText(/already in your catalog/i)).toBeVisible()
   })
 
   it('stays quiet on a genuine miss, where the blank form is already the answer', async () => {
@@ -692,10 +696,10 @@ describe('AddSheet', () => {
     // network. A network-failed lookup must degrade to the same barcode-pre-filled
     // manual entry as a miss (ADR 0006) so the user can still add the Food.
     const OFFLINE_BARCODE = '5703333333333'
-    const foodsHeld = catalogHolding()
-    offlineFor(OFFLINE_BARCODE)
+    catalogHolding()
+    const network = offlineFor(OFFLINE_BARCODE)
     const onUpdateOpen = vi.fn()
-    await renderSuspended(AddSheet, {
+    const { unmount } = await renderSuspended(besideCatalog(AddSheet), {
       props: { open: true, 'onUpdate:open': onUpdateOpen },
     })
     const user = userEvent.setup()
@@ -718,9 +722,11 @@ describe('AddSheet', () => {
     await vi.waitFor(() =>
       expect(onUpdateOpen).toHaveBeenCalledExactlyOnceWith(false),
     )
-    expect(await foodsHeld()).toEqual([
-      expect.objectContaining({ name: 'Hand typed', barcode: OFFLINE_BARCODE }),
-    ])
+    expect((await catalogOnceReread()).getByText('Hand typed')).toBeVisible()
+    network.backOnline()
+    unmount()
+    await lookUpInAFreshSheet(OFFLINE_BARCODE)
+    expect(await screen.findByText(/already in your catalog/i)).toBeVisible()
   })
 
   it('shows the add-food form when open', async () => {
@@ -734,9 +740,9 @@ describe('AddSheet', () => {
   })
 
   it('adds the food to the catalog, then closes', async () => {
-    const foodsHeld = catalogHolding()
+    catalogHolding()
     const onUpdateOpen = vi.fn()
-    await renderSuspended(AddSheet, {
+    await renderSuspended(besideCatalog(AddSheet), {
       props: { open: true, 'onUpdate:open': onUpdateOpen },
     })
     const user = userEvent.setup()
@@ -750,15 +756,11 @@ describe('AddSheet', () => {
     await vi.waitFor(() =>
       expect(onUpdateOpen).toHaveBeenCalledExactlyOnceWith(false),
     )
-    expect(await foodsHeld()).toEqual([
-      expect.objectContaining({
-        name: 'Skyr',
-        proteinPer100g: 10,
-        carbsPer100g: 4,
-        fatPer100g: 0.2,
-        tags: [],
-      }),
-    ])
+    // Its figures follow from its macros (4·10 + 4·4 + 9·0.2 kcal).
+    const shown = await catalogOnceReread()
+    expect(shown.getByText('Skyr')).toBeVisible()
+    expect(shown.getByText('58 kcal · 10 g protein /100g')).toBeVisible()
+    expect(tagsOn(shown, 'Skyr')).toEqual([])
   })
 
   it('offers a Food or Recipe switch, defaulting to the Food builder', async () => {
@@ -784,9 +786,9 @@ describe('AddSheet', () => {
 
   it('adds the recipe to the catalog, then closes', async () => {
     const potato = food({ id: 2, name: 'Potato', caloriesPer100g: 77 })
-    const foodsHeld = catalogHolding({ foods: [potato] })
+    catalogHolding({ foods: [potato] })
     const onUpdateOpen = vi.fn()
-    await renderSuspended(AddSheet, {
+    await renderSuspended(besideCatalog(AddSheet), {
       props: { open: true, foods: [potato], 'onUpdate:open': onUpdateOpen },
     })
     const user = userEvent.setup()
@@ -802,15 +804,19 @@ describe('AddSheet', () => {
     await vi.waitFor(() =>
       expect(onUpdateOpen).toHaveBeenCalledExactlyOnceWith(false),
     )
-    expect(await foodsHeld()).toContainEqual(
-      expect.objectContaining({ name: 'Mash', kind: 'RECIPE' }),
-    )
+    const shown = await catalogOnceReread()
+    expect(
+      shown.getByRole('button', {
+        name: 'View ingredients in Mash',
+        hidden: true,
+      }),
+    ).toBeInTheDocument()
   })
 
   it('stays open on weighing a food just added from the recipe builder', async () => {
-    const foodsHeld = catalogHolding()
+    catalogHolding()
     const onUpdateOpen = vi.fn()
-    await renderSuspended(AddSheet, {
+    await renderSuspended(besideCatalog(AddSheet), {
       props: { open: true, foods: [], 'onUpdate:open': onUpdateOpen },
     })
     const user = userEvent.setup()
@@ -829,9 +835,7 @@ describe('AddSheet', () => {
 
     expect(await screen.findByLabelText(/grams/i)).toBeVisible()
     expect(onUpdateOpen).not.toHaveBeenCalled()
-    expect(await foodsHeld()).toEqual([
-      expect.objectContaining({ name: 'Whole milk' }),
-    ])
+    expect((await catalogOnceReread()).getByText('Whole milk')).toBeVisible()
   })
 
   it('shows a saved recipe wherever the catalog is shown', async () => {
@@ -1019,8 +1023,8 @@ describe('AddSheet camera scanning', () => {
   })
 
   it('releases the camera when the user switches to the recipe builder', async () => {
-    // The scanner lives in the sheet's scope, not the Food tab panel, so leaving
-    // the tab must stop it explicitly — otherwise the light stays on and a stray
+    // The tabs keep the Food panel mounted while hidden, so leaving the tab must
+    // stop the scanner explicitly — otherwise the light stays on and a stray
     // decode hijacks the sheet (ADR 0006, "never leave the camera light on").
     const { track } = mockCameraGranted()
     await renderSuspended(AddSheet, { props: { open: true } })

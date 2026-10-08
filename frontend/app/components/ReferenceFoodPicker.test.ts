@@ -1,5 +1,4 @@
 import { describe, expect, it, vi } from 'vitest'
-import { getResponse } from 'msw'
 import { renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen, within } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
@@ -11,7 +10,8 @@ import {
 import { referenceFoodsFor } from '~~/test/mocks/handlers/reference-foods'
 import { failingRead, held } from '~~/test/mocks/http'
 import { server } from '~~/test/mocks/node'
-import { food, type FoodResponse } from '~~/test/food-fixtures'
+import { besideCatalog, catalog, catalogOnceReread } from '~~/test/catalog-host'
+import { food } from '~~/test/food-fixtures'
 import { foodCatalog } from '~~/test/mocks/handlers/catalog'
 import ReferenceFoodPicker from './ReferenceFoodPicker.vue'
 
@@ -19,24 +19,14 @@ type Search = components['schemas']['ReferenceFoodSearchResponse']
 
 const chicken = { id: 1, name: 'Chicken breast', referenceFoodName: null }
 
-/**
- * A catalog holding the chicken, with [referenceFoods] to borrow from. Returns a
- * read of what it borrows, as the page's own re-read would see it.
- */
+/** A catalog holding the chicken, with [referenceFoods] to borrow from. */
 function chickenCatalog(referenceFoods: { id: number; name: string }[]) {
-  const catalog = foodCatalog({
-    foods: [food({ id: chicken.id, name: chicken.name })],
-    referenceFoods,
-  })
-  server.use(...catalog)
-  return async () => {
-    const read = new Request('http://localhost/api/foods')
-    const held: FoodResponse[] = await (await getResponse(
-      catalog,
-      read,
-    ))!.json()
-    return held[0]!.referenceFoodName
-  }
+  server.use(
+    ...foodCatalog({
+      foods: [food({ id: chicken.id, name: chicken.name })],
+      referenceFoods,
+    }),
+  )
 }
 
 /** The search for the chicken's own name answered with [search]. */
@@ -140,9 +130,7 @@ describe('ReferenceFoodPicker', () => {
   })
 
   it('claims the borrow it is tapped on, then closes and tells its page', async () => {
-    const borrowed = chickenCatalog([
-      { id: 202, name: 'Chicken, breast, roasted' },
-    ])
+    chickenCatalog([{ id: 202, name: 'Chicken, breast, roasted' }])
     chickenFinds(
       referenceFoodSearch({
         candidates: [
@@ -153,7 +141,7 @@ describe('ReferenceFoodPicker', () => {
     )
     const onClose = vi.fn()
     const onChanged = vi.fn()
-    await renderSuspended(ReferenceFoodPicker, {
+    await renderSuspended(besideCatalog(ReferenceFoodPicker), {
       props: { food: chicken, onClose, onChanged },
     })
 
@@ -165,12 +153,16 @@ describe('ReferenceFoodPicker', () => {
 
     await vi.waitFor(() => expect(onChanged).toHaveBeenCalledOnce())
     expect(onClose).toHaveBeenCalledOnce()
-    expect(await borrowed()).toBe('Chicken, breast, roasted')
+    expect(
+      (await catalogOnceReread()).getByText(
+        'Vitamins and minerals from Chicken, breast, roasted',
+      ),
+    ).toBeVisible()
   })
 
   it('takes the borrow back on Unmatch, then closes and tells its page', async () => {
     const cheddar = { id: 101, name: 'Cheese, cheddar, natural, regular fat' }
-    const catalog = foodCatalog({
+    const cheeseCatalog = foodCatalog({
       foods: [
         food({
           id: 1,
@@ -181,10 +173,10 @@ describe('ReferenceFoodPicker', () => {
       ],
       referenceFoods: [cheddar],
     })
-    server.use(...catalog)
+    server.use(...cheeseCatalog)
     const onClose = vi.fn()
     const onChanged = vi.fn()
-    await renderSuspended(ReferenceFoodPicker, {
+    await renderSuspended(besideCatalog(ReferenceFoodPicker), {
       props: {
         food: { id: 1, name: 'Tasty cheese', referenceFoodName: cheddar.name },
         onClose,
@@ -198,12 +190,9 @@ describe('ReferenceFoodPicker', () => {
 
     await vi.waitFor(() => expect(onChanged).toHaveBeenCalledOnce())
     expect(onClose).toHaveBeenCalledOnce()
-    const read = new Request('http://localhost/api/foods')
-    const held: FoodResponse[] = await (await getResponse(
-      catalog,
-      read,
-    ))!.json()
-    expect(held[0]!.referenceFoodName).toBeNull()
+    expect(
+      (await catalogOnceReread()).queryByText(/vitamins and minerals from/i),
+    ).not.toBeInTheDocument()
   })
 
   it('names what a matched Food borrows now, beside the way to take it back', async () => {
@@ -325,17 +314,19 @@ describe('ReferenceFoodPicker', () => {
   })
 
   it('closes when dismissed, leaving the Food as it was', async () => {
-    const borrowed = chickenCatalog([])
+    chickenCatalog([])
     chickenFinds()
     const onClose = vi.fn()
-    await renderSuspended(ReferenceFoodPicker, {
+    await renderSuspended(besideCatalog(ReferenceFoodPicker), {
       props: { food: chicken, onClose },
     })
 
     await userEvent.setup().click(screen.getByRole('button', { name: 'Close' }))
 
     expect(onClose).toHaveBeenCalled()
-    expect(await borrowed()).toBeNull()
+    expect(
+      catalog().queryByText(/vitamins and minerals from/i),
+    ).not.toBeInTheDocument()
   })
 
   it('clears the seeded query in one tap, so a different food can be searched for', async () => {
