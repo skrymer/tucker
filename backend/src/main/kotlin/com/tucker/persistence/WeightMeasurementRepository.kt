@@ -20,11 +20,8 @@ import java.time.LocalDate
 class WeightMeasurementRepository(
     private val dsl: DSLContext,
     private val currentUser: CurrentUser,
-    private val ids: IdSequence,
-) {
-
-    /** The id the next reading is built with (ADR 0036). */
-    fun nextId(): Long = ids.next(WEIGHT_MEASUREMENT)
+    ids: IdSequence,
+) : AggregateRepository(ids, WEIGHT_MEASUREMENT) {
 
     fun findAll(): List<WeightMeasurement> =
         dsl.selectFrom(WEIGHT_MEASUREMENT)

@@ -25,11 +25,8 @@ import java.time.LocalDate
 class GoalRepository(
     private val dsl: DSLContext,
     private val currentUser: CurrentUser,
-    private val ids: IdSequence,
-) {
-
-    /** The id the next Goal is built with (ADR 0036). */
-    fun nextId(): Long = ids.next(GOAL)
+    ids: IdSequence,
+) : AggregateRepository(ids, GOAL) {
 
     fun findActive(): Goal? =
         dsl.selectFrom(GOAL)
