@@ -18,8 +18,6 @@ const props = withDefaults(
 // Stryker restore all
 const emit = defineEmits<{
   close: []
-  /** The catalog changed: the recipe was saved, or a Food was added to it. */
-  changed: []
 }>()
 
 /**
@@ -35,8 +33,8 @@ function useRecipeEdit() {
     {
       errorTitle: 'Could not save recipe',
       onSuccess: () => {
-        emit('changed')
         emit('close')
+        return refreshFoodCatalog()
       },
     },
   )
@@ -166,7 +164,6 @@ const round = (n: number) => Math.round(n)
         :foods="foods"
         :pending="pending"
         @submit="saveEdit"
-        @changed="emit('changed')"
       />
 
       <!-- View: the read-only composition, with an Edit affordance. -->

@@ -495,10 +495,9 @@ describe('RecipeBuilder', () => {
 
   it('adds a brand-new food to the catalog, then weighs it into the recipe', async () => {
     server.use(...foodCatalog({ foods: sampleFoods }))
-    const onChanged = vi.fn()
     const user = userEvent.setup()
     await renderSuspended(RecipeBuilder, {
-      props: { foods: sampleFoods, onChanged },
+      props: { foods: sampleFoods },
     })
 
     await user.click(screen.getByRole('button', { name: /add ingredient/i }))
@@ -509,9 +508,7 @@ describe('RecipeBuilder', () => {
     await user.type(screen.getByLabelText(/fat \/100\s*g/i), '0.2')
     await user.click(screen.getByRole('button', { name: /save food/i }))
 
-    // The catalog changed under the page, and the builder went straight on to
-    // weighing what it created.
-    await vi.waitFor(() => expect(onChanged).toHaveBeenCalledOnce())
+    // The builder went straight on to weighing what it created.
     expect(await screen.findByText('Carrot')).toBeVisible()
     await user.type(screen.getByLabelText(/grams/i), '100')
     await user.click(screen.getByRole('button', { name: /^add$/i }))

@@ -3,7 +3,6 @@ import { z } from 'zod'
 
 // Stryker disable next-line all: a compiler macro's arguments are hoisted out of setup()
 const open = defineModel<boolean>('open', { required: true })
-const emit = defineEmits<{ changed: [] }>()
 
 const { $api } = useNuxtApp()
 
@@ -84,7 +83,7 @@ const { asking, isAsking, ask, settle } = useRowQuestion()
 
 /**
  * Deleting a Tag, once its row has asked. It takes the Tag off every Food and deletes
- * no Food (ADR 0033), so the page is told its Foods changed.
+ * no Food (ADR 0033), so the catalog is re-read.
  */
 function useTagDeletion() {
   const { execute: deleteTag, pending: deleting } = useApiMutation(
@@ -92,10 +91,9 @@ function useTagDeletion() {
     {
       // No success toast: the row leaves the list.
       errorTitle: 'Could not delete tag',
-      onSuccess: () => {
+      onSuccess: async () => {
         settle()
-        emit('changed')
-        return load()
+        await Promise.all([load(), refreshFoodCatalog()])
       },
     },
   )
@@ -125,8 +123,8 @@ function useMergeTarget(name: () => string) {
 }
 
 /**
- * Renaming a Tag from its row. Every Food carrying it follows, so the page is told
- * its Foods changed.
+ * Renaming a Tag from its row. Every Food carrying it follows, so the catalog is
+ * re-read.
  */
 function useTagRename() {
   const renameDraft = reactive({ name: '' })
@@ -142,10 +140,9 @@ function useTagRename() {
       errorTitle: 'Could not rename tag',
       // No Retry: the same name would be refused again.
       onValidationError: (message) => (renameRefusal.value = message),
-      onSuccess: () => {
+      onSuccess: async () => {
         settle()
-        emit('changed')
-        return load()
+        await Promise.all([load(), refreshFoodCatalog()])
       },
     },
   )

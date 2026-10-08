@@ -30,8 +30,6 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   submit: [components['schemas']['CreateRecipeRequest']]
-  /** A Food was added to the catalog from "Add a new food". */
-  changed: []
 }>()
 
 /** The weighed ingredient lines, and their raw total. */
@@ -275,7 +273,6 @@ function onSave() {
       :foods="foods"
       @back="step = 'build'"
       @choose="(food) => weigh({ food, index: null })"
-      @changed="emit('changed')"
     />
 
     <IngredientGramsForm

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { ref } from 'vue'
+import { defineComponent, ref } from 'vue'
 import { getResponse } from 'msw'
 import { mockNuxtImport, renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen, within } from '@testing-library/vue'
@@ -12,6 +12,7 @@ import {
 } from '~~/test/mocks/handlers/catalog'
 import { failingRead, held, http, noConnection } from '~~/test/mocks/http'
 import { server } from '~~/test/mocks/node'
+import { food } from '~~/test/food-fixtures'
 import ManageTagsSheet from './ManageTagsSheet.vue'
 
 // The rename field's autofocus is desktop-only, so the tests drive the viewport.
@@ -158,11 +159,40 @@ describe('ManageTagsSheet', () => {
     expect(await screen.findByText('3 foods')).toBeVisible()
   })
 
-  it('deletes a Tag once confirmed, drops it from the list, and tells the page its Foods changed', async () => {
+  it('takes a deleted Tag off the Foods wherever the catalog is shown', async () => {
+    server.use(
+      ...foodCatalog({
+        foods: [
+          food({ id: 1, name: 'Oats', tags: [{ id: 9, name: 'snack' }] }),
+        ],
+        tags: [{ ...snack, foodCount: 1 }],
+      }),
+    )
+    const page = defineComponent({
+      components: { ManageTagsSheet },
+      async setup() {
+        const { data } = await useFoodCatalog()
+        return { data }
+      },
+      template: `<p v-for="row in data ?? []" :key="row.id">{{ row.name }}: {{ row.tags.map((t) => t.name).join(', ') }}</p>
+        <ManageTagsSheet :open="true" />`,
+    })
+    await renderSuspended(page)
+    expect(await screen.findByText('Oats: snack')).toBeVisible()
+    const user = userEvent.setup()
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Delete snack' }),
+    )
+    await user.click(screen.getByRole('button', { name: 'Delete tag' }))
+
+    expect(await screen.findByText('Oats:')).toBeVisible()
+  })
+
+  it('deletes a Tag once confirmed, and drops it from the list', async () => {
     keeps(breakfast, snack)
-    const onChanged = vi.fn()
     const { rerender } = await renderSuspended(ManageTagsSheet, {
-      props: { open: true, onChanged },
+      props: { open: true },
     })
     const user = userEvent.setup()
 
@@ -175,7 +205,6 @@ describe('ManageTagsSheet', () => {
       expect(screen.getAllByRole('listitem')).toHaveLength(1),
     )
     expect(screen.getByRole('listitem')).toHaveTextContent('Breakfast')
-    expect(onChanged).toHaveBeenCalledOnce()
     expect(toastAdd).not.toHaveBeenCalled()
     await reopen(rerender)
     await vi.waitFor(() =>
@@ -411,11 +440,43 @@ describe('ManageTagsSheet', () => {
     ).toBeVisible()
   })
 
-  it('renames a Tag, lists it under its new name, and tells the page its Foods changed', async () => {
+  it('shows a renamed Tag on the Foods wherever the catalog is shown', async () => {
+    server.use(
+      ...foodCatalog({
+        foods: [
+          food({ id: 1, name: 'Oats', tags: [{ id: 9, name: 'snack' }] }),
+        ],
+        tags: [{ ...snack, foodCount: 1 }],
+      }),
+    )
+    const page = defineComponent({
+      components: { ManageTagsSheet },
+      async setup() {
+        const { data } = await useFoodCatalog()
+        return { data }
+      },
+      template: `<p v-for="row in data ?? []" :key="row.id">{{ row.name }}: {{ row.tags.map((t) => t.name).join(', ') }}</p>
+        <ManageTagsSheet :open="true" />`,
+    })
+    await renderSuspended(page)
+    expect(await screen.findByText('Oats: snack')).toBeVisible()
+    const user = userEvent.setup()
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Rename snack' }),
+    )
+    const field = screen.getByRole('textbox', { name: 'Rename snack' })
+    await user.clear(field)
+    await user.type(field, 'Treats')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(await screen.findByText('Oats: Treats')).toBeVisible()
+  })
+
+  it('renames a Tag, and lists it under its new name', async () => {
     keeps(breakfast, snack)
-    const onChanged = vi.fn()
     await renderSuspended(ManageTagsSheet, {
-      props: { open: true, onChanged },
+      props: { open: true },
     })
     const user = userEvent.setup()
 
@@ -434,7 +495,6 @@ describe('ManageTagsSheet', () => {
       screen.queryByRole('textbox', { name: /Rename/ }),
     ).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Rename Treats' })).toBeVisible()
-    expect(onChanged).toHaveBeenCalledOnce()
     expect(toastAdd).not.toHaveBeenCalled()
   })
 

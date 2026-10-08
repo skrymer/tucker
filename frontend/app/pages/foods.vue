@@ -3,7 +3,7 @@ import type { components } from '#open-fetch-schemas/api'
 
 type FoodResponse = components['schemas']['FoodResponse']
 
-const { data: foods, error: foodsError, refresh } = await useApi('/api/foods')
+const { data: foods, error: foodsError, refresh } = await useFoodCatalog()
 
 // Gated explicitly on the setting, never on whether a row happens to hold a
 // match: a weight-only User who matched foods before turning tracking off would
@@ -37,26 +37,11 @@ watch(open, (isOpen) => {
  * that has one — so the way back out lives here, beside the subline naming it.
  */
 const foodToMatch = ref<FoodResponse | null>(null)
-const {
-  claim: claimMatch,
-  clear: clearMatch,
-  matching,
-  unmatching,
-} = useReferenceFoodMatch(foodToMatch, refresh)
 
 /** The Food whose Tags are being set (ADR 0033) — non-null opens its sheet. */
 const foodToTag = ref<FoodResponse | null>(null)
-function tagsSaved() {
-  foodToTag.value = null
-  return refresh()
-}
 
 const manageTagsOpen = ref(false)
-
-function foodDeleted() {
-  selectedFood.value = null
-  return refresh()
-}
 </script>
 
 <template>
@@ -118,36 +103,20 @@ function foodDeleted() {
       "
     />
 
-    <AddSheet v-model:open="open" :foods="foods ?? []" @changed="refresh" />
+    <AddSheet v-model:open="open" :foods="foods ?? []" />
 
-    <DeleteFoodConfirm
-      :food="selectedFood"
-      @cancel="selectedFood = null"
-      @changed="foodDeleted"
-    />
+    <DeleteFoodConfirm :food="selectedFood" @close="selectedFood = null" />
 
-    <ReferenceFoodPicker
-      :food="foodToMatch"
-      :matching="matching"
-      :unmatching="unmatching"
-      @match="claimMatch"
-      @unmatch="clearMatch"
-      @close="foodToMatch = null"
-    />
+    <ReferenceFoodPicker :food="foodToMatch" @close="foodToMatch = null" />
 
-    <ManageTagsSheet v-model:open="manageTagsOpen" @changed="refresh" />
+    <ManageTagsSheet v-model:open="manageTagsOpen" />
 
-    <FoodTagsSheet
-      :food="foodToTag"
-      @changed="tagsSaved"
-      @close="foodToTag = null"
-    />
+    <FoodTagsSheet :food="foodToTag" @close="foodToTag = null" />
 
     <RecipeCompositionSheet
       :recipe="recipeToView"
       :foods="foods ?? []"
       @close="recipeToView = null"
-      @changed="refresh"
     />
   </section>
 </template>

@@ -9,8 +9,6 @@ const props = defineProps<{ foods: FoodResponse[] }>()
 const emit = defineEmits<{
   back: []
   choose: [FoodResponse]
-  /** A Food was added to the catalog. */
-  changed: []
 }>()
 
 // Only plain Foods can be ingredients — no nested recipes in v1 (CONTEXT.md).
@@ -21,18 +19,8 @@ const pickableFoods = computed(() =>
 /** "Add a new food": created in the catalog, then chosen like any other. */
 function useNewFood() {
   const adding = ref(false)
-  const { $api } = useNuxtApp()
-  const { execute: create } = useApiMutation(
-    async (payload: components['schemas']['CreateFoodRequest']) => {
-      const created = await $api('/api/foods', {
-        method: 'POST',
-        body: payload,
-      })
-      // `changed` first: choosing moves the builder on, which unmounts this.
-      emit('changed')
-      emit('choose', created)
-    },
-    { errorTitle: 'Could not add food' },
+  const { execute: create } = useCreateFood(async (save) =>
+    emit('choose', await save),
   )
   return { adding, create }
 }

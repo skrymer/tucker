@@ -75,35 +75,34 @@ describe('DeleteFoodConfirm', () => {
     ).toBeVisible()
   })
 
-  it('deletes the food on Delete, then tells its page the Foods changed', async () => {
+  it('deletes the food on Delete, then closes itself', async () => {
     const bread = food({ id: 8, name: 'Bread' })
     const namesHeld = catalogHolding([oats, bread])
-    const onChanged = vi.fn()
+    const onClose = vi.fn()
     await renderSuspended(DeleteFoodConfirm, {
-      props: { food: oats, onChanged },
+      props: { food: oats, onClose },
     })
 
     await userEvent
       .setup()
       .click(screen.getByRole('button', { name: /^delete$/i }))
 
-    await vi.waitFor(() => expect(onChanged).toHaveBeenCalledOnce())
+    await vi.waitFor(() => expect(onClose).toHaveBeenCalledOnce())
     expect(await namesHeld()).toEqual(['Bread'])
   })
 
   it('states why a food with logged entries was not deleted, and closes', async () => {
     const namesHeld = catalogHolding([oats], [oats.id])
-    const onCancel = vi.fn()
-    const onChanged = vi.fn()
+    const onClose = vi.fn()
     await renderSuspended(DeleteFoodConfirm, {
-      props: { food: oats, onCancel, onChanged },
+      props: { food: oats, onClose },
     })
 
     await userEvent
       .setup()
       .click(screen.getByRole('button', { name: /^delete$/i }))
 
-    await vi.waitFor(() => expect(onCancel).toHaveBeenCalledOnce())
+    await vi.waitFor(() => expect(onClose).toHaveBeenCalledOnce())
     // Persistent and dismissible with no Retry: the refusal is permanent, so
     // trying again could never succeed (ADR 0005).
     expect(toastAdd).toHaveBeenCalledExactlyOnceWith({
@@ -115,20 +114,19 @@ describe('DeleteFoodConfirm', () => {
       close: true,
       progress: false,
     })
-    expect(onChanged).not.toHaveBeenCalled()
     expect(await namesHeld()).toEqual(['Oats'])
   })
 
   it('cancels the deletion when the user clicks Cancel', async () => {
-    const onCancel = vi.fn()
+    const onClose = vi.fn()
     await renderSuspended(DeleteFoodConfirm, {
-      props: { food: oats, onCancel },
+      props: { food: oats, onClose },
     })
 
     await userEvent
       .setup()
       .click(screen.getByRole('button', { name: /cancel/i }))
 
-    expect(onCancel).toHaveBeenCalledOnce()
+    expect(onClose).toHaveBeenCalledOnce()
   })
 })

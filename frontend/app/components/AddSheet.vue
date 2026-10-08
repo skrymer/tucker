@@ -3,7 +3,6 @@ import type { TabsItem } from '@nuxt/ui'
 import type { components } from '#open-fetch-schemas/api'
 
 type Food = components['schemas']['FoodResponse']
-type NewFood = components['schemas']['CreateFoodRequest']
 
 const props = defineProps<{
   open: boolean
@@ -13,8 +12,6 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [boolean]
-  /** A Food was added to the catalog. */
-  changed: []
 }>()
 
 // The overlay hosts two builders (CONTEXT.md): a plain Food (with its barcode
@@ -60,29 +57,24 @@ const formSession = ref(0)
  *
  * The sheet closing is the confirmation, as the vanishing row is for a delete
  * (ADR 0005) — it closes on success alone, a failure leaving it open under a
- * Retry toast. The page re-reads its catalog on `changed`, because the
- * catalog's order is the server's.
+ * Retry toast. The catalog is re-read rather than appended to, because its
+ * order is the server's.
  */
 function useCatalogSave() {
   const { $api } = useNuxtApp()
   async function fromThisOpening<T>(save: Promise<T>): Promise<T> {
     const issuedIn = formSession.value
     const saved = await save
-    emit('changed')
     if (props.open && formSession.value === issuedIn) emit('update:open', false)
     return saved
   }
-  const { execute: saveFood } = useApiMutation(
-    (payload: NewFood) =>
-      fromThisOpening($api('/api/foods', { method: 'POST', body: payload })),
-    { errorTitle: 'Could not add food' },
-  )
+  const { execute: saveFood } = useCreateFood(fromThisOpening)
   // A Recipe is a composite Food (kind = RECIPE); the backend rolls up its
   // nutrition, so it joins the catalog exactly like a plain Food.
   const { execute: saveRecipe, pending: recipePending } = useApiMutation(
     (payload: components['schemas']['CreateRecipeRequest']) =>
       fromThisOpening($api('/api/recipes', { method: 'POST', body: payload })),
-    { errorTitle: 'Could not add recipe' },
+    { errorTitle: 'Could not add recipe', onSuccess: refreshFoodCatalog },
   )
   return { saveFood, saveRecipe, recipePending }
 }
@@ -143,7 +135,6 @@ const { saveFood, saveRecipe, recipePending } = useCatalogSave()
             :pending="recipePending"
             class="mt-4"
             @submit="saveRecipe"
-            @changed="emit('changed')"
           />
         </template>
       </UTabs>

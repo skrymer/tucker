@@ -13,7 +13,7 @@ export interface Taggable {
 // Stryker disable all: a compiler macro's arguments are hoisted out of setup()
 const props = defineProps<{ food: Taggable | null }>()
 // Stryker restore all
-const emit = defineEmits<{ close: []; changed: [] }>()
+const emit = defineEmits<{ close: [] }>()
 
 const draft = ref<HeldTag[]>([])
 const creating = ref(false)
@@ -28,7 +28,7 @@ watch(
   { immediate: true },
 )
 
-/** Setting which Tags the Food carries (ADR 0033); the page re-reads on `changed`. */
+/** Setting which Tags the Food carries (ADR 0033); the sheet closes once they land. */
 function useTagSave() {
   const { $api } = useNuxtApp()
   const { execute, pending: saving } = useApiMutation(
@@ -41,7 +41,10 @@ function useTagSave() {
     {
       // No success toast: the row's Tags change where the User is looking.
       errorTitle: 'Could not save tags',
-      onSuccess: () => emit('changed'),
+      onSuccess: () => {
+        emit('close')
+        return refreshFoodCatalog()
+      },
     },
   )
   // Read once at the tap and passed as an argument: a Retry replays the failed

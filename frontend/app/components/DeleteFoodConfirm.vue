@@ -6,12 +6,9 @@ type FoodResponse = components['schemas']['FoodResponse']
 // Stryker disable next-line all: a compiler macro must stay a top-level statement
 const props = defineProps<{ food: FoodResponse | null }>()
 
-const emit = defineEmits<{
-  changed: []
-  cancel: []
-}>()
+const emit = defineEmits<{ close: [] }>()
 
-/** Deleting the Food; the page re-reads its catalog on `changed`. */
+/** Deleting the Food; the confirm closes once it is gone, or refused. */
 function useFoodDeletion() {
   const { $api } = useNuxtApp()
   const toast = useToast()
@@ -21,12 +18,15 @@ function useFoodDeletion() {
     {
       // No success toast: the row disappears from the list.
       errorTitle: 'Could not delete food',
-      onSuccess: () => emit('changed'),
+      onSuccess: () => {
+        emit('close')
+        return refreshFoodCatalog()
+      },
       // A Food with logged Entries can't be deleted: the backend refuses with a
       // 400 naming the Food. State that rather than the transient "check your
       // connection" retry toast — retrying never succeeds — and close.
       onValidationError: (message) => {
-        emit('cancel')
+        emit('close')
         toast.add({
           title: 'Could not delete food',
           description: message,
@@ -49,7 +49,7 @@ const deleteFood = useFoodDeletion()
   <ConfirmDeleteDialog
     :open="food !== null"
     title="Delete this food?"
-    @cancel="emit('cancel')"
+    @cancel="emit('close')"
     @confirm="deleteFood"
   >
     <span class="font-medium">{{ formatName(food?.name ?? '') }}</span> will be

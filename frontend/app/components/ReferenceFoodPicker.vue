@@ -13,21 +13,12 @@ export interface Matchable {
 }
 
 // Stryker disable all: a compiler macro's arguments are hoisted out of setup()
-const props = withDefaults(
-  defineProps<{
-    food: Matchable | null
-    /** Whether the page's claim is in flight — the tapped row's busy signal. */
-    matching?: boolean
-    /** Whether the page's unmatch is in flight. */
-    unmatching?: boolean
-  }>(),
-  { matching: false, unmatching: false },
-)
+const props = defineProps<{ food: Matchable | null }>()
 // Stryker restore all
 const emit = defineEmits<{
-  match: [referenceFoodId: number]
-  unmatch: []
   close: []
+  /** A borrow was claimed or taken back, which moves the page's figures. */
+  changed: []
 }>()
 
 const { $api } = useNuxtApp()
@@ -114,14 +105,32 @@ function clearSearch() {
  * that triggered the write rather than on the whole list (ADR 0007).
  *
  * It is never reset, and needs no reset: a row is busy only while `matching` is
- * also true, and the page holds that true only between this sheet's own tap and
- * the answer that closes it. A stale id outlives nothing it is read against.
+ * also true, which holds only between this sheet's own tap and the answer that
+ * closes it. A stale id outlives nothing it is read against.
  */
 const claiming = ref<number | null>(null)
 function claimFor(referenceFoodId: number) {
   claiming.value = referenceFoodId
-  emit('match', referenceFoodId)
+  return claim(referenceFoodId)
 }
+
+/**
+ * The picker's Food, which a claim settles by setting to null — and a picker
+ * whose Food is gone is a closed one.
+ */
+const held = computed({
+  get: () => props.food,
+  set: (food) => {
+    if (food === null) emit('close')
+  },
+})
+const { claim, clear, matching, unmatching } = useReferenceFoodMatch(
+  held,
+  async () => {
+    emit('changed')
+    await refreshFoodCatalog()
+  },
+)
 
 // The length guard is load-bearing, not redundant with the template's v-else-if:
 // while a search is in flight `suggestedId` is null and `foundNothing` false, so
@@ -156,7 +165,7 @@ const willNotGuess = computed(
           variant="subtle"
           class="min-h-11 shrink-0"
           :loading="unmatching"
-          @click="emit('unmatch')"
+          @click="clear"
         />
       </div>
 

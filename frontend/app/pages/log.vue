@@ -32,7 +32,7 @@ const {
 // empty catalog from a quiet month. Issued before the ranking is awaited so the
 // two overlap, rather than costing the app's most-opened destination two round
 // trips before it paints.
-const catalogRead = useApi('/api/foods')
+const catalogRead = useFoodCatalog()
 const [{ data: catalog, error: catalogError, refresh: refreshCatalog }] =
   await Promise.all([catalogRead, refreshFrequent()])
 

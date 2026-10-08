@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
+import { defineComponent } from 'vue'
 import { getResponse } from 'msw'
 import { renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen } from '@testing-library/vue'
@@ -183,13 +184,13 @@ describe('RecipeCompositionSheet', () => {
     expect(screen.getByRole('button', { name: /save changes/i })).toBeVisible()
   })
 
-  it('saves the edited recipe, then tells its page the Foods changed', async () => {
+  it('saves the edited recipe, then closes', async () => {
     const handlers = kitchen()
     server.use(...handlers)
-    const onChanged = vi.fn()
+    const onClose = vi.fn()
     const user = userEvent.setup()
     await renderSuspended(RecipeCompositionSheet, {
-      props: { recipe: cottagePie, foods: catalog, onChanged },
+      props: { recipe: cottagePie, foods: catalog, onClose },
     })
 
     await screen.findByText('Mince')
@@ -200,7 +201,7 @@ describe('RecipeCompositionSheet', () => {
     await user.tab()
     await user.click(screen.getByRole('button', { name: /save changes/i }))
 
-    await vi.waitFor(() => expect(onChanged).toHaveBeenCalledOnce())
+    await vi.waitFor(() => expect(onClose).toHaveBeenCalledOnce())
     const read = new Request('http://localhost/api/foods')
     const held: FoodResponse[] = await (await getResponse(
       handlers,
@@ -209,6 +210,32 @@ describe('RecipeCompositionSheet', () => {
     expect(held.find((row) => row.id === cottagePie.id)).toEqual(
       expect.objectContaining({ name: 'Cottage Pie', cookedWeightG: 1500 }),
     )
+  })
+
+  it('shows the edited recipe wherever the catalog is shown', async () => {
+    server.use(...kitchen())
+    const page = defineComponent({
+      components: { RecipeCompositionSheet },
+      async setup() {
+        const { data } = await useFoodCatalog()
+        return { data, cottagePie, catalog }
+      },
+      template: `<ul><li v-for="row in data ?? []" :key="row.id">{{ row.name }} {{ row.cookedWeightG }}</li></ul>
+        <RecipeCompositionSheet :recipe="cottagePie" :foods="catalog" />`,
+    })
+    await renderSuspended(page)
+    const user = userEvent.setup()
+
+    await user.click(
+      await screen.findByRole('button', { name: /edit recipe/i }),
+    )
+    const cooked = screen.getByLabelText(/cooked weight/i)
+    await user.clear(cooked)
+    await user.type(cooked, '1500')
+    await user.tab()
+    await user.click(screen.getByRole('button', { name: /save changes/i }))
+
+    expect(await screen.findByText('Cottage Pie 1500')).toBeVisible()
   })
 
   it('seeds the edit builder with the Tags read beside the composition, not the catalog row', async () => {
@@ -222,13 +249,13 @@ describe('RecipeCompositionSheet', () => {
       compositions: { 4: cottagePieLines },
     })
     server.use(...handlers)
-    const onChanged = vi.fn()
+    const onClose = vi.fn()
     const user = userEvent.setup()
     await renderSuspended(RecipeCompositionSheet, {
       props: {
         recipe: { ...cottagePie, tags: [{ id: 9, name: 'dinner' }] },
         foods: catalog,
-        onChanged,
+        onClose,
       },
     })
 
@@ -238,7 +265,7 @@ describe('RecipeCompositionSheet', () => {
     expect(screen.queryByText('dinner')).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /save changes/i }))
 
-    await vi.waitFor(() => expect(onChanged).toHaveBeenCalledOnce())
+    await vi.waitFor(() => expect(onClose).toHaveBeenCalledOnce())
     const read = new Request('http://localhost/api/foods')
     const held: FoodResponse[] = await (await getResponse(
       handlers,

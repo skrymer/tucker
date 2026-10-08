@@ -115,12 +115,6 @@ await Promise.all([
  * carries no borrow to take back.
  */
 const foodToMatch = ref<Matchable | null>(null)
-const {
-  claim: claimMatch,
-  clear: clearMatch,
-  matching,
-  unmatching,
-} = useReferenceFoodMatch(foodToMatch, refreshMicronutrients)
 
 const hasReviews = computed(() => (reviews.value?.length ?? 0) > 0)
 
@@ -210,10 +204,7 @@ const { pending, execute: runReview } = useApiMutation(
 
     <ReferenceFoodPicker
       :food="foodToMatch"
-      :matching="matching"
-      :unmatching="unmatching"
-      @match="claimMatch"
-      @unmatch="clearMatch"
+      @changed="refreshMicronutrients"
       @close="foodToMatch = null"
     />
 
