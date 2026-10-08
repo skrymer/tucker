@@ -77,7 +77,6 @@ class PushSubscriptionRepository(
             .execute()
 
     private fun PushSubscriptionRecord.toDomain() = PushSubscription(
-        id = id!!.toLong(),
         endpoint = endpoint,
         p256dh = p256dh,
         auth = auth,

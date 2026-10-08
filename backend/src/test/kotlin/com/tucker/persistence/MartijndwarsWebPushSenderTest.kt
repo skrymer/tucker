@@ -36,7 +36,7 @@ class MartijndwarsWebPushSenderTest {
     fun `reports a subscription with undecodable keys as gone`() {
         // A real endpoint, so nothing but the keys can be the reason — and one that
         // would fail the test by hanging or erroring if a request were ever attempted.
-        val corrupted = PushSubscription(null, "https://push.example/device-a", "not-a-key", "Auth")
+        val corrupted = PushSubscription("https://push.example/device-a", "not-a-key", "Auth")
 
         assertEquals(SendResult.GONE, sender.send(corrupted, "{}"))
     }
@@ -53,13 +53,13 @@ class MartijndwarsWebPushSenderTest {
         // one leaks nothing even on the broken transport this test exists to catch.
         val accepting = acceptingService()
         try {
-            val reachable = PushSubscription(null, "http://127.0.0.1:${accepting.address.port}/d", keys, AUTH)
+            val reachable = PushSubscription("http://127.0.0.1:${accepting.address.port}/d", keys, AUTH)
             assertEquals(SendResult.DELIVERED, sender.send(reachable, "{}"))
         } finally {
             accepting.stop(0)
         }
 
-        val device = PushSubscription(null, "http://127.0.0.1:${refusingPort()}/device", keys, AUTH)
+        val device = PushSubscription("http://127.0.0.1:${refusingPort()}/device", keys, AUTH)
         val baseline = liveThreads()
 
         repeat(SENDS) { assertEquals(SendResult.FAILED, sender.send(device, "{}")) }

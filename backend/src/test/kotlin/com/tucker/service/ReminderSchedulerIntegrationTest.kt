@@ -146,7 +146,7 @@ class ReminderSchedulerIntegrationTest {
                 remindersEnabled = true, tracksCalories = tracksCalories,
             ),
         )
-        subscriptions.claim(PushSubscription(null, endpoint, "BKey", "Auth", null))
+        subscriptions.claim(PushSubscription(endpoint, "BKey", "Auth", null))
         weights.save(WeightMeasurement(null, today.minusDays(1), 86.0))
         reviews.insert(
             WeeklyReview(
@@ -352,7 +352,7 @@ class ReminderSchedulerIntegrationTest {
     fun `prunes a subscription the push service reports gone`() {
         seedEligible(endpoint = "https://push.example/device-good")
         runAs(subscriber) {
-            subscriptions.claim(PushSubscription(null, "https://push.example/device-gone", "BKey", "Auth", null))
+            subscriptions.claim(PushSubscription("https://push.example/device-gone", "BKey", "Auth", null))
         }
 
         val result = scheduler.runTick(now)

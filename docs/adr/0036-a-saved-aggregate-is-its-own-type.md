@@ -18,7 +18,9 @@ request builds, and `Food` has `id: Long` and is what a repository hands back.
 is the same for every aggregate with a database-assigned id, so the codebase has
 one convention, not two. Where creation already takes a single value, that value
 is the draft: a Tag is created from a `TagName`, so there is no `NewTag`, and
-`Tag` simply has `id: Long`.
+`Tag` simply has `id: Long`. And where nothing reads the surrogate id, the domain
+type drops it: a Push Subscription's identity is its endpoint (it is claimed and
+deleted by endpoint), so `PushSubscription` has no `id` and no draft type.
 
 Two alternatives were rejected:
 
