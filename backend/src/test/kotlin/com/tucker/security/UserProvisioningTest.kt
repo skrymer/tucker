@@ -1,5 +1,6 @@
 package com.tucker.security
 
+import com.tucker.domain.User
 import com.tucker.jooq.Tables.USER
 import com.tucker.persistence.UserRepository
 import org.jooq.DSLContext
@@ -106,6 +107,15 @@ class UserProvisioningTest {
     }
 
     @Test
+    fun `a User is stored under the id it was built with`() {
+        val id = users.nextId()
+
+        users.insertIfAbsent(User(id, "newcomer@tucker.invalid"))
+
+        assertEquals(id, users.findByEmail("newcomer@tucker.invalid")?.id)
+    }
+
+    @Test
     fun `provisioning an email that already exists yields the existing User`() {
         // The losing half of the one race provisioning has: two devices a newcomer
         // opens together can both read "no such User" before either writes. Driving
@@ -113,9 +123,9 @@ class UserProvisioningTest {
         // choreographing threads — and it is the branch that silently did not work
         // when it was an exception handler.
         val shared = "raced@tucker.invalid"
-        val winner = users.insertIfAbsent(shared)
+        val winner = users.insertIfAbsent(User(users.nextId(), shared))
 
-        val loser = users.insertIfAbsent(shared)
+        val loser = users.insertIfAbsent(User(users.nextId(), shared))
 
         assertEquals(winner.id, loser.id, "the loser must adopt the winner's User, not fail")
         assertEquals(shared, loser.email)

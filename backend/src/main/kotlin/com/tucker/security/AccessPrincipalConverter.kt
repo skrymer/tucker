@@ -1,5 +1,6 @@
 package com.tucker.security
 
+import com.tucker.domain.User
 import com.tucker.persistence.UserRepository
 import org.springframework.core.convert.converter.Converter
 import org.springframework.security.authentication.AbstractAuthenticationToken
@@ -52,7 +53,7 @@ class AccessPrincipalConverter(
         // container (deploy/README.md step 6), so a cache with no invalidation path
         // would go on resolving the stale pairing until someone restarted the app —
         // turning a one-line recovery into a puzzling one.
-        val user = users.findByEmail(email) ?: users.insertIfAbsent(email)
+        val user = users.findByEmail(email) ?: users.insertIfAbsent(User(users.nextId(), email))
         return TuckerPrincipal.of(user).asAuthentication(credentials = source)
     }
 

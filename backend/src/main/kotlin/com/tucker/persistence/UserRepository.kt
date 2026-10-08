@@ -15,7 +15,7 @@ import org.springframework.stereotype.Repository
  * place, so scoping it would be circular.
  */
 @Repository
-class UserRepository(private val dsl: DSLContext) {
+class UserRepository(private val dsl: DSLContext, ids: IdSequence) : AggregateRepository(ids, USER) {
 
     /**
      * The User with this [email], or null. The lookup is case-insensitive because
@@ -38,8 +38,8 @@ class UserRepository(private val dsl: DSLContext) {
         dsl.selectFrom(USER).orderBy(USER.ID).fetch().map { it.toUser() }
 
     /**
-     * Store a User for [email] unless it is already taken, and return the stored
-     * row either way.
+     * Store [user] unless its email is already taken, and return the stored row
+     * either way.
      *
      * `ON CONFLICT DO NOTHING` rather than an insert whose failure is caught,
      * because a read-then-write cannot be made safe by handling its own
@@ -51,13 +51,14 @@ class UserRepository(private val dsl: DSLContext) {
      * the very first request they ever made. Letting SQLite resolve the conflict
      * removes the branch instead of guarding it.
      */
-    fun insertIfAbsent(email: String): User {
+    fun insertIfAbsent(user: User): User {
         dsl.insertInto(USER)
-            .set(USER.EMAIL, email)
+            .set(USER.ID, user.id.toInt())
+            .set(USER.EMAIL, user.email)
             .onConflictDoNothing()
             .execute()
-        return checkNotNull(findByEmail(email)) {
-            "insertIfAbsent neither inserted $email nor found it"
+        return checkNotNull(findByEmail(user.email)) {
+            "insertIfAbsent neither inserted ${user.email} nor found it"
         }
     }
 

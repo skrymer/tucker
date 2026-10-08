@@ -122,7 +122,7 @@ class ReminderSchedulerIntegrationTest {
         sender.sentEndpoints.clear()
         sender.sentPayloads.clear()
         sender.throwOnNextSend = false
-        subscriber = users.insertIfAbsent(AccessTokens.EMAIL)
+        subscriber = users.insertIfAbsent(User(users.nextId(), AccessTokens.EMAIL))
     }
 
     /**
@@ -158,7 +158,7 @@ class ReminderSchedulerIntegrationTest {
 
     /** Somebody else, provisioned so the tick has more than one turn to take. */
     private fun somebodyElse(): User =
-        users.insertIfAbsent("second@tucker.invalid")
+        users.insertIfAbsent(User(users.nextId(), "second@tucker.invalid"))
 
     /**
      * The nudges sent so far, parsed the way the service worker reads them

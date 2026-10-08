@@ -6,10 +6,7 @@ import com.tucker.domain.Recipe
 import com.tucker.domain.RecipeIngredient
 import com.tucker.domain.Tag
 import com.tucker.domain.TagName
-import com.tucker.jooq.Tables.TAG
-import com.tucker.security.CurrentUser
 import com.tucker.security.WithTuckerUser
-import org.jooq.DSLContext
 import org.jooq.ExecuteContext
 import org.jooq.ExecuteListener
 import org.jooq.ExecuteListenerProvider
@@ -36,14 +33,11 @@ class LinkTableOwnerPredicateTest {
     @Autowired lateinit var foods: FoodRepository
     @Autowired lateinit var recipes: RecipeRepository
     @Autowired lateinit var tags: TagRepository
-    @Autowired lateinit var dsl: DSLContext
-    @Autowired lateinit var currentUser: CurrentUser
     @Autowired lateinit var recorder: StatementRecorder
 
     @Test
     fun `retagging a Food removes its old links only through the owner`() {
-        val snack = dsl.insertInto(TAG, TAG.USER_ID, TAG.NAME).values(currentUser.ownerId, "snack")
-            .returning(TAG.ID).fetchOne()!!.id!!.toLong()
+        val snack = tags.insert(Tag(tags.nextId(), TagName("snack"))).id
         val oats = foods.insert(
             Food.plain(foods.nextId(), "Rolled oats", null, Nutrition.fromMacros(13.0, 60.0, 7.0)),
         )
