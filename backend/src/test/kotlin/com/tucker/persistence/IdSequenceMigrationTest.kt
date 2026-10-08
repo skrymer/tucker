@@ -58,14 +58,29 @@ class IdSequenceMigrationTest {
             connection.execute("INSERT INTO tag (id, user_id, name) VALUES (7, $OWNER_ID, 'Breakfast')")
             connection.execute("INSERT INTO tag (id, user_id, name) VALUES (8, $OWNER_ID, 'Snack')")
             connection.execute("DELETE FROM tag WHERE id = 8")
+            // Every other table's newest rows deleted too: AUTOINCREMENT's counter stands
+            // past the highest id still stored, which is the state a deletion leaves.
+            connection.execute("DELETE FROM sqlite_sequence WHERE name <> 'tag'")
+            connection.execute(
+                "INSERT INTO sqlite_sequence (name, seq) VALUES ('entry', 11), ('food', 12), " +
+                    "('goal', 13), ('user', 15), ('weekly_review', 16), ('weight_measurement', 17)",
+            )
         }
 
         migrate(db, upTo = null)
 
         connect(db).use { connection ->
             assertEquals(
-                listOf("tag|8"),
-                connection.rows("SELECT name, last_id FROM id_sequence WHERE name = 'tag'"),
+                listOf(
+                    "entry|11",
+                    "food|12",
+                    "goal|13",
+                    "tag|8",
+                    "user|15",
+                    "weekly_review|16",
+                    "weight_measurement|17",
+                ),
+                connection.rows("SELECT name, last_id FROM id_sequence ORDER BY name"),
             )
         }
     }
