@@ -3,6 +3,7 @@ package com.tucker.service
 import com.tucker.api.NotFoundException
 import com.tucker.domain.Food
 import com.tucker.domain.Nutrition
+import com.tucker.domain.Tag
 import com.tucker.domain.TagName
 import com.tucker.persistence.FoodRepository
 import com.tucker.persistence.TagRepository
@@ -30,7 +31,7 @@ class TagServiceTest {
 
     @Test
     fun `a renamed Tag is on every Food that carried it, under its new name`() {
-        val breakfast = tags.insert(TagName("breakfast")).id!!
+        val breakfast = tags.insert(Tag(tags.nextId(), TagName("breakfast"))).id
         val oats = food("Rolled oats", breakfast)
 
         service.rename(breakfast, TagName("morning"))
@@ -41,8 +42,8 @@ class TagServiceTest {
 
     @Test
     fun `merging leaves every Food of either Tag carrying exactly the Tag that existed`() {
-        val snack = tags.insert(TagName("Snack")).id!!
-        val treats = tags.insert(TagName("treats")).id!!
+        val snack = tags.insert(Tag(tags.nextId(), TagName("Snack"))).id
+        val treats = tags.insert(Tag(tags.nextId(), TagName("treats"))).id
         val apple = food("Apple", snack)
         val chocolate = food("Chocolate", treats)
         val biscuit = food("Biscuit", snack, treats)
@@ -57,7 +58,7 @@ class TagServiceTest {
 
     @Test
     fun `renaming a Tag the User does not have is not found`() {
-        tags.insert(TagName("breakfast"))
+        tags.insert(Tag(tags.nextId(), TagName("breakfast")))
 
         assertFailsWith<NotFoundException> { service.rename(Long.MAX_VALUE, TagName("morning")) }
         assertEquals(listOf("breakfast"), tags.findAllWithFoodCounts().map { it.tag.name.value })

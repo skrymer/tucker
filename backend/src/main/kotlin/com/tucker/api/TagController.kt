@@ -1,5 +1,6 @@
 package com.tucker.api
 
+import com.tucker.domain.Tag
 import com.tucker.domain.TagName
 import com.tucker.domain.TagRename
 import com.tucker.persistence.TagRepository
@@ -43,7 +44,7 @@ class TagController(private val tags: TagRepository, private val tagService: Tag
     fun create(@RequestBody request: CreateTagRequest): ResponseEntity<TagResponse> {
         val name = TagName(request.name)
         tags.findByName(name)?.let { return ResponseEntity.ok(it.toResponse()) }
-        val created = TagWithFoodCount(tags.insert(name), foodCount = 0)
+        val created = TagWithFoodCount(tags.insert(Tag(tags.nextId(), name)), foodCount = 0)
         return ResponseEntity.status(HttpStatus.CREATED).body(created.toResponse())
     }
 

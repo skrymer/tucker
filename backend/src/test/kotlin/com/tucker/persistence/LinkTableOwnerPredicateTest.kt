@@ -4,6 +4,7 @@ import com.tucker.domain.Food
 import com.tucker.domain.Nutrition
 import com.tucker.domain.Recipe
 import com.tucker.domain.RecipeIngredient
+import com.tucker.domain.Tag
 import com.tucker.domain.TagName
 import com.tucker.jooq.Tables.TAG
 import com.tucker.security.CurrentUser
@@ -68,8 +69,8 @@ class LinkTableOwnerPredicateTest {
 
     @Test
     fun `merging a Tag moves its links only through the owner`() {
-        val snack = tags.insert(TagName("snack")).id!!
-        val treats = tags.insert(TagName("treats")).id!!
+        val snack = tags.insert(Tag(tags.nextId(), TagName("snack"))).id
+        val treats = tags.insert(Tag(tags.nextId(), TagName("treats"))).id
         val biscuit = Food.plain(foods.nextId(), "Biscuit", null, Nutrition.fromMacros(6.0, 70.0, 20.0))
         foods.insert(biscuit.retagged(listOf(treats)))
 
