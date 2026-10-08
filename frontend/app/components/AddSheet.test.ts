@@ -764,6 +764,40 @@ describe('AddSheet', () => {
     )
   })
 
+  it('stays open on weighing a food just added from the recipe builder', async () => {
+    const foodsHeld = catalogHolding()
+    const onChanged = vi.fn()
+    const onUpdateOpen = vi.fn()
+    await renderSuspended(AddSheet, {
+      props: {
+        open: true,
+        foods: [],
+        onChanged,
+        'onUpdate:open': onUpdateOpen,
+      },
+    })
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('tab', { name: /recipe/i }))
+    await user.click(screen.getByRole('button', { name: /add ingredient/i }))
+    await user.click(screen.getByRole('button', { name: /add a new food/i }))
+
+    const form = screen
+      .getByRole('button', { name: /save food/i })
+      .closest('form')!
+    await user.type(within(form).getByLabelText(/^name$/i), 'Whole milk')
+    await user.type(within(form).getByLabelText(/protein \/100\s*g/i), '3.4')
+    await user.type(within(form).getByLabelText(/carbs \/100\s*g/i), '4.8')
+    await user.type(within(form).getByLabelText(/fat \/100\s*g/i), '3.5')
+    await user.click(within(form).getByRole('button', { name: /save food/i }))
+
+    await vi.waitFor(() => expect(onChanged).toHaveBeenCalledOnce())
+    expect(await screen.findByLabelText(/grams/i)).toBeVisible()
+    expect(onUpdateOpen).not.toHaveBeenCalled()
+    expect(await foodsHeld()).toEqual([
+      expect.objectContaining({ name: 'Whole milk' }),
+    ])
+  })
+
   it('keeps the recipe draft when toggling to Food and back', async () => {
     const user = userEvent.setup()
     await renderSuspended(AddSheet, { props: { open: true, foods: [] } })
