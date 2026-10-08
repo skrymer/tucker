@@ -838,6 +838,44 @@ describe('AddSheet', () => {
     expect((await catalogOnceReread()).getByText('Whole milk')).toBeVisible()
   })
 
+  it('lists a new food that lands after the User backed out of the picker, leaving the recipe as they left it', async () => {
+    const potato = food({ id: 2, name: 'Potato', caloriesPer100g: 77 })
+    catalogHolding({ foods: [potato] })
+    const create = held('post', '/api/foods')
+    server.use(create.handler)
+    await renderSuspended(besideCatalog(AddSheet), {
+      props: { open: true, foods: [potato] },
+    })
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('tab', { name: /recipe/i }))
+    await user.click(screen.getByRole('button', { name: /add ingredient/i }))
+    await user.click(screen.getByRole('button', { name: /potato/i }))
+    await user.type(screen.getByLabelText(/grams/i), '500')
+    await user.click(screen.getByRole('button', { name: /^add$/i }))
+    await user.click(screen.getByRole('button', { name: /add ingredient/i }))
+    await user.click(screen.getByRole('button', { name: /add a new food/i }))
+    const form = screen
+      .getByRole('button', { name: /save food/i })
+      .closest('form')!
+    await user.type(within(form).getByLabelText(/^name$/i), 'Carrot')
+    await user.type(within(form).getByLabelText(/protein \/100\s*g/i), '0.9')
+    await user.type(within(form).getByLabelText(/carbs \/100\s*g/i), '10')
+    await user.type(within(form).getByLabelText(/fat \/100\s*g/i), '0.2')
+    await user.click(within(form).getByRole('button', { name: /save food/i }))
+    await create.arrived
+
+    // Back out of the new food and the picker, and start reweighing the potato.
+    await user.click(screen.getByRole('button', { name: /back/i }))
+    await user.click(screen.getByRole('button', { name: /back/i }))
+    await user.click(screen.getByRole('button', { name: /potato/i }))
+    create.release()
+
+    expect((await catalogOnceReread()).getByText('Carrot')).toBeVisible()
+    const sheet = within(screen.getByRole('dialog'))
+    expect(sheet.getByLabelText(/grams/i)).toHaveDisplayValue('500')
+    expect(sheet.queryByText('Carrot')).not.toBeInTheDocument()
+  })
+
   it('shows a saved recipe wherever the catalog is shown', async () => {
     const potato = food({ id: 2, name: 'Potato', caloriesPer100g: 77 })
     catalogHolding({ foods: [potato] })
