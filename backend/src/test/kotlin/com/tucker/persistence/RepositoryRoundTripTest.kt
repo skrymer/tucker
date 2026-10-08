@@ -84,7 +84,7 @@ class RepositoryRoundTripTest {
     @Test
     fun `an estimated Entry round-trips and stays flagged`() {
         val date = LocalDate.of(2026, 5, 22)
-        entries.insert(EstimatedEntry(null, date, "Restaurant pasta", 800.0, null))
+        entries.insert(EstimatedEntry(entries.nextId(), date, "Restaurant pasta", 800.0, null))
 
         val logged = entries.findByDate(date).single() as EstimatedEntry
         assertEquals("Restaurant pasta", logged.label)

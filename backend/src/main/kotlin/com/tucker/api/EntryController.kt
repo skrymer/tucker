@@ -120,13 +120,13 @@ private const val UNRESOLVED_FOOD_NAME = "Unknown food"
  */
 internal fun Entry.toResponse(foodName: String?): EntryResponse = when (this) {
     is WeighedEntry -> EntryResponse(
-        id = persistedId(id),
+        id = id,
         loggedOn = loggedOn, kind = EntryKind.WEIGHED, calories = calories, protein = protein,
         isEstimate = false, foodId = foodId, foodName = foodName, grams = grams, label = null,
         name = foodName ?: UNRESOLVED_FOOD_NAME,
     )
     is EstimatedEntry -> EntryResponse(
-        id = persistedId(id),
+        id = id,
         loggedOn = loggedOn, kind = EntryKind.ESTIMATED, calories = calories, protein = protein,
         isEstimate = true, foodId = null, foodName = null, grams = null, label = label,
         // Trimmed, as `IntakeBreakdown.sliceName` already names the same Entry on

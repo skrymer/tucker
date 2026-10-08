@@ -96,7 +96,8 @@ class WeeklyReviewServiceTest {
     /** Log 2000 kcal on each window day in [offsets] (days before today). */
     private fun logIntakeDays(offsets: IntProgression, kcal: Double = 2000.0) {
         for (offset in offsets) {
-            entries.insert(EstimatedEntry(null, today.minusDays(offset.toLong()), "Day's intake", kcal, 130.0))
+            val day = today.minusDays(offset.toLong())
+            entries.insert(EstimatedEntry(entries.nextId(), day, "Day's intake", kcal, 130.0))
         }
     }
 
@@ -192,7 +193,7 @@ class WeeklyReviewServiceTest {
         for (offset in 16 downTo 0) {
             val day = today.minusDays(offset.toLong())
             weights.save(WeightMeasurement(weights.nextId(), day, 86.0 - (16 - offset) * 0.06))
-            entries.insert(EstimatedEntry(null, day, "Day's intake", 2000.0, 130.0))
+            entries.insert(EstimatedEntry(entries.nextId(), day, "Day's intake", 2000.0, 130.0))
         }
 
         val review = service.runReview(today)
@@ -450,7 +451,7 @@ class WeeklyReviewServiceTest {
         // (e.g. water): real coverage, no intake signal. Averaging would produce a
         // non-positive maintenance, which must never be persisted.
         for (offset in 14 downTo 5) {
-            entries.insert(EstimatedEntry(null, today.minusDays(offset.toLong()), "Water", 0.0, 0.0))
+            entries.insert(EstimatedEntry(entries.nextId(), today.minusDays(offset.toLong()), "Water", 0.0, 0.0))
         }
 
         val review = service.runReview(today) // must not throw

@@ -93,7 +93,7 @@ class EntryRepository(
 
     fun insert(entry: Entry): Entry {
         val rec = dsl.newRecord(ENTRY)
-        rec.id = entry.id?.toInt()
+        rec.id = entry.id.toInt()
         rec.userId = currentUser.ownerId
         rec.loggedOn = entry.loggedOn.toString()
         rec.calories = entry.calories
@@ -111,11 +111,7 @@ class EntryRepository(
             }
         }
         rec.store()
-        val id = rec.id!!.toLong()
-        return when (entry) {
-            is WeighedEntry -> entry.copy(id = id)
-            is EstimatedEntry -> entry.copy(id = id)
-        }
+        return entry
     }
 
     /**

@@ -16,7 +16,7 @@ class EntryTest {
         // zero rather than needing to clear it — a Food is refused for being
         // *negative*, never for being weightless in energy.
         val entry = WeighedEntry(
-            id = null,
+            id = 1,
             loggedOn = today,
             foodId = 1,
             grams = 250.0,
@@ -34,7 +34,7 @@ class EntryTest {
         // an Entry saying so would still count as a logged day to the engine.
         val ex = assertThrows<IllegalArgumentException> {
             WeighedEntry(
-                id = null,
+                id = 1,
                 loggedOn = today,
                 foodId = 1,
                 grams = 0.0,

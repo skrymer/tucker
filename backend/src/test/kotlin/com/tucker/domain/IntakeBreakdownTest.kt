@@ -21,10 +21,10 @@ class IntakeBreakdownTest {
     private val names = mapOf(chickenId to "Chicken breast", riceId to "Basmati rice")
 
     private fun weighed(foodId: Long, calories: Double, protein: Double, on: LocalDate = day) =
-        WeighedEntry(id = null, loggedOn = on, foodId = foodId, grams = 100.0, calories = calories, protein = protein)
+        WeighedEntry(id = 1, loggedOn = on, foodId = foodId, grams = 100.0, calories = calories, protein = protein)
 
     private fun estimated(label: String, calories: Double, protein: Double? = null, on: LocalDate = day) =
-        EstimatedEntry(id = null, loggedOn = on, label = label, calories = calories, protein = protein)
+        EstimatedEntry(id = 2, loggedOn = on, label = label, calories = calories, protein = protein)
 
     private fun breakdownOf(vararg entries: Entry) =
         IntakeBreakdown.of(from = day, to = day, entries = entries.toList(), foodNames = names)

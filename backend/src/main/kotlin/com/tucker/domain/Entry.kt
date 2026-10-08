@@ -11,7 +11,7 @@ enum class EntryKind { WEIGHED, ESTIMATED }
  * fact and does not change if its Food is later edited.
  */
 sealed interface Entry {
-    val id: Long?
+    val id: Long
     val loggedOn: LocalDate
     val calories: Double
     val protein: Double?
@@ -25,7 +25,7 @@ sealed interface Entry {
  * from the Food at the moment of logging — see [log].
  */
 data class WeighedEntry(
-    override val id: Long?,
+    override val id: Long,
     override val loggedOn: LocalDate,
     val foodId: Long,
     val grams: Double,
@@ -63,7 +63,7 @@ data class WeighedEntry(
  * It carries a typed-in calorie figure; protein may be unknown.
  */
 data class EstimatedEntry(
-    override val id: Long?,
+    override val id: Long,
     override val loggedOn: LocalDate,
     val label: String,
     override val calories: Double,
