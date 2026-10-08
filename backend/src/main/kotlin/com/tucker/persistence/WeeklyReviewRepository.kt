@@ -26,7 +26,8 @@ import java.time.LocalDate
 class WeeklyReviewRepository(
     private val dsl: DSLContext,
     private val currentUser: CurrentUser,
-) {
+    ids: IdSequence,
+) : AggregateRepository(ids, WEEKLY_REVIEW) {
 
     /**
      * The newest review that exists, whatever its date — the cadence's question
@@ -104,6 +105,7 @@ class WeeklyReviewRepository(
 
     fun insert(review: WeeklyReview): WeeklyReview {
         val rec = dsl.newRecord(WEEKLY_REVIEW)
+        rec.id = review.id?.toInt()
         rec.userId = currentUser.ownerId
         rec.reviewedOn = review.reviewedOn.toString()
         rec.trendWeightKg = review.trendWeightKg

@@ -185,6 +185,16 @@ class RepositoryRoundTripTest {
     }
 
     @Test
+    fun `a review is stored under the id it was built with`() {
+        val day = LocalDate.of(2026, 6, 10)
+        val id = reviews.nextId()
+
+        reviews.insert(WeeklyReview(id, day, trendWeightKg = 86.0, intakeTargets = null))
+
+        assertEquals(id, reviews.findByReviewedOn(day)?.id)
+    }
+
+    @Test
     fun `a held review round-trips the reason it was held for`() {
         // `insert` hands back the object it was given, so a reason the repository
         // never wrote would still read correctly everywhere the engine is tested.
