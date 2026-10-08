@@ -66,6 +66,7 @@ and [#237](https://github.com/skrymer/tucker/issues/237) (frontend).
   - Manage tags — `ManageTagsSheet.vue` 56 of 61, then 2 carried
   - Rename and merge a Tag — `ManageTagsSheet.vue` 41 of 48, backend 24 of 28
   - Log for tomorrow (#443) — `useBudgetGate.ts` 9 of 42, backend 6 carried from #442
+  - Lint refactor (#454) — 216 new of 532, 54 real gaps closed
   - Noise removed at the source
 - What the score still cannot ask for
 
@@ -1400,6 +1401,44 @@ From #444's estimate-form slice, `LogGramsSheet.vue` (17 of 19):
 
 `useApiMutation.ts` scores **76 of 84** with #443's function-valued `successTitle`;
 its four new mutants are killed, and the survivors are the ones recorded above.
+
+### Lint refactor (#454) — 216 new of 532, 54 real gaps closed
+
+The refactor moved most of the frontend's code, so its sweep (46 files) was diffed
+against `main`'s over the same 34 pre-existing files by **mutator + mutated text +
+replacement**, not by line: 532 survivors or no-coverage against 446, 216 with no
+identical twin on `main`. Of those, 98 survived and 118 were `no cov`.
+
+- **`no cov` in `AddSheet.vue`, `FoodBuilder.vue`, `BarcodePrefill.vue`,
+  `IngredientPicker.vue` (116) — false survivors.** A four-file re-sweep still ran
+  only 31 tests and never `AddSheet.test.ts`; hand-mutating 22 of them on a sandbox
+  copy, 17 failed that file, `RecipeBuilder.test.ts` or `foods.test.ts`. The other
+  five: two equal `main`'s (the timeout branch and `cancel()` on close, below), and
+  three were real gaps, closed — a superseded look-up's false alert while the newer
+  one is out, resetting to the Food tab on reopen, Back from a new food.
+- **The 98 survivors** (triage by a read-only agent, each line checked against
+  `main`'s list): 54 real gaps — 37 the same behaviour `main` left unpinned under other
+  source text — 35 equivalent, 6 killed by Playwright, 3 false survivors. Every real
+  gap has a test now, shown to pass on the code and fail on its mutants on a sandbox
+  copy; the 3 false survivors fail `foods.test.ts` by hand.
+- **One was a regression, not a gap:** a start superseded while its decoder loaded
+  returned the decoder, and `start()` then ran a decode loop after the stop. Fixed
+  red-first.
+- **Equivalent, carried:** `useAsyncAction`'s stale and `appearedAt` guards, the
+  supersede abort in guard mode and the uncleared timeout (all `main`'s, moved);
+  `useBudgetGate`'s three-part guard (#443's verdict, moved) and `warnedFor` written
+  only with a warning up; `useApiMutation`'s spend direction and its two unreachable
+  outcomes; `useFoodCatalog`'s key → `""` (the auto key, and `refreshNuxtData('')`
+  still refreshes it); `catalog.ts`'s equal-name branch (names are unique ignoring
+  case); `CheckAnswer`'s `superseded` and `cancel()`, which only reach a dead component.
+- **`useBarcodeScanner.ts` after the gap tests: 164 of 226**, with 56 survivors and 6
+  `no cov`. What is left equals `main`'s: the decoder's format list and `tryHarder`,
+  `grabFrame`'s canvas internals and `getUserMedia`'s options — killed by
+  `e2e/check.spec.ts` and `e2e/fullscreen-scanner.spec.ts` against a fake camera — and
+  the 120 ms boundary (`<` → `<=`), one decode a frame early at an exact 120.000 ms.
+- **`RecipeRollup.vue`: the cook-down bar's wiring (2) — accepted, unasserted.** The
+  share is `recipeRollup.ts`'s `cookDownPercent`, 26 of 26; what survives is passing it
+  into an `aria-hidden` width, the presentation-token category above.
 
 ### Noise removed at the source
 
