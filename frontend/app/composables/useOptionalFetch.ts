@@ -10,41 +10,32 @@ interface UseOptionalFetchOptions {
   mode?: 'guard' | 'latest'
 }
 
+/**
+ * A read whose 404 means "none yet" rather than a failure: `data` is null and
+ * so is `error`. Run ownership is `useAsyncAction`'s, so a superseded run —
+ * aborted, or overtaken by a newer one — writes nothing either way: an abort is
+ * not an application failure, and the run that caused it owns the screen.
+ */
 export function useOptionalFetch<T>(
   fetcher: (signal: AbortSignal) => Promise<T>,
   options: UseOptionalFetchOptions = {},
 ) {
-  const { mode = 'guard' } = options
   const data = ref<T | null>(null) as Ref<T | null>
   const error = ref<unknown>(null)
-  const pending = ref(false)
-
-  let inFlight: AbortController | null = null
-  // A monotonic id so only the newest run may write: an aborted request still
-  // settles, and it must not clobber fresher data with stale on its way out.
-  let latestRun = 0
+  const { pending, run } = useAsyncAction(
+    (signal: AbortSignal) => fetcher(signal),
+    { mode: options.mode ?? 'guard' },
+  )
 
   async function load() {
-    if (mode === 'guard' && pending.value) return
-    if (mode === 'latest') inFlight?.abort()
-    const controller = new AbortController()
-    inFlight = controller
-    const run = ++latestRun
-    const isStale = () => run !== latestRun
-    pending.value = true
     try {
-      const result = await fetcher(controller.signal)
-      if (isStale()) return
-      data.value = result
+      const outcome = await run()
+      if (outcome.status !== 'ok') return
+      data.value = outcome.value
       error.value = null
     } catch (caught) {
-      // An abort is not an application failure, and the run that caused it owns
-      // the screen — so a superseded run says nothing either way.
-      if (isStale()) return
       data.value = null
       error.value = isNotFound(caught) ? null : caught
-    } finally {
-      if (!isStale()) pending.value = false
     }
   }
 
