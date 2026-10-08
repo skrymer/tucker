@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { HttpResponse } from 'msw'
+import { HttpResponse, getResponse } from 'msw'
 import { ref } from 'vue'
 import { mockNuxtImport, renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen, within } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import { readBarcodes } from 'zxing-wasm/reader'
-import { food } from '~~/test/food-fixtures'
+import { food, type FoodResponse } from '~~/test/food-fixtures'
 import { foodCatalog } from '~~/test/mocks/handlers/catalog'
 import { held, http } from '~~/test/mocks/http'
 import { server } from '~~/test/mocks/node'
@@ -14,6 +14,19 @@ import {
   stubTrueFullscreen,
 } from '~~/test/page-visibility-helpers'
 import AddSheet from './AddSheet.vue'
+
+/**
+ * A catalog with [contents]. Returns a read of the Foods it holds, as the
+ * page's own re-read would see them.
+ */
+function catalogHolding(contents: Parameters<typeof foodCatalog>[0] = {}) {
+  const catalog = foodCatalog(contents)
+  server.use(...catalog)
+  return async (): Promise<FoodResponse[]> => {
+    const read = new Request('http://localhost/api/foods')
+    return (await getResponse(catalog, read))!.json()
+  }
+}
 
 // Desktop by default, as jsdom resolves it; the phone's fullscreen scanner opts in.
 const viewport = vi.hoisted(() => ({ desktop: true }))
@@ -240,27 +253,25 @@ describe('AddSheet', () => {
   })
 
   it('saves a provider candidate carrying the Tags picked for it', async () => {
-    server.use(
-      ...foodCatalog({
-        tags: [
-          { id: 7, name: 'Breakfast', foodCount: 1 },
-          { id: 9, name: 'snack', foodCount: 3 },
-        ],
-        candidates: [
-          {
-            name: 'Peanut Butter',
-            barcode: FULL_CANDIDATE_BARCODE,
-            proteinPer100g: 25.1,
-            carbsPer100g: 12.2,
-            fatPer100g: 50.3,
-            statedEnergyKcalPer100g: 600,
-            source: 'Open Food Facts',
-          },
-        ],
-      }),
-    )
-    const onSubmit = vi.fn()
-    await renderSuspended(AddSheet, { props: { open: true, onSubmit } })
+    const foodsHeld = catalogHolding({
+      tags: [
+        { id: 7, name: 'Breakfast', foodCount: 1 },
+        { id: 9, name: 'snack', foodCount: 3 },
+      ],
+      candidates: [
+        {
+          name: 'Peanut Butter',
+          barcode: FULL_CANDIDATE_BARCODE,
+          proteinPer100g: 25.1,
+          carbsPer100g: 12.2,
+          fatPer100g: 50.3,
+          statedEnergyKcalPer100g: 600,
+          source: 'Open Food Facts',
+        },
+      ],
+    })
+    const onChanged = vi.fn()
+    await renderSuspended(AddSheet, { props: { open: true, onChanged } })
     const user = userEvent.setup()
 
     await user.type(screen.getByLabelText(/barcode/i), FULL_CANDIDATE_BARCODE)
@@ -270,14 +281,17 @@ describe('AddSheet', () => {
     await user.click(await screen.findByRole('option', { name: 'snack' }))
     await user.click(screen.getByRole('button', { name: /save food/i }))
 
-    expect(onSubmit).toHaveBeenCalledWith({
-      name: 'Peanut Butter',
-      barcode: FULL_CANDIDATE_BARCODE,
-      proteinPer100g: 25.1,
-      carbsPer100g: 12.2,
-      fatPer100g: 50.3,
-      tagIds: [9],
-    })
+    await vi.waitFor(() => expect(onChanged).toHaveBeenCalledOnce())
+    expect(await foodsHeld()).toEqual([
+      expect.objectContaining({
+        name: 'Peanut Butter',
+        barcode: FULL_CANDIDATE_BARCODE,
+        proteinPer100g: 25.1,
+        carbsPer100g: 12.2,
+        fatPer100g: 50.3,
+        tags: [{ id: 9, name: 'snack' }],
+      }),
+    ])
   })
 
   it('does not look up a barcode of nothing but whitespace', async () => {
@@ -469,8 +483,9 @@ describe('AddSheet', () => {
   it('drops to a blank form carrying the barcode on a miss', async () => {
     // Neither the catalog nor the provider knows MISS_BARCODE, so it 404s.
     const MISS_BARCODE = '0000000000000'
-    const onSubmit = vi.fn()
-    await renderSuspended(AddSheet, { props: { open: true, onSubmit } })
+    const foodsHeld = catalogHolding()
+    const onChanged = vi.fn()
+    await renderSuspended(AddSheet, { props: { open: true, onChanged } })
     const user = userEvent.setup()
 
     // Typed with the whitespace a paste brings along: the code that rides to the
@@ -491,9 +506,10 @@ describe('AddSheet', () => {
     await user.click(screen.getByRole('button', { name: /save food/i }))
 
     // The typed barcode rides along to the created Food.
-    expect(onSubmit).toHaveBeenCalledWith(
+    await vi.waitFor(() => expect(onChanged).toHaveBeenCalledOnce())
+    expect(await foodsHeld()).toEqual([
       expect.objectContaining({ name: 'Hand typed', barcode: MISS_BARCODE }),
-    )
+    ])
   })
 
   it('stays quiet on a genuine miss, where the blank form is already the answer', async () => {
@@ -632,9 +648,10 @@ describe('AddSheet', () => {
     // network. A network-failed lookup must degrade to the same barcode-pre-filled
     // manual entry as a miss (ADR 0006) so the user can still add the Food.
     const OFFLINE_BARCODE = '5703333333333'
+    const foodsHeld = catalogHolding()
     offlineFor(OFFLINE_BARCODE)
-    const onSubmit = vi.fn()
-    await renderSuspended(AddSheet, { props: { open: true, onSubmit } })
+    const onChanged = vi.fn()
+    await renderSuspended(AddSheet, { props: { open: true, onChanged } })
     const user = userEvent.setup()
 
     await user.type(screen.getByLabelText(/barcode/i), OFFLINE_BARCODE)
@@ -652,9 +669,10 @@ describe('AddSheet', () => {
     await user.click(screen.getByRole('button', { name: /save food/i }))
 
     // The typed barcode rides along, so no work is lost to the failed lookup.
-    expect(onSubmit).toHaveBeenCalledWith(
+    await vi.waitFor(() => expect(onChanged).toHaveBeenCalledOnce())
+    expect(await foodsHeld()).toEqual([
       expect.objectContaining({ name: 'Hand typed', barcode: OFFLINE_BARCODE }),
-    )
+    ])
   })
 
   it('shows the add-food form when open', async () => {
@@ -667,10 +685,12 @@ describe('AddSheet', () => {
     expect(screen.getByLabelText(/fat \/100\s*g/i)).toBeVisible()
   })
 
-  it('emits the new-food payload, carrying no Tags when none were picked', async () => {
-    const onSubmit = vi.fn()
+  it('adds the food to the catalog, then closes and tells its page the Foods changed', async () => {
+    const foodsHeld = catalogHolding()
+    const onChanged = vi.fn()
+    const onUpdateOpen = vi.fn()
     await renderSuspended(AddSheet, {
-      props: { open: true, onSubmit },
+      props: { open: true, onChanged, 'onUpdate:open': onUpdateOpen },
     })
     const user = userEvent.setup()
 
@@ -680,13 +700,17 @@ describe('AddSheet', () => {
     await user.type(screen.getByLabelText(/fat \/100\s*g/i), '0.2')
     await user.click(screen.getByRole('button', { name: /save food/i }))
 
-    expect(onSubmit).toHaveBeenCalledWith({
-      name: 'Skyr',
-      proteinPer100g: 10,
-      carbsPer100g: 4,
-      fatPer100g: 0.2,
-      tagIds: [],
-    })
+    await vi.waitFor(() => expect(onChanged).toHaveBeenCalledOnce())
+    expect(onUpdateOpen).toHaveBeenCalledExactlyOnceWith(false)
+    expect(await foodsHeld()).toEqual([
+      expect.objectContaining({
+        name: 'Skyr',
+        proteinPer100g: 10,
+        carbsPer100g: 4,
+        fatPer100g: 0.2,
+        tags: [],
+      }),
+    ])
   })
 
   it('offers a Food or Recipe switch, defaulting to the Food builder', async () => {
@@ -708,6 +732,36 @@ describe('AddSheet', () => {
     // The Food form gives way to the recipe builder (its panel stays mounted so
     // in-progress input survives a tab round-trip, but is hidden).
     expect(screen.getByLabelText(/^name$/i)).not.toBeVisible()
+  })
+
+  it('adds the recipe to the catalog, then closes and tells its page the Foods changed', async () => {
+    const potato = food({ id: 2, name: 'Potato', caloriesPer100g: 77 })
+    const foodsHeld = catalogHolding({ foods: [potato] })
+    const onChanged = vi.fn()
+    const onUpdateOpen = vi.fn()
+    await renderSuspended(AddSheet, {
+      props: {
+        open: true,
+        foods: [potato],
+        onChanged,
+        'onUpdate:open': onUpdateOpen,
+      },
+    })
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole('tab', { name: /recipe/i }))
+    await user.type(screen.getByLabelText(/recipe name/i), 'Mash')
+    await user.click(screen.getByRole('button', { name: /add ingredient/i }))
+    await user.click(screen.getByRole('button', { name: /potato/i }))
+    await user.type(screen.getByLabelText(/grams/i), '500')
+    await user.click(screen.getByRole('button', { name: /^add$/i }))
+    await user.click(screen.getByRole('button', { name: /save recipe/i }))
+
+    await vi.waitFor(() => expect(onChanged).toHaveBeenCalledOnce())
+    expect(onUpdateOpen).toHaveBeenCalledExactlyOnceWith(false)
+    expect(await foodsHeld()).toContainEqual(
+      expect.objectContaining({ name: 'Mash', kind: 'RECIPE' }),
+    )
   })
 
   it('keeps the recipe draft when toggling to Food and back', async () => {

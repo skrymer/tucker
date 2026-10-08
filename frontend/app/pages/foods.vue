@@ -2,8 +2,6 @@
 import type { components } from '#open-fetch-schemas/api'
 
 type FoodResponse = components['schemas']['FoodResponse']
-type NewFood = components['schemas']['CreateFoodRequest']
-type NewRecipe = components['schemas']['CreateRecipeRequest']
 
 const { data: foods, error: foodsError, refresh } = await useApi('/api/foods')
 
@@ -24,7 +22,6 @@ const selectedFood = ref<FoodResponse | null>(null)
 // composition sheet.
 const recipeToView = ref<FoodResponse | null>(null)
 const isDesktop = useIsDesktop()
-const { $api } = useNuxtApp()
 
 // The hand-off is spent once the sheet closes; left in the URL it reopens the
 // sheet on a reload, over a catalog the User has since stocked.
@@ -33,78 +30,6 @@ watch(open, (isOpen) => {
   const { add: _spent, ...rest } = route.query
   router.replace({ query: rest })
 })
-
-/** Which opening of the Add sheet is on screen; a reopen starts a new one. */
-const sheetSession = ref(0)
-watch(open, (isOpen) => {
-  if (isOpen) sheetSession.value++
-})
-
-/**
- * A catalog save, closing the sheet it was issued from — and only that one,
- * which is what `sheetSession` is for: a save resolves whenever it resolves,
- * and on a slow connection that can be after the User gave up on it, dismissed
- * the sheet and opened a fresh one. Closing *that* sheet would take a half-typed
- * Recipe with it.
- *
- * The sheet closing is the confirmation, as the vanishing row is for a delete
- * (ADR 0005) — it closes on success alone, a failure leaving it open under a
- * Retry toast.
- */
-async function savingFromThisSheet<T>(save: Promise<T>): Promise<T> {
-  const issuedIn = sheetSession.value
-  const saved = await save
-  if (sheetSession.value === issuedIn) open.value = false
-  return saved
-}
-
-const { execute: handleSubmit } = useApiMutation(
-  (payload: NewFood) =>
-    savingFromThisSheet($api('/api/foods', { method: 'POST', body: payload })),
-  {
-    errorTitle: 'Could not add food',
-    // The catalog is re-read rather than appended to, because its order is the
-    // server's.
-    onSuccess: () => refresh(),
-  },
-)
-
-// A Recipe is a composite Food (kind = RECIPE); the backend rolls up its
-// nutrition and returns a FoodResponse, so it appears in the catalog exactly
-// like a plain Food (F9 #142).
-const { pending: recipePending, execute: handleSubmitRecipe } = useApiMutation(
-  (payload: NewRecipe) =>
-    savingFromThisSheet(
-      $api('/api/recipes', { method: 'POST', body: payload }),
-    ),
-  {
-    errorTitle: 'Could not add recipe',
-    onSuccess: () => refresh(),
-  },
-)
-
-// Editing a recipe recalibrates it in place (PUT keeps the same Food id), so
-// logged Entries still resolve and their snapshots stand — only future logs see
-// the new density (F9 #144, ADR 0019). Save closes the view sheet and refreshes
-// the catalog so the row reflects the new per-100g.
-const { pending: recipeEditPending, execute: handleEditRecipe } =
-  useApiMutation(
-    (payload: NewRecipe) => {
-      const id = recipeToView.value!.id
-      return $api('/api/recipes/{id}', {
-        method: 'PUT',
-        path: { id },
-        body: payload,
-      })
-    },
-    {
-      errorTitle: 'Could not save recipe',
-      onSuccess: () => {
-        recipeToView.value = null
-        return refresh()
-      },
-    },
-  )
 
 /**
  * Changing or clearing what a Food borrows its micronutrients from. The queue on
@@ -193,14 +118,7 @@ function foodDeleted() {
       "
     />
 
-    <AddSheet
-      v-model:open="open"
-      :foods="foods ?? []"
-      :recipe-pending="recipePending"
-      @submit="handleSubmit"
-      @submit-recipe="handleSubmitRecipe"
-      @changed="refresh"
-    />
+    <AddSheet v-model:open="open" :foods="foods ?? []" @changed="refresh" />
 
     <DeleteFoodConfirm
       :food="selectedFood"
@@ -228,9 +146,7 @@ function foodDeleted() {
     <RecipeCompositionSheet
       :recipe="recipeToView"
       :foods="foods ?? []"
-      :pending="recipeEditPending"
       @close="recipeToView = null"
-      @submit-edit="handleEditRecipe"
       @changed="refresh"
     />
   </section>

@@ -1,9 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
+import { getResponse } from 'msw'
 import { renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import { settle } from '~~/test/async-gate'
-import { food, recipe } from '~~/test/food-fixtures'
+import { food, recipe, type FoodResponse } from '~~/test/food-fixtures'
 import { foodCatalog } from '~~/test/mocks/handlers/catalog'
 import { failingRead, held } from '~~/test/mocks/http'
 import { server } from '~~/test/mocks/node'
@@ -182,53 +183,52 @@ describe('RecipeCompositionSheet', () => {
     expect(screen.getByRole('button', { name: /save changes/i })).toBeVisible()
   })
 
-  it('emits the edited payload when the builder saves', async () => {
-    server.use(...kitchen())
-    const onSubmitEdit = vi.fn()
+  it('saves the edited recipe, then tells its page the Foods changed', async () => {
+    const handlers = kitchen()
+    server.use(...handlers)
+    const onChanged = vi.fn()
     const user = userEvent.setup()
     await renderSuspended(RecipeCompositionSheet, {
-      // Keyed to the emit name (`submit-edit`), not its camelCase form.
-      props: {
-        recipe: cottagePie,
-        foods: catalog,
-        'onSubmit-edit': onSubmitEdit,
-      },
+      props: { recipe: cottagePie, foods: catalog, onChanged },
     })
 
     await screen.findByText('Mince')
     await user.click(screen.getByRole('button', { name: /edit recipe/i }))
+    const cooked = screen.getByLabelText(/cooked weight/i)
+    await user.clear(cooked)
+    await user.type(cooked, '1500')
+    await user.tab()
     await user.click(screen.getByRole('button', { name: /save changes/i }))
 
-    expect(onSubmitEdit).toHaveBeenCalledWith({
-      name: 'Cottage Pie',
-      cookedWeightG: 1400,
-      ingredients: [
-        { foodId: 1, grams: 500 },
-        { foodId: 2, grams: 900 },
-      ],
-      tagIds: [],
-    })
+    await vi.waitFor(() => expect(onChanged).toHaveBeenCalledOnce())
+    const read = new Request('http://localhost/api/foods')
+    const held: FoodResponse[] = await (await getResponse(
+      handlers,
+      read,
+    ))!.json()
+    expect(held.find((row) => row.id === cottagePie.id)).toEqual(
+      expect.objectContaining({ name: 'Cottage Pie', cookedWeightG: 1500 }),
+    )
   })
 
   it('seeds the edit builder with the Tags read beside the composition, not the catalog row', async () => {
     // The server holds Cottage Pie with "Batch cook"; the catalog row the sheet
     // was handed is an older read, still showing "dinner".
-    server.use(
-      ...foodCatalog({
-        foods: [
-          ...catalog,
-          { ...cottagePie, tags: [{ id: 7, name: 'Batch cook' }] },
-        ],
-        compositions: { 4: cottagePieLines },
-      }),
-    )
-    const onSubmitEdit = vi.fn()
+    const handlers = foodCatalog({
+      foods: [
+        ...catalog,
+        { ...cottagePie, tags: [{ id: 7, name: 'Batch cook' }] },
+      ],
+      compositions: { 4: cottagePieLines },
+    })
+    server.use(...handlers)
+    const onChanged = vi.fn()
     const user = userEvent.setup()
     await renderSuspended(RecipeCompositionSheet, {
       props: {
         recipe: { ...cottagePie, tags: [{ id: 9, name: 'dinner' }] },
         foods: catalog,
-        'onSubmit-edit': onSubmitEdit,
+        onChanged,
       },
     })
 
@@ -238,9 +238,15 @@ describe('RecipeCompositionSheet', () => {
     expect(screen.queryByText('dinner')).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /save changes/i }))
 
-    expect(onSubmitEdit).toHaveBeenCalledWith(
-      expect.objectContaining({ tagIds: [7] }),
-    )
+    await vi.waitFor(() => expect(onChanged).toHaveBeenCalledOnce())
+    const read = new Request('http://localhost/api/foods')
+    const held: FoodResponse[] = await (await getResponse(
+      handlers,
+      read,
+    ))!.json()
+    expect(held.find((row) => row.id === cottagePie.id)?.tags).toEqual([
+      { id: 7, name: 'Batch cook' },
+    ])
   })
 
   it('surfaces an error instead of an empty composition when the recipe is gone', async () => {

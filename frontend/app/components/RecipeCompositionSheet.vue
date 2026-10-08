@@ -12,18 +12,41 @@ const props = withDefaults(
     recipe: FoodResponse | null
     /** The catalog, so the edit builder can resolve its pre-filled ingredients. */
     foods?: FoodResponse[]
-    /** True while an edit save is in flight, to lock the builder's Save. */
-    pending?: boolean
   }>(),
   { foods: () => [] },
 )
 // Stryker restore all
 const emit = defineEmits<{
   close: []
-  'submit-edit': [RecipePayload]
-  /** A Food was added to the catalog from the edit builder. */
+  /** The catalog changed: the recipe was saved, or a Food was added to it. */
   changed: []
 }>()
+
+/**
+ * Editing a recipe recalibrates it in place (PUT keeps the same Food id), so
+ * logged Entries still resolve and their snapshots stand — only future logs see
+ * the new density (ADR 0019). A save closes the sheet.
+ */
+function useRecipeEdit() {
+  const { $api } = useNuxtApp()
+  const { execute, pending } = useApiMutation(
+    (id: number, payload: RecipePayload) =>
+      $api('/api/recipes/{id}', { method: 'PUT', path: { id }, body: payload }),
+    {
+      errorTitle: 'Could not save recipe',
+      onSuccess: () => {
+        emit('changed')
+        emit('close')
+      },
+    },
+  )
+  // The id is read at the tap: a Retry replays the failed attempt's arguments.
+  function save(payload: RecipePayload) {
+    if (props.recipe) execute(props.recipe.id, payload)
+  }
+  return { save, pending }
+}
+const { save: saveEdit, pending } = useRecipeEdit()
 
 /**
  * The open recipe's composition, fetched from `GET /api/recipes/{id}` (the
@@ -142,7 +165,7 @@ const round = (n: number) => Math.round(n)
         :initial="editInitial"
         :foods="foods"
         :pending="pending"
-        @submit="(payload) => emit('submit-edit', payload)"
+        @submit="saveEdit"
         @changed="emit('changed')"
       />
 
