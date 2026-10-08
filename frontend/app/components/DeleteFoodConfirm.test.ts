@@ -1,9 +1,18 @@
 import { describe, expect, it, vi } from 'vitest'
-import { renderSuspended } from '@nuxt/test-utils/runtime'
+import { getResponse } from 'msw'
+import { mockNuxtImport, renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
-import { food } from '~~/test/food-fixtures'
+import { food, type FoodResponse } from '~~/test/food-fixtures'
+import { foodCatalog } from '~~/test/mocks/handlers/catalog'
+import { server } from '~~/test/mocks/node'
 import DeleteFoodConfirm from './DeleteFoodConfirm.vue'
+
+const { toastAdd } = vi.hoisted(() => ({ toastAdd: vi.fn() }))
+mockNuxtImport('useToast', () => () => ({
+  add: toastAdd,
+  remove: vi.fn(),
+}))
 
 const oats = food({
   id: 7,
@@ -11,6 +20,23 @@ const oats = food({
   caloriesPer100g: 380,
   proteinPer100g: 13,
 })
+
+/**
+ * A catalog holding [foods], [logged] ones carrying Entries. Returns a read of
+ * the names it holds, as the page's own re-read would see them.
+ */
+function catalogHolding(foods: FoodResponse[], logged: number[] = []) {
+  const catalog = foodCatalog({ foods, logged })
+  server.use(...catalog)
+  return async () => {
+    const read = new Request('http://localhost/api/foods')
+    const held: FoodResponse[] = await (await getResponse(
+      catalog,
+      read,
+    ))!.json()
+    return held.map((row) => row.name)
+  }
+}
 
 describe('DeleteFoodConfirm', () => {
   it('asks the user to confirm deleting the named food', async () => {
@@ -49,17 +75,48 @@ describe('DeleteFoodConfirm', () => {
     ).toBeVisible()
   })
 
-  it('confirms the deletion when the user clicks Delete', async () => {
-    const onConfirm = vi.fn()
+  it('deletes the food on Delete, then tells its page the Foods changed', async () => {
+    const bread = food({ id: 8, name: 'Bread' })
+    const namesHeld = catalogHolding([oats, bread])
+    const onChanged = vi.fn()
     await renderSuspended(DeleteFoodConfirm, {
-      props: { food: oats, onConfirm },
+      props: { food: oats, onChanged },
     })
 
     await userEvent
       .setup()
       .click(screen.getByRole('button', { name: /^delete$/i }))
 
-    expect(onConfirm).toHaveBeenCalledOnce()
+    await vi.waitFor(() => expect(onChanged).toHaveBeenCalledOnce())
+    expect(await namesHeld()).toEqual(['Bread'])
+  })
+
+  it('states why a food with logged entries was not deleted, and closes', async () => {
+    const namesHeld = catalogHolding([oats], [oats.id])
+    const onCancel = vi.fn()
+    const onChanged = vi.fn()
+    await renderSuspended(DeleteFoodConfirm, {
+      props: { food: oats, onCancel, onChanged },
+    })
+
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: /^delete$/i }))
+
+    await vi.waitFor(() => expect(onCancel).toHaveBeenCalledOnce())
+    // Persistent and dismissible with no Retry: the refusal is permanent, so
+    // trying again could never succeed (ADR 0005).
+    expect(toastAdd).toHaveBeenCalledExactlyOnceWith({
+      title: 'Could not delete food',
+      description: "Oats has logged Entries and can't be deleted.",
+      color: 'error',
+      type: 'foreground',
+      duration: Infinity,
+      close: true,
+      progress: false,
+    })
+    expect(onChanged).not.toHaveBeenCalled()
+    expect(await namesHeld()).toEqual(['Oats'])
   })
 
   it('cancels the deletion when the user clicks Cancel', async () => {

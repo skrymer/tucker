@@ -25,7 +25,6 @@ const selectedFood = ref<FoodResponse | null>(null)
 const recipeToView = ref<FoodResponse | null>(null)
 const isDesktop = useIsDesktop()
 const { $api } = useNuxtApp()
-const toast = useToast()
 
 watch(open, (isOpen) => {
   if (!isOpen) {
@@ -134,36 +133,6 @@ watch(recipeToView, (recipe) => {
   if (!recipe) createdIngredient.value = null
 })
 
-const { execute: deleteFood } = useApiMutation(
-  (food: FoodResponse) =>
-    $api('/api/foods/{id}', { method: 'DELETE', path: { id: food.id } }),
-  {
-    // No success toast: the row disappears from the list.
-    errorTitle: 'Could not delete food',
-    onSuccess: () => {
-      selectedFood.value = null
-      return refresh()
-    },
-    // A Food with logged Entries can't be deleted (issue #107): the backend
-    // rejects with a 400 naming the Food. Surface that message instead of the
-    // transient "check your connection" retry toast — retrying never succeeds.
-    // Close the confirm and leave the Food in the catalog.
-    onValidationError: (message) => {
-      selectedFood.value = null
-      toast.add({
-        title: 'Could not delete food',
-        description: message,
-        color: 'error',
-        // Assertive and dismissible, but no Retry — the rejection is permanent.
-        type: 'foreground',
-        duration: Infinity,
-        close: true,
-        progress: false,
-      })
-    },
-  },
-)
-
 /**
  * Changing or clearing what a Food borrows its micronutrients from. The queue on
  * `/review` is the one way *into* a match (ADR 0027), and it stops listing a Food
@@ -186,9 +155,9 @@ function tagsSaved() {
 
 const manageTagsOpen = ref(false)
 
-function handleDeleteConfirm() {
-  const food = selectedFood.value
-  if (food) deleteFood(food)
+function foodDeleted() {
+  selectedFood.value = null
+  return refresh()
 }
 </script>
 
@@ -264,7 +233,7 @@ function handleDeleteConfirm() {
     <DeleteFoodConfirm
       :food="selectedFood"
       @cancel="selectedFood = null"
-      @confirm="handleDeleteConfirm"
+      @changed="foodDeleted"
     />
 
     <ReferenceFoodPicker
