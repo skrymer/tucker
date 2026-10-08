@@ -54,7 +54,7 @@ class FoodService(
     }
 
     private fun ownsAll(tagIds: Collection<Long>): Boolean =
-        tags.findByIds(tagIds).mapNotNull { it.id }.containsAll(tagIds)
+        tags.findByIds(tagIds).map { it.id }.containsAll(tagIds)
 
     /**
      * Remove a Food from the catalog, enforcing that a Food referenced by at least
