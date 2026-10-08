@@ -24,14 +24,54 @@ export interface EntryLogOptions {
 }
 
 /**
+ * The day an Entry is logged on, stamped at submit with the user's local today
+ * (ADR 0014): a page left open over midnight must log against the day it is now.
+ */
+function stamp<TEntry extends object>({
+  day,
+  ...entry
+}: TEntry & { day: RelativeDay }): Stamped<TEntry> {
+  const today = localToday()
+  const date = day === 'tomorrow' ? localTomorrow(today) : today
+  return { ...entry, date, clientToday: today } as Stamped<TEntry>
+}
+
+/**
+ * The kept toast's title, read off the day the Entry landed on, not the sheet,
+ * which is back on Today by the time the save answers.
+ */
+function loggedTitle(entry: EntryResponse, payload: { clientToday: string }) {
+  return entry.loggedOn > payload.clientToday
+    ? 'Logged for tomorrow'
+    : 'Entry logged'
+}
+
+/**
+ * Committing the Entry. Its toast is kept, and named from the response: the
+ * Entry lands on Today, which is never the page that logged it, so the toast is
+ * the only sign it worked (ADR 0005). One run-on line, which is all a toast has
+ * room for — Today states the same name and figures, laid out over two.
+ */
+function useEntryCommit<TPayload extends { clientToday: string }>(
+  commit: (payload: TPayload) => Promise<EntryResponse>,
+  options: EntryLogOptions,
+) {
+  return useApiMutation(commit, {
+    successTitle: loggedTitle,
+    successDescription: formatEntryName,
+    errorTitle: 'Could not save entry',
+    onSuccess: () => options.onLogged?.(),
+  })
+}
+
+/**
  * Logging one **Entry**, gated by its **Budget Projection**: `log` previews the
  * entry at the Save gesture; within budget it commits, over budget it raises a
  * `warning` instead, and the next `log` is the deliberate "Log anyway"
  * ([useBudgetGate]). `reset` clears a showing warning when the form is edited.
  *
- * The local day is stamped here, at submit, rather than carried on a form
- * (ADR 0014): a page left open over midnight must log against the day it is now,
- * and one page's two entry kinds must not disagree about which day that is.
+ * The local day is stamped here, at submit, rather than carried on a form, so
+ * one page's two entry kinds cannot disagree about which day it is.
  *
  * The two endpoints arrive as typed callers rather than as a path built from a
  * kind — a template-literal path is a string to `nuxt-open-fetch`, so deriving
@@ -48,42 +88,21 @@ function useGatedEntryLog<TEntry extends object>(
   },
   options: EntryLogOptions,
 ) {
-  type Payload = Stamped<TEntry>
-
-  const { pending: saving, execute: commit } = useApiMutation(
+  const { pending: saving, execute: commit } = useEntryCommit(
     endpoints.commit,
-    {
-      // Kept, and named from the response: the Entry lands on Today, which is
-      // never the page that logged it, so the toast is the only sign it worked
-      // (ADR 0005). One run-on line, which is all a toast has room for — Today
-      // states the same name and figures, laid out over two.
-      // Read off the day the Entry landed on, not the sheet, which is back on
-      // Today by the time the save answers.
-      successTitle: (entry, payload) =>
-        entry.loggedOn > payload.clientToday
-          ? 'Logged for tomorrow'
-          : 'Entry logged',
-      successDescription: formatEntryName,
-      errorTitle: 'Could not save entry',
-      onSuccess: () => options.onLogged?.(),
-    },
+    options,
   )
-
   const {
     warning,
     pending: projecting,
     attempt,
     reset,
-  } = useBudgetGate<Payload>({ preview: endpoints.preview, commit })
+  } = useBudgetGate({ preview: endpoints.preview, commit })
 
   return {
     warning,
     pending: computed(() => projecting.value || saving.value),
-    log: ({ day, ...entry }: TEntry & { day: RelativeDay }) => {
-      const today = localToday()
-      const date = day === 'tomorrow' ? localTomorrow(today) : today
-      return attempt({ ...entry, date, clientToday: today } as Payload)
-    },
+    log: (entry: TEntry & { day: RelativeDay }) => attempt(stamp(entry)),
     reset,
   }
 }
