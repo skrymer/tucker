@@ -257,7 +257,7 @@ describe('useBarcodeScanner', () => {
     getUserMedia.mockResolvedValue(fakeStream().stream)
     let decode: (r: unknown) => void = () => {}
     readBarcodesMock.mockReturnValueOnce(
-      new Promise((resolve) => (decode = resolve)) as ReturnType<
+      new Promise<unknown>((resolve) => (decode = resolve)) as ReturnType<
         typeof readBarcodes
       >,
     )
@@ -278,7 +278,7 @@ describe('useBarcodeScanner', () => {
     getUserMedia.mockResolvedValue(fakeStream().stream)
     let decode: (r: unknown) => void = () => {}
     readBarcodesMock.mockReturnValueOnce(
-      new Promise((resolve) => (decode = resolve)) as ReturnType<
+      new Promise<unknown>((resolve) => (decode = resolve)) as ReturnType<
         typeof readBarcodes
       >,
     )
@@ -394,6 +394,24 @@ describe('useBarcodeScanner', () => {
 
     expect(stateText()).toBe('idle')
     expect(screen.getByTestId('barcode').textContent).toBe('')
+  })
+
+  it('reads nothing once stopped after being started again mid-scan', async () => {
+    getUserMedia.mockResolvedValue(fakeStream().stream)
+    await renderSuspended(Harness)
+    primeVideoFrame()
+    await tapScan()
+    await vi.waitFor(() => expect(stateText()).toBe('scanning'))
+    await tapScan()
+    await vi.waitFor(() => expect(stateText()).toBe('scanning'))
+
+    await userEvent.setup().click(screen.getByRole('button', { name: 'stop' }))
+    const readsAtStop = readBarcodesMock.mock.calls.length
+    // Long enough for several decode ticks to have run, were any running.
+    await new Promise((resolve) => setTimeout(resolve, 400))
+
+    expect(stateText()).toBe('idle')
+    expect(readBarcodesMock.mock.calls.length).toBe(readsAtStop)
   })
 
   it('gives up when the decoder itself cannot run', async () => {

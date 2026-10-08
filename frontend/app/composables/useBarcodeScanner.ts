@@ -261,7 +261,12 @@ function useCamera(videoEl: Ref<HTMLVideoElement | null>) {
     decoding.halt()
     stream.release()
   }
-  return { ...stream, scan: decoding.scan, release }
+  /** A new start supersedes the loop reading the last one. */
+  function begin() {
+    decoding.halt()
+    return stream.begin()
+  }
+  return { ...stream, begin, scan: decoding.scan, release }
 }
 
 /** What the scanner is showing, as its surfaces read it. */
