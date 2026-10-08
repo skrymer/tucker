@@ -108,6 +108,7 @@ class UserProvisioningTest {
 
     @Test
     fun `a User is stored under the id it was built with`() {
+        users.nextId() // taken and never used, so the table's own next rowid is not this id
         val id = users.nextId()
 
         users.insertIfAbsent(User(id, "newcomer@tucker.invalid"))

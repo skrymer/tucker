@@ -19,6 +19,7 @@ class TagRepositoryTest {
 
     @Test
     fun `a Tag is stored under the id it was built with`() {
+        tags.nextId() // taken and never used, so the table's own next rowid is not this id
         val id = tags.nextId()
 
         tags.insert(Tag(id, TagName("breakfast")))
