@@ -662,7 +662,7 @@ describe('the unovis chart theming', () => {
     expect(themed, `main.css declares no .${CHART_CLASS} block`).not.toBe('')
     expect(
       readFileSync(
-        resolve(import.meta.dirname, '../components/WeightTimelineSection.vue'),
+        resolve(import.meta.dirname, '../components/WeightTimelineChart.vue'),
         'utf8',
       ),
     ).toContain(`class="${CHART_CLASS}"`)
