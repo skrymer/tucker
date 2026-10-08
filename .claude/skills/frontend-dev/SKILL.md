@@ -179,8 +179,8 @@ How the moves land in Vue (ADR 0004):
   feedback; `useAsyncAction` → the run's lifecycle and its ownership).
 - **A sheet owns the mutation it issues** — a page running every mutation for its
   sheets is Feature Envy. A single-purpose sheet closes itself once it lands; a
-  management sheet (`ManageTagsSheet`) stays open. Data more than one surface
-  shows is one keyed read the mutation refreshes directly (`useFoodCatalog` /
+  management sheet (`ManageTagsSheet`) stays open. The Food catalog is one
+  keyed read every catalog mutation refreshes directly (`useFoodCatalog` /
   `refreshFoodCatalog`); an event passed up through parents that only relay it is a
   Middle Man. `changed` is for data the page alone holds.
 - `vue/max-lines-per-block` counts comments; when it fires on a well-commented file the
