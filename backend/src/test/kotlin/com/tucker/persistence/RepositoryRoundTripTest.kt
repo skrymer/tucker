@@ -55,6 +55,15 @@ class RepositoryRoundTripTest {
     }
 
     @Test
+    fun `a Food is stored under the id it was built with`() {
+        val id = foods.nextId()
+
+        foods.insert(Food.plain(id, "Rolled oats", null, Nutrition(389.0, 16.9, 66.3, 6.9)))
+
+        assertEquals("Rolled oats", foods.findById(id)?.name)
+    }
+
+    @Test
     fun `foods are listed alphabetically ignoring case`() {
         foods.insert(Food.plain(null, "banana", null, Nutrition(89.0, 1.1, 22.8, 0.3)))
         foods.insert(Food.plain(null, "Cherry", null, Nutrition(50.0, 1.0, 12.0, 0.3)))

@@ -27,7 +27,8 @@ import org.springframework.transaction.annotation.Transactional
 class FoodRepository(
     private val dsl: DSLContext,
     private val currentUser: CurrentUser,
-) {
+    ids: IdSequence,
+) : AggregateRepository(ids, FOOD) {
 
     fun findById(id: Long): Food? =
         dsl.selectFrom(FOOD)
@@ -65,6 +66,7 @@ class FoodRepository(
     @Transactional
     fun insert(food: Food): Food {
         val rec = dsl.newRecord(FOOD)
+        rec.id = food.id?.toInt()
         rec.applyFrom(food)
         rec.store()
         dsl.linkTags(rec.id!!, food.tagIds, currentUser.ownerId)
