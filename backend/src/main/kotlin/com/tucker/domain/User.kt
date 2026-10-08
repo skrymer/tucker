@@ -19,6 +19,6 @@ package com.tucker.domain
  * assertion travel deeper before failing, and as something shaped like a 500.
  */
 data class User(
-    val id: Long?,
+    val id: Long,
     val email: String,
 )

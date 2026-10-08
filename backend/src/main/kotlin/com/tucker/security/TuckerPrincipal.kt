@@ -17,14 +17,8 @@ data class TuckerPrincipal(
     val email: String,
 ) {
     companion object {
-        /**
-         * The principal for a stored [user] — the one place that says an id-less
-         * User cannot be one.
-         */
-        fun of(user: User): TuckerPrincipal = TuckerPrincipal(
-            userId = checkNotNull(user.id) { "a User who has never been stored cannot be a principal" },
-            email = user.email,
-        )
+        /** The principal for a stored [user]. */
+        fun of(user: User): TuckerPrincipal = TuckerPrincipal(userId = user.id, email = user.email)
     }
 }
 

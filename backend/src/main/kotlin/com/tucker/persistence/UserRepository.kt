@@ -38,8 +38,8 @@ class UserRepository(private val dsl: DSLContext) {
         dsl.selectFrom(USER).orderBy(USER.ID).fetch().map { it.toUser() }
 
     /**
-     * Store [user] unless their email is already taken, and return the stored row
-     * either way.
+     * Store a User for [email] unless it is already taken, and return the stored
+     * row either way.
      *
      * `ON CONFLICT DO NOTHING` rather than an insert whose failure is caught,
      * because a read-then-write cannot be made safe by handling its own
@@ -51,13 +51,13 @@ class UserRepository(private val dsl: DSLContext) {
      * the very first request they ever made. Letting SQLite resolve the conflict
      * removes the branch instead of guarding it.
      */
-    fun insertIfAbsent(user: User): User {
+    fun insertIfAbsent(email: String): User {
         dsl.insertInto(USER)
-            .set(USER.EMAIL, user.email)
+            .set(USER.EMAIL, email)
             .onConflictDoNothing()
             .execute()
-        return checkNotNull(findByEmail(user.email)) {
-            "insertIfAbsent neither inserted ${user.email} nor found it"
+        return checkNotNull(findByEmail(email)) {
+            "insertIfAbsent neither inserted $email nor found it"
         }
     }
 

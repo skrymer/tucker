@@ -1,6 +1,5 @@
 package com.tucker.security
 
-import com.tucker.domain.User
 import com.tucker.jooq.Tables.USER
 import com.tucker.persistence.UserRepository
 import org.jooq.DSLContext
@@ -46,7 +45,6 @@ class UserProvisioningTest {
             "the first request from an admitted email should have created their User",
         )
         assertEquals(newcomer, provisioned.email)
-        assertNotNull(provisioned.id, "a provisioned User carries its surrogate key")
     }
 
     @Test
@@ -115,9 +113,9 @@ class UserProvisioningTest {
         // choreographing threads — and it is the branch that silently did not work
         // when it was an exception handler.
         val shared = "raced@tucker.invalid"
-        val winner = users.insertIfAbsent(User(id = null, email = shared))
+        val winner = users.insertIfAbsent(shared)
 
-        val loser = users.insertIfAbsent(User(id = null, email = shared))
+        val loser = users.insertIfAbsent(shared)
 
         assertEquals(winner.id, loser.id, "the loser must adopt the winner's User, not fail")
         assertEquals(shared, loser.email)
