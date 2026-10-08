@@ -1,4 +1,4 @@
-interface UseAsyncActionOptions {
+export interface UseAsyncActionOptions {
   /**
    * Re-entry policy. `guard` ignores a call while one is pending (a double-tap
    * on Save must not fire two writes); `latest` aborts the prior in-flight call
@@ -114,36 +114,19 @@ function abortAfter(controller: AbortController, timeoutMs?: number) {
 }
 
 /**
- * Classify how a run ended. Staleness wins over abort: `cancel()` aborts *and*
- * orphans, and a caller that cancelled is not waiting to be told the request
- * timed out. A superseded or aborted run's result is discarded — but which of
- * the two happened is exactly what the caller needs, so it is reported, not lost.
+ * A run that ended without its result counting, or null for one that counts.
+ * Staleness wins over abort: `cancel()` aborts *and* orphans, and a caller that
+ * cancelled is not waiting to be told the request timed out. Either way the
+ * result is discarded — but which of the two happened is exactly what the
+ * caller needs, so it is reported, not lost.
  */
-function outcomeOf<TResult>(
-  result: TResult,
+function interruption(
   stale: boolean,
   signal: AbortSignal,
-): AsyncOutcome<TResult> {
+): AsyncOutcome<never> | null {
   if (stale) return { status: 'superseded' }
   if (signal.aborted) return { status: 'timedOut' }
-  return { status: 'ok', value: result }
-}
-
-/**
- * How a run that threw ended. Only *its own* abort is a cancellation, and past
- * staleness only the timeout can have raised it: `cancel()` orphans the run. An
- * `AbortError` the action raised itself cancelled nothing — an unreachable push
- * service rejects `pushManager.subscribe()` with one — so the name is no test at
- * all, and it throws.
- */
-function failureOf(
-  error: unknown,
-  stale: boolean,
-  signal: AbortSignal,
-): AsyncOutcome<never> {
-  if (stale) return { status: 'superseded' }
-  if (signal.aborted) return { status: 'timedOut' }
-  throw error
+  return null
 }
 
 /**
@@ -158,9 +141,16 @@ async function attempt<TResult>(
 ): Promise<AsyncOutcome<TResult>> {
   try {
     const result = await Promise.race([work(), rejectOnAbort(signal)])
-    return outcomeOf(result, isStale(), signal)
+    return interruption(isStale(), signal) ?? { status: 'ok', value: result }
   } catch (error) {
-    return failureOf(error, isStale(), signal)
+    // Only *this run's own* abort is a cancellation, and past staleness only
+    // the timeout can have raised it: `cancel()` orphans the run. An
+    // `AbortError` the work raised itself cancelled nothing — an unreachable
+    // push service rejects `pushManager.subscribe()` with one — so the name is
+    // no test at all, and it throws.
+    const interrupted = interruption(isStale(), signal)
+    if (interrupted) return interrupted
+    throw error
   }
 }
 

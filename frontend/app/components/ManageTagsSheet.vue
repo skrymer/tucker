@@ -39,12 +39,7 @@ const schema = z.object({
 /** Naming a Tag before tagging anything with it; the list is re-read once it exists. */
 function useTagCreation() {
   const draft = reactive({ name: '' })
-  /** The server's refusal of the name typed, stated beside the field until it is edited. */
-  const refusal = ref<string | undefined>()
-  watch(
-    () => draft.name,
-    () => (refusal.value = undefined),
-  )
+  const refusal = useRefusalUntilEdited(() => draft.name)
   const { execute: create, pending: creating } = useApiMutation(
     (name: string) => $api('/api/tags', { method: 'POST', body: { name } }),
     {

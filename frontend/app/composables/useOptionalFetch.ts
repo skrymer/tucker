@@ -1,14 +1,11 @@
-interface UseOptionalFetchOptions {
-  /**
-   * Re-entry policy, named as `useAsyncAction`'s is. `guard` drops a load issued
-   * while one is in flight, which is right while every call asks the same
-   * question of an unchanged server; `latest` aborts the one in flight and
-   * supersedes it, for a fetcher whose question can change between calls — a
-   * re-read after a mutation is one, since the answer in flight may predate it
-   * (ADR 0007 — supersede, don't reconcile).
-   */
-  mode?: 'guard' | 'latest'
-}
+/**
+ * `useAsyncAction`'s re-entry policy. `guard`, the default, drops a load issued
+ * while one is in flight, which is right while every call asks the same
+ * question of an unchanged server; `latest` supersedes it, for a fetcher whose
+ * question can change between calls — a re-read after a mutation is one, since
+ * the answer in flight may predate it (ADR 0007 — supersede, don't reconcile).
+ */
+type UseOptionalFetchOptions = Pick<UseAsyncActionOptions, 'mode'>
 
 /**
  * A read whose 404 means "none yet" rather than a failure: `data` is null and
@@ -22,10 +19,9 @@ export function useOptionalFetch<T>(
 ) {
   const data = ref<T | null>(null) as Ref<T | null>
   const error = ref<unknown>(null)
-  const { pending, run } = useAsyncAction(
-    (signal: AbortSignal) => fetcher(signal),
-    { mode: options.mode ?? 'guard' },
-  )
+  const { pending, run } = useAsyncAction(fetcher, {
+    mode: options.mode ?? 'guard',
+  })
 
   async function load() {
     try {

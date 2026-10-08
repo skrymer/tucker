@@ -93,7 +93,10 @@ function useSettledRead(read: () => Promise<boolean>) {
   async function ready(): Promise<void> {
     // A read in flight is joined first, even once one has settled before: the
     // newest answer is the one the caller wants, and joining is free.
-    if (inFlight.value) return void (await inFlight.value)
+    if (inFlight.value) {
+      await inFlight.value
+      return
+    }
     if (settled.value) return
     await load()
   }
