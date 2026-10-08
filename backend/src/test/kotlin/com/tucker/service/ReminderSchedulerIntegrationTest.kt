@@ -9,7 +9,7 @@ import com.tucker.domain.WebPushSender
 import com.tucker.domain.Profile
 import com.tucker.domain.Sex
 import com.tucker.domain.WeeklyReview
-import com.tucker.domain.NewWeightMeasurement
+import com.tucker.domain.WeightMeasurement
 import com.tucker.domain.User
 import com.tucker.persistence.ProfileRepository
 import com.tucker.persistence.PushSubscriptionRepository
@@ -147,7 +147,7 @@ class ReminderSchedulerIntegrationTest {
             ),
         )
         subscriptions.claim(PushSubscription(endpoint, "BKey", "Auth", null))
-        weights.save(NewWeightMeasurement(today.minusDays(1), 86.0))
+        weights.save(WeightMeasurement(null, today.minusDays(1), 86.0))
         reviews.insert(
             WeeklyReview(
                 null, today.minusDays(OVERDUE_BY_DAYS), 86.0,

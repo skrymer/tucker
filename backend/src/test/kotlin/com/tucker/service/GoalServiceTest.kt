@@ -4,7 +4,7 @@ import com.tucker.api.InvalidFieldException
 import com.tucker.domain.Goal
 import com.tucker.domain.Profile
 import com.tucker.domain.Sex
-import com.tucker.domain.NewWeightMeasurement
+import com.tucker.domain.WeightMeasurement
 import com.tucker.domain.targets
 import com.tucker.persistence.GoalRepository
 import com.tucker.persistence.ProfileRepository
@@ -40,7 +40,7 @@ class GoalServiceTest {
 
     private fun seedProfileAndWeight() {
         profiles.save(Profile(Sex.MALE, LocalDate.of(1986, 5, 22), 180.0))
-        weights.save(NewWeightMeasurement.recorded(today, 86.0, today))
+        weights.save(WeightMeasurement.recorded(today, 86.0, today))
     }
 
     /**
@@ -49,7 +49,7 @@ class GoalServiceTest {
      * reading 10%, so a single low reading after this nudges the trend across.
      */
     private fun seedActiveGoalWithTrendAbove(trendAbove: Double, target: Double): Goal {
-        weights.save(NewWeightMeasurement.recorded(today.minusDays(1), trendAbove, today))
+        weights.save(WeightMeasurement.recorded(today.minusDays(1), trendAbove, today))
         return goals.insert(Goal(null, today, 90.0, target, 0.5, active = true))
     }
 
@@ -59,8 +59,8 @@ class GoalServiceTest {
         // 90 kg a fortnight back, 80 kg today. A fortnight of decay puts the live
         // trend at 82.29 while the first trend point is still 90.0 — two figures far
         // enough apart to tell apart.
-        weights.save(NewWeightMeasurement.recorded(today.minusDays(14), 90.0, today))
-        weights.save(NewWeightMeasurement.recorded(today, 80.0, today))
+        weights.save(WeightMeasurement.recorded(today.minusDays(14), 90.0, today))
+        weights.save(WeightMeasurement.recorded(today, 80.0, today))
 
         // Stamped a week before anything was weighed, so the trend stands nowhere
         // on it: the rule reverted here fell back to the earliest point, 90.0.
@@ -80,8 +80,8 @@ class GoalServiceTest {
         // The shape two timezones produce and the app really reaches: a phone east
         // of UTC stamps a weigh-in on its own today, and the Goal is then set from a
         // device still on the previous day, which ADR 0014's +/-1 tolerance admits.
-        weights.save(NewWeightMeasurement.recorded(today.minusDays(5), 90.0, today))
-        weights.save(NewWeightMeasurement.recorded(today, 80.0, today))
+        weights.save(WeightMeasurement.recorded(today.minusDays(5), 90.0, today))
+        weights.save(WeightMeasurement.recorded(today, 80.0, today))
 
         val goal = service.createGoal(today.minusDays(1), 70.0, 0.5, today.minusDays(1))
 
@@ -96,7 +96,7 @@ class GoalServiceTest {
         // Trend sits at 80.4; a 76.0 reading pulls the EWMA to ~79.96, below the 80 target.
         seedActiveGoalWithTrendAbove(trendAbove = 80.4, target = 80.0)
 
-        weights.save(NewWeightMeasurement.recorded(today, 76.0, today))
+        weights.save(WeightMeasurement.recorded(today, 76.0, today))
         service.stampReachedIfCrossed(today)
 
         assertEquals(today, goals.findActive()!!.reachedOn)
@@ -108,10 +108,10 @@ class GoalServiceTest {
         // A week of decay carries the trend to 79.14, so ADR 0008's fork on Today opens
         // now. Decayed a tenth per *reading* it would stand at 80.16 and stay above the
         // target for another two months of weighing (ADR 0032).
-        weights.save(NewWeightMeasurement.recorded(today.minusDays(7), 80.4, today))
+        weights.save(WeightMeasurement.recorded(today.minusDays(7), 80.4, today))
         goals.insert(Goal(null, today.minusDays(7), 90.0, 80.0, 0.5, active = true))
 
-        weights.save(NewWeightMeasurement.recorded(today, 78.0, today))
+        weights.save(WeightMeasurement.recorded(today, 78.0, today))
         service.stampReachedIfCrossed(today)
 
         assertEquals(today, goals.findActive()!!.reachedOn)
@@ -120,12 +120,12 @@ class GoalServiceTest {
     @Test
     fun `does not restamp reachedOn when a later measurement crosses again`() {
         seedActiveGoalWithTrendAbove(trendAbove = 80.4, target = 80.0)
-        weights.save(NewWeightMeasurement.recorded(today, 76.0, today))
+        weights.save(WeightMeasurement.recorded(today, 76.0, today))
         service.stampReachedIfCrossed(today)
 
         // A week later, still under target — the latch must keep the first date.
         val later = today.plusDays(7)
-        weights.save(NewWeightMeasurement.recorded(later, 75.0, later))
+        weights.save(WeightMeasurement.recorded(later, 75.0, later))
         service.stampReachedIfCrossed(later)
 
         assertEquals(today, goals.findActive()!!.reachedOn)

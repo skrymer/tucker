@@ -201,7 +201,7 @@ data class WeightTimeline(
         fun of(
             from: LocalDate,
             to: LocalDate,
-            measurements: List<WeightMeasurementFields>,
+            measurements: List<WeightMeasurement>,
             evidence: () -> TimelineEvidence? = { null },
         ): WeightTimeline? {
             requireWindow(from, to)

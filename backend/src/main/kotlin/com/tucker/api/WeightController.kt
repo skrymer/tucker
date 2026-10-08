@@ -1,6 +1,5 @@
 package com.tucker.api
 
-import com.tucker.domain.NewWeightMeasurement
 import com.tucker.domain.WeightMeasurement
 import com.tucker.domain.WeightTrend
 import com.tucker.persistence.WeightMeasurementRepository
@@ -50,7 +49,7 @@ data class SaveWeightRequest(
 )
 
 private fun WeightMeasurement.toResponse() = WeightMeasurementResponse(
-    id = id,
+    id = persistedId(id),
     measuredOn = measuredOn,
     weightKg = weightKg,
 )
@@ -79,7 +78,7 @@ class WeightController(
     fun save(@RequestBody request: SaveWeightRequest): WeightMeasurementResponse {
         val today = userToday.resolve(request.clientToday)
         return weightService.save(
-            NewWeightMeasurement.recorded(
+            WeightMeasurement.recorded(
                 measuredOn = request.date,
                 weightKg = request.weightKg,
                 today = today,

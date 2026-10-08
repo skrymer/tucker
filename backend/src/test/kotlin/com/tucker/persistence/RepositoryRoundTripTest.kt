@@ -13,7 +13,7 @@ import com.tucker.domain.RecipeIngredient
 import com.tucker.domain.Sex
 import com.tucker.domain.WeighedEntry
 import com.tucker.domain.WeeklyReview
-import com.tucker.domain.NewWeightMeasurement
+import com.tucker.domain.WeightMeasurement
 import com.tucker.security.WithTuckerUser
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -94,8 +94,8 @@ class RepositoryRoundTripTest {
     @Test
     fun `a weight measurement is replaced when re-saved for the same day`() {
         val date = LocalDate.of(2026, 5, 22)
-        weights.save(NewWeightMeasurement(date, 88.4))
-        weights.save(NewWeightMeasurement(date, 88.1))
+        weights.save(WeightMeasurement(null, date, 88.4))
+        weights.save(WeightMeasurement(null, date, 88.1))
 
         assertEquals(88.1, weights.findOn(date)?.weightKg)
         assertEquals(1, weights.findAll().size)
@@ -106,7 +106,7 @@ class RepositoryRoundTripTest {
         val date = LocalDate.of(2026, 5, 22)
         // 107.05 has no exact 32-bit representation: a Float round-trip degrades it to
         // 107.05000305175781. SQLite REAL is a full double, so nothing should be lost.
-        weights.save(NewWeightMeasurement(date, 107.05))
+        weights.save(WeightMeasurement(null, date, 107.05))
 
         assertEquals(107.05, weights.findOn(date)?.weightKg)
     }

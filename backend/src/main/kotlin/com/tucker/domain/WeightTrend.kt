@@ -196,7 +196,7 @@ data class WeightTrend private constructor(val points: List<Point>) {
          * reading would move it not at all. A User has one reading a day by
          * construction (`idx_weight_measurement_user_day`), so this is a caller bug.
          */
-        fun from(measurements: List<WeightMeasurementFields>): WeightTrend {
+        fun from(measurements: List<WeightMeasurement>): WeightTrend {
             val sorted = measurements.sortedBy { it.measuredOn }
             val dates = sorted.map { it.measuredOn }
             require(dates.distinct().size == dates.size) {
