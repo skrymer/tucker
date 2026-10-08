@@ -47,4 +47,26 @@ class IdSequenceMigrationTest {
             )
         }
     }
+
+    @Test
+    fun `a sequence starts past an id whose row was deleted, so the id is never handed out again`() {
+        val db = tempDir.resolve("deleted-top-row.db").toString()
+
+        migrate(db, upTo = "20")
+        connect(db).use { connection ->
+            connection.seedOwner()
+            connection.execute("INSERT INTO tag (id, user_id, name) VALUES (7, $OWNER_ID, 'Breakfast')")
+            connection.execute("INSERT INTO tag (id, user_id, name) VALUES (8, $OWNER_ID, 'Snack')")
+            connection.execute("DELETE FROM tag WHERE id = 8")
+        }
+
+        migrate(db, upTo = null)
+
+        connect(db).use { connection ->
+            assertEquals(
+                listOf("tag|8"),
+                connection.rows("SELECT name, last_id FROM id_sequence WHERE name = 'tag'"),
+            )
+        }
+    }
 }
