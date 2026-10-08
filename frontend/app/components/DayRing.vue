@@ -51,32 +51,27 @@ const { centreValue, centreLabel } = useCentre()
 // the shape each row is drawn in is stated once. Meters are capped at their
 // target, so an over-target day shows a full bar rather than an overflow.
 function useLegend() {
+  function measured(consumed: number, target: number, unit: string) {
+    return {
+      figures: formatAgainstTarget(consumed, target, unit),
+      filled: Math.min(consumed, target),
+      target,
+    }
+  }
   const rows = computed(() => [
     {
       title: 'Calories',
       swatch: isOver.value ? 'bg-error' : 'bg-primary',
       meter: isOver.value ? ('error' as const) : ('primary' as const),
       label: 'Calories against the Calorie Budget',
-      figures: formatAgainstTarget(
-        props.caloriesConsumed,
-        props.calorieBudget,
-        'kcal',
-      ),
-      filled: Math.min(props.caloriesConsumed, props.calorieBudget),
-      target: props.calorieBudget,
+      ...measured(props.caloriesConsumed, props.calorieBudget, 'kcal'),
     },
     {
       title: 'Protein',
       swatch: 'bg-secondary',
       meter: 'secondary' as const,
       label: 'Protein against the Protein Floor',
-      figures: formatAgainstTarget(
-        props.proteinConsumed,
-        props.proteinFloor,
-        'g',
-      ),
-      filled: Math.min(props.proteinConsumed, props.proteinFloor),
-      target: props.proteinFloor,
+      ...measured(props.proteinConsumed, props.proteinFloor, 'g'),
     },
   ])
   return { rows }

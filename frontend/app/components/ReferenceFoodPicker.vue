@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import type { Ref } from 'vue'
 import type { components } from '#open-fetch-schemas/api'
 
 type Candidate = components['schemas']['ReferenceFoodCandidateResponse']
+type Search = components['schemas']['ReferenceFoodSearchResponse']
 
 /** The Food a match is being claimed for — non-null opens the picker. */
 export interface Matchable {
@@ -65,6 +67,17 @@ function useCandidates(food: () => Matchable | null) {
     { immediate: true },
   )
 
+  return {
+    query,
+    ...useCandidateResults(query, data),
+    error,
+    pending,
+    search: load,
+  }
+}
+
+/** What a search came back with, and whether it came back with nothing. */
+function useCandidateResults(query: Ref<string>, data: Ref<Search | null>) {
   const candidates = computed<Candidate[]>(() => data.value?.candidates ?? [])
   const suggestedId = computed(() => data.value?.suggestedId ?? null)
   // Read off `data` rather than off `candidates`, whose `?? []` cannot tell a
@@ -75,15 +88,7 @@ function useCandidates(food: () => Matchable | null) {
   const foundNothing = computed(
     () => query.value.trim().length > 0 && data.value?.candidates.length === 0,
   )
-  return {
-    query,
-    candidates,
-    suggestedId,
-    foundNothing,
-    error,
-    pending,
-    search: load,
-  }
+  return { candidates, suggestedId, foundNothing }
 }
 
 const { query, candidates, suggestedId, foundNothing, error, pending, search } =

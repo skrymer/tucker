@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { Ref } from 'vue'
 import type { components } from '#open-fetch-schemas/api'
 
 type HeldTag = components['schemas']['FoodTagResponse']
@@ -23,18 +24,18 @@ function useTagOptions() {
   )
 }
 
+/** Adds a Tag to the picked ones, once. */
+function hold(tag: HeldTag) {
+  if (picked.value.some((held) => held.id === tag.id)) return
+  picked.value = [...picked.value, { id: tag.id, name: tag.name }]
+}
+
 /**
- * Picking from the list, and typing a name. A typed name becomes a Tag at once, so
- * the picker only ever holds ids — and the server, not this picker, decides whether
- * it names a Tag the User already has.
+ * Creating Tags from typed names, one at a time. Names wait their turn rather
+ * than being dropped while one is created; the head is the one in flight, and
+ * stays until it lands.
  */
-function useTagEntry() {
-  const searchTerm = ref('')
-  const refusal = ref<string | null>(null)
-  // Closed on every pick: a multi-select left open covers what sits below it.
-  const menuOpen = ref(false)
-  // Names wait their turn rather than being dropped while one is created; the
-  // head is the one in flight, and stays until it lands.
+function useTagCreation(searchTerm: Ref<string>, refusal: Ref<string | null>) {
   const queued = ref<string[]>([])
   // The name last sent — by the queue or a toast's Retry — so a refused one can be
   // put back to correct.
@@ -45,9 +46,7 @@ function useTagEntry() {
       lastSent = name
       // A picker gone by the time this lands cannot emit, so the Tag never reaches
       // whatever replaced it — which is why a consumer keys it on what it is picking for.
-      const tag = await $api('/api/tags', { method: 'POST', body: { name } })
-      if (picked.value.some((held) => held.id === tag.id)) return
-      picked.value = [...picked.value, { id: tag.id, name: tag.name }]
+      hold(await $api('/api/tags', { method: 'POST', body: { name } }))
     },
     {
       errorTitle: 'Could not add tag',
@@ -63,14 +62,6 @@ function useTagEntry() {
   )
   watchEffect(() => (creating.value = queued.value.length > 0))
 
-  async function enter(name: string) {
-    refusal.value = null
-    // Emptied as it is sent, so a next name can be typed while this one is created.
-    searchTerm.value = ''
-    menuOpen.value = false
-    return send(name)
-  }
-
   /** Every create goes through here, one at a time. */
   async function send(name: string) {
     queued.value.push(name)
@@ -79,6 +70,28 @@ function useTagEntry() {
       await create(queued.value[0]!)
       queued.value.shift()
     }
+  }
+  return send
+}
+
+/**
+ * Picking from the list, and typing a name. A typed name becomes a Tag at once, so
+ * the picker only ever holds ids — and the server, not this picker, decides whether
+ * it names a Tag the User already has.
+ */
+function useTagEntry() {
+  const searchTerm = ref('')
+  const refusal = ref<string | null>(null)
+  // Closed on every pick: a multi-select left open covers what sits below it.
+  const menuOpen = ref(false)
+  const send = useTagCreation(searchTerm, refusal)
+
+  async function enter(name: string) {
+    refusal.value = null
+    // Emptied as it is sent, so a next name can be typed while this one is created.
+    searchTerm.value = ''
+    menuOpen.value = false
+    return send(name)
   }
 
   // True for the length of one Enter pressed on a typed name: a pick it causes

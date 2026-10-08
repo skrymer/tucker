@@ -104,18 +104,33 @@ function useTagDeletion() {
 
 const { deleteTag, deleting } = useTagDeletion()
 
+/** The server's refusal of a name, stated beside the field until it is edited. */
+function useRefusalUntilEdited(name: () => string) {
+  const refusal = ref<string | undefined>()
+  watch(name, () => (refusal.value = undefined))
+  return refusal
+}
+
+/**
+ * The other Tag the name typed already belongs to, in any case — so the rename is
+ * a merge into it. A preview over the Tags fetched; the server decides (ADR 0002).
+ */
+function useMergeTarget(name: () => string) {
+  return computed(() => {
+    const typed = tagNameKey(name())
+    return tags.value?.find(
+      (tag) => tag.id !== asking.value?.id && tagNameKey(tag.name) === typed,
+    )
+  })
+}
+
 /**
  * Renaming a Tag from its row. Every Food carrying it follows, so the page is told
  * its Foods changed.
  */
 function useTagRename() {
   const renameDraft = reactive({ name: '' })
-  /** The server's refusal of the new name, stated beside the field until it is edited. */
-  const renameRefusal = ref<string | undefined>()
-  watch(
-    () => renameDraft.name,
-    () => (renameRefusal.value = undefined),
-  )
+  const renameRefusal = useRefusalUntilEdited(() => renameDraft.name)
   function startRename(tag: { id: number; name: string }) {
     ask(tag.id, 'rename')
     renameDraft.name = tag.name
@@ -134,21 +149,11 @@ function useTagRename() {
       },
     },
   )
-  /**
-   * The other Tag the name typed already belongs to, in any case — so the rename is
-   * a merge into it. A preview over the Tags fetched; the server decides (ADR 0002).
-   */
-  const mergesInto = computed(() => {
-    const typed = tagNameKey(renameDraft.name)
-    return tags.value?.find(
-      (tag) => tag.id !== asking.value?.id && tagNameKey(tag.name) === typed,
-    )
-  })
   return {
     renameDraft,
     renameRefusal,
     renamePending,
-    mergesInto,
+    mergesInto: useMergeTarget(() => renameDraft.name),
     startRename,
     submitRename: (id: number) => rename(id, renameDraft.name),
   }
