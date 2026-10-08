@@ -189,6 +189,7 @@ const { viewfinderCaption, cameraAlert } = useScanCopy(scanState)
         <CheckAnswer
           v-else-if="scannedBarcode"
           :barcode="scannedBarcode"
+          :today="today"
           @scan-again="startFromTap"
         />
 

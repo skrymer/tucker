@@ -10,7 +10,8 @@ type CheckFailure =
   | { kind: 'incomplete' }
   | { kind: 'inconclusive'; barcode: string }
 
-const props = defineProps<{ barcode: string }>()
+/** `today` is the day the page's summary was read for, so both agree. */
+const props = defineProps<{ barcode: string; today: string }>()
 // Stryker disable next-line all: a compiler macro must stay a top-level statement
 defineEmits<{ scanAgain: [] }>()
 
@@ -33,12 +34,11 @@ function failureFor(error: unknown, barcode: string): CheckFailure {
  */
 function useCheckRequest() {
   const { $api } = useNuxtApp()
-  const today = localToday()
   return useAsyncAction(
     (signal: AbortSignal, code: string) =>
       $api('/api/check/{barcode}', {
         path: { barcode: code },
-        query: { clientToday: today },
+        query: { clientToday: props.today },
         // A barcode's resolution is dynamic — a product saved to the catalog,
         // or a Budget moved by a Weekly Review, changes the answer — so never
         // serve one from the browser cache.

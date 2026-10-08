@@ -154,6 +154,26 @@ describe('/check with a calorie budget', () => {
     expect(screen.queryByText("Couldn't look that up")).not.toBeInTheDocument()
   })
 
+  it('checks a product against the day the page opened on, after midnight has passed', async () => {
+    vi.useFakeTimers({ toFake: ['Date'], shouldAdvanceTime: true })
+    try {
+      vi.setSystemTime(new Date(2026, 9, 8, 23, 59))
+      server.use(checkOnlyOn('2026-10-08'))
+      await renderSuspended(Check)
+
+      // The page still shows that day's summary, so its Check must match it.
+      vi.setSystemTime(new Date(2026, 9, 9, 0, 1))
+      scan('3017620422003')
+
+      expect(await screen.findByText('Nutella')).toBeVisible()
+      expect(
+        screen.queryByText("Couldn't look that up"),
+      ).not.toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('states the product in sentence case however the label shouts it', async () => {
     // A product whose label shouts its own name, as many do.
     lookupOf('5004444444444', ({ response }) =>
