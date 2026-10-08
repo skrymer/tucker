@@ -177,8 +177,9 @@ How the moves land in Vue (ADR 0004):
   pure step becomes a module-level function. A composable's inner functions count toward
   its length, so a factory splits by concern (`useApiMutation` → its error toast and its
   feedback; `useAsyncAction` → the run's lifecycle and its ownership).
-- **A sheet owns the mutation it issues, and closes itself once it lands** — a page
-  running every mutation for its sheets is Feature Envy. Data more than one surface
+- **A sheet owns the mutation it issues** — a page running every mutation for its
+  sheets is Feature Envy. A single-purpose sheet closes itself once it lands; a
+  management sheet (`ManageTagsSheet`) stays open. Data more than one surface
   shows is one keyed read the mutation refreshes directly (`useFoodCatalog` /
   `refreshFoodCatalog`); an event passed up through parents that only relay it is a
   Middle Man. `changed` is for data the page alone holds.

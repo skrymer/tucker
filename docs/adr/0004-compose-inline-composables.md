@@ -47,9 +47,10 @@ consumer justifies the move.
   composable to `app/composables/`: each composable moves with the one child that
   uses it and stays inline there, so size never becomes a second reason to
   extract. A long inline composable is split into smaller inline ones.
-- A sheet or dialog that issues a mutation **owns** it, and closes itself once
-  it lands — the page does not run every mutation on a sheet's behalf and thread
-  the result back down.
+- A sheet or dialog that issues a mutation **owns** it — the page does not run
+  every mutation on a sheet's behalf and thread the result back down. A sheet
+  whose whole job is that one mutation closes itself once it lands; a sheet that
+  manages several (`ManageTagsSheet`'s create, rename and delete) stays open.
 - Data more than one surface shows is **one keyed read** they share, and a
   mutation re-reads it directly rather than emitting an event for each parent to
   pass up: the Food catalog is `useFoodCatalog`, re-read by `refreshFoodCatalog`.
