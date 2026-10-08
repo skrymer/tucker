@@ -146,8 +146,8 @@ needs it.
 4. **`/check-adrs` — honour the recorded decisions.** Verify the diff against the
    ADRs in `docs/adr/` and the ubiquitous language in `CONTEXT.md`. A FAIL is
    either a code fix or a same-PR doc fix — the user's call, surfaced.
-   `[[prefer-source-fix-over-adr]]` picks a fix's form, never its content: an amended
-   ADR transcribes the ruling and adds no clause (#411 added one; gate 5 caught it).
+   `[[prefer-source-fix-over-adr]]` picks a fix's form, never its content: copy the
+   ruling from the issue, diff the ADR against it, pin it clause by clause ([how](references/rationale.md#transcribing-a-ruling)).
 
    **Launch it in the same message as gate 3**, as a background agent briefed to
    follow `.claude/skills/check-adrs/SKILL.md` — that is this gate's standard form,
@@ -258,9 +258,9 @@ needs it.
      so gate 6's own line in the report is what makes it visible.
 
    **Reading the transcripts.** The paths are the `output_file`s you recorded above.
-   Failing that they are in `/tmp/claude-*/<project-slug>/<session-id>/tasks/`, where
-   the **symlinks** are agent transcripts and the regular `.output` files are
-   backgrounded shell output. Either way a transcript runs to hundreds of KB of JSONL
+   Failing that, the **symlinks** in `/tmp/claude-*/<slug>/<session>/tasks/` — check
+   where one points before relaunching an agent: after a session switch the handback
+   lands in the new session's copy ([how](references/rationale.md#transcripts-across-sessions)). A transcript runs to hundreds of KB of JSONL
    and occasionally past 4 MB, so read it with these rather than opening it:
 
    ```bash
@@ -415,9 +415,9 @@ losing a finding:
 Only once all seven are green (or every non-green item is fixed or explicitly
 justified):
 
-1. Run the fast suites once more if any gate changed code — backend
-   `./gradlew detekt build`, frontend `pnpm lint && pnpm test` — so the commit is
-   green.
+1. Run the fast suites once more if any gate changed code — backend `./gradlew
+   detekt build`, frontend `pnpm lint && pnpm typecheck && pnpm test`, also before
+   each gate's own commit (gate 2 commits tests; #454's broke typecheck unseen).
 
    **Between gates, run the touched spec, not the suite.** `pnpm test --run
    <file>` and `pnpm test:e2e <spec>` after each gate's fixes; the **full**

@@ -8,6 +8,9 @@ for when a gate's order or overlap looks arbitrary and you are tempted to change
 - Citations
 - Ablation
 - What the fan-out costs
+- Rendering a diagram
+- Transcribing a ruling
+- Transcripts across sessions
 
 ## The design notes
 
@@ -103,3 +106,30 @@ is `{"executablePath": "<~/.cache/ms-playwright/chromium-*/chrome-linux64/chrome
 `awk` from the heading to its closing fence. Don't spend screenshots on GitHub's
 preview of a non-C4 block: its mermaid frame froze `Page.captureScreenshot` in two
 tabs (#444).
+
+## Transcribing a ruling
+
+An amended ADR, a narrowed criterion and the test that pins a ruling all carry the
+user's words, clause by clause, and nothing more. Copy the ruling's sentence from the
+issue's Rulings section, then diff the ADR sentence against it before committing; a
+paraphrase is where a clause slips in. Give the pinning test one assertion per clause,
+each red-proofed with a mutant that implements the alternative the user rejected —
+main's own behaviour — not a proxy, which can come back equivalent in the scenario.
+
+Measured: #411 added a clause to an amended ADR. #454 did it twice more — an
+amendment that contradicted a sheet in the same diff ("closes itself once it lands"
+against ManageTagsSheet), and one generalising "the Food catalog is one keyed read"
+into "data more than one surface shows" — and its pinning test asserted only "not
+selected" of a ruling that said "created and listed"; gate 5 rejected all three. Its
+first mutant (`v-if step !== 'grams'`) came back equivalent, and its "row edit
+untouched" assertion was never told apart by any mutant: a guard, not a pin.
+
+## Transcripts across sessions
+
+A transcript lives at `~/.claude/projects/<slug>/<session>/subagents/agent-<id>.jsonl`;
+the `tasks/<id>.output` symlink in `/tmp` points at it. After a session switch the
+harness repoints an earlier agent's symlink to the *new* session's copy, and that is
+where its handback lands — the old copy ends before it. Record that path in the pack,
+and check where the symlink points before relaunching an agent that "never reported":
+#454 relaunched check-adrs one second after the original's handback had landed there.
+

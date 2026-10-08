@@ -60,7 +60,13 @@ handlers free of app auto-imports (`localToday()` etc.) — pass such values in.
    asserts the page after the re-read — or, where the page shows the response itself (a
    toast naming what was logged), derives that response from the body (`entryLog`
    scales a Food's per-100 g figures by the grams sent), so what the User reads proves
-   what was sent. A fixed reply proves nothing about the body. A field the page sends
+   what was sent. A fixed reply proves nothing about the body. A component that shows
+   no re-read itself — a sheet that closes once its mutation lands — renders beside a
+   surface that does (`besideCatalog` / `catalogOnceReread`, `test/catalog-host.ts`),
+   and never asserts the handler's stored state through `getResponse`: #454's sheet
+   tests did, and stayed green with the re-read deleted. A keyed read (`useFoodCatalog`)
+   outlives a test, so an earlier test's late refresh lands in the next one; the host
+   re-reads on mount and counts only its own test's re-reads. A field the page sends
    and never shows (a zone, a push device) is accepted only when it is the right one
    (`savedProfile`'s `timezone`, `pushServiceFor`). A windowed read
    (`?from=&to=`) is answered per width and only for a window ending on the day the
@@ -137,7 +143,10 @@ handlers free of app auto-imports (`localToday()` etc.) — pass such values in.
   compares bytes).
 - Before deleting a request count, name the client regression it caught (a retry, a
   missing re-ask, a second read) and check the replacement shows that one on
-  screen: a handler break cannot, since it changes the server, not the client.
+  screen: a handler break cannot, since it changes the server, not the client. The
+  same before replacing an exact-payload assertion with a stateful handler's re-read:
+  name what the handler normalises away (duplicate ids, order) and assert that case on
+  screen — #454 lost 7 TagPicker and recipe kills that way.
 - Run green, then break each handler once and save the output naming each red test.
 
 Why the shim exists, the fixture's internals and every trap measured so far:
