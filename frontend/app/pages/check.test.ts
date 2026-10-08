@@ -476,6 +476,21 @@ describe('/check with a calorie budget', () => {
     await vi.waitFor(() => expect(scanner.stop).toHaveBeenCalledOnce())
   })
 
+  it('keeps an answer on screen when the User comes back to the app', async () => {
+    await renderSuspended(Check)
+    scan('3017620422003')
+    expect(await screen.findByText('Nutella')).toBeVisible()
+    scanner.start.mockClear()
+
+    setVisibility('hidden')
+    scanner.interrupted.value = true
+    await nextTick()
+    setVisibility('visible')
+
+    expect(scanner.start).not.toHaveBeenCalled()
+    expect(screen.getByText('Nutella')).toBeVisible()
+  })
+
   it('clears the previous result and restarts the camera on Scan another', async () => {
     await renderSuspended(Check)
 

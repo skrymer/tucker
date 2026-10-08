@@ -199,6 +199,34 @@ describe('FoodTagsSheet', () => {
     ).not.toBeInTheDocument()
   })
 
+  it('shows one chip for a typed name that turns out to be a Tag the Food carries', async () => {
+    catalogHolding([oats], breakfast)
+    server.use(http.get('/api/tags', ({ response }) => response(200).json([])))
+    await renderSuspended(FoodTagsSheet, { props: { food: oats } })
+    const user = userEvent.setup()
+
+    await user.type(screen.getByRole('combobox'), 'BREAKFAST')
+    await user.click(await screen.findByRole('option', { name: /BREAKFAST/ }))
+
+    await vi.waitFor(() => expect(screen.getByRole('combobox')).toHaveValue(''))
+    expect(screen.getAllByText('Breakfast')).toHaveLength(1)
+  })
+
+  it('shows each Tag once after one more is picked from the list', async () => {
+    catalogHolding([oats], breakfast, snack)
+    await renderSuspended(FoodTagsSheet, { props: { food: oats } })
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole('combobox'))
+    await user.click(await screen.findByRole('option', { name: 'snack' }))
+
+    await vi.waitFor(() =>
+      expect(screen.queryByRole('listbox')).not.toBeInTheDocument(),
+    )
+    expect(screen.getAllByText('Breakfast')).toHaveLength(1)
+    expect(screen.getAllByText('snack')).toHaveLength(1)
+  })
+
   it('keeps one Tag when a typed name turns out to be one the Food already carries', async () => {
     // The list the sheet opened on may be stale; the server is what knows that
     // "BREAKFAST" is the User's "Breakfast", and answers with it (ADR 0033).

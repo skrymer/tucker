@@ -253,6 +253,62 @@ describe('RecipeBuilder', () => {
     expect(row).toHaveTextContent('340 kcal')
   })
 
+  it('counts a cooked weight stepped with the keyboard as weighed', async () => {
+    const user = userEvent.setup()
+    await renderSuspended(RecipeBuilder, { props: { foods: sampleFoods } })
+    await addBeefMince(user)
+
+    await user.click(screen.getByLabelText(/cooked weight/i))
+    await user.keyboard('{ArrowUp}')
+    await user.tab()
+    await addIngredient(user, /potato/i, '100')
+
+    expect(screen.queryByText(/^estimated$/i)).not.toBeInTheDocument()
+    expect(screen.getByLabelText(/cooked weight/i)).toHaveDisplayValue('310')
+  })
+
+  it('reweighs the second ingredient in place', async () => {
+    const user = userEvent.setup()
+    await renderSuspended(RecipeBuilder, { props: { foods: sampleFoods } })
+    await addBeefMince(user)
+    await addIngredient(user, /potato/i, '100')
+
+    await user.click(screen.getByRole('button', { name: /potato/i }))
+    await user.clear(screen.getByLabelText(/grams/i))
+    await user.type(screen.getByLabelText(/grams/i), '400')
+    await user.click(screen.getByRole('button', { name: /update/i }))
+
+    expect(screen.getAllByRole('button', { name: /potato/i })).toHaveLength(1)
+    expect(screen.getByRole('button', { name: /potato/i })).toHaveTextContent(
+      '400 g',
+    )
+  })
+
+  it('asks for an ingredient again once the last one is removed', async () => {
+    const user = userEvent.setup()
+    await renderSuspended(RecipeBuilder, { props: { foods: sampleFoods } })
+    await addBeefMince(user)
+
+    await user.click(screen.getByRole('button', { name: /beef mince/i }))
+    await user.click(screen.getByRole('button', { name: /remove/i }))
+
+    expect(screen.getByText('Add at least one ingredient.')).toBeVisible()
+  })
+
+  it('goes back from adding a new food to the list of foods', async () => {
+    const user = userEvent.setup()
+    await renderSuspended(RecipeBuilder, { props: { foods: sampleFoods } })
+    await user.click(screen.getByRole('button', { name: /add ingredient/i }))
+    await user.click(screen.getByRole('button', { name: /add a new food/i }))
+
+    await user.click(screen.getByRole('button', { name: /back/i }))
+
+    expect(screen.getByRole('button', { name: /beef mince/i })).toBeVisible()
+    expect(
+      screen.getByRole('button', { name: /add a new food/i }),
+    ).toBeVisible()
+  })
+
   it('removes an ingredient row', async () => {
     const user = userEvent.setup()
     await renderSuspended(RecipeBuilder, { props: { foods: sampleFoods } })

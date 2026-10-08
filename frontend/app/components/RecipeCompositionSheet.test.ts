@@ -212,6 +212,25 @@ describe('RecipeCompositionSheet', () => {
     )
   })
 
+  it('seeds the edit builder with each ingredient under its own food', async () => {
+    server.use(...kitchen())
+    const user = userEvent.setup()
+    await renderSuspended(RecipeCompositionSheet, {
+      props: { recipe: cottagePie, foods: catalog },
+    })
+
+    await user.click(
+      await screen.findByRole('button', { name: /edit recipe/i }),
+    )
+
+    expect(screen.getByRole('button', { name: /mince/i })).toHaveTextContent(
+      '500 g',
+    )
+    expect(screen.getByRole('button', { name: /potato/i })).toHaveTextContent(
+      '900 g',
+    )
+  })
+
   it('shows the edited recipe wherever the catalog is shown', async () => {
     server.use(...kitchen())
     const page = defineComponent({

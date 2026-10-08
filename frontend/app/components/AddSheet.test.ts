@@ -376,6 +376,27 @@ describe('AddSheet', () => {
     expect(screen.getByDisplayValue('Skyr Natural')).toBeVisible()
   })
 
+  it('says nothing about a look-up a newer one replaced while the newer one is out', async () => {
+    holdSlowCandidate()
+    const newer = held('get', '/api/foods/barcode/{barcode}', (request) =>
+      request.url.endsWith(`/${CANDIDATE_BARCODE}`),
+    )
+    server.use(newer.handler)
+    await renderSuspended(AddSheet, { props: { open: true } })
+    const user = userEvent.setup()
+    const input = screen.getByLabelText(/barcode/i)
+    await user.type(input, `${SLOW_CANDIDATE_BARCODE}{Enter}`)
+    await user.clear(input)
+    await user.type(input, `${CANDIDATE_BARCODE}{Enter}`)
+
+    await newer.arrived
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(screen.queryByText(/couldn't look that up/i)).not.toBeInTheDocument()
+    newer.release()
+    expect(await screen.findByDisplayValue('Skyr Natural')).toBeVisible()
+  })
+
   it('notes that the form was pre-filled from the provider after a candidate lookup', async () => {
     await renderSuspended(AddSheet, { props: { open: true } })
     const user = userEvent.setup()
@@ -482,6 +503,21 @@ describe('AddSheet', () => {
     ).not.toBeInTheDocument()
     expect(screen.getByLabelText(/barcode/i)).toHaveValue('')
     expect(screen.queryByText(/couldn't look that up/i)).not.toBeInTheDocument()
+  })
+
+  it('opens on the Food builder again after closing on the Recipe one', async () => {
+    const { rerender } = await renderSuspended(AddSheet, {
+      props: { open: true, foods: [] },
+    })
+    await userEvent.setup().click(screen.getByRole('tab', { name: /recipe/i }))
+
+    await rerender({ open: false })
+    await rerender({ open: true })
+
+    expect(screen.getByRole('tab', { name: /food/i })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
   })
 
   it('drops to a blank form carrying the barcode on a miss', async () => {

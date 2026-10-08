@@ -74,6 +74,22 @@ describe('ReminderSettings', () => {
     expect(screen.getByRole('radio', { name: /^male$/i })).toBeChecked()
   })
 
+  it('keeps the hour the User chose when reminders are turned on', async () => {
+    setupWebPush({ supported: true, created: thisDevice })
+    const evening = { ...profile, reminderHour: 20 }
+    server.use(
+      ...pushServiceFor({ ...thisDevice.toJSON(), label: UA.desktop }),
+      ...savedProfile(evening, { timezone: 'Europe/Copenhagen' }).handlers,
+    )
+    const settings = await render({ reminderHour: 20, remindersEnabled: false })
+
+    await userEvent.click(reminderSwitch())
+    await vi.waitFor(() => expect(reminderSwitch()).toBeChecked())
+
+    await reopenProfile(settings)
+    expect(screen.getByLabelText(/reminder hour/i)).toHaveValue(20)
+  })
+
   it('sends the local day with the reminder write, which replaces the whole Profile', async () => {
     // The write carries the stored birth date back, and the backend judges it
     // against "today" — so a caller that omits the client's day leaves the
