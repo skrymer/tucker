@@ -1,5 +1,6 @@
 <script setup lang="ts">
 // The Weight Timeline's key: which stroke is which, said in words.
+// Stryker disable next-line all: a compiler macro must stay a top-level statement
 defineProps<{
   /** Whether a plan is drawn. */
   plan: boolean

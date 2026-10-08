@@ -11,6 +11,7 @@ type CheckFailure =
   | { kind: 'inconclusive'; barcode: string }
 
 const props = defineProps<{ barcode: string }>()
+// Stryker disable next-line all: a compiler macro must stay a top-level statement
 defineEmits<{ scanAgain: [] }>()
 
 /**
