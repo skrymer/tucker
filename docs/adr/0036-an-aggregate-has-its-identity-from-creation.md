@@ -24,8 +24,10 @@ domain, and the domain stays free of persistence: it receives a number, not a
 generator.
 
 `nextId()` reads a per-table row of an `id_sequence` table — incremented with
-`UPDATE … RETURNING` inside the caller's transaction, and seeded from each table's
-current `max(id)` — and the insert writes the id explicitly. SQLite accepts an
+`UPDATE … RETURNING` inside the caller's transaction, and seeded past every id the
+table has handed out: the larger of its `max(id)` and its `sqlite_sequence` entry,
+since `AUTOINCREMENT` never reissued a deleted row's id — and the insert writes the
+id explicitly. SQLite accepts an
 explicit value in an `INTEGER PRIMARY KEY` column, `AUTOINCREMENT` or not, so no
 primary or foreign key changes, ids stay `Long`, and the wire, the OpenAPI spec and
 the frontend do not move. An id taken and then not used (a refused request, or an
