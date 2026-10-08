@@ -35,7 +35,7 @@ class EntryPreviewApiTest {
     private fun seedBudget(budgetKcal: Double, floorG: Double = 150.0, on: LocalDate = date) {
         reviews.insert(
             WeeklyReview(
-                id = null,
+                id = reviews.nextId(),
                 reviewedOn = on,
                 trendWeightKg = 86.0,
                 intakeTargets = IntakeTargets(

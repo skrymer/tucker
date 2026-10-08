@@ -13,7 +13,7 @@ import java.time.LocalDate
  * empty log is one the adaptive correction can never bring back to the truth.
  */
 data class WeeklyReview(
-    val id: Long?,
+    val id: Long,
     val reviewedOn: LocalDate,
     val trendWeightKg: Double,
     val intakeTargets: IntakeTargets?,

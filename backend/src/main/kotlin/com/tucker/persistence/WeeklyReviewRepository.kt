@@ -105,13 +105,13 @@ class WeeklyReviewRepository(
 
     fun insert(review: WeeklyReview): WeeklyReview {
         val rec = dsl.newRecord(WEEKLY_REVIEW)
-        rec.id = review.id?.toInt()
+        rec.id = review.id.toInt()
         rec.userId = currentUser.ownerId
         rec.reviewedOn = review.reviewedOn.toString()
         rec.trendWeightKg = review.trendWeightKg
         rec.writeTargets(review.intakeTargets)
         rec.store()
-        return review.copy(id = rec.id!!.toLong())
+        return review
     }
 }
 

@@ -42,7 +42,7 @@ class SummaryApiTest {
     ): WeeklyReview =
         reviews.insert(
             WeeklyReview(
-                id = null,
+                id = reviews.nextId(),
                 reviewedOn = on,
                 trendWeightKg = 86.0,
                 intakeTargets = IntakeTargets(
@@ -343,7 +343,7 @@ class SummaryApiTest {
         // Last week's review was run with Calorie Tracking off, so it has no Budget
         // to have moved from. A figure invented here would claim the Budget jumped
         // from nothing the moment the User came back.
-        reviews.insert(WeeklyReview(id = null, reviewedOn = gap, trendWeightKg = 86.0, intakeTargets = null))
+        reviews.insert(WeeklyReview(reviews.nextId(), reviewedOn = gap, trendWeightKg = 86.0, intakeTargets = null))
         seedReview(resumed, budgetKcal = 1800.0, floorG = 168.0)
 
         mockMvc.get("/api/summary") {

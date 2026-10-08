@@ -116,7 +116,7 @@ class WeeklyReviewService(
 
         return reviews.insert(
             WeeklyReview(
-                id = null,
+                id = reviews.nextId(),
                 reviewedOn = on,
                 trendWeightKg = trendWeightKg,
                 // The review's second job, and the only optional one: with Calorie

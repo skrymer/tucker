@@ -28,7 +28,7 @@ class WeightTimelineTest {
 
     /** A review dated [on] carrying [budgetKcal] as that week's Calorie Budget. */
     private fun review(on: LocalDate, budgetKcal: Double) = WeeklyReview(
-        id = null,
+        id = 1,
         reviewedOn = on,
         trendWeightKg = 80.0,
         intakeTargets = IntakeTargets(
@@ -138,7 +138,7 @@ class WeightTimelineTest {
             caloriesByDay = emptyMap(),
             reviews = listOf(
                 review(from, budgetKcal = 1800.0),
-                WeeklyReview(id = null, reviewedOn = trackingOff, trendWeightKg = 80.0, intakeTargets = null),
+                WeeklyReview(id = 2, reviewedOn = trackingOff, trendWeightKg = 80.0, intakeTargets = null),
             ),
         )
 

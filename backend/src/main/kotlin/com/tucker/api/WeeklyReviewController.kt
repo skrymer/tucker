@@ -44,7 +44,7 @@ data class IntakeTargetsResponse(
 )
 
 private fun WeeklyReview.toResponse() = WeeklyReviewResponse(
-    id = persistedId(id),
+    id = id,
     reviewedOn = reviewedOn,
     trendWeightKg = trendWeightKg,
     intakeTargets = intakeTargets?.let {
