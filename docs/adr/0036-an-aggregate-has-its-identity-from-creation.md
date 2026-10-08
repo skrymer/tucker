@@ -31,7 +31,8 @@ writes the id explicitly. SQLite accepts an explicit value in an `INTEGER PRIMAR
 KEY` column, `AUTOINCREMENT` or not, so no primary or foreign key changes, ids stay
 `Long`, and the wire, the OpenAPI spec and the frontend do not move. An id taken and
 then not used (a refused request, or an insert that lost a race to an existing row)
-is a gap, which nothing reads.
+is a gap, which nothing reads. So is the id a weigh-in was built with when its day
+is already weighed: it replaces that day's stored reading, which keeps its own id.
 
 `id_sequence` belongs to no User: like `app_config`, it is the installation's, so it
 is one of the tables ADR 0021's ownership rule leaves global.
