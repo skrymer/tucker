@@ -77,6 +77,15 @@ function useRowQuestion() {
 const { asking, isAsking, ask, settle } = useRowQuestion()
 
 /**
+ * A Tag deleted or renamed: its row's question is done, and both the list and
+ * the catalog — every Food carrying it — are re-read.
+ */
+async function afterChange() {
+  settle()
+  await Promise.all([load(), refreshFoodCatalog()])
+}
+
+/**
  * Deleting a Tag, once its row has asked. It takes the Tag off every Food and deletes
  * no Food (ADR 0033), so the catalog is re-read.
  */
@@ -86,10 +95,7 @@ function useTagDeletion() {
     {
       // No success toast: the row leaves the list.
       errorTitle: 'Could not delete tag',
-      onSuccess: async () => {
-        settle()
-        await Promise.all([load(), refreshFoodCatalog()])
-      },
+      onSuccess: afterChange,
     },
   )
   return { deleteTag, deleting }
@@ -135,10 +141,7 @@ function useTagRename() {
       errorTitle: 'Could not rename tag',
       // No Retry: the same name would be refused again.
       onValidationError: (message) => (renameRefusal.value = message),
-      onSuccess: async () => {
-        settle()
-        await Promise.all([load(), refreshFoodCatalog()])
-      },
+      onSuccess: afterChange,
     },
   )
   return {

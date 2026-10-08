@@ -49,24 +49,6 @@ function useProfileForm() {
   return { profile, error, load, save, saving }
 }
 
-type GoalPayload = {
-  startedOn: string
-  targetWeightKg: number
-  rateKgPerWeek: number
-}
-type GoalRefusal = { target?: string; rate?: string; form?: string }
-
-/**
- * Each refusal lands on the input it names. One that names none is not about an
- * input at all — a skewed client clock, or no weight logged — so it goes above
- * the submit rather than under a field the user got right.
- */
-function refusalFor(message: string, field?: string | null): GoalRefusal {
-  if (field === 'rateKgPerWeek') return { rate: message }
-  if (field === 'targetWeightKg') return { target: message }
-  return { form: message }
-}
-
 // Setting a Goal — the backend replaces the active one and preserves history.
 function useGoalSubmission(onSubmitted: () => void | Promise<void>) {
   const { $api } = useNuxtApp()
