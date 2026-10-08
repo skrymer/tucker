@@ -24,14 +24,21 @@ domain, and the domain stays free of persistence: it receives a number, not a
 generator.
 
 `nextId()` reads a per-table row of an `id_sequence` table — incremented with
-`UPDATE … RETURNING` inside the caller's transaction, and seeded past every id the
-table has handed out: the larger of its `max(id)` and its `sqlite_sequence` entry,
-since `AUTOINCREMENT` never reissued a deleted row's id — and the insert writes the
-id explicitly. SQLite accepts an
-explicit value in an `INTEGER PRIMARY KEY` column, `AUTOINCREMENT` or not, so no
-primary or foreign key changes, ids stay `Long`, and the wire, the OpenAPI spec and
-the frontend do not move. An id taken and then not used (a refused request, or an
-insert that lost a race to an existing row) is a gap, which nothing reads.
+`UPDATE … RETURNING` in the caller's transaction, if any, and seeded past every id
+the table has handed out: the larger of its `max(id)` and its `sqlite_sequence`
+entry, since `AUTOINCREMENT` never reissued a deleted row's id — and the insert
+writes the id explicitly. SQLite accepts an explicit value in an `INTEGER PRIMARY
+KEY` column, `AUTOINCREMENT` or not, so no primary or foreign key changes, ids stay
+`Long`, and the wire, the OpenAPI spec and the frontend do not move. An id taken and
+then not used (a refused request, or an insert that lost a race to an existing row)
+is a gap, which nothing reads.
+
+`id_sequence` belongs to no User: like `app_config`, it is the installation's, so it
+is one of the tables ADR 0021's ownership rule leaves global.
+
+An aggregate built only to be measured and never stored — the prospective Entry a
+Budget Projection previews — is built with a fixed id, `0`, and draws none from the
+sequence. Nothing reads that id, and no stored row can ever have it.
 
 Two alternatives were rejected:
 
@@ -52,9 +59,12 @@ Subscription's identity is its endpoint (it is claimed and deleted by endpoint),
 
 ## A Recipe's cooked weight lives on its kind
 
-`Food` had `kind: FoodKind` next to a nullable `cookedWeightG`, with three
+**Pending:** decided with the rest of this record, delivered by #455's second PR.
+Until then the code still has the enum and the two `!!`s below.
+
+`Food` has `kind: FoodKind` next to a nullable `cookedWeightG`, with three
 `require`s keeping them consistent and two readers writing `cookedWeightG!!`
-after checking the kind. `FoodKind` is sealed instead: `Plain`, and
+after checking the kind. `FoodKind` becomes sealed instead: `Plain`, and
 `Recipe(cookedWeightG: Double)`. The cooked weight exists only where it means
 something (ADR 0019 slices a portion out of it), and a reader gets it by a
 smart cast on the kind it has just matched. Making `Food` itself sealed

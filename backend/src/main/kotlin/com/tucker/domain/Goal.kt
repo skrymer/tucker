@@ -103,7 +103,7 @@ data class Goal(
     }
 }
 
-/** What a User asks for when setting a [Goal]. */
+/** The plan a [Goal] is started from. */
 data class GoalPlan(
     val startedOn: LocalDate,
     val startWeightKg: Double,
