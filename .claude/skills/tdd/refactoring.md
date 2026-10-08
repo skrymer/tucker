@@ -5,8 +5,8 @@ move is named as in Fowler's [refactoring catalog](https://refactoring.com/catal
 the name is a lookup, not a paraphrase. Run the tests after each move; keep them on the
 public interface.
 
-The linters raise most of these for you. `frontend-dev` and `backend-dev` each map their
-rule IDs to the smells below.
+The linters raise most of these for you: `frontend-dev` maps each ESLint rule ID to its
+smell below.
 
 | Smell | Catalog move |
 | --- | --- |

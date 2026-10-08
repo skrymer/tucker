@@ -150,6 +150,40 @@ assertion with the dev token), and no browser-level layer can reach it.
   serve a stale build; the smokes still build through `@nuxt/test-utils`, so if a UI change doesn't show
   in a smoke run, `rm -rf frontend/.nuxt/test`.
 
+## Refactor step — the lint names the smell
+
+`frontend/eslint.config.mjs` (`tucker/refactoring-signals`, `tucker/vue-refactoring-signals`)
+fails the build on size and complexity in `app/` and `server/` (tests exempt). Each hit is
+a smell; fix it with the catalog move [tdd's `refactoring.md`](../tdd/refactoring.md) names,
+chosen to make the code read better — never by shaving lines, and never with an
+`eslint-disable`. The commit names the move.
+
+| Rule (limit) | Smell |
+| --- | --- |
+| `max-lines-per-function` (30) | Long Function |
+| `sonarjs/cognitive-complexity` (8) | Nested conditionals |
+| `max-depth` (3), `max-nested-callbacks` (3), `no-nested-ternary` | Nested conditionals |
+| `max-params` (4), `vue/max-props` (6) | Long Parameter List |
+| `max-lines` (300), `vue/max-lines-per-block` (script 200, template 150), `vue/max-template-depth` (8) | Large Class |
+| `no-else-return`, `no-lonely-if`, `sonarjs/no-collapsible-if`, `sonarjs/prefer-single-boolean-return`, `sonarjs/no-inverted-boolean-check` | Nested conditionals (small) |
+| `no-param-reassign` | Mutable Data |
+| `no-useless-return`, `vue/no-unused-properties`, `vue/no-unused-refs`, `vue/no-unused-emit-declarations` | Dead Code |
+
+How the moves land in Vue (ADR 0004):
+
+- **Large Class → Extract Component**, never a single-consumer composable moved to
+  `app/composables/` to save lines: each composable goes with the one child that uses it
+  and stays inline there (`CheckAnswer`, `FoodBuilder`, `IngredientPicker`).
+- **Long Function → Extract Function**: a long `useXxx()` becomes smaller inline ones; a
+  pure step becomes a module-level function. A composable's inner functions count toward
+  its length, so a factory splits by concern (`useApiMutation` → its error toast, its
+  feedback, the lifecycle).
+- **A sheet owns the mutation it issues** and emits `changed` for its page to re-read
+  (`ManageTagsSheet`, `FoodTagsSheet`, `AddSheet`) — a page running every mutation for
+  its sheets is Feature Envy, and threading the result back down is a Middle Man.
+- `vue/max-lines-per-block` counts comments; when it fires on a well-commented file the
+  answer is still a component boundary, not fewer comments.
+
 ## Exit
 
 When the change works and is tested, run **`feature-sign-off`** (verify → simplify →
