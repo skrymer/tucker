@@ -574,4 +574,39 @@ describe('RecipeBuilder', () => {
     expect(row).toHaveTextContent('100 g')
     expect(row).toHaveTextContent('45 kcal')
   })
+
+  it('leaves the User on the recipe when a new food lands after they backed out of the picker', async () => {
+    const create = held('post', '/api/foods')
+    server.use(create.handler, ...foodCatalog({ foods: sampleFoods }))
+    const user = userEvent.setup()
+    await renderSuspended(RecipeBuilder, {
+      props: { foods: sampleFoods },
+    })
+    await user.click(screen.getByRole('button', { name: /add ingredient/i }))
+    await user.click(screen.getByRole('button', { name: /add a new food/i }))
+    await user.type(screen.getByLabelText(/^name$/i), 'Carrot')
+    await user.type(screen.getByLabelText(/protein \/100\s*g/i), '0.9')
+    await user.type(screen.getByLabelText(/carbs \/100\s*g/i), '10')
+    await user.type(screen.getByLabelText(/fat \/100\s*g/i), '0.2')
+    await user.click(screen.getByRole('button', { name: /save food/i }))
+    await create.arrived
+
+    // Back out of the new food, then out of the picker, before the save lands.
+    await user.click(screen.getByRole('button', { name: /back/i }))
+    await user.click(screen.getByRole('button', { name: /back/i }))
+    create.release()
+
+    // A late save never pulls the User back into weighing it.
+    await vi.waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: /add ingredient/i }),
+      ).toBeVisible(),
+    )
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(screen.queryByLabelText(/grams/i)).not.toBeInTheDocument()
+    expect(screen.queryByText('Carrot')).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /add ingredient/i }),
+    ).toBeVisible()
+  })
 })

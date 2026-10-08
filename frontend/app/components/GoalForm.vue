@@ -43,7 +43,7 @@ const state = reactive({
 // message as `error || schemaError` — so a standing one outranks the schema and
 // would go on naming a figure the user has since changed. Each is held locally
 // and dropped the moment its own input moves; editing the other says nothing
-// about it. A refusal about neither input, so nothing local clears it.
+// about it. `refusal.form` is about neither input, so nothing local clears it.
 function useServerRefusals() {
   const refusals = reactive({
     targetWeightKg: undefined as string | undefined,
