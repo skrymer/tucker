@@ -112,17 +112,13 @@ function useAddIngredientFlow() {
   const step = ref<'build' | 'pick' | 'grams'>('build')
   const weighing = ref<Weighing | null>(null)
 
-  function weigh(
-    food: FoodResponse,
-    grams?: number,
-    index: number | null = null,
-  ) {
-    weighing.value = { food, grams, index }
+  function weigh(next: Weighing) {
+    weighing.value = next
     step.value = 'grams'
   }
   function edit(index: number) {
     const line = ingredients.lines.value[index]
-    if (line) weigh(line.food, line.grams, index)
+    if (line) weigh({ ...line, index })
   }
   function confirm(grams: number) {
     const index = weighing.value?.index ?? null
@@ -278,7 +274,7 @@ function onSave() {
       v-if="step === 'pick'"
       :foods="foods"
       @back="step = 'build'"
-      @choose="(food) => weigh(food)"
+      @choose="(food) => weigh({ food, index: null })"
       @changed="emit('changed')"
     />
 
