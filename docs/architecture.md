@@ -361,8 +361,8 @@ The SQLite schema as of the latest Flyway migration
 (`backend/src/main/resources/db/migration/`), in two halves around the `user`
 table: what a User eats, and what their body and plan are doing. Every table but
 the installation-wide ones carries a `NOT NULL user_id`, and the uniqueness a User
-would expect is per-User — one weigh-in per day, one Weekly Review per day, one active
-Goal, a barcode once per catalog
+would expect is per-User — one weigh-in per day, one Weekly Review per day, one
+active Goal, a barcode once per catalog
 ([ADR 0021](adr/0021-every-row-is-owned-by-one-user.md)). `created_at` /
 `updated_at` are omitted from every entity; dates are ISO-8601 `text`.
 
