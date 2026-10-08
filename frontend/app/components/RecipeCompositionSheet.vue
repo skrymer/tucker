@@ -14,16 +14,15 @@ const props = withDefaults(
     foods?: FoodResponse[]
     /** True while an edit save is in flight, to lock the builder's Save. */
     pending?: boolean
-    /** A Food just persisted from the edit builder's inline "Add a new food". */
-    createdIngredient?: FoodResponse | null
   }>(),
-  { foods: () => [], createdIngredient: null },
+  { foods: () => [] },
 )
 // Stryker restore all
 const emit = defineEmits<{
   close: []
   'submit-edit': [RecipePayload]
-  'create-food': [components['schemas']['CreateFoodRequest']]
+  /** A Food was added to the catalog from the edit builder. */
+  changed: []
 }>()
 
 /**
@@ -143,9 +142,8 @@ const round = (n: number) => Math.round(n)
         :initial="editInitial"
         :foods="foods"
         :pending="pending"
-        :created-ingredient="createdIngredient"
         @submit="(payload) => emit('submit-edit', payload)"
-        @create-food="(payload) => emit('create-food', payload)"
+        @changed="emit('changed')"
       />
 
       <!-- View: the read-only composition, with an Edit affordance. -->

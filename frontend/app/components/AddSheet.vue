@@ -13,15 +13,14 @@ const props = defineProps<{
   foods?: Food[]
   /** True while a recipe save is in flight, to lock the builder's Save. */
   recipePending?: boolean
-  /** A Food just persisted from the recipe builder's inline "Add a new food". */
-  createdIngredient?: Food | null
 }>()
 
 const emit = defineEmits<{
   'update:open': [boolean]
   submit: [NewFood]
   'submit-recipe': [components['schemas']['CreateRecipeRequest']]
-  'create-food': [NewFood]
+  /** A Food was added to the catalog from the recipe builder. */
+  changed: []
 }>()
 
 // The overlay hosts two builders (CONTEXT.md): a plain Food (with its barcode
@@ -263,10 +262,9 @@ const existingFood = computed<Food | null>(() =>
             :key="formSession"
             :foods="foods ?? []"
             :pending="recipePending"
-            :created-ingredient="createdIngredient"
             class="mt-4"
             @submit="(payload) => emit('submit-recipe', payload)"
-            @create-food="(payload) => emit('create-food', payload)"
+            @changed="emit('changed')"
           />
         </template>
       </UTabs>

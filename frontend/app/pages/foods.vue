@@ -26,16 +26,12 @@ const recipeToView = ref<FoodResponse | null>(null)
 const isDesktop = useIsDesktop()
 const { $api } = useNuxtApp()
 
+// The hand-off is spent once the sheet closes; left in the URL it reopens the
+// sheet on a reload, over a catalog the User has since stocked.
 watch(open, (isOpen) => {
-  if (!isOpen) {
-    createdIngredient.value = null
-    // The hand-off is spent once the sheet closes; left in the URL it reopens
-    // the sheet on a reload, over a catalog the User has since stocked.
-    if (opensAddSheet(route.query)) {
-      const { add: _spent, ...rest } = route.query
-      router.replace({ query: rest })
-    }
-  }
+  if (isOpen || !opensAddSheet(route.query)) return
+  const { add: _spent, ...rest } = route.query
+  router.replace({ query: rest })
 })
 
 /** Which opening of the Add sheet is on screen; a reopen starts a new one. */
@@ -69,23 +65,6 @@ const { execute: handleSubmit } = useApiMutation(
     errorTitle: 'Could not add food',
     // The catalog is re-read rather than appended to, because its order is the
     // server's.
-    onSuccess: () => refresh(),
-  },
-)
-
-// A new Food created inline from the recipe builder's "Add a new food". The page
-// owns catalog mutations, so it persists here and refreshes the catalog; the
-// created Food flows back down to the builder, which selects it (F9 #142).
-const createdIngredient = ref<FoodResponse | null>(null)
-const { execute: handleCreateIngredient } = useApiMutation(
-  async (payload: NewFood) => {
-    createdIngredient.value = await $api('/api/foods', {
-      method: 'POST',
-      body: payload,
-    })
-  },
-  {
-    errorTitle: 'Could not add food',
     onSuccess: () => refresh(),
   },
 )
@@ -126,12 +105,6 @@ const { pending: recipeEditPending, execute: handleEditRecipe } =
       },
     },
   )
-
-// Start each recipe view/edit clean: a Food added inline during a previous edit
-// must not resurface when the sheet reopens.
-watch(recipeToView, (recipe) => {
-  if (!recipe) createdIngredient.value = null
-})
 
 /**
  * Changing or clearing what a Food borrows its micronutrients from. The queue on
@@ -222,12 +195,11 @@ function foodDeleted() {
 
     <AddSheet
       v-model:open="open"
-      :created-ingredient="createdIngredient"
       :foods="foods ?? []"
       :recipe-pending="recipePending"
       @submit="handleSubmit"
       @submit-recipe="handleSubmitRecipe"
-      @create-food="handleCreateIngredient"
+      @changed="refresh"
     />
 
     <DeleteFoodConfirm
@@ -257,10 +229,9 @@ function foodDeleted() {
       :recipe="recipeToView"
       :foods="foods ?? []"
       :pending="recipeEditPending"
-      :created-ingredient="createdIngredient"
       @close="recipeToView = null"
       @submit-edit="handleEditRecipe"
-      @create-food="handleCreateIngredient"
+      @changed="refresh"
     />
   </section>
 </template>

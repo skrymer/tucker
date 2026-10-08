@@ -493,49 +493,32 @@ describe('RecipeBuilder', () => {
     )
   })
 
-  it('hands a brand-new food up to the parent, then continues once it is selected', async () => {
-    const onCreateFood = vi.fn()
+  it('adds a brand-new food to the catalog, then weighs it into the recipe', async () => {
+    server.use(...foodCatalog({ foods: sampleFoods }))
+    const onChanged = vi.fn()
     const user = userEvent.setup()
-    const { rerender } = await renderSuspended(RecipeBuilder, {
-      // Keyed to the emit name (`create-food`), not its camelCase form.
-      props: { foods: sampleFoods, 'onCreate-food': onCreateFood },
+    await renderSuspended(RecipeBuilder, {
+      props: { foods: sampleFoods, onChanged },
     })
 
     await user.click(screen.getByRole('button', { name: /add ingredient/i }))
     await user.click(screen.getByRole('button', { name: /add a new food/i }))
-
-    // The inline Add-Food form hands the create up to the page (which owns the
-    // catalog and its mutations) rather than POSTing from the builder.
     await user.type(screen.getByLabelText(/^name$/i), 'Carrot')
     await user.type(screen.getByLabelText(/protein \/100\s*g/i), '0.9')
     await user.type(screen.getByLabelText(/carbs \/100\s*g/i), '10')
     await user.type(screen.getByLabelText(/fat \/100\s*g/i), '0.2')
     await user.click(screen.getByRole('button', { name: /save food/i }))
 
-    expect(onCreateFood).toHaveBeenCalledWith({
-      name: 'Carrot',
-      proteinPer100g: 0.9,
-      carbsPer100g: 10,
-      fatPer100g: 0.2,
-      tagIds: [],
-    })
-
-    // The parent persists it and hands it back; the builder selects it and
-    // continues to the grams step.
-    const carrot = food({ id: 99, name: 'Carrot', caloriesPer100g: 41 })
-    await rerender({
-      foods: [...sampleFoods, carrot],
-      createdIngredient: carrot,
-      onCreateFood,
-    })
-
+    // The catalog changed under the page, and the builder went straight on to
+    // weighing what it created.
+    await vi.waitFor(() => expect(onChanged).toHaveBeenCalledOnce())
     expect(await screen.findByText('Carrot')).toBeVisible()
     await user.type(screen.getByLabelText(/grams/i), '100')
     await user.click(screen.getByRole('button', { name: /^add$/i }))
 
-    // The new Food is now an ingredient row (41 kcal /100g → 100 g = 41 kcal).
+    // The server's figure for it, 45.4 kcal /100g (Atwater) → 100 g = 45 kcal.
     const row = screen.getByRole('button', { name: /carrot/i })
     expect(row).toHaveTextContent('100 g')
-    expect(row).toHaveTextContent('41 kcal')
+    expect(row).toHaveTextContent('45 kcal')
   })
 })

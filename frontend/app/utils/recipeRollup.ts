@@ -24,11 +24,11 @@ export function rollupRecipe(
   cookedWeightG: number,
 ): RecipeRollup {
   const totalKcal = ingredients.reduce(
-    (sum, i) => sum + (i.caloriesPer100g * i.grams) / 100,
+    (sum, i) => sum + contribution(i.caloriesPer100g, i.grams),
     0,
   )
   const totalProtein = ingredients.reduce(
-    (sum, i) => sum + (i.proteinPer100g * i.grams) / 100,
+    (sum, i) => sum + contribution(i.proteinPer100g, i.grams),
     0,
   )
   const rawSumG = ingredients.reduce((sum, i) => sum + i.grams, 0)
@@ -40,4 +40,9 @@ export function rollupRecipe(
     per100gProtein: totalProtein * factor,
     rawSumG,
   }
+}
+
+/** What a weighed line adds to a batch, from its per-100 g figure. */
+export function contribution(per100g: number, grams: number): number {
+  return (per100g * grams) / 100
 }
