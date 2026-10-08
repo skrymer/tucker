@@ -24,7 +24,8 @@ import java.time.LocalDate
 class EntryRepository(
     private val dsl: DSLContext,
     private val currentUser: CurrentUser,
-) {
+    ids: IdSequence,
+) : AggregateRepository(ids, ENTRY) {
 
     fun findById(id: Long): Entry? =
         dsl.selectFrom(ENTRY)
@@ -92,6 +93,7 @@ class EntryRepository(
 
     fun insert(entry: Entry): Entry {
         val rec = dsl.newRecord(ENTRY)
+        rec.id = entry.id?.toInt()
         rec.userId = currentUser.ownerId
         rec.loggedOn = entry.loggedOn.toString()
         rec.calories = entry.calories

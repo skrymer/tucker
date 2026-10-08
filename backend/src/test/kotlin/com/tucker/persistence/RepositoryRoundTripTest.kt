@@ -92,6 +92,16 @@ class RepositoryRoundTripTest {
     }
 
     @Test
+    fun `an Entry is stored under the id it was built with`() {
+        val date = LocalDate.of(2026, 5, 22)
+        val id = entries.nextId()
+
+        entries.insert(EstimatedEntry(id, date, "Restaurant pasta", 800.0, null))
+
+        assertEquals(id, entries.findByDate(date).single().id)
+    }
+
+    @Test
     fun `a weight measurement is replaced when re-saved for the same day`() {
         val date = LocalDate.of(2026, 5, 22)
         weights.save(WeightMeasurement(weights.nextId(), date, 88.4))
