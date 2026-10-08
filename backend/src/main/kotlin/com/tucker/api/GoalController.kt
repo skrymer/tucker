@@ -87,7 +87,7 @@ private fun GoalProgress.toResponse(reachedOn: LocalDate?) = GoalProgressRespons
 )
 
 private fun Goal.toResponse() = GoalResponse(
-    id = persistedId(id),
+    id = id,
     startedOn = startedOn,
     startWeightKg = startWeightKg,
     targetWeightKg = targetWeightKg,

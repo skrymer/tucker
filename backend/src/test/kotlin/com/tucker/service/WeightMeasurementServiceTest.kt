@@ -27,7 +27,7 @@ class WeightMeasurementServiceTest {
     fun `recording a measurement that crosses target stamps the active goal as reached`() {
         // Trend sits at 80.4; a 76.0 reading pulls the EWMA to ~79.96, below the 80 target.
         weights.save(WeightMeasurement.recorded(today.minusDays(1), 80.4, today))
-        goals.insert(Goal(null, today, 90.0, 80.0, 0.5, active = true))
+        goals.insert(Goal(goals.nextId(),today, 90.0, 80.0, 0.5, active = true))
 
         service.save(WeightMeasurement.recorded(today, 76.0, today), today)
 

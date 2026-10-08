@@ -40,7 +40,7 @@ class WeeklyReviewServiceTest {
 
     private fun seedProfileAndGoal() {
         profiles.save(Profile(Sex.MALE, LocalDate.of(1986, 5, 22), 180.0))
-        goals.insert(Goal(null, today.minusMonths(1), 90.0, 80.0, 0.5, active = true))
+        goals.insert(Goal(goals.nextId(),today.minusMonths(1), 90.0, 80.0, 0.5, active = true))
     }
 
     private fun seedSetupWithWeights() {
@@ -674,7 +674,7 @@ class WeeklyReviewServiceTest {
         // GET /api/summary down with it.
         profiles.save(Profile(Sex.FEMALE, LocalDate.of(1986, 5, 22), 160.0))
         weights.save(WeightMeasurement(null, today, 50.0))
-        goals.insert(Goal(null, today.minusMonths(1), 50.0, 45.0, 1.5, active = true))
+        goals.insert(Goal(goals.nextId(),today.minusMonths(1), 50.0, 45.0, 1.5, active = true))
 
         service.catchUpIfDue(today)
 

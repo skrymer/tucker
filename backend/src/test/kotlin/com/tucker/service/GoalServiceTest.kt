@@ -36,7 +36,7 @@ class GoalServiceTest {
     private val today = LocalDate.of(2026, 5, 29)
 
     private fun newGoal(rate: Double = 0.5) =
-        Goal(null, today, 90.0, 80.0, rate, active = true)
+        Goal(1, today, 90.0, 80.0, rate, active = true)
 
     private fun seedProfileAndWeight() {
         profiles.save(Profile(Sex.MALE, LocalDate.of(1986, 5, 22), 180.0))
@@ -50,7 +50,7 @@ class GoalServiceTest {
      */
     private fun seedActiveGoalWithTrendAbove(trendAbove: Double, target: Double): Goal {
         weights.save(WeightMeasurement.recorded(today.minusDays(1), trendAbove, today))
-        return goals.insert(Goal(null, today, 90.0, target, 0.5, active = true))
+        return goals.insert(Goal(goals.nextId(),today, 90.0, target, 0.5, active = true))
     }
 
     @Test
@@ -109,7 +109,7 @@ class GoalServiceTest {
         // now. Decayed a tenth per *reading* it would stand at 80.16 and stay above the
         // target for another two months of weighing (ADR 0032).
         weights.save(WeightMeasurement.recorded(today.minusDays(7), 80.4, today))
-        goals.insert(Goal(null, today.minusDays(7), 90.0, 80.0, 0.5, active = true))
+        goals.insert(Goal(goals.nextId(),today.minusDays(7), 90.0, 80.0, 0.5, active = true))
 
         weights.save(WeightMeasurement.recorded(today, 78.0, today))
         service.stampReachedIfCrossed(today)
@@ -204,7 +204,7 @@ class GoalServiceTest {
         // Profile + weight so the always-on recompute side effect can run; this test
         // focuses on the deactivate + insert behaviour, not the review it produces.
         seedProfileAndWeight()
-        val prior = goals.insert(Goal(null, today.minusMonths(2), 95.0, 85.0, 0.5, active = true))
+        val prior = goals.insert(Goal(goals.nextId(),today.minusMonths(2), 95.0, 85.0, 0.5, active = true))
 
         val replacement = service.createGoal(today, 80.0, 0.75, today)
 

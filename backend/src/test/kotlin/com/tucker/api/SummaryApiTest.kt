@@ -450,7 +450,7 @@ class SummaryApiTest {
             contentType = MediaType.APPLICATION_JSON
             content = """{"date":"$day","weightKg":50.0}"""
         }.andExpect { status { isOk() } }
-        goals.insert(Goal(null, day.minusMonths(2), 50.0, 45.0, 1.5, active = true))
+        goals.insert(Goal(goals.nextId(), day.minusMonths(2), 50.0, 45.0, 1.5, active = true))
 
         mockMvc.get("/api/summary") {
             param("date", "$day")

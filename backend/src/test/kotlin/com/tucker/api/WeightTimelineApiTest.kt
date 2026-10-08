@@ -116,7 +116,7 @@ class WeightTimelineApiTest {
     ) {
         goals.insert(
             Goal(
-                id = null,
+                id = goals.nextId(),
                 startedOn = startedOn,
                 startWeightKg = startWeightKg,
                 targetWeightKg = targetWeightKg,

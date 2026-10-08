@@ -113,7 +113,7 @@ class RepositoryRoundTripTest {
 
     @Test
     fun `the active Goal round-trips`() {
-        goals.insert(Goal(null, LocalDate.of(2026, 5, 1), 90.0, 80.0, 0.5, active = true))
+        goals.insert(Goal(goals.nextId(), LocalDate.of(2026, 5, 1), 90.0, 80.0, 0.5, active = true))
         val active = goals.findActive()
         assertNotNull(active)
         assertEquals(80.0, active.targetWeightKg)
