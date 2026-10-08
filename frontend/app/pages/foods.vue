@@ -177,41 +177,12 @@ const {
   unmatching,
 } = useReferenceFoodMatch(foodToMatch, refresh)
 
-/**
- * Setting which Tags a Food carries (ADR 0033). [foodToTag] is the sheet's open state —
- * non-null is open — and clears only once the server answers.
- */
-function useFoodTagging(onChanged: () => Promise<void>) {
-  const foodToTag = ref<FoodResponse | null>(null)
-  const { execute: saveTags, pending: saving } = useApiMutation(
-    (target: { foodId: number; tagIds: number[] }) =>
-      $api('/api/foods/{id}/tags', {
-        method: 'PUT',
-        path: { id: target.foodId },
-        body: { tagIds: target.tagIds },
-      }),
-    {
-      // No success toast: the row's Tags change where the User is looking.
-      errorTitle: 'Could not save tags',
-      onSuccess: () => {
-        foodToTag.value = null
-        return onChanged()
-      },
-    },
-  )
-  // Read once at the tap and passed as an argument: a Retry replays the failed
-  // attempt's arguments, not whichever Food the sheet holds by then.
-  const save = (tagIds: number[]) => {
-    const target = foodToTag.value
-    if (target) saveTags({ foodId: target.id, tagIds })
-  }
-  return { foodToTag, save, saving }
+/** The Food whose Tags are being set (ADR 0033) — non-null opens its sheet. */
+const foodToTag = ref<FoodResponse | null>(null)
+function tagsSaved() {
+  foodToTag.value = null
+  return refresh()
 }
-const {
-  foodToTag,
-  save: handleSaveTags,
-  saving: savingTags,
-} = useFoodTagging(refresh)
 
 const manageTagsOpen = ref(false)
 
@@ -309,8 +280,7 @@ function handleDeleteConfirm() {
 
     <FoodTagsSheet
       :food="foodToTag"
-      :saving="savingTags"
-      @save="handleSaveTags"
+      @changed="tagsSaved"
       @close="foodToTag = null"
     />
 

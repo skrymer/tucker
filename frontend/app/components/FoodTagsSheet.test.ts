@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
+import { getResponse } from 'msw'
 import { mockNuxtImport, renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
@@ -9,6 +10,7 @@ import {
 } from '~~/test/mocks/handlers/catalog'
 import { failingRead, held, http, noConnection } from '~~/test/mocks/http'
 import { server } from '~~/test/mocks/node'
+import { food, type FoodResponse } from '~~/test/food-fixtures'
 import FoodTagsSheet from './FoodTagsSheet.vue'
 
 const { toastAdd } = vi.hoisted(() => ({ toastAdd: vi.fn() }))
@@ -17,17 +19,38 @@ mockNuxtImport('useToast', () => () => ({
   remove: vi.fn(),
 }))
 
-const oats = {
+const oats = food({
   id: 1,
   name: 'ROLLED OATS',
   tags: [{ id: 7, name: 'Breakfast' }],
-}
+})
 
 const breakfast: ShelvedTag = { id: 7, name: 'Breakfast', foodCount: 1 }
 const snack: ShelvedTag = { id: 9, name: 'snack', foodCount: 3 }
 
 /** The User keeps exactly [tags]. */
 const keeps = (...tags: ShelvedTag[]) => server.use(...foodCatalog({ tags }))
+
+/**
+ * A catalog holding [foods] and keeping [tags]. Returns a read of the Tag ids
+ * a Food carries in it, in id order — which Tags, not the order the server
+ * lists them in.
+ */
+function catalogHolding(foods: FoodResponse[], ...tags: ShelvedTag[]) {
+  const catalog = foodCatalog({ foods, tags })
+  server.use(...catalog)
+  return async (id: number) => {
+    const read = new Request('http://localhost/api/foods')
+    const held: FoodResponse[] = await (await getResponse(
+      catalog,
+      read,
+    ))!.json()
+    return held
+      .find((row) => row.id === id)
+      ?.tags.map((tag) => tag.id)
+      .sort((a, b) => a - b)
+  }
+}
 
 /** Over 30 characters, which the server refuses as a Tag name. */
 const tooLong = 'a'.repeat(31)
@@ -111,23 +134,24 @@ describe('FoodTagsSheet', () => {
     ])
   })
 
-  it('saves the Tags chosen, beside the ones the Food already carried', async () => {
-    keeps(breakfast, snack)
-    const onSave = vi.fn()
-    await renderSuspended(FoodTagsSheet, { props: { food: oats, onSave } })
+  it('saves the Tags chosen onto the Food, then tells its page the Foods changed', async () => {
+    const tagsOn = catalogHolding([oats], breakfast, snack)
+    const onChanged = vi.fn()
+    await renderSuspended(FoodTagsSheet, { props: { food: oats, onChanged } })
     const user = userEvent.setup()
 
     await user.click(screen.getByRole('combobox'))
     await user.click(await screen.findByRole('option', { name: 'snack' }))
     await user.click(screen.getByRole('button', { name: 'Save tags' }))
 
-    expect(onSave).toHaveBeenCalledWith([7, 9])
+    await vi.waitFor(() => expect(onChanged).toHaveBeenCalledOnce())
+    expect(await tagsOn(oats.id)).toEqual([7, 9])
   })
 
   it('creates a Tag the moment a new name is typed, so saving sends only ids', async () => {
-    keeps(breakfast)
-    const onSave = vi.fn()
-    await renderSuspended(FoodTagsSheet, { props: { food: oats, onSave } })
+    const tagsOn = catalogHolding([oats], breakfast)
+    const onChanged = vi.fn()
+    await renderSuspended(FoodTagsSheet, { props: { food: oats, onChanged } })
     const user = userEvent.setup()
 
     await user.type(screen.getByRole('combobox'), 'post-workout')
@@ -137,14 +161,15 @@ describe('FoodTagsSheet', () => {
     await user.click(screen.getByRole('button', { name: 'Save tags' }))
 
     // 20 is the id the server gave the Tag it created; nothing else knows it.
-    expect(onSave).toHaveBeenCalledWith([7, 20])
+    await vi.waitFor(() => expect(onChanged).toHaveBeenCalledOnce())
+    expect(await tagsOn(oats.id)).toEqual([7, 20])
   })
 
   it('creates a name typed with surrounding spaces and entered from the keyboard', async () => {
-    keeps()
-    const onSave = vi.fn()
+    const tagsOn = catalogHolding([{ ...oats, tags: [] }])
+    const onChanged = vi.fn()
     await renderSuspended(FoodTagsSheet, {
-      props: { food: { ...oats, tags: [] }, onSave },
+      props: { food: { ...oats, tags: [] }, onChanged },
     })
     const user = userEvent.setup()
 
@@ -153,7 +178,8 @@ describe('FoodTagsSheet', () => {
     expect(await screen.findByText('hello', { exact: true })).toBeVisible()
     await user.click(screen.getByRole('button', { name: 'Save tags' }))
 
-    expect(onSave).toHaveBeenCalledWith([20])
+    await vi.waitFor(() => expect(onChanged).toHaveBeenCalledOnce())
+    expect(await tagsOn(oats.id)).toEqual([20])
   })
 
   it('empties the field once a typed Tag is created, so it is not offered again', async () => {
@@ -176,23 +202,24 @@ describe('FoodTagsSheet', () => {
   it('keeps one Tag when a typed name turns out to be one the Food already carries', async () => {
     // The list the sheet opened on may be stale; the server is what knows that
     // "BREAKFAST" is the User's "Breakfast", and answers with it (ADR 0033).
-    keeps(breakfast)
+    const tagsOn = catalogHolding([oats], breakfast)
     server.use(http.get('/api/tags', ({ response }) => response(200).json([])))
-    const onSave = vi.fn()
-    await renderSuspended(FoodTagsSheet, { props: { food: oats, onSave } })
+    const onChanged = vi.fn()
+    await renderSuspended(FoodTagsSheet, { props: { food: oats, onChanged } })
     const user = userEvent.setup()
 
     await user.type(screen.getByRole('combobox'), 'BREAKFAST')
     await user.click(await screen.findByRole('option', { name: /BREAKFAST/ }))
     await user.click(screen.getByRole('button', { name: 'Save tags' }))
 
-    expect(onSave).toHaveBeenCalledWith([7])
+    await vi.waitFor(() => expect(onChanged).toHaveBeenCalledOnce())
+    expect(await tagsOn(oats.id)).toEqual([7])
   })
 
   it('states why a refused name was refused, and adds nothing', async () => {
-    keeps()
-    const onSave = vi.fn()
-    await renderSuspended(FoodTagsSheet, { props: { food: oats, onSave } })
+    const tagsOn = catalogHolding([oats])
+    const onChanged = vi.fn()
+    await renderSuspended(FoodTagsSheet, { props: { food: oats, onChanged } })
     const user = userEvent.setup()
 
     await user.type(screen.getByRole('combobox'), tooLong)
@@ -200,7 +227,8 @@ describe('FoodTagsSheet', () => {
 
     expect(await screen.findByText(tagNameTooLong)).toBeVisible()
     await user.click(screen.getByRole('button', { name: 'Save tags' }))
-    expect(onSave).toHaveBeenCalledWith([7])
+    await vi.waitFor(() => expect(onChanged).toHaveBeenCalledOnce())
+    expect(await tagsOn(oats.id)).toEqual([7])
   })
 
   it('closes its list once a Tag is picked, so Save is not covered', async () => {
@@ -260,10 +288,10 @@ describe('FoodTagsSheet', () => {
   })
 
   it('adds a created Tag to a Food that carried none', async () => {
-    keeps()
-    const onSave = vi.fn()
+    const tagsOn = catalogHolding([{ ...oats, tags: [] }])
+    const onChanged = vi.fn()
     await renderSuspended(FoodTagsSheet, {
-      props: { food: { ...oats, tags: [] }, onSave },
+      props: { food: { ...oats, tags: [] }, onChanged },
     })
     const user = userEvent.setup()
 
@@ -271,7 +299,8 @@ describe('FoodTagsSheet', () => {
     await user.click(await screen.findByRole('option', { name: /snack/ }))
     await user.click(screen.getByRole('button', { name: 'Save tags' }))
 
-    expect(onSave).toHaveBeenCalledWith([20])
+    await vi.waitFor(() => expect(onChanged).toHaveBeenCalledOnce())
+    expect(await tagsOn(oats.id)).toEqual([20])
   })
 
   it('names a create that failed for want of a connection in its own error toast', async () => {
@@ -328,13 +357,13 @@ describe('FoodTagsSheet', () => {
 
   it('keeps a failed Tag retried while a later name is being created', async () => {
     toastAdd.mockClear()
-    keeps()
+    const tagsOn = catalogHolding([{ ...oats, tags: [] }])
     const lunch = heldCreates('lunch')
     server.use(lunch.handler)
     server.use(firstCreateUnreachable())
-    const onSave = vi.fn()
+    const onChanged = vi.fn()
     await renderSuspended(FoodTagsSheet, {
-      props: { food: { ...oats, tags: [] }, onSave },
+      props: { food: { ...oats, tags: [] }, onChanged },
     })
     const user = userEvent.setup()
     const picker = screen.getByRole('combobox')
@@ -352,18 +381,19 @@ describe('FoodTagsSheet', () => {
     await vi.waitFor(() => expect(save).toBeEnabled())
     await user.click(save)
     // Lunch, then the snack its Retry created after it.
-    expect(onSave).toHaveBeenCalledWith([20, 21])
+    await vi.waitFor(() => expect(onChanged).toHaveBeenCalledOnce())
+    expect(await tagsOn(oats.id)).toEqual([20, 21])
   })
 
   it('keeps a name entered while a failed Tag is being retried', async () => {
     toastAdd.mockClear()
-    keeps()
+    const tagsOn = catalogHolding([{ ...oats, tags: [] }])
     const retried = heldCreates('snack')
     server.use(retried.handler)
     server.use(firstCreateUnreachable())
-    const onSave = vi.fn()
+    const onChanged = vi.fn()
     await renderSuspended(FoodTagsSheet, {
-      props: { food: { ...oats, tags: [] }, onSave },
+      props: { food: { ...oats, tags: [] }, onChanged },
     })
     const user = userEvent.setup()
     const picker = screen.getByRole('combobox')
@@ -379,7 +409,8 @@ describe('FoodTagsSheet', () => {
     const save = screen.getByRole('button', { name: 'Save tags' })
     await vi.waitFor(() => expect(save).toBeEnabled())
     await user.click(save)
-    expect(onSave).toHaveBeenCalledWith([20, 21])
+    await vi.waitFor(() => expect(onChanged).toHaveBeenCalledOnce())
+    expect(await tagsOn(oats.id)).toEqual([20, 21])
   })
 
   it('forgets a refused name when it is opened on another Food', async () => {
@@ -401,11 +432,11 @@ describe('FoodTagsSheet', () => {
   })
 
   it('holds Save until a typed Tag has been created', async () => {
-    keeps()
+    const tagsOn = catalogHolding([oats])
     const { handler, release } = heldCreates()
     server.use(handler)
-    const onSave = vi.fn()
-    await renderSuspended(FoodTagsSheet, { props: { food: oats, onSave } })
+    const onChanged = vi.fn()
+    await renderSuspended(FoodTagsSheet, { props: { food: oats, onChanged } })
     const user = userEvent.setup()
     const picker = screen.getByRole('combobox', { name: 'Tags' })
 
@@ -418,7 +449,8 @@ describe('FoodTagsSheet', () => {
     release()
     await vi.waitFor(() => expect(save).toBeEnabled())
     await user.click(save)
-    expect(onSave).toHaveBeenCalledWith([7, 20])
+    await vi.waitFor(() => expect(onChanged).toHaveBeenCalledOnce())
+    expect(await tagsOn(oats.id)).toEqual([7, 20])
   })
 
   it('keeps a second name typed while the first is being created', async () => {
@@ -440,32 +472,40 @@ describe('FoodTagsSheet', () => {
   })
 
   it('keeps a Tag created for one Food off the next Food the sheet opens on', async () => {
-    keeps()
+    const bread = food({ id: 2, name: 'Bread' })
+    const tagsOn = catalogHolding([oats, bread])
     const { handler, release } = heldCreates()
     server.use(handler)
-    const onSave = vi.fn()
+    const onChanged = vi.fn()
     const { rerender } = await renderSuspended(FoodTagsSheet, {
-      props: { food: oats, onSave },
+      props: { food: oats, onChanged },
     })
     const user = userEvent.setup()
     await user.type(screen.getByRole('combobox'), 'dinner')
     await user.click(await screen.findByRole('option', { name: /dinner/ }))
 
-    await rerender({ food: { id: 2, name: 'Bread', tags: [] }, onSave })
+    await rerender({ food: bread, onChanged })
     release()
     const save = screen.getByRole('button', { name: 'Save tags' })
     await vi.waitFor(() => expect(save).toBeEnabled())
     await user.click(save)
 
-    expect(onSave).toHaveBeenCalledWith([])
+    await vi.waitFor(() => expect(onChanged).toHaveBeenCalledOnce())
+    expect(await tagsOn(bread.id)).toEqual([])
   })
 
-  it('holds Save while the page is saving', async () => {
-    await renderSuspended(FoodTagsSheet, {
-      props: { food: oats, saving: true },
-    })
+  it('holds Save while its save is in flight', async () => {
+    catalogHolding([oats], breakfast)
+    const { handler, arrived, release } = held('put', '/api/foods/{id}/tags')
+    server.use(handler)
+    await renderSuspended(FoodTagsSheet, { props: { food: oats } })
+    const save = screen.getByRole('button', { name: 'Save tags' })
 
-    expect(screen.getByRole('button', { name: 'Save tags' })).toBeDisabled()
+    await userEvent.setup().click(save)
+    await arrived
+
+    expect(save).toBeDisabled()
+    release()
   })
 
   it('opens with its Tag list shut, so Save is not covered', async () => {
@@ -477,13 +517,17 @@ describe('FoodTagsSheet', () => {
   })
 
   it('takes one Tag off a Food carrying two, and keeps the other', async () => {
-    keeps(breakfast, { ...snack, foodCount: 1 })
-    const onSave = vi.fn()
+    const carryingBoth = {
+      ...oats,
+      tags: [...oats.tags, { id: 9, name: 'snack' }],
+    }
+    const tagsOn = catalogHolding([carryingBoth], breakfast, {
+      ...snack,
+      foodCount: 1,
+    })
+    const onChanged = vi.fn()
     await renderSuspended(FoodTagsSheet, {
-      props: {
-        food: { ...oats, tags: [...oats.tags, { id: 9, name: 'snack' }] },
-        onSave,
-      },
+      props: { food: carryingBoth, onChanged },
     })
     const user = userEvent.setup()
 
@@ -491,13 +535,14 @@ describe('FoodTagsSheet', () => {
     await user.click(await screen.findByRole('option', { name: 'snack' }))
     await user.click(screen.getByRole('button', { name: 'Save tags' }))
 
-    expect(onSave).toHaveBeenCalledWith([7])
+    await vi.waitFor(() => expect(onChanged).toHaveBeenCalledOnce())
+    expect(await tagsOn(oats.id)).toEqual([7])
   })
 
   it('keeps a Tag the Food carries when its name is typed and entered again', async () => {
-    keeps(breakfast)
-    const onSave = vi.fn()
-    await renderSuspended(FoodTagsSheet, { props: { food: oats, onSave } })
+    const tagsOn = catalogHolding([oats], breakfast)
+    const onChanged = vi.fn()
+    await renderSuspended(FoodTagsSheet, { props: { food: oats, onChanged } })
     const user = userEvent.setup()
 
     await user.type(screen.getByRole('combobox', { name: 'Tags' }), 'Breakfast')
@@ -505,26 +550,28 @@ describe('FoodTagsSheet', () => {
     await user.keyboard('{Enter}')
     await user.click(screen.getByRole('button', { name: 'Save tags' }))
 
-    expect(onSave).toHaveBeenCalledWith([7])
+    await vi.waitFor(() => expect(onChanged).toHaveBeenCalledOnce())
+    expect(await tagsOn(oats.id)).toEqual([7])
   })
 
   it('takes a Tag off when it is clicked in a list narrowed by a typed name', async () => {
-    keeps(breakfast)
-    const onSave = vi.fn()
-    await renderSuspended(FoodTagsSheet, { props: { food: oats, onSave } })
+    const tagsOn = catalogHolding([oats], breakfast)
+    const onChanged = vi.fn()
+    await renderSuspended(FoodTagsSheet, { props: { food: oats, onChanged } })
     const user = userEvent.setup()
 
     await user.type(screen.getByRole('combobox', { name: 'Tags' }), 'Break')
     await user.click(await screen.findByRole('option', { name: 'Breakfast' }))
     await user.click(screen.getByRole('button', { name: 'Save tags' }))
 
-    expect(onSave).toHaveBeenCalledWith([])
+    await vi.waitFor(() => expect(onChanged).toHaveBeenCalledOnce())
+    expect(await tagsOn(oats.id)).toEqual([])
   })
 
   it('takes a Tag off from the keyboard when nothing is typed', async () => {
-    keeps(breakfast)
-    const onSave = vi.fn()
-    await renderSuspended(FoodTagsSheet, { props: { food: oats, onSave } })
+    const tagsOn = catalogHolding([oats], breakfast)
+    const onChanged = vi.fn()
+    await renderSuspended(FoodTagsSheet, { props: { food: oats, onChanged } })
     const user = userEvent.setup()
 
     await user.click(screen.getByRole('combobox', { name: 'Tags' }))
@@ -532,13 +579,14 @@ describe('FoodTagsSheet', () => {
     await user.keyboard('{ArrowDown}{Enter}')
     await user.click(screen.getByRole('button', { name: 'Save tags' }))
 
-    expect(onSave).toHaveBeenCalledWith([])
+    await vi.waitFor(() => expect(onChanged).toHaveBeenCalledOnce())
+    expect(await tagsOn(oats.id)).toEqual([])
   })
 
   it('takes a Tag off by a click after its name was entered again', async () => {
-    keeps(breakfast)
-    const onSave = vi.fn()
-    await renderSuspended(FoodTagsSheet, { props: { food: oats, onSave } })
+    const tagsOn = catalogHolding([oats], breakfast)
+    const onChanged = vi.fn()
+    await renderSuspended(FoodTagsSheet, { props: { food: oats, onChanged } })
     const user = userEvent.setup()
     const picker = screen.getByRole('combobox', { name: 'Tags' })
 
@@ -549,19 +597,21 @@ describe('FoodTagsSheet', () => {
     await user.click(await screen.findByRole('option', { name: 'Breakfast' }))
     await user.click(screen.getByRole('button', { name: 'Save tags' }))
 
-    expect(onSave).toHaveBeenCalledWith([])
+    await vi.waitFor(() => expect(onChanged).toHaveBeenCalledOnce())
+    expect(await tagsOn(oats.id)).toEqual([])
   })
 
   it('saves a Food with a Tag taken off as no longer carrying it', async () => {
-    keeps(breakfast)
-    const onSave = vi.fn()
-    await renderSuspended(FoodTagsSheet, { props: { food: oats, onSave } })
+    const tagsOn = catalogHolding([oats], breakfast)
+    const onChanged = vi.fn()
+    await renderSuspended(FoodTagsSheet, { props: { food: oats, onChanged } })
     const user = userEvent.setup()
 
     await user.click(screen.getByRole('combobox'))
     await user.click(await screen.findByRole('option', { name: 'Breakfast' }))
     await user.click(screen.getByRole('button', { name: 'Save tags' }))
 
-    expect(onSave).toHaveBeenCalledWith([])
+    await vi.waitFor(() => expect(onChanged).toHaveBeenCalledOnce())
+    expect(await tagsOn(oats.id)).toEqual([])
   })
 })
