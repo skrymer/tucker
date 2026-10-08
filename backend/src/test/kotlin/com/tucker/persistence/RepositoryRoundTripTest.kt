@@ -102,6 +102,16 @@ class RepositoryRoundTripTest {
     }
 
     @Test
+    fun `a weight measurement is stored under the id it was built with`() {
+        val date = LocalDate.of(2026, 5, 22)
+        val id = weights.nextId()
+
+        weights.save(WeightMeasurement(id, date, 88.4))
+
+        assertEquals(id, weights.findOn(date)?.id)
+    }
+
+    @Test
     fun `a stored decimal reads back exactly`() {
         val date = LocalDate.of(2026, 5, 22)
         // 107.05 has no exact 32-bit representation: a Float round-trip degrades it to

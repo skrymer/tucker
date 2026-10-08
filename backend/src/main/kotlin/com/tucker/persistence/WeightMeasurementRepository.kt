@@ -20,7 +20,11 @@ import java.time.LocalDate
 class WeightMeasurementRepository(
     private val dsl: DSLContext,
     private val currentUser: CurrentUser,
+    private val ids: IdSequence,
 ) {
+
+    /** The id the next reading is built with (ADR 0036). */
+    fun nextId(): Long = ids.next(WEIGHT_MEASUREMENT)
 
     fun findAll(): List<WeightMeasurement> =
         dsl.selectFrom(WEIGHT_MEASUREMENT)
@@ -62,6 +66,7 @@ class WeightMeasurementRepository(
             return measurement.copy(id = existing.id!!.toLong())
         }
         val rec = dsl.newRecord(WEIGHT_MEASUREMENT)
+        rec.id = measurement.id?.toInt()
         rec.userId = currentUser.ownerId
         rec.measuredOn = measurement.measuredOn.toString()
         rec.weightKg = measurement.weightKg
