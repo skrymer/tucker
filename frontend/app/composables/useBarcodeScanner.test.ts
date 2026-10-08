@@ -297,6 +297,28 @@ describe('useBarcodeScanner', () => {
     expect(screen.getByTestId('barcode').textContent).toBe('')
   })
 
+  it('ignores a code from before it was started again mid-scan', async () => {
+    getUserMedia.mockResolvedValue(fakeStream().stream)
+    let decode: (r: unknown) => void = () => {}
+    readBarcodesMock.mockReturnValueOnce(
+      new Promise<unknown>((resolve) => (decode = resolve)) as ReturnType<
+        typeof readBarcodes
+      >,
+    )
+    await renderSuspended(Harness)
+    primeVideoFrame()
+    await tapScan()
+    await vi.waitFor(() => expect(readBarcodesMock).toHaveBeenCalled())
+    await tapScan()
+    await vi.waitFor(() => expect(stateText()).toBe('scanning'))
+
+    decode([{ isValid: true, text: 'OLD' }])
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(stateText()).toBe('scanning')
+    expect(screen.getByTestId('barcode').textContent).toBe('')
+  })
+
   it('decodes no more than once while the frames come faster than its tick', async () => {
     getUserMedia.mockResolvedValue(fakeStream().stream)
     const frames: FrameRequestCallback[] = []
