@@ -274,15 +274,10 @@ export interface TimelineTrajectory {
 }
 
 /**
- * The planned trajectory drawn into the plot, or null when there is none — which
- * is what Calorie Tracking and having an active Goal decide, server-side.
+ * The plot's weight range once the plan is beside the weights: the plan may
+ * stretch it, but no further than TRAJECTORY_STRETCH_KG past the weights.
  */
-export function weightTimelineTrajectory(
-  timeline: Timeline,
-): TimelineTrajectory | null {
-  const plan = timeline.days.map((day) => day.trajectoryKg)
-  const planned = plan.filter((kg) => kg != null)
-  if (planned.length === 0) return null
+function trajectoryBounds(timeline: Timeline, planned: number[]) {
   const [lowest, highest] = weightExtent(timeline)
   const low = Math.max(
     lowest - TRAJECTORY_STRETCH_KG,
@@ -292,29 +287,52 @@ export function weightTimelineTrajectory(
     highest + TRAJECTORY_STRETCH_KG,
     Math.max(highest, ...planned),
   )
-  // The days the plan is drawn on an edge rather than where it actually falls, so
-  // the line runs off the plot instead of stopping in mid-air; the rest of each
-  // run is dropped (ADR 0029). The plan never rises — `Goal` refuses a rate below
-  // 0.05 kg/week and a target above the start weight, and `GoalTest` pins that the
-  // plan follows — so the *first* day under the floor and the *last* over the
-  // ceiling are the ones nearest the plot.
+  return [low, high] as const
+}
+
+/**
+ * The plan clipped to [low, high]: the days it is drawn on, and the days it
+ * leaves the plot. A day past an edge is drawn on that edge rather than where it
+ * actually falls, so the line runs off the plot instead of stopping in mid-air;
+ * the rest of each run is dropped (ADR 0029). The plan never rises — `Goal`
+ * refuses a rate below 0.05 kg/week and a target above the start weight, and
+ * `GoalTest` pins that the plan follows — so the *first* day under the floor and
+ * the *last* over the ceiling are the ones nearest the plot.
+ */
+function clipPlan(days: TimelineDay[], [low, high]: readonly [number, number]) {
+  const plan = days.map((day) => day.trajectoryKg)
   const exits = plan.findIndex((kg) => kg != null && kg < low)
   const enters = plan.findLastIndex((kg) => kg != null && kg > high)
-  const dateOf = (index: number) => timeline.days[index]!.date
+  const dateOf = (index: number) => days[index]!.date
+  const drawnAt = (kg: number, index: number): number | null => {
+    if (kg < low) return index === exits ? low : null
+    if (kg > high) return index === enters ? high : null
+    return kg
+  }
   const drawn = new Map(
     plan.flatMap((kg, index) => {
-      if (kg == null) return []
-      if (kg < low)
-        return index === exits ? [[dateOf(index), low] as const] : []
-      if (kg > high)
-        return index === enters ? [[dateOf(index), high] as const] : []
-      return [[dateOf(index), kg] as const]
+      const at = kg == null ? null : drawnAt(kg, index)
+      return at == null ? [] : [[dateOf(index), at] as const]
     }),
   )
   const clips = [
     ...(enters === -1 ? [] : [{ date: dateOf(enters), kg: high }]),
     ...(exits === -1 ? [] : [{ date: dateOf(exits), kg: low }]),
   ]
+  return { drawn, clips }
+}
+
+/**
+ * The planned trajectory drawn into the plot, or null when there is none — which
+ * is what Calorie Tracking and having an active Goal decide, server-side.
+ */
+export function weightTimelineTrajectory(
+  timeline: Timeline,
+): TimelineTrajectory | null {
+  const planned = timeline.days.flatMap((day) => day.trajectoryKg ?? [])
+  if (planned.length === 0) return null
+  const [low, high] = trajectoryBounds(timeline, planned)
+  const { drawn, clips } = clipPlan(timeline.days, [low, high])
   // Nothing a chart can show: a line needs two points, and a Goal is always
   // started today (ADR 0016), so its first window carries exactly one planned
   // day. Naming a series in the key that nothing draws is worse than the plain
@@ -344,7 +362,15 @@ export function weightTimelineSeries(
   scale: () => TimelineScale | null,
   plan: () => TimelineTrajectory | null,
 ) {
-  const days = () => timeline().days
+  return {
+    ...weightAccessors(plan),
+    ...tickFormats(() => timeline().days),
+    ...intakeAccessors(scale),
+  }
+}
+
+/** The weight series: the trend, the plan, its clip marks and each reading. */
+function weightAccessors(plan: () => TimelineTrajectory | null) {
   return {
     // The days arrive in order and are contiguous, so a day's position in the run
     // is its x — which keeps the scatter and the line on the same footing.
@@ -362,6 +388,12 @@ export function weightTimelineSeries(
     // value, which is what keeps a day nobody weighed in on off the chart rather
     // than on the floor.
     readingKg: (day: TimelineDay) => day.weightKg ?? undefined,
+  }
+}
+
+/** The two axes' tick formats. */
+function tickFormats(days: () => TimelineDay[]) {
+  return {
     // Only a whole position names a day. The scale picks its own tick values, so
     // it can ask for a fractional one (a 28-point run with a step of 2.5) or one
     // past the end while a narrower window is still loading — and an unlabelled
@@ -371,6 +403,12 @@ export function weightTimelineSeries(
       return day ? formatDayMonthFromISO(day.date) : ''
     },
     kgTick: (kg: number) => kg.toFixed(1),
+  }
+}
+
+/** The intake bars, on the weight axis's own scale. */
+function intakeAccessors(scale: () => TimelineScale | null) {
+  return {
     // The Budget the day was read against, on the bars' own scale. It spans a day
     // with no Entry — a Budget holds all week and did not lapse because the User
     // stopped recording — and is undefined only where none was in force.
