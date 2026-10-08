@@ -161,8 +161,7 @@ chosen to make the code read better — never by shaving lines, and never with a
 | Rule (limit) | Smell |
 | --- | --- |
 | `max-lines-per-function` (30) | Long Function |
-| `sonarjs/cognitive-complexity` (8) | Nested conditionals |
-| `max-depth` (3), `max-nested-callbacks` (3), `no-nested-ternary` | Nested conditionals |
+| `sonarjs/cognitive-complexity` (8), `max-depth` (3), `max-nested-callbacks` (3), `no-nested-ternary` | Nested conditionals |
 | `max-params` (4), `vue/max-props` (6) | Long Parameter List |
 | `max-lines` (300), `vue/max-lines-per-block` (script 200, template 150), `vue/max-template-depth` (8) | Large Class |
 | `no-else-return`, `no-lonely-if`, `sonarjs/no-collapsible-if`, `sonarjs/prefer-single-boolean-return`, `sonarjs/no-inverted-boolean-check` | Nested conditionals (small) |
@@ -176,11 +175,13 @@ How the moves land in Vue (ADR 0004):
   and stays inline there (`CheckAnswer`, `FoodBuilder`, `IngredientPicker`).
 - **Long Function → Extract Function**: a long `useXxx()` becomes smaller inline ones; a
   pure step becomes a module-level function. A composable's inner functions count toward
-  its length, so a factory splits by concern (`useApiMutation` → its error toast, its
-  feedback, the lifecycle).
-- **A sheet owns the mutation it issues** and emits `changed` for its page to re-read
-  (`ManageTagsSheet`, `FoodTagsSheet`, `AddSheet`) — a page running every mutation for
-  its sheets is Feature Envy, and threading the result back down is a Middle Man.
+  its length, so a factory splits by concern (`useApiMutation` → its error toast and its
+  feedback; `useAsyncAction` → the run's lifecycle and its ownership).
+- **A sheet owns the mutation it issues, and closes itself once it lands** — a page
+  running every mutation for its sheets is Feature Envy. Data more than one surface
+  shows is one keyed read the mutation refreshes directly (`useFoodCatalog` /
+  `refreshFoodCatalog`); an event passed up through parents that only relay it is a
+  Middle Man. `changed` is for data the page alone holds.
 - `vue/max-lines-per-block` counts comments; when it fires on a well-commented file the
   answer is still a component boundary, not fewer comments.
 
