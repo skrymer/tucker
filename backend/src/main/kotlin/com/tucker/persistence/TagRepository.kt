@@ -63,7 +63,7 @@ class TagRepository(
     fun rename(tag: Tag) {
         dsl.update(TAG)
             .set(TAG.NAME, tag.name.value)
-            .where(TAG.ID.eq(checkNotNull(tag.id).toInt()))
+            .where(TAG.ID.eq(tag.id.toInt()))
             .and(TAG.USER_ID.eq(currentUser.ownerId))
             .execute()
     }

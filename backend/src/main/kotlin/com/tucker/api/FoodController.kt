@@ -142,7 +142,7 @@ internal fun Food.toResponse(
     ingredientCount = ingredientCount,
     referenceFoodId = referenceFoodId,
     referenceFoodName = referenceFoodName,
-    tags = tags.sortedBy { it.name }.map { FoodTagResponse(persistedId(it.id), it.name.value) },
+    tags = tags.sortedBy { it.name }.map { FoodTagResponse(it.id, it.name.value) },
 )
 
 /** Which **Reference Food** a Food should borrow its micronutrients from. */

@@ -16,7 +16,9 @@ request builds, and `Food` has `id: Long` and is what a repository hands back.
 `insert(NewFood): Food`. A function that needs a saved aggregate takes `Food`, so
 "must be persisted first" is a parameter type instead of a `require`. The split
 is the same for every aggregate with a database-assigned id, so the codebase has
-one convention, not two.
+one convention, not two. Where creation already takes a single value, that value
+is the draft: a Tag is created from a `TagName`, so there is no `NewTag`, and
+`Tag` simply has `id: Long`.
 
 Two alternatives were rejected:
 
