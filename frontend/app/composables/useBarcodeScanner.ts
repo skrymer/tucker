@@ -307,13 +307,14 @@ function useScanStart(
       return null
     }
     const read = await loadDecoder().catch(() => 'broken' as const)
-    if (read === 'broken' || camera.superseded(attempt)) return read
+    if (read === 'broken') return read
+    if (camera.superseded(attempt)) return null
     // Enter `scanning` first so the <video> mounts, then attach the stream — the
     // element is rendered only in this state. Showing it before play() also
     // matters on iOS, where play() on a hidden video silently no-ops.
     state.value = 'scanning'
     await camera.play()
-    return read
+    return camera.superseded(attempt) ? null : read
   }
 }
 

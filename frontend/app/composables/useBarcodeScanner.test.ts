@@ -3,7 +3,7 @@ import { defineComponent, nextTick } from 'vue'
 import { renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
-import { readBarcodes } from 'zxing-wasm/reader'
+import { readBarcodes, setZXingModuleOverrides } from 'zxing-wasm/reader'
 import { resetPageStubs, setVisibility } from '~~/test/page-visibility-helpers'
 import { useBarcodeScanner } from './useBarcodeScanner'
 
@@ -196,6 +196,42 @@ describe('useBarcodeScanner', () => {
     await tapScan()
 
     expect(stateText()).toBe('requesting')
+    expect(screen.getByTestId('barcode').textContent).toBe('')
+  })
+
+  it('reads nothing once stopped while its decoder was loading', async () => {
+    getUserMedia.mockResolvedValue(fakeStream().stream)
+    readBarcodesMock.mockResolvedValue([
+      { isValid: true, text: '5701234567890' },
+    ] as unknown as Awaited<ReturnType<typeof readBarcodes>>)
+    await renderSuspended(Harness)
+    const video = screen
+      .getByTestId('state')
+      .parentElement!.querySelector('video')!
+    Object.defineProperty(video, 'readyState', { value: 4, configurable: true })
+    Object.defineProperty(video, 'videoWidth', {
+      value: 640,
+      configurable: true,
+    })
+    Object.defineProperty(video, 'videoHeight', {
+      value: 480,
+      configurable: true,
+    })
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
+      drawImage: vi.fn(),
+      getImageData: vi.fn(() => ({ data: new Uint8ClampedArray(4) })),
+    } as unknown as CanvasRenderingContext2D)
+    // The app goes to the background while the decoder is still loading,
+    // which stops the scanner.
+    vi.mocked(setZXingModuleOverrides).mockImplementationOnce(() =>
+      setVisibility('hidden'),
+    )
+
+    await tapScan()
+    // Long enough for several decode ticks to have run, were any running.
+    await new Promise((resolve) => setTimeout(resolve, 400))
+
+    expect(stateText()).toBe('idle')
     expect(screen.getByTestId('barcode').textContent).toBe('')
   })
 
