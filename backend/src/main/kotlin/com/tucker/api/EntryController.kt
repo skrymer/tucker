@@ -5,6 +5,7 @@ import com.tucker.domain.Entry
 import com.tucker.domain.EntryKind
 import com.tucker.domain.EstimatedEntry
 import com.tucker.domain.Food
+import com.tucker.domain.MealEstimate
 import com.tucker.domain.WeighedEntry
 import com.tucker.persistence.EntryRepository
 import com.tucker.persistence.FoodRepository
@@ -240,10 +241,9 @@ class EntryController(
     /** The Estimated Entry [request] describes. */
     private fun estimated(request: LogEstimatedEntryRequest): EstimatedEntry =
         EstimatedEntry.log(
+            entries.nextId(),
             request.date,
-            request.label,
-            request.calories,
-            request.protein,
+            MealEstimate(request.label, request.calories, request.protein),
             userToday.resolve(request.clientToday),
         )
 

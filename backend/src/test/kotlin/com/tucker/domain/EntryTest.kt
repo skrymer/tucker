@@ -77,7 +77,7 @@ class EntryTest {
     @Test
     fun `an estimated Entry dated the day after tomorrow is refused`() {
         val ex = assertThrows<IllegalArgumentException> {
-            EstimatedEntry.log(today.plusDays(2), "Café dinner", calories = 800.0, protein = null, today = today)
+            EstimatedEntry.log(id = 1, today.plusDays(2), MealEstimate("Café dinner", 800.0, protein = null), today)
         }
         assert(ex.message!!.contains("tomorrow", ignoreCase = true)) {
             "expected message to mention tomorrow, was '${ex.message}'"
@@ -87,8 +87,9 @@ class EntryTest {
     @Test
     fun `an estimated Entry dated tomorrow is logged on tomorrow`() {
         val entry =
-            EstimatedEntry.log(today.plusDays(1), "Café dinner", calories = 800.0, protein = null, today = today)
+            EstimatedEntry.log(id = 7, today.plusDays(1), MealEstimate("Café dinner", 800.0, protein = null), today)
 
+        assertEquals(7, entry.id)
         assertEquals(today.plusDays(1), entry.loggedOn)
         assertEquals("Café dinner", entry.label)
         assertEquals(800.0, entry.calories)

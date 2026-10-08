@@ -79,13 +79,20 @@ data class EstimatedEntry(
     }
 
     companion object {
-        /** Log an estimate of [calories] and [protein] under [label] on [date]. */
-        fun log(date: LocalDate, label: String, calories: Double, protein: Double?, today: LocalDate): EstimatedEntry {
+        /** Log [estimate] on [date]. */
+        fun log(id: Long, date: LocalDate, estimate: MealEstimate, today: LocalDate): EstimatedEntry {
             requireNoLaterThanTomorrow(date, today)
-            return EstimatedEntry(null, date, label, calories, protein)
+            return EstimatedEntry(id, date, estimate.label, estimate.calories, estimate.protein)
         }
     }
 }
+
+/** What a User types in for a meal they could not weigh: a name, its calories, and its protein if known. */
+data class MealEstimate(
+    val label: String,
+    val calories: Double,
+    val protein: Double?,
+)
 
 /** Tomorrow is the furthest ahead an Entry can be dated (ADR 0035). */
 private fun requireNoLaterThanTomorrow(date: LocalDate, today: LocalDate) {
