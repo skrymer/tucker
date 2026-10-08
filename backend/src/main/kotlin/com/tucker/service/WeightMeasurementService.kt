@@ -1,5 +1,6 @@
 package com.tucker.service
 
+import com.tucker.domain.NewWeightMeasurement
 import com.tucker.domain.WeightMeasurement
 import com.tucker.persistence.WeightMeasurementRepository
 import org.springframework.stereotype.Service
@@ -19,7 +20,7 @@ class WeightMeasurementService(
 ) {
 
     @Transactional
-    fun save(measurement: WeightMeasurement, today: LocalDate): WeightMeasurement {
+    fun save(measurement: NewWeightMeasurement, today: LocalDate): WeightMeasurement {
         val saved = weights.save(measurement)
         goals.stampReachedIfCrossed(today)
         return saved

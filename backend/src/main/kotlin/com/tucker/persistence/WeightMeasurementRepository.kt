@@ -1,5 +1,6 @@
 package com.tucker.persistence
 
+import com.tucker.domain.NewWeightMeasurement
 import com.tucker.domain.WeightMeasurement
 import com.tucker.jooq.Tables.WEIGHT_MEASUREMENT
 import com.tucker.jooq.tables.records.WeightMeasurementRecord
@@ -48,7 +49,7 @@ class WeightMeasurementRepository(
             .execute()
 
     /** Insert the reading, or replace the caller's own reading for the same day. */
-    fun save(measurement: WeightMeasurement): WeightMeasurement {
+    fun save(measurement: NewWeightMeasurement): WeightMeasurement {
         val existing = dsl.selectFrom(WEIGHT_MEASUREMENT)
             .where(WEIGHT_MEASUREMENT.MEASURED_ON.eq(measurement.measuredOn.toString()))
             .and(WEIGHT_MEASUREMENT.USER_ID.eq(currentUser.ownerId))
@@ -59,15 +60,18 @@ class WeightMeasurementRepository(
                 .where(WEIGHT_MEASUREMENT.ID.eq(existing.id))
                 .and(WEIGHT_MEASUREMENT.USER_ID.eq(currentUser.ownerId))
                 .execute()
-            return measurement.copy(id = existing.id!!.toLong())
+            return measurement.storedAs(existing.id!!.toLong())
         }
         val rec = dsl.newRecord(WEIGHT_MEASUREMENT)
         rec.userId = currentUser.ownerId
         rec.measuredOn = measurement.measuredOn.toString()
         rec.weightKg = measurement.weightKg
         rec.store()
-        return measurement.copy(id = rec.id!!.toLong())
+        return measurement.storedAs(rec.id!!.toLong())
     }
+
+    private fun NewWeightMeasurement.storedAs(id: Long) =
+        WeightMeasurement(id = id, measuredOn = measuredOn, weightKg = weightKg)
 
     private fun WeightMeasurementRecord.toDomain(): WeightMeasurement = WeightMeasurement(
         id = id!!.toLong(),

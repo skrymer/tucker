@@ -17,10 +17,10 @@ class AdaptiveEngineTest {
     fun `WeightTrend smooths a noisy series`() {
         val trend = WeightTrend.from(
             listOf(
-                WeightMeasurement(null, day(1), 80.0),
-                WeightMeasurement(null, day(2), 82.0),
-                WeightMeasurement(null, day(3), 80.0),
-                WeightMeasurement(null, day(4), 81.0),
+                NewWeightMeasurement(day(1), 80.0),
+                NewWeightMeasurement(day(2), 82.0),
+                NewWeightMeasurement(day(3), 80.0),
+                NewWeightMeasurement(day(4), 81.0),
             ),
         )
         // EWMA (alpha 0.1): the first reading seeds the trend outright, and each

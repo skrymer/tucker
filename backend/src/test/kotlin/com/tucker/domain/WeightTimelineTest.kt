@@ -19,8 +19,7 @@ class WeightTimelineTest {
     /** Daily readings ending on [to], newest last — [kg] is read in that order. */
     private fun daily(vararg kg: Double, endingOn: LocalDate = to) =
         kg.mapIndexed { index, weight ->
-            WeightMeasurement(
-                id = null,
+            NewWeightMeasurement(
                 measuredOn = endingOn.minusDays((kg.size - 1 - index).toLong()),
                 weightKg = weight,
             )

@@ -4,7 +4,7 @@ import java.time.LocalDate
 
 /** A reading of [kg] taken on [on]. */
 fun weighed(on: LocalDate, kg: Double) =
-    WeightMeasurement(id = null, measuredOn = on, weightKg = kg)
+    NewWeightMeasurement(measuredOn = on, weightKg = kg)
 
 /**
  * A two-reading trend ending on [today], which fell from [fromKg] to [toKg] across
