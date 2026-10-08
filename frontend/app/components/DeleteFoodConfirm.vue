@@ -46,25 +46,15 @@ const deleteFood = useFoodDeletion()
 </script>
 
 <template>
-  <UModal
+  <ConfirmDeleteDialog
     :open="food !== null"
     title="Delete this food?"
-    @update:open="(value) => !value && emit('cancel')"
+    @cancel="emit('cancel')"
+    @confirm="deleteFood"
   >
-    <template #body>
-      <p class="text-sm text-default">
-        <span class="font-medium">{{ formatName(food?.name ?? '') }}</span> will
-        be removed from your catalog. A food you've logged entries against, or
-        used as a recipe ingredient, can't be deleted — your entries and recipes
-        depend on it.
-      </p>
-    </template>
-
-    <template #footer>
-      <div class="flex justify-end gap-2">
-        <UButton variant="ghost" @click="emit('cancel')">Cancel</UButton>
-        <UButton color="error" @click="deleteFood">Delete</UButton>
-      </div>
-    </template>
-  </UModal>
+    <span class="font-medium">{{ formatName(food?.name ?? '') }}</span> will be
+    removed from your catalog. A food you've logged entries against, or used as
+    a recipe ingredient, can't be deleted — your entries and recipes depend on
+    it.
+  </ConfirmDeleteDialog>
 </template>
