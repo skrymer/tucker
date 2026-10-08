@@ -71,28 +71,30 @@ function refusalOf(error: unknown): ScannerState {
     : 'unsupported'
 }
 
-/** Reads the video's current frame into pixels, reusing one canvas. */
-function frameGrabber() {
-  let canvas: HTMLCanvasElement | null = null
-  let ctx: CanvasRenderingContext2D | null = null
-  return (video: HTMLVideoElement | null): ImageData | null => {
-    if (!video || video.readyState < MIN_READY_STATE) return null
-    const { videoWidth: w, videoHeight: h } = video
-    if (!w || !h) return null
-    canvas ??= document.createElement('canvas')
-    // Resizing reallocates the backing store, so only do it when the feed's
-    // dimensions actually change — not on all eight frames a second.
-    if (canvas.width !== w || canvas.height !== h) {
-      canvas.width = w
-      canvas.height = h
-    }
-    // getImageData is a GPU→CPU readback; `willReadFrequently` keeps the canvas
-    // on a software path built for exactly that, which is all this one is for.
-    ctx ??= canvas.getContext('2d', { willReadFrequently: true })
-    if (!ctx) return null
-    ctx.drawImage(video, 0, 0, w, h)
-    return ctx.getImageData(0, 0, w, h)
+// One canvas for every scanner the app opens: only one camera runs at a time,
+// and a full-resolution frame buffer is several megabytes to allocate afresh
+// each time a sheet holding a scanner opens.
+let canvas: HTMLCanvasElement | null = null
+let ctx: CanvasRenderingContext2D | null = null
+
+/** Reads the video's current frame into pixels, on the one shared canvas. */
+function grabFrame(video: HTMLVideoElement | null): ImageData | null {
+  if (!video || video.readyState < MIN_READY_STATE) return null
+  const { videoWidth: w, videoHeight: h } = video
+  if (!w || !h) return null
+  canvas ??= document.createElement('canvas')
+  // Resizing reallocates the backing store, so only do it when the feed's
+  // dimensions actually change — not on all eight frames a second.
+  if (canvas.width !== w || canvas.height !== h) {
+    canvas.width = w
+    canvas.height = h
   }
+  // getImageData is a GPU→CPU readback; `willReadFrequently` keeps the canvas
+  // on a software path built for exactly that, which is all this one is for.
+  ctx ??= canvas.getContext('2d', { willReadFrequently: true })
+  if (!ctx) return null
+  ctx.drawImage(video, 0, 0, w, h)
+  return ctx.getImageData(0, 0, w, h)
 }
 
 function stopTracks(stream: MediaStream | null) {
@@ -172,10 +174,9 @@ function useCameraStream(videoEl: Ref<HTMLVideoElement | null>) {
  * ready, else the code read (or null for none).
  */
 function useFrameDecoder(videoEl: Ref<HTMLVideoElement | null>) {
-  const grab = frameGrabber()
   let decoding = false
   return async (read: ReadBarcodes) => {
-    const frame = decoding ? null : grab(videoEl.value)
+    const frame = decoding ? null : grabFrame(videoEl.value)
     if (!frame) return null
     decoding = true
     try {

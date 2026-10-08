@@ -164,6 +164,41 @@ describe('useBarcodeScanner', () => {
     expect(screen.getByTestId('barcode').textContent).toBe('5701234567890')
   })
 
+  it('drops a decoded barcode as soon as the next scan is asked for', async () => {
+    getUserMedia.mockResolvedValueOnce(fakeStream().stream)
+    readBarcodesMock.mockResolvedValue([
+      { isValid: true, text: '5701234567890' },
+    ] as unknown as Awaited<ReturnType<typeof readBarcodes>>)
+    await renderSuspended(Harness)
+    const video = screen
+      .getByTestId('state')
+      .parentElement!.querySelector('video')!
+    Object.defineProperty(video, 'readyState', { value: 4, configurable: true })
+    Object.defineProperty(video, 'videoWidth', {
+      value: 640,
+      configurable: true,
+    })
+    Object.defineProperty(video, 'videoHeight', {
+      value: 480,
+      configurable: true,
+    })
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
+      drawImage: vi.fn(),
+      getImageData: vi.fn(() => ({ data: new Uint8ClampedArray(4) })),
+    } as unknown as CanvasRenderingContext2D)
+    await tapScan()
+    await vi.waitFor(() => expect(stateText()).toBe('decoded'))
+
+    // The next camera request never answers: what shows is what start() did
+    // before its first await, which is what a surface keyed on `decoded` and
+    // the barcode reads the moment Scan again is tapped.
+    getUserMedia.mockReturnValueOnce(new Promise(() => {}))
+    await tapScan()
+
+    expect(stateText()).toBe('requesting')
+    expect(screen.getByTestId('barcode').textContent).toBe('')
+  })
+
   it('gives up when the decoder itself cannot run', async () => {
     // The decoder's WASM loads on the first decode, not on the import, so an
     // unreachable binary surfaces here. Without this the camera stays live and
