@@ -1,5 +1,6 @@
 package com.tucker.api
 
+import com.tucker.domain.MacroEnergyShares
 import com.tucker.service.CheckOutcome
 import com.tucker.service.CheckService
 import com.tucker.service.CheckedProduct
@@ -50,30 +51,30 @@ data class CheckResponse(
     /** A whole day of nothing but this Food. Both null for a Food with no calories. */
     val gramsInBudget: Double?,
     val wholeDayProteinShortfallG: Double?,
-)
+) {
+    /** [product] on the wire. */
+    constructor(product: CheckedProduct) : this(product, product.nutrition.macroEnergyShares())
 
-private fun CheckedProduct.toResponse(): CheckResponse {
-    val shares = nutrition.macroEnergyShares()
-    return CheckResponse(
-        name = name,
-        barcode = barcode,
-        source = source,
-        caloriesPer100g = nutrition.caloriesPer100g,
-        proteinPer100g = nutrition.proteinPer100g,
-        carbsPer100g = nutrition.carbsPer100g,
-        fatPer100g = nutrition.fatPer100g,
+    private constructor(product: CheckedProduct, shares: MacroEnergyShares) : this(
+        name = product.name,
+        barcode = product.barcode,
+        source = product.source,
+        caloriesPer100g = product.nutrition.caloriesPer100g,
+        proteinPer100g = product.nutrition.proteinPer100g,
+        carbsPer100g = product.nutrition.carbsPer100g,
+        fatPer100g = product.nutrition.fatPer100g,
         proteinEnergyShare = shares.protein,
         carbsEnergyShare = shares.carbs,
         fatEnergyShare = shares.fat,
-        calorieBudgetKcal = check.calorieBudgetKcal,
-        proteinFloorG = check.proteinFloorG,
-        costSharePer100g = check.costSharePer100g,
-        returnSharePer100g = check.returnSharePer100g,
-        paceGPer100Kcal = check.pace.gPer100Kcal,
-        proteinPer100Kcal = check.proteinPer100Kcal,
-        balanceProteinPer100gG = check.balanceProteinPer100gG,
-        gramsInBudget = check.gramsInBudget,
-        wholeDayProteinShortfallG = check.wholeDayProteinShortfallG,
+        calorieBudgetKcal = product.check.calorieBudgetKcal,
+        proteinFloorG = product.check.proteinFloorG,
+        costSharePer100g = product.check.costSharePer100g,
+        returnSharePer100g = product.check.returnSharePer100g,
+        paceGPer100Kcal = product.check.pace.gPer100Kcal,
+        proteinPer100Kcal = product.check.proteinPer100Kcal,
+        balanceProteinPer100gG = product.check.balanceProteinPer100gG,
+        gramsInBudget = product.check.gramsInBudget,
+        wholeDayProteinShortfallG = product.check.wholeDayProteinShortfallG,
     )
 }
 
@@ -104,7 +105,7 @@ class CheckController(
         clientToday: LocalDate?,
     ): CheckResponse =
         when (val outcome = checks.check(barcode, clientToday?.let(userToday::resolve))) {
-            is CheckOutcome.Stated -> outcome.product.toResponse()
+            is CheckOutcome.Stated -> CheckResponse(outcome.product)
             is CheckOutcome.Incomplete -> throw UnprocessableException(
                 "${outcome.source} has no complete nutrition for ${outcome.name}, " +
                     "so Tucker can't say what it costs",
