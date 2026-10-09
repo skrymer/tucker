@@ -229,18 +229,27 @@ data class MicronutrientIntake(
 
         /**
          * The window's contributions split once: those whose Food borrows a Reference
-         * Food, carried with it, and the rest, left to match. The two sides ask the one
-         * question — is there a borrow — so a contribution lands on exactly one of them.
+         * Food, carried with it, and the rest, left to match. One question, asked once
+         * per contribution, so each lands on exactly one side — and what can supply a
+         * figure is what counts toward coverage, so the numerator and the denominator
+         * of one read describe the same set of food. A **Recipe** needs no clause of
+         * its own: `Food`'s invariant refuses to match one, so a borrow implies a
+         * plain Food.
          */
         private fun splitByBorrow(
             contributions: List<FoodContribution>,
         ): Pair<List<CoveredContribution>, List<FoodContribution>> {
-            val covered = contributions.mapNotNull { contribution ->
-                contribution.borrowed.reference?.let { reference ->
-                    CoveredContribution(contribution.grams, contribution.calories, reference)
+            val covered = mutableListOf<CoveredContribution>()
+            val queued = mutableListOf<FoodContribution>()
+            for (contribution in contributions) {
+                val reference = contribution.borrowed.reference
+                if (reference != null) {
+                    covered += CoveredContribution(contribution.grams, contribution.calories, reference)
+                } else {
+                    queued += contribution
                 }
             }
-            return covered to contributions.filterNot { it.borrowed.contributes }
+            return covered to queued
         }
 
         /** A contribution that can supply figures, with the Reference Food it supplies them from. */
