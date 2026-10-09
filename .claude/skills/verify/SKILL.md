@@ -99,7 +99,14 @@ rewrote, not the surfaces the issue names** — #454's criterion named six surfa
 the first audit came back "partly": the Budget gate, Manage Tags, every Check and camera
 failure branch and the plan line were rewritten and undriven. Force a failure branch
 with a labelled fetch shim (a status, a network error, a hold), not a real-provider
-value that happens to fail differently: #454's "404 miss" timed out instead.
+value that happens to fail differently: #454's "404 miss" timed out instead. **A
+refactor claiming no behaviour change is proved against main on the same data**: build
+main's backend from source (`git archive <sha>:backend | docker build -t
+tucker-backend:main-<sha> -`; GHCR tags are `sha-<short>`, not the bare SHA), retag
+it as `tucker-backend:latest`, `docker compose up -d --no-build backend`, confirm the
+container's image id, then diff each probe's status and body hash against the branch's.
+Make the probe step depend on the swap: in #464 a failed pull skipped the swap, the probe
+ran anyway, and branch was compared with branch as "IDENTICAL".
 
 The rule this replaces let two user-facing bugs through in one slice. F16 slice 2's
 filter was walked with three queries — `oli`, `skyr`, `quinoa` — all lowercase and all

@@ -181,17 +181,21 @@ Identical for both stacks; only step 1 and 2's commands differ.
      `vitest --config` pointed at the copy; for the backend, a copy of `backend/`
      with `dev/` (and `frontend/`) symlinked beside it — `build.gradle.kts` copies
      `../dev/access-key` into the test resources, so without it every test fails
-     on `/access/signing-key.json is missing`. **`rm -rf build` in the copy and run it
+     on `/access/signing-key.json is missing`, and without `frontend/` on `property
+     'committedOpenApiSpec' … doesn't exist`. **`rm -rf build` in the copy and run it
      with `--no-build-cache`**: a surviving `build/` or Gradle's shared cache replays the
      unmutated test result, and the mutant reads as killed-by-nothing — #455's
-     `storedKey` hand-mutant passed that way before a clean run killed it. Save the
-     copy's `diff -u` against the source beside the red, or the RED cannot be replayed.
+     `storedKey` hand-mutant passed that way before a clean run killed it. Spell the
+     copy's path literally (`/tmp/…`): the write guard reads `$SP/…/src/main/…kt` as the
+     gated repo file and refuses it (#464). Save the copy's `diff -u` against the
+     source beside the red, or the RED cannot be replayed.
      Backend gotchas carry the mechanism and a worked example.
 
    **Check [`references/known-survivors.md`](references/known-survivors.md) first.**
    Every mutant a full sweep leaves alive already has a verdict there, with the
    evidence. Triage what your *change* introduced; only re-litigate an entry if the
-   code under it moved.
+   code under it moved, and retire one whose code your change deleted — nothing else
+   notices (#464's retro found a `MEMORY_ERROR` entry on code gone two commits earlier).
 
    **Call a survivor "pre-existing" only after running that mutant against
    `main`.** A survivor on a line the change moved can look inherited and still be
@@ -440,7 +444,10 @@ domain code and **~1.6s for anything a controller test covers**.
   returning a `Condition`, and no default mutator swaps one for another, so a 100%
   score on a repository says nothing about whether a test would notice `<=` becoming
   `<`. Pin each query bound with a test at the boundary — a row dated exactly on the
-  bound — as #358's `latestTwoOnOrBefore` / `deleteOnOrAfter` are.
+  bound — as #358's `latestTwoOnOrBefore` / `deleteOnOrAfter` are. The same goes for a
+  `java.time` guard (`isAfter`, `isBefore`): `ConditionalsBoundary` rewrites only `<` /
+  `<=`, so in #464 `start.isAfter(to)` → `!start.isBefore(to)` emptied a one-day window
+  with every test green. Test the day on each side of the guard.
 - **Nor a builder argument, an annotation, or SQL.** pitest can remove `rec.id = …` (a
   setter call) but not the `TAG.ID` value in `insertInto(TAG, TAG.ID, …).values(…)`, nor a
   `@Transactional`, nor a term of a migration. Each is pinned by hand-ablation on a copy
