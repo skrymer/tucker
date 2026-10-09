@@ -27,4 +27,17 @@ class AdaptiveWindowTest {
         val adapted = assertNotNull(window.adapt(basalRate), "a window at both floors adapts")
         assertEquals(2275.0, adapted.kcal, 0.01)
     }
+
+    @Test
+    fun `a window with no anchor is held for the anchor, even when its log is thin too`() {
+        // Every new User's second review fails both, and the anchor is the one nothing
+        // done today can supply — so it is the one the hold names (ADR 0031).
+        val window = AdaptiveWindow(
+            trendChange = null,
+            weighedDays = 1,
+            intake = LoggedIntake(totalKcal = 6000.0, loggedDays = 3),
+        )
+
+        assertEquals(Maintenance.HeldReason.NO_WINDOW_ANCHOR, window.holdReason())
+    }
 }
