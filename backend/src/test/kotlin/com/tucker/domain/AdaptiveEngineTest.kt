@@ -112,6 +112,22 @@ class AdaptiveEngineTest {
     }
 
     @Test
+    fun `a balance of exactly zero is refused even where the basal rate does not rule it out`() {
+        // Zero is no expenditure at all. A basal rate at or below it — a height entered in
+        // metres — lets the balance clear the rate, so the zero itself has to be what is
+        // refused: Maintenance cannot hold a figure of zero, and constructing one would
+        // throw where the estimate should simply hold.
+        val refused = Maintenance.adaptive(
+            intake = LoggedIntake(totalKcal = 0.0, loggedDays = 10),
+            trendChange = WeightTrend.Change(kg = 0.0, overDays = 14),
+            windowDays = 14,
+            basalMetabolicRateKcal = 0.0,
+        )
+
+        assertNull(refused)
+    }
+
+    @Test
     fun `a held Maintenance records which condition held it`() {
         val held = Maintenance.held(2400.0, Maintenance.HeldReason.BELOW_BASAL_RATE)
 
