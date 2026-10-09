@@ -40,4 +40,17 @@ class AdaptiveWindowTest {
 
         assertEquals(Maintenance.HeldReason.NO_WINDOW_ANCHOR, window.holdReason())
     }
+
+    @Test
+    fun `a thin log is named before an unweighed window`() {
+        // Both can be acted on; the logging floor is the larger ask and the later to
+        // clear, so it outranks a single weigh-in (ADR 0031).
+        val window = AdaptiveWindow(
+            trendChange = anchor,
+            weighedDays = 0,
+            intake = LoggedIntake(totalKcal = 6000.0, loggedDays = 3),
+        )
+
+        assertEquals(Maintenance.HeldReason.THIN_LOG, window.holdReason())
+    }
 }
