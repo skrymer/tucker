@@ -237,11 +237,7 @@ class OwnerBackfillMigrationTest {
         createStatement().use { it.executeQuery(sql).use { rows -> rows.next(); rows.getInt(1) } }
 
     private fun Connection.columnNames(table: String): List<String> =
-        createStatement().use { statement ->
-            statement.executeQuery("PRAGMA table_info($table)").use { rows ->
-                generateSequence { if (rows.next()) rows.getString("name") else null }.toList()
-            }
-        }
+        query("PRAGMA table_info($table)") { row -> row.getString("name") }
 
     private companion object {
         /** Enough pre-existing history for V9 to find something worth adopting. */

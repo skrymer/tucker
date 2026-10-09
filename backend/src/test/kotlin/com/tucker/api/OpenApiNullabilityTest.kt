@@ -153,10 +153,13 @@ class OpenApiNullabilityTest {
                     path = "$schemaName.$name",
                     required = name in required,
                     nullable = property.path("nullable").asBoolean(),
-                    enumValues = property.path("enum").map { if (it.isNull) null else it.asText() },
+                    enumValues = property.enumValues(),
                 )
             }
         }
+
+    /** A property's `enum`, a JSON null kept as null rather than read as the text "null". */
+    private fun JsonNode.enumValues(): List<String?> = path("enum").map { if (it.isNull) null else it.asText() }
 
     private fun schemas(): JsonNode = mockMvc.specSchemas(objectMapper)
 }
