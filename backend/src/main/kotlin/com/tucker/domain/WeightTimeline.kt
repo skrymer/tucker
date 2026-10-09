@@ -101,8 +101,8 @@ class TimelineIntake(
      * figure for a week reviewed with Calorie Tracking off, so reaching past that
      * review would draw a line the User was never held to.
      *
-     * The same shape as [WeightTrend.standingOn], which asks the same question of
-     * the readings.
+     * The rule [WeightTrend.standingEachDay] applies to the readings: what was set
+     * on or before a day stands until the next.
      */
     fun budgetOn(date: LocalDate): Double? = inOrder
         .lastOrNull { !it.reviewedOn.isAfter(date) }
@@ -206,16 +206,17 @@ data class WeightTimeline(
         ): WeightTimeline? {
             requireWindow(from, to)
             val trend = WeightTrend.from(measurements)
-            val (start, opening) = drawableOpening(from, to, trend) ?: return null
+            val standing = trend.standingEachDay(from, to)
+            // Withheld whole rather than drawn thin, on the threshold behind the observed
+            // pace rather than a second number of its own (ADR 0029) — and with nothing
+            // to draw when the window closes before the first reading, as it does for a
+            // device whose clock ran fast and stamped its readings after [to].
+            if (!trend.isEstablished() || standing.isEmpty()) return null
             val drawn = evidence()
             val readings = measurements.associateBy { it.measuredOn }
-            val dates = generateSequence(start) { it.plusDays(1) }.takeWhile { !it.isAfter(to) }.toList()
-            // The trend moves only when the scale does, so a day with no weigh-in carries
-            // the trend standing before it.
-            val standing = dates.drop(1).runningFold(opening) { carried, day -> trend.standingOn(day) ?: carried }
-            val days = dates.zip(standing) { day, point -> dayOf(day, readings[day], point.trendKg, drawn) }
+            val days = standing.map { dayOf(it.date, readings[it.date], it.trendKg, drawn) }
             return WeightTimeline(
-                from = start,
+                from = standing.first().date,
                 to = to,
                 days = days,
                 evidence = drawn?.summarise(days),
@@ -235,30 +236,6 @@ data class WeightTimeline(
         ): WeightTimelineDay {
             val weighed = WeightTimelineDay(date = day, weightKg = reading?.weightKg, trendKg = trendKg)
             return drawn?.drawOn(weighed) ?: weighed
-        }
-
-        /**
-         * The day the timeline opens on, with the trend standing on it, or null when
-         * there is none to draw.
-         *
-         * Cut to where the readings start rather than padded back to [from]: empty
-         * days before the first reading would claim weight data is missing rather
-         * than that the User had not started weighing in yet.
-         */
-        private fun drawableOpening(
-            from: LocalDate,
-            to: LocalDate,
-            trend: WeightTrend,
-        ): Pair<LocalDate, WeightTrend.Point>? {
-            // Withheld whole rather than drawn thin, on the threshold behind the
-            // observed pace rather than a second number of its own (ADR 0029).
-            if (!trend.isEstablished()) return null
-            // Established, so there is a first reading to start at — and nothing to
-            // draw when the window closes before it. A device whose clock ran fast
-            // stamps its readings after [to], and cutting the start forward
-            // regardless would return a timeline starting after it ends.
-            val start = maxOf(from, trend.points.first().date).takeIf { !it.isAfter(to) } ?: return null
-            return trend.standingOn(start)?.let { start to it }
         }
     }
 }

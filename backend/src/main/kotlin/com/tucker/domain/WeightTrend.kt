@@ -35,22 +35,32 @@ data class WeightTrend private constructor(val points: List<Point>) {
     fun latest(): Point? = points.lastOrNull()
 
     /**
-     * Where the trend stands on [date]: the latest point on or before it, carried
-     * forward, because the trend moves only when the scale does. Null before the
-     * first reading.
+     * Where the trend stands on each day of [from]..[to], one point per day dated
+     * that day: a day with no reading carries the figure the last one left, because
+     * the trend moves only when the scale does.
      *
-     * With sparse weighing the point can be far older than [date], so what it
-     * measures is only readable against the day it was actually taken — a caller
-     * asking "how far has it moved" wants a [Change] instead, whose both ends are
-     * days a reading was taken.
+     * Starts at the first reading when [from] is earlier, and is empty when nothing
+     * was weighed by [to] — no day before the first reading has a trend to stand on.
+     * A carried figure measures only what the scale said on an older day, so a caller
+     * asking "how far has it moved" wants a [Change] instead.
      */
-    fun standingOn(date: LocalDate): Point? = points.getOrNull(indexStandingOn(date))
+    fun standingEachDay(from: LocalDate, to: LocalDate): List<Point> {
+        val first = points.firstOrNull() ?: return emptyList()
+        val start = maxOf(from, first.date)
+        if (start.isAfter(to)) return emptyList()
+        val weighed = points.associateBy { it.date }
+        val days = start.datesUntil(to.plusDays(1)).toList()
+        // The first reading, or the latest after it that is not past [start].
+        val opening = points.drop(1).takeWhile { !it.date.isAfter(start) }.fold(first) { _, later -> later }
+        return days.drop(1)
+            .runningFold(opening) { carried, day -> weighed[day] ?: carried }
+            .zip(days) { point, day -> Point(day, point.trendKg) }
+    }
 
     /**
-     * Where [standingOn] resolves to, as an index — -1 before the first reading. The
-     * one spelling of "the latest point on or before this date", which the anchors
-     * [changeSince] and [observedRateKgPerWeek] pick both need as a position rather
-     * than as a point.
+     * The index of the latest point on or before [date], -1 before the first reading
+     * — what the anchors [changeSince] and [observedRateKgPerWeek] pick need as a
+     * position rather than as a point.
      */
     private fun indexStandingOn(date: LocalDate): Int =
         points.indexOfLast { !it.date.isAfter(date) }
