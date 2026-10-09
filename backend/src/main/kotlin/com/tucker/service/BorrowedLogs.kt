@@ -1,6 +1,5 @@
 package com.tucker.service
 
-import com.tucker.api.foodsOf
 import com.tucker.domain.BorrowedFood
 import com.tucker.domain.BorrowedIngredient
 import com.tucker.domain.BorrowedLog
@@ -11,6 +10,7 @@ import com.tucker.domain.ReferenceFood
 import com.tucker.persistence.FoodRepository
 import com.tucker.persistence.RecipeRepository
 import com.tucker.persistence.ReferenceFoodRepository
+import com.tucker.persistence.foodsOf
 import org.springframework.stereotype.Component
 
 /** Joins logged Entries to the Foods they ate and to what each of those borrows (ADR 0027). */

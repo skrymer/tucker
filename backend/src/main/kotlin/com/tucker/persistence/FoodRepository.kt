@@ -1,8 +1,10 @@
 package com.tucker.persistence
 
+import com.tucker.domain.Entry
 import com.tucker.domain.Food
 import com.tucker.domain.FoodKind
 import com.tucker.domain.Nutrition
+import com.tucker.domain.WeighedEntry
 import com.tucker.jooq.Tables.FOOD
 import com.tucker.jooq.Tables.FOOD_TAG
 import com.tucker.jooq.Tables.TAG
@@ -169,6 +171,16 @@ private fun FoodRecord.storedKind(): FoodKind = when (kind) {
     )
     else -> error("Food '$name' is stored with an unknown kind '$kind'")
 }
+
+/**
+ * Every Food the weighed Entries ate, resolved in one query. Shared by the surfaces
+ * that reach past an Entry to the Food behind it, so "one query, not one per Entry"
+ * is stated once. An Entry's Food always exists — deleting a referenced Food is
+ * refused — so a lookup that misses is a bug, and the caller decides how loud.
+ */
+internal fun FoodRepository.foodsOf(entries: List<Entry>): Map<Long, Food> =
+    findByIds(entries.filterIsInstance<WeighedEntry>().map { it.foodId }.distinct())
+        .associateBy { it.id }
 
 /** Make [tagIds] exactly the Tags the Food [foodId] carries, in two statements however many. */
 private fun DSLContext.replaceTagsOf(foodId: Int, tagIds: Set<Long>, ownerId: Int) {

@@ -155,7 +155,7 @@ internal fun List<Entry>.toResponses(foods: FoodRepository): List<EntryResponse>
 
 /**
  * The Foods these Entries name that [namesById] did not resolve, each once. An
- * Entry's Food always exists ([foodsOf]), so a non-empty answer means either an
+ * Entry's Food always exists ([com.tucker.persistence.foodsOf]), so a non-empty answer means either an
  * invariant breach or a Food deleted between the two reads that produced the
  * arguments.
  */
