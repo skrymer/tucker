@@ -278,6 +278,15 @@ class WeightTrendTest {
     }
 
     @Test
+    fun `a window closing on the day of the first reading stands on that one day`() {
+        val trend = trendFalling(fromKg = 87.0, toKg = 86.0, overDays = 10)
+
+        val days = trend.standingEachDay(today.minusDays(37), today.minusDays(10))
+
+        assertEquals(listOf(WeightTrend.Point(today.minusDays(10), 87.0)), days)
+    }
+
+    @Test
     fun `no day stands before anything is weighed`() {
         assertEquals(emptyList(), WeightTrend.from(emptyList()).standingEachDay(today.minusDays(27), today))
     }

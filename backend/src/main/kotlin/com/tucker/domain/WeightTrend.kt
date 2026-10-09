@@ -50,9 +50,10 @@ data class WeightTrend private constructor(val points: List<Point>) {
         if (start.isAfter(to)) return emptyList()
         val weighed = points.associateBy { it.date }
         val days = start.datesUntil(to.plusDays(1)).toList()
-        // [start] is on or after the first reading, so a point stands on it.
+        // The first reading, or the latest after it that is not past [start].
+        val opening = points.drop(1).takeWhile { !it.date.isAfter(start) }.fold(first) { _, later -> later }
         return days.drop(1)
-            .runningFold(points[indexStandingOn(start)]) { carried, day -> weighed[day] ?: carried }
+            .runningFold(opening) { carried, day -> weighed[day] ?: carried }
             .zip(days) { point, day -> Point(day, point.trendKg) }
     }
 
