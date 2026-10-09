@@ -147,8 +147,8 @@ cannot be drawn at all.
   row whose plan line and **Goal Progress** disagree: the line floors at the target
   while progress reads 0%. The rule reverted here did not prevent that — with no
   trend point on or before such a date it fell through to the *earliest* point and
-  floored the window just the same, and with a long enough history `standingOn` finds
-  a genuine point months of slope away and floors it too — so the old rule held only
+  floored the window just the same, and with a long enough history the as-of trend
+  lookup finds a genuine point months of slope away and floors it too — so the old rule held only
   where the backdate was short. It differed in the other half: progress then read a
   small non-zero percent rather than 0%.
   Nothing the product ships posts one: `GoalForm` posts `localToday()` and is the
