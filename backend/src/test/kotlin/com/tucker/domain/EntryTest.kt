@@ -58,7 +58,7 @@ class EntryTest {
     fun `a weighed Entry dated the day after tomorrow is refused`() {
         // Tomorrow is the furthest ahead an Entry can be dated (ADR 0035).
         val ex = assertThrows<IllegalArgumentException> {
-            WeighedEntry.log(1, today.plusDays(2), rice, grams = 100.0, today = today)
+            WeighedEntry.log(1, today.plusDays(2), WeighedPortion(rice, grams = 100.0), today = today)
         }
         assert(ex.message!!.contains("tomorrow", ignoreCase = true)) {
             "expected message to mention tomorrow, was '${ex.message}'"
@@ -67,7 +67,7 @@ class EntryTest {
 
     @Test
     fun `a weighed Entry dated tomorrow is logged on tomorrow`() {
-        val entry = WeighedEntry.log(id = 7, today.plusDays(1), rice, grams = 100.0, today = today)
+        val entry = WeighedEntry.log(id = 7, today.plusDays(1), WeighedPortion(rice, grams = 100.0), today = today)
 
         assertEquals(7, entry.id)
         assertEquals(today.plusDays(1), entry.loggedOn)

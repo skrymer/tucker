@@ -42,9 +42,10 @@ data class WeighedEntry(
     }
 
     companion object {
-        /** Log [grams] of [food] on [date], computing the calories and protein. */
-        fun log(id: Long, date: LocalDate, food: Food, grams: Double, today: LocalDate): WeighedEntry {
+        /** Log [portion] on [date], computing the calories and protein. */
+        fun log(id: Long, date: LocalDate, portion: WeighedPortion, today: LocalDate): WeighedEntry {
             requireNoLaterThanTomorrow(date, today)
+            val (food, grams) = portion
             return WeighedEntry(
                 id = id,
                 loggedOn = date,
@@ -56,6 +57,12 @@ data class WeighedEntry(
         }
     }
 }
+
+/** What a User puts on the scale for a meal: a Food and its grams. */
+data class WeighedPortion(
+    val food: Food,
+    val grams: Double,
+)
 
 /**
  * An estimated Entry: a meal that could not be weighed (restaurant, on the go).

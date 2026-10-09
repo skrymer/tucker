@@ -7,6 +7,7 @@ import com.tucker.domain.EstimatedEntry
 import com.tucker.domain.Food
 import com.tucker.domain.MealEstimate
 import com.tucker.domain.WeighedEntry
+import com.tucker.domain.WeighedPortion
 import com.tucker.persistence.EntryRepository
 import com.tucker.persistence.FoodRepository
 import com.tucker.service.WeeklyReviewService
@@ -217,7 +218,7 @@ class EntryController(
         val today = userToday.resolve(request.clientToday)
         val food = foods.findById(request.foodId)
             ?: throw NotFoundException("no Food with id ${request.foodId}")
-        return food to WeighedEntry.log(id, request.date, food, request.grams, today)
+        return food to WeighedEntry.log(id, request.date, WeighedPortion(food, request.grams), today)
     }
 
     /**
