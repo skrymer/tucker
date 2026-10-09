@@ -49,7 +49,7 @@ class RepositoryRoundTripTest {
         val loaded = foods.findById(saved.id)
         assertNotNull(loaded)
         assertEquals("Rolled oats", loaded.name)
-        assertEquals(FoodKind.FOOD, loaded.kind)
+        assertEquals(FoodKind.Plain, loaded.kind)
         assertEquals(389.0, loaded.nutrition.caloriesPer100g)
     }
 

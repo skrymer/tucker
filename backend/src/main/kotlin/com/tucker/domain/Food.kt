@@ -1,11 +1,24 @@
 package com.tucker.domain
 
-/** Whether a Food is a plain food or a composite [Recipe]. */
-enum class FoodKind { FOOD, RECIPE }
+/** Whether a Food is a plain food or a composite [Recipe], and what only a Recipe has. */
+sealed interface FoodKind {
+    /** A food eaten as it is. */
+    data object Plain : FoodKind
+
+    /**
+     * A Food built from weighed ingredients. [cookedWeightG] is the finished batch's
+     * weight, which a portion is sliced out of (ADR 0019).
+     */
+    data class Recipe(val cookedWeightG: Double) : FoodKind {
+        init {
+            require(cookedWeightG > 0) { "cookedWeightG must be > 0, was $cookedWeightG" }
+        }
+    }
+}
 
 /**
  * A reusable definition of something edible — a name plus [Nutrition] per 100 g.
- * A Recipe is a Food with [kind] = RECIPE; see [Recipe] for how one is built.
+ * A Recipe is a Food of kind [FoodKind.Recipe]; see [Recipe] for how one is built.
  *
  * [referenceFoodId] is the **Reference Food** this Food borrows its micronutrients
  * from, or null while it is unmatched — which is where every Food starts and where
@@ -18,28 +31,15 @@ data class Food(
     val kind: FoodKind,
     val barcode: String?,
     val nutrition: Nutrition,
-    val cookedWeightG: Double?,
     val referenceFoodId: Long? = null,
     val tagIds: Set<Long> = emptySet(),
 ) {
     init {
         require(name.isNotBlank()) { "Food name must not be blank" }
-        require(cookedWeightG == null || cookedWeightG > 0) {
-            "cookedWeightG must be > 0 when set, was $cookedWeightG"
-        }
-        require(kind == FoodKind.RECIPE || cookedWeightG == null) {
-            "cookedWeightG only applies to a RECIPE"
-        }
-        // And a Recipe always has one: it is how a portion is sliced out of the batch
-        // (ADR 0019), so every reader needs it. Asked here rather than by each of them,
-        // or one impossible row answers with a different status per reader.
-        require(kind != FoodKind.RECIPE || cookedWeightG != null) {
-            "a RECIPE is sliced out of its cooked weight, so it must have one"
-        }
         // A Recipe's composition is already known, so its micronutrients roll up from
         // whichever ingredients are matched — which always beats matching the finished
         // dish to a generic prepared one (CONTEXT.md, ADR 0027).
-        require(kind != FoodKind.RECIPE || referenceFoodId == null) {
+        require(kind !is FoodKind.Recipe || referenceFoodId == null) {
             "a Recipe borrows its micronutrients from its ingredients, so it can't be matched"
         }
     }
@@ -68,6 +68,6 @@ data class Food(
     companion object {
         /** A plain (non-recipe) Food. */
         fun plain(id: Long, name: String, barcode: String?, nutrition: Nutrition): Food =
-            Food(id, name, FoodKind.FOOD, barcode, nutrition, cookedWeightG = null)
+            Food(id, name, FoodKind.Plain, barcode, nutrition)
     }
 }

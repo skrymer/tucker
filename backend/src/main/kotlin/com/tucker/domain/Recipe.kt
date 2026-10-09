@@ -9,8 +9,8 @@ data class RecipeIngredient(
         require(grams > 0) { "ingredient grams must be > 0, was $grams" }
         // Ingredients are plain Foods only — no nested recipes in v1 (CONTEXT.md),
         // which would invite cycles and compounded estimates.
-        require(ingredient.kind == FoodKind.FOOD) {
-            "a recipe ingredient must be a plain Food, not a ${ingredient.kind}"
+        require(ingredient.kind == FoodKind.Plain) {
+            "a recipe ingredient must be a plain Food, not a RECIPE"
         }
     }
 }
@@ -30,8 +30,10 @@ data class Recipe(
     init {
         require(name.isNotBlank()) { "Recipe name must not be blank" }
         require(ingredients.isNotEmpty()) { "a Recipe needs at least one ingredient" }
-        require(cookedWeightG > 0) { "cookedWeightG must be > 0, was $cookedWeightG" }
     }
+
+    /** Built here rather than in [asFood], so a non-positive cooked weight is refused with the Recipe. */
+    private val kind = FoodKind.Recipe(cookedWeightG)
 
     /** Roll the weighed ingredients up into nutrition per 100 g of the finished dish. */
     fun nutrition(): Nutrition {
@@ -46,14 +48,13 @@ data class Recipe(
         )
     }
 
-    /** This Recipe in its persistable [Food] form (kind = RECIPE). */
+    /** This Recipe in its persistable [Food] form. */
     fun asFood(): Food = Food(
         id = id,
         name = name,
-        kind = FoodKind.RECIPE,
+        kind = kind,
         barcode = null,
         nutrition = nutrition(),
-        cookedWeightG = cookedWeightG,
         tagIds = tagIds,
     )
 }

@@ -80,10 +80,10 @@ data class BorrowedFood(
                 "'${food.name}' borrows ${food.referenceFoodId} but was joined to ${reference.id}",
             )
         }
-        if (food.kind == FoodKind.RECIPE && ingredients.isEmpty()) {
+        if (food.kind is FoodKind.Recipe && ingredients.isEmpty()) {
             throw MisjoinedBorrowException("'${food.name}' is a Recipe but was joined to no composition")
         }
-        if (food.kind != FoodKind.RECIPE && ingredients.isNotEmpty()) {
+        if (food.kind !is FoodKind.Recipe && ingredients.isNotEmpty()) {
             throw MisjoinedBorrowException("'${food.name}' is not a Recipe but was joined to a composition")
         }
     }
@@ -114,14 +114,12 @@ data class BorrowedFood(
      * it was logged put the coverage share over 100%.
      */
     fun divide(grams: Double, calories: Double): List<FoodContribution> {
-        if (food.kind != FoodKind.RECIPE) return listOf(FoodContribution(this, grams, calories))
-        // Non-null by `Food`'s invariant: a RECIPE is sliced out of its cooked weight.
-        val cookedWeightG = food.cookedWeightG!!
+        val recipe = food.kind as? FoodKind.Recipe ?: return listOf(FoodContribution(this, grams, calories))
         val batchCalories = ingredients.sumOf { it.borrowed.food.caloriesFor(it.grams) }
         return ingredients.map { line ->
             FoodContribution(
                 borrowed = line.borrowed,
-                grams = line.grams * grams / cookedWeightG,
+                grams = line.grams * grams / recipe.cookedWeightG,
                 // The share first, then applied — not `calories * cost / batch`, which
                 // rounds a sole ingredient's whole share of its own batch off 1.0.
                 //

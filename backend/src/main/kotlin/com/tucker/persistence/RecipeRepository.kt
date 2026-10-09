@@ -82,17 +82,19 @@ class RecipeRepository(
 
     /** Load a Recipe with its ingredient Foods, or null if [id] is not a recipe. */
     fun findById(id: Long): Recipe? {
-        val food = foods.findById(id)?.takeIf { it.kind == FoodKind.RECIPE } ?: return null
-        return Recipe(
-            id = food.id,
-            name = food.name,
-            // `orEmpty`, so a Recipe whose lines are gone is refused by `Recipe`'s own
-            // invariant, which says what is wrong, rather than by a missing-key throw.
-            ingredients = ingredientsOf(listOf(id))[id].orEmpty(),
-            // Non-null by `Food`'s invariant: a RECIPE is sliced out of its cooked weight.
-            cookedWeightG = food.cookedWeightG!!,
-            tagIds = food.tagIds,
-        )
+        val food = foods.findById(id) ?: return null
+        return when (val kind = food.kind) {
+            FoodKind.Plain -> null
+            is FoodKind.Recipe -> Recipe(
+                id = food.id,
+                name = food.name,
+                // `orEmpty`, so a Recipe whose lines are gone is refused by `Recipe`'s own
+                // invariant, which says what is wrong, rather than by a missing-key throw.
+                ingredients = ingredientsOf(listOf(id))[id].orEmpty(),
+                cookedWeightG = kind.cookedWeightG,
+                tagIds = food.tagIds,
+            )
+        }
     }
 
     /**

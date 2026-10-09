@@ -87,37 +87,12 @@ class RecipeTest {
     }
 
     @Test
-    fun `the Food row behind a Recipe rejects a cooked weight of zero on its own`() {
-        // The test above never reaches this: Recipe refuses the zero first. The
-        // Food row is what a repository maps back out of the database, with no
-        // Recipe in front of it to have refused anything — and its per-100 g
-        // nutrition is the cooked weight divided into the batch.
+    fun `the Food kind behind a Recipe rejects a cooked weight of zero on its own`() {
+        // A repository builds this kind straight from a stored row, with no Recipe
+        // in front of it to have refused anything — and per-100 g nutrition is the
+        // cooked weight divided into the batch.
         assertThrows<IllegalArgumentException> {
-            Food(
-                id = 1L,
-                name = "Stew",
-                kind = FoodKind.RECIPE,
-                barcode = null,
-                nutrition = Nutrition(200.0, 20.0, null, null),
-                cookedWeightG = 0.0,
-            )
-        }
-    }
-
-    @Test
-    fun `a Recipe Food with no cooked weight at all is rejected`() {
-        // Asked once, where the field lives. Every reader that slices a portion out
-        // of a batch needs this weight, and each one guarding for itself answers the
-        // same impossible row with a different status (ADR 0019).
-        assertThrows<IllegalArgumentException> {
-            Food(
-                id = 1L,
-                name = "Stew",
-                kind = FoodKind.RECIPE,
-                barcode = null,
-                nutrition = Nutrition(200.0, 20.0, null, null),
-                cookedWeightG = null,
-            )
+            FoodKind.Recipe(cookedWeightG = 0.0)
         }
     }
 
@@ -133,10 +108,9 @@ class RecipeTest {
         val nested = Food(
             id = 2L,
             name = "Stew",
-            kind = FoodKind.RECIPE,
+            kind = FoodKind.Recipe(cookedWeightG = 500.0),
             barcode = null,
             nutrition = Nutrition(200.0, 20.0, null, null),
-            cookedWeightG = 500.0,
         )
         assertThrows<IllegalArgumentException> {
             RecipeIngredient(nested, grams = 100.0)
