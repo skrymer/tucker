@@ -142,7 +142,9 @@ class FoodRepository(
         id = id!!.toLong(),
         name = name,
         kind = when (kind) {
-            PLAIN_KIND -> FoodKind.Plain
+            PLAIN_KIND -> FoodKind.Plain.also {
+                require(cookedWeightG == null) { "cookedWeightG only applies to a RECIPE" }
+            }
             RECIPE_KIND -> FoodKind.Recipe(
                 requireNotNull(cookedWeightG) { "Recipe '$name' is stored without a cooked weight" },
             )

@@ -30,4 +30,14 @@ class StoredFoodKindTest {
 
         assertEquals("Recipe 'Stew' is stored without a cooked weight", refusal.message)
     }
+
+    @Test
+    fun `a plain Food row stored with a cooked weight is refused when it is read`() {
+        val oats = foods.insert(Food.plain(foods.nextId(), "Oats", null, Nutrition(389.0, 16.9, 66.3, 6.9)))
+        dsl.update(FOOD).set(FOOD.COOKED_WEIGHT_G, 500.0).where(FOOD.ID.eq(oats.id.toInt())).execute()
+
+        val refusal = assertFailsWith<IllegalArgumentException> { foods.findById(oats.id) }
+
+        assertEquals("cookedWeightG only applies to a RECIPE", refusal.message)
+    }
 }

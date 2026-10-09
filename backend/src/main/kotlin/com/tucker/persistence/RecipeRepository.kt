@@ -83,8 +83,9 @@ class RecipeRepository(
     /** Load a Recipe with its ingredient Foods, or null if [id] is not a recipe. */
     fun findById(id: Long): Recipe? {
         val food = foods.findById(id) ?: return null
-        return (food.kind as? FoodKind.Recipe)?.let { kind ->
-            Recipe(
+        return when (val kind = food.kind) {
+            FoodKind.Plain -> null
+            is FoodKind.Recipe -> Recipe(
                 id = food.id,
                 name = food.name,
                 // `orEmpty`, so a Recipe whose lines are gone is refused by `Recipe`'s own
