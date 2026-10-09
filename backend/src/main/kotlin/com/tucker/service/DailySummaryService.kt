@@ -17,17 +17,18 @@ data class DailySummary(
     val log: DailyLog,
     /** The reviews standing on the day, newest first: the one in force and the one before it. */
     val recent: List<WeeklyReview>,
-    val hasActiveGoal: Boolean,
-    /** The Trend Weight, read only in Maintenance Mode — while a Goal is active the pace lives on the Goal. */
+    /**
+     * The weight trend, read only in Maintenance Mode — null while a Goal is active,
+     * whose pace lives on the Goal.
+     */
     val trend: WeightTrend?,
 ) {
     val review = recent.firstOrNull()
     val targets = review?.intakeTargets
 
-    // Sum each total once and reuse it for both the consumed field and the signed
-    // remaining figure (the day verdict re-derives its own).
     val caloriesConsumed = log.caloriesConsumed()
     val proteinConsumed = log.proteinConsumed()
+    val estimatedCalorieShare = log.estimatedCalorieShare()
     val caloriesRemaining = targets?.let { it.calorieBudgetKcal - caloriesConsumed }
     val proteinRemaining = targets?.let { it.proteinFloorG - proteinConsumed }
     val dayStatus = targets?.let { log.dayStatus(it.calorieBudgetKcal, it.proteinFloorG) }
@@ -41,7 +42,7 @@ data class DailySummary(
     // Derived on read, never stored: a suspension lifts by itself the week
     // Maintenance recovers, so latching it into the review would leave a historical
     // claim the live state contradicts (ADR 0030).
-    val deficitSuspended = targets?.takeIf { hasActiveGoal }?.appliesNoDeficit
+    val deficitSuspended = targets?.takeIf { trend == null }?.appliesNoDeficit
 }
 
 /** Reads the [DailySummary] — and, because opening the app performs this read, advances its bookkeeping. */
@@ -74,7 +75,6 @@ class DailySummaryService(
             setupComplete = setupComplete,
             log = log,
             recent = recent,
-            hasActiveGoal = activeGoal != null,
             trend = if (activeGoal == null) WeightTrend.from(weights.findAll()) else null,
         )
 

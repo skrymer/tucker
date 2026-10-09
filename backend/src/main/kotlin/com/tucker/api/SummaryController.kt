@@ -74,7 +74,7 @@ data class DailySummaryResponse(
         setupComplete = summary.setupComplete,
         caloriesConsumed = summary.caloriesConsumed,
         proteinConsumed = summary.proteinConsumed,
-        estimatedCalorieShare = summary.log.estimatedCalorieShare(),
+        estimatedCalorieShare = summary.estimatedCalorieShare,
         calorieBudget = summary.targets?.calorieBudgetKcal,
         proteinFloor = summary.targets?.proteinFloorG,
         caloriesRemaining = summary.caloriesRemaining,
