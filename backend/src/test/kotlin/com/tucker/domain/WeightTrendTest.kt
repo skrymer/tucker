@@ -244,16 +244,42 @@ class WeightTrendTest {
     }
 
     @Test
-    fun `the trend stands where the last reading left it until the next one`() {
-        // It moves only when the scale does, so the days between two weigh-ins carry
-        // the figure the earlier one produced rather than a gap.
+    fun `every day between two readings stands where the earlier one left the trend`() {
+        // Weighed on day -10 and today: the days between carry the first figure, and
+        // the trend moves only on the day of the second reading — to 86.35, not the
+        // 86.0 weighed, since ten days of smoothing never carry it the whole way.
         val trend = trendFalling(fromKg = 87.0, toKg = 86.0, overDays = 10)
 
-        // 86.35, not the 86.0 that was weighed: ten days of smoothing carry the trend
-        // most of the way to a new reading and never the whole way.
-        assertEquals(87.0, trend.standingOn(today.minusDays(3))!!.trendKg, 1e-9)
-        assertEquals(today.minusDays(10), trend.standingOn(today.minusDays(3))!!.date)
-        assertEquals(86.3486784401, trend.standingOn(today)!!.trendKg, 1e-9)
+        val days = trend.standingEachDay(today.minusDays(5), today)
+
+        assertEquals((5L downTo 0L).map { today.minusDays(it) }, days.map { it.date })
+        assertEquals(listOf(87.0, 87.0, 87.0, 87.0, 87.0), days.dropLast(1).map { it.trendKg })
+        assertEquals(86.3486784401, days.last().trendKg, 1e-9)
+    }
+
+    @Test
+    fun `the days stood on begin at the first reading, not before it`() {
+        // Nothing stands before anything was weighed, so a window opening earlier is
+        // cut forward to the first reading rather than padded with days that have no trend.
+        val trend = trendFalling(fromKg = 87.0, toKg = 86.0, overDays = 10)
+
+        val days = trend.standingEachDay(today.minusDays(27), today)
+
+        assertEquals(today.minusDays(10), days.first().date)
+        assertEquals(87.0, days.first().trendKg, 1e-9)
+        assertEquals(11, days.size)
+    }
+
+    @Test
+    fun `no day stands in a window that closes before the first reading`() {
+        val trend = trendFalling(fromKg = 87.0, toKg = 86.0, overDays = 10)
+
+        assertEquals(emptyList(), trend.standingEachDay(today.minusDays(40), today.minusDays(13)))
+    }
+
+    @Test
+    fun `no day stands before anything is weighed`() {
+        assertEquals(emptyList(), WeightTrend.from(emptyList()).standingEachDay(today.minusDays(27), today))
     }
 
     @Test
@@ -271,13 +297,6 @@ class WeightTrendTest {
     @Test
     fun `there is no latest point before anything is weighed`() {
         assertNull(WeightTrend.from(emptyList()).latest())
-    }
-
-    @Test
-    fun `nothing stands before the first reading`() {
-        val trend = trendFalling(fromKg = 87.0, toKg = 86.0, overDays = 10)
-
-        assertNull(trend.standingOn(today.minusDays(11)))
     }
 
     @Test
