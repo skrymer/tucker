@@ -22,7 +22,7 @@ class FoodDescriber(
 ) {
 
     fun describe(foods: List<Food>): List<FoodResponse> {
-        val counts = recipes.ingredientCounts(foods.filter { it.kind == FoodKind.RECIPE }.map { it.id })
+        val counts = recipes.ingredientCounts(foods.filter { it.kind is FoodKind.Recipe }.map { it.id })
         val matched = referenceFoods.namesOf(foods.mapNotNull { it.referenceFoodId }.distinct())
         val carried = tags.findByIds(foods.flatMap { it.tagIds }.distinct()).associateBy { it.id }
         return foods.map {

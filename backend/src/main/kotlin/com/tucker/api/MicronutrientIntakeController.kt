@@ -157,7 +157,7 @@ class MicronutrientIntakeController(
         // A Recipe is never matched — it rolls up from whichever of its ingredients
         // are (ADR 0027) — so its composition is read alongside the catalog, and its
         // ingredients' own borrows are resolved in the same pass as the catalog's.
-        val compositions = recipes.ingredientsOf(catalog.filterValues { it.kind == FoodKind.RECIPE }.keys)
+        val compositions = recipes.ingredientsOf(catalog.filterValues { it.kind is FoodKind.Recipe }.keys)
         val eatenFoods = catalog.values + compositions.values.flatten().map { it.ingredient }
         val borrowed = referenceFoods.findByIds(eatenFoods.mapNotNull { it.referenceFoodId }.toSet())
         val eaten = catalog.mapValues { (id, food) ->

@@ -106,13 +106,16 @@ class FoodRepository(
     private fun FoodRecord.applyFrom(food: Food) {
         userId = currentUser.ownerId
         name = food.name
-        kind = food.kind.name
+        kind = when (food.kind) {
+            FoodKind.Plain -> PLAIN_KIND
+            is FoodKind.Recipe -> RECIPE_KIND
+        }
         barcode = food.barcode
         caloriesPer_100g = food.nutrition.caloriesPer100g
         proteinPer_100g = food.nutrition.proteinPer100g
         carbsPer_100g = food.nutrition.carbsPer100g
         fatPer_100g = food.nutrition.fatPer100g
-        cookedWeightG = food.cookedWeightG
+        cookedWeightG = (food.kind as? FoodKind.Recipe)?.cookedWeightG
         referenceFoodId = food.referenceFoodId?.toInt()
     }
 
@@ -138,7 +141,13 @@ class FoodRepository(
     private fun FoodRecord.toFood(): Food = Food(
         id = id!!.toLong(),
         name = name,
-        kind = FoodKind.valueOf(kind),
+        kind = when (kind) {
+            PLAIN_KIND -> FoodKind.Plain
+            RECIPE_KIND -> FoodKind.Recipe(
+                requireNotNull(cookedWeightG) { "Recipe '$name' is stored without a cooked weight" },
+            )
+            else -> error("Food '$name' is stored with an unknown kind '$kind'")
+        },
         barcode = barcode,
         nutrition = Nutrition(
             caloriesPer100g = caloriesPer_100g,
@@ -146,10 +155,13 @@ class FoodRepository(
             carbsPer100g = carbsPer_100g,
             fatPer100g = fatPer_100g,
         ),
-        cookedWeightG = cookedWeightG,
         referenceFoodId = referenceFoodId?.toLong(),
     )
 }
+
+/** How `food.kind` spells each [FoodKind]. */
+private const val PLAIN_KIND = "FOOD"
+private const val RECIPE_KIND = "RECIPE"
 
 /** Make [tagIds] exactly the Tags the Food [foodId] carries, in two statements however many. */
 private fun DSLContext.replaceTagsOf(foodId: Int, tagIds: Set<Long>, ownerId: Int) {

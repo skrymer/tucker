@@ -113,10 +113,9 @@ class BorrowedFoodTest {
             Food(
                 id = 9,
                 name = "Green broth",
-                kind = FoodKind.RECIPE,
+                kind = FoodKind.Recipe(cookedWeightG = 1000.0),
                 barcode = null,
                 nutrition = Nutrition(0.0, 0.0, null, null),
-                cookedWeightG = 1000.0,
             ),
             reference = null,
             ingredients = listOf(
@@ -147,10 +146,9 @@ class BorrowedFoodTest {
     private val bolognese = Food(
         id = 3,
         name = "Bolognese",
-        kind = FoodKind.RECIPE,
+        kind = FoodKind.Recipe(cookedWeightG = 900.0),
         barcode = null,
         nutrition = Nutrition.fromMacros(proteinPer100g = 8.0, carbsPer100g = 12.0, fatPer100g = 5.0),
-        cookedWeightG = 900.0,
     )
 
     private fun food(referenceFoodId: Long?) = Food.plain(

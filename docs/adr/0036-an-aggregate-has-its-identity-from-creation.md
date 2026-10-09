@@ -60,15 +60,13 @@ Subscription's identity is its endpoint (it is claimed and deleted by endpoint),
 
 ## A Recipe's cooked weight lives on its kind
 
-**Pending:** decided with the rest of this record, delivered by #455's second PR.
-Until then the code still has the enum and the two `!!`s below.
-
-`Food` has `kind: FoodKind` next to a nullable `cookedWeightG`, with three
+`Food` had `kind: FoodKind` next to a nullable `cookedWeightG`, with three
 `require`s keeping them consistent and two readers writing `cookedWeightG!!`
-after checking the kind. `FoodKind` becomes sealed instead: `Plain`, and
+after checking the kind. `FoodKind` is sealed instead: `Plain`, and
 `Recipe(cookedWeightG: Double)`. The cooked weight exists only where it means
 something (ADR 0019 slices a portion out of it), and a reader gets it by a
 smart cast on the kind it has just matched. Making `Food` itself sealed
 (`PlainFood` / `RecipeFood`) was rejected: two types for a fact that one field of
-the kind can carry. The wire is unchanged; the DTO still states `kind` and
-`cookedWeightG`.
+the kind can carry. The wire is unchanged: `FoodResponse` states `kind` as its own
+`FOOD | RECIPE` enum and `cookedWeightG` beside it, and the repository maps the
+same two columns it always has.

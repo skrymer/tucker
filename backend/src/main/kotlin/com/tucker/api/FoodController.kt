@@ -31,8 +31,8 @@ import java.time.LocalDate
 data class FoodResponse(
     val id: Long,
     val name: String,
-    /** The domain enum, so the spec lists the values (see [EntryResponse.kind]). */
-    val kind: FoodKind,
+    /** An enum rather than a String, so the spec lists the values (see [EntryResponse.kind]). */
+    val kind: Kind,
     val barcode: String?,
     val caloriesPer100g: Double,
     val proteinPer100g: Double,
@@ -54,7 +54,10 @@ data class FoodResponse(
     val referenceFoodName: String?,
     /** The **Tags** this Food carries, alphabetically ignoring case; empty, never null. */
     val tags: List<FoodTagResponse>,
-)
+) {
+    /** A [FoodKind] as the wire names it. */
+    enum class Kind { FOOD, RECIPE }
+}
 
 /** A Tag as a Food carries it: enough to draw a chip and to send the id back. */
 data class FoodTagResponse(val id: Long, val name: String)
@@ -132,13 +135,16 @@ internal fun Food.toResponse(
 ) = FoodResponse(
     id = id,
     name = name,
-    kind = kind,
+    kind = when (kind) {
+        FoodKind.Plain -> FoodResponse.Kind.FOOD
+        is FoodKind.Recipe -> FoodResponse.Kind.RECIPE
+    },
     barcode = barcode,
     caloriesPer100g = nutrition.caloriesPer100g,
     proteinPer100g = nutrition.proteinPer100g,
     carbsPer100g = nutrition.carbsPer100g,
     fatPer100g = nutrition.fatPer100g,
-    cookedWeightG = cookedWeightG,
+    cookedWeightG = (kind as? FoodKind.Recipe)?.cookedWeightG,
     ingredientCount = ingredientCount,
     referenceFoodId = referenceFoodId,
     referenceFoodName = referenceFoodName,
