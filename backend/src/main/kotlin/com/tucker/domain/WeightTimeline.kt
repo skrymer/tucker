@@ -101,8 +101,8 @@ class TimelineIntake(
      * figure for a week reviewed with Calorie Tracking off, so reaching past that
      * review would draw a line the User was never held to.
      *
-     * The same shape as [WeightTrend.standingEachDay], which asks the same question
-     * of the readings.
+     * The rule [WeightTrend.standingEachDay] applies to the readings: what was set
+     * on or before a day stands until the next.
      */
     fun budgetOn(date: LocalDate): Double? = inOrder
         .lastOrNull { !it.reviewedOn.isAfter(date) }
