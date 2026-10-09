@@ -376,6 +376,26 @@ class ReminderSchedulerIntegrationTest {
         assertEquals(null, runAs(subscriber) { reminderState.lastReminderSentOn() })
     }
 
+    @Test
+    fun `a User whose latest review is recent is not nudged, even while absent today`() {
+        // Overdue is judged from the latest review, not from showing up: this User has
+        // not opened Tucker today, and still has nothing due.
+        seedEligible()
+        runAs(subscriber) {
+            reviews.insert(
+                WeeklyReview(
+                    reviews.nextId(), today.minusDays(1), 86.0,
+                    IntakeTargets(Maintenance(2400.0, Maintenance.Basis.FORMULA_SEED), 1850.0, 172.0),
+                ),
+            )
+        }
+
+        val result = scheduler.runTick(now)
+
+        assertEquals(0, result.sent)
+        assertEquals(emptyList(), sender.sentEndpoints)
+    }
+
     /**
      * The reminder is one per *person* per overdue episode, not one per installation
      * (ADR 0010) — so somebody coming back stands their own nudge down and nobody
