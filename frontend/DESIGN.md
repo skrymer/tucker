@@ -350,7 +350,7 @@ the ring, so type is friendly-but-quiet.
 | ----------- | ------------------ | ------------ | ------- | -------- | --------------------------------------------------------- |
 | Ring figure | `text-ring-figure` | 36px / 1.11  | 800     | —        | the centre of a ring, a card's one headline figure        |
 | h1          | `text-h1`          | 24px / 1.33  | 700     | —        | page title ("Today"), in `text-default`                   |
-| Stat        | `text-stat`        | 22px / 1.1   | 800     | —        | ring-legend values, tile figures                          |
+| Stat        | `text-stat`        | 22px / 1.1   | 800     | —        | tile figures (a ring's legend stays a plain line)         |
 | h2          | `text-h2`          | 18px / 1.3   | 700     | —        | card headings, in `text-highlighted`                      |
 | Body        | `text-body`        | 15px / 1.5   | 400–500 | —        | default, set on `body`                                    |
 | Label       | `text-label`       | 13px / 1.4   | 600     | —        | meta, secondary lines, in `text-muted`                    |

@@ -46,7 +46,7 @@ const { open: moreOpen, holdsCurrentPage: moreHoldsCurrentPage } =
   >
     <div class="flex items-center gap-2 px-5 py-4">
       <UIcon name="i-lucide-salad" class="size-6 text-primary" />
-      <span class="text-lg font-bold text-default">Tucker</span>
+      <span class="text-h2 text-default">Tucker</span>
     </div>
     <div class="flex flex-col gap-1 p-3">
       <NavLink
@@ -65,9 +65,7 @@ const { open: moreOpen, holdsCurrentPage: moreHoldsCurrentPage } =
       aria-labelledby="side-nav-more"
       class="mt-2 border-t border-default p-3"
     >
-      <p id="side-nav-more" class="px-3 pb-1 text-xs font-medium text-dimmed">
-        More
-      </p>
+      <p id="side-nav-more" class="px-3 pb-1 text-label text-muted">More</p>
       <NavLink
         v-for="destination in destinations.overflow"
         :key="destination.to"

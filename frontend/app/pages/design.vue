@@ -125,7 +125,7 @@ const grams = ref(80)
 <template>
   <section class="flex flex-col gap-10">
     <header class="flex flex-col gap-1">
-      <p class="text-eyebrow text-primary">Design system</p>
+      <p class="text-eyebrow text-muted">Design system</p>
       <h1 class="text-h1 text-default">Vital</h1>
       <p class="text-muted">
         Tucker's visual identity — the day as a ring you close. Green brand,
@@ -137,7 +137,7 @@ const grams = ref(80)
     <!-- Review the whole guide in either mode — this is the real Appearance
          control from /profile, so it doubles as its own showcase. -->
     <div class="flex flex-wrap items-center gap-3">
-      <span class="text-sm font-medium text-default">Mode</span>
+      <span class="text-label text-muted">Mode</span>
       <AppearanceControl />
     </div>
 
@@ -146,7 +146,7 @@ const grams = ref(80)
       <h2 class="text-h2 text-highlighted">Colour</h2>
 
       <div class="flex flex-col gap-2">
-        <p class="text-sm font-medium text-default">Primary · brand green</p>
+        <p class="text-label text-muted">Primary · brand green</p>
         <div class="flex flex-wrap gap-1.5">
           <div
             v-for="c in greenScale"
@@ -165,9 +165,7 @@ const grams = ref(80)
       </div>
 
       <div class="flex flex-col gap-2">
-        <p class="text-sm font-medium text-default">
-          Secondary · coral (protein)
-        </p>
+        <p class="text-label text-muted">Secondary · coral (protein)</p>
         <div class="flex flex-wrap gap-1.5">
           <div
             v-for="c in coralScale"
@@ -186,7 +184,7 @@ const grams = ref(80)
       </div>
 
       <div class="flex flex-col gap-2">
-        <p class="text-sm font-medium text-default">Neutrals · green-biased</p>
+        <p class="text-label text-muted">Neutrals · green-biased</p>
         <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
           <div
             v-for="s in surfaces"
@@ -208,7 +206,7 @@ const grams = ref(80)
       </div>
 
       <div class="flex flex-col gap-2">
-        <p class="text-sm font-medium text-default">
+        <p class="text-label text-muted">
           Status · a separate axis, never the accent
         </p>
         <div class="flex flex-wrap gap-2">
@@ -238,7 +236,7 @@ const grams = ref(80)
             {{ t.sample }}
           </dt>
           <dd class="text-xs text-dimmed tabular-nums">
-            {{ t.role }} ·<code>{{ t.token }}</code>
+            {{ `${t.role} · ` }}<code>{{ t.token }}</code>
             <template v-if="captions[t.token]">
               · {{ captions[t.token] }}</template
             >

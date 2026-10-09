@@ -119,6 +119,34 @@ describe('using the type scale by name', () => {
     expect(restated).toEqual([])
   })
 
+  it("never restates a token's exact size and weight on any element", () => {
+    // The stock pairs that equal a token: h1 (24px/700), h2 (18px/700) and the
+    // ring figure (36px/800). The other tokens have no stock equivalent.
+    const pairs = [
+      ['text-2xl', 'font-bold'],
+      ['text-lg', 'font-bold'],
+      ['text-4xl', 'font-extrabold'],
+    ]
+    const restated = elements
+      .filter(({ classes }) =>
+        pairs.some(([size, weight]) =>
+          [size, weight].every((c) => classes.includes(c!)),
+        ),
+      )
+      .map(({ site }) => site)
+
+    expect(restated).toEqual([])
+  })
+
+  it('inks every eyebrow muted', () => {
+    const otherwise = elements
+      .filter(({ classes }) => classes.includes('text-eyebrow'))
+      .filter(({ classes }) => !classes.includes('text-muted'))
+      .map(({ site }) => site)
+
+    expect(otherwise).toEqual([])
+  })
+
   it('never restates the eyebrow as a stock-sized uppercase line', () => {
     const restated = elements
       .filter(

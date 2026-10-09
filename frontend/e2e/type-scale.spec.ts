@@ -57,6 +57,30 @@ test('Log renders its section eyebrow on the type scale', async ({
   ).toBe('uppercase')
 })
 
+test('the side nav and the style guide label their groups on the type scale', async ({
+  page,
+  goto,
+  isMobile,
+}) => {
+  test.skip(isMobile, 'the side nav and its More group are desktop-only')
+
+  await goto('/design', { waitUntil: 'hydration' })
+
+  const navGroup = page
+    .getByRole('group', { name: 'More' })
+    .getByText('More', { exact: true })
+  const swatchGroup = page.getByText('Primary · brand green', { exact: true })
+  await expect(navGroup).toBeVisible()
+  await expect(swatchGroup).toBeVisible()
+
+  const [navType, swatchType] = await Promise.all([
+    typeOf(navGroup),
+    typeOf(swatchGroup),
+  ])
+  expect(navType).toEqual({ size: '13px', weight: '600' })
+  expect(swatchType).toEqual({ size: '13px', weight: '600' })
+})
+
 test('an eyebrow wears the body face whatever element carries it', async ({
   page,
   goto,
