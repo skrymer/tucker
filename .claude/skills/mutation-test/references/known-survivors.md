@@ -67,6 +67,7 @@ and [#237](https://github.com/skrymer/tucker/issues/237) (frontend).
   - Rename and merge a Tag — `ManageTagsSheet.vue` 41 of 48, backend 24 of 28
   - Log for tomorrow (#443) — `useBudgetGate.ts` 9 of 42, backend 6 carried from #442
   - Lint refactor (#454) — 216 new of 532, 54 real gaps closed
+  - Detekt rules (#455 PR 3) — 767 of 856, 4 real gaps closed
   - Noise removed at the source
 - What the score still cannot ask for
 
@@ -908,7 +909,8 @@ reaching past Spring configuration into ordinary domain enums** — worth knowin
 because the class here looks nothing like a `@Bean`.
 
 **Entity id accessors (4)** — `WeighedEntry.getId`, `WeeklyReview.getId`,
-`PushSubscription.getId`, `Pace.getGPer100Kcal`.
+`PushSubscription.getId`, `Pace.getGPer100Kcal`. `Pace` is a value class, so the
+getter is never called once unboxed — `PaceTest` and `CheckTest` do assert the value.
 
 **Verdict: real gap, accepted by decision** — the same category as the `api` DTO
 accessors below.
@@ -1014,8 +1016,11 @@ NO_COVERAGE when an earlier test in the same run already bootstrapped the key.
 
 **`MartijndwarsWebPushSender` (8) and `UserReminder` (5).**
 
-**Verdict: killed by an out-of-scope layer.** The transport's client lifecycle and the
-reminder's per-User turn are proved by the `reminder-send` real-stack smoke, which
+**Verdict: killed by an out-of-scope layer** — except `UserReminder` L51 (`delivered >
+0`) and L77 (`latestReviewOn`), which the smoke never reached and #455 closed with
+`ReminderSchedulerIntegrationTest` (a nudge reaching no device is not stamped; a recent
+review with the User absent today is not nudged). The transport's client lifecycle and
+the rest of the reminder's per-User turn are proved by the `reminder-send` real-stack smoke, which
 sends a real push and asserts the dedupe — a layer pitest cannot run. `ReminderPolicy`,
 which holds the actual gating rules, is a deep module with its own test and is fully
 killed.
@@ -1035,6 +1040,10 @@ badly, so `succeedingTests` comes back empty on a mutant the suite would catch.
 | `ReferenceFoodRepository.findByIds` → always `emptyMap()` | 8              |
 | `Micronutrients.<init>` `it >= 0` → `it <= 0`             | 6+             |
 | `namesOf`/`search`/`namesTheWholeFood` (mutated together) | 27             |
+
+`ReferenceFoodRepository`'s own survivors at L45, L65 and L94 are a different mutant:
+the `isEmpty()` early returns, **equivalent** for the reason the `persistence` section
+gives its siblings. The whole-method row above does not settle them.
 
 Do not write tests for these — `NutrientReferenceValuesTest` and
 `MicronutrientIntakeApiTest` already pin them. Read an empty `succeedingTests` on this
@@ -1452,6 +1461,29 @@ identical twin on `main`. Of those, 98 survived and 118 were `no cov`.
 - **`RecipeRollup.vue`: the cook-down bar's wiring (2) — accepted, unasserted.** The
   share is `recipeRollup.ts`'s `cookDownPercent`, 26 of 26; what survives is passing it
   into an `aria-hidden` width, the presentation-token category above.
+
+### Detekt rules (#455 PR 3) — 767 of 856, 4 real gaps closed
+
+Scoped to the 38 main files the refactor touched. 90 not killed: 68 already recorded
+here with their code unmoved, 22 judged. The 4 real gaps (`Maintenance.isMeasurable`'s
+`kcal > 0` at a zero balance, `DailySummary.estimatedCalorieShare`, and `UserReminder`
+L51/L77 above) have tests; three were pre-existing.
+
+- **Equivalent (17).** `OpenFoodFactsProvider.failed`/`logFailure` (6): log text only.
+  `VapidKeyStore.generateAndStore` → null and `storedKey` → `""`: unreachable returns.
+  Getters nothing calls, because the reads are destructuring or own-field —
+  `DailySummary.getTrend`/`getGoalActive`, `BorrowedLog` (2), `WeighedPortion.getGrams`,
+  `CheckService$PendingCheck.getBarcode`, `BorrowedFood.getIngredients`.
+  `FoodService.frequent`'s `requireWindow` removed: `FrequentFoods.rank` re-checks it
+  (the verdict `FoodController.frequent` had, moved). `PushSubscriptions.push` L42/L44
+  (3): the `Iterable.count` body Kotlin inlines, as `WeightTrend.weighedDaysSince`.
+  `WeightTimeline$Companion.of` L274 (integer `+` → `-`): a line past the file's end,
+  `runningFold`'s inlined capacity arithmetic; L212's `MEMORY_ERROR` is the `takeWhile`
+  on an endless sequence, killed.
+- **False survivor (1).** `VapidKeyStore.storedKey` negated: on a copy with `build/`
+  removed and `--no-build-cache`, `VapidKeyStoreTest` fails 3/3 ("Failed to load
+  ApplicationContext"). The first attempt kept `build/`, replayed a cached `:test`, and
+  read as a survivor.
 
 ### Noise removed at the source
 

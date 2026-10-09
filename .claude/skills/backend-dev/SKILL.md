@@ -89,7 +89,11 @@ not restate them.
   signed-in `tester` is provisioned by whichever request reaches it first. An assertion on
   "the first" row, draw or statement therefore depends on what ran before: key it by table
   or name, and ablate a fix on a copy without `build/` (#455's `take(1)` guard passed on a
-  stale DB and failed on a fresh one).
+  stale DB and failed on a fresh one). A test that cannot be `@Transactional` commits its
+  data into that same file: sign it in as a fixed User of its own (a minted assertion),
+  delete its rows in `finally`, and run the full suite twice on one DB before committing —
+  #455's version created a Tag as `tester`, and pitest's baseline, in another order, failed
+  fifteen Tag-list tests without a mutant.
 
 - **Run the suite as `TZ=Etc/UTC ./gradlew build`** — it flakes in the UTC-evening window on a
   Brisbane host, where the two calendar days disagree.
@@ -127,7 +131,9 @@ not restate them.
 misses the type-resolution rules). Each hit is a smell; fix it with the catalog move
 [tdd's `refactoring.md`](../tdd/refactoring.md) names, chosen to make the code read better —
 never by shaving lines, never with `@Suppress` or a baseline. The commit names the move.
-The limits are `detekt.yml`'s, stated once there.
+The limits are `detekt.yml`'s, stated once there. The pre-commit hook lints the whole
+backend against the *working-tree* `detekt.yml`, so tightening it means committing each
+fix with `HEAD`'s config parked and landing the new thresholds last.
 
 | Rule | Smell |
 | --- | --- |
@@ -139,7 +145,7 @@ The limits are `detekt.yml`'s, stated once there.
 | `DataClassShouldBeImmutable`, `VarCouldBeVal` | Mutable Data |
 | `UnusedImports`, `UnusedPrivate*` | Dead Code |
 | `UnnecessaryAbstractClass` | Shallow module — Replace Superclass with Delegate |
-| `UnsafeCallOnNullableType` (`!!`), `UseRequireNotNull` | Make null impossible in the type; else Introduce Assertion (`checkNotNull(x) { "<invariant>" }`) |
+| `UnsafeCallOnNullableType` (`!!`), `UseRequireNotNull` | Make null impossible in the type. Else Introduce Assertion — but `checkNotNull` throws `IllegalStateException`, which `ApiExceptionHandler` answers 409, so on a request path it misreports a server fault; keep it to boot-time code |
 | `UnnecessaryLet`, `UseOrEmpty` | Inline Function / Substitute Algorithm (the idiom) |
 
 How the moves land here:
@@ -147,7 +153,14 @@ How the moves land here:
 - **A bean's collaborators → Extract Class**: move the assembly into a service (or a
   component it needs), so a controller reads HTTP → domain → HTTP. Keep each endpoint on
   its controller — the spec's tags and `operationId`s come from it, and moving one is a
-  wire change `OpenApiSnapshotTest` will catch.
+  wire change `OpenApiSnapshotTest` will catch. **A controller's `@Transactional` must
+  still cover every read left in the controller** — #455 moved Frequent Foods' ranking into
+  `FoodService` and left `FoodDescriber`'s reads outside the transaction, green on every
+  test. Pin it the way `FrequentFoodsReadTransactionTest` does: record the transaction each
+  statement runs in and assert there is one.
+- **Move Class out to a public domain type, and it owes its own test in the same change**
+  (ADR 0013 rules 2 and 5) — the service tests that drove it while it was private are not
+  its spec. #455's `AdaptiveWindow` was moved untested and gate 5 sent it back.
 - **Introduce Parameter Object onto the domain value the group already is**
   (`LoggedIntake`, `WeighedPortion`, `BorrowedLog`); a fixture parameter no caller varies
   is Change Function Declaration, not an object.

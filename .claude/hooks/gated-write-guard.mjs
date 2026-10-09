@@ -38,11 +38,24 @@ const copiesOnto = (segment, path) =>
   /\b(?:cp|mv|install)\b/.test(segment) &&
   segment.trim().split(/\s+/).at(-1)?.replace(/['"]/g, '') === path
 
-/** An inline Python or Node script that names [path] and writes a file. */
+const SCRIPT_WRITE =
+  /open\(([^)]*)['"][wa]\+?['"]|\.write_text\(|writeFile(?:Sync)?\(([^,)]*)/g
+
+/**
+ * Whether a write call's first argument is a literal scratch path. Any other
+ * target — a variable, an expression, a `Path(...).write_text` — is taken as
+ * possibly the gated file.
+ */
+const writesScratch = ([, openArgs, writeFileTarget]) => {
+  const target = (openArgs ?? writeFileTarget ?? '').match(/^\s*['"]([^'"]+)['"]/)
+  return target !== null && SCRATCH.test(target[1])
+}
+
+/** An inline Python or Node script that names [path] and writes a file other than a scratch copy. */
 const scriptWrites = (command, path) =>
   /\b(?:python3?|node)\b/.test(command) &&
   command.includes(path) &&
-  /open\([^)]*['"][wa]\+?['"]|\.write_text\(|writeFile(?:Sync)?\(/.test(command)
+  [...command.matchAll(SCRIPT_WRITE)].some((call) => !writesScratch(call))
 
 const segmentsOf = (command) => command.split(/;|&&|\|\||\n|\|/)
 
@@ -69,7 +82,9 @@ export function decide(command) {
       permissionDecisionReason:
         `Project convention: ${[...offending].join(', ')} is gated by Probity, ` +
         'which only judges Write and Edit — write it with Edit/Write, not a ' +
-        'shell command. To mutate a copy, write it under .stryker-tmp/ or /tmp.',
+        'shell command. To mutate a copy, write it under .stryker-tmp/ or an ' +
+        'absolute /tmp/ path named as a literal; an inline script that only ' +
+        'reads the file can also run from a script file instead.',
     },
   }
 }

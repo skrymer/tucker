@@ -66,6 +66,24 @@ test('lets writes to a mutation sandbox or a /tmp copy through', () => {
   )
 })
 
+test('lets an inline script read a gated file and write a /tmp copy', () => {
+  assert.equal(
+    refused(
+      "python3 - <<'PY'\ns=open('backend/src/main/kotlin/A.kt').read()\nopen('/tmp/x/A.kt','w').write(s)\nPY",
+    ),
+    false,
+  )
+})
+
+test('refuses a script whose write target only contains a /tmp literal', () => {
+  assert.equal(
+    refused(
+      "python3 - <<'PY'\np='app/a.ts'\nopen(root + '/tmp/a.ts','w').write(s)\nPY",
+    ),
+    true,
+  )
+})
+
 test('lets writes to ungated files through', () => {
   assert.equal(refused('echo x > frontend/test/catalog-host.ts'), false)
   assert.equal(refused("sed -i 's/a/b/' docs/adr/0004.md"), false)
@@ -86,6 +104,8 @@ test('answers a gated write with a deny naming the file and Edit/Write', () => {
   assert.equal(verdict.permissionDecision, 'deny')
   assert.match(verdict.permissionDecisionReason, /app\/components\/X\.vue/)
   assert.match(verdict.permissionDecisionReason, /Edit\/Write/)
+  assert.match(verdict.permissionDecisionReason, /absolute \/tmp\//)
+  assert.match(verdict.permissionDecisionReason, /script file/)
 })
 
 test('fails open on input it cannot read', () => {
