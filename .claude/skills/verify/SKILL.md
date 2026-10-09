@@ -86,6 +86,7 @@ shapes a real user's data comes in, and drive at least one of each:
 | A server-side rule the UI can't reach | a domain bound or a ±N plausibility check: both edges of the window, one past each, and the field omitted — over the dev proxy, on every endpoint that runs it. A bound **anchored to the client's day** is only told apart from one on the server's day with the client off by one: `clientToday` +1 with `date` client+2 (accepted) and client+3 (refused), `clientToday` −1 with `date` server+1 (refused). #443's audit sent the walk-through back for `clientToday` ±1/+2/absent and `date = today + 2`; #444's for −2 and the client offset. A value the **client** refuses never reaches the server's refusal or its routing: move the state behind the page over the API (lower the trend after /profile loaded) so the client accepts what the server refuses — #454's 89.1 and 1.6 were Zod's |
 | A new request-body field | read the saved record back through the API after the save, since a form can look right and send nothing (`GET /api/foods` showing the new `tags`, not the chips on screen) |
 | A threshold the code *reads* | a breakpoint, a timer, a grace period, a debounce — value−1 and value, both sides. #435's 1024px breakpoint and 250 ms grace were first walked at 555/2133px and 80/680 ms, which bracket them and prove neither edge |
+| A migration | the upgraded database, not only a fresh one: seed and delete top rows on `main`'s published image (`ghcr.io/skrymer/tucker-backend:latest`) on a disposable volume, then start the branch image on the same volume and read the result. Stop the main stack first — `docker-compose.yml` fixes `container_name`, so a second `-p` project cannot run beside it — and read the applied migration by `installed_rank`, never `max(version)`: `version` is text, so `'9' > '21'`. #455's first run read it that way and could not show its migration had run at all |
 
 Then the states: empty/zero, the error path, the reset. Two of those, chosen by what the
 change could plausibly have broken. **And the case each fix commit since gate 0 was
@@ -199,6 +200,9 @@ the wrong label. A probe named without its value is not a probe. **FAIL** stops 
 reach the surface) is not a PASS; say what blocked you. If you fell back to Playwright,
 label the verdict `PASS (Playwright fallback — claude-in-chrome unavailable)`.
 
+Before recording a display oddity, check `frontend/DESIGN.md` and `CONTEXT.md`: #455
+flagged sentence-cased Food names, which `CONTEXT.md` already rules is by design.
+
 Gate 0's verdict is one line: `reachability ✅ — <surface> loads and <the one action>
 works at <width>`.
 
@@ -228,11 +232,16 @@ and checks each against a concrete value in the verdict.
   Write it only after marking every value the audit named DRIVEN (quote it) or NOT
   DRIVEN (with the reason), and copy its counts rather than recounting: #454's line
   claimed all values driven, and gate 5's re-check found four in neither list.
+  **DRIVEN means the branch the audit named answered** — a value that came back
+  through another branch is NOT DRIVEN, with that reason. #455 marked a rate DRIVEN
+  that the server accepted (201) instead of refusing, and gate 5 sent it back.
 
 ## Notes
 
-- **Another project runs Nuxt on `:3210`.** Never `pkill -f "nuxt dev"` — match on
-  `/proc/<pid>/cwd` containing `git/tucker` before killing anything.
+- **At cleanup, stop only the PID you started** — record it from `ss -ltnp` at launch.
+  Never `pkill -f "nuxt dev"`, and a cwd match is not enough: another project runs Nuxt
+  on `:3210`, and in the main checkout the user's own server shares your cwd (#455's
+  loop over every `nuxt` under `git/tucker/frontend` stopped eight it had not started).
 - Console errors are worth a look, but `read_console_messages` only captures from when
   it's first called — call it *before* the interesting interaction, or reload.
 - Don't trigger `alert`/`confirm` — a modal dialog freezes the extension for the rest

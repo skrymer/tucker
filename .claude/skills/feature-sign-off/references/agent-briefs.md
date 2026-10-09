@@ -253,7 +253,8 @@ Method:
 
 Report per input: COVERED (quote the value) / WEAK (quote it, say why it is a
 happy-path lookalike) / UNCOVERED, then list the specific values you would drive
-for everything not covered.
+for everything not covered — numbered, each with the outcome you expect — and end
+with one line of totals: inputs, COVERED, WEAK, UNCOVERED, values named.
 
 Do not judge whether the feature is right, whether the code is good, or whether
 the verdict's PASS is correct in some larger sense. Only whether its evidence
@@ -299,6 +300,8 @@ Method:
    a named walk-through probe. Code that appears to do the thing is not a pin.
 3. Read each criterion at the boundary it implies, not at its happy path. "Refuses
    a value over the cap" is delivered at the cap, not near it.
+4. A criterion saying something no longer exists is checked by search: list the
+   patterns you ran, and include every way the code could still express the thing.
 
 Report one row per criterion, in the issue's order, each quoting the criterion and
 citing a file:line, a test name, or both:
