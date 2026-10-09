@@ -122,6 +122,14 @@ not restate them.
   fails naming the repository rather than the missing identity.
 - **The backend image has no `sqlite3`** (it is a JRE image) — inspect a container database
   from a throwaway `python:3-slim`, and copy the `-wal` file too or you read a stale snapshot.
+- **A refusal message is wire, and `OpenApiSnapshotTest` cannot see it.** Retyping what a
+  message interpolates changes the text: an enum renders `RECIPE`, a sealed class
+  `Recipe(cookedWeightG=…)`, and inlining one by hand drifts the casing. #455's sealed
+  `FoodKind` turned "…not a RECIPE" into "…not a Recipe" in a wire-unchanged refactor, and
+  only `/code-review` noticed. Before changing a type, `git grep '\${.*<prop>'` on
+  `origin/main` and pin each message it reaches in the API test first.
+- **Detekt's `ReturnCount` allows 2.** A guard plus a match flattens to one elvis
+  `?: return null` and a `return when (val x = …)`, not a nested `?.let`.
 - **The SEVERE "Unknown function: datetime('now')" during jOOQ codegen is benign noise.**
 
 ## Refactor step — Detekt names the smell
