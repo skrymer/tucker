@@ -202,6 +202,35 @@ class SummaryApiTest {
     }
 
     @Test
+    fun `the summary states the share of the day's calories that was estimated`() {
+        val day = LocalDate.of(2026, 6, 10)
+        seedReview(day, budgetKcal = 2000.0, floorG = 140.0)
+        // 25 g of carbs per 100 g is 100 kcal per 100 g by Atwater, so 300 g weighs in
+        // at 300 kcal beside an estimate of 100: a quarter of the day was guessed.
+        val rice = mockMvc.post("/api/foods") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"name":"Rice","proteinPer100g":0.0,"carbsPer100g":25.0,"fatPer100g":0.0,"tagIds":[]}"""
+        }.andExpect { status { isCreated() } }.andReturn().response.contentAsString
+            .substringAfter("\"id\":").substringBefore(",")
+        mockMvc.post("/api/entries/weighed") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"date":"$day","foodId":$rice,"grams":300.0}"""
+        }.andExpect { status { isCreated() } }
+        mockMvc.post("/api/entries/estimated") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"date":"$day","label":"snack","calories":100,"protein":null}"""
+        }.andExpect { status { isCreated() } }
+
+        mockMvc.get("/api/summary") {
+            param("date", "$day")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.caloriesConsumed") { value(400.0) }
+            jsonPath("$.estimatedCalorieShare") { value(0.25) }
+        }
+    }
+
+    @Test
     fun `the summary reports no day status before the first weekly review`() {
         // A fresh database has no WeeklyReview, so there is no Budget or Floor to
         // judge the day against — the verdict is withheld (null), unchanged from
