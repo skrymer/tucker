@@ -259,7 +259,7 @@ class CheckApiTest {
 
         mockMvc.get("/api/check/$nutellaBarcode").andExpect {
             status { isConflict() }
-            jsonPath("$.message") { value(containsString("finish setup")) }
+            jsonPath("$.message") { value("a Check needs a Calorie Budget; finish setup first") }
         }
     }
 
@@ -279,7 +279,7 @@ class CheckApiTest {
         // reason names the setting rather than sending them looking (ADR 0024).
         mockMvc.get("/api/check/$nutellaBarcode").andExpect {
             status { isConflict() }
-            jsonPath("$.message") { value(containsString("calorie tracking")) }
+            jsonPath("$.message") { value("a Check needs a Calorie Budget; turn calorie tracking on") }
         }
     }
 

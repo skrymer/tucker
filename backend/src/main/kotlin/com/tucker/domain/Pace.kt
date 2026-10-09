@@ -17,6 +17,14 @@ value class Pace(val gPer100Kcal: Double) {
     /** The protein [kcal] calories must carry to keep pace with the Protein Floor. */
     fun proteinNeededFor(kcal: Double): Double = gPer100Kcal * kcal / KCAL_PER_100_KCAL
 
+    /**
+     * The protein 100 g of [nutrition] leaves the rest of the day to make up. A Food
+     * above pace has a surplus, not a debt: the day is not obliged to eat less protein
+     * elsewhere, so the gap floors at zero.
+     */
+    fun proteinDebtPer100g(nutrition: Nutrition): Double =
+        (proteinNeededFor(nutrition.caloriesPer100g) - nutrition.proteinPer100g).coerceAtLeast(0.0)
+
     companion object {
         /** The energy, in kcal, that a protein-per-100-kcal figure is expressed per. */
         const val KCAL_PER_100_KCAL = 100.0
