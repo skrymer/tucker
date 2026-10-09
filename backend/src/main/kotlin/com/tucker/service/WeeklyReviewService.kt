@@ -1,5 +1,6 @@
 package com.tucker.service
 
+import com.tucker.domain.AdaptiveWindow
 import com.tucker.domain.IntakeTargets
 import com.tucker.domain.LoggedIntake
 import com.tucker.domain.Maintenance
@@ -156,7 +157,8 @@ class WeeklyReviewService(
 
     /**
      * Adaptive with a trend anchor and both coverage floors cleared — at least
-     * [MIN_LOGGED_DAYS] of the window logged and [MIN_WEIGHED_DAYS] of it weighed.
+     * [AdaptiveWindow.MIN_LOGGED_DAYS] of the window logged and
+     * [AdaptiveWindow.MIN_WEIGHED_DAYS] of it weighed.
      * Below either it holds the prior review's Maintenance, or seeds at cold start
      * when there is none to hold (ADR 0018).
      */
@@ -184,7 +186,7 @@ class WeeklyReviewService(
 
     /** The adaptive window that closes the day before [on]. */
     private fun adaptiveWindow(on: LocalDate, trend: WeightTrend): AdaptiveWindow {
-        val windowStart = on.minusDays(ADAPTIVE_WINDOW_DAYS)
+        val windowStart = on.minusDays(AdaptiveWindow.ADAPTIVE_WINDOW_DAYS)
         // One read, so the days counted and the calories averaged are the same rows:
         // a day absent from the map is a day with no Entry, never a zero-calorie one.
         val intakeByDay = entries.caloriesByDay(windowStart, on.minusDays(1))
@@ -193,78 +195,6 @@ class WeeklyReviewService(
             weighedDays = trend.weighedDaysSince(windowStart),
             intake = LoggedIntake(totalKcal = intakeByDay.values.sum(), loggedDays = intakeByDay.size),
         )
-    }
-
-    /**
-     * The evidence one adaptive window holds, and whether it is enough to correct
-     * Maintenance from.
-     *
-     * One floor per term, because the estimate is one energy balance and either term
-     * alone is not it (ADR 0018): enough logging that the average isn't set by one or
-     * two noisy days, and enough weighing that the window has a change to contribute
-     * at all. Tracked separately because a hold names the floor it failed, and "log
-     * more days" is wrong advice to somebody who simply has not weighed in (ADR 0031).
-     */
-    private class AdaptiveWindow(
-        val trendChange: WeightTrend.Change?,
-        weighedDays: Int,
-        val intake: LoggedIntake,
-    ) {
-        val weighingCovers = weighedDays >= MIN_WEIGHED_DAYS
-        val intakeUsable = intake.loggedDays >= MIN_LOGGED_DAYS && intake.totalKcal > 0.0
-
-        // Also needs a reading at the window's start to measure the change *from*;
-        // `trendChange` is null without one, which is short history rather than an
-        // unweighed window — a User weighing daily has it until their readings reach
-        // back a fortnight.
-        val canAdapt = trendChange != null && weighingCovers && intakeUsable
-
-        /**
-         * The adaptive estimate over this window, asked only once it [canAdapt]. The
-         * two terms' divisors are [Maintenance.adaptive]'s business — this hands over
-         * the raw totals and divides nothing (ADR 0018).
-         */
-        fun adapt(basalMetabolicRateKcal: Double): Maintenance? = Maintenance.adaptive(
-            intake = intake,
-            // Non-null whenever `canAdapt` is; stated because a Boolean val carries no
-            // smart cast, and re-testing here would be a second spelling of the rule.
-            trendChange = checkNotNull(trendChange),
-            windowDays = ADAPTIVE_WINDOW_DAYS,
-            basalMetabolicRateKcal = basalMetabolicRateKcal,
-        )
-
-        /**
-         * Which condition held a review, so the badge can name the one thing that
-         * would lift it (ADR 0031).
-         *
-         * These conditions co-occur — every new User's second review fails the logging
-         * floor *and* has no anchor — so the order decides what one sentence on `/`
-         * says, and it names the condition that is actually **binding**: the one still
-         * unmet when the others are met.
-         *
-         * The anchor therefore leads the three floors, because it is the only one the
-         * User cannot act on at all. A window's anchor is a reading old enough to
-         * measure a change *from*; nothing done today produces one, and a week of
-         * perfect logging lifts nothing while it is missing. Naming the logging floor
-         * there would accuse a User who has logged every day they have existed, and
-         * promise a remedy that cannot work. Between the two that *can* be acted on,
-         * the logging floor is the larger ask and the later to clear, so it outranks a
-         * single weigh-in.
-         *
-         * [canAdapt] leads outright: reaching here with it true means the balance ran
-         * and the domain refused the figure it produced, so no floor is what held this
-         * review.
-         */
-        fun holdReason(): Maintenance.HeldReason = when {
-            canAdapt -> Maintenance.HeldReason.BELOW_BASAL_RATE
-            trendChange == null -> Maintenance.HeldReason.NO_WINDOW_ANCHOR
-            !intakeUsable -> Maintenance.HeldReason.THIN_LOG
-            !weighingCovers -> Maintenance.HeldReason.UNWEIGHED_WINDOW
-            // [canAdapt] is exactly the conjunction of the three floors above, so nothing
-            // reaches here. Stated rather than left as an `else` arm: a reason picked by
-            // elimination is one that silently mislabels the day a fourth floor is added.
-            else -> error("no coverage floor failed, yet the review did not adapt")
-        }
     }
 
     /**
@@ -286,27 +216,5 @@ class WeeklyReviewService(
             ?: reviews.latestWithTargetsBefore(on)
                 ?.takeIf { !ReviewCadence.isOverdue(previous.reviewedOn, on) }
                 ?.intakeTargets?.maintenance?.kcal
-    }
-
-    private companion object {
-        /** The review window for the adaptive Maintenance correction. */
-        const val ADAPTIVE_WINDOW_DAYS = 14L
-
-        /**
-         * Minimum logged days in the window before the adaptive correction is trusted
-         * (ADR 0018). Below it the prior maintenance is held, so a thin, noisy sample
-         * can't set the Budget.
-         */
-        const val MIN_LOGGED_DAYS = 10
-
-        /**
-         * Minimum weighed days in the window, the [MIN_LOGGED_DAYS] of the weight term
-         * (ADR 0018). Far lower because the two terms fail differently: a thin intake
-         * sample makes the level swing, while a window the scale never saw contributes
-         * nothing at all and leaves Maintenance at the intake average exactly. One
-         * reading is the negation of that, and the divisor floor already bounds how
-         * much noise it can carry.
-         */
-        const val MIN_WEIGHED_DAYS = 1
     }
 }
