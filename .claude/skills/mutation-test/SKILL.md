@@ -185,11 +185,12 @@ Identical for both stacks; only step 1 and 2's commands differ.
      'committedOpenApiSpec' … doesn't exist`. **`rm -rf build` in the copy and run it
      with `--no-build-cache`**: a surviving `build/` or Gradle's shared cache replays the
      unmutated test result, and the mutant reads as killed-by-nothing — #455's
-     `storedKey` hand-mutant passed that way before a clean run killed it. Spell the
-     copy's path literally (`/tmp/…`): the write guard reads `$SP/…/src/main/…kt` as the
-     gated repo file and refuses it (#464). Save the copy's `diff -u` against the
-     source beside the red, or the RED cannot be replayed.
-     Backend gotchas carry the mechanism and a worked example.
+     `storedKey` hand-mutant passed that way before a clean run killed it. The write
+     guard reads only the command text, so an inline command naming the copy's
+     `src/main/…` path — or `$SP/…` standing for it — is refused as a gated write: spell
+     the path literally (`/tmp/…`, #464), or put the mutation in a script **file** and
+     run it by name. Save the copy's `diff -u` against the source beside the red, or the
+     RED cannot be replayed. Backend gotchas carry the mechanism and a worked example.
 
    **Check [`references/known-survivors.md`](references/known-survivors.md) first.**
    Every mutant a full sweep leaves alive already has a verdict there, with the
@@ -352,7 +353,9 @@ Run (in `backend/`):
 
 Bare `./gradlew mutationTest` sweeps the whole backend — minutes. Scope it. The
 HTML report lands in `backend/build/reports/pitest/index.html`; the machine-readable
-survivor list is `mutations.xml` beside it.
+survivor list is `mutations.xml` beside it. The console prints only the summary line, and
+the next sweep overwrites the XML, so copy every non-`KILLED` entry into the saved log as
+the sweep finishes — gate 5 cannot check survivors that are no longer anywhere.
 
 ### Budget (measured on this repo)
 

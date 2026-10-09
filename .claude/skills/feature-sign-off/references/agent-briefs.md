@@ -74,7 +74,8 @@ skill's gate 4 requires it — so it needs no note.
 
 **The pack copies, it does not recount.** A figure in it is copied from the saved
 output's own summary line, and every finding an agent returns gets a row, a
-"harmless" nit included. #443's pack recounted a hand-mutation run as "11/12" (the
+"harmless" nit included — and so does a behaviour change the agent dismissed itself (an
+adversary's failed attack, a ledger's scope tail): #455 PR 2's pack read one as resolved. #443's pack recounted a hand-mutation run as "11/12" (the
 file said 10 of 11) and dropped a one-line nit; gate 5 had to correct both.
 
 **Where a justification has to be tested, it is presented as a claim, attributed to
@@ -322,7 +323,8 @@ citing a file:line, a test name, or both:
 A criterion met by something produced after this ledger runs (a CI run, a red-proof
 report) is MISSING with "no evidence yet"; a later gate judges it against the evidence.
 
-Then once, at the end: behaviour this diff adds that no criterion asked for. Check
+Then once, at the end: behaviour this diff adds, removes or changes (a deleted
+`require` or refusal included) that no criterion asked for. Check
 it against whatever the issue rules out — an `## Out of scope` section where there
 is one, or a sentence saying a thing is not part of this — and quote the ruling it
 crosses. Name it; do not judge whether it is good.

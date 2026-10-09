@@ -80,8 +80,8 @@ needs it.
    applied in gate 1. Running it high here would re-do that cleanup pass for no
    gain. Medium gives cleanup-once (gate 1) + correctness-once (gate 3) with no
    overlap. Triage every finding: fix the genuine ones, and for each you *don't*
-   fix, say why (by-design per an ADR, pre-existing, out of scope). Don't let an
-   unexplained finding through. **Every source a dismissal cites is quoted as it
+   fix, say why (by-design per an ADR, pre-existing, out of scope — never "a tool refused
+   the fix", which gate 5 rejects). Don't let an unexplained finding through. **Every source a dismissal cites is quoted as it
    stands when the dismissal is written** — an ADR, another issue's scope
    (`gh issue view`), a precedent (`git grep` on `origin/main`) — never a handoff or
    prototype that no longer exists ([rationale](references/rationale.md#citations)).
@@ -479,8 +479,8 @@ Why the gates sit in this order, why two overlap, and why a briefed agent is not
 - **Fix-or-justify is the bar.** Every finding is either fixed or has a reason it
   isn't — one that answers **each** remedy the finding names, not only the first (#400,
   #455). A mid-sign-off handoff passes findings and every remedy on, never verdicts: #455's
-  "justify, don't fix" list held three dismissals gate 5 rejected. An unaddressed finding
-  means the sign-off isn't done.
+  "justify, don't fix" list held three dismissals gate 5 rejected, and #455 PR 2's "Detekt
+  refused it" a fourth. An unaddressed finding means the sign-off isn't done.
 - **"Verify on device" is a resolution only once the probe is in the issue.** A risk
   deferred to a post-deploy or on-device check is written into that acceptance
   criterion, with the exact steps, in the same step as the deferral — or nothing will
