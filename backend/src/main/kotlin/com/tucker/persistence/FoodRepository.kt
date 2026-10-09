@@ -1,8 +1,10 @@
 package com.tucker.persistence
 
+import com.tucker.domain.Entry
 import com.tucker.domain.Food
 import com.tucker.domain.FoodKind
 import com.tucker.domain.Nutrition
+import com.tucker.domain.WeighedEntry
 import com.tucker.jooq.Tables.FOOD
 import com.tucker.jooq.Tables.FOOD_TAG
 import com.tucker.jooq.Tables.TAG
@@ -10,7 +12,6 @@ import com.tucker.jooq.tables.records.FoodRecord
 import com.tucker.security.CurrentUser
 import org.jooq.DSLContext
 import org.jooq.impl.DSL
-import org.jooq.impl.DSL.select
 import org.springframework.stereotype.Repository
 import org.springframework.transaction.annotation.Transactional
 
@@ -28,7 +29,7 @@ class FoodRepository(
     private val dsl: DSLContext,
     private val currentUser: CurrentUser,
     ids: IdSequence,
-) : AggregateRepository(ids, FOOD) {
+) : AggregateRepository by ids.drawingFor(FOOD) {
 
     fun findById(id: Long): Food? =
         dsl.selectFrom(FOOD)
@@ -48,19 +49,22 @@ class FoodRepository(
             .and(FOOD.USER_ID.eq(currentUser.ownerId))
             .fetchOne()?.toFood()?.let { carryingTags(listOf(it)).single() }
 
-    fun findAll(): List<Food> =
+    fun findAll(): List<Food> = carryingTags(
         dsl.selectFrom(FOOD)
             .where(FOOD.USER_ID.eq(currentUser.ownerId))
             .orderBy(FOOD.NAME.lower())
-            .fetch().map { it.toFood() }.let(::carryingTags)
+            .fetch().map { it.toFood() },
+    )
 
     /** Load every Food in [ids] in a single query (used to resolve recipe ingredients). */
     fun findByIds(ids: Collection<Long>): List<Food> {
         if (ids.isEmpty()) return emptyList()
-        return dsl.selectFrom(FOOD)
-            .where(FOOD.ID.`in`(ids.map { it.toInt() }))
-            .and(FOOD.USER_ID.eq(currentUser.ownerId))
-            .fetch().map { it.toFood() }.let(::carryingTags)
+        return carryingTags(
+            dsl.selectFrom(FOOD)
+                .where(FOOD.ID.`in`(ids.map { it.toInt() }))
+                .and(FOOD.USER_ID.eq(currentUser.ownerId))
+                .fetch().map { it.toFood() },
+        )
     }
 
     @Transactional
@@ -141,15 +145,7 @@ class FoodRepository(
     private fun FoodRecord.toFood(): Food = Food(
         id = id!!.toLong(),
         name = name,
-        kind = when (kind) {
-            PLAIN_KIND -> FoodKind.Plain.also {
-                require(cookedWeightG == null) { "cookedWeightG only applies to a RECIPE" }
-            }
-            RECIPE_KIND -> FoodKind.Recipe(
-                requireNotNull(cookedWeightG) { "Recipe '$name' is stored without a cooked weight" },
-            )
-            else -> error("Food '$name' is stored with an unknown kind '$kind'")
-        },
+        kind = storedKind(),
         barcode = barcode,
         nutrition = Nutrition(
             caloriesPer100g = caloriesPer_100g,
@@ -164,6 +160,27 @@ class FoodRepository(
 // How `food.kind` spells each FoodKind.
 private const val PLAIN_KIND = "FOOD"
 private const val RECIPE_KIND = "RECIPE"
+
+/** The [FoodKind] this row's `kind` and cooked weight spell, refused when they disagree. */
+private fun FoodRecord.storedKind(): FoodKind = when (kind) {
+    PLAIN_KIND -> FoodKind.Plain.also {
+        require(cookedWeightG == null) { "cookedWeightG only applies to a RECIPE" }
+    }
+    RECIPE_KIND -> FoodKind.Recipe(
+        requireNotNull(cookedWeightG) { "Recipe '$name' is stored without a cooked weight" },
+    )
+    else -> error("Food '$name' is stored with an unknown kind '$kind'")
+}
+
+/**
+ * Every Food the weighed Entries ate, resolved in one query. Shared by the surfaces
+ * that reach past an Entry to the Food behind it, so "one query, not one per Entry"
+ * is stated once. An Entry's Food always exists — deleting a referenced Food is
+ * refused — so a lookup that misses is a bug, and the caller decides how loud.
+ */
+internal fun FoodRepository.foodsOf(entries: List<Entry>): Map<Long, Food> =
+    findByIds(entries.filterIsInstance<WeighedEntry>().map { it.foodId }.distinct())
+        .associateBy { it.id }
 
 /** Make [tagIds] exactly the Tags the Food [foodId] carries, in two statements however many. */
 private fun DSLContext.replaceTagsOf(foodId: Int, tagIds: Set<Long>, ownerId: Int) {

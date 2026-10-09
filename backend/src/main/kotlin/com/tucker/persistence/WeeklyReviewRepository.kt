@@ -27,7 +27,7 @@ class WeeklyReviewRepository(
     private val dsl: DSLContext,
     private val currentUser: CurrentUser,
     ids: IdSequence,
-) : AggregateRepository(ids, WEEKLY_REVIEW) {
+) : AggregateRepository by ids.drawingFor(WEEKLY_REVIEW) {
 
     /**
      * The newest review that exists, whatever its date — the cadence's question

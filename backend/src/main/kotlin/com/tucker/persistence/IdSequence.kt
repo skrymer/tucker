@@ -16,4 +16,9 @@ class IdSequence(private val dsl: DSLContext) {
             .where(ID_SEQUENCE.NAME.eq(table.name))
             .returningResult(ID_SEQUENCE.LAST_ID)
             .fetchSingleInto(Long::class.javaObjectType)
+
+    /** The ids of [table], for a repository to implement [AggregateRepository] by. */
+    fun drawingFor(table: Table<*>): AggregateRepository = object : AggregateRepository {
+        override fun nextId(): Long = next(table)
+    }
 }

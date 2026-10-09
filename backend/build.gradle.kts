@@ -204,6 +204,15 @@ tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach {
     jvmTarget = "21"
 }
 
+// The build gates on the type-resolving runs, `detektMain` and `detektTest`: some
+// rules (UnsafeCallOnNullableType, NestedScopeFunctions, UnnecessaryLet) only see
+// what they need with types. They lint everything the plain `detekt` task does,
+// so `check` runs them in its place rather than linting each file twice.
+tasks.named("check") {
+    setDependsOn(dependsOn.filterNot { it is TaskProvider<*> && it.name == "detekt" })
+    dependsOn("detektMain", "detektTest")
+}
+
 // --- OpenAPI spec generation ----------------------------------------------
 // The springdoc Gradle plugin runs `bootRun`, hits the api-docs endpoint, and
 // writes the spec straight into the frontend's committed copy. Run it after

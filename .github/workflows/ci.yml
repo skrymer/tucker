@@ -31,10 +31,8 @@ jobs:
           java-version: '21'
           cache: gradle
 
-      - name: Detekt (static analysis)
-        run: ./gradlew detekt --no-daemon
-
-      # ./gradlew build runs the unit + integration suite. The Docker-image
+      # ./gradlew build runs Detekt with type resolution (detektMain, detektTest)
+      # and the unit + integration suite. The Docker-image
       # e2e suite (./gradlew e2eTest) runs in the separate `e2e` job below.
       - name: Build and test
         run: ./gradlew build --no-daemon

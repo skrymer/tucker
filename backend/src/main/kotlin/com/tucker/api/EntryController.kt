@@ -7,6 +7,7 @@ import com.tucker.domain.EstimatedEntry
 import com.tucker.domain.Food
 import com.tucker.domain.MealEstimate
 import com.tucker.domain.WeighedEntry
+import com.tucker.domain.WeighedPortion
 import com.tucker.persistence.EntryRepository
 import com.tucker.persistence.FoodRepository
 import com.tucker.service.WeeklyReviewService
@@ -154,7 +155,7 @@ internal fun List<Entry>.toResponses(foods: FoodRepository): List<EntryResponse>
 
 /**
  * The Foods these Entries name that [namesById] did not resolve, each once. An
- * Entry's Food always exists ([foodsOf]), so a non-empty answer means either an
+ * Entry's Food always exists ([com.tucker.persistence.foodsOf]), so a non-empty answer means either an
  * invariant breach or a Food deleted between the two reads that produced the
  * arguments.
  */
@@ -217,7 +218,7 @@ class EntryController(
         val today = userToday.resolve(request.clientToday)
         val food = foods.findById(request.foodId)
             ?: throw NotFoundException("no Food with id ${request.foodId}")
-        return food to WeighedEntry.log(id, request.date, food, request.grams, today)
+        return food to WeighedEntry.log(id, request.date, WeighedPortion(food, request.grams), today)
     }
 
     /**

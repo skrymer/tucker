@@ -45,11 +45,7 @@ data class Check(
             require(proteinFloorG > 0) { "a Check needs a Protein Floor > 0, was $proteinFloorG" }
             val pace = Pace.from(calorieBudgetKcal = calorieBudgetKcal, proteinFloorG = proteinFloorG)
             val gramsInBudget = nutrition.gramsFor(calorieBudgetKcal)
-            // A Food above pace has a surplus, not a debt: the day is not obliged to
-            // eat less protein elsewhere, so the gap floors at zero.
-            val balancePer100g =
-                (pace.proteinNeededFor(nutrition.caloriesPer100g) - nutrition.proteinPer100g)
-                    .coerceAtLeast(0.0)
+            val balancePer100g = pace.proteinDebtPer100g(nutrition)
             return Check(
                 calorieBudgetKcal = calorieBudgetKcal,
                 proteinFloorG = proteinFloorG,

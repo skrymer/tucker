@@ -131,18 +131,18 @@ class ReminderSchedulerIntegrationTest {
      *
      * All four are that User's own now, so all four are seeded through [runAs] — which
      * is also what makes a second User a matter of calling this again rather than of
-     * arranging what the two of them share.
+     * arranging what the two of them share. Every one is reminded at 09:00 in its own
+     * [timezone].
      */
     private fun seedEligible(
         user: User = subscriber,
         endpoint: String = deviceA,
         timezone: String = "UTC",
-        reminderHour: Int = 9,
         tracksCalories: Boolean = true,
     ) = runAs(user) {
         profiles.save(
             Profile(
-                Sex.MALE, LocalDate.of(1986, 5, 22), 180.0, timezone, reminderHour,
+                Sex.MALE, LocalDate.of(1986, 5, 22), 180.0, timezone, REMINDER_HOUR,
                 remindersEnabled = true, tracksCalories = tracksCalories,
             ),
         )
@@ -364,6 +364,38 @@ class ReminderSchedulerIntegrationTest {
         assertEquals(1, result.sent)
     }
 
+    @Test
+    fun `a nudge that reached no device is not recorded as sent`() {
+        // Stamped only on a real delivery (ADR 0010 dedupe): a nudge no device received
+        // must not consume the overdue episode, or the User is never told.
+        seedEligible(endpoint = "https://push.example/device-gone")
+
+        val result = scheduler.runTick(now)
+
+        assertEquals(0, result.sent)
+        assertEquals(null, runAs(subscriber) { reminderState.lastReminderSentOn() })
+    }
+
+    @Test
+    fun `a User whose latest review is recent is not nudged, even while absent today`() {
+        // Overdue is judged from the latest review, not from showing up: this User has
+        // not opened Tucker today, and still has nothing due.
+        seedEligible()
+        runAs(subscriber) {
+            reviews.insert(
+                WeeklyReview(
+                    reviews.nextId(), today.minusDays(1), 86.0,
+                    IntakeTargets(Maintenance(2400.0, Maintenance.Basis.FORMULA_SEED), 1850.0, 172.0),
+                ),
+            )
+        }
+
+        val result = scheduler.runTick(now)
+
+        assertEquals(0, result.sent)
+        assertEquals(emptyList(), sender.sentEndpoints)
+    }
+
     /**
      * The reminder is one per *person* per overdue episode, not one per installation
      * (ADR 0010) — so somebody coming back stands their own nudge down and nobody
@@ -417,8 +449,8 @@ class ReminderSchedulerIntegrationTest {
      */
     @Test
     fun `two Users in different timezones are each nudged at their own local hour`() {
-        seedEligible(timezone = "UTC", reminderHour = 9)
-        seedEligible(user = somebodyElse(), endpoint = deviceB, timezone = "Australia/Brisbane", reminderHour = 9)
+        seedEligible(timezone = "UTC")
+        seedEligible(user = somebodyElse(), endpoint = deviceB, timezone = "Australia/Brisbane")
 
         // 23:00 UTC is 09:00 the next morning in Brisbane, and nowhere near 09:00 in UTC.
         val brisbaneMorning = scheduler.runTick(Instant.parse("2026-06-09T23:00:00Z"))
@@ -571,6 +603,9 @@ class ReminderSchedulerIntegrationTest {
     private companion object {
         /** Comfortably past the seven-day cadence, so every seeded User is overdue. */
         const val OVERDUE_BY_DAYS = 8L
+
+        /** The local hour every seeded User asks to be reminded at. */
+        const val REMINDER_HOUR = 9
 
         const val deviceA = "https://push.example/device-a"
         const val deviceB = "https://push.example/device-b"

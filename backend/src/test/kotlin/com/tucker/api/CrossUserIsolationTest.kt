@@ -2,6 +2,7 @@ package com.tucker.api
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.tucker.domain.FrequentFoods
+import com.tucker.domain.MealEstimate
 import com.tucker.domain.ReferenceFoodQuery
 import com.tucker.persistence.ReferenceFoodRepository
 import com.tucker.provider.OpenFoodFactsProvider
@@ -114,8 +115,8 @@ class CrossUserIsolationTest {
 
     @Test
     fun `a User's day shows only their own Entries and totals only their intake`() {
-        logEstimated(alice, calories = 700.0, protein = 40.0, label = "Alice's lunch out")
-        logEstimated(bob, calories = 250.0, protein = 12.0, label = "Bob's porridge")
+        logEstimated(alice, MealEstimate("Alice's lunch out", calories = 700.0, protein = 40.0))
+        logEstimated(bob, MealEstimate("Bob's porridge", calories = 250.0, protein = 12.0))
 
         mockMvc.get("/api/summary") {
             header(ACCESS_ASSERTION_HEADER, bob)
@@ -136,8 +137,8 @@ class CrossUserIsolationTest {
         // A window aggregate, which is the shape that has leaked twice before (the
         // adaptive engine's intake window, and the held-Maintenance fallback). A leak
         // here would show no wrong name — only a share divided by somebody else's day.
-        logEstimated(alice, calories = 700.0, protein = 40.0, label = "Alice's lunch out")
-        logEstimated(bob, calories = 250.0, protein = 12.0, label = "Bob's porridge")
+        logEstimated(alice, MealEstimate("Alice's lunch out", calories = 700.0, protein = 40.0))
+        logEstimated(bob, MealEstimate("Bob's porridge", calories = 250.0, protein = 12.0))
 
         mockMvc.get("/api/intake-breakdown") {
             header(ACCESS_ASSERTION_HEADER, bob)
@@ -157,8 +158,8 @@ class CrossUserIsolationTest {
 
     @Test
     fun `a User's Entries for a day are only their own`() {
-        logEstimated(alice, calories = 700.0, protein = 40.0, label = "Alice's lunch out")
-        logEstimated(bob, calories = 250.0, protein = 12.0, label = "Bob's porridge")
+        logEstimated(alice, MealEstimate("Alice's lunch out", calories = 700.0, protein = 40.0))
+        logEstimated(bob, MealEstimate("Bob's porridge", calories = 250.0, protein = 12.0))
 
         mockMvc.get("/api/entries") {
             header(ACCESS_ASSERTION_HEADER, bob)
@@ -234,7 +235,7 @@ class CrossUserIsolationTest {
 
     @Test
     fun `deleting another User's Entry leaves it where it was`() {
-        val lunch = logEstimated(alice, calories = 700.0, protein = 40.0, label = "Alice's lunch out")
+        val lunch = logEstimated(alice, MealEstimate("Alice's lunch out", calories = 700.0, protein = 40.0))
 
         // 204, not 404 — the same answer an id nobody owns gets, because deleting is
         // idempotent and a status that singled this case out would confirm the row.
@@ -562,8 +563,8 @@ class CrossUserIsolationTest {
 
     @Test
     fun `a Budget Projection counts only the caller's day`() {
-        logEstimated(alice, calories = 700.0, protein = 40.0, label = "Alice's lunch out")
-        logEstimated(bob, calories = 250.0, protein = 12.0, label = "Bob's porridge")
+        logEstimated(alice, MealEstimate("Alice's lunch out", calories = 700.0, protein = 40.0))
+        logEstimated(bob, MealEstimate("Bob's porridge", calories = 250.0, protein = 12.0))
 
         mockMvc.post("/api/entries/estimated/preview") {
             header(ACCESS_ASSERTION_HEADER, bob)
@@ -626,8 +627,8 @@ class CrossUserIsolationTest {
         // coverage floor the adaptive correction demands.
         (1..daysAliceLogged).forEach { back ->
             logEstimated(
-                alice, calories = 2000.0, protein = 100.0,
-                label = "Alice day $back", on = today.minusDays(back.toLong()),
+                alice, MealEstimate("Alice day $back", calories = 2000.0, protein = 100.0),
+                on = today.minusDays(back.toLong()),
             )
         }
 
@@ -656,8 +657,8 @@ class CrossUserIsolationTest {
 
         (1..daysAliceLogged).forEach { back ->
             logEstimated(
-                bob, calories = 2000.0, protein = 100.0,
-                label = "Bob day $back", on = today.minusDays(back.toLong()),
+                bob, MealEstimate("Bob day $back", calories = 2000.0, protein = 100.0),
+                on = today.minusDays(back.toLong()),
             )
         }
 
@@ -742,7 +743,7 @@ class CrossUserIsolationTest {
         (0..13).forEach { back -> weighIn(bob, day.minusDays(back.toLong()), weightKg = bobKg) }
         // And Alice ate today, where Bob did not: the intake half is drawn from the
         // same log, so her dinner would show up as a bar under his own weight.
-        logEstimated(alice, calories = 2200.0, protein = 90.0, label = "her dinner")
+        logEstimated(alice, MealEstimate("her dinner", calories = 2200.0, protein = 90.0))
         // Alice also has a Weekly Review, which the timeline reads for the Budget in
         // force on each day — an unscoped read would draw her Budget across his chart.
         completeProfile(alice)
@@ -1099,7 +1100,7 @@ class CrossUserIsolationTest {
         return postForId(
             token, "/api/foods",
             """
-                {"name":"$name",${barcode?.let { """"barcode":"$it",""" } ?: ""}
+                {"name":"$name",${barcode?.let { """"barcode":"$it",""" }.orEmpty()}
                  "proteinPer100g":10.0,"carbsPer100g":4.0,"fatPer100g":0.2,"tagIds":[]}
             """.trimIndent(),
         )
@@ -1121,18 +1122,11 @@ class CrossUserIsolationTest {
         postForId(token, "/api/entries/weighed", """{"date":"$on","foodId":$foodId,"grams":$grams}""")
 
     /** Log an estimated Entry owned by whoever [token] names, and return its id. */
-    private fun logEstimated(
-        token: String,
-        calories: Double,
-        protein: Double,
-        label: String,
-        on: LocalDate = day,
-    ): Long {
-        return postForId(
+    private fun logEstimated(token: String, meal: MealEstimate, on: LocalDate = day): Long =
+        postForId(
             token, "/api/entries/estimated",
-            """{"date":"$on","label":"$label","calories":$calories,"protein":$protein}""",
+            """{"date":"$on","label":"${meal.label}","calories":${meal.calories},"protein":${meal.protein}}""",
         )
-    }
 
     /** Set the active Goal of whoever [token] names, and return its id. */
     private fun setGoal(token: String, targetWeightKg: Double, rateKgPerWeek: Double = 0.5): Long =
@@ -1164,7 +1158,7 @@ class CrossUserIsolationTest {
         tracksCalories: Boolean = true,
         clientToday: LocalDate? = null,
     ) {
-        val query = clientToday?.let { "?clientToday=$it" } ?: ""
+        val query = clientToday?.let { "?clientToday=$it" }.orEmpty()
         mockMvc.put("/api/profile$query") {
             header(ACCESS_ASSERTION_HEADER, token)
             contentType = MediaType.APPLICATION_JSON

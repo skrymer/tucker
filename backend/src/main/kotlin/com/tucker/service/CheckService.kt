@@ -72,55 +72,60 @@ class CheckService(
      * review whatever its date.
      */
     fun check(barcode: String, today: LocalDate?): CheckOutcome {
-        // Two ways to have no Budget, and they earn opposite advice (ADR 0024), so
-        // the reason says which. Asked of the Profile rather than of setup: setup
-        // being complete would also cover a tracking User whose first review has
-        // simply not run yet, and telling them to turn on what is already on is the
-        // trap this distinction exists to avoid.
-        val review = if (today == null) {
-            reviews.latest()
-        } else {
-            weeklyReview.reviewsStandingOn(today).firstOrNull()
-        }
-        val targets = review?.intakeTargets
-            ?: error(
-                if (profiles.get()?.tracksCalories == false) {
-                    "a Check needs a Calorie Budget; turn calorie tracking on"
-                } else {
-                    "a Check needs a Calorie Budget; finish setup first"
-                },
-            )
+        val pending = PendingCheck(barcode, targetsStandingOn(today))
         // A saved Food always has calories; only a Provider candidate can arrive
         // with a macro missing, and then there is nothing to derive them from.
         return when (val found = barcodeLookup.lookup(barcode)) {
             BarcodeLookup.Missing -> CheckOutcome.Unknown
             BarcodeLookup.Inconclusive -> CheckOutcome.Inconclusive
-            is BarcodeLookup.Existing ->
-                state(barcode, found.food.name, source = null, found.food.nutrition, targets)
+            is BarcodeLookup.Existing -> pending.stated(found.food.name, source = null, found.food.nutrition)
             is BarcodeLookup.Candidate ->
                 found.candidate.atwaterNutrition()
-                    ?.let { state(barcode, found.candidate.name, found.candidate.source, it, targets) }
+                    ?.let { pending.stated(found.candidate.name, found.candidate.source, it) }
                     ?: CheckOutcome.Incomplete(found.candidate.name, found.candidate.source)
         }
     }
 
-    private fun state(
-        barcode: String,
-        name: String,
-        source: String?,
-        nutrition: Nutrition,
-        targets: IntakeTargets,
-    ) = CheckOutcome.Stated(
-        CheckedProduct(
-            name = name,
-            barcode = barcode,
-            source = source,
-            nutrition = nutrition,
-            check = Check.of(
-                nutrition,
-                calorieBudgetKcal = targets.calorieBudgetKcal,
-                proteinFloorG = targets.proteinFloorG,
+    /** The targets a Check on [today] is measured against, or refused for want of a Budget. */
+    private fun targetsStandingOn(today: LocalDate?): IntakeTargets {
+        val review = if (today == null) {
+            reviews.latest()
+        } else {
+            weeklyReview.reviewsStandingOn(today).firstOrNull()
+        }
+        return review?.intakeTargets ?: error(noBudgetReason())
+    }
+
+    /**
+     * Two ways to have no Budget, and they earn opposite advice (ADR 0024), so the
+     * reason says which. Asked of the Profile rather than of setup: setup being
+     * complete would also cover a tracking User whose first review has simply not
+     * run yet, and telling them to turn on what is already on is the trap this
+     * distinction exists to avoid.
+     */
+    private fun noBudgetReason(): String =
+        if (profiles.get()?.tracksCalories == false) {
+            "a Check needs a Calorie Budget; turn calorie tracking on"
+        } else {
+            "a Check needs a Calorie Budget; finish setup first"
+        }
+
+    /** A Check before its product is known: one barcode, and the day's targets it is measured against. */
+    private class PendingCheck(val barcode: String, val targets: IntakeTargets) {
+
+        /** The Check of the product [barcode] resolved to. */
+        fun stated(name: String, source: String?, nutrition: Nutrition) = CheckOutcome.Stated(
+            CheckedProduct(
+                name = name,
+                barcode = barcode,
+                source = source,
+                nutrition = nutrition,
+                check = Check.of(
+                    nutrition,
+                    calorieBudgetKcal = targets.calorieBudgetKcal,
+                    proteinFloorG = targets.proteinFloorG,
+                ),
             ),
-        ),
-    )
+        )
+    }
 }

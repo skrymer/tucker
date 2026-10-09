@@ -1,17 +1,12 @@
 package com.tucker.api
 
-import com.tucker.domain.DailyLog
 import com.tucker.domain.DayStatus
 import com.tucker.domain.DriftStatus
 import com.tucker.domain.Maintenance
 import com.tucker.domain.WeeklyReview
-import com.tucker.domain.WeightTrend
-import com.tucker.persistence.EntryRepository
 import com.tucker.persistence.FoodRepository
-import com.tucker.persistence.GoalRepository
-import com.tucker.persistence.ReminderStateRepository
-import com.tucker.persistence.WeightMeasurementRepository
-import com.tucker.service.WeeklyReviewService
+import com.tucker.service.DailySummary
+import com.tucker.service.DailySummaryService
 import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestMapping
@@ -72,7 +67,29 @@ data class DailySummaryResponse(
      * to have a Budget in.
      */
     val deficitSuspended: Boolean?,
-)
+) {
+    /** [summary] on the wire, its Entries already named. */
+    constructor(summary: DailySummary, entries: List<EntryResponse>) : this(
+        date = summary.log.date,
+        setupComplete = summary.setupComplete,
+        caloriesConsumed = summary.caloriesConsumed,
+        proteinConsumed = summary.proteinConsumed,
+        estimatedCalorieShare = summary.estimatedCalorieShare,
+        calorieBudget = summary.targets?.calorieBudgetKcal,
+        proteinFloor = summary.targets?.proteinFloorG,
+        caloriesRemaining = summary.caloriesRemaining,
+        proteinRemaining = summary.proteinRemaining,
+        dayStatus = summary.dayStatus,
+        trendWeightKg = summary.review?.trendWeightKg,
+        heldReason = summary.targets?.maintenance?.heldReason,
+        entries = entries,
+        budgetChange = summary.recent.takeIf { it.size == 2 }
+            ?.let { BudgetChange.between(previous = it[1], latest = it[0]) },
+        driftStatus = summary.driftStatus,
+        observedRateKgPerWeek = summary.observedRateKgPerWeek,
+        deficitSuspended = summary.deficitSuspended,
+    )
+}
 
 /**
  * A weekly review moved the Calorie Budget or Protein Floor — so the daily
@@ -121,92 +138,16 @@ data class BudgetChange(
 @RestController
 @RequestMapping("/api/summary")
 class SummaryController(
-    private val entries: EntryRepository,
+    private val dailySummary: DailySummaryService,
     private val foods: FoodRepository,
-    private val weeklyReview: WeeklyReviewService,
-    private val goals: GoalRepository,
-    private val weights: WeightMeasurementRepository,
-    private val reminderState: ReminderStateRepository,
 ) {
 
+    /** The summary of [date], the client's local day — reading it is what an app-open means (ADR 0010). */
     @GetMapping
     fun summary(
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) date: LocalDate,
     ): DailySummaryResponse {
-        // This read is what an app-open *means* for the reminder, so it is where two
-        // app-open bookkeeping concerns advance. They read like one concern and are
-        // not; ADR 0010, "What counts as showing up", carries the argument — including
-        // why "any screen performs this read" is not true (only `/` and `/check` do).
-        // The last-seen stamp is deferred to the end of this method — see there.
-        //
-        // Load-bearing: the weekly cadence advances here, with no scheduler — at most
-        // one review, snapped to the client's local today, when due. This is what
-        // stands down the day's reminder, and what lets a Check state its figures
-        // against a current Budget.
-        val setupComplete = weeklyReview.catchUpIfDue(date)
-
-        val log = DailyLog(date, entries.findByDate(date))
-        val recent = weeklyReview.reviewsStandingOn(date)
-        val review = recent.firstOrNull()
-        val targets = review?.intakeTargets
-        val budgetChange = recent.takeIf { it.size == 2 }
-            ?.let { BudgetChange.between(previous = it[1], latest = it[0]) }
-
-        // Maintenance Mode (ADR 0008): with no active Goal, the trend is paced
-        // against a zero rate. While a Goal is active the pace lives on the Goal,
-        // so the summary leaves these null.
-        val activeGoal = goals.findActive()
-        val trend = if (activeGoal == null) WeightTrend.from(weights.findAll()) else null
-        // One walk of the trend feeds both fields: the raw rate and its classification.
-        val observedRateKgPerWeek = trend?.observedRateKgPerWeek(date)
-        val driftStatus = trend?.let { DriftStatus.forRate(observedRateKgPerWeek) }
-
-        // Sum each total once and reuse it for both the consumed field and the
-        // signed remaining figure (the day verdict re-derives its own).
-        val caloriesConsumed = log.caloriesConsumed()
-        val proteinConsumed = log.proteinConsumed()
-
-        // Redundant, kept as a guard: last-seen on the client's local day (ADR 0014,
-        // never the server's wall clock), feeding a reminder gate that the catch-up
-        // above has already closed by the time the reminder asks.
-        //
-        // Stamped last, and deliberately: nothing here is transactional, so a stamp
-        // written on the way in outlives a request that then fails, recording "the
-        // user showed up" for an app-open that showed them nothing.
-        //
-        // Only this stamp, though. The catch-up above commits in its own transaction,
-        // so on that same failed request the review is already written and it — not
-        // this gate — is what stands the day's reminder down. Closing that too means
-        // one transaction spanning both, which would also roll back a review that
-        // legitimately ran; that is a change to the cadence, not to bookkeeping, and
-        // wants deciding on its own.
-        reminderState.stampSeen(date)
-
-        return DailySummaryResponse(
-            date = date,
-            setupComplete = setupComplete,
-            caloriesConsumed = caloriesConsumed,
-            proteinConsumed = proteinConsumed,
-            estimatedCalorieShare = log.estimatedCalorieShare(),
-            calorieBudget = targets?.calorieBudgetKcal,
-            proteinFloor = targets?.proteinFloorG,
-            caloriesRemaining = targets?.let { it.calorieBudgetKcal - caloriesConsumed },
-            proteinRemaining = targets?.let { it.proteinFloorG - proteinConsumed },
-            dayStatus = targets?.let { log.dayStatus(it.calorieBudgetKcal, it.proteinFloorG) },
-            trendWeightKg = review?.trendWeightKg,
-            heldReason = targets?.maintenance?.heldReason,
-            entries = log.entries.toResponses(foods),
-            budgetChange = budgetChange,
-            driftStatus = driftStatus,
-            observedRateKgPerWeek = observedRateKgPerWeek,
-            // Derived on read, never stored: a suspension lifts by itself the week
-            // Maintenance recovers, so latching it into the review would leave a
-            // historical claim the live state contradicts (ADR 0030).
-            deficitSuspended = if (activeGoal != null && targets != null) {
-                targets.appliesNoDeficit
-            } else {
-                null
-            },
-        )
+        val summary = dailySummary.summary(date)
+        return DailySummaryResponse(summary, entries = summary.log.entries.toResponses(foods))
     }
 }

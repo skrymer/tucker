@@ -106,20 +106,19 @@ data class MicronutrientIntake(
 
         /**
          * Read the window [from]..[to], both bounds inclusive, as a Micronutrient
-         * Intake. [eaten] must hold every Food the [entries] reference, each joined to
-         * what it borrows — and a **Recipe** joined to the composition it rolls up
-         * from, each ingredient carrying its own borrow. An Entry naming no Food is an
-         * **Estimated Entry**, which can never contribute or be queued. [references] is the set of
-         * lines to read the result against, and is null when there is no body to
-         * resolve them for — which is a different thing from a body with no band open.
+         * Intake. [eaten] must hold every Food its Entries reference. An Entry naming no
+         * Food is an **Estimated Entry**, which can never contribute or be queued.
+         * [references] is the set of lines to read the result against, and is null
+         * when there is no body to resolve them for — which is a different thing from
+         * a body with no band open.
          */
         fun of(
             from: LocalDate,
             to: LocalDate,
-            entries: List<Entry>,
-            eaten: Map<Long, BorrowedFood>,
+            eaten: BorrowedLog,
             references: Map<Micronutrient, ReferenceIntake>?,
         ): MicronutrientIntake {
+            val (entries, foods) = eaten
             // Refused rather than served, the move IntakeBreakdown.of already makes
             // for an Entry outside its window: the width is an invariant of this read
             // and not a User's choice, so leaving it to the one client call site that
@@ -131,16 +130,15 @@ data class MicronutrientIntake(
             // the queue attributes a Recipe to the ingredients that made it where the
             // breakdown attributes it to the dish (ADR 0027 amending ADR 0026). Sharing
             // the denominator is what keeps a queue row and a slice shares of one thing.
-            val breakdown = IntakeBreakdown.of(from, to, entries, eaten.mapValues { it.value.food.name })
+            val breakdown = IntakeBreakdown.of(from, to, entries, foods.mapValues { it.value.food.name })
             // What the window ate, with every Recipe opened up into the ingredients
             // that made it — so the nutrient figures, the coverage share and the queue
             // read one set of food rather than three kept in agreement by hand.
             //
-            // Partitioned rather than filtered twice: what covers and what is left to
-            // do are the two halves of one split, so a state added later has to be
-            // given a home here rather than falling through both predicates unnoticed.
-            val (covered, queued) = contributionsOf(entries, eaten)
-                .partition { it.borrowed.contributes }
+            // Split once rather than filtered twice: what covers and what is left to do
+            // are the two halves of one split, so a state added later has to be given a
+            // home there rather than falling through both predicates unnoticed.
+            val (covered, queued) = splitByBorrow(contributionsOf(entries, foods))
             return MicronutrientIntake(
                 from = from,
                 to = to,
@@ -161,8 +159,8 @@ data class MicronutrientIntake(
 
         /**
          * Every Food that supplied the window, with each **Recipe** opened into the
-         * ingredients that made it — matched or not, because the partition above is
-         * what splits those. An **Estimated Entry** names no Food and supplies none.
+         * ingredients that made it — matched or not, because [splitByBorrow] is what
+         * splits those. An **Estimated Entry** names no Food and supplies none.
          *
          * `getValue`, not a lookup that can miss: a Food absent from [eaten] is a
          * caller that broke `of`'s contract, and quietly dropping it would return a
@@ -219,20 +217,43 @@ data class MicronutrientIntake(
          * label and a generic food (ADR 0027).
          */
         private fun rowsOf(
-            covered: List<FoodContribution>,
+            covered: List<CoveredContribution>,
             references: Map<Micronutrient, ReferenceIntake>,
-        ): List<MicronutrientRow> {
-            val borrowed = covered.map { it.grams to it.borrowed.reference!!.micronutrients }
-            return Micronutrient.entries.map { nutrient ->
-                // Divided by the window's whole width rather than by the days that were
-                // logged: a day nothing was logged on still happened, and averaging it
-                // away would quietly scale the missing share up (CONTEXT.md).
-                val perDay = borrowed.sumOf { (grams, profile) ->
-                    profile.amountFor(nutrient, grams)
-                } / WINDOW_DAYS
-                rowFor(nutrient, perDay, references[nutrient])
-            }
+        ): List<MicronutrientRow> = Micronutrient.entries.map { nutrient ->
+            // Divided by the window's whole width rather than by the days that were
+            // logged: a day nothing was logged on still happened, and averaging it
+            // away would quietly scale the missing share up (CONTEXT.md).
+            val perDay = covered.sumOf { it.reference.micronutrients.amountFor(nutrient, it.grams) } / WINDOW_DAYS
+            rowFor(nutrient, perDay, references[nutrient])
         }
+
+        /**
+         * The window's contributions split once: those whose Food borrows a Reference
+         * Food, carried with it, and the rest, left to match. One question, asked once
+         * per contribution, so each lands on exactly one side — and what can supply a
+         * figure is what counts toward coverage, so the numerator and the denominator
+         * of one read describe the same set of food. A **Recipe** needs no clause of
+         * its own: `Food`'s invariant refuses to match one, so a borrow implies a
+         * plain Food.
+         */
+        private fun splitByBorrow(
+            contributions: List<FoodContribution>,
+        ): Pair<List<CoveredContribution>, List<FoodContribution>> {
+            val covered = mutableListOf<CoveredContribution>()
+            val queued = mutableListOf<FoodContribution>()
+            for (contribution in contributions) {
+                val reference = contribution.borrowed.reference
+                if (reference != null) {
+                    covered += CoveredContribution(contribution.grams, contribution.calories, reference)
+                } else {
+                    queued += contribution
+                }
+            }
+            return covered to queued
+        }
+
+        /** A contribution that can supply figures, with the Reference Food it supplies them from. */
+        private data class CoveredContribution(val grams: Double, val calories: Double, val reference: ReferenceFood)
 
         /**
          * What a lower bound of [amount] lets Tucker say about [nutrient] against

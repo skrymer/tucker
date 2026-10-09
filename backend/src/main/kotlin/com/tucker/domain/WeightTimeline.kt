@@ -206,27 +206,14 @@ data class WeightTimeline(
         ): WeightTimeline? {
             requireWindow(from, to)
             val trend = WeightTrend.from(measurements)
-            val start = drawableStart(from, to, trend) ?: return null
+            val (start, opening) = drawableOpening(from, to, trend) ?: return null
             val drawn = evidence()
             val readings = measurements.associateBy { it.measuredOn }
-            val days = generateSequence(start) { it.plusDays(1) }
-                .takeWhile { !it.isAfter(to) }
-                .map { day ->
-                    // Weight is the premise and the rest is the addition, so a day
-                    // is built from the scale and then handed to whatever the
-                    // timeline draws beside it (ADR 0029).
-                    val weighed = WeightTimelineDay(
-                        date = day,
-                        weightKg = readings[day]?.weightKg,
-                        // Never null: the window starts no earlier than the first
-                        // reading, so every day it carries has a trend standing
-                        // through it — carried forward from the last weigh-in,
-                        // because the trend moves only when the scale does.
-                        trendKg = trend.standingOn(day)!!.trendKg,
-                    )
-                    drawn?.drawOn(weighed) ?: weighed
-                }
-                .toList()
+            val dates = generateSequence(start) { it.plusDays(1) }.takeWhile { !it.isAfter(to) }.toList()
+            // The trend moves only when the scale does, so a day with no weigh-in carries
+            // the trend standing before it.
+            val standing = dates.drop(1).runningFold(opening) { carried, day -> trend.standingOn(day) ?: carried }
+            val days = dates.zip(standing) { day, point -> dayOf(day, readings[day], point.trendKg, drawn) }
             return WeightTimeline(
                 from = start,
                 to = to,
@@ -236,17 +223,33 @@ data class WeightTimeline(
         }
 
         /**
-         * The day the timeline opens on, or null when there is none to draw.
+         * One drawn [day]. Weight is the premise and the rest is the addition, so a
+         * day is built from the scale and then handed to whatever the timeline draws
+         * beside it (ADR 0029).
+         */
+        private fun dayOf(
+            day: LocalDate,
+            reading: WeightMeasurement?,
+            trendKg: Double,
+            drawn: TimelineEvidence?,
+        ): WeightTimelineDay {
+            val weighed = WeightTimelineDay(date = day, weightKg = reading?.weightKg, trendKg = trendKg)
+            return drawn?.drawOn(weighed) ?: weighed
+        }
+
+        /**
+         * The day the timeline opens on, with the trend standing on it, or null when
+         * there is none to draw.
          *
          * Cut to where the readings start rather than padded back to [from]: empty
          * days before the first reading would claim weight data is missing rather
          * than that the User had not started weighing in yet.
          */
-        private fun drawableStart(
+        private fun drawableOpening(
             from: LocalDate,
             to: LocalDate,
             trend: WeightTrend,
-        ): LocalDate? {
+        ): Pair<LocalDate, WeightTrend.Point>? {
             // Withheld whole rather than drawn thin, on the threshold behind the
             // observed pace rather than a second number of its own (ADR 0029).
             if (!trend.isEstablished()) return null
@@ -254,7 +257,8 @@ data class WeightTimeline(
             // draw when the window closes before it. A device whose clock ran fast
             // stamps its readings after [to], and cutting the start forward
             // regardless would return a timeline starting after it ends.
-            return maxOf(from, trend.points.first().date).takeIf { !it.isAfter(to) }
+            val start = maxOf(from, trend.points.first().date).takeIf { !it.isAfter(to) } ?: return null
+            return trend.standingOn(start)?.let { start to it }
         }
     }
 }

@@ -204,7 +204,8 @@ LLM anywhere in it: the math is deterministic.
 ```mermaid
 flowchart LR
   subgraph triggers["Triggers"]
-    summary["<b>SummaryController</b><br/>[Component: REST controller]<br/>GET /api/summary: catch up if due"]:::component
+    summary["<b>DailySummaryService</b><br/>[Component: Spring service]<br/>GET /api/summary's Daily Summary: catch up if due"]:::component
+    manual["<b>WeeklyReviewController</b><br/>[Component: REST controller]<br/>POST /api/weekly-review: run now"]:::component
     goal["<b>GoalService</b><br/>[Component: Spring service]<br/>start, switch or replace a Goal: force recompute"]:::component
     profile["<b>ProfileService</b><br/>[Component: Spring service]<br/>Calorie Tracking toggled: force recompute"]:::component
   end
@@ -216,6 +217,7 @@ flowchart LR
     maint["<b>Maintenance</b><br/>formula seed, then corrected from intake"]:::component
     targets["<b>IntakeTargets</b><br/>Budget + Protein Floor, only when tracking"]:::component
     cadence["<b>ReviewCadence</b><br/>is a review overdue?"]:::component
+    window["<b>AdaptiveWindow</b><br/>enough logged and weighed to correct Maintenance?"]:::component
   end
 
   subgraph inputs["Repositories — jOOQ"]
@@ -224,11 +226,13 @@ flowchart LR
   end
 
   summary --> engine
+  manual --> engine
   goal --> engine
   profile --> engine
   engine -- "is one due?" --> cadence
   engine -- "reads the week" --> reads
   engine --> trend
+  engine --> window
   engine --> maint
   engine --> targets
   engine -- "writes the review" --> reviews
@@ -252,9 +256,11 @@ path ([ADR 0006](adr/0006-provider-agnostic-nutrition-lookup.md),
 flowchart LR
   subgraph callers["Callers"]
     foodCtl["<b>FoodController</b><br/>[Component: REST controller]<br/>Add-Food lookup, reference match"]:::component
+    refCtl["<b>ReferenceFoodController</b><br/>[Component: REST controller]<br/>GET /api/reference-foods"]:::component
     checkSvc["<b>CheckService</b><br/>[Component: Spring service]<br/>cost and return of a portion"]:::component
   end
 
+  foodSvc["<b>FoodService</b><br/>[Component: Spring service]<br/>match a Food to a Reference Food"]:::component
   lookup["<b>BarcodeLookupService</b><br/>[Component: Spring service]<br/>catalog → cache → provider chain"]:::component
   foods["<b>FoodRepository</b><br/>[Component: jOOQ]<br/>the User's own catalog"]:::component
   cache["<b>InMemoryBarcodeLookupCache</b><br/>[Component: ConcurrentHashMap]<br/>shared per-barcode"]:::component
@@ -273,7 +279,9 @@ flowchart LR
   lookup -- "2 · seen recently?" --> cache
   lookup -- "3 · BARCODE_LOOKUP only" --> offp
   offp -- "JSON/HTTPS" --> off
-  foodCtl -- "search Reference Foods" --> refRepo
+  refCtl -- "search Reference Foods" --> refRepo
+  foodCtl --> foodSvc
+  foodSvc -- "match a Reference Food" --> refRepo
   afcd -. "search is served by" .-> refRepo
 
   classDef component fill:#85bbf0,color:#000,stroke:#5d82a8
@@ -296,7 +304,9 @@ flowchart TD
   runas["<b>runAs</b><br/>[Component: SecurityContext]<br/>act as that User"]:::component
   turn["<b>UserReminder</b><br/>[Component: Spring service]<br/>one User's turn"]:::component
   policy["<b>ReminderPolicy</b><br/>[Component: domain rule]<br/>enabled, overdue, absent today, in the hour window, not sent yet"]:::component
-  repos["<b>Profile · Reviews · Push Subscriptions · ReminderState</b><br/>[Component: jOOQ]"]:::component
+  repos["<b>Profile · Weights · Reviews · ReminderState</b><br/>[Component: jOOQ]"]:::component
+  devices["<b>PushSubscriptions</b><br/>[Component: Spring component]<br/>lists, pushes to and prunes the User's Push Subscriptions"]:::component
+  subs["<b>PushSubscriptionRepository</b><br/>[Component: jOOQ]"]:::component
   sender["<b>WebPushSender</b><br/>[Component: port → nl.martijndwars:web-push]"]:::component
   push["<b>Web Push services</b><br/>[Software System]"]:::ext
   sw["<b>Service worker</b><br/>[Container: push-sw.js]"]:::ext
@@ -304,9 +314,11 @@ flowchart TD
   trigger --> scheduler
   scheduler --> runas
   runas --> turn
-  turn -- "reads" --> repos
+  turn -- "reads; stamps dedupe" --> repos
   turn -- "should it send?" --> policy
-  turn -- "sends, prunes 410s, stamps dedupe" --> sender
+  turn -- "sends" --> devices
+  devices -- "lists, prunes 410s" --> subs
+  devices --> sender
   sender -- "Web Push/VAPID" --> push
   push --> sw
 

@@ -89,24 +89,14 @@ data class BorrowedFood(
     }
 
     /**
-     * Whether this Food can supply a micronutrient figure at all — which is also
-     * what makes it count toward coverage, so the numerator and the denominator of
-     * one read describe the same set of food.
-     *
-     * A **Recipe** never satisfies it, and needs no clause of its own to be excluded:
-     * `Food`'s invariant refuses to match one, so a reference implies a plain Food.
-     */
-    val contributes: Boolean get() = reference != null
-
-    /**
      * How [grams] of this Food, costing [calories], divides among the Foods that
      * supplied it: itself, or — for a **Recipe** — the ingredients that made it,
      * each weighed as added and scaled by the share of the batch this portion is
      * (ADR 0019, ADR 0027).
      *
      * This is where a Recipe is excluded from supplying a figure of its own: it
-     * never appears among its own contributions, so [contributes] is never asked
-     * about one.
+     * never appears among its own contributions, so its borrow is never asked
+     * about.
      *
      * An ingredient takes a **share** of the calories the Entry snapshotted rather
      * than what its grams would cost today. The shares sum to one, so an Entry is
@@ -152,4 +142,14 @@ data class FoodContribution(
     val borrowed: BorrowedFood,
     val grams: Double,
     val calories: Double,
+)
+
+/**
+ * A window's **Entries** and every Food they name, keyed by id and each joined to
+ * what it borrows — a **Recipe** to the composition it rolls up from, each ingredient
+ * carrying its own borrow.
+ */
+data class BorrowedLog(
+    val entries: List<Entry>,
+    val foods: Map<Long, BorrowedFood>,
 )

@@ -75,9 +75,9 @@ data class Maintenance(
          * intake plus that shortfall.
          *
          * The two terms divide by different denominators on purpose (ADR 0018): intake
-         * by [loggedDays] (the days that actually carry an Entry, so an unlogged day
-         * isn't a phantom zero-calorie day that drags the average down), and
-         * [trendChange] by every calendar day it was observed across, logged or not,
+         * by its [LoggedIntake.loggedDays] (the days that actually carry an Entry, so an
+         * unlogged day isn't a phantom zero-calorie day that drags the average down),
+         * and [trendChange] by every calendar day it was observed across, logged or not,
          * because the scale integrated the real eating on the unlogged ones regardless.
          *
          * Never by fewer than [windowDays] though: evidence about less than the window
@@ -89,17 +89,16 @@ data class Maintenance(
          * Measurements are contradicting each other (ADR 0031).
          */
         fun adaptive(
-            totalIntakeKcal: Double,
-            loggedDays: Int,
+            intake: LoggedIntake,
             trendChange: WeightTrend.Change,
             windowDays: Long,
             basalMetabolicRateKcal: Double,
         ): Maintenance? {
-            require(loggedDays > 0) { "loggedDays must be > 0, was $loggedDays" }
+            require(intake.loggedDays > 0) { "loggedDays must be > 0, was ${intake.loggedDays}" }
             require(windowDays > 0) { "windowDays must be > 0, was $windowDays" }
             val divisorDays = maxOf(trendChange.overDays, windowDays)
             val energyFromWeightChange = -trendChange.kg * Goal.KCAL_PER_KG_FAT / divisorDays
-            val kcal = totalIntakeKcal / loggedDays + energyFromWeightChange
+            val kcal = intake.totalKcal / intake.loggedDays + energyFromWeightChange
             return if (isMeasurable(kcal, basalMetabolicRateKcal)) {
                 Maintenance(kcal = kcal, basis = Basis.ADAPTIVE)
             } else {
@@ -128,3 +127,6 @@ data class Maintenance(
             Maintenance(kcal, Basis.HELD, reason)
     }
 }
+
+/** The intake term of [Maintenance.adaptive]'s balance: what a window's log says was eaten. */
+data class LoggedIntake(val totalKcal: Double, val loggedDays: Int)

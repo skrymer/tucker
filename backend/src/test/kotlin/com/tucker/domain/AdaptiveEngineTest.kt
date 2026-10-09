@@ -51,8 +51,7 @@ class AdaptiveEngineTest {
         // the weight loss spreads over all 14: 0.5 x 7700 / 14 = 275 kcal/day
         // shortfall -> maintenance 2275. The two divisors differ on purpose (ADR 0018).
         val adaptive = Maintenance.adaptive(
-            totalIntakeKcal = 20000.0,
-            loggedDays = 10,
+            intake = LoggedIntake(totalKcal = 20000.0, loggedDays = 10),
             trendChange = WeightTrend.Change(kg = -0.5, overDays = 14),
             windowDays = 14,
             basalMetabolicRateKcal = 1730.0,
@@ -70,8 +69,7 @@ class AdaptiveEngineTest {
         // body burns at rest, which no amount of inactivity reaches. The window's log
         // and its scale are contradicting each other (ADR 0031).
         val refused = Maintenance.adaptive(
-            totalIntakeKcal = 8000.0,
-            loggedDays = 10,
+            intake = LoggedIntake(totalKcal = 8000.0, loggedDays = 10),
             trendChange = WeightTrend.Change(kg = 0.5, overDays = 13),
             windowDays = 14,
             basalMetabolicRateKcal = 1139.0,
@@ -86,8 +84,7 @@ class AdaptiveEngineTest {
         // rate itself is still one — a body burning exactly its resting cost and no
         // more. The strictness is the whole rule, and nothing else drives its edge.
         val exactly = Maintenance.adaptive(
-            totalIntakeKcal = 18100.0,
-            loggedDays = 10,
+            intake = LoggedIntake(totalKcal = 18100.0, loggedDays = 10),
             trendChange = WeightTrend.Change(kg = 0.0, overDays = 14),
             windowDays = 14,
             basalMetabolicRateKcal = 1810.0,
@@ -105,11 +102,26 @@ class AdaptiveEngineTest {
         // A 0.0004 kg rise is -0.22 kcal/day of balance, which sits *above* a basal
         // rate of -0.375 and so passes a gate that asks only about the rate.
         val refused = Maintenance.adaptive(
-            totalIntakeKcal = 0.0,
-            loggedDays = 10,
+            intake = LoggedIntake(totalKcal = 0.0, loggedDays = 10),
             trendChange = WeightTrend.Change(kg = 0.0004, overDays = 14),
             windowDays = 14,
             basalMetabolicRateKcal = -0.375,
+        )
+
+        assertNull(refused)
+    }
+
+    @Test
+    fun `a balance of exactly zero is refused even where the basal rate does not rule it out`() {
+        // Zero is no expenditure at all. A basal rate at or below it — a height entered in
+        // metres — lets the balance clear the rate, so the zero itself has to be what is
+        // refused: Maintenance cannot hold a figure of zero, and constructing one would
+        // throw where the estimate should simply hold.
+        val refused = Maintenance.adaptive(
+            intake = LoggedIntake(totalKcal = 0.0, loggedDays = 10),
+            trendChange = WeightTrend.Change(kg = 0.0, overDays = 14),
+            windowDays = 14,
+            basalMetabolicRateKcal = 0.0,
         )
 
         assertNull(refused)
@@ -149,8 +161,7 @@ class AdaptiveEngineTest {
         // Maintenance's own kcal > 0 check waves through, so it is refused here.
         assertFailsWith<IllegalArgumentException> {
             Maintenance.adaptive(
-                totalIntakeKcal = 20000.0,
-                loggedDays = 0,
+                intake = LoggedIntake(totalKcal = 20000.0, loggedDays = 0),
                 trendChange = WeightTrend.Change(kg = -0.5, overDays = 14),
                 windowDays = 14,
                 basalMetabolicRateKcal = 1730.0,
@@ -166,8 +177,7 @@ class AdaptiveEngineTest {
         // and produces a figure for a window that never happened.
         assertFailsWith<IllegalArgumentException> {
             Maintenance.adaptive(
-                totalIntakeKcal = 20000.0,
-                loggedDays = 10,
+                intake = LoggedIntake(totalKcal = 20000.0, loggedDays = 10),
                 trendChange = WeightTrend.Change(kg = -0.5, overDays = 14),
                 windowDays = 0,
                 basalMetabolicRateKcal = 1730.0,
@@ -181,8 +191,7 @@ class AdaptiveEngineTest {
         // At the window's rate that reads 110 kcal/day; at the rate actually observed
         // it is 0.2 x 7700 / 20 = 77.
         val adaptive = Maintenance.adaptive(
-            totalIntakeKcal = 20000.0,
-            loggedDays = 10,
+            intake = LoggedIntake(totalKcal = 20000.0, loggedDays = 10),
             trendChange = WeightTrend.Change(kg = -0.2, overDays = 20),
             windowDays = 14,
             basalMetabolicRateKcal = 1730.0,
@@ -198,8 +207,7 @@ class AdaptiveEngineTest {
         // fortnight; over the window it corrects it is 110. Evidence about a day is
         // not evidence about a fortnight.
         val adaptive = Maintenance.adaptive(
-            totalIntakeKcal = 20000.0,
-            loggedDays = 10,
+            intake = LoggedIntake(totalKcal = 20000.0, loggedDays = 10),
             trendChange = WeightTrend.Change(kg = -0.2, overDays = 1),
             windowDays = 14,
             basalMetabolicRateKcal = 1730.0,
@@ -218,8 +226,7 @@ class AdaptiveEngineTest {
         // it has no weighing for — but specified here, because whether evidence is
         // enough is the engine's judgement and this is the formula's answer if asked.
         val adaptive = Maintenance.adaptive(
-            totalIntakeKcal = 20000.0,
-            loggedDays = 10,
+            intake = LoggedIntake(totalKcal = 20000.0, loggedDays = 10),
             trendChange = WeightTrend.Change(kg = 0.0, overDays = 0),
             windowDays = 14,
             basalMetabolicRateKcal = 1730.0,

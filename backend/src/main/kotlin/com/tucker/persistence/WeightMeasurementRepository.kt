@@ -21,7 +21,7 @@ class WeightMeasurementRepository(
     private val dsl: DSLContext,
     private val currentUser: CurrentUser,
     ids: IdSequence,
-) : AggregateRepository(ids, WEIGHT_MEASUREMENT) {
+) : AggregateRepository by ids.drawingFor(WEIGHT_MEASUREMENT) {
 
     fun findAll(): List<WeightMeasurement> =
         dsl.selectFrom(WEIGHT_MEASUREMENT)
@@ -54,14 +54,20 @@ class WeightMeasurementRepository(
             .where(WEIGHT_MEASUREMENT.MEASURED_ON.eq(measurement.measuredOn.toString()))
             .and(WEIGHT_MEASUREMENT.USER_ID.eq(currentUser.ownerId))
             .fetchOne()
-        if (existing != null) {
-            dsl.update(WEIGHT_MEASUREMENT)
-                .set(WEIGHT_MEASUREMENT.WEIGHT_KG, measurement.weightKg)
-                .where(WEIGHT_MEASUREMENT.ID.eq(existing.id))
-                .and(WEIGHT_MEASUREMENT.USER_ID.eq(currentUser.ownerId))
-                .execute()
-            return measurement.copy(id = existing.id!!.toLong())
-        }
+        return if (existing != null) replace(existing, measurement) else insert(measurement)
+    }
+
+    /** Overwrite [existing]'s weight with [measurement]'s, keeping the stored id. */
+    private fun replace(existing: WeightMeasurementRecord, measurement: WeightMeasurement): WeightMeasurement {
+        dsl.update(WEIGHT_MEASUREMENT)
+            .set(WEIGHT_MEASUREMENT.WEIGHT_KG, measurement.weightKg)
+            .where(WEIGHT_MEASUREMENT.ID.eq(existing.id))
+            .and(WEIGHT_MEASUREMENT.USER_ID.eq(currentUser.ownerId))
+            .execute()
+        return measurement.copy(id = existing.id!!.toLong())
+    }
+
+    private fun insert(measurement: WeightMeasurement): WeightMeasurement {
         val rec = dsl.newRecord(WEIGHT_MEASUREMENT)
         rec.id = measurement.id.toInt()
         rec.userId = currentUser.ownerId

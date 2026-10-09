@@ -19,7 +19,7 @@ class TagRepository(
     private val dsl: DSLContext,
     private val currentUser: CurrentUser,
     ids: IdSequence,
-) : AggregateRepository(ids, TAG) {
+) : AggregateRepository by ids.drawingFor(TAG) {
 
     /** The caller's Tags, alphabetically ignoring case (ADR 0033), each with its Food count. */
     fun findAllWithFoodCounts(): List<TagWithFoodCount> {

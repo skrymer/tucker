@@ -4,14 +4,10 @@ import com.tucker.domain.Profile
 import com.tucker.domain.PushSubscription
 import com.tucker.domain.ReminderPolicy
 import com.tucker.domain.ReminderState
-import com.tucker.domain.SendResult
-import com.tucker.domain.WebPushSender
 import com.tucker.persistence.ProfileRepository
-import com.tucker.persistence.PushSubscriptionRepository
 import com.tucker.persistence.ReminderStateRepository
 import com.tucker.persistence.WeeklyReviewRepository
 import com.tucker.persistence.WeightMeasurementRepository
-import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import java.time.Instant
 import java.time.ZoneId
@@ -31,7 +27,7 @@ import java.time.ZoneId
  * nudge reaches this User's devices and no others.
  *
  * Thin orchestration glue (ADR 0013): the decision lives in [ReminderPolicy] and
- * the transport behind [WebPushSender], so it is specified by
+ * the transport behind [PushSubscriptions], so it is specified by
  * `ReminderSchedulerIntegrationTest` driving a whole tick rather than by a test
  * of its own.
  */
@@ -40,17 +36,16 @@ class UserReminder(
     private val profiles: ProfileRepository,
     private val weights: WeightMeasurementRepository,
     private val reviews: WeeklyReviewRepository,
-    private val subscriptions: PushSubscriptionRepository,
     private val reminderState: ReminderStateRepository,
-    private val sender: WebPushSender,
+    private val pushSubscriptions: PushSubscriptions,
 ) {
 
     /** Nudge the current User if one is due as of [now]; returns devices delivered to. */
     fun nudgeIfDue(now: Instant): Int {
-        val subs = subscriptions.findAll()
+        val subs = pushSubscriptions.all()
         val nudge = dueNudge(now, subs) ?: return 0
 
-        val delivered = subs.count { deliver(it, nudge.payload) }
+        val delivered = pushSubscriptions.push(nudge.payload, subs)
         // Stamp only on a real delivery so a transport blip retries next tick rather
         // than silently consuming the whole overdue episode (ADR 0010 dedupe).
         if (delivered > 0) reminderState.stampReminderSent(nudge.state.today)
@@ -97,24 +92,7 @@ class UserReminder(
      */
     private data class DueNudge(val payload: String, val state: ReminderState)
 
-    /** Push to one device; prune it on GONE. Returns whether it was delivered. */
-    private fun deliver(subscription: PushSubscription, payload: String): Boolean =
-        when (sender.send(subscription, payload)) {
-            SendResult.DELIVERED -> true
-            SendResult.GONE -> {
-                subscriptions.deleteByEndpoint(subscription.endpoint)
-                log.info("Pruned gone push subscription {}", subscription.endpoint)
-                false
-            }
-            SendResult.FAILED -> {
-                log.warn("Web push delivery failed for subscription {}", subscription.endpoint)
-                false
-            }
-        }
-
     private companion object {
-        private val log = LoggerFactory.getLogger(UserReminder::class.java)
-
         /**
          * The title both nudges carry: a Weekly Review comes due on the same cadence
          * whatever a User tracks, and it is the review the nudge is about.

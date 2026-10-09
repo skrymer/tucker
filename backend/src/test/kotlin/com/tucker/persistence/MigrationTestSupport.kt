@@ -4,6 +4,7 @@ import org.flywaydb.core.Flyway
 import java.nio.file.Path
 import java.sql.Connection
 import java.sql.DriverManager
+import java.sql.ResultSet
 
 /**
  * The Flyway/JDBC bootstrap the migration tests share.
@@ -67,7 +68,7 @@ fun migrate(db: String, upTo: String?, owner: String = MIGRATION_TEST_OWNER) {
         .dataSource(jdbcUrl(db), null, null)
         .locations("classpath:db/migration")
         .placeholders(mapOf(OWNER_EMAIL_PLACEHOLDER to sqlLiteralSafe(owner)))
-        .apply { upTo?.let { target(it) } }
+        .apply { if (upTo != null) target(upTo) }
         .load()
         .migrate()
 }
@@ -95,14 +96,14 @@ fun Connection.execute(sql: String): Int = createStatement().use { it.executeUpd
  * assertions need to be able to state that it came through *as* null.
  */
 fun Connection.rows(sql: String): List<String> =
-    createStatement().use { statement ->
-        statement.executeQuery(sql).use { rows ->
-            val columns = rows.metaData.columnCount
-            generateSequence {
-                if (rows.next()) (1..columns).joinToString("|") { rows.getString(it).orEmpty() } else null
-            }.toList()
-        }
-    }
+    query(sql) { row -> (1..row.metaData.columnCount).joinToString("|") { row.getString(it).orEmpty() } }
+
+/** Every row [sql] returns, each read by [read] while the cursor stands on it. */
+fun <T : Any> Connection.query(sql: String, read: (ResultSet) -> T): List<T> =
+    createStatement().use { statement -> statement.executeQuery(sql).use { it.readEach(read) } }
+
+private fun <T : Any> ResultSet.readEach(read: (ResultSet) -> T): List<T> =
+    generateSequence { if (next()) read(this) else null }.toList()
 
 /** The table `table.column` references, or null when it references nothing. */
 fun Connection.foreignKeyTargetOf(table: String, column: String): String? =
@@ -130,31 +131,19 @@ private data class ForeignKey(val from: String, val target: String, val onDelete
 
 /** Every foreign key [table] declares, read once for whichever facet the caller wants. */
 private fun Connection.foreignKeyList(table: String): List<ForeignKey> =
-    createStatement().use { statement ->
-        statement.executeQuery("PRAGMA foreign_key_list($table)").use { rows ->
-            generateSequence {
-                if (rows.next()) {
-                    ForeignKey(
-                        from = rows.getString("from"),
-                        target = rows.getString("table"),
-                        onDelete = rows.getString("on_delete"),
-                    )
-                } else {
-                    null
-                }
-            }.toList()
-        }
+    query("PRAGMA foreign_key_list($table)") { row ->
+        ForeignKey(
+            from = row.getString("from"),
+            target = row.getString("table"),
+            onDelete = row.getString("on_delete"),
+        )
     }
 
 /** Whether `table.column` accepts NULL, read off the schema rather than inferred. */
 fun Connection.isNullable(table: String, column: String): Boolean =
-    createStatement().use { statement ->
-        statement.executeQuery("PRAGMA table_info($table)").use { rows ->
-            generateSequence { if (rows.next()) rows.getString("name") to rows.getInt("notnull") else null }
-                .first { (name, _) -> name == column }
-                .second == 0
-        }
-    }
+    query("PRAGMA table_info($table)") { row -> row.getString("name") to row.getInt("notnull") }
+        .first { (name, _) -> name == column }
+        .second == 0
 
 /** Every table in the schema, Flyway's own bookkeeping aside. */
 fun Connection.tableNames(): List<String> =

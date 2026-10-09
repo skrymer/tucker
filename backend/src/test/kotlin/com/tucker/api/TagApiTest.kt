@@ -63,11 +63,13 @@ class TagApiTest {
     @Test
     fun `a Tag reached by naming it again reports the Foods already carrying it`() {
         val breakfast = createTag("breakfast")
-        val oats = mockMvc.post("/api/foods") {
-            contentType = MediaType.APPLICATION_JSON
-            content = """{"name":"Rolled oats","barcode":null,
-                          "proteinPer100g":13.0,"carbsPer100g":60.0,"fatPer100g":7.0,"tagIds":[]}"""
-        }.andReturn().response.contentAsString.let(::idOf)
+        val oats = idOf(
+            mockMvc.post("/api/foods") {
+                contentType = MediaType.APPLICATION_JSON
+                content = """{"name":"Rolled oats","barcode":null,
+                              "proteinPer100g":13.0,"carbsPer100g":60.0,"fatPer100g":7.0,"tagIds":[]}"""
+            }.andReturn().response.contentAsString,
+        )
         tagFood(oats, breakfast)
 
         mockMvc.post("/api/tags") {
@@ -207,11 +209,13 @@ class TagApiTest {
         content = """{"tagIds":[${tags.joinToString(",")}]}"""
     }.andExpect { status { isOk() } }
 
-    private fun createFood(name: String): Long = mockMvc.post("/api/foods") {
-        contentType = MediaType.APPLICATION_JSON
-        content = """{"name":"$name","barcode":null,
-                      "proteinPer100g":13.0,"carbsPer100g":60.0,"fatPer100g":7.0,"tagIds":[]}"""
-    }.andExpect { status { isCreated() } }.andReturn().response.contentAsString.let(::idOf)
+    private fun createFood(name: String): Long = idOf(
+        mockMvc.post("/api/foods") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"name":"$name","barcode":null,
+                          "proteinPer100g":13.0,"carbsPer100g":60.0,"fatPer100g":7.0,"tagIds":[]}"""
+        }.andExpect { status { isCreated() } }.andReturn().response.contentAsString,
+    )
 
     private fun createTag(name: String): Long {
         val body = mockMvc.post("/api/tags") {

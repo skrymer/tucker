@@ -115,7 +115,7 @@ class PerUserUniquenessMigrationTest {
 
             assertEquals(
                 REBUILT_TABLE_CHILDREN,
-                REBUILT_TABLE_CHILDREN.keys.associateWith { (inbound[it] ?: emptyList()).distinct().sorted() },
+                REBUILT_TABLE_CHILDREN.keys.associateWith { inbound[it].orEmpty().distinct().sorted() },
                 "the tables referencing a rebuilt table have changed. A rebuild drops the " +
                     "table, so every table listed against it must be parked and rebuilt with " +
                     "it the way V13 does for `food` — otherwise that table's rows are " +

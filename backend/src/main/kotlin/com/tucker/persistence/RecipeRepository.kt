@@ -8,6 +8,8 @@ import com.tucker.jooq.Tables.FOOD
 import com.tucker.jooq.Tables.RECIPE_INGREDIENT
 import com.tucker.security.CurrentUser
 import org.jooq.DSLContext
+import org.jooq.Record3
+import org.jooq.Result
 import org.jooq.impl.DSL
 import org.springframework.stereotype.Repository
 import org.springframework.transaction.annotation.Transactional
@@ -110,7 +112,20 @@ class RecipeRepository(
      */
     fun ingredientsOf(recipeIds: Collection<Long>): Map<Long, List<RecipeIngredient>> {
         if (recipeIds.isEmpty()) return emptyMap()
-        val rows = dsl.select(
+        val rows = ingredientRowsOf(recipeIds)
+        val ingredientFoods = foods
+            .findByIds(rows.map { it.value2().toLong() }.distinct())
+            .associateBy { it.id }
+        return rows.groupBy({ it.value1().toLong() }) { row ->
+            val ingredient = ingredientFoods[row.value2().toLong()]
+                ?: error("ingredient food ${row.value2()} is missing")
+            RecipeIngredient(ingredient, row.value3())
+        }
+    }
+
+    /** Each line of [recipeIds] as (recipe, ingredient Food, grams), in the order it was added. */
+    private fun ingredientRowsOf(recipeIds: Collection<Long>): Result<Record3<Int, Int, Double>> =
+        dsl.select(
             RECIPE_INGREDIENT.RECIPE_ID,
             RECIPE_INGREDIENT.INGREDIENT_FOOD_ID,
             RECIPE_INGREDIENT.GRAMS,
@@ -121,15 +136,6 @@ class RecipeRepository(
             .and(FOOD.USER_ID.eq(currentUser.ownerId))
             .orderBy(RECIPE_INGREDIENT.ID)
             .fetch()
-        val ingredientFoods = foods
-            .findByIds(rows.map { it.value2().toLong() }.distinct())
-            .associateBy { it.id }
-        return rows.groupBy({ it.value1().toLong() }) { row ->
-            val ingredient = ingredientFoods[row.value2().toLong()]
-                ?: error("ingredient food ${row.value2()} is missing")
-            RecipeIngredient(ingredient, row.value3())
-        }
-    }
 
     /**
      * The ingredient-line count for each recipe id, in a single grouped query.

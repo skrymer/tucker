@@ -12,6 +12,7 @@ import com.tucker.domain.Recipe
 import com.tucker.domain.RecipeIngredient
 import com.tucker.domain.Sex
 import com.tucker.domain.WeighedEntry
+import com.tucker.domain.WeighedPortion
 import com.tucker.domain.WeeklyReview
 import com.tucker.domain.WeightMeasurement
 import com.tucker.security.WithTuckerUser
@@ -81,7 +82,7 @@ class RepositoryRoundTripTest {
     fun `a weighed Entry round-trips with computed calories`() {
         val banana = foods.insert(Food.plain(foods.nextId(), "Banana", null, Nutrition(89.0, 1.1, 22.8, 0.3)))
         val date = LocalDate.of(2026, 5, 22)
-        entries.insert(WeighedEntry.log(entries.nextId(), date, banana, 120.0, today = date))
+        entries.insert(WeighedEntry.log(entries.nextId(), date, WeighedPortion(banana, 120.0), today = date))
 
         val onDate = entries.findByDate(date)
         assertEquals(1, onDate.size)
