@@ -139,7 +139,10 @@ class RecipeApiTest {
             content =
                 """{"name":"Nested","cookedWeightG":200.0,"ingredients":[{"foodId":$recipeId,"grams":100.0}],
                 "tagIds":[]}"""
-        }.andExpect { status { isBadRequest() } }
+        }.andExpect {
+            status { isBadRequest() }
+            jsonPath("$.message") { value("a recipe ingredient must be a plain Food, not a RECIPE") }
+        }
     }
 
     @Test

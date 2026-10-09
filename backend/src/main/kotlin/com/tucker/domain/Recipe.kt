@@ -10,7 +10,7 @@ data class RecipeIngredient(
         // Ingredients are plain Foods only — no nested recipes in v1 (CONTEXT.md),
         // which would invite cycles and compounded estimates.
         require(ingredient.kind == FoodKind.Plain) {
-            "a recipe ingredient must be a plain Food, not a Recipe"
+            "a recipe ingredient must be a plain Food, not a RECIPE"
         }
     }
 }
