@@ -166,7 +166,11 @@ class FoodController(
     /**
      * The caller's **Frequent Foods** over the window [from]..[to], both bounds
      * inclusive. The client owns the window (ADR 0014) and sorts nothing.
+     *
+     * Read-only transactional around the description too, so the counts and what the
+     * tiles say about the Foods they name are one instant.
      */
+    @Transactional(readOnly = true)
     @GetMapping("/frequent")
     fun frequent(
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) from: LocalDate,
