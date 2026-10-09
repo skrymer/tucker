@@ -88,10 +88,9 @@ class RecipeTest {
 
     @Test
     fun `the Food kind behind a Recipe rejects a cooked weight of zero on its own`() {
-        // The test above never reaches this: Recipe refuses the zero first. The
-        // Food row is what a repository maps back out of the database, with no
-        // Recipe in front of it to have refused anything — and its per-100 g
-        // nutrition is the cooked weight divided into the batch.
+        // A repository builds this kind straight from a stored row, with no Recipe
+        // in front of it to have refused anything — and per-100 g nutrition is the
+        // cooked weight divided into the batch.
         assertThrows<IllegalArgumentException> {
             FoodKind.Recipe(cookedWeightG = 0.0)
         }

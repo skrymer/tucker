@@ -114,14 +114,12 @@ data class BorrowedFood(
      * it was logged put the coverage share over 100%.
      */
     fun divide(grams: Double, calories: Double): List<FoodContribution> {
-        val kind = food.kind
-        if (kind !is FoodKind.Recipe) return listOf(FoodContribution(this, grams, calories))
-        val cookedWeightG = kind.cookedWeightG
+        val recipe = food.kind as? FoodKind.Recipe ?: return listOf(FoodContribution(this, grams, calories))
         val batchCalories = ingredients.sumOf { it.borrowed.food.caloriesFor(it.grams) }
         return ingredients.map { line ->
             FoodContribution(
                 borrowed = line.borrowed,
-                grams = line.grams * grams / cookedWeightG,
+                grams = line.grams * grams / recipe.cookedWeightG,
                 // The share first, then applied — not `calories * cost / batch`, which
                 // rounds a sole ingredient's whole share of its own batch off 1.0.
                 //

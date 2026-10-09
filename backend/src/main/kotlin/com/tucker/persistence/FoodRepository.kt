@@ -159,7 +159,7 @@ class FoodRepository(
     )
 }
 
-/** How `food.kind` spells each [FoodKind]. */
+// How `food.kind` spells each FoodKind.
 private const val PLAIN_KIND = "FOOD"
 private const val RECIPE_KIND = "RECIPE"
 

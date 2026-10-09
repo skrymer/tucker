@@ -30,8 +30,10 @@ data class Recipe(
     init {
         require(name.isNotBlank()) { "Recipe name must not be blank" }
         require(ingredients.isNotEmpty()) { "a Recipe needs at least one ingredient" }
-        require(cookedWeightG > 0) { "cookedWeightG must be > 0, was $cookedWeightG" }
     }
+
+    /** Built here rather than in [asFood], so a non-positive cooked weight is refused with the Recipe. */
+    private val kind = FoodKind.Recipe(cookedWeightG)
 
     /** Roll the weighed ingredients up into nutrition per 100 g of the finished dish. */
     fun nutrition(): Nutrition {
@@ -50,7 +52,7 @@ data class Recipe(
     fun asFood(): Food = Food(
         id = id,
         name = name,
-        kind = FoodKind.Recipe(cookedWeightG),
+        kind = kind,
         barcode = null,
         nutrition = nutrition(),
         tagIds = tagIds,
