@@ -120,6 +120,44 @@ not restate them.
   from a throwaway `python:3-slim`, and copy the `-wal` file too or you read a stale snapshot.
 - **The SEVERE "Unknown function: datetime('now')" during jOOQ codegen is benign noise.**
 
+## Refactor step — Detekt names the smell
+
+`backend/detekt.yml` fails `./gradlew build` through the type-resolving `detektMain` /
+`detektTest` (`check` runs them; the pre-commit hook runs the faster plain `detekt`, which
+misses the type-resolution rules). Each hit is a smell; fix it with the catalog move
+[tdd's `refactoring.md`](../tdd/refactoring.md) names, chosen to make the code read better —
+never by shaving lines, never with `@Suppress` or a baseline. The commit names the move.
+
+| Rule (limit) | Smell |
+| --- | --- |
+| `LongMethod` (20 lines; tests exempt) | Long Function |
+| `CognitiveComplexMethod` (4), `NestedBlockDepth` (2), `ComplexCondition` (2), `NestedScopeFunctions` (1), `ReturnCount` (2; guard clauses exempt) | Nested conditionals |
+| `LongParameterList` (function 4, constructor 5) | Long Parameter List — on a constructor, a class with more than one job (Large Class) |
+| `LargeClass` (200; tests exempt), `TooManyFunctions` (11) | Large Class |
+| `StringLiteralDuplication` | Duplicated Code |
+| `DataClassShouldBeImmutable`, `VarCouldBeVal` | Mutable Data |
+| `UnusedImports`, `UnusedPrivate*` | Dead Code |
+| `UnnecessaryAbstractClass` | Shallow module — Replace Superclass with Delegate |
+| `UnsafeCallOnNullableType` (`!!`), `UseRequireNotNull` | Make null impossible in the type; else Introduce Assertion (`checkNotNull(x) { "<invariant>" }`) |
+| `UnnecessaryLet`, `UseOrEmpty` | Inline Function / Substitute Algorithm (the idiom) |
+
+How the moves land here (#455):
+
+- **A bean's collaborators → Extract Class**: move the assembly into a service (or a
+  component it needs), so a controller reads HTTP → domain → HTTP. Keep each endpoint on
+  its controller — the spec's tags and `operationId`s come from it, and moving one is a
+  wire change `OpenApiSnapshotTest` will catch.
+- **Introduce Parameter Object onto the domain value the group already is**
+  (`LoggedIntake`, `WeighedPortion`, `BorrowedLog`); a fixture parameter no caller varies
+  is Change Function Declaration, not an object.
+- **A flat wire DTO** that no split can shorten is built by its own secondary constructor
+  from the value it presents (`CheckResponse(product)`) — never nested, which moves the wire.
+- **Pin a refusal's wording in its API test before moving the code that renders it**: a
+  400/409 message is wire the spec cannot see. Probity refuses *tightening* a passing
+  assertion; when it does, move the literal verbatim and check the diff instead.
+- **A signature change under Probity: callers first.** Update the test call sites, let the
+  build go red on the compile, then change the declaration.
+
 ## Exit
 
 When the change works and is tested, run **`feature-sign-off`** (verify → simplify →

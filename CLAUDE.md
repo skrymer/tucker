@@ -39,7 +39,9 @@ API, a Dockerfile + compose stack, and a unit / integration / e2e test suite.
 Backend commands (run in `backend/`):
 
 - `./gradlew build` — compiles, runs Detekt, and runs the fast test suite
-- `./gradlew detekt` — Detekt static analysis on its own (also part of `build`)
+- `./gradlew detektMain detektTest` — Detekt with type resolution, as `build` runs it;
+  bare `./gradlew detekt` is the faster type-less run the pre-commit hook uses. Every
+  finding is a refactor signal — `backend-dev` maps each rule to its smell
 - `./gradlew e2eTest` — Testcontainers e2e against the Docker image; build it
   first with `docker compose build backend` from the repo root
 - `./gradlew generateOpenApiDocs` — boots the app on port 8181 via the
@@ -134,7 +136,7 @@ Frontend commands (run in `frontend/`, package manager is pnpm):
 - `pnpm typecheck` — `nuxt typecheck` (vue-tsc) over the whole program
 
 Continuous integration — every pull request runs `.github/workflows/ci.yml`:
-the backend `./gradlew detekt` + `./gradlew build`, the frontend ESLint +
+the backend `./gradlew detektMain detektTest` + `./gradlew build`, the frontend ESLint +
 typecheck + Vitest + mocked Playwright suite, a real-stack `e2e` job that
 builds the backend Docker image once and runs both the backend Testcontainers
 e2e (`./gradlew e2eTest`) and the frontend smokes (`pnpm test:smoke`) against

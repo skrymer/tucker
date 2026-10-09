@@ -3,9 +3,64 @@
 # This file is layered on top of detekt's default ruleset
 # (buildUponDefaultConfig = true in build.gradle.kts), so only project-specific
 # overrides belong here.
+#
+# The rules exist for readability. A finding is the refactor step's signal:
+# `.claude/skills/backend-dev` maps each rule to its smell, and
+# `.claude/skills/tdd/refactoring.md` names the catalog move that removes it.
+# Detekt flags a value AT its threshold, so a "max N" is `threshold: N+1`.
+
+complexity:
+  # Max 20 lines; blank lines and comments don't count.
+  LongMethod:
+    threshold: 21
+    excludes: ['**/test/**']
+  # Max 200 lines.
+  LargeClass:
+    threshold: 201
+    excludes: ['**/test/**']
+  # Cognitive complexity measures difficulty for a reader; cyclomatic counts
+  # paths for testing, so only the cognitive rule runs. Max 4.
+  CognitiveComplexMethod:
+    active: true
+    threshold: 5
+  CyclomaticComplexMethod:
+    active: false
+  # Max 4 function parameters, max 5 constructor parameters.
+  LongParameterList:
+    functionThreshold: 5
+    constructorThreshold: 6
+  # Max 2.
+  NestedBlockDepth:
+    threshold: 3
+  # Max 2.
+  ComplexCondition:
+    threshold: 3
+  # Max 1; fires only under type resolution (detektMain / detektTest).
+  NestedScopeFunctions:
+    active: true
+    threshold: 1
+  StringLiteralDuplication:
+    active: true
 
 style:
   # Guard clauses are the catalog's move for a nested conditional, so they don't
   # count against a function's returns.
   ReturnCount:
     excludeGuardClauses: true
+  UnusedImports:
+    active: true
+  DataClassShouldBeImmutable:
+    active: true
+  UnnecessaryLet:
+    active: true
+  VarCouldBeVal:
+    ignoreLateinitVar: true
+
+comments:
+  OutdatedDocumentation:
+    active: true
+
+naming:
+  # Off on purpose: it would rename CONTEXT.md terms.
+  BooleanPropertyNaming:
+    active: false
