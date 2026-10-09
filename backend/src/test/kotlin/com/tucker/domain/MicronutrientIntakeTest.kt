@@ -115,11 +115,11 @@ class MicronutrientIntakeTest {
         val entries = listOf(weighed(day, chicken, grams = 700.0))
 
         val noBody = intake(entries, mapOf(1L to chicken), cheddarLikeIron(1.0))
-        val body = intake(
+        val body = intakeAgainst(
+            mapOf(Micronutrient.IRON to ReferenceIntake(8.0, null)),
             entries,
             mapOf(1L to chicken),
             cheddarLikeIron(1.0),
-            mapOf(Micronutrient.IRON to ReferenceIntake(8.0, null)),
         )
 
         assertEquals(
@@ -139,7 +139,7 @@ class MicronutrientIntakeTest {
 
         // A Profile that resolved to nothing — the bands open at 14, so a body below
         // that has no published line, which is not the same as having no body.
-        val read = intake(entries, mapOf(1L to chicken), cheddarLikeIron(1.0), references = emptyMap())
+        val read = intakeAgainst(emptyMap(), entries, mapOf(1L to chicken), cheddarLikeIron(1.0))
 
         assertEquals(
             false,
@@ -552,11 +552,11 @@ class MicronutrientIntakeTest {
     /** A week whose only food is [grams] of one matched Food reporting [iron] mg per 100 g. */
     private fun weekOf(grams: Double, iron: Double, reference: ReferenceIntake): MicronutrientIntake {
         val chicken = food(id = 1, name = "Chicken breast", referenceFoodId = 42)
-        return intake(
+        return intakeAgainst(
+            mapOf(Micronutrient.IRON to reference),
             listOf(weighed(day, chicken, grams = grams)),
             mapOf(1L to chicken),
             cheddarLikeIron(iron),
-            mapOf(Micronutrient.IRON to reference),
         )
     }
 
@@ -597,29 +597,42 @@ class MicronutrientIntakeTest {
     ) = Food.plain(id = id, name = name, barcode = null, nutrition = nutrition)
         .copy(referenceFoodId = referenceFoodId)
 
+    /**
+     * The week's read with no body to resolve lines for — null references, not an
+     * empty map, which is the state `hasReferenceIntakes` exists to tell apart.
+     */
     private fun intake(
         entries: List<Entry>,
         foods: Map<Long, Food> = emptyMap(),
         referenceFoods: Map<Long, ReferenceFood> = emptyMap(),
-        // Null, not an empty map: absent means there was no body to resolve lines
-        // for, which is the state `hasReferenceIntakes` exists to tell apart.
-        references: Map<Micronutrient, ReferenceIntake>? = null,
-        // Whole Recipes rather than a Food map beside a composition map: a Recipe
-        // already knows its own id and its own lines, and stating either twice is an
-        // agreement the test has to keep by hand.
         recipes: List<Recipe> = emptyList(),
-    ) = MicronutrientIntake.of(
-        weekStart,
-        day,
-        BorrowedLog(
-            entries,
-            joined(
-                foods + recipes.associate { it.id to it.asFood() },
-                referenceFoods,
-                recipes.associate { it.id to it.ingredients },
-            ),
+    ) = MicronutrientIntake.of(weekStart, day, eatenFrom(entries, foods, referenceFoods, recipes), references = null)
+
+    /** The week's read against [references], the lines a body resolved to. */
+    private fun intakeAgainst(
+        references: Map<Micronutrient, ReferenceIntake>,
+        entries: List<Entry>,
+        foods: Map<Long, Food>,
+        referenceFoods: Map<Long, ReferenceFood>,
+    ) = MicronutrientIntake.of(weekStart, day, eatenFrom(entries, foods, referenceFoods), references)
+
+    /**
+     * [entries] with the Foods they ate joined. Whole [recipes] rather than a Food map
+     * beside a composition map: a Recipe already knows its own id and its own lines,
+     * and stating either twice is an agreement the test has to keep by hand.
+     */
+    private fun eatenFrom(
+        entries: List<Entry>,
+        foods: Map<Long, Food>,
+        referenceFoods: Map<Long, ReferenceFood>,
+        recipes: List<Recipe> = emptyList(),
+    ) = BorrowedLog(
+        entries,
+        joined(
+            foods + recipes.associate { it.id to it.asFood() },
+            referenceFoods,
+            recipes.associate { it.id to it.ingredients },
         ),
-        references,
     )
 
     /** Nutrition stated by its calories, where the macros behind them are beside the point. */

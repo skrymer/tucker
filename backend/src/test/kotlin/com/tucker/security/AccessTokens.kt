@@ -49,12 +49,10 @@ object AccessTokens {
         issuer: String = ISSUER,
         audience: String = AUDIENCE,
         issuedAt: Instant = Instant.now(),
-        signedWith: RSAKey = devKey,
     ): String = signed(
         baseClaims(issuer, audience, issuedAt)
             .apply { if (email != null) claim(EMAIL_CLAIM, email) }
             .build(),
-        signedWith,
     )
 
     /** Everything a good assertion carries except the email, which the callers vary. */
@@ -80,7 +78,7 @@ object AccessTokens {
     fun expired(): String = mint(issuedAt = Instant.now().minusSeconds(EXPIRY_SECONDS + AN_HOUR))
 
     /** A well-formed token whose signature belongs to a key the backend does not trust. */
-    fun signedByAnotherKey(): String = mint(signedWith = foreignKey)
+    fun signedByAnotherKey(): String = signed(baseClaims().claim(EMAIL_CLAIM, EMAIL).build(), signedWith = foreignKey)
 
     /**
      * `email` present but not a string. Cloudflare never sends this, but a validator that

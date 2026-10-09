@@ -12,10 +12,9 @@ class FoodCandidateTest {
         carbsPer100g: Double? = 5.0,
         fatPer100g: Double? = 5.0,
         name: String = "Skyr",
-        barcode: String = "5701234567890",
     ) = FoodCandidate(
         name = name,
-        barcode = barcode,
+        barcode = "5701234567890",
         proteinPer100g = proteinPer100g,
         carbsPer100g = carbsPer100g,
         fatPer100g = fatPer100g,
