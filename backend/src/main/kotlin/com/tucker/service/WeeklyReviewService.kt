@@ -1,6 +1,7 @@
 package com.tucker.service
 
 import com.tucker.domain.IntakeTargets
+import com.tucker.domain.LoggedIntake
 import com.tucker.domain.Maintenance
 import com.tucker.domain.Profile
 import com.tucker.domain.ReviewCadence
@@ -165,98 +166,105 @@ class WeeklyReviewService(
         trend: WeightTrend,
         currentTrendKg: Double,
     ): Maintenance {
+        val window = adaptiveWindow(on, trend)
+        // It may still refuse: a balance below the body's basal rate is the log and the
+        // scale contradicting each other rather than a low expenditure (ADR 0031), and
+        // whether the arithmetic produced a measurement is the domain's judgement to
+        // make, not this method's. A refusal falls through to the hold below.
+        val adapted = if (window.canAdapt) window.adapt(profile.basalMetabolicRateKcal(currentTrendKg, on)) else null
+
+        // Hold the most recent earlier review's maintenance steady rather than
+        // recompute from thin data: the Budget moves with the trend, not with logging
+        // diligence (ADR 0018). The seed is the cold-start value, for when there is
+        // nothing to hold, and carries no reason — a seed explains itself.
+        return adapted
+            ?: heldMaintenanceKcal(on)?.let { Maintenance.held(it, window.holdReason()) }
+            ?: Maintenance.seed(profile, currentTrendKg, on)
+    }
+
+    /** The adaptive window that closes the day before [on]. */
+    private fun adaptiveWindow(on: LocalDate, trend: WeightTrend): AdaptiveWindow {
         val windowStart = on.minusDays(ADAPTIVE_WINDOW_DAYS)
-        val windowEnd = on.minusDays(1)
-        val trendChange = trend.changeSince(windowStart)
-        val weighedDays = trend.weighedDaysSince(windowStart)
         // One read, so the days counted and the calories averaged are the same rows:
         // a day absent from the map is a day with no Entry, never a zero-calorie one.
-        val intakeByDay = entries.caloriesByDay(windowStart, windowEnd)
-        val loggedDays = intakeByDay.size
-        val totalIntake = intakeByDay.values.sum()
+        val intakeByDay = entries.caloriesByDay(windowStart, on.minusDays(1))
+        return AdaptiveWindow(
+            trendChange = trend.changeSince(windowStart),
+            weighedDays = trend.weighedDaysSince(windowStart),
+            intake = LoggedIntake(totalKcal = intakeByDay.values.sum(), loggedDays = intakeByDay.size),
+        )
+    }
 
-        // One floor per term, because the estimate is one energy balance and either
-        // term alone is not it (ADR 0018): enough logging that the average isn't set
-        // by one or two noisy days, and enough weighing that the window has a change
-        // to contribute at all. Tracked separately because a hold names the floor it
-        // failed, and "log more days" is wrong advice to somebody who simply has not
-        // weighed in (ADR 0031).
+    /**
+     * The evidence one adaptive window holds, and whether it is enough to correct
+     * Maintenance from.
+     *
+     * One floor per term, because the estimate is one energy balance and either term
+     * alone is not it (ADR 0018): enough logging that the average isn't set by one or
+     * two noisy days, and enough weighing that the window has a change to contribute
+     * at all. Tracked separately because a hold names the floor it failed, and "log
+     * more days" is wrong advice to somebody who simply has not weighed in (ADR 0031).
+     */
+    private class AdaptiveWindow(
+        val trendChange: WeightTrend.Change?,
+        weighedDays: Int,
+        val intake: LoggedIntake,
+    ) {
         val weighingCovers = weighedDays >= MIN_WEIGHED_DAYS
-        val intakeUsable = loggedDays >= MIN_LOGGED_DAYS && totalIntake > 0.0
+        val intakeUsable = intake.loggedDays >= MIN_LOGGED_DAYS && intake.totalKcal > 0.0
+
         // Also needs a reading at the window's start to measure the change *from*;
         // `trendChange` is null without one, which is short history rather than an
         // unweighed window — a User weighing daily has it until their readings reach
         // back a fortnight.
         val canAdapt = trendChange != null && weighingCovers && intakeUsable
 
-        // The two terms' divisors are Maintenance.adaptive's business, not this
-        // method's — it hands over the raw totals and divides nothing (ADR 0018).
-        //
-        // It may still refuse: a balance below the body's basal rate is the log and the
-        // scale contradicting each other rather than a low expenditure (ADR 0031), and
-        // whether the arithmetic produced a measurement is the domain's judgement to
-        // make, not this method's. A refusal falls through to the hold below.
-        if (canAdapt) {
+        /**
+         * The adaptive estimate over this window, asked only once it [canAdapt]. The
+         * two terms' divisors are [Maintenance.adaptive]'s business — this hands over
+         * the raw totals and divides nothing (ADR 0018).
+         */
+        fun adapt(basalMetabolicRateKcal: Double): Maintenance? = Maintenance.adaptive(
+            intake = intake,
             // Non-null whenever `canAdapt` is; stated because a Boolean val carries no
             // smart cast, and re-testing here would be a second spelling of the rule.
-            Maintenance.adaptive(
-                totalIntakeKcal = totalIntake,
-                loggedDays = loggedDays,
-                trendChange = checkNotNull(trendChange),
-                windowDays = ADAPTIVE_WINDOW_DAYS,
-                basalMetabolicRateKcal = profile.basalMetabolicRateKcal(currentTrendKg, on),
-            )?.let { return it }
-        }
+            trendChange = checkNotNull(trendChange),
+            windowDays = ADAPTIVE_WINDOW_DAYS,
+            basalMetabolicRateKcal = basalMetabolicRateKcal,
+        )
 
-        // Hold the most recent earlier review's maintenance steady rather than
-        // recompute from thin data: the Budget moves with the trend, not with logging
-        // diligence (ADR 0018). The seed is the cold-start value, for when there is
-        // nothing to hold, and carries no reason — a seed explains itself.
-        val heldKcal = heldMaintenanceKcal(on)
-        return if (heldKcal == null) {
-            Maintenance.seed(profile, currentTrendKg, on)
-        } else {
-            Maintenance.held(
-                heldKcal,
-                holdReason(canAdapt, trendChange != null, weighingCovers, intakeUsable),
-            )
+        /**
+         * Which condition held a review, so the badge can name the one thing that
+         * would lift it (ADR 0031).
+         *
+         * These conditions co-occur — every new User's second review fails the logging
+         * floor *and* has no anchor — so the order decides what one sentence on `/`
+         * says, and it names the condition that is actually **binding**: the one still
+         * unmet when the others are met.
+         *
+         * The anchor therefore leads the three floors, because it is the only one the
+         * User cannot act on at all. A window's anchor is a reading old enough to
+         * measure a change *from*; nothing done today produces one, and a week of
+         * perfect logging lifts nothing while it is missing. Naming the logging floor
+         * there would accuse a User who has logged every day they have existed, and
+         * promise a remedy that cannot work. Between the two that *can* be acted on,
+         * the logging floor is the larger ask and the later to clear, so it outranks a
+         * single weigh-in.
+         *
+         * [canAdapt] leads outright: reaching here with it true means the balance ran
+         * and the domain refused the figure it produced, so no floor is what held this
+         * review.
+         */
+        fun holdReason(): Maintenance.HeldReason = when {
+            canAdapt -> Maintenance.HeldReason.BELOW_BASAL_RATE
+            trendChange == null -> Maintenance.HeldReason.NO_WINDOW_ANCHOR
+            !intakeUsable -> Maintenance.HeldReason.THIN_LOG
+            !weighingCovers -> Maintenance.HeldReason.UNWEIGHED_WINDOW
+            // [canAdapt] is exactly the conjunction of the three floors above, so nothing
+            // reaches here. Stated rather than left as an `else` arm: a reason picked by
+            // elimination is one that silently mislabels the day a fourth floor is added.
+            else -> error("no coverage floor failed, yet the review did not adapt")
         }
-    }
-
-    /**
-     * Which condition held a review, so the badge can name the one thing that would
-     * lift it (ADR 0031).
-     *
-     * These conditions co-occur — every new User's second review fails the logging
-     * floor *and* has no anchor — so the order decides what one sentence on `/` says,
-     * and it names the condition that is actually **binding**: the one still unmet when
-     * the others are met.
-     *
-     * [hasAnchor] therefore leads the three floors, because it is the only one the User
-     * cannot act on at all. A window's anchor is a reading old enough to measure a
-     * change *from*; nothing done today produces one, and a week of perfect logging
-     * lifts nothing while it is missing. Naming the logging floor there would accuse a
-     * User who has logged every day they have existed, and promise a remedy that cannot
-     * work. Between the two that *can* be acted on, the logging floor is the larger ask
-     * and the later to clear, so it outranks a single weigh-in.
-     *
-     * [canAdapt] leads outright: reaching here with it true means the balance ran and
-     * the domain refused the figure it produced, so no floor is what held this review.
-     */
-    private fun holdReason(
-        canAdapt: Boolean,
-        hasAnchor: Boolean,
-        weighingCovers: Boolean,
-        intakeUsable: Boolean,
-    ): Maintenance.HeldReason = when {
-        canAdapt -> Maintenance.HeldReason.BELOW_BASAL_RATE
-        !hasAnchor -> Maintenance.HeldReason.NO_WINDOW_ANCHOR
-        !intakeUsable -> Maintenance.HeldReason.THIN_LOG
-        !weighingCovers -> Maintenance.HeldReason.UNWEIGHED_WINDOW
-        // [canAdapt] is exactly the conjunction of the three floors above, so nothing
-        // reaches here. Stated rather than left as an `else` arm: a reason picked by
-        // elimination is one that silently mislabels the day a fourth floor is added.
-        else -> error("no coverage floor failed, yet the review did not adapt")
     }
 
     /**
