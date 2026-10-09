@@ -53,4 +53,17 @@ class AdaptiveWindowTest {
 
         assertEquals(Maintenance.HeldReason.THIN_LOG, window.holdReason())
     }
+
+    @Test
+    fun `logged days that hold no calories are a thin log`() {
+        // Days that carry an Entry of nothing are days, but not an intake to average:
+        // an empty total is held as a thin log rather than read as a fortnight of zero.
+        val window = AdaptiveWindow(
+            trendChange = anchor,
+            weighedDays = 1,
+            intake = LoggedIntake(totalKcal = 0.0, loggedDays = 10),
+        )
+
+        assertEquals(Maintenance.HeldReason.THIN_LOG, window.holdReason())
+    }
 }
