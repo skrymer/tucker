@@ -346,17 +346,24 @@ the ring, so type is friendly-but-quiet.
 
 ### Scale
 
-| Token        | Size / line                  | Weight  | Use                                |
-| ------------ | ---------------------------- | ------- | ---------------------------------- |
-| Ring figure  | 36px / 1.11                  | 800     | kcal remaining, centre of the ring |
-| Display / h1 | 30px / 1.05                  | 800     | page title ("Today")               |
-| Stat         | 22px / 1.1                   | 800     | ring-legend values, tile figures   |
-| h2           | 18px / 1.3                   | 700     | card headings                      |
-| Body         | 15px / 1.5                   | 400–500 | default                            |
-| Label        | 13px                         | 600     | meta, secondary lines              |
-| Eyebrow      | 11.5px, `+0.06em`, uppercase | 650     | section kickers ("Logged today")   |
+| Token       | Class              | Size / line  | Weight  | Tracking | Use                                                       |
+| ----------- | ------------------ | ------------ | ------- | -------- | --------------------------------------------------------- |
+| Ring figure | `text-ring-figure` | 36px / 1.11  | 800     | —        | the centre of a ring, a card's one headline figure        |
+| h1          | `text-h1`          | 24px / 1.33  | 700     | —        | page title ("Today"), in `text-default`                   |
+| Stat        | `text-stat`        | 22px / 1.1   | 800     | —        | ring-legend values, tile figures                          |
+| h2          | `text-h2`          | 18px / 1.3   | 700     | —        | card headings, in `text-highlighted`                      |
+| Body        | `text-body`        | 15px / 1.5   | 400–500 | —        | default, set on `body`                                    |
+| Label       | `text-label`       | 13px / 1.4   | 600     | —        | meta, secondary lines, in `text-muted`                    |
+| Eyebrow     | `text-eyebrow`     | 11.5px / 1.3 | 650     | +0.06em  | section kickers ("Logged today"), uppercase, `text-muted` |
 
-Headings get `text-wrap: balance`; body copy stays near a 65-character measure.
+Each token is one class carrying its size, line-height, weight and tracking —
+write `text-h2`, never `text-lg font-bold`. Colour is a separate class, because a
+token sets the shape of the type, not its ink. The tokens live in `main.css`'s
+`@theme`, and a test fails when this table and they disagree.
+
+Body is set on `body`, not `html`, so rem-sized things — the rings, spacing — keep
+their size. Headings get `text-wrap: balance`; body copy stays near a 65-character
+measure.
 
 ### Case
 

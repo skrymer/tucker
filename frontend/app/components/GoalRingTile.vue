@@ -49,26 +49,18 @@ const { kgToGo, trend, target, pace } = useGoalReadout()
       <div class="flex flex-col items-center gap-6 sm:flex-row">
         <RingGauge :arcs="arcs">
           <span
-            class="font-display text-4xl font-extrabold tabular-nums text-highlighted"
+            class="font-display text-ring-figure tabular-nums text-highlighted"
           >
             {{ kgToGo }}
           </span>
-          <span class="text-xs font-semibold text-muted">kg to go</span>
+          <span class="text-label text-muted">kg to go</span>
         </RingGauge>
 
         <div class="flex w-full flex-col gap-4">
           <div>
             <div class="mb-1 flex items-center gap-2">
               <span class="size-2.5 rounded bg-primary" />
-              <h2 class="text-lg font-bold text-highlighted">Goal progress</h2>
-              <UBadge
-                v-if="pace"
-                :color="pace.color"
-                variant="subtle"
-                size="sm"
-              >
-                {{ pace.label }}
-              </UBadge>
+              <GoalProgressHeading :pace="pace" />
             </div>
             <p class="text-sm text-muted">{{ percent }}% complete</p>
           </div>

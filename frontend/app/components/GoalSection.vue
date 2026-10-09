@@ -57,7 +57,7 @@ watch(
     :class="{ 'pointer-events-none opacity-50 select-none': props.disabled }"
   >
     <header class="flex items-center justify-between">
-      <h2 id="goal-heading" class="text-lg font-semibold text-default">Goal</h2>
+      <h2 id="goal-heading" class="text-h2 text-highlighted">Goal</h2>
       <UButton
         v-if="!props.disabled && activeGoal && !formOpen"
         icon="i-lucide-target"

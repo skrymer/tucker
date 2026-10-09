@@ -21,11 +21,11 @@ const loggedToday = computed(
 
 <template>
   <UCard>
-    <h2 class="text-lg font-bold text-highlighted">Today's weight</h2>
+    <h2 class="text-h2 text-highlighted">Today's weight</h2>
 
     <template v-if="loggedToday">
       <div class="mt-1 flex items-center justify-between gap-3">
-        <p class="text-2xl font-bold text-default">
+        <p class="text-stat text-default">
           {{ latest!.weightKg.toFixed(1) }} kg
         </p>
         <UButton

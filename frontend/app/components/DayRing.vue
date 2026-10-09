@@ -83,12 +83,12 @@ const { rows } = useLegend()
   <div class="flex flex-col items-center gap-6 sm:flex-row">
     <RingGauge :arcs="arcs">
       <span
-        class="font-display text-4xl font-extrabold tabular-nums"
+        class="font-display text-ring-figure tabular-nums"
         :class="isOver ? 'text-error' : 'text-highlighted'"
       >
         {{ centreValue }}
       </span>
-      <span class="text-xs font-semibold text-muted">{{ centreLabel }}</span>
+      <span class="text-label text-muted">{{ centreLabel }}</span>
     </RingGauge>
 
     <!-- Swatch, title and meter share a line; the figures keep their own, so the

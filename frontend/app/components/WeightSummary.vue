@@ -51,11 +51,9 @@ const delta = useWeightDelta()
 
 <template>
   <UCard v-if="latest">
-    <h3 class="text-sm font-medium text-muted">Latest</h3>
+    <h3 class="text-label text-muted">Latest</h3>
     <div class="mt-1 flex items-baseline justify-between gap-3">
-      <p class="text-2xl font-bold text-default">
-        {{ latest.weightKg.toFixed(1) }} kg
-      </p>
+      <p class="text-stat text-default">{{ latest.weightKg.toFixed(1) }} kg</p>
       <UBadge
         v-if="delta"
         color="neutral"

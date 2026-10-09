@@ -121,7 +121,7 @@ const {
 
 <template>
   <section class="flex flex-col gap-4">
-    <h1 class="text-2xl font-bold text-default">Today</h1>
+    <h1 class="text-h1 text-default">Today</h1>
     <LoadErrorState
       :error="summaryError"
       title="Couldn't load today's summary"

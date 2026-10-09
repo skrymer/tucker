@@ -65,7 +65,7 @@ const heldNote = computed(() =>
     </UCard>
 
     <UCard v-else>
-      <p class="text-2xl font-bold text-default">
+      <p class="text-stat text-default">
         {{ Math.round(summary.caloriesConsumed) }} kcal,
         {{ Math.round(summary.proteinConsumed) }} g protein
       </p>

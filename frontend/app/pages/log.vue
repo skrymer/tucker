@@ -164,7 +164,7 @@ function retryBoth() {
 
 <template>
   <section class="flex flex-col gap-4">
-    <h1 class="text-2xl font-bold text-default">Log</h1>
+    <h1 class="text-h1 text-default">Log</h1>
 
     <!-- Always visible and never a popover: a field on a full-height page costs
          nothing when ignored, where a popover makes typing the price of seeing
@@ -245,7 +245,7 @@ function retryBoth() {
       >
         <h2
           id="frequent-foods-heading"
-          class="mb-2 text-xs font-medium tracking-wide text-dimmed uppercase"
+          class="mb-2 text-eyebrow text-muted uppercase"
         >
           Frequent foods
         </h2>
@@ -268,10 +268,7 @@ function retryBoth() {
     >
       <FoodEmptyState v-if="!hasCatalog" :to="CATALOG_ADD_ROUTE" />
       <section v-else aria-labelledby="catalog-heading">
-        <h2
-          id="catalog-heading"
-          class="mb-2 text-xs font-medium tracking-wide text-dimmed uppercase"
-        >
+        <h2 id="catalog-heading" class="mb-2 text-eyebrow text-muted uppercase">
           {{ filter.heading.value }}
         </h2>
         <FoodPickList

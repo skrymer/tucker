@@ -170,9 +170,7 @@ const round = (n: number) => Math.round(n)
       <div v-else class="flex flex-col gap-4">
         <!-- Ingredients: name left, grams right, tabular-nums. -->
         <section aria-label="Ingredients" class="flex flex-col gap-2">
-          <p class="text-xs font-semibold uppercase tracking-wider text-muted">
-            Ingredients
-          </p>
+          <p class="text-eyebrow text-muted uppercase">Ingredients</p>
           <ul
             role="list"
             class="divide-y divide-default rounded-xl border border-default"
@@ -199,9 +197,7 @@ const round = (n: number) => Math.round(n)
           class="flex flex-col gap-3 rounded-xl bg-elevated/50 p-4"
         >
           <div class="flex items-center justify-between">
-            <span
-              class="flex items-center gap-2 text-sm font-medium text-muted"
-            >
+            <span class="flex items-center gap-2 text-label text-muted">
               <UIcon name="i-lucide-cooking-pot" class="size-4" />
               Makes
             </span>
@@ -211,12 +207,12 @@ const round = (n: number) => Math.round(n)
           </div>
 
           <div class="border-t border-default pt-3">
-            <p class="text-sm font-medium text-muted">Per 100 g</p>
+            <p class="text-label text-muted">Per 100 g</p>
             <div class="mt-1 flex items-baseline gap-4">
-              <p class="text-2xl font-bold tabular-nums text-primary">
+              <p class="text-stat tabular-nums text-primary">
                 {{ round(recipe?.caloriesPer100g ?? 0) }} kcal
               </p>
-              <p class="text-lg font-semibold tabular-nums text-secondary">
+              <p class="text-stat tabular-nums text-secondary">
                 {{ round(recipe?.proteinPer100g ?? 0) }} g protein
               </p>
             </div>
