@@ -357,7 +357,9 @@ the ring, so type is friendly-but-quiet.
 | Eyebrow     | `text-eyebrow`     | 11.5px / 1.3 | 650     | +0.06em  | section kickers ("Logged today"), uppercase, `text-muted` |
 
 Each token is one class carrying its size, line-height, weight and tracking —
-write `text-h2`, never `text-lg font-bold`. Colour is a separate class, because a
+write `text-h2`, never `text-lg font-bold`. It carries its face too: the figures
+are Nunito and the label and eyebrow the body stack, whatever element wears them,
+and the eyebrow is uppercase without asking. Colour is a separate class, because a
 token sets the shape of the type, not its ink. The tokens live in `main.css`'s
 `@theme`, and a test fails when this table and they disagree.
 

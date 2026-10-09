@@ -178,7 +178,7 @@ const queueLabel = computed(() => {
       </p>
 
       <div v-for="group in reading.groups" :key="group.claim" class="mt-3">
-        <h3 class="text-eyebrow text-muted uppercase">
+        <h3 class="text-eyebrow text-muted">
           {{ group.heading }}
         </h3>
         <ul role="list" class="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">

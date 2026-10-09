@@ -170,7 +170,7 @@ const round = (n: number) => Math.round(n)
       <div v-else class="flex flex-col gap-4">
         <!-- Ingredients: name left, grams right, tabular-nums. -->
         <section aria-label="Ingredients" class="flex flex-col gap-2">
-          <p class="text-eyebrow text-muted uppercase">Ingredients</p>
+          <p class="text-eyebrow text-muted">Ingredients</p>
           <ul
             role="list"
             class="divide-y divide-default rounded-xl border border-default"

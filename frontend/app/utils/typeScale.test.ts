@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { readdirSync, readFileSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { appTemplates } from '../../test/templates'
 
 // The type scale is stated twice: as `--text-*` tokens in `main.css`, which is
 // what renders, and as DESIGN.md's Typography → Scale table, which is what a
-// developer reads before styling. Nothing else ties them, and they had already
-// drifted apart once — the doc's h1 said 30px/800 while every screen rendered
-// 24px/700. This is the executable link.
+// developer reads before styling. Nothing else ties them; this is the executable
+// link.
 
 // Read off disk, anchored to this file: a `?raw` stylesheet import resolves to
 // the empty string under the Nuxt test environment, and the working directory is
@@ -76,26 +76,14 @@ describe('the type scale', () => {
   })
 })
 
-const APP = resolve(import.meta.dirname, '..')
-
 /** Tailwind's stock sizes — the ones a template reaches for instead of a token. */
 const STOCK_SIZE = /^text-(xs|sm|base|lg|xl|[2-9]xl)$/
 const WEIGHT =
   /^font-(thin|extralight|light|normal|medium|semibold|bold|extrabold|black)$/
 
-function sfcs(dir: string): string[] {
-  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
-    const path = resolve(dir, entry.name)
-    if (entry.isDirectory()) return sfcs(path)
-    return entry.name.endsWith('.vue') ? [path] : []
-  })
-}
-
 /** Every element in the app's templates with a static class. */
 function classedElements(): { site: string; tag: string; classes: string[] }[] {
-  return sfcs(APP).flatMap((path) => {
-    const file = path.slice(APP.length + 1)
-    const source = readFileSync(path, 'utf8')
+  return appTemplates().flatMap(({ file, source }) => {
     return [
       ...source.matchAll(/<([a-zA-Z][\w-]*)\s[^>]*?\bclass="([^"]*)"/g),
     ].map(([, tag, classList]) => {
@@ -110,8 +98,14 @@ function classedElements(): { site: string; tag: string; classes: string[] }[] {
 }
 
 describe('using the type scale by name', () => {
+  const elements = classedElements()
+
+  it('finds the classed elements at all, so an empty sweep cannot pass for a clean one', () => {
+    expect(elements.length).toBeGreaterThan(100)
+  })
+
   it('never restates a token on a heading as a stock size with a weight', () => {
-    const restated = classedElements()
+    const restated = elements
       .filter(({ tag }) => /^h[1-6]$/.test(tag))
       .filter(
         ({ classes }) =>
@@ -126,7 +120,7 @@ describe('using the type scale by name', () => {
   })
 
   it('never restates the eyebrow as a stock-sized uppercase line', () => {
-    const restated = classedElements()
+    const restated = elements
       .filter(
         ({ classes }) =>
           classes.includes('uppercase') &&
@@ -134,7 +128,7 @@ describe('using the type scale by name', () => {
       )
       .map(({ site }) => site)
 
-    // An uppercase kicker is the eyebrow: `text-eyebrow uppercase text-muted`.
+    // An uppercase kicker is the eyebrow: `text-eyebrow text-muted`.
     expect(restated).toEqual([])
   })
 })

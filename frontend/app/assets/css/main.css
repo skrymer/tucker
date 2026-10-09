@@ -80,12 +80,6 @@ body {
   line-height: var(--text-body--line-height);
 }
 
-h1,
-h2,
-h3 {
-  text-wrap: balance;
-}
-
 /* Green-biased neutrals + brand status tokens. Unlayered, so these win over
    Nuxt UI's layered light-mode defaults regardless of import order. */
 :root {
@@ -262,5 +256,23 @@ h3 {
 h1,
 h2,
 h3 {
+  font-family: var(--font-display);
+  text-wrap: balance;
+}
+
+/* A type token carries its face too, so it reads the same whatever element
+   wears it: an eyebrow or a label set on a heading stays on the body stack. */
+.text-eyebrow,
+.text-label {
+  font-family: var(--font-sans);
+}
+
+/* The eyebrow is the one uppercase line in Tucker (DESIGN.md → Case). */
+.text-eyebrow {
+  text-transform: uppercase;
+}
+
+.text-ring-figure,
+.text-stat {
   font-family: var(--font-display);
 }

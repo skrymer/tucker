@@ -243,10 +243,7 @@ function retryBoth() {
         v-if="frequent && frequent.length > 0"
         aria-labelledby="frequent-foods-heading"
       >
-        <h2
-          id="frequent-foods-heading"
-          class="mb-2 text-eyebrow text-muted uppercase"
-        >
+        <h2 id="frequent-foods-heading" class="mb-2 text-eyebrow text-muted">
           Frequent foods
         </h2>
         <FrequentFoodsGrid :foods="frequent" @pick="weighed.pick" />
@@ -268,7 +265,7 @@ function retryBoth() {
     >
       <FoodEmptyState v-if="!hasCatalog" :to="CATALOG_ADD_ROUTE" />
       <section v-else aria-labelledby="catalog-heading">
-        <h2 id="catalog-heading" class="mb-2 text-eyebrow text-muted uppercase">
+        <h2 id="catalog-heading" class="mb-2 text-eyebrow text-muted">
           {{ filter.heading.value }}
         </h2>
         <FoodPickList

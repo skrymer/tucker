@@ -57,44 +57,44 @@ const typeScale = [
   {
     role: 'Ring figure',
     token: 'text-ring-figure',
-    classes: 'font-display text-ring-figure tabular-nums text-highlighted',
+    extra: 'tabular-nums text-highlighted',
     sample: '1702',
   },
   {
     role: 'h1',
     token: 'text-h1',
-    classes: 'text-h1 text-default',
+    extra: 'text-default',
     sample: 'Today',
   },
   {
     role: 'Stat',
     token: 'text-stat',
-    classes: 'text-stat tabular-nums text-default',
+    extra: 'tabular-nums text-default',
     sample: '82.4 kg',
   },
   {
     role: 'h2',
     token: 'text-h2',
-    classes: 'text-h2 text-highlighted',
+    extra: 'text-highlighted',
     sample: 'Card heading',
   },
   {
     role: 'Body',
     token: 'text-body',
-    classes: 'text-body text-default',
+    extra: 'text-default',
     sample:
       'Body copy on the system stack — fast, neutral, and comfortable to read.',
   },
   {
     role: 'Label',
     token: 'text-label',
-    classes: 'text-label text-muted',
+    extra: 'text-muted',
     sample: 'Planned finish',
   },
   {
     role: 'Eyebrow',
     token: 'text-eyebrow',
-    classes: 'text-eyebrow text-muted uppercase',
+    extra: 'text-muted',
     sample: 'Logged today',
   },
 ]
@@ -125,7 +125,7 @@ const grams = ref(80)
 <template>
   <section class="flex flex-col gap-10">
     <header class="flex flex-col gap-1">
-      <p class="text-eyebrow text-primary uppercase">Design system</p>
+      <p class="text-eyebrow text-primary">Design system</p>
       <h1 class="text-h1 text-default">Vital</h1>
       <p class="text-muted">
         Tucker's visual identity — the day as a ring you close. Green brand,
@@ -234,7 +234,9 @@ const grams = ref(80)
         class="flex flex-col gap-4 rounded-2xl border border-default bg-default p-5"
       >
         <div v-for="t in typeScale" :key="t.token" class="flex flex-col gap-1">
-          <dt :data-token="t.token" :class="t.classes">{{ t.sample }}</dt>
+          <dt :data-token="t.token" :class="[t.token, t.extra]">
+            {{ t.sample }}
+          </dt>
           <dd class="text-xs text-dimmed tabular-nums">
             {{ t.role }} ·<code>{{ t.token }}</code>
             <template v-if="captions[t.token]">
@@ -339,7 +341,7 @@ const grams = ref(80)
     <div class="flex flex-col gap-4">
       <h2 class="text-h2 text-highlighted">Cards &amp; entries</h2>
       <UCard>
-        <p class="text-eyebrow text-muted uppercase">Logged today</p>
+        <p class="text-eyebrow text-muted">Logged today</p>
         <!-- The Figure row: the name is what the eye lands on, and what the
              entry cost sits under it in quieter type. The unit is spelled out,
              so the pair gets the row's whole width and the far end carries only

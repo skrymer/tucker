@@ -83,7 +83,7 @@ const { rows } = useLegend()
   <div class="flex flex-col items-center gap-6 sm:flex-row">
     <RingGauge :arcs="arcs">
       <span
-        class="font-display text-ring-figure tabular-nums"
+        class="text-ring-figure tabular-nums"
         :class="isOver ? 'text-error' : 'text-highlighted'"
       >
         {{ centreValue }}

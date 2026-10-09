@@ -50,7 +50,7 @@ const { planned, pace, observedFinish, observedRate } = usePaceColumns()
 <template>
   <UCard>
     <div class="flex items-center justify-between gap-2">
-      <GoalProgressHeading :pace="pace" />
+      <GoalProgressHeading :pace-status="progress.paceStatus" />
     </div>
     <p class="mt-1 text-ring-figure text-default">{{ percent }}%</p>
     <!-- `get-value-label`, never `aria-label`: the attribute never reaches the

@@ -20,21 +20,19 @@ function useGoalArc() {
   return { percent, arcs }
 }
 
-// The legend beside it: the centre figure, the two weights it is measured
-// between, and the observed pace — withheld until the backend has enough
-// readings to classify one.
+// The legend beside it: the centre figure and the two weights it is measured
+// between.
 function useGoalReadout() {
   const kgToGo = computed(() => props.progress.kgToGo.toFixed(1))
   const trend = computed(() => `${props.progress.currentTrendKg.toFixed(1)} kg`)
   const target = computed(
     () => `${props.progress.targetWeightKg.toFixed(1)} kg`,
   )
-  const pace = computed(() => paceBadge(props.progress.paceStatus))
-  return { kgToGo, trend, target, pace }
+  return { kgToGo, trend, target }
 }
 
 const { percent, arcs } = useGoalArc()
-const { kgToGo, trend, target, pace } = useGoalReadout()
+const { kgToGo, trend, target } = useGoalReadout()
 </script>
 
 <template>
@@ -48,9 +46,7 @@ const { kgToGo, trend, target, pace } = useGoalReadout()
     <UCard>
       <div class="flex flex-col items-center gap-6 sm:flex-row">
         <RingGauge :arcs="arcs">
-          <span
-            class="font-display text-ring-figure tabular-nums text-highlighted"
-          >
+          <span class="text-ring-figure tabular-nums text-highlighted">
             {{ kgToGo }}
           </span>
           <span class="text-label text-muted">kg to go</span>
@@ -60,7 +56,7 @@ const { kgToGo, trend, target, pace } = useGoalReadout()
           <div>
             <div class="mb-1 flex items-center gap-2">
               <span class="size-2.5 rounded bg-primary" />
-              <GoalProgressHeading :pace="pace" />
+              <GoalProgressHeading :pace-status="progress.paceStatus" />
             </div>
             <p class="text-sm text-muted">{{ percent }}% complete</p>
           </div>

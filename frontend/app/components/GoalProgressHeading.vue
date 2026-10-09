@@ -1,5 +1,7 @@
 <script setup lang="ts">
-defineProps<{ pace: ReturnType<typeof paceBadge> }>()
+const props = defineProps<{ paceStatus: PaceStatus | null | undefined }>()
+
+const pace = computed(() => paceBadge(props.paceStatus))
 </script>
 
 <template>
