@@ -54,7 +54,7 @@ and [#237](https://github.com/skrymer/tucker/issues/237) (frontend).
   - Micronutrient Intake — 5 of 145, every one a false survivor
   - Micronutrient Intake, Recipes contributing — 107 of 115
   - Weight Timeline, frontend — 60 of 63, then 100% on the two files that owed tests
-  - Weight Timeline — 63 of 68, and the one new report is a `MEMORY_ERROR`
+  - Weight Timeline and the trend's daily read — 101 of 111
   - Weight Timeline, the intake half — `weightTimeline.ts` 128 of 131
   - Weight Timeline, the plan — `weightTimeline.ts` + the section, 247 of 260
   - `date.ts`'s cached `Intl.DateTimeFormat` — every literal of a module-level formatter, false survivors, settled by hand
@@ -1120,18 +1120,24 @@ Hand-mutation settles it, per this file's standing rule: the scatter's `y` swapp
 the trend's, the crosshair handler made a no-op, and `SectionTabs`' `role="group"`
 removed each fail the component tests. Tooling blind spot, not a gap.
 
-### Weight Timeline — 63 of 68, and the one new report is a `MEMORY_ERROR`
+### Weight Timeline and the trend's daily read — 101 of 111
 
-Swept scoped to the F17 slice-1 classes (`WeightTimeline`, `WeightTrend`,
-`WeightTimelineController` and its DTOs). Four of the five non-killed are the
-`WeightTrend` entries already recorded above — the stdlib overflow guards and the
-body Kotlin inlines from `Iterable.count`, none of which the slice moved.
+Swept scoped to every declaration in `WeightTimeline.kt` and `WeightTrend.kt` after #464
+moved the day walk into `WeightTrend.standingEachDay`. Seven of the ten are entries
+already recorded here, on code #464 did not move: `weighedDaysSince` (3), `smooth` (1)
+and `TimelineIntake.summarise`'s inlined `count` (3, below). The other three are new,
+all on `standingEachDay`, and all **equivalent**:
 
-The fifth is new and is **not a survivor**: `WeightTimeline$Companion.of$lambda$2`
-is the `takeWhile { !it.isAfter(to) }` that bounds the day sequence, and
-`BooleanTrueReturnVals` makes it never stop — `generateSequence` then runs until the
-JVM dies, so pitest reports `MEMORY_ERROR` rather than `SURVIVED`. That is the
-memory-shaped version of a timeout verdict: the mutant is detected, loudly.
+- **Two `EmptyObjectReturnVals`** on its guard returns (`return emptyList()` when
+  nothing was weighed, and when the window closes before the first reading). The
+  mutant returns `Collections.emptyList()` in place of an empty list: same value.
+- **One `Math` `+` → `-`** reported past the end of the file: `runningFold`'s inlined
+  capacity, `ArrayList(size + 1)`. An empty receiver returns `listOf(initial)` before
+  that line, so the capacity is `size - 1 >= 0` and never observable.
+
+The `MEMORY_ERROR` this entry used to record, on the `takeWhile` bounding an endless
+`generateSequence` in `WeightTimeline.of`, went with that code: the days come from
+`datesUntil` now.
 
 ### Weight Timeline, the intake half — `weightTimeline.ts` 128 of 131
 
@@ -1208,11 +1214,12 @@ the cost, which a 90-day timeline paid ninety times over.
 
 Four non-killed, all already-recorded categories:
 
-- Three are the **`Iterable.count` body Kotlin inlines** into `WeightTimeline.of`
-  for `days.count { … }` — a `NegateConditionals`, a `ConditionalsBoundary` and the
-  `throwCountOverflow` call, all reported against line numbers past the end of the
-  file. The same stdlib noise `WeightTrend` already carries here.
-- The fourth is the `MEMORY_ERROR` on `of$lambda$2` recorded above; it did not move.
+- Three are the **`Iterable.count` body Kotlin inlines** into
+  `TimelineIntake.summarise` for `days.count { … }` — a `NegateConditionals`, a
+  `ConditionalsBoundary` and the `throwCountOverflow` call, all reported against line
+  numbers past the end of the file. The same stdlib noise `WeightTrend` already
+  carries here.
+- The fourth was the `MEMORY_ERROR` on `of$lambda$2`, retired with its code (above).
 
 `TimelineIntake`'s two constructor properties used to add a pair of `NoCoverage`
 accessors. They are gone rather than filtered: nothing outside the class reads the
@@ -1477,9 +1484,9 @@ L51/L77 above) have tests; three were pre-existing.
   `FoodService.frequent`'s `requireWindow` removed: `FrequentFoods.rank` re-checks it
   (the verdict `FoodController.frequent` had, moved). `PushSubscriptions.push` L42/L44
   (3): the `Iterable.count` body Kotlin inlines, as `WeightTrend.weighedDaysSince`.
-  `WeightTimeline$Companion.of` L274 (integer `+` → `-`): a line past the file's end,
-  `runningFold`'s inlined capacity arithmetic; L212's `MEMORY_ERROR` is the `takeWhile`
-  on an endless sequence, killed.
+  `WeightTimeline$Companion.of` L274 (integer `+` → `-`): `runningFold`'s inlined
+  capacity arithmetic — since #464 that fold lives in `WeightTrend.standingEachDay`,
+  where the verdict now sits (see "Weight Timeline and the trend's daily read").
 - **False survivor (1).** `VapidKeyStore.storedKey` negated: on a copy with `build/`
   removed and `--no-build-cache`, `VapidKeyStoreTest` fails 3/3 ("Failed to load
   ApplicationContext"). The first attempt kept `build/`, replayed a cached `:test`, and

@@ -34,14 +34,14 @@ later — so this one instruction has to be obeyed several gates before the gate
 needs it.
 
 0. **`/verify` (reachability) — does it run at all?** One viewport, the golden
-   path, no probes. Two minutes. A FAIL or BLOCKED here stops the sign-off before
-   an agent is spawned — fix it and re-run this pass.
+   path, no probes. Two minutes. FAIL or BLOCKED stops the sign-off before an agent
+   is spawned — fix, re-run. Its one-line verdict opens gate 5's pack (#464 left it out).
 
 1. **`/simplify` — clean it up.** Apply reuse / simplification / efficiency /
    altitude cleanups to the changed code. It *edits* the working tree, so run it
    before the bug hunt — the reviewer then reads the code you're actually
-   shipping, not a draft. Re-run the relevant tests after it applies fixes. A fix that
-   changes what a User sees or refreshes is read against the issue's criteria first.
+   shipping, not a draft. Re-run the relevant tests after it applies fixes. Every fix,
+   an agent's remedy most of all, is read against the issue's criteria first (#464).
 
    It fans out to **three** review agents in parallel — reuse+simplification (one
    agent: the two shared 3 of 3 findings when split), efficiency, and altitude — each
@@ -51,9 +51,9 @@ needs it.
    touches must be brief, present-tense, and non-obvious: it says what the thing
    *is* and any rule a reader would get wrong, and nothing the signature already
    says. Delete changelog prose ("used to…", "previously…", "changed so…"),
-   issue/PR numbers, and narration of the bug that prompted the code — git
-   history and ADRs hold the why-it-changed. Rationale longer than a sentence or
-   two belongs in an ADR the comment links. A layout finding (a line too long, a
+   issue/PR numbers, and bug narration — git and ADRs hold the why. Longer rationale
+   goes in a linked ADR. A cross-reference repointed off a deleted symbol is re-read
+   against its new target: the link resolves while the claim goes false (#464). A layout finding (a line too long, a
    comment to rewrap) is closed by measuring it, not by assuming an edit or the
    formatter reflowed it: #407 recorded a rewrap as done, and gate 5 found the
    111-character line still there.

@@ -145,7 +145,7 @@ fix with `HEAD`'s config parked and landing the new thresholds last.
 | `DataClassShouldBeImmutable`, `VarCouldBeVal` | Mutable Data |
 | `UnusedImports`, `UnusedPrivate*` | Dead Code |
 | `UnnecessaryAbstractClass` | Shallow module — Replace Superclass with Delegate |
-| `UnsafeCallOnNullableType` (`!!`), `UseRequireNotNull` | Make null impossible in the type. Else Introduce Assertion — but `checkNotNull` throws `IllegalStateException`, which `ApiExceptionHandler` answers 409, so on a request path it misreports a server fault; keep it to boot-time code |
+| `UnsafeCallOnNullableType` (`!!`), `UseRequireNotNull` | Make null impossible in the type. Else Introduce Assertion — but `checkNotNull` throws `IllegalStateException`, which `ApiExceptionHandler` answers 409, so on a request path it misreports a server fault; keep it to boot-time code. Detekt cannot see the same smell in a list index, `first()` or `last { }` that only a comment keeps safe: build the value so it exists by construction (#464 folded from the first point rather than indexing) |
 | `UnnecessaryLet`, `UseOrEmpty` | Inline Function / Substitute Algorithm (the idiom) |
 
 How the moves land here:
