@@ -3,3 +3,9 @@
 # This file is layered on top of detekt's default ruleset
 # (buildUponDefaultConfig = true in build.gradle.kts), so only project-specific
 # overrides belong here.
+
+style:
+  # Guard clauses are the catalog's move for a nested conditional, so they don't
+  # count against a function's returns.
+  ReturnCount:
+    excludeGuardClauses: true

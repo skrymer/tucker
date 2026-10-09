@@ -27,14 +27,10 @@ data class FoodCandidate(
      * Add-Food form, and a surface with no form (a **Check**) cannot proceed.
      */
     fun atwaterNutrition(): Nutrition? {
-        val protein = proteinPer100g
-        val carbs = carbsPer100g
-        val fat = fatPer100g
-        return if (protein != null && carbs != null && fat != null) {
-            Nutrition.fromMacros(proteinPer100g = protein, carbsPer100g = carbs, fatPer100g = fat)
-        } else {
-            null
-        }
+        val protein = proteinPer100g ?: return null
+        val carbs = carbsPer100g ?: return null
+        val fat = fatPer100g ?: return null
+        return Nutrition.fromMacros(proteinPer100g = protein, carbsPer100g = carbs, fatPer100g = fat)
     }
 
     init {
