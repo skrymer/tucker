@@ -2,6 +2,7 @@ package com.tucker.service
 
 import com.tucker.api.InvalidFieldException
 import com.tucker.domain.Goal
+import com.tucker.domain.GoalPlan
 import com.tucker.domain.IntakeTargets
 import com.tucker.domain.WeightTrend
 import com.tucker.persistence.GoalRepository
@@ -49,10 +50,8 @@ class GoalService(
             ?: throw IllegalArgumentException("log your weight before setting a goal")
         refuseTargetNotBelowTrend(targetWeightKg, trendKg)
         val goal = Goal.started(
-            startedOn = startedOn,
-            startWeightKg = trendKg,
-            targetWeightKg = targetWeightKg,
-            rateKgPerWeek = rateKgPerWeek,
+            id = goals.nextId(),
+            plan = GoalPlan(startedOn, startWeightKg = trendKg, targetWeightKg, rateKgPerWeek),
             today = today,
         )
         refuseRateOutrunningMaintenance(goal, today)
@@ -113,7 +112,7 @@ class GoalService(
         val trendKg = currentTrendKg() ?: return
         val stamped = goal.markReachedIfCrossed(trendKg, today)
         if (stamped.reachedOn != null && stamped.reachedOn != goal.reachedOn) {
-            goals.updateReachedOn(requireNotNull(goal.id), stamped.reachedOn)
+            goals.updateReachedOn(goal.id, stamped.reachedOn)
         }
     }
 

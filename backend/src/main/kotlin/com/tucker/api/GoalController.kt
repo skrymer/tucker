@@ -19,6 +19,8 @@ import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 import java.time.LocalDate
 
+// The wire shape mirrors Goal's fields on purpose: the domain type stays free of Jackson.
+/* jscpd:ignore-start */
 /** API representation of a Goal, including its derived daily deficit. */
 data class GoalResponse(
     val id: Long,
@@ -31,6 +33,7 @@ data class GoalResponse(
     /** The date this Goal was reached (trend met target), or null if never reached (ADR 0008). */
     val reachedOn: LocalDate?,
 )
+/* jscpd:ignore-end */
 
 /**
  * Progress against the active Goal. The planned fields project from the Goal and
@@ -87,7 +90,7 @@ private fun GoalProgress.toResponse(reachedOn: LocalDate?) = GoalProgressRespons
 )
 
 private fun Goal.toResponse() = GoalResponse(
-    id = persistedId(id),
+    id = id,
     startedOn = startedOn,
     startWeightKg = startWeightKg,
     targetWeightKg = targetWeightKg,

@@ -360,9 +360,9 @@ flowchart TD
 The SQLite schema as of the latest Flyway migration
 (`backend/src/main/resources/db/migration/`), in two halves around the `user`
 table: what a User eats, and what their body and plan are doing. Every table but
-the reference data carries a `NOT NULL user_id`, and the uniqueness a User would
-expect is per-User — one weigh-in per day, one Weekly Review per day, one active
-Goal, a barcode once per catalog
+the installation-wide ones carries a `NOT NULL user_id`, and the uniqueness a User
+would expect is per-User — one weigh-in per day, one Weekly Review per day, one
+active Goal, a barcode once per catalog
 ([ADR 0021](adr/0021-every-row-is-owned-by-one-user.md)). `created_at` /
 `updated_at` are omitted from every entity; dates are ISO-8601 `text`.
 
@@ -522,9 +522,9 @@ erDiagram
   }
 ```
 
-### Reference data
+### Installation-wide tables
 
-Four tables belong to no User. They are seeded by migrations or bootstrapped by
+Five tables belong to no User. They are seeded by migrations or bootstrapped by
 the app, and the same for everybody.
 
 | Table | Holds | Filled by |
@@ -533,6 +533,7 @@ the app, and the same for everybody.
 | `reference_food_synonym` | Query rewrites for Reference Food search (`term` → `replacement`) | Flyway (V17) |
 | `nutrient_reference_value` | NHMRC Nutrient Reference Values by nutrient, sex and the age a band opens at | Flyway (V18) |
 | `app_config` | Installation-wide key/value settings, such as the VAPID key pair | The app, on first boot |
+| `id_sequence` | The last id handed out per aggregate table, so an aggregate has its id before it is stored ([ADR 0036](adr/0036-an-aggregate-has-its-identity-from-creation.md)) | Flyway (V21), then the app on every create |
 
 ## Keeping this current
 

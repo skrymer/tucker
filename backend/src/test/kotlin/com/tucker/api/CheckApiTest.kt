@@ -75,7 +75,7 @@ class CheckApiTest {
     ) {
         reviews.insert(
             WeeklyReview(
-                id = null,
+                id = reviews.nextId(),
                 reviewedOn = on,
                 trendWeightKg = 86.0,
                 intakeTargets = IntakeTargets(
@@ -198,7 +198,7 @@ class CheckApiTest {
         seedTargets(budgetKcal = 2492.0, floorG = 170.0, on = today)
         // Stamped by a device already on tomorrow (ADR 0014), with tracking off.
         reviews.insert(
-            WeeklyReview(id = null, reviewedOn = today.plusDays(1), trendWeightKg = 86.0, intakeTargets = null),
+            WeeklyReview(reviews.nextId(), reviewedOn = today.plusDays(1), trendWeightKg = 86.0, intakeTargets = null),
         )
         providerKnows(nutellaBarcode, nutella(nutellaBarcode))
 
@@ -272,7 +272,7 @@ class CheckApiTest {
         providerKnows(nutellaBarcode, nutella(nutellaBarcode))
         completeSetup(LocalDate.now(), tracksCalories = false)
         reviews.insert(
-            WeeklyReview(id = null, reviewedOn = LocalDate.now(), trendWeightKg = 86.0, intakeTargets = null),
+            WeeklyReview(reviews.nextId(), reviewedOn = LocalDate.now(), trendWeightKg = 86.0, intakeTargets = null),
         )
 
         // Same status, opposite advice: this User has nothing left to finish, so the
@@ -288,7 +288,7 @@ class CheckApiTest {
         seedTargets()
         foods.insert(
             Food.plain(
-                id = null,
+                id = foods.nextId(),
                 name = "My skyr",
                 barcode = "5701234567890",
                 nutrition = Nutrition.fromMacros(proteinPer100g = 10.0, carbsPer100g = 4.0, fatPer100g = 0.2),

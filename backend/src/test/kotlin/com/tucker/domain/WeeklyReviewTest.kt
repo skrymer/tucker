@@ -15,7 +15,7 @@ class WeeklyReviewTest {
             proteinFloorG = 170.0,
         ),
     ) = WeeklyReview(
-        id = null,
+        id = 1,
         reviewedOn = LocalDate.of(2026, 6, 1),
         trendWeightKg = trendWeightKg,
         intakeTargets = intakeTargets,

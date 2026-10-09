@@ -67,11 +67,4 @@ class RunAsTest {
         // whoever just failed.
         assertNull(SecurityContextHolder.getContext().authentication)
     }
-
-    @Test
-    fun `a User who has never been stored cannot be run as`() {
-        assertFailsWith<IllegalStateException> {
-            runAs(User(id = null, email = "nobody@tucker.invalid")) { CurrentUser().id }
-        }
-    }
 }

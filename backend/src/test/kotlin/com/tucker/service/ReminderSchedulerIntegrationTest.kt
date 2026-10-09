@@ -122,7 +122,7 @@ class ReminderSchedulerIntegrationTest {
         sender.sentEndpoints.clear()
         sender.sentPayloads.clear()
         sender.throwOnNextSend = false
-        subscriber = users.insertIfAbsent(User(id = null, email = AccessTokens.EMAIL))
+        subscriber = users.insertIfAbsent(User(users.nextId(), AccessTokens.EMAIL))
     }
 
     /**
@@ -146,11 +146,11 @@ class ReminderSchedulerIntegrationTest {
                 remindersEnabled = true, tracksCalories = tracksCalories,
             ),
         )
-        subscriptions.claim(PushSubscription(null, endpoint, "BKey", "Auth", null))
-        weights.save(WeightMeasurement(null, today.minusDays(1), 86.0))
+        subscriptions.claim(PushSubscription(endpoint, "BKey", "Auth", null))
+        weights.save(WeightMeasurement(weights.nextId(), today.minusDays(1), 86.0))
         reviews.insert(
             WeeklyReview(
-                null, today.minusDays(OVERDUE_BY_DAYS), 86.0,
+                reviews.nextId(), today.minusDays(OVERDUE_BY_DAYS), 86.0,
                 IntakeTargets(Maintenance(2400.0, Maintenance.Basis.FORMULA_SEED), 1850.0, 172.0),
             ),
         )
@@ -158,7 +158,7 @@ class ReminderSchedulerIntegrationTest {
 
     /** Somebody else, provisioned so the tick has more than one turn to take. */
     private fun somebodyElse(): User =
-        users.insertIfAbsent(User(id = null, email = "second@tucker.invalid"))
+        users.insertIfAbsent(User(users.nextId(), "second@tucker.invalid"))
 
     /**
      * The nudges sent so far, parsed the way the service worker reads them
@@ -352,7 +352,7 @@ class ReminderSchedulerIntegrationTest {
     fun `prunes a subscription the push service reports gone`() {
         seedEligible(endpoint = "https://push.example/device-good")
         runAs(subscriber) {
-            subscriptions.claim(PushSubscription(null, "https://push.example/device-gone", "BKey", "Auth", null))
+            subscriptions.claim(PushSubscription("https://push.example/device-gone", "BKey", "Auth", null))
         }
 
         val result = scheduler.runTick(now)

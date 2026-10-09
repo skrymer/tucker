@@ -8,7 +8,6 @@ package com.tucker.domain
  * device's identity and is unique across the store.
  */
 data class PushSubscription(
-    val id: Long?,
     val endpoint: String,
     val p256dh: String,
     val auth: String,

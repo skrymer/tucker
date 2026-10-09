@@ -40,7 +40,7 @@ class FoodBarcodeApiTest {
     @Test
     fun `a catalog hit returns 200 EXISTING with the saved Food`() {
         foods.insert(
-            Food.plain(null, "Skyr", "5701234567890", Nutrition.fromMacros(10.0, 4.0, 0.2)),
+            Food.plain(foods.nextId(), "Skyr", "5701234567890", Nutrition.fromMacros(10.0, 4.0, 0.2)),
         )
 
         mockMvc.get("/api/foods/barcode/5701234567890").andExpect {

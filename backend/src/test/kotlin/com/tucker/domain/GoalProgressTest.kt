@@ -14,7 +14,7 @@ class GoalProgressTest {
         targetWeightKg: Double = 80.0,
         rateKgPerWeek: Double = 0.5,
     ) = Goal(
-        id = null,
+        id = 1,
         startedOn = LocalDate.of(2026, 5, 1),
         startWeightKg = startWeightKg,
         targetWeightKg = targetWeightKg,

@@ -66,7 +66,7 @@ class WeightTimelineApiTest {
     private fun reviewed(on: LocalDate, budgetKcal: Double) {
         reviews.insert(
             WeeklyReview(
-                id = null,
+                id = reviews.nextId(),
                 reviewedOn = on,
                 trendWeightKg = 80.0,
                 intakeTargets = IntakeTargets(
@@ -116,7 +116,7 @@ class WeightTimelineApiTest {
     ) {
         goals.insert(
             Goal(
-                id = null,
+                id = goals.nextId(),
                 startedOn = startedOn,
                 startWeightKg = startWeightKg,
                 targetWeightKg = targetWeightKg,

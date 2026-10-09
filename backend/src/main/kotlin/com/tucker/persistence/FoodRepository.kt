@@ -27,7 +27,8 @@ import org.springframework.transaction.annotation.Transactional
 class FoodRepository(
     private val dsl: DSLContext,
     private val currentUser: CurrentUser,
-) {
+    ids: IdSequence,
+) : AggregateRepository(ids, FOOD) {
 
     fun findById(id: Long): Food? =
         dsl.selectFrom(FOOD)
@@ -65,10 +66,11 @@ class FoodRepository(
     @Transactional
     fun insert(food: Food): Food {
         val rec = dsl.newRecord(FOOD)
+        rec.id = food.id.toInt()
         rec.applyFrom(food)
         rec.store()
-        dsl.linkTags(rec.id!!, food.tagIds, currentUser.ownerId)
-        return food.copy(id = rec.id!!.toLong())
+        dsl.linkTags(rec.id, food.tagIds, currentUser.ownerId)
+        return food
     }
 
     /**
@@ -88,16 +90,15 @@ class FoodRepository(
      */
     @Transactional
     fun update(food: Food): Food? {
-        val id = requireNotNull(food.id) { "cannot update a Food without an id" }
         val rec = dsl.newRecord(FOOD)
         rec.applyFrom(food)
         val rowsChanged = dsl.update(FOOD)
             .set(rec)
-            .where(FOOD.ID.eq(id.toInt()))
+            .where(FOOD.ID.eq(food.id.toInt()))
             .and(FOOD.USER_ID.eq(currentUser.ownerId))
             .execute()
         if (rowsChanged == 0) return null
-        dsl.replaceTagsOf(id.toInt(), food.tagIds, currentUser.ownerId)
+        dsl.replaceTagsOf(food.id.toInt(), food.tagIds, currentUser.ownerId)
         return food
     }
 
@@ -121,7 +122,7 @@ class FoodRepository(
         val tagIdsByFood = dsl.select(FOOD_TAG.FOOD_ID, FOOD_TAG.TAG_ID)
             .from(FOOD_TAG)
             .join(FOOD).on(FOOD.ID.eq(FOOD_TAG.FOOD_ID))
-            .where(FOOD_TAG.FOOD_ID.`in`(foods.map { it.id!!.toInt() }))
+            .where(FOOD_TAG.FOOD_ID.`in`(foods.map { it.id.toInt() }))
             .and(FOOD.USER_ID.eq(currentUser.ownerId))
             .fetchGroups({ it[FOOD_TAG.FOOD_ID]!!.toLong() }, { it[FOOD_TAG.TAG_ID]!!.toLong() })
         return foods.map { it.copy(tagIds = tagIdsByFood[it.id].orEmpty().toSet()) }

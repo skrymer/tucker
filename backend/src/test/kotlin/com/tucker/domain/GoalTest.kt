@@ -12,7 +12,7 @@ class GoalTest {
     private val startedOn = today
 
     private fun goalWithRate(rateKgPerWeek: Double) = Goal(
-        id = null,
+        id = 1,
         startedOn = startedOn,
         startWeightKg = 90.0,
         targetWeightKg = 80.0,
@@ -23,13 +23,7 @@ class GoalTest {
     @Test
     fun `started rejects a start date in the future`() {
         val ex = assertThrows<IllegalArgumentException> {
-            Goal.started(
-                startedOn = today.plusDays(1),
-                startWeightKg = 90.0,
-                targetWeightKg = 80.0,
-                rateKgPerWeek = 0.5,
-                today = today,
-            )
+            Goal.started(id = 7, GoalPlan(today.plusDays(1), 90.0, 80.0, 0.5), today = today)
         }
         assert(ex.message!!.contains("future", ignoreCase = true)) {
             "expected message to mention future, was '${ex.message}'"
@@ -37,17 +31,11 @@ class GoalTest {
     }
 
     @Test
-    fun `started makes an unsaved, active, never-reached Goal from today`() {
-        val goal = Goal.started(
-            startedOn = today,
-            startWeightKg = 90.0,
-            targetWeightKg = 80.0,
-            rateKgPerWeek = 0.5,
-            today = today,
-        )
+    fun `started makes an active, never-reached Goal from today, under the id it is given`() {
+        val goal = Goal.started(id = 7, GoalPlan(today, 90.0, 80.0, 0.5), today = today)
         assertEquals(today, goal.startedOn)
         assert(goal.active) { "a Goal being set now is the active one" }
-        assertNull(goal.id, "a Goal being set now is not yet saved")
+        assertEquals(7, goal.id, "a Goal has its identity from the moment it is created")
         assertEquals(90.0, goal.startWeightKg)
         assertEquals(80.0, goal.targetWeightKg)
         assertEquals(0.5, goal.rateKgPerWeek)
@@ -117,7 +105,7 @@ class GoalTest {
     fun `rejects a target weight at or above the start weight`() {
         val ex = assertThrows<IllegalArgumentException> {
             Goal(
-                id = null,
+                id = 1,
                 startedOn = startedOn,
                 startWeightKg = 80.0,
                 targetWeightKg = 90.0,
@@ -137,7 +125,7 @@ class GoalTest {
         // which figure the caller got wrong.
         val ex = assertThrows<IllegalArgumentException> {
             Goal(
-                id = null,
+                id = 1,
                 startedOn = startedOn,
                 startWeightKg = 0.0,
                 targetWeightKg = 0.0,
@@ -154,7 +142,7 @@ class GoalTest {
     fun `rejects a target weight of zero`() {
         val ex = assertThrows<IllegalArgumentException> {
             Goal(
-                id = null,
+                id = 1,
                 startedOn = startedOn,
                 startWeightKg = 90.0,
                 targetWeightKg = 0.0,
@@ -173,7 +161,7 @@ class GoalTest {
         // the start, not merely not above it.
         val ex = assertThrows<IllegalArgumentException> {
             Goal(
-                id = null,
+                id = 1,
                 startedOn = startedOn,
                 startWeightKg = 80.0,
                 targetWeightKg = 80.0,

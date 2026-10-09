@@ -21,7 +21,7 @@ data class RecipeIngredient(
  * [Nutrition], after which it can be logged exactly like any other Food.
  */
 data class Recipe(
-    val id: Long?,
+    val id: Long,
     val name: String,
     val ingredients: List<RecipeIngredient>,
     val cookedWeightG: Double,

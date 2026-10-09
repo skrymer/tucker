@@ -13,7 +13,7 @@ enum class FoodKind { FOOD, RECIPE }
  * the database reaches every Food already matched to it.
  */
 data class Food(
-    val id: Long?,
+    val id: Long,
     val name: String,
     val kind: FoodKind,
     val barcode: String?,
@@ -67,7 +67,7 @@ data class Food(
 
     companion object {
         /** A plain (non-recipe) Food. */
-        fun plain(id: Long?, name: String, barcode: String?, nutrition: Nutrition): Food =
+        fun plain(id: Long, name: String, barcode: String?, nutrition: Nutrition): Food =
             Food(id, name, FoodKind.FOOD, barcode, nutrition, cookedWeightG = null)
     }
 }

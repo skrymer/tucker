@@ -62,7 +62,7 @@ class CsrfGateTest {
     /** Enough for a review to succeed, so a refusal is the gate and not a missing input. */
     private fun setupComplete(on: LocalDate) {
         profiles.save(Profile(Sex.MALE, LocalDate.of(1986, 5, 22), 180.0))
-        weights.save(WeightMeasurement(null, on, 86.0))
+        weights.save(WeightMeasurement(weights.nextId(), on, 86.0))
     }
 
     @Test

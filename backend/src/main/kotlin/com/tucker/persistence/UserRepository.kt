@@ -5,6 +5,7 @@ import com.tucker.jooq.Tables.USER
 import com.tucker.jooq.tables.records.UserRecord
 import org.jooq.DSLContext
 import org.springframework.stereotype.Repository
+import org.springframework.transaction.annotation.Transactional
 
 /**
  * Persistence for [User].
@@ -15,7 +16,7 @@ import org.springframework.stereotype.Repository
  * place, so scoping it would be circular.
  */
 @Repository
-class UserRepository(private val dsl: DSLContext) {
+class UserRepository(private val dsl: DSLContext, ids: IdSequence) : AggregateRepository(ids, USER) {
 
     /**
      * The User with this [email], or null. The lookup is case-insensitive because
@@ -38,7 +39,7 @@ class UserRepository(private val dsl: DSLContext) {
         dsl.selectFrom(USER).orderBy(USER.ID).fetch().map { it.toUser() }
 
     /**
-     * Store [user] unless their email is already taken, and return the stored row
+     * Store [user] unless its email is already taken, and return the stored row
      * either way.
      *
      * `ON CONFLICT DO NOTHING` rather than an insert whose failure is caught,
@@ -53,6 +54,7 @@ class UserRepository(private val dsl: DSLContext) {
      */
     fun insertIfAbsent(user: User): User {
         dsl.insertInto(USER)
+            .set(USER.ID, user.id.toInt())
             .set(USER.EMAIL, user.email)
             .onConflictDoNothing()
             .execute()
@@ -60,6 +62,10 @@ class UserRepository(private val dsl: DSLContext) {
             "insertIfAbsent neither inserted ${user.email} nor found it"
         }
     }
+
+    /** Store a User for [email] under a newly drawn id, or return the one stored first. */
+    @Transactional
+    fun provision(email: String): User = insertIfAbsent(User(nextId(), email))
 
     private fun UserRecord.toUser(): User = User(id = id!!.toLong(), email = email)
 }

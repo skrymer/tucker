@@ -22,7 +22,7 @@ class TagService(private val tags: TagRepository) {
         val outcome = tag.renamedTo(name, owned)
         when (outcome) {
             is TagRename.Renamed -> tags.rename(outcome.tag)
-            is TagRename.Merged -> tags.merge(from = id, into = checkNotNull(outcome.survivor.id))
+            is TagRename.Merged -> tags.merge(from = id, into = outcome.survivor.id)
         }
         return outcome
     }

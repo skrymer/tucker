@@ -21,7 +21,7 @@ class MicronutrientIntakeTest {
     private val weekStart = day.minusDays(6)
 
     private fun weighed(date: LocalDate, food: Food, grams: Double) =
-        WeighedEntry.log(date, food, grams, today = day)
+        WeighedEntry.log(1, date, food, grams, today = day)
 
     @Test
     fun `a window shorter than the trailing seven days is refused`() {
@@ -228,7 +228,7 @@ class MicronutrientIntakeTest {
         val references = cheddarLikeIron(1.0)
         val eaten = listOf(weighed(day, chicken, grams = 700.0))
         val takeaway = EstimatedEntry(
-            id = null,
+            id = 2,
             loggedOn = day,
             label = "Thai",
             calories = eaten.single().calories,
@@ -442,7 +442,7 @@ class MicronutrientIntakeTest {
         // today's ingredients no longer account for them: the borrow is live, the
         // Entry is not.
         val entries = listOf(
-            WeighedEntry(id = null, loggedOn = day, foodId = 2, grams = 500.0, calories = 300.0, protein = 0.0),
+            WeighedEntry(id = 2, loggedOn = day, foodId = 2, grams = 500.0, calories = 300.0, protein = 0.0),
         )
 
         val read = intake(entries, referenceFoods = aBorrow, recipes = listOf(broth))
@@ -511,7 +511,7 @@ class MicronutrientIntakeTest {
         val chicken = food(id = 1, name = "Chicken breast", referenceFoodId = 42)
         val entries = listOf(
             weighed(day, chicken, grams = 200.0),
-            EstimatedEntry(id = null, loggedOn = day, label = "Work canteen", calories = 312.8, protein = null),
+            EstimatedEntry(id = 2, loggedOn = day, label = "Work canteen", calories = 312.8, protein = null),
         )
 
         val read = intake(entries, mapOf(1L to chicken), aBorrow)
@@ -613,9 +613,9 @@ class MicronutrientIntakeTest {
         day,
         entries,
         joined(
-            foods + recipes.associate { it.id!! to it.asFood() },
+            foods + recipes.associate { it.id to it.asFood() },
             referenceFoods,
-            recipes.associate { it.id!! to it.ingredients },
+            recipes.associate { it.id to it.ingredients },
         ),
         references,
     )

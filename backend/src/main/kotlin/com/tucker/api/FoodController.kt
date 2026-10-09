@@ -130,7 +130,7 @@ internal fun Food.toResponse(
     ingredientCount: Int? = null,
     referenceFoodName: String? = null,
 ) = FoodResponse(
-    id = persistedId(id),
+    id = id,
     name = name,
     kind = kind,
     barcode = barcode,
@@ -142,7 +142,7 @@ internal fun Food.toResponse(
     ingredientCount = ingredientCount,
     referenceFoodId = referenceFoodId,
     referenceFoodName = referenceFoodName,
-    tags = tags.sortedBy { it.name }.map { FoodTagResponse(persistedId(it.id), it.name.value) },
+    tags = tags.sortedBy { it.name }.map { FoodTagResponse(it.id, it.name.value) },
 )
 
 /** Which **Reference Food** a Food should borrow its micronutrients from. */
@@ -249,9 +249,10 @@ class FoodController(
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @Transactional
     fun create(@RequestBody request: CreateFoodRequest): FoodResponse {
         val food = Food.plain(
-            id = null,
+            id = foods.nextId(),
             name = request.name,
             barcode = request.barcode,
             nutrition = Nutrition.fromMacros(

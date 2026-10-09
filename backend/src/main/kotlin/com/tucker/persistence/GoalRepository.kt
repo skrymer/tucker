@@ -25,7 +25,8 @@ import java.time.LocalDate
 class GoalRepository(
     private val dsl: DSLContext,
     private val currentUser: CurrentUser,
-) {
+    ids: IdSequence,
+) : AggregateRepository(ids, GOAL) {
 
     fun findActive(): Goal? =
         dsl.selectFrom(GOAL)
@@ -42,6 +43,7 @@ class GoalRepository(
 
     fun insert(goal: Goal): Goal {
         val rec = dsl.newRecord(GOAL)
+        rec.id = goal.id.toInt()
         rec.userId = currentUser.ownerId
         rec.startedOn = goal.startedOn.toString()
         rec.startWeightKg = goal.startWeightKg
@@ -50,7 +52,7 @@ class GoalRepository(
         rec.active = if (goal.active) 1 else 0
         rec.reachedOn = goal.reachedOn?.toString()
         rec.store()
-        return goal.copy(id = rec.id!!.toLong())
+        return goal
     }
 
     /** Clear the active flag on the caller's Goals — call before activating a new one. */

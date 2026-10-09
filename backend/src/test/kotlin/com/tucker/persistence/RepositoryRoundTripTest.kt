@@ -45,9 +45,8 @@ class RepositoryRoundTripTest {
 
     @Test
     fun `a Food round-trips`() {
-        val saved = foods.insert(Food.plain(null, "Rolled oats", null, Nutrition(389.0, 16.9, 66.3, 6.9)))
-        assertNotNull(saved.id)
-        val loaded = foods.findById(saved.id!!)
+        val saved = foods.insert(Food.plain(foods.nextId(), "Rolled oats", null, Nutrition(389.0, 16.9, 66.3, 6.9)))
+        val loaded = foods.findById(saved.id)
         assertNotNull(loaded)
         assertEquals("Rolled oats", loaded.name)
         assertEquals(FoodKind.FOOD, loaded.kind)
@@ -55,10 +54,20 @@ class RepositoryRoundTripTest {
     }
 
     @Test
+    fun `a Food is stored under the id it was built with`() {
+        foods.nextId() // taken and never used, so the table's own next rowid is not this id
+        val id = foods.nextId()
+
+        foods.insert(Food.plain(id, "Rolled oats", null, Nutrition(389.0, 16.9, 66.3, 6.9)))
+
+        assertEquals("Rolled oats", foods.findById(id)?.name)
+    }
+
+    @Test
     fun `foods are listed alphabetically ignoring case`() {
-        foods.insert(Food.plain(null, "banana", null, Nutrition(89.0, 1.1, 22.8, 0.3)))
-        foods.insert(Food.plain(null, "Cherry", null, Nutrition(50.0, 1.0, 12.0, 0.3)))
-        foods.insert(Food.plain(null, "apple", null, Nutrition(52.0, 0.3, 13.8, 0.2)))
+        foods.insert(Food.plain(foods.nextId(), "banana", null, Nutrition(89.0, 1.1, 22.8, 0.3)))
+        foods.insert(Food.plain(foods.nextId(), "Cherry", null, Nutrition(50.0, 1.0, 12.0, 0.3)))
+        foods.insert(Food.plain(foods.nextId(), "apple", null, Nutrition(52.0, 0.3, 13.8, 0.2)))
 
         val listed = foods.findAll().map { it.name }
             .filter { it in setOf("banana", "Cherry", "apple") }
@@ -70,9 +79,9 @@ class RepositoryRoundTripTest {
 
     @Test
     fun `a weighed Entry round-trips with computed calories`() {
-        val banana = foods.insert(Food.plain(null, "Banana", null, Nutrition(89.0, 1.1, 22.8, 0.3)))
+        val banana = foods.insert(Food.plain(foods.nextId(), "Banana", null, Nutrition(89.0, 1.1, 22.8, 0.3)))
         val date = LocalDate.of(2026, 5, 22)
-        entries.insert(WeighedEntry.log(date, banana, 120.0, today = date))
+        entries.insert(WeighedEntry.log(entries.nextId(), date, banana, 120.0, today = date))
 
         val onDate = entries.findByDate(date)
         assertEquals(1, onDate.size)
@@ -84,7 +93,7 @@ class RepositoryRoundTripTest {
     @Test
     fun `an estimated Entry round-trips and stays flagged`() {
         val date = LocalDate.of(2026, 5, 22)
-        entries.insert(EstimatedEntry(null, date, "Restaurant pasta", 800.0, null))
+        entries.insert(EstimatedEntry(entries.nextId(), date, "Restaurant pasta", 800.0, null))
 
         val logged = entries.findByDate(date).single() as EstimatedEntry
         assertEquals("Restaurant pasta", logged.label)
@@ -92,13 +101,35 @@ class RepositoryRoundTripTest {
     }
 
     @Test
+    fun `an Entry is stored under the id it was built with`() {
+        val date = LocalDate.of(2026, 5, 22)
+        entries.nextId() // taken and never used, so the table's own next rowid is not this id
+        val id = entries.nextId()
+
+        entries.insert(EstimatedEntry(id, date, "Restaurant pasta", 800.0, null))
+
+        assertEquals(id, entries.findByDate(date).single().id)
+    }
+
+    @Test
     fun `a weight measurement is replaced when re-saved for the same day`() {
         val date = LocalDate.of(2026, 5, 22)
-        weights.save(WeightMeasurement(null, date, 88.4))
-        weights.save(WeightMeasurement(null, date, 88.1))
+        weights.save(WeightMeasurement(weights.nextId(), date, 88.4))
+        weights.save(WeightMeasurement(weights.nextId(), date, 88.1))
 
         assertEquals(88.1, weights.findOn(date)?.weightKg)
         assertEquals(1, weights.findAll().size)
+    }
+
+    @Test
+    fun `a weight measurement is stored under the id it was built with`() {
+        val date = LocalDate.of(2026, 5, 22)
+        weights.nextId() // taken and never used, so the table's own next rowid is not this id
+        val id = weights.nextId()
+
+        weights.save(WeightMeasurement(id, date, 88.4))
+
+        assertEquals(id, weights.findOn(date)?.id)
     }
 
     @Test
@@ -106,18 +137,28 @@ class RepositoryRoundTripTest {
         val date = LocalDate.of(2026, 5, 22)
         // 107.05 has no exact 32-bit representation: a Float round-trip degrades it to
         // 107.05000305175781. SQLite REAL is a full double, so nothing should be lost.
-        weights.save(WeightMeasurement(null, date, 107.05))
+        weights.save(WeightMeasurement(weights.nextId(), date, 107.05))
 
         assertEquals(107.05, weights.findOn(date)?.weightKg)
     }
 
     @Test
     fun `the active Goal round-trips`() {
-        goals.insert(Goal(null, LocalDate.of(2026, 5, 1), 90.0, 80.0, 0.5, active = true))
+        goals.insert(Goal(goals.nextId(), LocalDate.of(2026, 5, 1), 90.0, 80.0, 0.5, active = true))
         val active = goals.findActive()
         assertNotNull(active)
         assertEquals(80.0, active.targetWeightKg)
         assertEquals(0.5, active.rateKgPerWeek)
+    }
+
+    @Test
+    fun `a Goal is stored under the id it was built with`() {
+        goals.nextId() // taken and never used, so the table's own next rowid is not this id
+        val id = goals.nextId()
+
+        goals.insert(Goal(id, LocalDate.of(2026, 5, 1), 90.0, 80.0, 0.5, active = true))
+
+        assertEquals(id, goals.findActive()?.id)
     }
 
     @Test
@@ -166,6 +207,17 @@ class RepositoryRoundTripTest {
     }
 
     @Test
+    fun `a review is stored under the id it was built with`() {
+        val day = LocalDate.of(2026, 6, 10)
+        reviews.nextId() // taken and never used, so the table's own next rowid is not this id
+        val id = reviews.nextId()
+
+        reviews.insert(WeeklyReview(id, day, trendWeightKg = 86.0, intakeTargets = null))
+
+        assertEquals(id, reviews.findByReviewedOn(day)?.id)
+    }
+
+    @Test
     fun `a held review round-trips the reason it was held for`() {
         // `insert` hands back the object it was given, so a reason the repository
         // never wrote would still read correctly everywhere the engine is tested.
@@ -173,7 +225,7 @@ class RepositoryRoundTripTest {
         val day = LocalDate.of(2026, 6, 10)
         reviews.insert(
             WeeklyReview(
-                id = null,
+                id = reviews.nextId(),
                 reviewedOn = day,
                 trendWeightKg = 86.0,
                 intakeTargets = IntakeTargets(
@@ -202,7 +254,7 @@ class RepositoryRoundTripTest {
         val day = LocalDate.of(2026, 6, 17)
         reviews.insert(
             WeeklyReview(
-                id = null,
+                id = reviews.nextId(),
                 reviewedOn = day,
                 trendWeightKg = 86.0,
                 intakeTargets = IntakeTargets(
@@ -220,20 +272,27 @@ class RepositoryRoundTripTest {
     }
 
     @Test
+    fun `a Recipe takes its id from the same sequence as a Food, since it is stored as one`() {
+        val foodId = foods.nextId()
+
+        val recipeId = recipes.nextId()
+
+        assertEquals(listOf(foodId + 1, foodId + 2), listOf(recipeId, foods.nextId()))
+    }
+
+    @Test
     fun `a Recipe rolls up its ingredients and round-trips`() {
-        val oats = foods.insert(Food.plain(null, "Oats", null, Nutrition(389.0, 16.9, 66.3, 6.9)))
-        val milk = foods.insert(Food.plain(null, "Milk", null, Nutrition(64.0, 3.4, 4.8, 3.6)))
+        val oats = foods.insert(Food.plain(foods.nextId(), "Oats", null, Nutrition(389.0, 16.9, 66.3, 6.9)))
+        val milk = foods.insert(Food.plain(foods.nextId(), "Milk", null, Nutrition(64.0, 3.4, 4.8, 3.6)))
         val saved = recipes.insert(
             Recipe(
-                id = null,
+                id = recipes.nextId(),
                 name = "Porridge",
                 ingredients = listOf(RecipeIngredient(oats, 80.0), RecipeIngredient(milk, 300.0)),
                 cookedWeightG = 360.0,
             ),
         )
-        assertNotNull(saved.id)
-
-        val loaded = recipes.findById(saved.id!!)
+        val loaded = recipes.findById(saved.id)
         assertNotNull(loaded)
         assertEquals(2, loaded.ingredients.size)
         // (389*0.8 + 64*3.0) = 503.2 kcal over 360 g of finished dish

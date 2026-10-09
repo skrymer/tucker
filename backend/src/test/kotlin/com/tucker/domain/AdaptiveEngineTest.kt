@@ -17,10 +17,10 @@ class AdaptiveEngineTest {
     fun `WeightTrend smooths a noisy series`() {
         val trend = WeightTrend.from(
             listOf(
-                WeightMeasurement(null, day(1), 80.0),
-                WeightMeasurement(null, day(2), 82.0),
-                WeightMeasurement(null, day(3), 80.0),
-                WeightMeasurement(null, day(4), 81.0),
+                WeightMeasurement(1, day(1), 80.0),
+                WeightMeasurement(2, day(2), 82.0),
+                WeightMeasurement(3, day(3), 80.0),
+                WeightMeasurement(4, day(4), 81.0),
             ),
         )
         // EWMA (alpha 0.1): the first reading seeds the trend outright, and each
@@ -233,8 +233,8 @@ class AdaptiveEngineTest {
         val log = DailyLog(
             day(1),
             listOf(
-                EstimatedEntry(null, day(1), "Cafe lunch", 600.0, null),
-                WeighedEntry(null, day(1), foodId = 1, grams = 100.0, calories = 400.0, protein = 20.0),
+                EstimatedEntry(1, day(1), "Cafe lunch", 600.0, null),
+                WeighedEntry(2, day(1), foodId = 1, grams = 100.0, calories = 400.0, protein = 20.0),
             ),
         )
         assertEquals(1000.0, log.caloriesConsumed(), 0.01)
@@ -252,7 +252,7 @@ class AdaptiveEngineTest {
 
     @Test
     fun `DailyLog is on target under the budget with the protein floor met`() {
-        val log = DailyLog(day(1), listOf(EstimatedEntry(null, day(1), "Lunch", 1500.0, 150.0)))
+        val log = DailyLog(day(1), listOf(EstimatedEntry(1, day(1), "Lunch", 1500.0, 150.0)))
         assertEquals(
             DayStatus.ON_TARGET,
             log.dayStatus(calorieBudgetKcal = 2000.0, proteinFloorG = 140.0),
@@ -261,7 +261,7 @@ class AdaptiveEngineTest {
 
     @Test
     fun `DailyLog is over budget when intake exceeds the budget even with the floor met`() {
-        val log = DailyLog(day(1), listOf(EstimatedEntry(null, day(1), "Lunch", 2200.0, 150.0)))
+        val log = DailyLog(day(1), listOf(EstimatedEntry(1, day(1), "Lunch", 2200.0, 150.0)))
         assertEquals(
             DayStatus.OVER_BUDGET,
             log.dayStatus(calorieBudgetKcal = 2000.0, proteinFloorG = 140.0),
@@ -270,7 +270,7 @@ class AdaptiveEngineTest {
 
     @Test
     fun `DailyLog is over budget when intake exceeds the budget with the floor unmet`() {
-        val log = DailyLog(day(1), listOf(EstimatedEntry(null, day(1), "Lunch", 2200.0, 90.0)))
+        val log = DailyLog(day(1), listOf(EstimatedEntry(1, day(1), "Lunch", 2200.0, 90.0)))
         assertEquals(
             DayStatus.OVER_BUDGET,
             log.dayStatus(calorieBudgetKcal = 2000.0, proteinFloorG = 140.0),
@@ -279,7 +279,7 @@ class AdaptiveEngineTest {
 
     @Test
     fun `DailyLog is in progress under the budget with the protein floor unmet`() {
-        val log = DailyLog(day(1), listOf(EstimatedEntry(null, day(1), "Lunch", 1500.0, 90.0)))
+        val log = DailyLog(day(1), listOf(EstimatedEntry(1, day(1), "Lunch", 1500.0, 90.0)))
         assertEquals(
             DayStatus.IN_PROGRESS,
             log.dayStatus(calorieBudgetKcal = 2000.0, proteinFloorG = 140.0),
@@ -289,7 +289,7 @@ class AdaptiveEngineTest {
     @Test
     fun `DailyLog is on target at exactly the protein floor`() {
         // A Floor is a floor: reaching it is meeting it, not falling short of it.
-        val log = DailyLog(day(1), listOf(EstimatedEntry(null, day(1), "Lunch", 1500.0, 140.0)))
+        val log = DailyLog(day(1), listOf(EstimatedEntry(1, day(1), "Lunch", 1500.0, 140.0)))
         assertEquals(
             DayStatus.ON_TARGET,
             log.dayStatus(calorieBudgetKcal = 2000.0, proteinFloorG = 140.0),
@@ -298,7 +298,7 @@ class AdaptiveEngineTest {
 
     @Test
     fun `DailyLog is on target at exactly the calorie budget with the floor met`() {
-        val log = DailyLog(day(1), listOf(EstimatedEntry(null, day(1), "Lunch", 2000.0, 150.0)))
+        val log = DailyLog(day(1), listOf(EstimatedEntry(1, day(1), "Lunch", 2000.0, 150.0)))
         assertEquals(
             DayStatus.ON_TARGET,
             log.dayStatus(calorieBudgetKcal = 2000.0, proteinFloorG = 140.0),

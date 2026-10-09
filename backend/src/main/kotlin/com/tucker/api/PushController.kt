@@ -48,7 +48,6 @@ class PushController(
     fun subscribe(@RequestBody request: SubscriptionDto) {
         subscriptions.claim(
             PushSubscription(
-                id = null,
                 endpoint = request.endpoint,
                 p256dh = request.keys.p256dh,
                 auth = request.keys.auth,

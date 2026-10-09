@@ -1,5 +1,6 @@
 package com.tucker.api
 
+import com.tucker.domain.Tag
 import com.tucker.domain.TagName
 import com.tucker.domain.TagRename
 import com.tucker.persistence.TagRepository
@@ -7,6 +8,7 @@ import com.tucker.persistence.TagWithFoodCount
 import com.tucker.service.TagService
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -40,10 +42,11 @@ class TagController(private val tags: TagRepository, private val tagService: Tag
      * duplicate ever being an error (ADR 0033).
      */
     @PostMapping
+    @Transactional
     fun create(@RequestBody request: CreateTagRequest): ResponseEntity<TagResponse> {
         val name = TagName(request.name)
         tags.findByName(name)?.let { return ResponseEntity.ok(it.toResponse()) }
-        val created = TagWithFoodCount(tags.insert(name), foodCount = 0)
+        val created = TagWithFoodCount(tags.insert(Tag(tags.nextId(), name)), foodCount = 0)
         return ResponseEntity.status(HttpStatus.CREATED).body(created.toResponse())
     }
 
@@ -63,5 +66,5 @@ class TagController(private val tags: TagRepository, private val tagService: Tag
     @ResponseStatus(HttpStatus.NO_CONTENT)
     fun delete(@PathVariable id: Long) = tags.delete(id)
 
-    private fun TagWithFoodCount.toResponse() = TagResponse(persistedId(tag.id), tag.name.value, foodCount)
+    private fun TagWithFoodCount.toResponse() = TagResponse(tag.id, tag.name.value, foodCount)
 }

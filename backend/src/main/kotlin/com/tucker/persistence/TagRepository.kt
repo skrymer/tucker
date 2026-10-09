@@ -18,7 +18,8 @@ data class TagWithFoodCount(val tag: Tag, val foodCount: Int)
 class TagRepository(
     private val dsl: DSLContext,
     private val currentUser: CurrentUser,
-) {
+    ids: IdSequence,
+) : AggregateRepository(ids, TAG) {
 
     /** The caller's Tags, alphabetically ignoring case (ADR 0033), each with its Food count. */
     fun findAllWithFoodCounts(): List<TagWithFoodCount> {
@@ -63,7 +64,7 @@ class TagRepository(
     fun rename(tag: Tag) {
         dsl.update(TAG)
             .set(TAG.NAME, tag.name.value)
-            .where(TAG.ID.eq(checkNotNull(tag.id).toInt()))
+            .where(TAG.ID.eq(tag.id.toInt()))
             .and(TAG.USER_ID.eq(currentUser.ownerId))
             .execute()
     }
@@ -90,16 +91,15 @@ class TagRepository(
     }
 
     /**
-     * Create the caller's Tag named [name], or return the one another request created
-     * under that name first. Two devices creating one name at once both miss a lookup,
-     * so the unique index settles the race here rather than failing the loser.
+     * Store the caller's [tag], or return the one another request created under its
+     * name first. Two devices creating one name at once both miss a lookup, so the
+     * unique index settles the race here rather than failing the loser.
      */
-    fun insert(name: TagName): Tag {
-        val id = dsl.insertInto(TAG, TAG.USER_ID, TAG.NAME)
-            .values(currentUser.ownerId, name.value)
+    fun insert(tag: Tag): Tag {
+        val inserted = dsl.insertInto(TAG, TAG.ID, TAG.USER_ID, TAG.NAME)
+            .values(tag.id.toInt(), currentUser.ownerId, tag.name.value)
             .onConflictDoNothing()
-            .returning(TAG.ID)
-            .fetchOne()?.id
-        return id?.let { Tag(it.toLong(), name) } ?: checkNotNull(findByName(name)).tag
+            .execute()
+        return if (inserted == 1) tag else checkNotNull(findByName(tag.name)).tag
     }
 }

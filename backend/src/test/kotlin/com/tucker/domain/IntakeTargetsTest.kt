@@ -51,7 +51,7 @@ class IntakeTargetsTest {
     fun `the Calorie Budget is Maintenance less the Goal's daily deficit`() {
         val targets = IntakeTargets.from(
             maintenance = Maintenance(2400.0, Maintenance.Basis.ADAPTIVE),
-            goal = Goal(null, LocalDate.of(2026, 5, 1), 90.0, 80.0, 0.5, active = true),
+            goal = Goal(1, LocalDate.of(2026, 5, 1), 90.0, 80.0, 0.5, active = true),
             trendWeightKg = 85.0,
         )
 
@@ -77,7 +77,7 @@ class IntakeTargetsTest {
         // that leaves nothing to eat, so there is no Budget to derive (ADR 0030) —
         // and the line is exactly where the figure stops existing, which is what
         // the init block above refuses. Not a kinder one.
-        val goal = Goal(null, LocalDate.of(2026, 5, 1), 60.0, 50.0, 1.5, active = true)
+        val goal = Goal(1, LocalDate.of(2026, 5, 1), 60.0, 50.0, 1.5, active = true)
         fun applies(kcal: Double) =
             IntakeTargets.deficitApplies(Maintenance(kcal, Maintenance.Basis.ADAPTIVE), goal)
 
@@ -92,7 +92,7 @@ class IntakeTargetsTest {
         // re-derived: the Goal live when the summary is read may not be the one the
         // review was run against, and then the answer would contradict the Budget
         // it is printed beside.
-        val steep = Goal(null, LocalDate.of(2026, 5, 1), 60.0, 50.0, 1.5, active = true)
+        val steep = Goal(1, LocalDate.of(2026, 5, 1), 60.0, 50.0, 1.5, active = true)
         val gentle = steep.copy(rateKgPerWeek = 0.5)
         val maintenance = Maintenance(1594.6, Maintenance.Basis.FORMULA_SEED)
 
@@ -111,7 +111,7 @@ class IntakeTargetsTest {
         // publishes is one the engine derived.
         val targets = IntakeTargets.from(
             maintenance = Maintenance(1594.6, Maintenance.Basis.FORMULA_SEED),
-            goal = Goal(null, LocalDate.of(2026, 5, 1), 60.0, 50.0, 1.5, active = true),
+            goal = Goal(1, LocalDate.of(2026, 5, 1), 60.0, 50.0, 1.5, active = true),
             trendWeightKg = 55.0,
         )
 
@@ -128,7 +128,7 @@ class IntakeTargetsTest {
     fun `the Protein Floor comes off the trend, with or without a Goal`() {
         // Decoupled from the Goal (ADR 0008), so it is 2 g/kg either way.
         val maintenance = Maintenance(2400.0, Maintenance.Basis.ADAPTIVE)
-        val goal = Goal(null, LocalDate.of(2026, 5, 1), 90.0, 80.0, 0.5, active = true)
+        val goal = Goal(1, LocalDate.of(2026, 5, 1), 90.0, 80.0, 0.5, active = true)
 
         assertEquals(170.0, IntakeTargets.from(maintenance, goal, 85.0).proteinFloorG, 1e-9)
         assertEquals(170.0, IntakeTargets.from(maintenance, null, 85.0).proteinFloorG, 1e-9)
