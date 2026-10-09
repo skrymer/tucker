@@ -20,10 +20,9 @@ class MicronutrientIntakeService(
     /**
      * The window [from]..[to], both bounds inclusive.
      *
-     * Read-only transactional for [com.tucker.api.IntakeBreakdownController]'s reason:
-     * the Foods must describe the Entries that ate them, and holding one connection
-     * across both reads is what stops a Food deleted in the gap leaving an Entry
-     * nothing can name.
+     * Read-only transactional: the Foods must describe the Entries that ate them, and
+     * holding one connection across both reads is what stops a Food deleted in the gap
+     * leaving an Entry nothing can name.
      */
     @Transactional(readOnly = true)
     fun intake(from: LocalDate, to: LocalDate): MicronutrientIntake {

@@ -136,7 +136,7 @@ Frontend commands (run in `frontend/`, package manager is pnpm):
 - `pnpm typecheck` — `nuxt typecheck` (vue-tsc) over the whole program
 
 Continuous integration — every pull request runs `.github/workflows/ci.yml`:
-the backend `./gradlew detektMain detektTest` + `./gradlew build`, the frontend ESLint +
+the backend `./gradlew build` (type-resolving Detekt included), the frontend ESLint +
 typecheck + Vitest + mocked Playwright suite, a real-stack `e2e` job that
 builds the backend Docker image once and runs both the backend Testcontainers
 e2e (`./gradlew e2eTest`) and the frontend smokes (`pnpm test:smoke`) against

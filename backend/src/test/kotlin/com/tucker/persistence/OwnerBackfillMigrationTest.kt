@@ -233,8 +233,7 @@ class OwnerBackfillMigrationTest {
     private fun Connection.queryString(sql: String): String? =
         createStatement().use { it.executeQuery(sql).use { rows -> rows.next(); rows.getString(1) } }
 
-    private fun Connection.queryOne(sql: String): Int =
-        createStatement().use { it.executeQuery(sql).use { rows -> rows.next(); rows.getInt(1) } }
+    private fun Connection.queryOne(sql: String): Int = query(sql) { it.getInt(1) }.first()
 
     private fun Connection.columnNames(table: String): List<String> =
         query("PRAGMA table_info($table)") { row -> row.getString("name") }

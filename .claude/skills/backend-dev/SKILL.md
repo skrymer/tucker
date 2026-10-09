@@ -127,13 +127,14 @@ not restate them.
 misses the type-resolution rules). Each hit is a smell; fix it with the catalog move
 [tdd's `refactoring.md`](../tdd/refactoring.md) names, chosen to make the code read better —
 never by shaving lines, never with `@Suppress` or a baseline. The commit names the move.
+The limits are `detekt.yml`'s, stated once there.
 
-| Rule (limit) | Smell |
+| Rule | Smell |
 | --- | --- |
-| `LongMethod` (20 lines; tests exempt) | Long Function |
-| `CognitiveComplexMethod` (4), `NestedBlockDepth` (2), `ComplexCondition` (2), `NestedScopeFunctions` (1), `ReturnCount` (2; guard clauses exempt) | Nested conditionals |
-| `LongParameterList` (function 4, constructor 5) | Long Parameter List — on a constructor, a class with more than one job (Large Class) |
-| `LargeClass` (200; tests exempt), `TooManyFunctions` (11) | Large Class |
+| `LongMethod` (tests exempt) | Long Function |
+| `CognitiveComplexMethod`, `NestedBlockDepth`, `ComplexCondition`, `NestedScopeFunctions`, `ReturnCount` (guard clauses exempt) | Nested conditionals |
+| `LongParameterList` | Long Parameter List — on a constructor, a class with more than one job (Large Class) |
+| `LargeClass` (tests exempt), `TooManyFunctions` | Large Class |
 | `StringLiteralDuplication` | Duplicated Code |
 | `DataClassShouldBeImmutable`, `VarCouldBeVal` | Mutable Data |
 | `UnusedImports`, `UnusedPrivate*` | Dead Code |
@@ -141,7 +142,7 @@ never by shaving lines, never with `@Suppress` or a baseline. The commit names t
 | `UnsafeCallOnNullableType` (`!!`), `UseRequireNotNull` | Make null impossible in the type; else Introduce Assertion (`checkNotNull(x) { "<invariant>" }`) |
 | `UnnecessaryLet`, `UseOrEmpty` | Inline Function / Substitute Algorithm (the idiom) |
 
-How the moves land here (#455):
+How the moves land here:
 
 - **A bean's collaborators → Extract Class**: move the assembly into a service (or a
   component it needs), so a controller reads HTTP → domain → HTTP. Keep each endpoint on
