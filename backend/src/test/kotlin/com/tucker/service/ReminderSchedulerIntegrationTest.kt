@@ -364,6 +364,18 @@ class ReminderSchedulerIntegrationTest {
         assertEquals(1, result.sent)
     }
 
+    @Test
+    fun `a nudge that reached no device is not recorded as sent`() {
+        // Stamped only on a real delivery (ADR 0010 dedupe): a nudge no device received
+        // must not consume the overdue episode, or the User is never told.
+        seedEligible(endpoint = "https://push.example/device-gone")
+
+        val result = scheduler.runTick(now)
+
+        assertEquals(0, result.sent)
+        assertEquals(null, runAs(subscriber) { reminderState.lastReminderSentOn() })
+    }
+
     /**
      * The reminder is one per *person* per overdue episode, not one per installation
      * (ADR 0010) — so somebody coming back stands their own nudge down and nobody
