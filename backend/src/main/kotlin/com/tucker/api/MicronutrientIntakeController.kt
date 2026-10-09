@@ -1,24 +1,13 @@
 package com.tucker.api
 
-import com.tucker.domain.BorrowedFood
-import com.tucker.domain.BorrowedIngredient
-import com.tucker.domain.FoodKind
 import com.tucker.domain.Micronutrient
 import com.tucker.domain.MicronutrientClaim
 import com.tucker.domain.MicronutrientIntake
 import com.tucker.domain.MicronutrientRow
-import com.tucker.domain.RecipeIngredient
-import com.tucker.domain.ReferenceFood
 import com.tucker.domain.ReferenceLine
 import com.tucker.domain.UnmatchedFood
-import com.tucker.persistence.EntryRepository
-import com.tucker.persistence.FoodRepository
-import com.tucker.persistence.NutrientReferenceValueRepository
-import com.tucker.persistence.ProfileRepository
-import com.tucker.persistence.RecipeRepository
-import com.tucker.persistence.ReferenceFoodRepository
+import com.tucker.service.MicronutrientIntakeService
 import org.springframework.format.annotation.DateTimeFormat
-import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
@@ -92,10 +81,6 @@ data class MicronutrientIntakeResponse(
     val unmatched: List<UnmatchedFoodResponse>,
 )
 
-/** One ingredient line joined to what its Food borrows, if anything. */
-private fun RecipeIngredient.borrow(references: Map<Long, ReferenceFood>) =
-    BorrowedIngredient(BorrowedFood(ingredient, references[ingredient.referenceFoodId]), grams)
-
 private fun UnmatchedFood.toResponse() =
     UnmatchedFoodResponse(foodId = foodId, name = name, share = share)
 
@@ -128,46 +113,15 @@ private fun MicronutrientIntake.toResponse() = MicronutrientIntakeResponse(
 
 @RestController
 @RequestMapping("/api/micronutrient-intake")
-class MicronutrientIntakeController(
-    private val entries: EntryRepository,
-    private val foods: FoodRepository,
-    private val recipes: RecipeRepository,
-    private val referenceFoods: ReferenceFoodRepository,
-    private val referenceValues: NutrientReferenceValueRepository,
-    private val profiles: ProfileRepository,
-) {
+class MicronutrientIntakeController(private val micronutrientIntake: MicronutrientIntakeService) {
 
     /**
      * The window [from]..[to], both bounds inclusive. The client owns the window
      * (ADR 0014) — it is the only thing that knows the User's local day.
-     *
-     * Read-only transactional for [IntakeBreakdownController]'s reason: the Foods
-     * must describe the Entries that ate them, and holding one connection across
-     * both reads is what stops a Food deleted in the gap leaving an Entry nothing
-     * can name.
      */
-    @Transactional(readOnly = true)
     @GetMapping
     fun intake(
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) from: LocalDate,
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) to: LocalDate,
-    ): MicronutrientIntakeResponse {
-        val logged = entries.findBetween(from, to)
-        val catalog = foods.foodsOf(logged)
-        // A Recipe is never matched — it rolls up from whichever of its ingredients
-        // are (ADR 0027) — so its composition is read alongside the catalog, and its
-        // ingredients' own borrows are resolved in the same pass as the catalog's.
-        val compositions = recipes.ingredientsOf(catalog.filterValues { it.kind is FoodKind.Recipe }.keys)
-        val eatenFoods = catalog.values + compositions.values.flatten().map { it.ingredient }
-        val borrowed = referenceFoods.findByIds(eatenFoods.mapNotNull { it.referenceFoodId }.toSet())
-        val eaten = catalog.mapValues { (id, food) ->
-            BorrowedFood(food, borrowed[food.referenceFoodId], compositions[id].orEmpty().map { it.borrow(borrowed) })
-        }
-        // Resolved once, at the window's END date, so a window spanning a birthday
-        // has one answer rather than a different line per day (CONTEXT.md). A User
-        // who has not set a Profile up has no body to read against, and every
-        // nutrient then earns no claim rather than being read against a guess.
-        val references = profiles.get()?.let { referenceValues.all().forBody(it, on = to) }
-        return MicronutrientIntake.of(from, to, logged, eaten, references).toResponse()
-    }
+    ): MicronutrientIntakeResponse = micronutrientIntake.intake(from, to).toResponse()
 }

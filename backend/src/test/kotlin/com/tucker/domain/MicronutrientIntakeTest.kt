@@ -28,7 +28,7 @@ class MicronutrientIntakeTest {
         val chicken = food(id = 1, name = "Chicken breast")
         val entries = listOf(weighed(day, chicken, grams = 200.0))
         val refused = assertFailsWith<IllegalArgumentException> {
-            MicronutrientIntake.of(day, day, entries, joined(mapOf(1L to chicken), emptyMap()), emptyMap())
+            MicronutrientIntake.of(day, day, BorrowedLog(entries, joined(mapOf(1L to chicken), emptyMap())), emptyMap())
         }
 
         assertEquals(
@@ -484,7 +484,7 @@ class MicronutrientIntakeTest {
         val entries = listOf(weighed(day, chicken, grams = 200.0))
 
         assertFailsWith<NoSuchElementException> {
-            MicronutrientIntake.of(weekStart, day, entries, eaten = emptyMap(), references = null)
+            MicronutrientIntake.of(weekStart, day, BorrowedLog(entries, foods = emptyMap()), references = null)
         }
     }
 
@@ -611,11 +611,13 @@ class MicronutrientIntakeTest {
     ) = MicronutrientIntake.of(
         weekStart,
         day,
-        entries,
-        joined(
-            foods + recipes.associate { it.id to it.asFood() },
-            referenceFoods,
-            recipes.associate { it.id to it.ingredients },
+        BorrowedLog(
+            entries,
+            joined(
+                foods + recipes.associate { it.id to it.asFood() },
+                referenceFoods,
+                recipes.associate { it.id to it.ingredients },
+            ),
         ),
         references,
     )

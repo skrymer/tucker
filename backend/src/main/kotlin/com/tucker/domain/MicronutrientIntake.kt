@@ -106,20 +106,19 @@ data class MicronutrientIntake(
 
         /**
          * Read the window [from]..[to], both bounds inclusive, as a Micronutrient
-         * Intake. [eaten] must hold every Food the [entries] reference, each joined to
-         * what it borrows — and a **Recipe** joined to the composition it rolls up
-         * from, each ingredient carrying its own borrow. An Entry naming no Food is an
-         * **Estimated Entry**, which can never contribute or be queued. [references] is the set of
-         * lines to read the result against, and is null when there is no body to
-         * resolve them for — which is a different thing from a body with no band open.
+         * Intake. [eaten] must hold every Food its Entries reference. An Entry naming no
+         * Food is an **Estimated Entry**, which can never contribute or be queued.
+         * [references] is the set of lines to read the result against, and is null
+         * when there is no body to resolve them for — which is a different thing from
+         * a body with no band open.
          */
         fun of(
             from: LocalDate,
             to: LocalDate,
-            entries: List<Entry>,
-            eaten: Map<Long, BorrowedFood>,
+            eaten: BorrowedLog,
             references: Map<Micronutrient, ReferenceIntake>?,
         ): MicronutrientIntake {
+            val (entries, foods) = eaten
             // Refused rather than served, the move IntakeBreakdown.of already makes
             // for an Entry outside its window: the width is an invariant of this read
             // and not a User's choice, so leaving it to the one client call site that
@@ -131,7 +130,7 @@ data class MicronutrientIntake(
             // the queue attributes a Recipe to the ingredients that made it where the
             // breakdown attributes it to the dish (ADR 0027 amending ADR 0026). Sharing
             // the denominator is what keeps a queue row and a slice shares of one thing.
-            val breakdown = IntakeBreakdown.of(from, to, entries, eaten.mapValues { it.value.food.name })
+            val breakdown = IntakeBreakdown.of(from, to, entries, foods.mapValues { it.value.food.name })
             // What the window ate, with every Recipe opened up into the ingredients
             // that made it — so the nutrient figures, the coverage share and the queue
             // read one set of food rather than three kept in agreement by hand.
@@ -139,7 +138,7 @@ data class MicronutrientIntake(
             // Partitioned rather than filtered twice: what covers and what is left to
             // do are the two halves of one split, so a state added later has to be
             // given a home here rather than falling through both predicates unnoticed.
-            val (covered, queued) = contributionsOf(entries, eaten)
+            val (covered, queued) = contributionsOf(entries, foods)
                 .partition { it.borrowed.contributes }
             return MicronutrientIntake(
                 from = from,

@@ -153,3 +153,14 @@ data class FoodContribution(
     val grams: Double,
     val calories: Double,
 )
+
+/**
+ * A window's **Entries** and every Food they name, keyed by id and each joined to
+ * what it borrows — a **Recipe** to the composition it rolls up from, each ingredient
+ * carrying its own borrow. One value because [foods] has to cover [entries], and
+ * apart the two can disagree silently.
+ */
+data class BorrowedLog(
+    val entries: List<Entry>,
+    val foods: Map<Long, BorrowedFood>,
+)
