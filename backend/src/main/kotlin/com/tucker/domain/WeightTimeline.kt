@@ -211,23 +211,7 @@ data class WeightTimeline(
             val readings = measurements.associateBy { it.measuredOn }
             val days = generateSequence(start) { it.plusDays(1) }
                 .takeWhile { !it.isAfter(to) }
-                .map { day ->
-                    // Weight is the premise and the rest is the addition, so a day
-                    // is built from the scale and then handed to whatever the
-                    // timeline draws beside it (ADR 0029).
-                    val weighed = WeightTimelineDay(
-                        date = day,
-                        weightKg = readings[day]?.weightKg,
-                        // Never null: the window starts no earlier than the first
-                        // reading, so every day it carries has a trend standing
-                        // through it — carried forward from the last weigh-in,
-                        // because the trend moves only when the scale does.
-                        trendKg = checkNotNull(trend.standingOn(day)) {
-                            "the window starts at or after the first reading"
-                        }.trendKg,
-                    )
-                    drawn?.drawOn(weighed) ?: weighed
-                }
+                .map { day -> dayOf(day, readings[day], trend, drawn) }
                 .toList()
             return WeightTimeline(
                 from = start,
@@ -235,6 +219,31 @@ data class WeightTimeline(
                 days = days,
                 evidence = drawn?.summarise(days),
             )
+        }
+
+        /**
+         * One drawn [day]. Weight is the premise and the rest is the addition, so a
+         * day is built from the scale and then handed to whatever the timeline draws
+         * beside it (ADR 0029).
+         */
+        private fun dayOf(
+            day: LocalDate,
+            reading: WeightMeasurement?,
+            trend: WeightTrend,
+            drawn: TimelineEvidence?,
+        ): WeightTimelineDay {
+            val weighed = WeightTimelineDay(
+                date = day,
+                weightKg = reading?.weightKg,
+                // Never null: the window starts no earlier than the first reading, so
+                // every day it carries has a trend standing through it — carried
+                // forward from the last weigh-in, because the trend moves only when
+                // the scale does.
+                trendKg = checkNotNull(trend.standingOn(day)) {
+                    "the window starts at or after the first reading"
+                }.trendKg,
+            )
+            return drawn?.drawOn(weighed) ?: weighed
         }
 
         /**

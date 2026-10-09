@@ -143,15 +143,7 @@ class FoodRepository(
     private fun FoodRecord.toFood(): Food = Food(
         id = id!!.toLong(),
         name = name,
-        kind = when (kind) {
-            PLAIN_KIND -> FoodKind.Plain.also {
-                require(cookedWeightG == null) { "cookedWeightG only applies to a RECIPE" }
-            }
-            RECIPE_KIND -> FoodKind.Recipe(
-                requireNotNull(cookedWeightG) { "Recipe '$name' is stored without a cooked weight" },
-            )
-            else -> error("Food '$name' is stored with an unknown kind '$kind'")
-        },
+        kind = storedKind(),
         barcode = barcode,
         nutrition = Nutrition(
             caloriesPer100g = caloriesPer_100g,
@@ -166,6 +158,17 @@ class FoodRepository(
 // How `food.kind` spells each FoodKind.
 private const val PLAIN_KIND = "FOOD"
 private const val RECIPE_KIND = "RECIPE"
+
+/** The [FoodKind] this row's `kind` and cooked weight spell, refused when they disagree. */
+private fun FoodRecord.storedKind(): FoodKind = when (kind) {
+    PLAIN_KIND -> FoodKind.Plain.also {
+        require(cookedWeightG == null) { "cookedWeightG only applies to a RECIPE" }
+    }
+    RECIPE_KIND -> FoodKind.Recipe(
+        requireNotNull(cookedWeightG) { "Recipe '$name' is stored without a cooked weight" },
+    )
+    else -> error("Food '$name' is stored with an unknown kind '$kind'")
+}
 
 /** Make [tagIds] exactly the Tags the Food [foodId] carries, in two statements however many. */
 private fun DSLContext.replaceTagsOf(foodId: Int, tagIds: Set<Long>, ownerId: Int) {

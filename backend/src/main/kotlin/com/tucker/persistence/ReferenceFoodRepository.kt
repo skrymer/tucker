@@ -102,32 +102,33 @@ class ReferenceFoodRepository(private val dsl: DSLContext) {
         id = id!!.toLong(),
         publicFoodKey = publicFoodKey,
         name = name,
-        micronutrients = Micronutrients(
-            mapOf(
-                Micronutrient.FIBRE to fibreG,
-                Micronutrient.CALCIUM to calciumMg,
-                Micronutrient.IODINE to iodineUg,
-                Micronutrient.IRON to ironMg,
-                Micronutrient.MAGNESIUM to magnesiumMg,
-                Micronutrient.POTASSIUM to potassiumMg,
-                Micronutrient.SELENIUM to seleniumUg,
-                Micronutrient.SODIUM to sodiumMg,
-                Micronutrient.ZINC to zincMg,
-                Micronutrient.VITAMIN_A to vitaminAUg,
-                Micronutrient.THIAMIN to thiaminMg,
-                Micronutrient.RIBOFLAVIN to riboflavinMg,
-                Micronutrient.NIACIN to niacinMg,
-                Micronutrient.VITAMIN_B6 to vitaminB6Mg,
-                Micronutrient.VITAMIN_B12 to vitaminB12Ug,
-                Micronutrient.FOLATE to folateUg,
-                Micronutrient.VITAMIN_C to vitaminCMg,
-                Micronutrient.VITAMIN_D to vitaminDUg,
-                Micronutrient.VITAMIN_E to vitaminEMg,
-            ),
-        ),
+        micronutrients = Micronutrients(MICRONUTRIENT_COLUMNS.mapValues { (_, column) -> get(column) }),
     )
 
     private companion object {
+        /** The column each micronutrient is stored in, per 100 g. */
+        private val MICRONUTRIENT_COLUMNS = mapOf(
+            Micronutrient.FIBRE to REFERENCE_FOOD.FIBRE_G,
+            Micronutrient.CALCIUM to REFERENCE_FOOD.CALCIUM_MG,
+            Micronutrient.IODINE to REFERENCE_FOOD.IODINE_UG,
+            Micronutrient.IRON to REFERENCE_FOOD.IRON_MG,
+            Micronutrient.MAGNESIUM to REFERENCE_FOOD.MAGNESIUM_MG,
+            Micronutrient.POTASSIUM to REFERENCE_FOOD.POTASSIUM_MG,
+            Micronutrient.SELENIUM to REFERENCE_FOOD.SELENIUM_UG,
+            Micronutrient.SODIUM to REFERENCE_FOOD.SODIUM_MG,
+            Micronutrient.ZINC to REFERENCE_FOOD.ZINC_MG,
+            Micronutrient.VITAMIN_A to REFERENCE_FOOD.VITAMIN_A_UG,
+            Micronutrient.THIAMIN to REFERENCE_FOOD.THIAMIN_MG,
+            Micronutrient.RIBOFLAVIN to REFERENCE_FOOD.RIBOFLAVIN_MG,
+            Micronutrient.NIACIN to REFERENCE_FOOD.NIACIN_MG,
+            Micronutrient.VITAMIN_B6 to REFERENCE_FOOD.VITAMIN_B6_MG,
+            Micronutrient.VITAMIN_B12 to REFERENCE_FOOD.VITAMIN_B12_UG,
+            Micronutrient.FOLATE to REFERENCE_FOOD.FOLATE_UG,
+            Micronutrient.VITAMIN_C to REFERENCE_FOOD.VITAMIN_C_MG,
+            Micronutrient.VITAMIN_D to REFERENCE_FOOD.VITAMIN_D_UG,
+            Micronutrient.VITAMIN_E to REFERENCE_FOOD.VITAMIN_E_MG,
+        )
+
         /**
          * Two answers at once, because both are ones only FTS5 can give.
          *

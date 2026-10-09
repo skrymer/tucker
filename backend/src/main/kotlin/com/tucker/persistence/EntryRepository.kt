@@ -97,21 +97,26 @@ class EntryRepository(
         rec.userId = currentUser.ownerId
         rec.loggedOn = entry.loggedOn.toString()
         rec.calories = entry.calories
-        when (entry) {
-            is WeighedEntry -> {
-                rec.kind = EntryKind.WEIGHED.name
-                rec.foodId = entry.foodId.toInt()
-                rec.grams = entry.grams
-                rec.protein = entry.protein
-            }
-            is EstimatedEntry -> {
-                rec.kind = EntryKind.ESTIMATED.name
-                rec.label = entry.label
-                rec.protein = entry.protein
-            }
-        }
+        rec.setKindColumns(entry)
         rec.store()
         return entry
+    }
+
+    /** The columns only one kind of [entry] fills. */
+    private fun EntryRecord.setKindColumns(entry: Entry) {
+        when (entry) {
+            is WeighedEntry -> {
+                kind = EntryKind.WEIGHED.name
+                foodId = entry.foodId.toInt()
+                grams = entry.grams
+                protein = entry.protein
+            }
+            is EstimatedEntry -> {
+                kind = EntryKind.ESTIMATED.name
+                label = entry.label
+                protein = entry.protein
+            }
+        }
     }
 
     /**
