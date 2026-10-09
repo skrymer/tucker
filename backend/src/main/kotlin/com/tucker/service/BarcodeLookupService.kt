@@ -52,20 +52,19 @@ class BarcodeLookupService(
      * nothing is broken, and retrying cannot help.
      */
     private fun askProviders(barcode: String): BarcodeLookup {
-        var anySilent = false
-        for (provider in providers.filter { ProviderCapability.BARCODE_LOOKUP in it.capabilities }) {
-            when (val answer = ask(provider, barcode)) {
-                // Returning here is the "first match wins" rule: no Provider after
-                // this one is consulted.
-                is ProviderLookup.Found -> {
-                    cache.put(barcode, answer.candidate)
-                    return BarcodeLookup.Candidate(answer.candidate)
-                }
-                ProviderLookup.Missing -> Unit
-                ProviderLookup.Inconclusive -> anySilent = true
+        val answers = mutableListOf<ProviderLookup>()
+        // Asked in order and only until one knows the product — the "first match
+        // wins" rule: no Provider after that one is consulted.
+        val found = providers
+            .filter { ProviderCapability.BARCODE_LOOKUP in it.capabilities }
+            .firstNotNullOfOrNull { provider ->
+                ask(provider, barcode).also { answers += it } as? ProviderLookup.Found
             }
+        if (found != null) {
+            cache.put(barcode, found.candidate)
+            return BarcodeLookup.Candidate(found.candidate)
         }
-        return if (anySilent) BarcodeLookup.Inconclusive else BarcodeLookup.Missing
+        return if (ProviderLookup.Inconclusive in answers) BarcodeLookup.Inconclusive else BarcodeLookup.Missing
     }
 
     /**

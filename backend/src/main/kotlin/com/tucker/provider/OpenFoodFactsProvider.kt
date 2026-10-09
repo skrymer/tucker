@@ -131,8 +131,7 @@ class OpenFoodFactsProvider(
     override fun lookupByBarcode(barcode: String): ProviderLookup {
         val startedAt = System.nanoTime()
         for (attempt in 0 until MAX_ATTEMPTS) {
-            val settled = ask(barcode, attempt)
-            if (settled != null) return settled
+            ask(barcode, attempt)?.let { settled -> return settled }
             if (!canRetry(barcode, attempt, System.nanoTime() - startedAt)) break
             runCatching { Thread.sleep(RETRY_BACKOFF.toMillis()) }
         }
@@ -185,16 +184,29 @@ class OpenFoodFactsProvider(
         log.debug("Open Food Facts has no product for barcode {}", barcode, e)
         ProviderLookup.Missing
     } catch (e: RestClientException) {
-        // Only "is this failure transient" is decided here. How many attempts are
-        // left, and whether the budget allows another, belongs to the loop — one
-        // owner per rule, so neither can quietly contradict the other.
-        val transient = worthAskingAgain(e)
+        failed(barcode, attempt, e)
+    }
+
+    /**
+     * What a failed call settled: nothing yet when [failure] is the kind another
+     * attempt could fix, else [ProviderLookup.Inconclusive].
+     *
+     * Only "is this failure transient" is decided here. How many attempts are left,
+     * and whether the budget allows another, belongs to the loop — one owner per
+     * rule, so neither can quietly contradict the other.
+     */
+    private fun failed(barcode: String, attempt: Int, failure: RestClientException): ProviderLookup? {
+        val transient = worthAskingAgain(failure)
+        logFailure(barcode, attempt, failure, retrying = transient && attempt < MAX_ATTEMPTS - 1)
+        return if (transient) null else ProviderLookup.Inconclusive
+    }
+
+    private fun logFailure(barcode: String, attempt: Int, failure: RestClientException, retrying: Boolean) {
         log.warn(
             "Open Food Facts lookup for barcode {} failed (attempt {}/{}){}",
             barcode, attempt + 1, MAX_ATTEMPTS,
-            if (transient && attempt < MAX_ATTEMPTS - 1) ", retrying" else "; no verdict reached", e,
+            if (retrying) ", retrying" else "; no verdict reached", failure,
         )
-        if (transient) null else ProviderLookup.Inconclusive
     }
 
     /**
