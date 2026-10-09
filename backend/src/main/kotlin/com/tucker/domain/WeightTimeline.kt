@@ -222,7 +222,9 @@ data class WeightTimeline(
                         // reading, so every day it carries has a trend standing
                         // through it — carried forward from the last weigh-in,
                         // because the trend moves only when the scale does.
-                        trendKg = trend.standingOn(day)!!.trendKg,
+                        trendKg = checkNotNull(trend.standingOn(day)) {
+                            "the window starts at or after the first reading"
+                        }.trendKg,
                     )
                     drawn?.drawOn(weighed) ?: weighed
                 }

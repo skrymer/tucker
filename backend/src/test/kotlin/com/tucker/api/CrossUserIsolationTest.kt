@@ -1099,7 +1099,7 @@ class CrossUserIsolationTest {
         return postForId(
             token, "/api/foods",
             """
-                {"name":"$name",${barcode?.let { """"barcode":"$it",""" } ?: ""}
+                {"name":"$name",${barcode?.let { """"barcode":"$it",""" }.orEmpty()}
                  "proteinPer100g":10.0,"carbsPer100g":4.0,"fatPer100g":0.2,"tagIds":[]}
             """.trimIndent(),
         )
@@ -1164,7 +1164,7 @@ class CrossUserIsolationTest {
         tracksCalories: Boolean = true,
         clientToday: LocalDate? = null,
     ) {
-        val query = clientToday?.let { "?clientToday=$it" } ?: ""
+        val query = clientToday?.let { "?clientToday=$it" }.orEmpty()
         mockMvc.put("/api/profile$query") {
             header(ACCESS_ASSERTION_HEADER, token)
             contentType = MediaType.APPLICATION_JSON

@@ -10,7 +10,6 @@ import com.tucker.jooq.tables.records.FoodRecord
 import com.tucker.security.CurrentUser
 import org.jooq.DSLContext
 import org.jooq.impl.DSL
-import org.jooq.impl.DSL.select
 import org.springframework.stereotype.Repository
 import org.springframework.transaction.annotation.Transactional
 
@@ -28,7 +27,7 @@ class FoodRepository(
     private val dsl: DSLContext,
     private val currentUser: CurrentUser,
     ids: IdSequence,
-) : AggregateRepository(ids, FOOD) {
+) : AggregateRepository by ids.drawingFor(FOOD) {
 
     fun findById(id: Long): Food? =
         dsl.selectFrom(FOOD)
@@ -48,19 +47,22 @@ class FoodRepository(
             .and(FOOD.USER_ID.eq(currentUser.ownerId))
             .fetchOne()?.toFood()?.let { carryingTags(listOf(it)).single() }
 
-    fun findAll(): List<Food> =
+    fun findAll(): List<Food> = carryingTags(
         dsl.selectFrom(FOOD)
             .where(FOOD.USER_ID.eq(currentUser.ownerId))
             .orderBy(FOOD.NAME.lower())
-            .fetch().map { it.toFood() }.let(::carryingTags)
+            .fetch().map { it.toFood() },
+    )
 
     /** Load every Food in [ids] in a single query (used to resolve recipe ingredients). */
     fun findByIds(ids: Collection<Long>): List<Food> {
         if (ids.isEmpty()) return emptyList()
-        return dsl.selectFrom(FOOD)
-            .where(FOOD.ID.`in`(ids.map { it.toInt() }))
-            .and(FOOD.USER_ID.eq(currentUser.ownerId))
-            .fetch().map { it.toFood() }.let(::carryingTags)
+        return carryingTags(
+            dsl.selectFrom(FOOD)
+                .where(FOOD.ID.`in`(ids.map { it.toInt() }))
+                .and(FOOD.USER_ID.eq(currentUser.ownerId))
+                .fetch().map { it.toFood() },
+        )
     }
 
     @Transactional

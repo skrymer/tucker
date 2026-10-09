@@ -222,7 +222,10 @@ data class MicronutrientIntake(
             covered: List<FoodContribution>,
             references: Map<Micronutrient, ReferenceIntake>,
         ): List<MicronutrientRow> {
-            val borrowed = covered.map { it.grams to it.borrowed.reference!!.micronutrients }
+            val borrowed = covered.map {
+                val reference = checkNotNull(it.borrowed.reference) { "a covered Food borrows a Reference Food" }
+                it.grams to reference.micronutrients
+            }
             return Micronutrient.entries.map { nutrient ->
                 // Divided by the window's whole width rather than by the days that were
                 // logged: a day nothing was logged on still happened, and averaging it

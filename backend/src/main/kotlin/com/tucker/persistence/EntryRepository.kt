@@ -25,7 +25,7 @@ class EntryRepository(
     private val dsl: DSLContext,
     private val currentUser: CurrentUser,
     ids: IdSequence,
-) : AggregateRepository(ids, ENTRY) {
+) : AggregateRepository by ids.drawingFor(ENTRY) {
 
     fun findById(id: Long): Entry? =
         dsl.selectFrom(ENTRY)

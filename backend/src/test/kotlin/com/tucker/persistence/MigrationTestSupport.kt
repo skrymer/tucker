@@ -67,7 +67,7 @@ fun migrate(db: String, upTo: String?, owner: String = MIGRATION_TEST_OWNER) {
         .dataSource(jdbcUrl(db), null, null)
         .locations("classpath:db/migration")
         .placeholders(mapOf(OWNER_EMAIL_PLACEHOLDER to sqlLiteralSafe(owner)))
-        .apply { upTo?.let { target(it) } }
+        .apply { if (upTo != null) target(upTo) }
         .load()
         .migrate()
 }

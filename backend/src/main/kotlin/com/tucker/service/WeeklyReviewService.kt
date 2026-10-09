@@ -1,6 +1,5 @@
 package com.tucker.service
 
-import com.tucker.domain.Goal
 import com.tucker.domain.IntakeTargets
 import com.tucker.domain.Maintenance
 import com.tucker.domain.Profile

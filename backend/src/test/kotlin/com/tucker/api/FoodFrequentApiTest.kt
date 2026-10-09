@@ -131,11 +131,13 @@ class FoodFrequentApiTest {
     @Test
     fun `a Recipe ranks like any other Food and arrives marked as one`() {
         val mince = createFood("Kangaroo mince")
-        val chilli = mockMvc.post("/api/recipes") {
-            contentType = MediaType.APPLICATION_JSON
-            content = """{"name":"Weekday chilli","cookedWeightG":900.0,
-                          "ingredients":[{"foodId":$mince,"grams":500.0}],"tagIds":[]}"""
-        }.andExpect { status { isCreated() } }.andReturn().response.contentAsString.let(::idOf)
+        val chilli = idOf(
+            mockMvc.post("/api/recipes") {
+                contentType = MediaType.APPLICATION_JSON
+                content = """{"name":"Weekday chilli","cookedWeightG":900.0,
+                              "ingredients":[{"foodId":$mince,"grams":500.0}],"tagIds":[]}"""
+            }.andExpect { status { isCreated() } }.andReturn().response.contentAsString,
+        )
         logWeighed(chilli)
 
         frequent().andExpect {

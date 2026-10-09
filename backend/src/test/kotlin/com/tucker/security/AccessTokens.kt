@@ -52,7 +52,7 @@ object AccessTokens {
         signedWith: RSAKey = devKey,
     ): String = signed(
         baseClaims(issuer, audience, issuedAt)
-            .apply { email?.let { claim(EMAIL_CLAIM, it) } }
+            .apply { if (email != null) claim(EMAIL_CLAIM, email) }
             .build(),
         signedWith,
     )

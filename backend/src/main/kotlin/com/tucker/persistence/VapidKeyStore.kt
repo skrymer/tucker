@@ -47,8 +47,11 @@ class VapidKeyStore(private val dsl: DSLContext) {
         // whichever keypair won, never two different keys.
         putIfAbsent(PUBLIC_KEY, publicBase64)
         putIfAbsent(PRIVATE_KEY, privateBase64)
-        return read(PUBLIC_KEY)!! to read(PRIVATE_KEY)!!
+        return storedKey(PUBLIC_KEY) to storedKey(PRIVATE_KEY)
     }
+
+    private fun storedKey(key: String): String =
+        checkNotNull(read(key)) { "$key was just stored, by this boot or a racing one" }
 
     private fun read(key: String): String? =
         dsl.select(APP_CONFIG.CONFIG_VALUE)

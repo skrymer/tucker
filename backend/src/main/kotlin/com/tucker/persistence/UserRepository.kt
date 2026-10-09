@@ -16,7 +16,10 @@ import org.springframework.transaction.annotation.Transactional
  * place, so scoping it would be circular.
  */
 @Repository
-class UserRepository(private val dsl: DSLContext, ids: IdSequence) : AggregateRepository(ids, USER) {
+class UserRepository(
+    private val dsl: DSLContext,
+    ids: IdSequence,
+) : AggregateRepository by ids.drawingFor(USER) {
 
     /**
      * The User with this [email], or null. The lookup is case-insensitive because

@@ -26,7 +26,7 @@ class GoalRepository(
     private val dsl: DSLContext,
     private val currentUser: CurrentUser,
     ids: IdSequence,
-) : AggregateRepository(ids, GOAL) {
+) : AggregateRepository by ids.drawingFor(GOAL) {
 
     fun findActive(): Goal? =
         dsl.selectFrom(GOAL)

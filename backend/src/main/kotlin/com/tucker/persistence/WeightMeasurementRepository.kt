@@ -21,7 +21,7 @@ class WeightMeasurementRepository(
     private val dsl: DSLContext,
     private val currentUser: CurrentUser,
     ids: IdSequence,
-) : AggregateRepository(ids, WEIGHT_MEASUREMENT) {
+) : AggregateRepository by ids.drawingFor(WEIGHT_MEASUREMENT) {
 
     fun findAll(): List<WeightMeasurement> =
         dsl.selectFrom(WEIGHT_MEASUREMENT)

@@ -33,16 +33,16 @@ class AccessAssertionValidatorTest {
         audience: List<String>? = listOf(AccessTokens.AUDIENCE),
         email: Any? = AccessTokens.EMAIL,
         expiresAt: Instant? = now.plusSeconds(60),
-    ): Jwt = Jwt.withTokenValue("assertion")
-        .header("alg", "RS256")
-        .issuer(issuer)
-        .issuedAt(now.minusSeconds(60))
-        .apply {
-            audience?.let { audience(it) }
-            email?.let { claim(EMAIL_CLAIM, it) }
-            expiresAt?.let { expiresAt(it) }
-        }
-        .build()
+    ): Jwt {
+        val builder = Jwt.withTokenValue("assertion")
+            .header("alg", "RS256")
+            .issuer(issuer)
+            .issuedAt(now.minusSeconds(60))
+        audience?.let(builder::audience)
+        email?.let { builder.claim(EMAIL_CLAIM, it) }
+        expiresAt?.let(builder::expiresAt)
+        return builder.build()
+    }
 
     private fun rejects(jwt: Jwt) = validator.validate(jwt).hasErrors()
 
