@@ -4,12 +4,9 @@ import com.tucker.domain.BarcodeLookup
 import com.tucker.domain.Food
 import com.tucker.domain.FoodCandidate
 import com.tucker.domain.FoodKind
-import com.tucker.domain.FrequentFoods
 import com.tucker.domain.Nutrition
 import com.tucker.domain.Tag
-import com.tucker.persistence.EntryRepository
 import com.tucker.persistence.FoodRepository
-import com.tucker.persistence.ReferenceFoodRepository
 import com.tucker.service.BarcodeLookupService
 import com.tucker.service.FoodService
 import org.springframework.format.annotation.DateTimeFormat
@@ -158,10 +155,8 @@ data class MatchReferenceFoodRequest(val referenceFoodId: Long)
 @RequestMapping("/api/foods")
 class FoodController(
     private val foods: FoodRepository,
-    private val entries: EntryRepository,
     private val foodService: FoodService,
     private val barcodeLookup: BarcodeLookupService,
-    private val referenceFoods: ReferenceFoodRepository,
     private val describer: FoodDescriber,
 ) {
 
@@ -169,29 +164,14 @@ class FoodController(
     fun list(): List<FoodResponse> = describer.describe(foods.findAll())
 
     /**
-     * The caller's **Frequent Foods** (ADR 0028) over the window [from]..[to], both
-     * bounds inclusive — at most ten, most logged first. The client owns the window
-     * (ADR 0014) and sorts nothing.
-     *
-     * Read-only transactional for [IntakeBreakdownController.breakdown]'s reason:
-     * the counts and the Foods they name must describe one instant.
+     * The caller's **Frequent Foods** over the window [from]..[to], both bounds
+     * inclusive. The client owns the window (ADR 0014) and sorts nothing.
      */
-    @Transactional(readOnly = true)
     @GetMapping("/frequent")
     fun frequent(
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) from: LocalDate,
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) to: LocalDate,
-    ): List<FoodResponse> {
-        // Checked before the read rather than left to `rank`'s own guard, which
-        // Kotlin's argument evaluation would reach only after the query had run.
-        FrequentFoods.requireWindow(from, to)
-        val ranked = FrequentFoods.rank(from, to, entries.logCountsBetween(from, to))
-        val byId = foods.findByIds(ranked.map { it.foodId }).associateBy { it.id }
-        // `getValue`, not a lookup that tolerates a miss: deleting a Food an Entry
-        // names is refused, so a ranked id with no Food is a bug rather than a tile
-        // to leave out.
-        return describer.describe(ranked.map { byId.getValue(it.foodId) })
-    }
+    ): List<FoodResponse> = describer.describe(foodService.frequent(from, to))
 
     @GetMapping("/{id}")
     fun byId(@PathVariable id: Long): FoodResponse {
@@ -199,37 +179,15 @@ class FoodController(
         return describer.describe(food)
     }
 
-    /**
-     * Match [id] to a **Reference Food**, so it borrows that food's micronutrients
-     * (ADR 0027). A claim a User makes, never one Tucker infers — nothing is matched
-     * silently, because a wrong match reports confident figures for food that was
-     * never eaten.
-     */
+    /** Match [id] to a **Reference Food**, so it borrows that food's micronutrients. */
     @PutMapping("/{id}/reference-food")
-    fun match(@PathVariable id: Long, @RequestBody request: MatchReferenceFoodRequest): FoodResponse {
-        val food = foods.findById(id) ?: throw NotFoundException("no Food with id $id")
-        // Resolved before the write rather than left to the foreign key, which would
-        // surface an unknown id as a 500 rather than as the plain 404 it is.
-        val reference = referenceFoods.findById(request.referenceFoodId)
-            ?: throw NotFoundException("no Reference Food with id ${request.referenceFoodId}")
-        val matched = food.matchedTo(reference)
-        foods.update(matched)
-        return describer.describe(matched)
-    }
+    fun match(@PathVariable id: Long, @RequestBody request: MatchReferenceFoodRequest): FoodResponse =
+        describer.describe(foodService.match(id, request.referenceFoodId))
 
-    /**
-     * Take back [id]'s borrow, leaving it contributing no micronutrients again.
-     *
-     * A match is reversible for the reason it is confirmed in the first place: a
-     * wrong one is worse than none (ADR 0027). Idempotent, like every other delete
-     * here — unmatching a Food that is already unmatched changes nothing.
-     */
+    /** Take back [id]'s borrow, leaving it contributing no micronutrients again. */
     @DeleteMapping("/{id}/reference-food")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    fun unmatch(@PathVariable id: Long) {
-        val food = foods.findById(id) ?: return
-        foods.update(food.unmatched())
-    }
+    fun unmatch(@PathVariable id: Long) = foodService.unmatch(id)
 
     /**
      * Resolve a barcode catalog-first, then through the operator-configured

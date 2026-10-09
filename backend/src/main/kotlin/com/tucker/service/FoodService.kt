@@ -1,13 +1,17 @@
 package com.tucker.service
 
+import com.tucker.api.NotFoundException
 import com.tucker.domain.Food
+import com.tucker.domain.FrequentFoods
 import com.tucker.domain.Recipe
 import com.tucker.persistence.EntryRepository
 import com.tucker.persistence.FoodRepository
 import com.tucker.persistence.RecipeRepository
+import com.tucker.persistence.ReferenceFoodRepository
 import com.tucker.persistence.TagRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.LocalDate
 
 /**
  * Application logic for Foods — the cross-aggregate rules that span the Food
@@ -20,7 +24,57 @@ class FoodService(
     private val entries: EntryRepository,
     private val recipes: RecipeRepository,
     private val tags: TagRepository,
+    private val referenceFoods: ReferenceFoodRepository,
 ) {
+
+    /**
+     * The caller's **Frequent Foods** (ADR 0028) over the window [from]..[to], both
+     * bounds inclusive — at most ten, most logged first.
+     *
+     * Read-only transactional for [com.tucker.api.IntakeBreakdownController.breakdown]'s
+     * reason: the counts and the Foods they name must describe one instant.
+     */
+    @Transactional(readOnly = true)
+    fun frequent(from: LocalDate, to: LocalDate): List<Food> {
+        // Checked before the read rather than left to `rank`'s own guard, which
+        // Kotlin's argument evaluation would reach only after the query had run.
+        FrequentFoods.requireWindow(from, to)
+        val ranked = FrequentFoods.rank(from, to, entries.logCountsBetween(from, to))
+        val byId = foods.findByIds(ranked.map { it.foodId }).associateBy { it.id }
+        // `getValue`, not a lookup that tolerates a miss: deleting a Food an Entry
+        // names is refused, so a ranked id with no Food is a bug rather than a tile
+        // to leave out.
+        return ranked.map { byId.getValue(it.foodId) }
+    }
+
+    /**
+     * Match [id] to a **Reference Food**, so it borrows that food's micronutrients
+     * (ADR 0027). A claim a User makes, never one Tucker infers — nothing is matched
+     * silently, because a wrong match reports confident figures for food that was
+     * never eaten.
+     */
+    fun match(id: Long, referenceFoodId: Long): Food {
+        val food = foods.findById(id) ?: throw NotFoundException("no Food with id $id")
+        // Resolved before the write rather than left to the foreign key, which would
+        // surface an unknown id as a 500 rather than as the plain 404 it is.
+        val reference = referenceFoods.findById(referenceFoodId)
+            ?: throw NotFoundException("no Reference Food with id $referenceFoodId")
+        val matched = food.matchedTo(reference)
+        foods.update(matched)
+        return matched
+    }
+
+    /**
+     * Take back [id]'s borrow, leaving it contributing no micronutrients again.
+     *
+     * A match is reversible for the reason it is confirmed in the first place: a
+     * wrong one is worse than none (ADR 0027). Idempotent, like every other delete
+     * here — unmatching a Food that is already unmatched changes nothing.
+     */
+    fun unmatch(id: Long) {
+        val food = foods.findById(id) ?: return
+        foods.update(food.unmatched())
+    }
 
     /**
      * Add [food] to the catalog carrying its Tags, or return null having written
