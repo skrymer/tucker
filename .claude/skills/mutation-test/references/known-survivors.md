@@ -946,6 +946,10 @@ JSON, not behaviour; ADR 0013 leaves that to the integrated layer. Fields that
 something _derives_ are asserted, because then the assertion is about the derivation.
 The note is on `ApiIntegrationTest`.
 
+**Narrower than it looks** (#455's scoped sweep, triaged by hand):
+- 8 of the 10 `FoodResponse` accessors a scoped sweep reports are **false survivors**: asserted on the wire (`FoodBarcodeApiTest`, `RecipeApiTest`, `FoodReferenceFoodApiTest`, and `ApiIntegrationTest` feeding the response `id` into a weighed POST). The same goes for `EntryResponse`'s `foodId` / `foodName` / `grams` / `isEstimate` (`ApiIntegrationTest`, `TomorrowsEntriesApiTest`).
+- `carbsPer100g` and `fatPer100g` are the two genuinely unasserted accessors. They are the "(2)" above.
+
 Four survivors that looked like this cluster were **real gaps and are now fixed**:
 `caloriesRemaining`'s sign, `FoodController.byId`'s recipe branch, `EntryController.delete`
 actually deleting, and a 409 carrying its domain message.
@@ -963,9 +967,8 @@ class.
 
 ### `persistence` and `service` — the class 6 glue
 
-**Repository write glue** — `FoodRepository.applyFrom` L100–101, `GoalRepository.insert`
-L50–51, `WeeklyReviewRepository.insert` L85, `RecipeRepository.delete` L122,
-`FoodRepository.findByIds` L53, `RecipeRepository.ingredientCounts` L112.
+**Repository write glue** — `FoodRepository.applyFrom` L100–101, `WeeklyReviewRepository.insert`
+L85, `RecipeRepository.delete` L122.
 
 **Verdict: killed by an out-of-scope layer.** Each is a field-by-field projection onto
 a jOOQ record, and its red is that the round trip stops matching — which
@@ -973,9 +976,16 @@ a jOOQ record, and its red is that the round trip stops matching — which
 individual `set` calls survive because a single dropped column usually leaves the rest
 of the response correct; a standalone repository test asserting each setter would pin
 the mapping twice and break on every schema change (ADR 0013, thin glue).
+- **Caveat on `applyFrom`'s carbs and fat setters:** the out-of-scope evidence is thin. No fast test reads either column back, and no smoke checks it (#455's triage).
+
+**Equivalent, not glue** (re-triaged in #455):
+- **The `isEmpty()` early returns** replaced with an empty collection. These are `FoodRepository.findByIds`, `FoodRepository.carryingTags`, `TagRepository.findByIds`, and `RecipeRepository.ingredientCounts` / `ingredientsOf`. Each mutant returns empty for an input that was already empty. The whole-method hand-mutations recorded below tested a different mutant.
+- **`GoalRepository.insert`'s `setActive` / `setReachedOn` removed.** `goal.active` is `DEFAULT 1`, `reached_on` defaults to NULL, and `Goal.started` always builds an active, unreached Goal. No layer can tell the difference.
 
 **Deletion return counts** — `PushSubscriptionRepository.deleteByEndpoint` L77,
-`WeightMeasurementRepository.deleteById` L48, `EntryRepository.findById` L32.
+`WeightMeasurementRepository.deleteById` L48.
+
+**`EntryRepository.findById`'s negated conditional (NO_COVERAGE) is dead code.** The method has zero callers, on `main` too. It was left in place by the user's choice (2026-10-09), so there is no test to write.
 
 **Verdict: real gap, low value.** The row count these return is discarded by every
 caller — deletion is idempotent and the endpoints answer 204 either way (ADR 0021,
@@ -1391,8 +1401,8 @@ Backend, from #442's day read:
   `isNotEmpty()` in `warnUnresolved` negated ×2 — noise** (cited by function: lines
   move with every request field added above them), the log-message construction category
   above: each changes only whether a `logger.warn` line is written.
-- **`EntryResponse.getFoodId` / `getFoodName` / `getGrams` — real gap, accepted by
-  decision**, the `api` DTO-accessor category above.
+- **`EntryResponse.getFoodId` / `getFoodName` / `getGrams` — false survivors**, asserted on
+  the wire by `ApiIntegrationTest` (see the `api` section's #455 note).
 
 From #444's estimate-form slice, `LogGramsSheet.vue` (17 of 19):
 

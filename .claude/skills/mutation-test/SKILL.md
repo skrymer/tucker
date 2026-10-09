@@ -438,6 +438,12 @@ domain code and **~1.6s for anything a controller test covers**.
   score on a repository says nothing about whether a test would notice `<=` becoming
   `<`. Pin each query bound with a test at the boundary — a row dated exactly on the
   bound — as #358's `latestTwoOnOrBefore` / `deleteOnOrAfter` are.
+- **Nor a builder argument, an annotation, or SQL.** pitest can remove `rec.id = …` (a
+  setter call) but not the `TAG.ID` value in `insertInto(TAG, TAG.ID, …).values(…)`, nor a
+  `@Transactional`, nor a term of a migration. Each is pinned by hand-ablation on a copy
+  instead. And when pitest shows a vacuous test, grep its siblings for the same shape in
+  code pitest cannot reach: #455's sweep caught five vacuous id tests; the same flaw in
+  Tag's and User's (both `insertInto`) surfaced only by hand, a gate later.
 
 ## Delegating triage
 

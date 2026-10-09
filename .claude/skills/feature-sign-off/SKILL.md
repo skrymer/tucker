@@ -58,21 +58,20 @@ needs it.
    formatter reflowed it: #407 recorded a rewrap as done, and gate 5 found the
    111-character line still there.
 
-2. **`/mutation-test` — do the tests actually catch bugs?** Run the engine for
-   **each stack the diff touches** — StrykerJS over Vitest in `frontend/`, pitest
-   over the fast JUnit suite in `backend/` — **scoped to the source this change
-   touched**, and give every surviving mutant one of that skill's four verdicts —
-   a real gap (write the missing test), a kill by an out-of-scope layer (name the
-   spec), an equivalent mutant (record why), or a false survivor the engine never
-   ran a test against (settle it by hand-mutating). It runs here, not later, for
-   two reasons: the code is final after gate 1, and it *adds tests* that gate 3
-   must then review. The browser and
+2. **`/mutation-test` — do the tests actually catch bugs?** Run the engine for **each
+   stack the diff touches** — StrykerJS over Vitest in `frontend/`, pitest over the
+   fast JUnit suite in `backend/` — **scoped to the source this change touched**, and
+   give every surviving mutant one of that skill's four verdicts — a real gap (write
+   the missing test), a kill by an out-of-scope layer (name the spec), an equivalent
+   mutant (record why), or a false survivor the engine never ran a test against (settle
+   it by hand-mutating). It runs here, not later, for two reasons: the code is final
+   after gate 1, and it *adds tests* that gate 3 must then review. The browser and
    container layers are out of scope in both, so keep checking those by hand (an
-   unanchored aria-snapshot regex and a substring `getByText` both pass a change
-   they should have caught). Budget roughly a minute for a frontend scope and a
-   few for a backend one. SKIP the stack with a note if the diff touches no
-   mutable source there (docs, config, tests only); that skill's step 1 owns the
-   base, the command and the SKIP-vs-STOP rule.
+   unanchored aria-snapshot regex and a substring `getByText` both pass a change they
+   should have caught). Budget roughly a minute for a frontend scope and a few for a
+   backend one. SKIP the stack with a note if the diff touches no mutable source there
+   (docs, config, tests only); that skill's step 1 owns the base, the command and the
+   SKIP-vs-STOP rule.
 
 3. **`/code-review medium` — hunt correctness bugs.** Review the (now-simplified)
    diff for real bugs. **Run it at `medium` effort**, not the default high: at
@@ -144,10 +143,11 @@ needs it.
    checked headless ([recipe](references/rationale.md#rendering-a-diagram)).
 
 4. **`/check-adrs` — honour the recorded decisions.** Verify the diff against the
-   ADRs in `docs/adr/` and the ubiquitous language in `CONTEXT.md`. A FAIL is
-   either a code fix or a same-PR doc fix — the user's call, surfaced.
-   `[[prefer-source-fix-over-adr]]` picks a fix's form, never its content: copy the
-   ruling from the issue, diff the ADR against it, pin it clause by clause ([how](references/rationale.md#transcribing-a-ruling)).
+   ADRs in `docs/adr/` and the ubiquitous language in `CONTEXT.md`. A FAIL, or an
+   UNCERTAIN that a doc overstates the code, is a code fix or a same-PR doc fix: the
+   user's call, with both offered (#455 offered only wordings; gate 5 sent it back).
+   `[[prefer-source-fix-over-adr]]` picks a fix's form, never its content: copy the ruling
+   from the issue, diff the ADR, pin it clause by clause ([how](references/rationale.md#transcribing-a-ruling)).
 
    **Launch it in the same message as gate 3**, as a background agent briefed to
    follow `.claude/skills/check-adrs/SKILL.md` — that is this gate's standard form,
@@ -202,8 +202,8 @@ needs it.
    named path: the agent is read-only, so a question only a run can answer needs that
    run supplied — or the brief allows a throwaway copy in the scratchpad and says so.
    Take it on the file as committed — after Prettier and the pre-commit hook — and
-   stamp it with `git rev-parse HEAD:<file>`: #408's lint proof named a pre-format blob,
-   and gate 5 rejected it though the rules were identical.
+   stamp it with `git rev-parse HEAD:<file>` (#408), and every saved run log with `git
+   rev-parse HEAD` + `git status --short`: #455's unstamped logs cost gate 5 two rebuilds.
    That copy runs lint and typecheck but **not Vitest**, which cannot resolve modules
    through the symlinked `node_modules` (measured, #402), so any test result the agent
    may need goes in the pack as saved output.
@@ -286,9 +286,8 @@ needs it.
    opening the raw JSONL: both are bounded, and the second is the only way to see
    what an agent actually said.
 
-   It reports; it does not edit. A rejected fix or dismissal goes back to the gate
-   that owns it, and that gate's re-run is what closes it — not a second opinion
-   from here.
+   It reports; it does not edit. A rejected fix or dismissal goes back to the gate that
+   owns it, and that gate's re-run is what closes it — not a second opinion from here.
 
    **It is not a second `/code-review`.** It hunts nothing: given a finding and a
    resolution it judges that one pair, which is a far narrower question than gate
@@ -478,10 +477,10 @@ Why the gates sit in this order, why two overlap, and why a briefed agent is not
   a gate skipped is a gap. If you skip one (e.g. `/verify` SKIP for a docs-only
   change), say which and why.
 - **Fix-or-justify is the bar.** Every finding is either fixed or has a reason it
-  isn't — one that answers **each** remedy the finding names, not only the first: #400
-  dismissed a "move the test config" fix and never answered the "set it in code"
-  alternative beside it, and gate 5 rejected the dismissal. An unaddressed finding means
-  the sign-off isn't done.
+  isn't — one that answers **each** remedy the finding names, not only the first (#400,
+  #455). A mid-sign-off handoff passes findings and every remedy on, never verdicts: #455's
+  "justify, don't fix" list held three dismissals gate 5 rejected. An unaddressed finding
+  means the sign-off isn't done.
 - **"Verify on device" is a resolution only once the probe is in the issue.** A risk
   deferred to a post-deploy or on-device check is written into that acceptance
   criterion, with the exact steps, in the same step as the deferral — or nothing will
@@ -493,7 +492,8 @@ Why the gates sit in this order, why two overlap, and why a briefed agent is not
   A check installed in a hook (`afterEach`) is pinned only through the hook: in Vitest
   that is an `it.fails` test, since a hook error counts as its expected failure. #400's
   first fix called the assertion directly; removing it from `afterEach` left the suite
-  green, and gate 5 rejected it. A fix of several parts is ablated **part by part**; a
-  part whose removal changes nothing is deleted ([rationale](references/rationale.md#ablation)).
+  green, and gate 5 rejected it. A fix of several parts is ablated **part by part**, on a
+  fresh copy without `build/`; a part whose removal changes nothing is deleted
+  ([rationale](references/rationale.md#ablation)).
 - This skill assumes the work is built and tested. It is the *exit* gate, not a
   substitute for red-green TDD during development.

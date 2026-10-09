@@ -76,8 +76,20 @@ not restate them.
   jOOQ answers `RETURNING` from the connection's `last_insert_rowid()`, so a losing insert
   is handed whatever that connection inserted last — possibly another table's row. Use
   `.onConflictDoNothing().execute()` and read the row back by its key, as
-  `UserRepository.insertIfAbsent` does. A test of it needs a *third* insert between the
-  colliding pair, or the collided row is the last insert and the bug passes (#385).
+  `UserRepository.insertIfAbsent` does.
+
+- **A test that the code chose a value over SQLite's default must start where the two
+  differ.** Left alone the database often lands on the same value by itself, and the test
+  passes with the code deleted. #385: a conflict test needs a *third* insert between the
+  colliding pair, or the collided row is the last insert. #455: a "stored under the id it
+  was built with" test must take one `nextId()` it never uses first, or AUTOINCREMENT
+  hands out the same id — seven such tests passed with `rec.id = …` removed.
+
+- **The fast suite's database outlives the run** (`build/test-tucker.db`), and the
+  signed-in `tester` is provisioned by whichever request reaches it first. An assertion on
+  "the first" row, draw or statement therefore depends on what ran before: key it by table
+  or name, and ablate a fix on a copy without `build/` (#455's `take(1)` guard passed on a
+  stale DB and failed on a fresh one).
 
 - **Run the suite as `TZ=Etc/UTC ./gradlew build`** — it flakes in the UTC-evening window on a
   Brisbane host, where the two calendar days disagree.
