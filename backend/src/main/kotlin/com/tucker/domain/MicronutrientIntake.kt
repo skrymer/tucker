@@ -135,11 +135,10 @@ data class MicronutrientIntake(
             // that made it — so the nutrient figures, the coverage share and the queue
             // read one set of food rather than three kept in agreement by hand.
             //
-            // Partitioned rather than filtered twice: what covers and what is left to
-            // do are the two halves of one split, so a state added later has to be
-            // given a home here rather than falling through both predicates unnoticed.
-            val (covered, queued) = contributionsOf(entries, foods)
-                .partition { it.borrowed.contributes }
+            // Split once rather than filtered twice: what covers and what is left to do
+            // are the two halves of one split, so a state added later has to be given a
+            // home there rather than falling through both predicates unnoticed.
+            val (covered, queued) = splitByBorrow(contributionsOf(entries, foods))
             return MicronutrientIntake(
                 from = from,
                 to = to,
@@ -160,8 +159,8 @@ data class MicronutrientIntake(
 
         /**
          * Every Food that supplied the window, with each **Recipe** opened into the
-         * ingredients that made it — matched or not, because the partition above is
-         * what splits those. An **Estimated Entry** names no Food and supplies none.
+         * ingredients that made it — matched or not, because [splitByBorrow] is what
+         * splits those. An **Estimated Entry** names no Food and supplies none.
          *
          * `getValue`, not a lookup that can miss: a Food absent from [eaten] is a
          * caller that broke `of`'s contract, and quietly dropping it would return a
@@ -218,23 +217,34 @@ data class MicronutrientIntake(
          * label and a generic food (ADR 0027).
          */
         private fun rowsOf(
-            covered: List<FoodContribution>,
+            covered: List<CoveredContribution>,
             references: Map<Micronutrient, ReferenceIntake>,
-        ): List<MicronutrientRow> {
-            val borrowed = covered.map {
-                val reference = checkNotNull(it.borrowed.reference) { "a covered Food borrows a Reference Food" }
-                it.grams to reference.micronutrients
-            }
-            return Micronutrient.entries.map { nutrient ->
-                // Divided by the window's whole width rather than by the days that were
-                // logged: a day nothing was logged on still happened, and averaging it
-                // away would quietly scale the missing share up (CONTEXT.md).
-                val perDay = borrowed.sumOf { (grams, profile) ->
-                    profile.amountFor(nutrient, grams)
-                } / WINDOW_DAYS
-                rowFor(nutrient, perDay, references[nutrient])
-            }
+        ): List<MicronutrientRow> = Micronutrient.entries.map { nutrient ->
+            // Divided by the window's whole width rather than by the days that were
+            // logged: a day nothing was logged on still happened, and averaging it
+            // away would quietly scale the missing share up (CONTEXT.md).
+            val perDay = covered.sumOf { it.reference.micronutrients.amountFor(nutrient, it.grams) } / WINDOW_DAYS
+            rowFor(nutrient, perDay, references[nutrient])
         }
+
+        /**
+         * The window's contributions split once: those whose Food borrows a Reference
+         * Food, carried with it, and the rest, left to match. The two sides ask the one
+         * question — is there a borrow — so a contribution lands on exactly one of them.
+         */
+        private fun splitByBorrow(
+            contributions: List<FoodContribution>,
+        ): Pair<List<CoveredContribution>, List<FoodContribution>> {
+            val covered = contributions.mapNotNull { contribution ->
+                contribution.borrowed.reference?.let { reference ->
+                    CoveredContribution(contribution.grams, contribution.calories, reference)
+                }
+            }
+            return covered to contributions.filterNot { it.borrowed.contributes }
+        }
+
+        /** A contribution that can supply figures, with the Reference Food it supplies them from. */
+        private data class CoveredContribution(val grams: Double, val calories: Double, val reference: ReferenceFood)
 
         /**
          * What a lower bound of [amount] lets Tucker say about [nutrient] against
