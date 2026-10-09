@@ -58,7 +58,7 @@ data class WeighedEntry(
     }
 }
 
-/** What a User puts on the scale for a meal: a Food and its grams. */
+/** A Food and the grams of it that were weighed. */
 data class WeighedPortion(
     val food: Food,
     val grams: Double,

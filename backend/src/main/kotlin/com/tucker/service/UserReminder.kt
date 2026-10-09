@@ -27,7 +27,7 @@ import java.time.ZoneId
  * nudge reaches this User's devices and no others.
  *
  * Thin orchestration glue (ADR 0013): the decision lives in [ReminderPolicy] and
- * the transport behind [PushDevices], so it is specified by
+ * the transport behind [PushSubscriptions], so it is specified by
  * `ReminderSchedulerIntegrationTest` driving a whole tick rather than by a test
  * of its own.
  */
@@ -37,15 +37,15 @@ class UserReminder(
     private val weights: WeightMeasurementRepository,
     private val reviews: WeeklyReviewRepository,
     private val reminderState: ReminderStateRepository,
-    private val devices: PushDevices,
+    private val pushSubscriptions: PushSubscriptions,
 ) {
 
     /** Nudge the current User if one is due as of [now]; returns devices delivered to. */
     fun nudgeIfDue(now: Instant): Int {
-        val subs = devices.all()
+        val subs = pushSubscriptions.all()
         val nudge = dueNudge(now, subs) ?: return 0
 
-        val delivered = devices.push(nudge.payload, subs)
+        val delivered = pushSubscriptions.push(nudge.payload, subs)
         // Stamp only on a real delivery so a transport blip retries next tick rather
         // than silently consuming the whole overdue episode (ADR 0010 dedupe).
         if (delivered > 0) reminderState.stampReminderSent(nudge.state.today)

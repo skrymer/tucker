@@ -88,9 +88,9 @@ weight term:        −Δtrend × 7700 / 14  (unchanged — full calendar span; 
 - Two new repository capabilities: counting the distinct logged days in the window
   (alongside the existing intake sum), and fetching the most recent review strictly
   before a date (the held value). `Maintenance.adaptive` takes the raw total and the
-  two divisors (`totalIntakeKcal`, `loggedDays`, `trendWeightChangeKg`, `windowDays`)
-  so the whole two-span energy balance lives in the domain rather than being
-  pre-divided by the service. (Since
+  two divisors — the window's `LoggedIntake` (its total and its logged days), the
+  trend's change, and `windowDays` — so the whole two-span energy balance lives in
+  the domain rather than being pre-divided by the service. (Since
   [#291](https://github.com/skrymer/tucker/issues/291) the change and its span are one
   `WeightTrend.Change` and `windowDays` is the window being corrected rather than that
   span; the principle is unchanged — the service still pre-divides nothing.) Since

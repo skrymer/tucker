@@ -72,16 +72,16 @@ class CheckService(
      * review whatever its date.
      */
     fun check(barcode: String, today: LocalDate?): CheckOutcome {
-        val scan = Scan(barcode, targetsStandingOn(today))
+        val pending = PendingCheck(barcode, targetsStandingOn(today))
         // A saved Food always has calories; only a Provider candidate can arrive
         // with a macro missing, and then there is nothing to derive them from.
         return when (val found = barcodeLookup.lookup(barcode)) {
             BarcodeLookup.Missing -> CheckOutcome.Unknown
             BarcodeLookup.Inconclusive -> CheckOutcome.Inconclusive
-            is BarcodeLookup.Existing -> scan.stated(found.food.name, source = null, found.food.nutrition)
+            is BarcodeLookup.Existing -> pending.stated(found.food.name, source = null, found.food.nutrition)
             is BarcodeLookup.Candidate ->
                 found.candidate.atwaterNutrition()
-                    ?.let { scan.stated(found.candidate.name, found.candidate.source, it) }
+                    ?.let { pending.stated(found.candidate.name, found.candidate.source, it) }
                     ?: CheckOutcome.Incomplete(found.candidate.name, found.candidate.source)
         }
     }
@@ -110,8 +110,8 @@ class CheckService(
             "a Check needs a Calorie Budget; finish setup first"
         }
 
-    /** One barcode, checked against one day's targets. */
-    private class Scan(val barcode: String, val targets: IntakeTargets) {
+    /** A Check before its product is known: one barcode, and the day's targets it is measured against. */
+    private class PendingCheck(val barcode: String, val targets: IntakeTargets) {
 
         /** The Check of the product [barcode] resolved to. */
         fun stated(name: String, source: String?, nutrition: Nutrition) = CheckOutcome.Stated(

@@ -305,7 +305,7 @@ flowchart TD
   turn["<b>UserReminder</b><br/>[Component: Spring service]<br/>one User's turn"]:::component
   policy["<b>ReminderPolicy</b><br/>[Component: domain rule]<br/>enabled, overdue, absent today, in the hour window, not sent yet"]:::component
   repos["<b>Profile · Weights · Reviews · ReminderState</b><br/>[Component: jOOQ]"]:::component
-  devices["<b>PushDevices</b><br/>[Component: Spring component]<br/>lists, pushes to and prunes the User's devices"]:::component
+  devices["<b>PushSubscriptions</b><br/>[Component: Spring component]<br/>lists, pushes to and prunes the User's Push Subscriptions"]:::component
   subs["<b>PushSubscriptionRepository</b><br/>[Component: jOOQ]"]:::component
   sender["<b>WebPushSender</b><br/>[Component: port → nl.martijndwars:web-push]"]:::component
   push["<b>Web Push services</b><br/>[Software System]"]:::ext
