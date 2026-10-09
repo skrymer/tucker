@@ -66,4 +66,19 @@ class AdaptiveWindowTest {
 
         assertEquals(Maintenance.HeldReason.THIN_LOG, window.holdReason())
     }
+
+    @Test
+    fun `a window that clears every floor but whose balance is refused is held below the basal rate`() {
+        // 8000 kcal over 10 days against a trend that rose 0.5 kg: 800 − 275 = 525 kcal,
+        // far under the basal rate. No floor failed, so the hold names the refusal
+        // itself (ADR 0031).
+        val window = AdaptiveWindow(
+            trendChange = WeightTrend.Change(kg = 0.5, overDays = 14),
+            weighedDays = 1,
+            intake = LoggedIntake(totalKcal = 8000.0, loggedDays = 10),
+        )
+
+        assertEquals(null, window.adapt(basalRate))
+        assertEquals(Maintenance.HeldReason.BELOW_BASAL_RATE, window.holdReason())
+    }
 }
