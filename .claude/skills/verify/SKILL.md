@@ -114,6 +114,10 @@ resemble** — a value that looks like the happy path is not a probe.
 - `resize_window` **reports success even when nothing moved.** Judge the viewport
   from the **screenshot's layout** (bottom tabs vs side nav), not from `innerWidth`:
   it has misreported in both directions. Ignore `read_page`'s "Viewport:" line.
+- **A resize that didn't take can land later**, mid-flow — #455's phone resize applied
+  several steps into the desktop pass, and one probe ran at the wrong width. Re-check
+  the layout in a screenshot right before every viewport-specific step, and re-drive
+  any probe whose screenshot shows the other layout.
 - **Stop after two failed resizes.** Un-maximizing has not always been enough: on
   F18 slice 3 the window stayed at desktop width through three attempts, the last
   after the user had un-maximized it. Past that point, fall back to the Playwright

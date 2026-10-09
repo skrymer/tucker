@@ -181,8 +181,11 @@ Identical for both stacks; only step 1 and 2's commands differ.
      `vitest --config` pointed at the copy; for the backend, a copy of `backend/`
      with `dev/` (and `frontend/`) symlinked beside it — `build.gradle.kts` copies
      `../dev/access-key` into the test resources, so without it every test fails
-     on `/access/signing-key.json is missing`. Save the copy's `diff -u` against the
-     source beside the red, or the RED cannot be replayed.
+     on `/access/signing-key.json is missing`. **`rm -rf build` in the copy and run it
+     with `--no-build-cache`**: a surviving `build/` or Gradle's shared cache replays the
+     unmutated test result, and the mutant reads as killed-by-nothing — #455's
+     `storedKey` hand-mutant passed that way before a clean run killed it. Save the
+     copy's `diff -u` against the source beside the red, or the RED cannot be replayed.
      Backend gotchas carry the mechanism and a worked example.
 
    **Check [`references/known-survivors.md`](references/known-survivors.md) first.**

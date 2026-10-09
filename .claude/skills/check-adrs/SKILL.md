@@ -16,7 +16,11 @@ term the code spells differently than CONTEXT.md.
 This is a **read-and-judge** gate. It does not change code; it produces a verdict.
 If a constraint genuinely no longer fits, the fix is to update the ADR/CONTEXT.md
 in the same PR (see `[[prefer-source-fix-over-adr]]`), not to ignore it — but that
-is the user's call, surfaced as a finding.
+is the user's call, surfaced as a finding. **Offer only resolutions the cited doc
+allows**: a FAIL against ADR 0013's "a deep module gets its own test" is resolved by
+writing the test or by amending the ADR, never by a third option the ADR rules out
+(#455 offered "covered by its callers' tests" for a public domain type, and gate 5
+sent it back).
 
 ## Workflow
 
