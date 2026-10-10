@@ -101,8 +101,8 @@ confirming: the title says which day the Entry went to — `Entry logged`, or
 `Logged for tomorrow` for one dated tomorrow
 ([ADR 0035](0035-an-entry-may-be-logged-for-tomorrow-and-no-further.md)), read off
 the response's `loggedOn` rather than the sheet, which is back on Today by the time
-the save answers — and the **description** names the Entry — `Banana — 107 kcal ·
-12 g protein`, `Cafe lunch — 600 kcal` — which is also the title-plus-detail shape
+the save answers — and the **description** names the Entry — `Banana — 120 g ·
+107 kcal · 12 g protein`, `Cafe lunch — 600 kcal` — which is also the title-plus-detail shape
 the error path already uses.
 
 The description carries **both** figures wherever both are known, not calories
@@ -113,7 +113,8 @@ and what it returned — and a confirmation naming only the cost confirms half o
 one. The separator and the spelled-out unit follow the catalog row
 (`FoodListItem`: `302 kcal · 11 g protein /100g`); "protein" is spelled out
 rather than abbreviated to `12 g` because everything in Tucker is weighed in
-grams, so a bare gram figure beside a Food name reads as a portion weight.
+grams, so a bare gram figure beside a Food name reads as a portion weight — which
+is what a Weighed Entry's leading `120 g` is.
 
 Four properties of that are deliberate:
 

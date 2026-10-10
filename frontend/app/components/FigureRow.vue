@@ -1,7 +1,7 @@
 <!--
-  A name, and beneath it in quieter type what that thing cost and returned — the
-  one shape every list of Foods and Entries states its figures in
-  (frontend/DESIGN.md → Component treatments).
+  A name, and beneath it in quieter type what that thing cost and returned — led
+  by the portion for an Entry eaten by weight — the one shape every list of Foods
+  and Entries states its figures in (frontend/DESIGN.md → Component treatments).
 
   `formatName` is applied here rather than by each caller, so no surface can opt
   out of Tucker's one voice for case.
