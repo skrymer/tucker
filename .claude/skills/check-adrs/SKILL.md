@@ -118,9 +118,11 @@ Ruled out: 0003 (no forms changed), 0006 (no nutrition lookup)
   against every _Avoid_ list, not only the term removed: wording copied from an older
   file carries its drift.
 - **A doc-drift FAIL names every place the drifted wording lives.** `git grep` the
-  quoted literal across `CLAUDE.md`, `docs/`, `CONTEXT.md` and `frontend/DESIGN.md`,
-  and list each hit with the FAIL — this check reads the ADRs and CONTEXT.md only, so
-  CLAUDE.md drift is otherwise invisible. #443 amended ADR 0005's "Entry logged" and
-  left the same claim in CLAUDE.md for the resolutions pass to find.
+  wording's *pattern* (`kcal · [0-9]+ g protein`), not the quoted example's numbers,
+  across `CLAUDE.md`, `docs/`, `CONTEXT.md`, `frontend/DESIGN.md` and the living style
+  guide `frontend/app/pages/design.vue`, and list each hit with the FAIL — this check
+  reads the ADRs and CONTEXT.md only, so drift elsewhere is otherwise invisible. #443
+  amended ADR 0005's "Entry logged" and left the same claim in CLAUDE.md; #471 grepped
+  the literal and missed `/design`'s specimen, both for the resolutions pass to find.
 - A clean run is all PASS/UNCERTAIN with zero FAIL. Surface UNCERTAINs plainly —
   don't inflate them to PASS to get a green board.

@@ -35,7 +35,9 @@ it does not restate them.
   no "Formats grams."). Never a changelog: no "used to…" / "previously…" / "changed so…", no
   issue or PR numbers, no narrating the bug that prompted it. Git history and ADRs hold the
   why-it-changed. If the rationale runs past a sentence or two, it belongs in an ADR the comment
-  links.
+  links. No caller inventory either ("Shared by the Day Ring and a Check"): it goes stale the
+  first time a caller moves — #471's gate 1 found three — so say *why* it is shared, and leave
+  *who* to `git grep`.
 
 ## Test strategy — five layers, test-first
 
@@ -55,7 +57,15 @@ assertion with the dev token), and no browser-level layer can reach it.
   overridden per test, and no request assertions (the **msw** skill, ADR 0034).
 - One test at a time, RED first (the `tdd` skill). A **deep module** (an interface worth
   specifying) gets its own test; thin glue is covered by the integrated / smoke test — never call
-  these "isolation tests". (ADR 0013.)
+  these "isolation tests". (ADR 0013.) An export from `app/utils/` that a second file calls gets
+  its own test **in the cycle that exports it**: added later, it passes on write and its red has
+  to be shown on a mutant copy (#471's `formatEntryFigures`, which Stryker scored 100% without).
+- **Changing what a shared formatter outputs moves tests in every layer.** Before the source
+  edit, `git grep` the old wording's *pattern* across `app/`, `e2e/` (with the
+  `*-snapshots/*.aria.yml` baselines) and `e2e/smoke/`, and put every hit's new expectation into
+  the RED. Once the source is green, Probity refuses reverting it to show a missed test failing;
+  the way back is a scratch `git worktree` of `origin/main` with the edited specs copied in (#471
+  missed 11 Vitest, 12 e2e and 6 smoke expectations that way).
 - Commands (run in `frontend/`): `pnpm test` · `test:e2e` · `test:smoke` · `lint` · `format`.
 
 ## Gotchas (each cost a CI / render failure once)
