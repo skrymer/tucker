@@ -112,7 +112,11 @@ tabs (#444).
 An amended ADR, a narrowed criterion and the test that pins a ruling all carry the
 user's words, clause by clause, and nothing more. Copy the ruling's sentence from the
 issue's Rulings section, then diff the ADR sentence against it before committing; a
-paraphrase is where a clause slips in. Give the pinning test one assertion per clause,
+paraphrase is where a clause slips in. A ruling given in chat to a question is the
+question's words: every consequence the question named is a clause the answer
+accepted, and lands in the doc it named (an ADR, DESIGN.md, an issue) as named —
+#474 asked to record a dot "as an exception to 'colour is never the only signal'",
+wrote instead that it was none, and gate 5 rejected it. Give the pinning test one assertion per clause,
 each red-proofed with a mutant that implements the alternative the user rejected —
 main's own behaviour — not a proxy, which can come back equivalent in the scenario.
 
