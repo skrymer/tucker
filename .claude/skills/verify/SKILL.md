@@ -86,6 +86,7 @@ shapes a real user's data comes in, and drive at least one of each:
 | A server-side rule the UI can't reach | a domain bound or a ±N plausibility check: both edges of the window, one past each, and the field omitted — over the dev proxy, on every endpoint that runs it. A bound **anchored to the client's day** is only told apart from one on the server's day with the client off by one: `clientToday` +1 with `date` client+2 (accepted) and client+3 (refused), `clientToday` −1 with `date` server+1 (refused). #443's audit sent the walk-through back for `clientToday` ±1/+2/absent and `date = today + 2`; #444's for −2 and the client offset. A value the **client** refuses never reaches the server's refusal or its routing: move the state behind the page over the API (lower the trend after /profile loaded) so the client accepts what the server refuses — #454's 89.1 and 1.6 were Zod's |
 | A new request-body field | read the saved record back through the API after the save, since a form can look right and send nothing (`GET /api/foods` showing the new `tags`, not the chips on screen) |
 | A threshold the code *reads* | a breakpoint, a timer, a grace period, a debounce — value−1 and value, both sides. #435's 1024px breakpoint and 250 ms grace were first walked at 555/2133px and 80/680 ms, which bracket them and prove neither edge |
+| A size or type change | the widest figure the data allows in each fixed box (a ring's hole, a tile's row), and the same at `html` font-size 20px — #445's 36px Check share "123%" drew 99px of ink in a 94px hole, and at 20px a px-sized SVG left it 124px in 106 |
 | A migration | the upgraded database, not only a fresh one: seed and delete top rows on `main`'s published image (`ghcr.io/skrymer/tucker-backend:latest`) on a disposable volume, then start the branch image on the same volume and read the result. Stop the main stack first — `docker-compose.yml` fixes `container_name`, so a second `-p` project cannot run beside it — and read the applied migration by `installed_rank`, never `max(version)`: `version` is text, so `'9' > '21'`. #455's first run read it that way and could not show its migration had run at all |
 
 Then the states: empty/zero, the error path, the reset. Two of those, chosen by what the
@@ -94,10 +95,13 @@ written for** — `git log` the branch and drive each fix's own scenario: #435's
 commit fixed a stop landing on the next scan, and the first walk-through never drove it.
 **And every other caller of a shared path the diff changed** — #443 changed the
 entry-logging composable both sheets share, and only the audit sent the walk-through to
-the estimate form. **For a refactor, the input list comes from the files the diff
-rewrote, not the surfaces the issue names** — #454's criterion named six surfaces and
-the first audit came back "partly": the Budget gate, Manage Tags, every Check and camera
-failure branch and the plan line were rewritten and undriven. Force a failure branch
+the estimate form. **For a refactor or a class/style sweep, the input list comes from
+the files the diff rewrote, not the surfaces the issue names** — #454's criterion named
+six surfaces and the first audit came back "partly": the Budget gate, Manage Tags, every
+Check and camera failure branch and the plan line were rewritten and undriven. In a
+sweep every `v-if` branch hosting a changed class is an input state: #445's type sweep
+first listed only "the tokens, the root size and the theme", and its audit found 7 of
+23 branches undriven (Maintenance, the banners, tracking off, recipes). Force a failure branch
 with a labelled fetch shim (a status, a network error, a hold), not a real-provider
 value that happens to fail differently: #454's "404 miss" timed out instead. **A
 refactor claiming no behaviour change is proved against main on the same data**: build
@@ -129,6 +133,9 @@ resemble** — a value that looks like the happy path is not a probe.
   F18 slice 3 the window stayed at desktop width through three attempts, the last
   after the user had un-maximized it. Past that point, fall back to the Playwright
   **Mobile Chrome** project and label the verdict so, rather than stalling the gate.
+  The budget is two per **session**, not per gate: #445 failed 4 of 4, growing an
+  un-maximized ~500px window at gate 0 and shrinking a 1892px one at gate 6. What
+  worked was the user **dragging** the window to the width needed — ask for that.
   Issue #379 is about replacing this driver.
 - **A maximized window silently refuses to resize** (no `wmctrl`/`xdotool` under
   Wayland). A **fresh tab** (`tabs_create_mcp`, then resize to 412×915) landed in one
@@ -245,7 +252,11 @@ and checks each against a concrete value in the verdict.
   claimed all values driven, and gate 5's re-check found four in neither list.
   **DRIVEN means the branch the audit named answered** — a value that came back
   through another branch is NOT DRIVEN, with that reason. #455 marked a rate DRIVEN
-  that the server accepted (201) instead of refusing, and gate 5 sent it back.
+  that the server accepted (201) instead of refusing, and gate 5 sent it back. So
+  beside each DRIVEN, quote the output only that branch renders (the "since" date,
+  the delta, the absent badge), and a NOT DRIVEN reason quotes the `v-if` the changed
+  line sits under, read from the source — #445's re-run rejected four marks that
+  quoted neither, and closing them cost a second round.
 
 ## Notes
 
@@ -253,6 +264,9 @@ and checks each against a concrete value in the verdict.
   Never `pkill -f "nuxt dev"`, and a cwd match is not enough: another project runs Nuxt
   on `:3210`, and in the main checkout the user's own server shares your cwd (#455's
   loop over every `nuxt` under `git/tucker/frontend` stopped eight it had not started).
+  The recorded PID is not the end of it: `pnpm dev` forks a Nuxt worker that holds the
+  port, and killing the parent left it listening, reparented, twice in #445. Loop —
+  read the port's listener, confirm its cwd and `--port`, kill it — until it is free.
 - Console errors are worth a look, but `read_console_messages` only captures from when
   it's first called — call it *before* the interesting interaction, or reload.
 - Don't trigger `alert`/`confirm` — a modal dialog freezes the extension for the rest

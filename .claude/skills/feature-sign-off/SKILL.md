@@ -88,11 +88,11 @@ needs it.
    **"Pre-existing" holds only if the harm is reachable on `main`** — a root cause that predates the diff, given a new consumer
    by it, is the diff's harm: F18 slice 6 called a JS/Kotlin trim split pre-existing,
    and gate 5 rejected it because the slice's own merge preview turned a harmless
-   refusal into an unannounced merge. **Nor is "by design", "transient" or
-   "accepted" a resolution for a harm the diff makes worse than `main`** — a
-   regression is fixed, red-first, in the same change; only a genuinely new scope
-   question goes to the user as a choice. #358 dismissed a stale-bundle fallback as
-   "by design: transient"; it was a regression, and was fixed.
+   refusal into an unannounced merge. **Nor is "by design", "transient", "accepted" or
+   "a walk-through probe" a resolution for a harm the diff makes worse than `main`** —
+   it is fixed red-first in this gate if a test can measure it (#445 deferred a ring
+   overflow to gate 6, which failed on it); only a new scope question goes to the user.
+   #358 dismissed a stale-bundle fallback as "by design: transient", and was wrong.
 
    **Judge each state by what the User sees in it**, not by whether a function's
    return value is right on its own terms. When a fix narrows one read of some rows,
