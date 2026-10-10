@@ -24,23 +24,27 @@ const emit = defineEmits<{
   paged: [month: string]
 }>()
 
-const selected = computed({
-  get: () => isoToCalendarDate(model.value),
-  // Never empty: `prevent-deselect` keeps a re-picked day picked.
-  set: (value?: CalendarDate) => {
-    model.value = value!.toString()
-  },
-})
-const minValue = computed(() => isoToCalendarDate(props.min))
-const maxValue = computed(() => isoToCalendarDate(props.max))
+/** The ISO strings at the interface, as the calendar's own dates. */
+function useCalendarValues() {
+  const selected = computed({
+    get: () => isoToCalendarDate(model.value),
+    // Never empty: `prevent-deselect` keeps a re-picked day picked.
+    set: (value?: CalendarDate) => {
+      model.value = value!.toString()
+    },
+  })
+  const minValue = computed(() => isoToCalendarDate(props.min))
+  const maxValue = computed(() => isoToCalendarDate(props.max))
+  return { selected, minValue, maxValue }
+}
 
 /**
  * The day the calendar is showing, owned here so its month can be reported.
  * It also follows the focused day, so most of its moves stay within a month.
  */
-function useShownMonth() {
+function useShownMonth(opensOn?: DateValue) {
   const placeholder = shallowRef<DateValue>(
-    selected.value ?? today(getLocalTimeZone()),
+    opensOn ?? today(getLocalTimeZone()),
   )
   watch(
     () => placeholder.value.toString().slice(0, 7),
@@ -70,7 +74,8 @@ function useMarkedDays() {
   return { markId, isMarked, describe }
 }
 
-const placeholder = useShownMonth()
+const { selected, minValue, maxValue } = useCalendarValues()
+const placeholder = useShownMonth(selected.value)
 const { markId, isMarked, describe } = useMarkedDays()
 </script>
 

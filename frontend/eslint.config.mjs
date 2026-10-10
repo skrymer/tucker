@@ -255,7 +255,7 @@ export default withNuxt(
       'vue/no-restricted-syntax': [
         'error',
         {
-          selector: 'VElement[name=/^(ucalendar|u-calendar)$/]',
+          selector: 'VElement[name=/^(lazy-?)?u-?calendar$/]',
           message:
             'Use AppCalendar, the one calendar (DESIGN.md → Calendar), not a bare UCalendar.',
         },
