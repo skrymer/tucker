@@ -597,9 +597,9 @@ kcal`) sits beneath its own ring, so no arc is ever colour-alone. Calorie
   month → year, so a birth date decades back is a few taps. `min` / `max` bound
   the range, and a day outside it is disabled and announced so. A **marked
   day** — one that holds Entries — carries a small primary dot (`UChip`,
-  `2xs`) and nothing else. Its presence is the signal, not its hue, so it reads
-  without colour vision; it is visual only and adds nothing to a day's
-  accessible name. On the selected day the dot takes that day's text colour
+  `2xs`) and nothing else — an **exception** to _colour is never the only
+  signal_ (Guardrails): it is visual only, so a screen reader hears nothing
+  about Entries. On the selected day the dot takes that day's text colour
   (`--ui-text-inverted`), since a primary dot vanishes into the primary circle.
   Re-picking the selected day keeps it. It speaks ISO `yyyy-mm-dd`, and
   reports the month the User pages to (`paged`, `yyyy-mm`) so a caller can
@@ -799,7 +799,8 @@ through icon and colour, never through colour alone.
 ## Guardrails
 
 - **Colour is never the only signal** (ADR-aligned, issue #66 sibling): pair it
-  with icon + text. The ring proves numbers beside every arc.
+  with icon + text. The ring proves numbers beside every arc. One recorded
+  exception: the Calendar's marked-day dot (Component treatments → Calendar).
 - **Business logic stays in the backend** (ADR 0002): the ring renders
   backend-supplied figures (`caloriesConsumed` / `calorieBudget` /
   `caloriesRemaining`, and the protein pair); the day verdict comes from
