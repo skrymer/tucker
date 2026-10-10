@@ -532,6 +532,12 @@ kcal`) sits beneath its own ring, so no arc is ever colour-alone. Calorie
   over-target reading is a full ring, never an overshoot) while the percentage
   keeps counting, because a 250 g portion of something dense can cost half the
   day again over and rounding that to "100%" would understate it.
+- **Sized for the widest centre.** Each ring is a 9rem box with an SVG that fills
+  it, so the hole grows with the figure when the User enlarges their text — the
+  Day Ring's rule. At the ring-figure token a three-digit share plus `%` is about
+  100px of ink, which a 128px ring's 94px hole cannot hold; 144px leaves it room.
+  The guards are browser measurements in `e2e/check.spec.ts`: the widest share at
+  250 g, at the default text size and at a 20px root.
 - **Portion dial** — a full-width slider directly under the rings, 10–250 g in
   5 g steps, opening at 100 g. Its live readout sits on the same line as the
   `Portion` label, right-aligned above the track, so a thumb at the bottom of a
