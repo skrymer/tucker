@@ -358,9 +358,9 @@ the ring, so type is friendly-but-quiet.
 
 Each token is one class carrying its size, line-height, weight and tracking —
 write `text-h2`, never `text-lg font-bold`. It carries its face too: the figures
-are Nunito and the label and eyebrow the body stack, whatever element wears them,
-and the eyebrow is uppercase without asking. Colour is a separate class, because a
-token sets the shape of the type, not its ink. The tokens live in `main.css`'s
+and headings are Nunito and the label and eyebrow the body stack, whatever element
+wears them, and the eyebrow is uppercase without asking. Colour is a separate
+class, because a token sets the shape of the type, not its ink. The tokens live in `main.css`'s
 `@theme`, and a test fails when this table and they disagree.
 
 Body is set on `body`, not `html`, so rem-sized things — the rings, spacing — keep

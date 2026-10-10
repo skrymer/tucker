@@ -134,7 +134,7 @@ const { data: ringData, categories: ringCategories } = useRing()
       </h2>
       <!-- The denominator, stated: every share below is of this, never of the
            Calorie Budget (ADR 0026). -->
-      <span class="text-sm font-semibold tabular-nums text-default">
+      <span class="text-label tabular-nums text-default">
         {{ Math.round(breakdown.totalCalories) }} kcal
       </span>
     </div>

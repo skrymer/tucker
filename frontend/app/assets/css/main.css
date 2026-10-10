@@ -273,6 +273,8 @@ h3 {
 }
 
 .text-ring-figure,
-.text-stat {
+.text-h1,
+.text-stat,
+.text-h2 {
   font-family: var(--font-display);
 }
