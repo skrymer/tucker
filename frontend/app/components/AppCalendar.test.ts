@@ -112,6 +112,21 @@ describe('AppCalendar', () => {
     )
   })
 
+  it('raises no error when the User picks the selected day again', async () => {
+    const errors: unknown[] = []
+    useNuxtApp().hook('vue:error', (error) => {
+      errors.push(error)
+    })
+    await renderSuspended(AppCalendar, { props: { modelValue: '2026-10-08' } })
+    const user = userEvent.setup()
+
+    await user.click(
+      screen.getByRole('button', { name: 'Thursday, October 8, 2026' }),
+    )
+
+    expect(errors).toEqual([])
+  })
+
   it('emits each month the User pages to, across a year end', async () => {
     const onPaged = vi.fn()
     await renderSuspended(AppCalendar, {
