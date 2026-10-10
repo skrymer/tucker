@@ -28,6 +28,14 @@ test('lets a test run piped through tail run, which keeps the failures', () => {
   assert.equal(refused('./gradlew test --tests X 2>&1 | tail -60'), false)
 })
 
+test('refuses a test run cut by tail to fewer lines than its summary', () => {
+  // Vitest's summary is five lines; `tail -3` keeps Start and Duration only.
+  assert.equal(refused('pnpm exec vitest run app/x.test.ts 2>&1 | tail -3'), true)
+  assert.equal(refused('pnpm test 2>&1 | tail -n 4'), true)
+  assert.equal(refused('pnpm test 2>&1 | tail -5'), false)
+  assert.equal(refused('pnpm test 2>&1 | tail -12'), false)
+})
+
 test('lets an unfiltered test run through', () => {
   assert.equal(refused('pnpm -C frontend exec vitest run app/x.test.ts'), false)
 })
@@ -44,7 +52,7 @@ test('lets a run saved whole to a file be filtered by a later command', () => {
     false,
   )
   assert.equal(
-    refused('./gradlew test --tests X 2>&1 | tail -3 && grep -c killed report.txt'),
+    refused('./gradlew test --tests X 2>&1 | tail -40 && grep -c killed report.txt'),
     false,
   )
 })

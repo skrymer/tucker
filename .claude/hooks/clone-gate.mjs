@@ -147,7 +147,10 @@ function refusal(clones) {
         'code), Slide Statements first when the copies are interleaved with other code, ' +
         'or Pull Up Method when they sit in sibling classes. Extract under the green ' +
         "tests that already cover both copies; the new module's own spec comes once the " +
-        'clone is gone. If the duplication is meant, wrap the side you keep in ' +
+        'clone is gone. A new app/utils/ export is the exception, since Probity refuses ' +
+        'one no test drives: stub the export, wrap the copy you will delete in a ' +
+        'transient jscpd:ignore pair, drive it red-green from the stub, then replace ' +
+        'both copies and drop the pair in the same edit. If the duplication is meant, wrap the side you keep in ' +
         'jscpd:ignore-start / jscpd:ignore-end with a one-line reason.',
     },
   }

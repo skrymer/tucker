@@ -156,6 +156,12 @@ assertion with the dev token), and no browser-level layer can reach it.
   Vitest has the same trap: a test that fakes the clock and submits such a form needs
   exactly `vi.useFakeTimers({ toFake: ['Date'], shouldAdvanceTime: true })` — faked
   timers, or a `Date` that does not tick, left the submit with zero calls in #443.
+- **A colour is measured in the mocked e2e, not in Vitest** — happy-dom computes no
+  stylesheet (`e2e/calendar.spec.ts`, `e2e/type-scale.spec.ts`). Poll it
+  (`expect.poll`): a Nuxt UI control with `transition-colors` reads an in-between
+  colour right after a click. And mind the token names: `bg-inverted` is the
+  *inverted background* (dark in light mode); the text on a solid primary fill is
+  `--ui-text-inverted`, so a mark that must match it is `bg-(--ui-text-inverted)`.
 - **Stale Playwright build** — the mocked e2e rebuilds `.nuxt/e2e` from scratch every run, so it cannot
   serve a stale build; the smokes still build through `@nuxt/test-utils`, so if a UI change doesn't show
   in a smoke run, `rm -rf frontend/.nuxt/test`.

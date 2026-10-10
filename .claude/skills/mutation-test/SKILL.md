@@ -171,6 +171,10 @@ Identical for both stacks; only step 1 and 2's commands differ.
      outcomes differ. F18 slice 5's `TagRepository.insert` fallback was called
      equivalent, then false survivor, and was neither: a third row between the
      colliding pair showed the fallback unreachable because of a real bug (#385).
+     **A green hand copy is not proof either when the mutant throws in a Vue event
+     handler** — Vue swallows it. Hook `useNuxtApp().hook('vue:error', …)` and assert
+     nothing arrived: #474's copy without `prevent-deselect` passed every test and
+     raised three TypeErrors.
    - **False survivor** — a test *does* kill it, but the engine never ran that
      test. Suspect it whenever a whole class scores 0%, and **settle it by
      hand-mutating a throwaway copy and running the suite against it**: if tests

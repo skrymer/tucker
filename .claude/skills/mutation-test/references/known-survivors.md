@@ -19,7 +19,8 @@ and [#237](https://github.com/skrymer/tucker/issues/237) (frontend).
 - Frontend — StrykerJS
   - Vue compiler macros break the run before it starts
   - Presentation tokens (8) — accepted, deliberately unasserted
-  - `components/DateField.vue` — 3 of 30
+  - `components/DateField.vue` — 1 of 20
+  - `utils/date.ts` `isoToCalendarDate` — 1 of 7
   - `components/ProfileForm.vue` — 2 of 58
   - `composables/useCalorieTracking.ts` — 1 of 17
   - The two rings — 40 of 40
@@ -161,28 +162,33 @@ notes live at the top of `navigation.test.ts` and `reviewLedger.test.ts`.
 
 Everything else in `app/utils/` is at 100%: `exits.ts` and `numberField.ts` outright,
 `navigation.ts` and `reviewLedger.ts` apart from the tokens above. `date.ts` is at
-100% including `localYesterday`'s month/year rollback.
+100% including `localYesterday`'s month/year rollback, apart from
+`isoToCalendarDate`'s warning text below.
 
-### `components/DateField.vue` — 3 of 30
+### `components/DateField.vue` — 1 of 20
 
-| Where                                   | Mutant              | Verdict        |
-| --------------------------------------- | ------------------- | -------------- |
-| the model setter's `if (!value) return` | `if (false) return` | **Equivalent** |
-| `valueId`'s `id.value ?? fallbackId`    | `??` → `&&`         | **Equivalent** |
-| the malformed-date `console.warn` text  | text → `""`         | **Accepted**   |
-
-A single-date `UCalendar` has no gesture that clears its own value — re-tapping the
-selected day is inert — so the setter is never called with `undefined` and the arm
-is unreachable. It exists because the writable computed's type is
-`CalendarDate | undefined`, not because a deselect is expected. Confirmed by hand:
-deleting the guard outright leaves the whole suite green. `prevent-deselect` was
-tried here and dropped for the same reason — it changed nothing observable.
+| Where                                | Mutant      | Verdict        |
+| ------------------------------------ | ----------- | -------------- |
+| `valueId`'s `id.value ?? fallbackId` | `??` → `&&` | **Equivalent** |
 
 `valueId` is the only producer of that id, and both consumers — the `sr-only` span's
 `:id` and the `aria-describedby` — read the same computed. Whatever string it yields
 the two agree, so the link holds and no mutant of the fallback is observable.
 
-_That_ the malformed branch warns is pinned; _what it says_ is not, because asserting
+The calendar itself is `AppCalendar.vue`, at 16 of 16 killed. Its `prevent-deselect`
+is a template attribute Stryker cannot mutate, and it is **not** equivalent: without
+it Reka sends an empty pick that the model setter cannot take, and Vue swallows the
+TypeError, so a hand copy without it leaves every assertion green.
+`AppCalendar.test.ts` pins it through Nuxt's `vue:error` hook ("raises no error when
+the User picks the selected day again").
+
+### `utils/date.ts` `isoToCalendarDate` — 1 of 7
+
+| Where                                   | Mutant      | Verdict      |
+| --------------------------------------- | ----------- | ------------ |
+| the malformed-value `console.warn` text | text → `""` | **Accepted** |
+
+_That_ a malformed value warns is pinned; _what it says_ is not, because asserting
 log prose makes the test fail on a reworded message rather than on a defect.
 
 ### `components/ProfileForm.vue` — 2 of 58
@@ -202,8 +208,8 @@ only loss is the display casing. The two `value`s — the figures that actually 
 | --------------------------------- | ----------- | ------------ |
 | the fall-back `console.warn` text | text → `""` | **Accepted** |
 
-_That_ a failed read warns is pinned; _what it says_ is not, as with `DateField`'s
-malformed-date warning above.
+_That_ a failed read warns is pinned; _what it says_ is not, as with
+`isoToCalendarDate`'s malformed-value warning above.
 
 Two neighbours are **not** survivors, and both stopped being ones by a change to the
 code rather than to the tests. The `useState` initializer is killable because a failed
@@ -288,7 +294,7 @@ error. This is the parent, not the test runner, so it is unrelated to the
 
 At 100%, and recorded because the last survivor was its `errorTitle` literal, killed
 by asserting the toast title rather than only that a toast is raised. That is the
-opposite verdict to `DateField`'s and `useCalorieTracking`'s warning text above, and
+opposite verdict to `isoToCalendarDate`'s and `useCalorieTracking`'s warning text above, and
 the line between them is who reads it: log prose is for a developer and rewording it
 is not a defect, whereas the failure toast is the _whole_ of what a user gets when a
 save is lost, and it competes with every other mutation's. `useApiMutation.test.ts`
