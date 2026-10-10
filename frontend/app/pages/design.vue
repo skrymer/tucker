@@ -341,7 +341,8 @@ const grams = ref(80)
       <UCard>
         <p class="text-eyebrow text-muted">Logged today</p>
         <!-- The Figure row: the name is what the eye lands on, and what the
-             entry cost sits under it in quieter type. The unit is spelled out,
+             entry cost sits under it in quieter type, led by the grams a weighed
+             entry was logged at. The unit is spelled out,
              so the pair gets the row's whole width and the far end carries only
              the action. The middle row shows an Estimated entry logged without a
              protein figure — the clause is omitted, never rendered as
@@ -351,7 +352,7 @@ const grams = ref(80)
             <FigureRow
               class="flex-1"
               name="Rolled oats"
-              figures="302 kcal · 11 g protein"
+              figures="80 g · 302 kcal · 11 g protein"
             />
             <UButton
               icon="i-lucide-trash-2"
@@ -359,7 +360,7 @@ const grams = ref(80)
               variant="ghost"
               square
               class="size-9 shrink-0 text-muted"
-              aria-label="Delete Rolled oats — 302 kcal · 11 g protein"
+              aria-label="Delete Rolled oats — 80 g · 302 kcal · 11 g protein"
             />
           </li>
           <li class="flex items-center justify-between gap-2 py-2.5">
@@ -381,7 +382,7 @@ const grams = ref(80)
             <FigureRow
               class="flex-1"
               name="Kangaroo burger"
-              figures="219 kcal · 33 g protein"
+              figures="150 g · 219 kcal · 33 g protein"
             />
             <UButton
               icon="i-lucide-trash-2"
@@ -389,7 +390,7 @@ const grams = ref(80)
               variant="ghost"
               square
               class="size-9 shrink-0 text-muted"
-              aria-label="Delete Kangaroo burger — 219 kcal · 33 g protein"
+              aria-label="Delete Kangaroo burger — 150 g · 219 kcal · 33 g protein"
             />
           </li>
         </ul>
