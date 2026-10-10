@@ -3,9 +3,8 @@ import type { components } from '#open-fetch-schemas/api'
 type EntryResponse = components['schemas']['EntryResponse']
 
 /**
- * An Entry as one run-on line — the name the API states for it, rounded
- * calories, and protein when it has a figure, omitted when it doesn't:
- * `Banana — 107 kcal · 12 g protein`.
+ * An Entry as one run-on line — the name the API states for it, then its
+ * figures: `Banana — 120 g · 107 kcal · 12 g protein`.
  *
  * For the places that have room for only one line: the delete confirm's prose,
  * the "Entry logged" toast, and the accessible name of Today's delete button.
@@ -18,7 +17,7 @@ export function formatEntryName(entry: EntryResponse): string {
 
 /**
  * An Entry's figures with the portion first when it was weighed:
- * `233 g · 111 kcal · 9 g protein`. An Estimated Entry has no grams to state.
+ * `120 g · 107 kcal · 12 g protein`. An Estimated Entry has no grams to state.
  */
 export function formatEntryFigures(entry: EntryResponse): string {
   const figures = formatIntakeFigures(entry.calories, entry.protein)
@@ -29,9 +28,8 @@ export function formatEntryFigures(entry: EntryResponse): string {
 
 /**
  * What was eaten stated as cost and return: `107 kcal · 12 g protein`. Protein is
- * omitted when there is no figure; a known 0 g is stated (CONTEXT.md). Shared by
- * an Entry, the Intake Breakdown legend and the Foods catalog so the wording
- * can't drift.
+ * omitted when there is no figure; a known 0 g is stated (CONTEXT.md). Shared so
+ * the cost-and-return wording can't drift.
  */
 export function formatIntakeFigures(
   calories: number,
