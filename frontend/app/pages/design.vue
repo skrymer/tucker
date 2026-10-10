@@ -120,6 +120,7 @@ const captions = useTypeCaptions()
 const foodOptions = ['Rolled oats', 'Free-range eggs', 'Kangaroo burger']
 const selectedFood = ref(foodOptions[0])
 const grams = ref(80)
+const calendarDay = ref('2026-10-08')
 </script>
 
 <template>
@@ -419,6 +420,19 @@ const grams = ref(80)
           </UFormField>
           <UButton block color="primary">Log weighed entry</UButton>
         </div>
+      </UCard>
+    </div>
+
+    <!-- ── Calendar ───────────────────────────────────────────── -->
+    <div class="flex flex-col gap-4">
+      <h2 class="text-h2 text-highlighted">Calendar</h2>
+      <UCard class="self-start">
+        <AppCalendar
+          v-model="calendarDay"
+          min="2026-10-03"
+          max="2026-10-24"
+          :marked="['2026-10-05', '2026-10-06', '2026-10-07', '2026-10-09']"
+        />
       </UCard>
     </div>
   </section>

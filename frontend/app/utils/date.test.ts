@@ -4,6 +4,7 @@ import {
   formatDateFromISO,
   formatDayHeadingFromISO,
   formatDayMonthFromISO,
+  isoToCalendarDate,
   localDaysAgo,
   localToday,
   localTomorrow,
@@ -11,6 +12,31 @@ import {
   localYesterday,
   trailingWindow,
 } from './date'
+
+describe('isoToCalendarDate', () => {
+  it('reads an ISO day as that calendar date', () => {
+    expect(isoToCalendarDate('1984-03-12')?.toString()).toBe('1984-03-12')
+  })
+
+  it('reads an unset day as no date, quietly', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    expect(isoToCalendarDate('')).toBeUndefined()
+    expect(isoToCalendarDate(undefined)).toBeUndefined()
+    expect(warn).not.toHaveBeenCalled()
+    warn.mockRestore()
+  })
+
+  it('reads a value that is not an ISO day as no date, loudly', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    expect(isoToCalendarDate('1990-06-15T00:00:00')).toBeUndefined()
+    expect(warn).toHaveBeenCalledExactlyOnceWith(
+      'ignoring a value that is not an ISO date: 1990-06-15T00:00:00',
+    )
+    warn.mockRestore()
+  })
+})
 
 describe('formatDayMonthFromISO', () => {
   it('drops the year, which every tick on one axis shares', () => {

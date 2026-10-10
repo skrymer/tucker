@@ -50,4 +50,24 @@ describe('/design', () => {
       'Delete Kangaroo burger — 150 g · 219 kcal · 33 g protein',
     ])
   })
+
+  it('shows the one calendar with marked days and a bounded range', async () => {
+    await renderSuspended(Design)
+
+    const calendar = screen
+      .getByRole('heading', { name: 'Calendar' })
+      .closest('div')!
+    const day = (name: string) => within(calendar).getByRole('button', { name })
+    expect(day('Wednesday, October 7, 2026')).toHaveAccessibleDescription(
+      'Has Entries',
+    )
+    expect(day('Thursday, October 8, 2026')).toHaveAccessibleDescription('')
+    expect(day('Sunday, October 25, 2026')).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
+    expect(day('Saturday, October 24, 2026')).not.toHaveAttribute(
+      'aria-disabled',
+    )
+  })
 })

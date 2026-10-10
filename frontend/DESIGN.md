@@ -588,6 +588,19 @@ kcal`) sits beneath its own ring, so no arc is ever colour-alone. Calorie
   there reads as an action. The classes are Nuxt UI's own input theme copied
   onto `UButton` — the one place the app-wide pill in `app.config.ts` is
   overridden per-component rather than in the theme.
+- **Calendar** (`AppCalendar`) — the one calendar. Every surface that shows a
+  month — `DateField`'s popover, and any later one — is built from it, never
+  from a bare `UCalendar`, because the treatment is props rather than theme
+  slots and `app.config.ts` cannot fix it. Weeks start on **Monday** whatever
+  the browser locale. **‹ ›** page by month and there are **no « » year
+  controls**: distance is covered by tapping the heading, which drills day →
+  month → year, so a birth date decades back is a few taps. `min` / `max` bound
+  the range, and a day outside it is disabled and announced so. A **marked
+  day** — one that holds Entries — carries a small primary dot (`UChip`,
+  `2xs`) **and** the description "Has Entries", so the dot is never the only
+  signal. Re-picking the selected day keeps it. It speaks ISO `yyyy-mm-dd`, and
+  reports the month the User pages to (`paged`, `yyyy-mm`) so a caller can
+  load that month's marks. `/design` shows it bounded and marked.
 - **FAB** (phone) — solid green pill-circle, floating shadow, bottom-right above
   the tab bar (respects `env(safe-area-inset-bottom)`).
 - **Nav** — side rail on desktop (`lg:`), bottom tab bar on phone. Active item =
