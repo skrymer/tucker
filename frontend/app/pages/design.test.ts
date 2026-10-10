@@ -50,4 +50,32 @@ describe('/design', () => {
       'Delete Kangaroo burger — 150 g · 219 kcal · 33 g protein',
     ])
   })
+
+  it('shows the one calendar with marked days and a bounded range', async () => {
+    await renderSuspended(Design)
+
+    const calendar = screen
+      .getByRole('heading', { name: 'Calendar' })
+      .closest('div')!
+    const day = (name: string) => within(calendar).getByRole('button', { name })
+    // The dot is purely visual, so it has no accessible form to query by.
+    expect(
+      within(calendar)
+        .getAllByRole('button', { name: /^\w+day, / })
+        .filter((cell) => cell.querySelector('[data-slot="base"]'))
+        .map((cell) => cell.getAttribute('aria-label')),
+    ).toEqual([
+      'Monday, October 5, 2026',
+      'Tuesday, October 6, 2026',
+      'Wednesday, October 7, 2026',
+      'Friday, October 9, 2026',
+    ])
+    expect(day('Sunday, October 25, 2026')).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
+    expect(day('Saturday, October 24, 2026')).not.toHaveAttribute(
+      'aria-disabled',
+    )
+  })
 })

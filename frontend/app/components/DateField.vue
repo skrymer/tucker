@@ -1,17 +1,11 @@
 <script setup lang="ts">
-import { type CalendarDate, parseDate } from '@internationalized/date'
 import type { PopoverProps } from '@nuxt/ui'
 import { useFormField } from '@nuxt/ui/composables'
 
 /**
- * A date field that opens a calendar rather than asking for a typed date.
- *
- * The heading drills day → month → year, so a day decades away is a few taps
- * rather than one step per month — which is what a native `type="date"` costs
- * on Android, where it renders as a tap-only calendar with no typed path
- * (issue #241). `min` and `max` state the field's allowed range to the control
- * itself, so an out-of-range day is refused at the point of picking instead of
- * on submit.
+ * A form field that opens `AppCalendar` in a popover rather than asking for a
+ * typed date — a native `type="date"` on Android is a tap-only calendar that
+ * steps one month at a time.
  */
 const props = defineProps<{
   modelValue?: string
@@ -60,34 +54,17 @@ function useAccessibleValue() {
 
 const { valueId, describedBy } = useAccessibleValue()
 
-// A calendar's value is optional in a way an ISO string isn't — an unset field
-// is `''`. A malformed one costs the field, not the page: `parseDate` throws,
-// this renders inside an SPA with no error boundary, and an empty picker beats
-// a white screen. It is still loud, because nothing should reach here.
-function asCalendarDate(iso?: string): CalendarDate | undefined {
-  if (!iso) return undefined
-  try {
-    return parseDate(iso)
-  } catch {
-    console.warn(`[DateField] ignoring a value that is not an ISO date: ${iso}`)
-    return undefined
-  }
-}
+// The held day, if it is one: an unset field is `''`, and a malformed value
+// shows the prompt rather than costing the page.
+const selected = computed(() => isoToCalendarDate(props.modelValue)?.toString())
 
-const selected = computed({
-  get: () => asCalendarDate(props.modelValue),
-  // The optional arm is the model type's, not a real case: a single-date
-  // calendar has no gesture that clears its own value, and re-tapping the
-  // selected day is inert.
-  set: (value?: CalendarDate) => {
-    if (!value) return
-    emit('update:modelValue', value.toString())
-    // <UForm> validates off bus events and never watches state, so without
-    // this a "pick a date" error outlives the pick that resolved it.
-    emitFormChange()
-    open.value = false
-  },
-})
+function pick(day: string) {
+  emit('update:modelValue', day)
+  // <UForm> validates off bus events and never watches state, so without
+  // this a "pick a date" error outlives the pick that resolved it.
+  emitFormChange()
+  open.value = false
+}
 
 const label = computed(() =>
   selected.value ? formatDateFromISO(props.modelValue!) : 'Choose a date',
@@ -126,10 +103,11 @@ const contentProps = {
     </UButton>
 
     <template #content>
-      <UCalendar
-        v-model="selected"
-        :min-value="asCalendarDate(min)"
-        :max-value="asCalendarDate(max)"
+      <AppCalendar
+        :model-value="selected ?? ''"
+        :min="min"
+        :max="max"
+        @update:model-value="pick"
       />
     </template>
   </UPopover>

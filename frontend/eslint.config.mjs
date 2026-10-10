@@ -245,6 +245,23 @@ export default withNuxt(
       'vue/no-unused-emit-declarations': 'error',
     },
   },
+  {
+    // AppCalendar is the one calendar (DESIGN.md → Calendar): its treatment is
+    // props, not theme slots, so a bare UCalendar elsewhere would drop it.
+    name: 'tucker/one-calendar',
+    files: ['app/**/*.vue'],
+    ignores: ['app/components/AppCalendar.vue'],
+    rules: {
+      'vue/no-restricted-syntax': [
+        'error',
+        {
+          selector: 'VElement[name=/^(lazy-?)?u-?calendar$/]',
+          message:
+            'Use AppCalendar, the one calendar (DESIGN.md → Calendar), not a bare UCalendar.',
+        },
+      ],
+    },
+  },
   // Prettier owns formatting; switch off ESLint rules that would conflict.
   eslintConfigPrettier,
 )

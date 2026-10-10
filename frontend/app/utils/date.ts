@@ -1,3 +1,5 @@
+import { type CalendarDate, parseDate } from '@internationalized/date'
+
 /**
  * The user's local calendar day as an ISO `yyyy-mm-dd` string.
  *
@@ -128,4 +130,20 @@ function isoParts(iso: string): [number, number, number] {
 function utcMidnightOf(iso: string): number {
   const [y, m, d] = isoParts(iso)
   return Date.UTC(y, m - 1, d)
+}
+
+/**
+ * An ISO `yyyy-mm-dd` day as a calendar's date, or `undefined` for an unset or
+ * malformed one. A malformed value costs the value, not the page: `parseDate`
+ * throws, and a calendar renders inside an SPA with no error boundary. Still
+ * loud, because nothing should reach here.
+ */
+export function isoToCalendarDate(iso?: string): CalendarDate | undefined {
+  if (!iso) return undefined
+  try {
+    return parseDate(iso)
+  } catch {
+    console.warn(`ignoring a value that is not an ISO date: ${iso}`)
+    return undefined
+  }
 }

@@ -588,6 +588,22 @@ kcal`) sits beneath its own ring, so no arc is ever colour-alone. Calorie
   there reads as an action. The classes are Nuxt UI's own input theme copied
   onto `UButton` — the one place the app-wide pill in `app.config.ts` is
   overridden per-component rather than in the theme.
+- **Calendar** (`AppCalendar`) — the one calendar. Every surface that shows a
+  month — `DateField`'s popover, and any later one — is built from it, never
+  from a bare `UCalendar`, because the treatment is props rather than theme
+  slots and `app.config.ts` cannot fix it. Weeks start on **Monday** whatever
+  the browser locale. **‹ ›** page by month and there are **no « » year
+  controls**: distance is covered by tapping the heading, which drills day →
+  month → year, so a birth date decades back is a few taps. `min` / `max` bound
+  the range, and a day outside it is disabled and announced so. A **marked
+  day** — one that holds Entries — carries a small primary dot (`UChip`,
+  `2xs`) and nothing else — an **exception** to _colour is never the only
+  signal_ (Guardrails): it is visual only, so a screen reader hears nothing
+  about Entries. On the selected day the dot takes that day's text colour
+  (`--ui-text-inverted`), since a primary dot vanishes into the primary circle.
+  Re-picking the selected day keeps it. It speaks ISO `yyyy-mm-dd`, and
+  reports the month the User pages to (`paged`, `yyyy-mm`) so a caller can
+  load that month's marks. `/design` shows it bounded and marked.
 - **FAB** (phone) — solid green pill-circle, floating shadow, bottom-right above
   the tab bar (respects `env(safe-area-inset-bottom)`).
 - **Nav** — side rail on desktop (`lg:`), bottom tab bar on phone. Active item =
@@ -783,7 +799,8 @@ through icon and colour, never through colour alone.
 ## Guardrails
 
 - **Colour is never the only signal** (ADR-aligned, issue #66 sibling): pair it
-  with icon + text. The ring proves numbers beside every arc.
+  with icon + text. The ring proves numbers beside every arc. One recorded
+  exception: the Calendar's marked-day dot (Component treatments → Calendar).
 - **Business logic stays in the backend** (ADR 0002): the ring renders
   backend-supplied figures (`caloriesConsumed` / `calorieBudget` /
   `caloriesRemaining`, and the protein pair); the day verdict comes from
