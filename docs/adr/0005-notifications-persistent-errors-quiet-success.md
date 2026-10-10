@@ -102,8 +102,8 @@ confirming: the title says which day the Entry went to — `Entry logged`, or
 ([ADR 0035](0035-an-entry-may-be-logged-for-tomorrow-and-no-further.md)), read off
 the response's `loggedOn` rather than the sheet, which is back on Today by the time
 the save answers — and the **description** names the Entry — `Banana — 120 g ·
-107 kcal · 12 g protein`, `Cafe lunch — 600 kcal` — which is also the title-plus-detail shape
-the error path already uses.
+107 kcal · 12 g protein`, `Cafe lunch — 600 kcal` — which is also the
+title-plus-detail shape the error path already uses.
 
 The description carries **both** figures wherever both are known, not calories
 alone (the protein clause is dropped when there is no figure — see below).
