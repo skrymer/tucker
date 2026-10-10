@@ -6,6 +6,7 @@ import {
   today,
 } from '@internationalized/date'
 
+// Stryker disable next-line all: a compiler macro's arguments are hoisted out of setup()
 /** The selected day, ISO `yyyy-mm-dd`; `''` while none is. */
 const model = defineModel<string>({ required: true })
 
