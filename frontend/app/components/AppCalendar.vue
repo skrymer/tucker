@@ -74,7 +74,14 @@ const isMarked = useMarkedDays()
     prevent-deselect
   >
     <template #day="{ day }">
-      <UChip :show="isMarked(day)" size="2xs">{{ day.day }}</UChip>
+      <!-- On the selected day the dot takes the day's own text colour, as a
+           primary dot vanishes into the primary circle. -->
+      <UChip
+        :show="isMarked(day)"
+        size="2xs"
+        :ui="{ base: 'in-data-selected:bg-(--ui-text-inverted)' }"
+        >{{ day.day }}</UChip
+      >
     </template>
   </UCalendar>
 </template>

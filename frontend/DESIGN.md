@@ -599,7 +599,9 @@ kcal`) sits beneath its own ring, so no arc is ever colour-alone. Calorie
   day** — one that holds Entries — carries a small primary dot (`UChip`,
   `2xs`) and nothing else. Its presence is the signal, not its hue, so it reads
   without colour vision; it is visual only and adds nothing to a day's
-  accessible name. Re-picking the selected day keeps it. It speaks ISO `yyyy-mm-dd`, and
+  accessible name. On the selected day the dot takes that day's text colour
+  (`--ui-text-inverted`), since a primary dot vanishes into the primary circle.
+  Re-picking the selected day keeps it. It speaks ISO `yyyy-mm-dd`, and
   reports the month the User pages to (`paged`, `yyyy-mm`) so a caller can
   load that month's marks. `/design` shows it bounded and marked.
 - **FAB** (phone) — solid green pill-circle, floating shadow, bottom-right above
