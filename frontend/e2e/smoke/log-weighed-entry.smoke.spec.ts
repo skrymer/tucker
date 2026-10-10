@@ -28,7 +28,7 @@ test('user logs a Weighed entry from Log and the toast names it', async ({
   // How the Entry reads once the backend has derived both figures — the string
   // the toast shows. Today states the same words over two lines (ADR 0005), so
   // the row is reached by name rather than by this.
-  const expectedName = `${foodName} — ${expectedKcal} kcal · ${expectedProtein} g protein`
+  const expectedName = `${foodName} — ${grams} g · ${expectedKcal} kcal · ${expectedProtein} g protein`
 
   // Setup: seed a food in the catalog.
   const created = await request.post('http://localhost:8080/api/foods', {

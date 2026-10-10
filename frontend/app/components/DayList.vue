@@ -67,7 +67,7 @@ const tally = computed(() =>
         <FigureRow
           class="flex-1"
           :name="entry.name"
-          :figures="formatIntakeFigures(entry.calories, entry.protein)"
+          :figures="formatEntryFigures(entry)"
         >
           <template #marker>
             <EstimateBadge v-if="entry.isEstimate" />

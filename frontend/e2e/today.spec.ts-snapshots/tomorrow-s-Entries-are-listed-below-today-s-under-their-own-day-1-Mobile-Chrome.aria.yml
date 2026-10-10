@@ -16,8 +16,8 @@
         - paragraph: 2 entries · 1,500 kcal
         - list:
             - listitem:
-                - text: Oats 240 kcal · 8 g protein
-                - button "Delete Oats — 240 kcal · 8 g protein"
+                - text: Oats 60 g · 240 kcal · 8 g protein
+                - button "Delete Oats — 60 g · 240 kcal · 8 g protein"
             - listitem:
                 - text: Steak dinner est. 1260 kcal · 132 g protein
                 - button "Delete Steak dinner — 1260 kcal · 132 g protein"
@@ -29,5 +29,5 @@
                 - text: Prepped chicken & rice est. 620 kcal · 48 g protein
                 - button "Delete Prepped chicken & rice — 620 kcal · 48 g protein"
             - listitem:
-                - text: Oats 568 kcal · 20 g protein
-                - button "Delete Oats — 568 kcal · 20 g protein"
+                - text: Oats 150 g · 568 kcal · 20 g protein
+                - button "Delete Oats — 150 g · 568 kcal · 20 g protein"

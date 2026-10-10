@@ -12,7 +12,7 @@ const twoEntries = [
     protein: 12,
     foodId: 5,
     foodName: 'Banana',
-    grams: 120,
+    grams: 187.5,
   }),
   estimatedEntry({ id: 2, calories: 1081, label: 'Prepped chicken & rice' }),
 ]
@@ -48,7 +48,7 @@ describe('DayList', () => {
     expect(within(region).getByText('1 entry · 1,081 kcal')).toBeVisible()
     expect(screen.queryByText(/^Today/)).not.toBeInTheDocument()
   })
-  it('lists each entry as its name over its figures', async () => {
+  it("lists each entry as its name over its figures, a Weighed entry's whole grams first", async () => {
     await renderSuspended(DayList, {
       props: {
         day: 'today',
@@ -60,7 +60,9 @@ describe('DayList', () => {
 
     const [banana, lunch] = screen.getAllByRole('listitem')
     expect(screen.getAllByRole('listitem')).toHaveLength(2)
-    expect(banana).toHaveTextContent(/^Banana\s*107 kcal · 12 g protein$/)
+    expect(banana).toHaveTextContent(
+      /^Banana\s*188 g · 107 kcal · 12 g protein$/,
+    )
     expect(lunch).toHaveTextContent(
       /^Prepped chicken & rice\s*est\.\s*1081 kcal$/,
     )

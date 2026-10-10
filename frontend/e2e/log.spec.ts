@@ -164,7 +164,7 @@ test('logs a weighed entry for the food whose cell was tapped', async ({
   await expect(sheet).toBeHidden()
   // The oats, 80 g of them, on the local day.
   await expect(loggedToast(page)).toContainText(
-    'Rolled oats — 303 kcal · 11 g protein',
+    'Rolled oats — 80 g · 303 kcal · 11 g protein',
   )
 })
 
@@ -201,7 +201,7 @@ test("logs a weighed entry onto the User's local tomorrow when Tomorrow is chose
 
   await expect(sheet).toBeHidden()
   await expect(toast(page, 'Logged for tomorrow')).toContainText(
-    'Rolled oats — 303 kcal · 11 g protein',
+    'Rolled oats — 80 g · 303 kcal · 11 g protein',
   )
 })
 
@@ -267,7 +267,7 @@ test('finds a food the grid does not hold, and logs it the same way', async ({
   await expect(sheet).toBeHidden()
   // The tuna, 120 g of it, on the local day.
   await expect(loggedToast(page)).toContainText(
-    'Tinned tuna — 139 kcal · 31 g protein',
+    'Tinned tuna — 120 g · 139 kcal · 31 g protein',
   )
 })
 
@@ -335,7 +335,7 @@ test("narrows to a Tag's foods in place of both sections, and logs one the same 
   await expect(sheet).toBeHidden()
   // The chilli, 350 g of it, on the local day.
   await expect(loggedToast(page)).toContainText(
-    'Weekday chilli — 424 kcal · 40 g protein',
+    'Weekday chilli — 350 g · 424 kcal · 40 g protein',
   )
 })
 

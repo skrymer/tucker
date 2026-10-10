@@ -1,9 +1,57 @@
 import { describe, expect, it } from 'vitest'
 import { estimatedEntry, weighedEntry } from '~~/test/entry-fixtures'
-import { formatEntryName } from './entry'
+import { formatEntryFigures, formatEntryName } from './entry'
+
+describe('formatEntryFigures', () => {
+  it("leads a Weighed entry's figures with its whole grams, grouped in thousands", () => {
+    expect(
+      formatEntryFigures(
+        weighedEntry({
+          id: 1,
+          calories: 12600.4,
+          protein: 0,
+          foodId: 9,
+          foodName: 'Olive oil',
+          grams: 1400.4,
+        }),
+      ),
+    ).toBe('1,400 g · 12600 kcal · 0 g protein')
+  })
+
+  it('states an Estimated entry as its calories and protein alone, with no grams', () => {
+    expect(
+      formatEntryFigures(
+        estimatedEntry({
+          id: 2,
+          calories: 650,
+          protein: 35,
+          label: 'Cafe lunch',
+        }),
+      ),
+    ).toBe('650 kcal · 35 g protein')
+  })
+
+  it('omits protein after the grams when a Weighed entry carries no figure', () => {
+    // The backend always computes a Weighed Entry's protein, but the wire types it
+    // nullable, so the omission is pinned on the weighed path too.
+    const noProtein = {
+      ...weighedEntry({
+        id: 3,
+        calories: 1,
+        protein: 0,
+        foodId: 4,
+        foodName: 'Black coffee',
+        grams: 330,
+      }),
+      protein: null,
+    }
+
+    expect(formatEntryFigures(noProtein)).toBe('330 g · 1 kcal')
+  })
+})
 
 describe('formatEntryName', () => {
-  it('names a Weighed entry by its food with rounded calories and protein', () => {
+  it('names a Weighed entry by its food with its grams first, then rounded calories and protein', () => {
     expect(
       formatEntryName(
         weighedEntry({
@@ -15,7 +63,7 @@ describe('formatEntryName', () => {
           grams: 120,
         }),
       ),
-    ).toBe('Banana — 107 kcal · 12 g protein')
+    ).toBe('Banana — 120 g · 107 kcal · 12 g protein')
   })
 
   it('names an Estimated entry by its label with its protein', () => {
@@ -43,7 +91,7 @@ describe('formatEntryName', () => {
           grams: 15,
         }),
       ),
-    ).toBe('Olive oil — 135 kcal · 0 g protein')
+    ).toBe('Olive oil — 15 g · 135 kcal · 0 g protein')
   })
 
   it('names an entry the API could not resolve a Food name for', () => {
@@ -58,7 +106,7 @@ describe('formatEntryName', () => {
           grams: 90,
         }),
       ),
-    ).toBe('Unknown food — 200 kcal · 4 g protein')
+    ).toBe('Unknown food — 90 g · 200 kcal · 4 g protein')
   })
 
   it('states the name in sentence case however it was typed', () => {
@@ -73,7 +121,7 @@ describe('formatEntryName', () => {
           grams: 250,
         }),
       ),
-    ).toBe('Light milk — 240 kcal · 8 g protein')
+    ).toBe('Light milk — 250 g · 240 kcal · 8 g protein')
   })
 
   it('omits protein when the entry carries no figure', () => {

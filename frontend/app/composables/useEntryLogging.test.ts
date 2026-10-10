@@ -114,7 +114,7 @@ describe('useEntryLogging', () => {
     await vi.waitFor(() => expect(toastAdd).toHaveBeenCalled())
     expect(lastToast()).toMatchObject({
       title: 'Entry logged',
-      description: 'Oats — 300 kcal · 10 g protein',
+      description: 'Oats — 80 g · 300 kcal · 10 g protein',
     })
   })
 
@@ -129,7 +129,7 @@ describe('useEntryLogging', () => {
     await vi.waitFor(() => expect(toastAdd).toHaveBeenCalled())
     expect(lastToast()).toMatchObject({
       title: 'Entry logged',
-      description: 'Oats — 300 kcal · 10 g protein',
+      description: 'Oats — 80 g · 300 kcal · 10 g protein',
     })
   })
 
@@ -146,7 +146,7 @@ describe('useEntryLogging', () => {
     await vi.waitFor(() => expect(toastAdd).toHaveBeenCalled())
     expect(lastToast()).toMatchObject({
       title: 'Logged for tomorrow',
-      description: 'Oats — 300 kcal · 10 g protein',
+      description: 'Oats — 80 g · 300 kcal · 10 g protein',
     })
   })
 

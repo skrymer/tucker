@@ -600,10 +600,13 @@ kcal`) sits beneath its own ring, so no arc is ever colour-alone. Calorie
   in: its **name** in `font-medium text-default`, and under it in `text-sm
 text-muted` what it cost and returned — `153 kcal · 13 g protein`, with
   `/100g` appended only where the figures are a _rate_ rather than something
-  eaten. The name is what the eye lands on; the figures are read second, on
-  purpose. A marker that qualifies the thing — the estimate flag, the Recipe
-  badge, an item count — sits inline **after the name**, never down among the
-  figures; a hue that identifies it (the Intake Breakdown ring's) leads it.
+  eaten. An Entry eaten by weight leads its figures with that portion —
+  `120 g · 107 kcal · 12 g protein` — so two Entries of one Food tell apart; an
+  Estimated Entry has no grams to lead with. The name is what the eye lands on;
+  the figures are read second, on purpose. A marker that qualifies the thing —
+  the estimate flag, the Recipe badge, an item count — sits inline **after the
+  name**, never down among the figures; a hue that identifies it (the Intake
+  Breakdown ring's) leads it.
   Whatever closes the row — a share, an action, a weight — belongs to the caller,
   which is also what owns the flex: only it knows whether the row is a button.
   The **Intake Breakdown legend** set this shape and `/review` is where to look
@@ -788,13 +791,14 @@ through icon and colour, never through colour alone.
   rounded over/under split are pure presentation.
 - **One shape for a name and its figures** (see
   [Component treatments](#component-treatments)): a list that states a Food or an
-  Entry with what it cost and returned renders the pair through `FigureRow` —
-  name emphasised, figures quieter beneath, markers inline after the name. It owns
-  the **pair**, not the row: the flex, the padding and whatever closes the row stay
-  the caller's, so those still differ between surfaces by design. A list that
-  renders the pair itself has drifted, and nothing executable notices — review is
-  the only guard on the _shape_. `nameCase.test.ts` guards the narrower rule: that
-  a name is stated in sentence case wherever a template renders one.
+  Entry with what it cost and returned (a weighed Entry's portion first) renders
+  the pair through `FigureRow` — name emphasised, figures quieter beneath,
+  markers inline after the name. It owns the **pair**, not the row: the flex, the
+  padding and whatever closes the row stay the caller's, so those still differ
+  between surfaces by design. A list that renders the pair itself has drifted,
+  and nothing executable notices — review is the only guard on the _shape_.
+  `nameCase.test.ts` guards the narrower rule: that a name is stated in sentence
+  case wherever a template renders one.
 - **One voice for case** (see [Case](#case)): Tucker writes in sentence case, and
   a name a User typed is _stated_ in it too, via `formatName` — never Title Case,
   never as typed. Display only: the stored name is never rewritten, and neither a
