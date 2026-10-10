@@ -3,7 +3,7 @@ import { estimatedEntry, weighedEntry } from '~~/test/entry-fixtures'
 import { formatEntryName } from './entry'
 
 describe('formatEntryName', () => {
-  it('names a Weighed entry by its food with rounded calories and protein', () => {
+  it('names a Weighed entry by its food with its grams first, then rounded calories and protein', () => {
     expect(
       formatEntryName(
         weighedEntry({
@@ -15,7 +15,7 @@ describe('formatEntryName', () => {
           grams: 120,
         }),
       ),
-    ).toBe('Banana — 107 kcal · 12 g protein')
+    ).toBe('Banana — 120 g · 107 kcal · 12 g protein')
   })
 
   it('names an Estimated entry by its label with its protein', () => {
@@ -43,7 +43,7 @@ describe('formatEntryName', () => {
           grams: 15,
         }),
       ),
-    ).toBe('Olive oil — 135 kcal · 0 g protein')
+    ).toBe('Olive oil — 15 g · 135 kcal · 0 g protein')
   })
 
   it('names an entry the API could not resolve a Food name for', () => {
@@ -58,7 +58,7 @@ describe('formatEntryName', () => {
           grams: 90,
         }),
       ),
-    ).toBe('Unknown food — 200 kcal · 4 g protein')
+    ).toBe('Unknown food — 90 g · 200 kcal · 4 g protein')
   })
 
   it('states the name in sentence case however it was typed', () => {
@@ -73,7 +73,7 @@ describe('formatEntryName', () => {
           grams: 250,
         }),
       ),
-    ).toBe('Light milk — 240 kcal · 8 g protein')
+    ).toBe('Light milk — 250 g · 240 kcal · 8 g protein')
   })
 
   it('omits protein when the entry carries no figure', () => {

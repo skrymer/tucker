@@ -85,7 +85,7 @@ test('a Weighed Entry logged for tomorrow from Log lands in the Tomorrow list', 
 
   await expect(sheet).toBeHidden()
   await expect(toast(page, 'Logged for tomorrow')).toContainText(
-    `${foodName} — 383 kcal · 13 g protein`,
+    `${foodName} — 100 g · 383 kcal · 13 g protein`,
   )
 
   await goto('/', { waitUntil: 'hydration' })

@@ -13,13 +13,25 @@ type EntryResponse = components['schemas']['EntryResponse']
  * two — so the wording is shared and the shape is not (ADR 0005).
  */
 export function formatEntryName(entry: EntryResponse): string {
-  return `${formatName(entry.name)} — ${formatIntakeFigures(entry.calories, entry.protein)}`
+  return `${formatName(entry.name)} — ${formatEntryFigures(entry)}`
+}
+
+/**
+ * An Entry's figures with the portion first when it was weighed:
+ * `233 g · 111 kcal · 9 g protein`. An Estimated Entry has no grams to state.
+ */
+export function formatEntryFigures(entry: EntryResponse): string {
+  const figures = formatIntakeFigures(entry.calories, entry.protein)
+  return entry.grams == null
+    ? figures
+    : `${formatGrams(entry.grams)} · ${figures}`
 }
 
 /**
  * What was eaten stated as cost and return: `107 kcal · 12 g protein`. Protein is
  * omitted when there is no figure; a known 0 g is stated (CONTEXT.md). Shared by
- * the Today row and the Intake Breakdown legend so the wording can't drift.
+ * an Entry, the Intake Breakdown legend and the Foods catalog so the wording
+ * can't drift.
  */
 export function formatIntakeFigures(
   calories: number,

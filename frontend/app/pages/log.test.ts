@@ -160,7 +160,7 @@ describe('/log', () => {
     await vi.waitFor(() =>
       expect(lastToast()).toMatchObject({
         title: 'Entry logged',
-        description: 'Tinned tuna — 139 kcal · 31 g protein',
+        description: 'Tinned tuna — 120 g · 139 kcal · 31 g protein',
       }),
     )
   })
@@ -242,7 +242,7 @@ describe('/log', () => {
     await vi.waitFor(() =>
       expect(lastToast()).toMatchObject({
         title: 'Entry logged',
-        description: 'Rolled oats — 303 kcal · 11 g protein',
+        description: 'Rolled oats — 80 g · 303 kcal · 11 g protein',
       }),
     )
     expect(
@@ -273,7 +273,7 @@ describe('/log', () => {
     await vi.waitFor(() =>
       expect(lastToast()).toMatchObject({
         title: 'Entry logged',
-        description: 'Rolled oats — 3032 kcal · 106 g protein',
+        description: 'Rolled oats — 800 g · 3032 kcal · 106 g protein',
       }),
     )
   })
@@ -595,7 +595,7 @@ describe('/log narrowed by a Tag', () => {
     await vi.waitFor(() =>
       expect(lastToast()).toMatchObject({
         title: 'Entry logged',
-        description: 'Tinned tuna — 139 kcal · 31 g protein',
+        description: 'Tinned tuna — 120 g · 139 kcal · 31 g protein',
       }),
     )
   })

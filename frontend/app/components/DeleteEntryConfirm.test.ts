@@ -21,7 +21,9 @@ describe('DeleteEntryConfirm', () => {
     expect(
       screen.getByRole('dialog', { name: /delete this entry/i }),
     ).toBeVisible()
-    expect(screen.getByText('Banana — 107 kcal · 12 g protein')).toBeVisible()
+    expect(
+      screen.getByText('Banana — 120 g · 107 kcal · 12 g protein'),
+    ).toBeVisible()
     expect(screen.getByRole('button', { name: /^delete$/i })).toBeVisible()
     expect(screen.getByRole('button', { name: /cancel/i })).toBeVisible()
   })
@@ -56,7 +58,7 @@ describe('DeleteEntryConfirm', () => {
     await renderSuspended(DeleteEntryConfirm, { props: { entry: banana } })
 
     expect(screen.getByRole('dialog')).toHaveTextContent(
-      "Banana — 107 kcal · 12 g protein will be removed, and that day's totals re-derive without it.",
+      "Banana — 120 g · 107 kcal · 12 g protein will be removed, and that day's totals re-derive without it.",
     )
   })
 })

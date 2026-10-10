@@ -115,7 +115,7 @@ test('user builds a recipe, saves it, and logs a portion onto Today', async ({
     // Scoped for the same reason as the sibling log smokes: the success toast
     // carries this exact string too (ADR 0005), so name the surface meant.
     await expect(entryRow(page, recipeName)).toContainText(
-      `${expectedKcal} kcal · ${expectedProtein} g protein`,
+      `${portionGrams} g · ${expectedKcal} kcal · ${expectedProtein} g protein`,
     )
 
     // The saved recipe is in the catalog as a Food.

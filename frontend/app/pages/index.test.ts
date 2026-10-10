@@ -268,7 +268,7 @@ describe("/ with today's Entries", () => {
     ).toHaveTextContent('1 entry · 312 kcal')
     await user.click(
       screen.getByRole('button', {
-        name: 'Delete Salmon — 312 kcal · 33 g protein',
+        name: 'Delete Salmon — 150 g · 312 kcal · 33 g protein',
       }),
     )
     await user.click(
@@ -330,7 +330,7 @@ describe('/ with Entries logged for tomorrow', () => {
 
     await user.click(
       await screen.findByRole('button', {
-        name: 'Delete Rolled oats — 228 kcal · 8 g protein',
+        name: 'Delete Rolled oats — 60 g · 228 kcal · 8 g protein',
       }),
     )
     await user.click(
