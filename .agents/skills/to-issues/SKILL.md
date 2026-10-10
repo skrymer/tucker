@@ -55,6 +55,8 @@ For each approved slice, publish a new issue to the issue tracker. Use the issue
 
 Publish issues in dependency order (blockers first) so you can reference real issue identifiers in the "Blocked by" field.
 
+Before publishing, check every acceptance criterion that names a data state (a null, a missing figure, a zero) against the backend's types. A state the domain cannot produce is worded as a rule on the formatter or component that would show it, not as something a User sees — #471's "a Weighed Entry whose Food has no protein figure" was unreachable (`Nutrition.proteinPer100g` is non-null) and cost a ruling and an amendment at sign-off.
+
 <issue-template>
 ## Parent
 
