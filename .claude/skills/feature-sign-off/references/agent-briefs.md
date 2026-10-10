@@ -78,6 +78,13 @@ output's own summary line, and every finding an agent returns gets a row, a
 adversary's failed attack, a ledger's scope tail): #455 PR 2's pack read one as resolved. #443's pack recounted a hand-mutation run as "11/12" (the
 file said 10 of 11) and dropped a one-line nit; gate 5 had to correct both.
 
+**One row per remedy, and a ruling covers only what its question named.** A finding
+that proposes two remedies gets two rows, so the one not adopted cannot hide under
+FIXED — #445 recorded an altitude finding FIXED with half of it unadopted, the third
+breach of "answers each remedy" (#400, #455). A row citing the user's ruling quotes
+the question as asked; an item the question did not name is asked again. #445 folded
+a figure into a ruling that had named only the ring legend, and gate 5 rejected it.
+
 **Where a justification has to be tested, it is presented as a claim, attributed to
 nobody**: "It is claimed that `startedOn` is the only way to create a backdated Goal.
 Test that." Never "X, because Y — check I got it right."
@@ -234,7 +241,7 @@ which touches nothing but remote refs.
 Repo: <path> (<a git worktree | the main checkout> — stay in it).
 The change: cd <worktree path> && git fetch -q origin &&
   git diff $(git merge-base origin/main HEAD)
-The verdict, verbatim: <paste>
+The verdict, verbatim: <paste, or the path of the saved verdict file>
 Start with the files the change touches; you may read anything else in the repo,
 including the tests and the ADRs, to work out what an input's boundaries are.
 
@@ -478,7 +485,8 @@ Report one row per diagram, in the file's order:
   draws it right. One line saying which.
 - STALE — name each element, edge or label that no longer matches, cite the code
   (file:line) it should match, and write the replacement Mermaid line. A mismatch
-  this diff did not cause is still STALE; never report it as an aside.
+  this diff did not cause is still STALE; never report it as an aside. A gap you
+  judge is not a mismatch goes in that row's CURRENT line, with its reason.
 
 Then once, at the end:
 - MISSING — something the diff adds that no diagram draws but a diagram at that
