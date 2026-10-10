@@ -205,11 +205,9 @@ const macros = useMacroBar()
         <p class="text-eyebrow text-muted">
           {{ r.label }}
         </p>
-        <div class="relative size-32">
+        <div class="relative size-36">
           <svg
-            class="-rotate-90"
-            width="128"
-            height="128"
+            class="size-full -rotate-90"
             viewBox="0 0 176 176"
             aria-hidden="true"
           >

@@ -1,9 +1,11 @@
+import type { Page } from '@playwright/test'
 import { expect, test } from './support/test'
 import { denyCamera, fakeBarcodeCamera } from './support/fake-camera'
 import { withOverflowNav } from './support/nav'
 import { pinToLocalMorning } from './support/date'
-import { nutellaCheck } from '../test/check-fixtures'
-import { checkOnlyOn } from '../test/mocks/handlers/check'
+import { nutellaCheck, wheyIsolateCheck } from '../test/check-fixtures'
+import { checkOf, checkOnlyOn } from '../test/mocks/handlers/check'
+import { drawnHoleDiameter, inkWidth, rings } from './support/ring'
 import { setupUnfinished, summaryWith } from '../test/mocks/handlers/summary'
 
 // F11 slice 1: Check. A scan states what a product costs and returns against
@@ -98,4 +100,60 @@ test('without a calorie budget the setup prompt replaces the scanner', async ({
   // No invented denominator, and no analysis drawn against one.
   await expect(page.getByText('Costs')).toHaveCount(0)
   await expect(page.getByText('Returns')).toHaveCount(0)
+})
+
+/** The Returns ring's figure and hole once a 250 g portion of whey is checked. */
+async function widestRingFigure(
+  page: Page,
+  goto: (url: string, options: { waitUntil: 'hydration' }) => Promise<unknown>,
+) {
+  await page.route('**jsdelivr.net/**', (route) => route.abort())
+  await fakeBarcodeCamera(page, wheyIsolateCheck.barcode)
+
+  await goto('/check', { waitUntil: 'hydration' })
+
+  await expect(page.getByRole('heading', { name: 'Whey isolate' })).toBeVisible(
+    { timeout: 20_000 },
+  )
+  await page.getByRole('slider').press('End')
+
+  const figure = page.getByText('132%', { exact: true })
+  await expect(figure).toBeVisible()
+  const [ink, hole] = await Promise.all([
+    inkWidth(figure),
+    drawnHoleDiameter(rings(page).nth(1)),
+  ])
+  return { ink, hole }
+}
+
+test("a ring's widest figure stays inside its hole at the largest portion", async ({
+  page,
+  goto,
+  network,
+}) => {
+  network.use(checkOf(wheyIsolateCheck))
+
+  const { ink, hole } = await widestRingFigure(page, goto)
+
+  expect(ink).toBeLessThanOrEqual(hole)
+})
+
+test("a ring's widest figure stays inside its hole when the User enlarges their text", async ({
+  page,
+  goto,
+  network,
+}) => {
+  // The figure is sized in rem; the ring has to follow it (day-ring.spec.ts).
+  await page.addInitScript(() => {
+    const enlarge = () => {
+      document.documentElement.style.fontSize = '20px'
+    }
+    if (document.documentElement) enlarge()
+    else document.addEventListener('DOMContentLoaded', enlarge)
+  })
+  network.use(checkOf(wheyIsolateCheck))
+
+  const { ink, hole } = await widestRingFigure(page, goto)
+
+  expect(ink).toBeLessThanOrEqual(hole)
 })

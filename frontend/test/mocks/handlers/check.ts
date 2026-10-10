@@ -20,6 +20,20 @@ export const checkHandlers = [
 ]
 
 /**
+ * A lookup that knows [result] by its barcode; any other barcode falls through
+ * to the baseline. Refused without the day it is for, as the baseline is.
+ */
+export function checkOf(result: typeof nutellaCheck) {
+  return http.get('/api/check/{barcode}', ({ params, query, response }) => {
+    if (params.barcode !== result.barcode) return undefined
+    if (!query.get('clientToday')) {
+      return response(400).json({ message: 'clientToday is required' })
+    }
+    return response(200).json(result)
+  })
+}
+
+/**
  * A lookup with targets standing on [day] alone: asked about any other day it
  * refuses, which the page shows as a lookup that did not get through.
  */
