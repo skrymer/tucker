@@ -202,14 +202,12 @@ const macros = useMacroBar()
         :key="r.key"
         class="flex flex-col items-center gap-2"
       >
-        <p class="text-xs font-semibold tracking-wide text-dimmed uppercase">
+        <p class="text-eyebrow text-muted">
           {{ r.label }}
         </p>
-        <div class="relative size-32">
+        <div class="relative size-36">
           <svg
-            class="-rotate-90"
-            width="128"
-            height="128"
+            class="size-full -rotate-90"
             viewBox="0 0 176 176"
             aria-hidden="true"
           >
@@ -234,9 +232,7 @@ const macros = useMacroBar()
             />
           </svg>
           <div class="absolute inset-0 grid place-content-center">
-            <span
-              class="font-display text-3xl font-extrabold text-highlighted tabular-nums"
-            >
+            <span class="text-ring-figure text-highlighted tabular-nums">
               {{ r.percent }}
             </span>
           </div>
@@ -252,12 +248,8 @@ const macros = useMacroBar()
          the readout the thumb drives, "Portion 100 g". -->
     <div class="w-full" role="group" aria-labelledby="check-portion-label">
       <p id="check-portion-label" class="flex items-baseline justify-between">
-        <span class="text-xs font-semibold tracking-wide text-dimmed uppercase">
-          Portion
-        </span>
-        <span
-          class="font-display text-lg font-bold text-highlighted tabular-nums"
-        >
+        <span class="text-eyebrow text-muted"> Portion </span>
+        <span class="text-stat text-highlighted tabular-nums">
           {{ portionLabel }}
         </span>
       </p>

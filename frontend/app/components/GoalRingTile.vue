@@ -20,21 +20,19 @@ function useGoalArc() {
   return { percent, arcs }
 }
 
-// The legend beside it: the centre figure, the two weights it is measured
-// between, and the observed pace — withheld until the backend has enough
-// readings to classify one.
+// The legend beside it: the centre figure and the two weights it is measured
+// between.
 function useGoalReadout() {
   const kgToGo = computed(() => props.progress.kgToGo.toFixed(1))
   const trend = computed(() => `${props.progress.currentTrendKg.toFixed(1)} kg`)
   const target = computed(
     () => `${props.progress.targetWeightKg.toFixed(1)} kg`,
   )
-  const pace = computed(() => paceBadge(props.progress.paceStatus))
-  return { kgToGo, trend, target, pace }
+  return { kgToGo, trend, target }
 }
 
 const { percent, arcs } = useGoalArc()
-const { kgToGo, trend, target, pace } = useGoalReadout()
+const { kgToGo, trend, target } = useGoalReadout()
 </script>
 
 <template>
@@ -48,27 +46,17 @@ const { kgToGo, trend, target, pace } = useGoalReadout()
     <UCard>
       <div class="flex flex-col items-center gap-6 sm:flex-row">
         <RingGauge :arcs="arcs">
-          <span
-            class="font-display text-4xl font-extrabold tabular-nums text-highlighted"
-          >
+          <span class="text-ring-figure tabular-nums text-highlighted">
             {{ kgToGo }}
           </span>
-          <span class="text-xs font-semibold text-muted">kg to go</span>
+          <span class="text-label text-muted">kg to go</span>
         </RingGauge>
 
         <div class="flex w-full flex-col gap-4">
           <div>
             <div class="mb-1 flex items-center gap-2">
               <span class="size-2.5 rounded bg-primary" />
-              <h2 class="text-lg font-bold text-highlighted">Goal progress</h2>
-              <UBadge
-                v-if="pace"
-                :color="pace.color"
-                variant="subtle"
-                size="sm"
-              >
-                {{ pace.label }}
-              </UBadge>
+              <GoalProgressHeading :pace-status="progress.paceStatus" />
             </div>
             <p class="text-sm text-muted">{{ percent }}% complete</p>
           </div>

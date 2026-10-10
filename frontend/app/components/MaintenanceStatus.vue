@@ -21,7 +21,7 @@ const sinceLabel = computed(() =>
         <UIcon name="i-lucide-leaf" class="size-5" />
       </span>
       <div class="min-w-0">
-        <h2 class="text-sm font-medium text-default">
+        <h2 class="text-h2 text-highlighted">
           You're maintaining<span v-if="sinceLabel" class="text-muted"
             >&nbsp;{{ sinceLabel }}</span
           >.

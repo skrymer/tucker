@@ -50,12 +50,12 @@ const description = computed(() =>
 <template>
   <UCard>
     <div class="flex items-center justify-between gap-2">
-      <h2 class="text-lg font-bold text-highlighted">Maintaining</h2>
+      <h2 class="text-h2 text-highlighted">Maintaining</h2>
       <UBadge :color="drift.color" variant="subtle" size="sm">
         {{ drift.label }}
       </UBadge>
     </div>
-    <p class="mt-1 text-4xl font-bold text-default">{{ trendWeight }}</p>
+    <p class="mt-1 text-ring-figure text-default">{{ trendWeight }}</p>
     <p class="mt-1 text-sm text-muted">{{ description }}</p>
   </UCard>
 </template>

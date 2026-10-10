@@ -129,12 +129,12 @@ const { data: ringData, categories: ringCategories } = useRing()
     :aria-busy="pending"
   >
     <div class="flex items-baseline justify-between gap-2">
-      <h2 id="intake-breakdown-heading" class="text-sm font-medium text-muted">
+      <h2 id="intake-breakdown-heading" class="text-h2 text-highlighted">
         What you're eating
       </h2>
       <!-- The denominator, stated: every share below is of this, never of the
            Calorie Budget (ADR 0026). -->
-      <span class="text-sm font-semibold tabular-nums text-default">
+      <span class="text-label tabular-nums text-default">
         {{ Math.round(breakdown.totalCalories) }} kcal
       </span>
     </div>

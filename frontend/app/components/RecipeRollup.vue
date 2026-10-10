@@ -24,12 +24,12 @@ const cookDownPct = computed(() =>
     aria-label="Per 100 g"
     class="flex flex-col gap-2 rounded-xl bg-elevated/50 p-4"
   >
-    <p class="text-sm font-medium text-muted">Per 100 g</p>
+    <p class="text-label text-muted">Per 100 g</p>
     <div class="flex items-baseline gap-4">
-      <p class="text-2xl font-bold text-primary">
+      <p class="text-stat text-primary">
         {{ Math.round(rollup.per100gKcal) }} kcal
       </p>
-      <p class="text-lg font-semibold text-secondary">
+      <p class="text-stat text-secondary">
         {{ Math.round(rollup.per100gProtein) }} g protein
       </p>
     </div>

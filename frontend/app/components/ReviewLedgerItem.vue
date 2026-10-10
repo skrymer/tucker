@@ -30,7 +30,7 @@ const headline = computed(() =>
 <template>
   <UCard>
     <div class="flex items-start justify-between gap-3">
-      <p class="text-sm font-medium text-muted">
+      <p class="text-label text-muted">
         {{ formatDateFromISO(row.review.reviewedOn) }}
       </p>
       <LedgerBasisBadge
@@ -40,7 +40,7 @@ const headline = computed(() =>
     </div>
 
     <div class="mt-1 flex items-baseline gap-2">
-      <p class="text-4xl font-bold text-default tabular-nums">
+      <p class="text-ring-figure text-default tabular-nums">
         {{ headline.value }}
       </p>
       <p class="text-sm text-muted">{{ headline.label }}</p>

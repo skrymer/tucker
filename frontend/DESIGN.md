@@ -346,17 +346,26 @@ the ring, so type is friendly-but-quiet.
 
 ### Scale
 
-| Token        | Size / line                  | Weight  | Use                                |
-| ------------ | ---------------------------- | ------- | ---------------------------------- |
-| Ring figure  | 36px / 1.11                  | 800     | kcal remaining, centre of the ring |
-| Display / h1 | 30px / 1.05                  | 800     | page title ("Today")               |
-| Stat         | 22px / 1.1                   | 800     | ring-legend values, tile figures   |
-| h2           | 18px / 1.3                   | 700     | card headings                      |
-| Body         | 15px / 1.5                   | 400–500 | default                            |
-| Label        | 13px                         | 600     | meta, secondary lines              |
-| Eyebrow      | 11.5px, `+0.06em`, uppercase | 650     | section kickers ("Logged today")   |
+| Token       | Class              | Size / line  | Weight  | Tracking | Use                                                       |
+| ----------- | ------------------ | ------------ | ------- | -------- | --------------------------------------------------------- |
+| Ring figure | `text-ring-figure` | 36px / 1.11  | 800     | —        | the centre of a ring, a card's one headline figure        |
+| h1          | `text-h1`          | 24px / 1.33  | 700     | —        | page title ("Today"), in `text-default`                   |
+| Stat        | `text-stat`        | 22px / 1.1   | 800     | —        | tile figures (a ring's legend stays a plain line)         |
+| h2          | `text-h2`          | 18px / 1.3   | 700     | —        | card headings, in `text-highlighted`                      |
+| Body        | `text-body`        | 15px / 1.5   | 400–500 | —        | default, set on `body`                                    |
+| Label       | `text-label`       | 13px / 1.4   | 600     | —        | meta, secondary lines, in `text-muted`                    |
+| Eyebrow     | `text-eyebrow`     | 11.5px / 1.3 | 650     | +0.06em  | section kickers ("Logged today"), uppercase, `text-muted` |
 
-Headings get `text-wrap: balance`; body copy stays near a 65-character measure.
+Each token is one class carrying its size, line-height, weight and tracking —
+write `text-h2`, never `text-lg font-bold`. It carries its face too: the figures
+and headings are Nunito and the label and eyebrow the body stack, whatever element
+wears them, and the eyebrow is uppercase without asking. Colour is a separate
+class, because a token sets the shape of the type, not its ink. The tokens live in `main.css`'s
+`@theme`, and a test fails when this table and they disagree.
+
+Body is set on `body`, not `html`, so rem-sized things — the rings, spacing — keep
+their size. Headings get `text-wrap: balance`; body copy stays near a 65-character
+measure.
 
 ### Case
 
@@ -523,6 +532,12 @@ kcal`) sits beneath its own ring, so no arc is ever colour-alone. Calorie
   over-target reading is a full ring, never an overshoot) while the percentage
   keeps counting, because a 250 g portion of something dense can cost half the
   day again over and rounding that to "100%" would understate it.
+- **Sized for the widest centre.** Each ring is a 9rem box with an SVG that fills
+  it, so the hole grows with the figure when the User enlarges their text — the
+  Day Ring's rule. At the ring-figure token a three-digit share plus `%` is about
+  100px of ink, which a 128px ring's 94px hole cannot hold; 144px leaves it room.
+  The guards are browser measurements in `e2e/check.spec.ts`: the widest share at
+  250 g, at the default text size and at a 20px root.
 - **Portion dial** — a full-width slider directly under the rings, 10–250 g in
   5 g steps, opening at 100 g. Its live readout sits on the same line as the
   `Portion` label, right-aligned above the track, so a thumb at the bottom of a

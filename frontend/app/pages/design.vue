@@ -53,6 +53,70 @@ const status = [
 const buttonVariants = ['solid', 'soft', 'outline', 'ghost'] as const
 const buttonColors = ['primary', 'secondary', 'neutral'] as const
 
+const typeScale = [
+  {
+    role: 'Ring figure',
+    token: 'text-ring-figure',
+    extra: 'tabular-nums text-highlighted',
+    sample: '1702',
+  },
+  {
+    role: 'h1',
+    token: 'text-h1',
+    extra: 'text-default',
+    sample: 'Today',
+  },
+  {
+    role: 'Stat',
+    token: 'text-stat',
+    extra: 'tabular-nums text-default',
+    sample: '82.4 kg',
+  },
+  {
+    role: 'h2',
+    token: 'text-h2',
+    extra: 'text-highlighted',
+    sample: 'Card heading',
+  },
+  {
+    role: 'Body',
+    token: 'text-body',
+    extra: 'text-default',
+    sample:
+      'Body copy on the system stack — fast, neutral, and comfortable to read.',
+  },
+  {
+    role: 'Label',
+    token: 'text-label',
+    extra: 'text-muted',
+    sample: 'Planned finish',
+  },
+  {
+    role: 'Eyebrow',
+    token: 'text-eyebrow',
+    extra: 'text-muted',
+    sample: 'Logged today',
+  },
+]
+
+function useTypeCaptions() {
+  const specimens = useTemplateRef<HTMLElement>('specimens')
+  const captions = ref<Record<string, string>>({})
+  onMounted(() => {
+    const samples =
+      specimens.value?.querySelectorAll<HTMLElement>('[data-token]')
+    captions.value = Object.fromEntries(
+      [...(samples ?? [])].map((el) => [
+        el.dataset.token,
+        typeCaption(getComputedStyle(el)),
+      ]),
+    )
+  })
+  return captions
+}
+
+const captions = useTypeCaptions()
+
 const foodOptions = ['Rolled oats', 'Free-range eggs', 'Kangaroo burger']
 const selectedFood = ref(foodOptions[0])
 const grams = ref(80)
@@ -61,10 +125,8 @@ const grams = ref(80)
 <template>
   <section class="flex flex-col gap-10">
     <header class="flex flex-col gap-1">
-      <p class="text-xs font-semibold uppercase tracking-wider text-primary">
-        Design system
-      </p>
-      <h1 class="text-3xl font-extrabold text-highlighted">Vital</h1>
+      <p class="text-eyebrow text-muted">Design system</p>
+      <h1 class="text-h1 text-default">Vital</h1>
       <p class="text-muted">
         Tucker's visual identity — the day as a ring you close. Green brand,
         coral for protein, warm neutrals, rounded and calm. Source of truth:
@@ -75,18 +137,16 @@ const grams = ref(80)
     <!-- Review the whole guide in either mode — this is the real Appearance
          control from /profile, so it doubles as its own showcase. -->
     <div class="flex flex-wrap items-center gap-3">
-      <span class="text-sm font-medium text-default">Mode</span>
+      <span class="text-label text-muted">Mode</span>
       <AppearanceControl />
     </div>
 
     <!-- ── Colour ─────────────────────────────────────────────── -->
     <div class="flex flex-col gap-4">
-      <h2 class="text-sm font-semibold uppercase tracking-wider text-muted">
-        Colour
-      </h2>
+      <h2 class="text-h2 text-highlighted">Colour</h2>
 
       <div class="flex flex-col gap-2">
-        <p class="text-sm font-medium text-default">Primary · brand green</p>
+        <p class="text-label text-muted">Primary · brand green</p>
         <div class="flex flex-wrap gap-1.5">
           <div
             v-for="c in greenScale"
@@ -105,9 +165,7 @@ const grams = ref(80)
       </div>
 
       <div class="flex flex-col gap-2">
-        <p class="text-sm font-medium text-default">
-          Secondary · coral (protein)
-        </p>
+        <p class="text-label text-muted">Secondary · coral (protein)</p>
         <div class="flex flex-wrap gap-1.5">
           <div
             v-for="c in coralScale"
@@ -126,7 +184,7 @@ const grams = ref(80)
       </div>
 
       <div class="flex flex-col gap-2">
-        <p class="text-sm font-medium text-default">Neutrals · green-biased</p>
+        <p class="text-label text-muted">Neutrals · green-biased</p>
         <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
           <div
             v-for="s in surfaces"
@@ -148,7 +206,7 @@ const grams = ref(80)
       </div>
 
       <div class="flex flex-col gap-2">
-        <p class="text-sm font-medium text-default">
+        <p class="text-label text-muted">
           Status · a separate axis, never the accent
         </p>
         <div class="flex flex-wrap gap-2">
@@ -166,37 +224,30 @@ const grams = ref(80)
 
     <!-- ── Typography ─────────────────────────────────────────── -->
     <div class="flex flex-col gap-4">
-      <h2 class="text-sm font-semibold uppercase tracking-wider text-muted">
-        Typography
-      </h2>
-      <div
-        class="flex flex-col gap-3 rounded-2xl border border-default bg-default p-5"
+      <h2 class="text-h2 text-highlighted">Typography</h2>
+      <!-- Each caption is read off its rendered sample, so it states what the
+           token actually compiles to rather than what it was meant to. -->
+      <dl
+        ref="specimens"
+        class="flex flex-col gap-4 rounded-2xl border border-default bg-default p-5"
       >
-        <p
-          class="font-display text-4xl font-extrabold tabular-nums text-highlighted"
-        >
-          1702
-        </p>
-        <p class="text-xs text-dimmed">Ring figure · Nunito 800 · tabular</p>
-        <hr class="border-default" />
-        <h3 class="text-3xl font-extrabold text-highlighted">Today</h3>
-        <h3 class="text-lg font-bold text-highlighted">Card heading</h3>
-        <p class="text-default">
-          Body copy on the system stack — fast, neutral, and comfortable to read
-          at a 15px base with room to breathe.
-        </p>
-        <p class="text-sm font-medium text-muted">Label · 13px medium muted</p>
-        <p class="text-xs font-semibold uppercase tracking-wider text-muted">
-          Eyebrow · logged today
-        </p>
-      </div>
+        <div v-for="t in typeScale" :key="t.token" class="flex flex-col gap-1">
+          <dt :data-token="t.token" :class="[t.token, t.extra]">
+            {{ t.sample }}
+          </dt>
+          <dd class="text-xs text-dimmed tabular-nums">
+            {{ `${t.role} · ` }}<code>{{ t.token }}</code>
+            <template v-if="captions[t.token]">
+              · {{ captions[t.token] }}</template
+            >
+          </dd>
+        </div>
+      </dl>
     </div>
 
     <!-- ── Shape & elevation ──────────────────────────────────── -->
     <div class="flex flex-col gap-4">
-      <h2 class="text-sm font-semibold uppercase tracking-wider text-muted">
-        Shape &amp; elevation
-      </h2>
+      <h2 class="text-h2 text-highlighted">Shape &amp; elevation</h2>
       <div class="flex flex-wrap items-end gap-4">
         <div class="flex flex-col items-center gap-2">
           <span
@@ -217,9 +268,7 @@ const grams = ref(80)
 
     <!-- ── Signature: the Ring (the real component) ─────────────── -->
     <div class="flex flex-col gap-4">
-      <h2 class="text-sm font-semibold uppercase tracking-wider text-muted">
-        Signature · the Ring
-      </h2>
+      <h2 class="text-h2 text-highlighted">Signature · the Ring</h2>
       <p class="-mt-2 text-sm text-muted">
         The live <code class="text-default">DayRing</code> component — under
         budget, then over (the calorie arc + centre turn to error red).
@@ -250,9 +299,7 @@ const grams = ref(80)
 
     <!-- ── Buttons ────────────────────────────────────────────── -->
     <div class="flex flex-col gap-4">
-      <h2 class="text-sm font-semibold uppercase tracking-wider text-muted">
-        Buttons
-      </h2>
+      <h2 class="text-h2 text-highlighted">Buttons</h2>
       <div class="flex flex-col gap-3">
         <div
           v-for="color in buttonColors"
@@ -290,13 +337,9 @@ const grams = ref(80)
 
     <!-- ── Cards & entries ────────────────────────────────────── -->
     <div class="flex flex-col gap-4">
-      <h2 class="text-sm font-semibold uppercase tracking-wider text-muted">
-        Cards &amp; entries
-      </h2>
+      <h2 class="text-h2 text-highlighted">Cards &amp; entries</h2>
       <UCard>
-        <p class="text-xs font-semibold uppercase tracking-wider text-muted">
-          Logged today
-        </p>
+        <p class="text-eyebrow text-muted">Logged today</p>
         <!-- The Figure row: the name is what the eye lands on, and what the
              entry cost sits under it in quieter type. The unit is spelled out,
              so the pair gets the row's whole width and the far end carries only
@@ -355,9 +398,7 @@ const grams = ref(80)
 
     <!-- ── Form controls ──────────────────────────────────────── -->
     <div class="flex flex-col gap-4">
-      <h2 class="text-sm font-semibold uppercase tracking-wider text-muted">
-        Form controls
-      </h2>
+      <h2 class="text-h2 text-highlighted">Form controls</h2>
       <UCard>
         <div class="flex flex-col gap-4">
           <UFormField label="Food">

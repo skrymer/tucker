@@ -9,6 +9,30 @@
      Body stays on the system stack; only headings + headline numerics use this. */
   --font-display: 'Nunito', ui-sans-serif, system-ui, sans-serif;
 
+  /* Type scale (DESIGN.md → Typography → Scale): each token is one class
+     carrying its size, line-height, weight and tracking. */
+  --text-ring-figure: 2.25rem;
+  --text-ring-figure--line-height: 1.11;
+  --text-ring-figure--font-weight: 800;
+  --text-h1: 1.5rem;
+  --text-h1--line-height: 1.33;
+  --text-h1--font-weight: 700;
+  --text-stat: 1.375rem;
+  --text-stat--line-height: 1.1;
+  --text-stat--font-weight: 800;
+  --text-h2: 1.125rem;
+  --text-h2--line-height: 1.3;
+  --text-h2--font-weight: 700;
+  --text-body: 0.9375rem;
+  --text-body--line-height: 1.5;
+  --text-label: 0.8125rem;
+  --text-label--line-height: 1.4;
+  --text-label--font-weight: 600;
+  --text-eyebrow: 0.71875rem;
+  --text-eyebrow--line-height: 1.3;
+  --text-eyebrow--letter-spacing: 0.06em;
+  --text-eyebrow--font-weight: 650;
+
   /* Primary — Tucker brand green (#00c16a), pinned so --ui-primary matches the
      mark used by the PWA icons + manifest.theme_color. Equals Nuxt UI `green`. */
   --color-green-50: #effdf5;
@@ -47,6 +71,13 @@
    User's thumb. Overlay scrollbars (phones, macOS) reserve nothing. */
 html {
   scrollbar-gutter: stable;
+}
+
+/* Body on `body`, not `html`, so rem-sized things — the rings, spacing — keep
+   their size. */
+body {
+  font-size: var(--text-body);
+  line-height: var(--text-body--line-height);
 }
 
 /* Green-biased neutrals + brand status tokens. Unlayered, so these win over
@@ -225,5 +256,25 @@ html {
 h1,
 h2,
 h3 {
+  font-family: var(--font-display);
+  text-wrap: balance;
+}
+
+/* A type token carries its face too, so it reads the same whatever element
+   wears it: an eyebrow or a label set on a heading stays on the body stack. */
+.text-eyebrow,
+.text-label {
+  font-family: var(--font-sans);
+}
+
+/* The eyebrow is the one uppercase line in Tucker (DESIGN.md → Case). */
+.text-eyebrow {
+  text-transform: uppercase;
+}
+
+.text-ring-figure,
+.text-h1,
+.text-stat,
+.text-h2 {
   font-family: var(--font-display);
 }

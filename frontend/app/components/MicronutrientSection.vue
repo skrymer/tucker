@@ -155,7 +155,7 @@ const queueLabel = computed(() => {
     class="transition-opacity delay-150"
     :class="pending && 'opacity-50'"
   >
-    <h2 id="micronutrient-heading" class="text-sm font-medium text-muted">
+    <h2 id="micronutrient-heading" class="text-h2 text-highlighted">
       Vitamins and minerals
     </h2>
     <p v-if="isEmptyWindow" class="mt-2 text-sm text-muted">
@@ -178,7 +178,7 @@ const queueLabel = computed(() => {
       </p>
 
       <div v-for="group in reading.groups" :key="group.claim" class="mt-3">
-        <h3 class="text-xs font-medium uppercase tracking-wide text-muted">
+        <h3 class="text-eyebrow text-muted">
           {{ group.heading }}
         </h3>
         <ul role="list" class="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">

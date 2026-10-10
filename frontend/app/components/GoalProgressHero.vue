@@ -50,12 +50,9 @@ const { planned, pace, observedFinish, observedRate } = usePaceColumns()
 <template>
   <UCard>
     <div class="flex items-center justify-between gap-2">
-      <h2 class="text-sm font-medium text-muted">Goal progress</h2>
-      <UBadge v-if="pace" :color="pace.color" variant="subtle" size="sm">
-        {{ pace.label }}
-      </UBadge>
+      <GoalProgressHeading :pace-status="progress.paceStatus" />
     </div>
-    <p class="mt-1 text-4xl font-bold text-default">{{ percent }}%</p>
+    <p class="mt-1 text-ring-figure text-default">{{ percent }}%</p>
     <!-- `get-value-label`, never `aria-label`: the attribute never reaches the
          progressbar element (frontend/DESIGN.md). -->
     <UProgress
@@ -70,8 +67,8 @@ const { planned, pace, observedFinish, observedRate } = usePaceColumns()
          so, since these won't match a single morning's scale reading. -->
     <dl class="mt-6 grid grid-cols-3 gap-2 text-center">
       <div v-for="stop in stops" :key="stop.label">
-        <dt class="text-xs font-medium text-muted">{{ stop.label }}</dt>
-        <dd class="mt-1 text-lg font-semibold text-default">
+        <dt class="text-label text-muted">{{ stop.label }}</dt>
+        <dd class="mt-1 text-stat text-default">
           {{ stop.value }}
         </dd>
       </div>
@@ -83,23 +80,20 @@ const { planned, pace, observedFinish, observedRate } = usePaceColumns()
     <!-- Planned vs observed finish -->
     <div class="mt-6 grid grid-cols-2 gap-4">
       <div class="border-t border-default pt-3">
-        <p class="text-xs font-medium text-muted">Planned finish</p>
-        <p class="mt-1 text-lg font-semibold text-default">
+        <p class="text-label text-muted">Planned finish</p>
+        <p class="mt-1 text-stat text-default">
           {{ planned.finish }}
         </p>
         <p class="mt-1 text-sm text-muted">{{ planned.rate }}</p>
       </div>
 
       <div class="border-t border-default pt-3">
-        <p class="text-xs font-medium text-muted">Observed finish</p>
+        <p class="text-label text-muted">Observed finish</p>
         <template v-if="pace">
-          <p
-            v-if="observedFinish"
-            class="mt-1 text-lg font-semibold text-default"
-          >
+          <p v-if="observedFinish" class="mt-1 text-stat text-default">
             {{ observedFinish }}
           </p>
-          <p v-else class="mt-1 text-lg font-semibold text-muted">—</p>
+          <p v-else class="mt-1 text-stat text-muted">—</p>
           <p v-if="observedRate" class="mt-1 text-sm text-muted">
             {{ observedRate }}
           </p>

@@ -83,7 +83,7 @@ const { enabled, toggle } = useReminderToggle(() => hourForm.reminderHour)
 
 <template>
   <section class="flex flex-col gap-4">
-    <h2 class="text-lg font-semibold text-default">Weekly-review reminder</h2>
+    <h2 class="text-h2 text-highlighted">Weekly-review reminder</h2>
 
     <UCard>
       <div class="flex flex-col gap-4">

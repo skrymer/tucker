@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { readdirSync, readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { appTemplates } from '../../test/templates'
 
 // Tucker states every name it renders in sentence case (frontend/DESIGN.md →
 // Case), and the rule is enforced by remembering to call `formatName` at each of
@@ -15,10 +14,6 @@ import { resolve } from 'node:path'
 // with four green suites and nothing for a reviewer to notice. This is the
 // executable link — the move `exits.test.ts` makes for the service-worker exits
 // and `RunAsCallSitesTest` makes for the backend's one `runAs` call site.
-
-// Anchored to this file rather than the working directory, which is not the
-// project root under StrykerJS.
-const APP = resolve(import.meta.dirname, '..')
 
 /**
  * Every place a template can state a value: an interpolation, a template literal
@@ -114,19 +109,9 @@ const ALLOWED: Record<string, Record<string, string>> = {
   },
 }
 
-function sfcs(dir: string): string[] {
-  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
-    const path = resolve(dir, entry.name)
-    if (entry.isDirectory()) return sfcs(path)
-    return entry.name.endsWith('.vue') ? [path] : []
-  })
-}
-
 /** Every name-stating site in the app's templates, as `file` + `expression`. */
 function nameSites(): { file: string; expression: string }[] {
-  return sfcs(APP).flatMap((path) => {
-    const file = path.slice(APP.length + 1)
-    const source = readFileSync(path, 'utf8')
+  return appTemplates().flatMap(({ file, source }) => {
     return [...source.matchAll(STATED)]
       .map((match) =>
         (match[1] ?? match[2] ?? match[3] ?? '').split(/\s+/).join(' ').trim(),

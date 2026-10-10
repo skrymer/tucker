@@ -100,7 +100,7 @@ const { focusedDate, readout } = useFocus()
     :aria-busy="pending"
   >
     <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-      <h2 id="weight-timeline-heading" class="text-sm font-medium text-muted">
+      <h2 id="weight-timeline-heading" class="text-h2 text-highlighted">
         Your weight
       </h2>
       <SectionTabs v-model="windowDays" :items="windowItems" label="Window" />

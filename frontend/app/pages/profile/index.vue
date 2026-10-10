@@ -172,7 +172,7 @@ await Promise.all([loadProfile(), refreshCurrentTrend()])
 <template>
   <section class="flex flex-col gap-8">
     <div class="flex flex-col gap-1">
-      <h1 class="text-2xl font-bold text-default">Profile</h1>
+      <h1 class="text-h1 text-default">Profile</h1>
       <!-- Whose diet this is, and the way out — /profile only (#160). -->
       <IdentityByline />
     </div>
@@ -216,10 +216,7 @@ await Promise.all([loadProfile(), refreshCurrentTrend()])
       class="flex flex-col gap-4"
       aria-labelledby="profile-details-heading"
     >
-      <h2
-        id="profile-details-heading"
-        class="text-lg font-semibold text-default"
-      >
+      <h2 id="profile-details-heading" class="text-h2 text-highlighted">
         Your details
       </h2>
       <LoadErrorState
@@ -243,7 +240,7 @@ await Promise.all([loadProfile(), refreshCurrentTrend()])
     <!-- Appearance is a per-device preference (cookie, not the Profile), so it's
          always available — never gated on body-stats setup. -->
     <section class="flex flex-col gap-4" aria-labelledby="appearance-heading">
-      <h2 id="appearance-heading" class="text-lg font-semibold text-default">
+      <h2 id="appearance-heading" class="text-h2 text-highlighted">
         Appearance
       </h2>
       <UCard>

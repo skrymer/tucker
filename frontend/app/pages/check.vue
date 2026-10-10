@@ -120,7 +120,7 @@ const { viewfinderCaption, cameraAlert } = useScanCopy(scanState)
 <template>
   <section class="flex flex-col gap-4">
     <header>
-      <h1 class="text-2xl font-bold text-default">Check</h1>
+      <h1 class="text-h1 text-default">Check</h1>
     </header>
     <LoadErrorState
       :error="summaryError"

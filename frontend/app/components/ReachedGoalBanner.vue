@@ -16,7 +16,7 @@ const target = computed(() => `${props.targetWeightKg.toFixed(1)} kg`)
     :ui="{ icon: 'size-8' }"
   >
     <template #title>
-      <h2 class="text-base font-semibold">You reached your goal!</h2>
+      <h2 class="text-h2">You reached your goal!</h2>
     </template>
     <template #description>
       <p>

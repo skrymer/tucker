@@ -5,7 +5,7 @@ const emit = defineEmits<{ run: [] }>()
 <template>
   <div class="flex flex-col items-center gap-3 py-12 text-center">
     <UIcon name="i-lucide-line-chart" class="size-10 text-muted" aria-hidden />
-    <h2 class="text-lg font-semibold text-default">No weekly reviews yet</h2>
+    <h2 class="text-h2 text-highlighted">No weekly reviews yet</h2>
     <p class="max-w-xs text-sm text-muted">
       Each week the engine recalculates your calorie budget and protein floor
       from your weight trend. Your first review will appear here.

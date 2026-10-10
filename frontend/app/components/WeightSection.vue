@@ -37,9 +37,7 @@ const { latest, previous } = useLatestReading()
     :class="{ 'pointer-events-none opacity-50 select-none': props.disabled }"
   >
     <header class="flex items-center justify-between">
-      <h2 id="weight-heading" class="text-lg font-semibold text-default">
-        Weight
-      </h2>
+      <h2 id="weight-heading" class="text-h2 text-highlighted">Weight</h2>
       <UButton
         v-if="!props.disabled"
         icon="i-lucide-plus"

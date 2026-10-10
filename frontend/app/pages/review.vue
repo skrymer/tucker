@@ -137,7 +137,7 @@ const { pending, execute: runReview } = useApiMutation(
 <template>
   <section class="flex flex-col gap-4">
     <header class="flex items-center justify-between">
-      <h1 class="text-2xl font-bold text-default">Review</h1>
+      <h1 class="text-h1 text-default">Review</h1>
       <UButton
         v-if="isDesktop && hasReviews"
         icon="i-lucide-refresh-cw"

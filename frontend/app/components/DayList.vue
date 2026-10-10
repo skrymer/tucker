@@ -45,7 +45,7 @@ const tally = computed(() =>
     <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
       <h2
         :id="headingId"
-        class="flex items-center gap-2 text-lg font-bold text-highlighted"
+        class="flex items-center gap-2 text-h2 text-highlighted"
       >
         <UIcon
           :name="RELATIVE_DAYS[day].icon"

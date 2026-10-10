@@ -141,7 +141,7 @@ const retryActions = computed(() => [
     <p v-if="noAnswerYet" class="py-12 text-sm text-muted">Looking it up…</p>
 
     <template v-else-if="check">
-      <h2 class="text-center text-lg font-bold text-highlighted">
+      <h2 class="text-center text-h2 text-highlighted">
         {{ formatName(check.name) }}
       </h2>
       <CheckAnalysis :check="check" />

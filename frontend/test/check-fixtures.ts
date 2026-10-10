@@ -28,3 +28,31 @@ export const nutellaCheck: CheckResult = {
   carbsEnergyShare: 0.431,
   fatEnergyShare: 0.521,
 }
+
+/**
+ * A whey isolate against the same targets — 90 g protein and 10 g fat per 100 g,
+ * so 450 kcal by Atwater. Far above pace, so it owes no protein: its balance and
+ * whole-day shortfall are zero. A 250 g portion returns 132% of the Floor, the
+ * widest a Check ring's figure gets.
+ */
+export const wheyIsolateCheck: CheckResult = {
+  name: 'Whey isolate',
+  barcode: '9300601234567',
+  source: 'Open Food Facts',
+  caloriesPer100g: 450,
+  proteinPer100g: 90,
+  carbsPer100g: 0,
+  fatPer100g: 10,
+  calorieBudgetKcal: 2492,
+  proteinFloorG: 170,
+  costSharePer100g: 450 / 2492,
+  returnSharePer100g: 90 / 170,
+  paceGPer100Kcal: 6.82,
+  proteinPer100Kcal: 20,
+  balanceProteinPer100gG: 0,
+  gramsInBudget: (2492 / 450) * 100,
+  wholeDayProteinShortfallG: 0,
+  proteinEnergyShare: 0.8,
+  carbsEnergyShare: 0,
+  fatEnergyShare: 0.2,
+}

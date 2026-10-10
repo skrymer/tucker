@@ -15,7 +15,7 @@ const measurements = computed(() => weights.value ?? [])
       Back to profile
     </UButton>
 
-    <h1 class="text-2xl font-bold text-default">Weight history</h1>
+    <h1 class="text-h1 text-default">Weight history</h1>
     <LoadErrorState
       :error="error"
       title="Couldn't load your weight history"

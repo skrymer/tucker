@@ -13,7 +13,7 @@
     ]"
   >
     <template #title>
-      <h2 class="text-base font-semibold">No deficit is being applied</h2>
+      <h2 class="text-h2">No deficit is being applied</h2>
     </template>
     <template #description>
       <p>
