@@ -53,49 +53,28 @@ function useShownMonth(opensOn?: DateValue) {
   return placeholder
 }
 
-/**
- * UCalendar forwards nothing to a day's button but its own props, so a mark
- * reaches assistive tech as a description the day's content sets on it.
- */
 function useMarkedDays() {
-  const markId = useId()
   const markedDays = computed(() => new Set(props.marked))
-  const isMarked = (day: DateValue) => markedDays.value.has(day.toString())
-
-  // The ref fires before the content is placed inside its button.
-  async function describe(content: unknown, day: DateValue) {
-    if (!(content instanceof Element)) return
-    await nextTick()
-    const button = content.closest('[data-reka-calendar-cell-trigger]')
-    if (isMarked(day)) button?.setAttribute('aria-describedby', markId)
-    else button?.removeAttribute('aria-describedby')
-  }
-
-  return { markId, isMarked, describe }
+  return (day: DateValue) => markedDays.value.has(day.toString())
 }
 
 const { selected, minValue, maxValue } = useCalendarValues()
 const placeholder = useShownMonth(selected.value)
-const { markId, isMarked, describe } = useMarkedDays()
+const isMarked = useMarkedDays()
 </script>
 
 <template>
-  <div>
-    <UCalendar
-      v-model="selected"
-      v-model:placeholder="placeholder"
-      :min-value="minValue"
-      :max-value="maxValue"
-      :week-starts-on="1"
-      :year-controls="false"
-      prevent-deselect
-    >
-      <template #day="{ day }">
-        <UChip :show="isMarked(day)" size="2xs">
-          <span :ref="(content) => describe(content, day)">{{ day.day }}</span>
-        </UChip>
-      </template>
-    </UCalendar>
-    <span :id="markId" class="sr-only">Has Entries</span>
-  </div>
+  <UCalendar
+    v-model="selected"
+    v-model:placeholder="placeholder"
+    :min-value="minValue"
+    :max-value="maxValue"
+    :week-starts-on="1"
+    :year-controls="false"
+    prevent-deselect
+  >
+    <template #day="{ day }">
+      <UChip :show="isMarked(day)" size="2xs">{{ day.day }}</UChip>
+    </template>
+  </UCalendar>
 </template>

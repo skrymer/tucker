@@ -597,8 +597,9 @@ kcal`) sits beneath its own ring, so no arc is ever colour-alone. Calorie
   month → year, so a birth date decades back is a few taps. `min` / `max` bound
   the range, and a day outside it is disabled and announced so. A **marked
   day** — one that holds Entries — carries a small primary dot (`UChip`,
-  `2xs`) **and** the description "Has Entries", so the dot is never the only
-  signal. Re-picking the selected day keeps it. It speaks ISO `yyyy-mm-dd`, and
+  `2xs`) and nothing else. Its presence is the signal, not its hue, so it reads
+  without colour vision; it is visual only and adds nothing to a day's
+  accessible name. Re-picking the selected day keeps it. It speaks ISO `yyyy-mm-dd`, and
   reports the month the User pages to (`paged`, `yyyy-mm`) so a caller can
   load that month's marks. `/design` shows it bounded and marked.
 - **FAB** (phone) — solid green pill-circle, floating shadow, bottom-right above

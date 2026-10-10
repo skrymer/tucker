@@ -162,50 +162,19 @@ describe('AppCalendar', () => {
     expect(onPaged).not.toHaveBeenCalled()
   })
 
-  it('announces a marked day as having Entries, and an unmarked one as nothing', async () => {
+  it('dots each marked day and no other', async () => {
     await renderSuspended(AppCalendar, {
       props: { modelValue: '2026-10-08', marked: ['2026-10-07', '2026-10-09'] },
     })
 
-    const day = (name: string) => screen.getByRole('button', { name })
-    expect(day('Wednesday, October 7, 2026')).toHaveAccessibleDescription(
-      'Has Entries',
-    )
-    expect(day('Friday, October 9, 2026')).toHaveAccessibleDescription(
-      'Has Entries',
-    )
-    expect(day('Thursday, October 8, 2026')).toHaveAccessibleDescription('')
-  })
-
-  it('still announces a mark after a drill to the month view and back', async () => {
-    await renderSuspended(AppCalendar, {
-      props: { modelValue: '2026-10-08', marked: ['2026-10-07'] },
-    })
-    const user = userEvent.setup()
-
-    await user.click(screen.getByRole('button', { name: 'October 2026' }))
-    await user.click(screen.getByRole('button', { name: 'October 2026' }))
-
-    await vi.waitFor(() =>
-      expect(
-        screen.getByRole('button', { name: 'Wednesday, October 7, 2026' }),
-      ).toHaveAccessibleDescription('Has Entries'),
-    )
-  })
-
-  it('announces marks that arrive after it renders, and drops withdrawn ones', async () => {
-    const { rerender } = await renderSuspended(AppCalendar, {
-      props: { modelValue: '2026-10-08', marked: ['2026-10-07'] },
-    })
-
-    await rerender({ modelValue: '2026-10-08', marked: ['2026-10-09'] })
-
-    const day = (name: string) => screen.getByRole('button', { name })
-    await vi.waitFor(() =>
-      expect(day('Friday, October 9, 2026')).toHaveAccessibleDescription(
-        'Has Entries',
-      ),
-    )
-    expect(day('Wednesday, October 7, 2026')).toHaveAccessibleDescription('')
+    // The dot is purely visual, so it has no accessible form to query by.
+    const dotted = screen
+      .getAllByRole('button', { name: /^\w+day, / })
+      .filter((day) => day.querySelector('[data-slot="base"]'))
+      .map((day) => day.getAttribute('aria-label'))
+    expect(dotted).toEqual([
+      'Wednesday, October 7, 2026',
+      'Friday, October 9, 2026',
+    ])
   })
 })
