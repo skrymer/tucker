@@ -3,8 +3,8 @@
  * Claude Code PreToolUse hook (Bash) — refuses a test run whose output is piped
  * through `grep` or `head`. Probity judges a RED or GREEN from the output it is
  * shown; a filtered run hides the failing test's name and assertion, and Probity
- * then refuses genuine RED steps as unobserved. `| tail -N` keeps the summary and
- * the failures, so it passes.
+ * then refuses genuine RED steps as unobserved. `| tail -N` with N of 5 or more
+ * keeps the summary, so it passes; a shorter tail does not.
  *
  * Fails open on any error: a gate that cannot read its input never blocks.
  */
@@ -19,8 +19,11 @@ import { readFileSync } from 'node:fs'
  */
 const TEST_RUN =
   /\b(pnpm|npx|npm|yarn)\b[^;&|]*\b(vitest|test)\b|\bgradlew\b[^;&|]*\b(test|build)\b/
-/** Output piped into a filter that drops lines. */
-const FILTER = /\|\s*(grep|head)\b/
+/**
+ * Output piped into a filter that drops lines — or a `tail` shorter than Vitest's
+ * five-line summary, which drops the pass count before the failures.
+ */
+const FILTER = /\|\s*(grep|head)\b|\|\s*tail\s+-(n\s*)?[1-4](?!\d)/
 
 /** Whether one command list (no `;`, `&&`, `||` or newline) filters a test run. */
 const filtersARun = (segment) => {
@@ -40,9 +43,9 @@ export function decide(command) {
       hookEventName: 'PreToolUse',
       permissionDecision: 'deny',
       permissionDecisionReason:
-        'Project convention: never filter a test run through grep or head — ' +
+        'Project convention: never filter a test run through grep, head or a short tail — ' +
         'Probity reads the full output to judge RED and GREEN. Pipe it through ' +
-        '`| tail -N` instead, and retry.',
+        '`| tail -N` instead (N of 5 or more, so the summary survives), and retry.',
     },
   }
 }
