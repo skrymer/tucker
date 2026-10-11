@@ -1,5 +1,5 @@
 import { expect, test } from './support/test'
-import { localTodayIso } from './support/date'
+import { localTodayIso, pinToLocalMorning } from './support/date'
 import { weeklyReview } from '../test/review-fixtures'
 import {
   breakdownItem,
@@ -142,6 +142,8 @@ test.describe('with Calorie Tracking on', () => {
     goto,
     network,
   }) => {
+    // The page's own calendar draws the month it opens on, so the day is fixed.
+    await pinToLocalMorning(page)
     network.use(intakeBreakdownOf(A_FULL_DAY))
 
     await goto('/review', { waitUntil: 'hydration' })

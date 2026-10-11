@@ -4,6 +4,7 @@ import {
   reviewHistoryFails,
 } from '../test/mocks/handlers/reviews'
 import { weeklyReview } from '../test/review-fixtures'
+import { pinToLocalMorning } from './support/date'
 
 test('shows a retryable error instead of an empty ledger when the review history fails to load', async ({
   goto,
@@ -28,6 +29,8 @@ test('a mixed history keeps its calorie columns and em-dashes the weeks without 
   network,
   page,
 }) => {
+  // Look up a day draws the month it opens on, so the day is fixed.
+  await pinToLocalMorning(page)
   network.use(
     reviewHistory([
       weeklyReview({ id: 1, reviewedOn: '2026-06-01', trendWeightKg: 86 }),
@@ -51,6 +54,8 @@ test('a history with no targets at all is a dated trend, not four empty columns'
   network,
   page,
 }) => {
+  // Look up a day draws the month it opens on, so the day is fixed.
+  await pinToLocalMorning(page)
   network.use(
     reviewHistory([
       weeklyReview({

@@ -186,6 +186,10 @@ const { pending, execute: runReview } = useApiMutation(
       />
     </LoadErrorState>
 
+    <!-- Gated by the breakdown's rule: it reads a log Tucker has agreed to stop
+         asking a weight-only User to keep. -->
+    <DayLookupSection v-if="tracksCalories" />
+
     <!-- Between the breakdown and the ledger, and gated in setup by the same
          rule: with Calorie Tracking off nothing was fetched, so there is neither
          an intake to render nor an error to report. -->

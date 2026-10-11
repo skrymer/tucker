@@ -42,6 +42,9 @@ const ALLOWED: Record<string, Record<string, string>> = {
     "markTouched('name')":
       'the form field key, not a name being stated to anybody',
   },
+  'components/DayLookupSection.vue': {
+    'entry.name': 'handed to FigureRow, which states it',
+  },
   'components/DayList.vue': {
     'entry.name': 'handed to FigureRow, which states it',
     '`Delete ${formatEntryName(entry)}`':
