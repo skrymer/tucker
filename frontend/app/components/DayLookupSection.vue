@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import type { RelativeDay } from '~/utils/day'
-
 const { $api } = useNuxtApp()
 
 /** The picked day and its Entries, re-read whenever another day is picked. */
@@ -18,31 +16,30 @@ function usePickedDay() {
   const tally = computed(() =>
     formatDayTally(entries.value.length, day.value?.caloriesConsumed ?? 0),
   )
-  return { picked, entries, tally, error, pending, load }
+  /** Whether any day has been answered yet: until then the panel claims nothing. */
+  const answered = computed(() => day.value !== null)
+  return { picked, entries, tally, answered, error, pending, load }
 }
 
-/** The day as Today names it: "Today · …" / "Tomorrow · …", plain otherwise. */
-function useDayHeading(picked: Ref<string>) {
-  const relativeDay = computed<RelativeDay | null>(() => {
-    const today = localToday()
-    if (picked.value === today) return 'today'
-    return picked.value === localTomorrow(today) ? 'tomorrow' : null
-  })
+/**
+ * The picked day as Today names it, and the last day that can be picked —
+ * both follow the clock, so a page left open past midnight moves on with it.
+ */
+function useDayNaming(picked: Ref<string>) {
+  const today = useLocalDay()
+  const heading = computed(() => dayHeading(picked.value, today.value))
   const plain = computed(() => formatDayHeadingFromISO(picked.value))
-  const heading = computed(() =>
-    relativeDay.value
-      ? relativeDayHeading(relativeDay.value, picked.value)
-      : plain.value,
-  )
-  return { heading, plain }
+  /** The furthest day an Entry can be logged on (ADR 0035). */
+  const lastDay = computed(() => localTomorrow(today.value))
+  return { heading, plain, lastDay }
 }
 
-const { picked, entries, tally, error, pending, load } = usePickedDay()
-await load()
-const { heading, plain } = useDayHeading(picked)
-
-/** The furthest day an Entry can be logged on (ADR 0035). */
-const lastDay = localTomorrow()
+const { picked, entries, tally, answered, error, pending, load } =
+  usePickedDay()
+// Not awaited: a read nothing else on /review needs must not hold the page's
+// Suspense, which waits on every awaited setup beneath it.
+void load()
+const { heading, plain, lastDay } = useDayNaming(picked)
 </script>
 
 <template>
@@ -55,6 +52,7 @@ const lastDay = localTomorrow()
     <LoadErrorState
       :error="error"
       :title="`Couldn't load ${plain}`"
+      nested
       @retry="load"
     >
       <!-- The heading moves at once while the Entries below are still the
@@ -86,20 +84,12 @@ const lastDay = localTomorrow()
             {{ tally }}
           </p>
         </div>
-        <p v-if="!entries.length" class="mt-2 text-sm text-muted">
+        <p v-if="answered && !entries.length" class="mt-2 text-sm text-muted">
           Nothing logged on {{ plain }}.
         </p>
         <!-- Every Entry, uncapped: the look-up answers the question in full,
              and is read-only on every day (deletion stays on Today). -->
-        <ul v-else class="mt-2 divide-y divide-default">
-          <li v-for="entry in entries" :key="entry.id" class="py-2">
-            <FigureRow :name="entry.name" :figures="formatEntryFigures(entry)">
-              <template #marker>
-                <EstimateBadge v-if="entry.isEstimate" />
-              </template>
-            </FigureRow>
-          </li>
-        </ul>
+        <EntryList v-else-if="entries.length" :entries="entries" class="mt-2" />
       </section>
     </LoadErrorState>
   </UCard>

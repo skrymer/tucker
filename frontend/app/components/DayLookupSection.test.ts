@@ -174,7 +174,10 @@ describe('DayLookupSection', () => {
     )
 
     expect(
-      await screen.findByRole('heading', { name: "Couldn't load Thu 8 Oct" }),
+      await screen.findByRole('heading', {
+        name: "Couldn't load Thu 8 Oct",
+        level: 3,
+      }),
     ).toBeVisible()
     expect(
       screen.getByRole('button', { name: 'Thursday, October 8, 2026' }),
@@ -216,12 +219,58 @@ describe('DayLookupSection', () => {
     )
   })
 
+  it('draws the card while its first day is still loading, holding nothing up', async () => {
+    const read = held('get', '/api/entries')
+    server.use(
+      read.handler,
+      ...dailyLogs({ '2026-10-12': [weighed(1, 'Oats', 60, 233, 8)] }),
+    )
+
+    const rendered = renderSuspended(DayLookupSection)
+    await read.arrived
+    await vi.waitFor(() =>
+      expect(
+        screen.getByRole('region', { name: 'Today · Mon 12 Oct' }),
+      ).toHaveAttribute('aria-busy', 'true'),
+    )
+    // Not yet answered, so it claims neither an empty day nor any Entry.
+    expect(screen.queryByText(/Nothing logged/)).not.toBeInTheDocument()
+
+    read.release()
+    await rendered
+    expect(await screen.findByText('1 entry · 233 kcal')).toBeVisible()
+  })
+
+  it('moves today, tomorrow and the last pickable day on when the day turns over', async () => {
+    await renderSuspended(DayLookupSection)
+    const day = (name: string) => screen.getByRole('button', { name })
+    expect(day('Wednesday, October 14, 2026')).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
+
+    // The page comes back on Tuesday morning.
+    vi.setSystemTime(new Date(2026, 9, 13, 8, 0))
+    document.dispatchEvent(new Event('visibilitychange'))
+
+    expect(
+      await screen.findByRole('heading', { name: 'Mon 12 Oct' }),
+    ).toBeVisible()
+    expect(day('Wednesday, October 14, 2026')).not.toHaveAttribute(
+      'aria-disabled',
+    )
+    expect(day('Thursday, October 15, 2026')).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
+  })
+
   it('offers no delete and states no Budget or verdict, today included', async () => {
     server.use(...dailyLogs({ '2026-10-12': [weighed(1, 'Oats', 60, 233, 8)] }))
     await renderSuspended(DayLookupSection)
 
     const panel = screen.getByRole('region', { name: 'Today · Mon 12 Oct' })
-    expect(within(panel).getByRole('listitem')).toHaveTextContent('Oats')
+    expect(await within(panel).findByRole('listitem')).toHaveTextContent('Oats')
     expect(within(panel).queryByRole('button')).not.toBeInTheDocument()
     expect(within(panel).queryByRole('progressbar')).not.toBeInTheDocument()
     expect(within(panel).queryByText(/budget|left|over|under/i)).toBeNull()
