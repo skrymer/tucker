@@ -268,7 +268,7 @@ const macros = useMacroBar()
          product we deliberately declined to measure (ADR 0022). -->
     <div
       v-if="foodFigure"
-      class="w-full rounded-lg bg-elevated/50 p-3 text-center"
+      class="w-full rounded-inset bg-elevated/50 p-3 text-center"
     >
       <p class="text-sm text-default tabular-nums">{{ foodFigure }}</p>
       <p class="mt-0.5 text-xs text-muted tabular-nums">{{ dayNeeds }}</p>

@@ -53,6 +53,42 @@ const status = [
 const buttonVariants = ['solid', 'soft', 'outline', 'ghost'] as const
 const buttonColors = ['primary', 'secondary', 'neutral'] as const
 
+const shapes = [
+  {
+    role: 'Card radius',
+    token: 'rounded-card',
+    sample: 'size-20 rounded-card border border-default bg-default shadow-card',
+    measure: 'radius',
+  },
+  {
+    role: 'Inset radius',
+    token: 'rounded-inset',
+    sample: 'size-20 rounded-inset border border-default bg-elevated/50',
+    measure: 'radius',
+  },
+  {
+    role: 'Viewfinder radius',
+    token: 'rounded-card',
+    sample: 'h-20 w-28 rounded-card bg-black',
+    measure: 'radius',
+  },
+  { role: 'Card padding', token: 'UCard', sample: '', measure: 'padding' },
+  {
+    role: 'Button radius',
+    token: 'rounded-full',
+    sample: 'h-12 w-20 rounded-full bg-primary shadow-float',
+    measure: 'none',
+  },
+] as const
+
+/** What a shape specimen's caption reads off it; a pill's radius has no figure worth stating. */
+const shapeMeasures = {
+  radius: (el: HTMLElement) => getComputedStyle(el).borderTopLeftRadius,
+  padding: (el: HTMLElement) =>
+    getComputedStyle(el.querySelector('[data-slot="body"]') ?? el).paddingTop,
+  none: () => undefined,
+}
+
 const typeScale = [
   {
     role: 'Ring figure',
@@ -99,23 +135,37 @@ const typeScale = [
   },
 ]
 
-function useTypeCaptions() {
-  const specimens = useTemplateRef<HTMLElement>('specimens')
+/**
+ * A caption read off each rendered specimen under the [refName] element, keyed by
+ * its `data-key`, so the guide states what a token compiles to rather than what
+ * it was meant to.
+ */
+function useRenderedCaptions(
+  refName: string,
+  caption: (el: HTMLElement) => string | undefined,
+) {
+  const specimens = useTemplateRef<HTMLElement>(refName)
   const captions = ref<Record<string, string>>({})
   onMounted(() => {
-    const samples =
-      specimens.value?.querySelectorAll<HTMLElement>('[data-token]')
+    const samples = specimens.value?.querySelectorAll<HTMLElement>('[data-key]')
     captions.value = Object.fromEntries(
-      [...(samples ?? [])].map((el) => [
-        el.dataset.token,
-        typeCaption(getComputedStyle(el)),
-      ]),
+      [...(samples ?? [])].flatMap((el) => {
+        const text = caption(el)
+        return text ? [[el.dataset.key!, text]] : []
+      }),
     )
   })
   return captions
 }
 
-const captions = useTypeCaptions()
+const captions = useRenderedCaptions('specimens', (el) =>
+  typeCaption(getComputedStyle(el)),
+)
+
+const shapeCaptions = useRenderedCaptions('shapeSpecimens', (el) => {
+  const shape = shapes.find((s) => s.role === el.dataset.key)
+  return shape && shapeMeasures[shape.measure](el)
+})
 
 const foodOptions = ['Rolled oats', 'Free-range eggs', 'Kangaroo burger']
 const selectedFood = ref(foodOptions[0])
@@ -190,7 +240,7 @@ const calendarDay = ref('2026-10-08')
           <div
             v-for="s in surfaces"
             :key="s.name"
-            class="flex items-center gap-2 rounded-xl border border-default bg-elevated/40 p-2"
+            class="flex items-center gap-2 rounded-inset border border-default bg-elevated/40 p-2"
           >
             <span
               class="size-8 shrink-0 rounded-lg ring-1 ring-default"
@@ -228,43 +278,44 @@ const calendarDay = ref('2026-10-08')
       <h2 class="text-h2 text-highlighted">Typography</h2>
       <!-- Each caption is read off its rendered sample, so it states what the
            token actually compiles to rather than what it was meant to. -->
-      <dl
-        ref="specimens"
-        class="flex flex-col gap-4 rounded-2xl border border-default bg-default p-5"
-      >
-        <div v-for="t in typeScale" :key="t.token" class="flex flex-col gap-1">
-          <dt :data-token="t.token" :class="[t.token, t.extra]">
-            {{ t.sample }}
-          </dt>
-          <dd class="text-xs text-dimmed tabular-nums">
-            {{ `${t.role} · ` }}<code>{{ t.token }}</code>
-            <template v-if="captions[t.token]">
-              · {{ captions[t.token] }}</template
-            >
-          </dd>
-        </div>
-      </dl>
+      <UCard>
+        <dl ref="specimens" class="flex flex-col gap-4">
+          <div
+            v-for="t in typeScale"
+            :key="t.token"
+            class="flex flex-col gap-1"
+          >
+            <dt :data-key="t.token" :class="[t.token, t.extra]">
+              {{ t.sample }}
+            </dt>
+            <dd class="text-xs text-dimmed tabular-nums">
+              {{ `${t.role} · ` }}<code>{{ t.token }}</code>
+              <template v-if="captions[t.token]">
+                · {{ captions[t.token] }}</template
+              >
+            </dd>
+          </div>
+        </dl>
+      </UCard>
     </div>
 
     <!-- ── Shape & elevation ──────────────────────────────────── -->
     <div class="flex flex-col gap-4">
       <h2 class="text-h2 text-highlighted">Shape &amp; elevation</h2>
-      <div class="flex flex-wrap items-end gap-4">
-        <div class="flex flex-col items-center gap-2">
-          <span
-            class="size-20 rounded-[1.25rem] border border-default bg-default shadow-card"
-          />
-          <span class="text-xs text-dimmed">Card · 20px · shadow-card</span>
+      <!-- Each caption is read off its rendered sample, as Typography's are. -->
+      <dl ref="shapeSpecimens" class="flex flex-wrap items-end gap-6">
+        <div v-for="s in shapes" :key="s.role" class="flex flex-col gap-2">
+          <dt :data-key="s.role" :class="s.sample">
+            <UCard v-if="s.measure === 'padding'" class="w-28">Body</UCard>
+          </dt>
+          <dd class="text-xs text-dimmed">
+            {{ `${s.role} · ` }}<code>{{ s.token }}</code
+            ><template v-if="shapeCaptions[s.role]">
+              · {{ shapeCaptions[s.role] }}</template
+            >
+          </dd>
         </div>
-        <div class="flex flex-col items-center gap-2">
-          <span class="size-20 rounded-xl border border-default bg-default" />
-          <span class="text-xs text-dimmed">Chip · 12px</span>
-        </div>
-        <div class="flex flex-col items-center gap-2">
-          <span class="h-12 w-20 rounded-full bg-primary shadow-float" />
-          <span class="text-xs text-dimmed">Pill · shadow-float</span>
-        </div>
-      </div>
+      </dl>
     </div>
 
     <!-- ── Signature: the Ring (the real component) ─────────────── -->
@@ -274,9 +325,7 @@ const calendarDay = ref('2026-10-08')
         The live <code class="text-default">DayRing</code> component — under
         budget, then over (the calorie arc + centre turn to error red).
       </p>
-      <div
-        class="rounded-[1.25rem] border border-default bg-default p-6 shadow-card"
-      >
+      <UCard>
         <DayRing
           :calories-consumed="1004"
           :calorie-budget="2140"
@@ -284,10 +333,8 @@ const calendarDay = ref('2026-10-08')
           :protein-consumed="86"
           :protein-floor="186"
         />
-      </div>
-      <div
-        class="rounded-[1.25rem] border border-default bg-default p-6 shadow-card"
-      >
+      </UCard>
+      <UCard>
         <DayRing
           :calories-consumed="2500"
           :calorie-budget="2140"
@@ -295,7 +342,7 @@ const calendarDay = ref('2026-10-08')
           :protein-consumed="205"
           :protein-floor="186"
         />
-      </div>
+      </UCard>
     </div>
 
     <!-- ── Buttons ────────────────────────────────────────────── -->

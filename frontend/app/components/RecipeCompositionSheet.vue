@@ -173,7 +173,7 @@ const round = (n: number) => Math.round(n)
           <p class="text-eyebrow text-muted">Ingredients</p>
           <ul
             role="list"
-            class="divide-y divide-default rounded-xl border border-default"
+            class="divide-y divide-default rounded-inset border border-default"
           >
             <li
               v-for="(ing, index) in ingredients"
@@ -194,7 +194,7 @@ const round = (n: number) => Math.round(n)
              protein, echoing the Ring and the recipe builder). -->
         <section
           aria-label="Recipe summary"
-          class="flex flex-col gap-3 rounded-xl bg-elevated/50 p-4"
+          class="flex flex-col gap-3 rounded-inset bg-elevated/50 p-4"
         >
           <div class="flex items-center justify-between">
             <span class="flex items-center gap-2 text-label text-muted">

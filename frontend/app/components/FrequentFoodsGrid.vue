@@ -15,7 +15,7 @@ const emit = defineEmits<{ pick: [FoodResponse] }>()
       <button
         type="button"
         :aria-label="logFoodLabel(food)"
-        class="h-full w-full rounded-xl border border-default bg-default p-3 text-left transition-colors hover:border-primary active:bg-elevated"
+        class="h-full w-full rounded-inset border border-default bg-default p-3 text-left transition-colors hover:border-primary active:bg-elevated"
         @click="emit('pick', food)"
       >
         <span class="flex items-start gap-1.5">

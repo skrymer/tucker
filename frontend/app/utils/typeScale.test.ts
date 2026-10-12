@@ -1,18 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
-import { appTemplates } from '../../test/templates'
+import { classedElements } from '../../test/templates'
+import { designSection, readFrontend, remToPx } from '../../test/designDoc'
 
 // The type scale is stated twice: as `--text-*` tokens in `main.css`, which is
 // what renders, and as DESIGN.md's Typography → Scale table, which is what a
 // developer reads before styling. Nothing else ties them; this is the executable
 // link.
-
-// Read off disk, anchored to this file: a `?raw` stylesheet import resolves to
-// the empty string under the Nuxt test environment, and the working directory is
-// not the project root under StrykerJS.
-const read = (path: string) =>
-  readFileSync(resolve(import.meta.dirname, path), 'utf8')
 
 interface TypeToken {
   size: string
@@ -21,21 +14,14 @@ interface TypeToken {
   tracking?: string
 }
 
-const REM = 16
-
-/** A rem length in the px DESIGN.md writes: `1.5rem` → `24px`. */
-function toPx(rem: string): string {
-  return `${Number.parseFloat(rem) * REM}px`
-}
-
 /** The `--text-*` tokens `main.css` declares, keyed by utility class. */
 function stylesheetTokens(): Record<string, TypeToken> {
-  const css = read('../assets/css/main.css')
+  const css = readFrontend('app/assets/css/main.css')
   const tokens: Record<string, TypeToken> = {}
   for (const [, name, value] of css.matchAll(
     /--text-([a-z0-9]+(?:-[a-z0-9]+)*):\s*([^;]+);/g,
   )) {
-    tokens[`text-${name}`] = { size: toPx(value!.trim()), lineHeight: '' }
+    tokens[`text-${name}`] = { size: remToPx(value!.trim()), lineHeight: '' }
   }
   for (const [, name, property, value] of css.matchAll(
     /--text-([a-z0-9-]+?)--(line-height|font-weight|letter-spacing):\s*([^;]+);/g,
@@ -51,7 +37,7 @@ function stylesheetTokens(): Record<string, TypeToken> {
 
 /** The rows of DESIGN.md's Typography → Scale table, keyed by their class. */
 function documentedTokens(): Record<string, TypeToken> {
-  const scale = read('../../DESIGN.md').split('### Scale')[1]!.split('###')[0]!
+  const scale = designSection('### Scale')
   const tokens: Record<string, TypeToken> = {}
   for (const [row] of scale.matchAll(/^\| [^|]+\| `text-.*\|$/gm)) {
     const [, utility, sizeAndLine, weight, tracking] = row
@@ -80,22 +66,6 @@ describe('the type scale', () => {
 const STOCK_SIZE = /^text-(xs|sm|base|lg|xl|[2-9]xl)$/
 const WEIGHT =
   /^font-(thin|extralight|light|normal|medium|semibold|bold|extrabold|black)$/
-
-/** Every element in the app's templates with a static class. */
-function classedElements(): { site: string; tag: string; classes: string[] }[] {
-  return appTemplates().flatMap(({ file, source }) => {
-    return [
-      ...source.matchAll(/<([a-zA-Z][\w-]*)\s[^>]*?\bclass="([^"]*)"/g),
-    ].map(([, tag, classList]) => {
-      const classes = classList!.split(/\s+/).filter(Boolean)
-      return {
-        site: `${file}: <${tag}> ${classes.join(' ')}`,
-        tag: tag!,
-        classes,
-      }
-    })
-  })
-}
 
 describe('using the type scale by name', () => {
   const elements = classedElements()

@@ -14,16 +14,29 @@ export default defineAppConfig({
       warning: 'amber',
       error: 'red',
     },
+    // The named radii in main.css, so tailwind-merge knows `rounded-card`
+    // replaces a component's stock `rounded-*` rather than sitting beside it.
+    tv: {
+      twMergeConfig: {
+        extend: { theme: { radius: ['card', 'inset'] } },
+      },
+    },
     // Pill buttons (DESIGN.md → Shape). Merges over the default `rounded-md`.
     button: {
       slots: {
         base: 'rounded-full',
       },
     },
-    // 20px cards with the soft green-tinted lift instead of `rounded-lg`.
+    // 20px cards with the soft green-tinted lift instead of `rounded-lg`, padded
+    // here for every card (DESIGN.md → Shape & elevation): no card sets its own.
+    // The padding replaces the stock classes rather than merging over them, so no
+    // stock breakpoint survives beside it.
     card: {
       slots: {
-        root: 'rounded-[1.25rem] shadow-card',
+        root: 'rounded-card shadow-card',
+        header: () => 'p-4 lg:px-5',
+        body: () => 'p-4 lg:p-5',
+        footer: () => 'p-4 lg:px-5',
       },
     },
   },

@@ -156,7 +156,7 @@ const { viewfinderCaption, cameraAlert } = useScanCopy(scanState)
              needs a height of its own for its caption and button. -->
         <div
           v-else-if="scanState !== 'decoded'"
-          class="relative mx-auto w-full max-w-md overflow-hidden rounded-[20px] bg-black"
+          class="relative mx-auto w-full max-w-md overflow-hidden rounded-card bg-black"
           :class="{ 'h-48': fullscreen }"
         >
           <video
