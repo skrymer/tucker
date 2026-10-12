@@ -60,6 +60,11 @@
   --color-coral-900: #7f2c1e;
   --color-coral-950: #451208;
 
+  /* Named radii (DESIGN.md → Shape & elevation). Nuxt UI scales the stock
+     `rounded-*` steps off `--ui-radius`, so their names do not say their size. */
+  --radius-card: 1.25rem;
+  --radius-inset: 0.75rem;
+
   /* Soft green-tinted elevation — a lift, not a grey drop (DESIGN.md → Shape). */
   --shadow-card:
     0 8px 22px -12px rgb(0 193 106 / 0.28), 0 2px 6px -3px rgb(0 0 0 / 0.06);

@@ -22,7 +22,7 @@ const cookDownPct = computed(() =>
 <template>
   <section
     aria-label="Per 100 g"
-    class="flex flex-col gap-2 rounded-xl bg-elevated/50 p-4"
+    class="flex flex-col gap-2 rounded-inset bg-elevated/50 p-4"
   >
     <p class="text-label text-muted">Per 100 g</p>
     <div class="flex items-baseline gap-4">

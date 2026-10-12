@@ -167,3 +167,18 @@ test("a card's headline figure wears the display face outside a ring too", async
   const face = await figure.evaluate((el) => getComputedStyle(el).fontFamily)
   expect(face).toContain('Nunito')
 })
+
+test('the style guide captions each type token with the value it renders', async ({
+  page,
+  goto,
+}) => {
+  await goto('/design', { waitUntil: 'hydration' })
+
+  for (const caption of [
+    'h1 · text-h1 · 24px / 1.33 · 700',
+    'h2 · text-h2 · 18px / 1.3 · 700',
+    'Eyebrow · text-eyebrow · 11.5px / 1.3 · 650 · +0.06em',
+  ]) {
+    await expect(page.getByText(caption, { exact: true })).toBeVisible()
+  }
+})

@@ -187,7 +187,7 @@ const queueLabel = computed(() => {
             :key="row.nutrient"
             role="group"
             :aria-label="row.label"
-            class="rounded-lg bg-elevated/50 px-3 py-2"
+            class="rounded-inset bg-elevated/50 px-3 py-2"
           >
             <span class="block text-xs text-muted">{{ row.label }}</span>
             <span class="block font-semibold tabular-nums text-default">
@@ -240,7 +240,7 @@ const queueLabel = computed(() => {
               <button
                 type="button"
                 :aria-label="`Match ${formatName(item.name)}`"
-                class="flex w-full items-baseline justify-between gap-3 rounded-md py-2.5 text-left hover:bg-elevated active:bg-elevated"
+                class="flex w-full items-baseline justify-between gap-3 rounded-inset py-2.5 text-left hover:bg-elevated active:bg-elevated"
                 @click="emit('match', item)"
               >
                 <span class="min-w-0 truncate font-medium text-default">

@@ -13,6 +13,26 @@ function sfcs(dir: string): string[] {
   })
 }
 
+/** Every element in the app's templates with a static class. */
+export function classedElements(): {
+  site: string
+  tag: string
+  classes: string[]
+}[] {
+  return appTemplates().flatMap(({ file, source }) => {
+    return [
+      ...source.matchAll(/<([a-zA-Z][\w-]*)\s[^>]*?\bclass="([^"]*)"/g),
+    ].map(([, tag, classList]) => {
+      const classes = classList!.split(/\s+/).filter(Boolean)
+      return {
+        site: `${file}: <${tag}> ${classes.join(' ')}`,
+        tag: tag!,
+        classes,
+      }
+    })
+  })
+}
+
 /** Every single-file component under `app/`, as its path relative to `app/` and its source. */
 export function appTemplates(): { file: string; source: string }[] {
   return sfcs(APP).map((path) => ({

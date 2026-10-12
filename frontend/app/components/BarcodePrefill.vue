@@ -90,7 +90,7 @@ watch(
 
     <div
       v-else-if="!scanFullscreen && scanState === 'scanning'"
-      class="relative overflow-hidden rounded-lg bg-black"
+      class="relative overflow-hidden rounded-card bg-black"
     >
       <video
         ref="videoEl"

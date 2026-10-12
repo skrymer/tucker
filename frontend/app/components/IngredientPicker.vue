@@ -62,7 +62,7 @@ function back() {
         <li v-for="food in pickableFoods" :key="food.id">
           <button
             type="button"
-            class="flex w-full items-center justify-between gap-3 rounded-lg border border-default px-3 py-2 text-left"
+            class="flex w-full items-center justify-between gap-3 rounded-inset border border-default px-3 py-2 text-left"
             @click="emit('choose', food)"
           >
             <span class="font-medium text-default">{{
