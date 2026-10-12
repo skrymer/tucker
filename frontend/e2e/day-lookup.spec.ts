@@ -86,6 +86,13 @@ test('holds the cold-load skeleton invisible for its first moment', async ({
   await expect
     .poll(() => skeleton.evaluate((el) => getComputedStyle(el).opacity))
     .toBe('1')
+  // Nothing has been answered yet, so there is no last answer to dim.
+  await page.waitForTimeout(400)
+  expect(
+    await skeleton
+      .locator('xpath=ancestor::section[1]')
+      .evaluate((el) => getComputedStyle(el).opacity),
+  ).toBe('1')
   read.release()
   await expect(skeleton).toHaveCount(0)
 })
