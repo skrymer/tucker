@@ -171,8 +171,8 @@ needs it.
    to the user, exactly as the ledger's own UNSOUND would. #435's denied-camera fix
    honoured every ADR and silently contradicted AC6 as written; gate 5 caught it.
    Likewise any item an agent explicitly marks "the user's call" goes to the user —
-   the pack does not decide it. The adversary needs no re-check: it argues the
-   premise, and a correctness fix does not move that.
+   the pack does not decide it. The adversary needs no re-check after a correctness
+   fix; a user ruling that adds behaviour gets it re-run on that commit (#476).
 
    **Gate 2's verdicts do need one, after every later fix** — gate 2's own triage's,
    gate 3's, a gate-5 re-resolution's, a gate-6 fix's: re-run the scoped mutation sweep over the files
@@ -213,17 +213,17 @@ needs it.
      new?** A plausible-but-wrong fix is the failure mode here, and it lands at
      exactly the moment nobody is still looking.
    - **Does each dismissal hold?** "By design per ADR 00xx", "pre-existing", "out
-     of scope" are checkable claims, and the agent has the ADRs to check them
-     against. Two are never valid and the agent rejects them on sight: a harm the
-     diff makes worse than `main` recorded as accepted (it is a regression, and
-     gets fixed — never offer "accept and record" as an option), and a tool's
-     refusal as the reason something was left ("Probity refused the extract" says
-     nothing about whether the extract is worth doing).
-   - **Was an existing test edited to make the change pass?** That edit is a
-     finding, not housekeeping, and it belongs in the pack: ask what a User in the
-     state the old test described now sees. In #358 a test moved its day to
-     `LocalDate.now()` unrecorded — it was the device-behind regression, seen from
-     the test side.
+     of scope" are checkable claims; "no worse than `main`" is checked by driving the
+     same User steps on `main`, never by `main` lacking the new state (#476), and "a
+     follow-up" holds only with a filed issue's number in the row. Rejected on sight:
+     a harm the diff makes worse than `main` recorded as accepted (a regression: fix
+     it, never offer "accept and record"), and a tool's refusal as the reason
+     something was left. A Remedy cell names one remedy (agent-briefs.md's rule).
+   - **Was an existing test edited to make the change pass?** A finding, not
+     housekeeping: ask what a User in the old test's state now sees, and what later
+     breakage the old test caught that the edit no longer does (#476 pinned a schema
+     test to V13 and lost the only guard on a unique index). #358's test moved its
+     day to `LocalDate.now()` — the device-behind regression, seen from the test side.
    - **Is the pack faithful to the transcripts?** Both halves of every pair above
      are written by the author from memory of the agent output, so this gate would
      otherwise adjudicate the author's account of a finding against the author's

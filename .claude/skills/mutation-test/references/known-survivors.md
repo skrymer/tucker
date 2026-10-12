@@ -955,7 +955,7 @@ something _derives_ are asserted, because then the assertion is about the deriva
 The note is on `ApiIntegrationTest`.
 
 **Narrower than it looks** (#455's scoped sweep, triaged by hand):
-- 8 of the 10 `FoodResponse` accessors a scoped sweep reports are **false survivors**: asserted on the wire (`FoodBarcodeApiTest`, `RecipeApiTest`, `FoodReferenceFoodApiTest`, and `ApiIntegrationTest` feeding the response `id` into a weighed POST). The same goes for `EntryResponse`'s `foodId` / `foodName` / `grams` / `isEstimate` (`ApiIntegrationTest`, `TomorrowsEntriesApiTest`).
+- 8 of the 10 `FoodResponse` accessors a scoped sweep reports are **false survivors**: asserted on the wire (`FoodBarcodeApiTest`, `RecipeApiTest`, `FoodReferenceFoodApiTest`, and `ApiIntegrationTest` feeding the response `id` into a weighed POST). The same goes for `EntryResponse`'s `foodId` / `foodName` / `grams` / `isEstimate` (`ApiIntegrationTest`, `TomorrowsEntriesApiTest`), `calories` (`ApiIntegrationTest` `$.entries[0].calories` closeTo 117.96) and `label` (`CrossUserIsolationTest` `$.entries[0].label`, three cases) — #476's scoped sweep.
 - `carbsPer100g` and `fatPer100g` are the two genuinely unasserted accessors. They are the "(2)" above.
 
 Four survivors that looked like this cluster were **real gaps and are now fixed**:

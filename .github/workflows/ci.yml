@@ -194,7 +194,18 @@ jobs:
             "jscpd@$(node -p "require('./package.json').devDependencies.jscpd")"
           ln -s "$RUNNER_TEMP/jscpd/node_modules" node_modules
 
+      # probity-override.test.mjs reads Probity's default rule text, not its
+      # runtime, so the pinned version's packed files (~1 MB) are enough.
+      - name: Unpack the pinned Probity
+        run: |
+          mkdir -p "$RUNNER_TEMP/probity"
+          npm pack --pack-destination "$RUNNER_TEMP/probity" \
+            "@nizos/probity@$(node -p "require('./package.json').devDependencies['@nizos/probity']")"
+          tar xzf "$RUNNER_TEMP"/probity/*.tgz -C "$RUNNER_TEMP/probity"
+
       - name: Test the hook scripts
+        env:
+          PROBITY_PACKAGE: ${{ runner.temp }}/probity/package
         run: node --test .claude/hooks/*.test.mjs
 
   # What the images are tagged with, and what they report at /api/version and in
