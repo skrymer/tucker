@@ -3,6 +3,7 @@ import { pinToLocalMorning } from './support/date'
 import { estimatedEntry, weighedEntry } from '../test/entry-fixtures'
 import { dailyLogs } from '../test/mocks/handlers/entries'
 import { profileOf, weightOnlyProfile } from '../test/mocks/handlers/profile'
+import { held } from '../test/mocks/http'
 
 // "Look up a day" on /review: an inline month that opens on today, and under it
 // the Entries of whichever day is picked — read-only, with no verdict on it.
@@ -56,6 +57,37 @@ test('sits after the Intake Breakdown and lists a picked past day in full', asyn
   await expect(card.getByRole('region', { name: 'Thu 11 Jun' })).toBeVisible()
 
   await expect(card).toMatchAriaSnapshot()
+})
+
+// ADR 0007: a placeholder waits 150 ms before showing, so a fast answer never
+// flashes it. Read at the moment the skeleton is inserted, before any delay.
+test('holds the cold-load skeleton invisible for its first moment', async ({
+  goto,
+  network,
+  page,
+}) => {
+  await page.addInitScript(() => {
+    new MutationObserver(() => {
+      const el = document.querySelector<HTMLElement>(
+        '[data-testid="day-skeleton"]',
+      )
+      if (el && el.dataset.firstOpacity === undefined) {
+        el.dataset.firstOpacity = getComputedStyle(el).opacity
+      }
+    }).observe(document, { childList: true, subtree: true })
+  })
+  const read = held('get', '/api/entries')
+  network.use(read.handler)
+
+  await goto('/review', { waitUntil: 'hydration' })
+  const skeleton = page.getByTestId('day-skeleton')
+
+  await expect(skeleton).toHaveAttribute('data-first-opacity', '0')
+  await expect
+    .poll(() => skeleton.evaluate((el) => getComputedStyle(el).opacity))
+    .toBe('1')
+  read.release()
+  await expect(skeleton).toHaveCount(0)
 })
 
 test('is absent with Calorie Tracking off', async ({ goto, network, page }) => {

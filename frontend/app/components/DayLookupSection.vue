@@ -90,31 +90,24 @@ const { heading, plain, lastDay } = useDayNaming(shown)
           </p>
         </div>
         <!-- The first read only (ADR 0007's cold load); a later pick keeps the
-             last answer up instead. Faded in after the same 150 ms, in the
-             transition, so a fast answer never flashes it. -->
-        <Transition
-          appear
-          enter-from-class="opacity-0"
-          enter-active-class="transition-opacity delay-150"
+             last answer up instead. Decorative, so hidden: the section's
+             aria-busy already says it is loading, and each USkeleton would
+             otherwise raise an alert. -->
+        <ul
+          v-if="!answered"
+          aria-hidden="true"
+          data-testid="day-skeleton"
+          class="appear-late mt-2 divide-y divide-default"
         >
-          <!-- Decorative, so hidden: the section's aria-busy already says it is
-               loading, and each USkeleton would otherwise raise an alert. -->
-          <ul
-            v-if="!answered"
-            aria-hidden="true"
-            data-testid="day-skeleton"
-            class="mt-2 divide-y divide-default"
+          <li
+            v-for="width in ['w-2/5', 'w-1/3', 'w-1/2']"
+            :key="width"
+            class="flex flex-col gap-1.5 py-2.5"
           >
-            <li
-              v-for="width in ['w-2/5', 'w-1/3', 'w-1/2']"
-              :key="width"
-              class="flex flex-col gap-1.5 py-2.5"
-            >
-              <USkeleton class="h-4" :class="width" />
-              <USkeleton class="h-3 w-3/5" />
-            </li>
-          </ul>
-        </Transition>
+            <USkeleton class="h-4" :class="width" />
+            <USkeleton class="h-3 w-3/5" />
+          </li>
+        </ul>
         <p v-if="answered && !entries.length" class="mt-2 text-sm text-muted">
           Nothing logged on {{ plain }}.
         </p>
