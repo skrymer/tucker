@@ -51,6 +51,23 @@ describe('/design', () => {
     ])
   })
 
+  it("shows a load error nested under a card's own heading, a level down", async () => {
+    await renderSuspended(Design)
+
+    const specimen = screen
+      .getByRole('heading', { name: 'Feedback states', level: 2 })
+      .closest('div')!
+    expect(
+      within(specimen).getByRole('heading', {
+        name: "Couldn't load Thu 8 Oct",
+        level: 3,
+      }),
+    ).toBeVisible()
+    expect(
+      within(specimen).getByRole('button', { name: 'Retry' }),
+    ).toBeVisible()
+  })
+
   it('shows the one calendar with marked days and a bounded range', async () => {
     await renderSuspended(Design)
 

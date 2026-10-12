@@ -435,5 +435,14 @@ const calendarDay = ref('2026-10-08')
         />
       </UCard>
     </div>
+
+    <!-- ── Feedback states ────────────────────────────────────── -->
+    <div class="flex flex-col gap-4">
+      <h2 class="text-h2 text-highlighted">Feedback states</h2>
+      <UCard class="max-w-md">
+        <p class="text-h2 text-highlighted">Look up a day</p>
+        <LoadErrorState :error="true" title="Couldn't load Thu 8 Oct" nested />
+      </UCard>
+    </div>
   </section>
 </template>

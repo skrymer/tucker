@@ -11,3 +11,10 @@ export const RELATIVE_DAYS = {
 export function relativeDayHeading(day: RelativeDay, iso: string): string {
   return `${RELATIVE_DAYS[day].label} · ${formatDayHeadingFromISO(iso)}`
 }
+
+/** Any day as Tucker heads it: named when it is [today] or the day after, plain otherwise. */
+export function dayHeading(iso: string, today: string): string {
+  if (iso === today) return relativeDayHeading('today', iso)
+  if (iso === localTomorrow(today)) return relativeDayHeading('tomorrow', iso)
+  return formatDayHeadingFromISO(iso)
+}

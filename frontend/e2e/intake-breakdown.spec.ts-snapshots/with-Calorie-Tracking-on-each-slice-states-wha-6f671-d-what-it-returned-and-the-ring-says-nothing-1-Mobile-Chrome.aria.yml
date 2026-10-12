@@ -20,6 +20,108 @@
             - listitem:
                 - text: Other 2 items 35 kcal · 0 g protein 2%
                 - button "Show all 2"
+    - region "Look up a day":
+        - heading "Look up a day" [level=2]
+        - button "Previous month"
+        - button "June 2026"
+        - button "Next month" [disabled]
+        - application:
+            - rowgroup:
+                - row "Monday, June 1, 2026 Tuesday, June 2, 2026 Wednesday, June 3, 2026 Thursday, June 4, 2026 Friday, June 5, 2026 Saturday, June 6, 2026 Sunday, June 7, 2026":
+                    - gridcell "Monday, June 1, 2026":
+                        - button "Monday, June 1, 2026": '1'
+                    - gridcell "Tuesday, June 2, 2026":
+                        - button "Tuesday, June 2, 2026": '2'
+                    - gridcell "Wednesday, June 3, 2026":
+                        - button "Wednesday, June 3, 2026": '3'
+                    - gridcell "Thursday, June 4, 2026":
+                        - button "Thursday, June 4, 2026": '4'
+                    - gridcell "Friday, June 5, 2026":
+                        - button "Friday, June 5, 2026": '5'
+                    - gridcell "Saturday, June 6, 2026":
+                        - button "Saturday, June 6, 2026": '6'
+                    - gridcell "Sunday, June 7, 2026":
+                        - button "Sunday, June 7, 2026": '7'
+                - row "Monday, June 8, 2026 Tuesday, June 9, 2026 Wednesday, June 10, 2026 Thursday, June 11, 2026 Friday, June 12, 2026 Saturday, June 13, 2026 Sunday, June 14, 2026":
+                    - gridcell "Monday, June 8, 2026":
+                        - button "Monday, June 8, 2026": '8'
+                    - gridcell "Tuesday, June 9, 2026":
+                        - button "Tuesday, June 9, 2026": '9'
+                    - gridcell "Wednesday, June 10, 2026":
+                        - button "Wednesday, June 10, 2026": '10'
+                    - gridcell "Thursday, June 11, 2026":
+                        - button "Thursday, June 11, 2026": '11'
+                    - gridcell "Friday, June 12, 2026":
+                        - button "Friday, June 12, 2026": '12'
+                    - gridcell "Saturday, June 13, 2026":
+                        - button "Saturday, June 13, 2026": '13'
+                    - gridcell "Sunday, June 14, 2026":
+                        - button "Sunday, June 14, 2026": '14'
+                - row "Monday, June 15, 2026 Tuesday, June 16, 2026 Wednesday, June 17, 2026 Thursday, June 18, 2026 Friday, June 19, 2026 Saturday, June 20, 2026 Sunday, June 21, 2026":
+                    - gridcell "Monday, June 15, 2026":
+                        - button "Monday, June 15, 2026": '15'
+                    - gridcell "Tuesday, June 16, 2026" [selected]:
+                        - button "Tuesday, June 16, 2026": '16'
+                    - gridcell "Wednesday, June 17, 2026":
+                        - button "Wednesday, June 17, 2026": '17'
+                    - gridcell "Thursday, June 18, 2026" [disabled]:
+                        - button "Thursday, June 18, 2026" [disabled]: '18'
+                    - gridcell "Friday, June 19, 2026" [disabled]:
+                        - button "Friday, June 19, 2026" [disabled]: '19'
+                    - gridcell "Saturday, June 20, 2026" [disabled]:
+                        - button "Saturday, June 20, 2026" [disabled]: '20'
+                    - gridcell "Sunday, June 21, 2026" [disabled]:
+                        - button "Sunday, June 21, 2026" [disabled]: '21'
+                - row "Monday, June 22, 2026 Tuesday, June 23, 2026 Wednesday, June 24, 2026 Thursday, June 25, 2026 Friday, June 26, 2026 Saturday, June 27, 2026 Sunday, June 28, 2026":
+                    - gridcell "Monday, June 22, 2026" [disabled]:
+                        - button "Monday, June 22, 2026" [disabled]: '22'
+                    - gridcell "Tuesday, June 23, 2026" [disabled]:
+                        - button "Tuesday, June 23, 2026" [disabled]: '23'
+                    - gridcell "Wednesday, June 24, 2026" [disabled]:
+                        - button "Wednesday, June 24, 2026" [disabled]: '24'
+                    - gridcell "Thursday, June 25, 2026" [disabled]:
+                        - button "Thursday, June 25, 2026" [disabled]: '25'
+                    - gridcell "Friday, June 26, 2026" [disabled]:
+                        - button "Friday, June 26, 2026" [disabled]: '26'
+                    - gridcell "Saturday, June 27, 2026" [disabled]:
+                        - button "Saturday, June 27, 2026" [disabled]: '27'
+                    - gridcell "Sunday, June 28, 2026" [disabled]:
+                        - button "Sunday, June 28, 2026" [disabled]: '28'
+                - row "Monday, June 29, 2026 Tuesday, June 30, 2026 Wednesday, July 1, 2026 Thursday, July 2, 2026 Friday, July 3, 2026 Saturday, July 4, 2026 Sunday, July 5, 2026":
+                    - gridcell "Monday, June 29, 2026" [disabled]:
+                        - button "Monday, June 29, 2026" [disabled]: '29'
+                    - gridcell "Tuesday, June 30, 2026" [disabled]:
+                        - button "Tuesday, June 30, 2026" [disabled]: '30'
+                    - gridcell "Wednesday, July 1, 2026" [disabled]:
+                        - button "Wednesday, July 1, 2026" [disabled]: '1'
+                    - gridcell "Thursday, July 2, 2026" [disabled]:
+                        - button "Thursday, July 2, 2026" [disabled]: '2'
+                    - gridcell "Friday, July 3, 2026" [disabled]:
+                        - button "Friday, July 3, 2026" [disabled]: '3'
+                    - gridcell "Saturday, July 4, 2026" [disabled]:
+                        - button "Saturday, July 4, 2026" [disabled]: '4'
+                    - gridcell "Sunday, July 5, 2026" [disabled]:
+                        - button "Sunday, July 5, 2026" [disabled]: '5'
+                - row "Monday, July 6, 2026 Tuesday, July 7, 2026 Wednesday, July 8, 2026 Thursday, July 9, 2026 Friday, July 10, 2026 Saturday, July 11, 2026 Sunday, July 12, 2026":
+                    - gridcell "Monday, July 6, 2026" [disabled]:
+                        - button "Monday, July 6, 2026" [disabled]: '6'
+                    - gridcell "Tuesday, July 7, 2026" [disabled]:
+                        - button "Tuesday, July 7, 2026" [disabled]: '7'
+                    - gridcell "Wednesday, July 8, 2026" [disabled]:
+                        - button "Wednesday, July 8, 2026" [disabled]: '8'
+                    - gridcell "Thursday, July 9, 2026" [disabled]:
+                        - button "Thursday, July 9, 2026" [disabled]: '9'
+                    - gridcell "Friday, July 10, 2026" [disabled]:
+                        - button "Friday, July 10, 2026" [disabled]: '10'
+                    - gridcell "Saturday, July 11, 2026" [disabled]:
+                        - button "Saturday, July 11, 2026" [disabled]: '11'
+                    - gridcell "Sunday, July 12, 2026" [disabled]:
+                        - button "Sunday, July 12, 2026" [disabled]: '12'
+        - heading "Event Date, June 2026" [level=2]
+        - separator
+        - region "Today · Tue 16 Jun":
+            - heading "Today · Tue 16 Jun" [level=3]
+            - paragraph: Nothing logged on Tue 16 Jun.
     - region "Vitamins and minerals":
         - heading "Vitamins and minerals" [level=2]
         - paragraph: Nothing logged in the last 7 days.

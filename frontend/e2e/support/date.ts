@@ -85,8 +85,7 @@ export function isoShiftDays(iso: string, days: number): string {
  * (only the localized month name is locale-driven, pinned here to `en-GB`).
  */
 export function formatDmy(iso: string): string {
-  const [y, m, d] = iso.split('-').map(Number)
-  return new Date(y!, m! - 1, d!).toLocaleDateString('en-GB', {
+  return localDateOf(iso).toLocaleDateString('en-GB', {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
@@ -100,6 +99,36 @@ export function formatDmy(iso: string): string {
  * which is what the picker renders).
  */
 export function monthNameOf(iso: string): string {
+  return localDateOf(iso).toLocaleDateString('en-US', { month: 'long' })
+}
+
+/**
+ * An ISO `yyyy-mm-dd` date as the calendar names its day button, e.g.
+ * `Thursday, June 11, 2026`. Built from the parts like [formatDmy].
+ */
+export function calendarDayName(iso: string): string {
+  return localDateOf(iso).toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  })
+}
+
+/**
+ * An ISO `yyyy-mm-dd` date as a day list heads it, e.g. `Thu 11 Jun`. Mirrors
+ * the app's `formatDayHeadingFromISO`, kept as a copy for [formatDmy]'s reason.
+ */
+export function formatDayHeading(iso: string): string {
+  return localDateOf(iso).toLocaleDateString('en-GB', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+  })
+}
+
+/** An ISO `yyyy-mm-dd` date as a local `Date` at midnight, built from its parts. */
+function localDateOf(iso: string): Date {
   const [y, m, d] = iso.split('-').map(Number)
-  return new Date(y!, m! - 1, d!).toLocaleDateString('en-US', { month: 'long' })
+  return new Date(y!, m! - 1, d!)
 }

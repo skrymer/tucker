@@ -180,6 +180,18 @@ body {
   --vis-crosshair-line-stroke-color: var(--ui-text-dimmed);
 }
 
+/* A placeholder held back by ADR 0007's 150 ms, so a fast answer never flashes
+   it. An animation rather than a Vue <Transition appear>, which does not run for
+   an element mounted with its component inside a Suspense boundary. */
+@keyframes appear-late {
+  from {
+    opacity: 0;
+  }
+}
+.appear-late {
+  animation: appear-late 150ms ease-out 150ms both;
+}
+
 /* The app canvas carries a faint green wash so white cards lift off it. Keep
    this in sync with `pwa.manifest.background_color` in nuxt.config.ts so the
    PWA launch splash matches the in-app wash. */

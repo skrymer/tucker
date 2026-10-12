@@ -18,6 +18,23 @@ describe('LoadErrorState', () => {
     ).toBeVisible()
   })
 
+  it('heads itself a level down when nested under a card heading', async () => {
+    await renderSuspended(LoadErrorState, {
+      props: {
+        title: "Couldn't load Thu 8 Oct",
+        error: new Error('boom'),
+        nested: true,
+      },
+    })
+
+    expect(
+      screen.getByRole('heading', {
+        name: "Couldn't load Thu 8 Oct",
+        level: 3,
+      }),
+    ).toBeVisible()
+  })
+
   it('replays the failed fetch when Retry is tapped', async () => {
     const onRetry = vi.fn()
     await renderSuspended(LoadErrorState, {

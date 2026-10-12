@@ -58,21 +58,8 @@ const tally = computed(() =>
         {{ tally }}
       </p>
     </div>
-    <ul class="mt-2 divide-y divide-default">
-      <li
-        v-for="entry in visibleEntries"
-        :key="entry.id"
-        class="flex items-center justify-between gap-2 py-2"
-      >
-        <FigureRow
-          class="flex-1"
-          :name="entry.name"
-          :figures="formatEntryFigures(entry)"
-        >
-          <template #marker>
-            <EstimateBadge v-if="entry.isEstimate" />
-          </template>
-        </FigureRow>
+    <EntryList :entries="visibleEntries" class="mt-2">
+      <template #action="{ entry }">
         <UButton
           :aria-label="`Delete ${formatEntryName(entry)}`"
           icon="i-lucide-trash-2"
@@ -83,8 +70,8 @@ const tally = computed(() =>
           :ui="{ base: 'justify-center' }"
           @click="emit('delete', entry)"
         />
-      </li>
-    </ul>
+      </template>
+    </EntryList>
 
     <UButton
       v-if="canExpand"
