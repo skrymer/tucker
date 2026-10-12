@@ -1,7 +1,7 @@
 import type { components } from '#open-fetch-schemas/api'
 import { estimatedEntry, weighedEntry } from '../../entry-fixtures'
 import type { FoodResponse } from '../../food-fixtures'
-import { http, wrongDay } from '../http'
+import { askedWindow, http, wrongDay } from '../http'
 import { baselineCalorieBudget } from './summary'
 
 /**
@@ -124,18 +124,62 @@ export function entryLog({
 type EntryResponse = components['schemas']['EntryResponse']
 
 /**
+ * The day of the baseline User's first Entry: long before any day a test
+ * reads, so a calendar bounded by it bounds nothing a test reaches.
+ */
+export const baselineFirstLoggedOn = '2025-01-06'
+
+/** The widest range the logged-days read answers, as the backend caps it. */
+const MAX_LOGGED_DAYS_RANGE = 62
+
+/**
  * The Entries of each day, keyed by ISO date, read back a day at a time with
- * their calorie total; any other day has none. A deleted Entry leaves the day it
- * was on, and a delete of an id no day holds answers 204, as the real endpoint
- * does.
+ * their calorie total; any other day has none. The days holding an Entry are
+ * read back too, over a range refused as the backend refuses it, with the
+ * User's first Entry — one more, on [since], unless [since] is null for a User
+ * who has logged nothing. A deleted Entry leaves the day it was on, and a
+ * delete of an id no day holds answers 204, as the real endpoint does.
  *
  * Built per test: deletions persist to the next read.
  */
-export function dailyLogs(days: Record<string, EntryResponse[]> = {}) {
+export function dailyLogs(
+  days: Record<string, EntryResponse[]> = {},
+  { since = baselineFirstLoggedOn }: { since?: string | null } = {},
+) {
   const held = Object.fromEntries(
     Object.entries(days).map(([date, entries]) => [date, [...entries]]),
   )
+  if (since && !held[since]) {
+    held[since] = [
+      estimatedEntry({
+        id: 9999,
+        loggedOn: since,
+        label: 'First meal',
+        calories: 500,
+        protein: null,
+      }),
+    ]
+  }
+  const logged = () =>
+    Object.keys(held)
+      .filter((date) => held[date]!.length > 0)
+      .sort()
   return [
+    http.get('/api/entries/days', ({ query, response }) => {
+      const asked = askedWindow(query)
+      if ('refused' in asked)
+        return response(400).json({ message: asked.refused })
+      if (asked.days > MAX_LOGGED_DAYS_RANGE) {
+        return response(400).json({
+          message: `a range must span at most ${MAX_LOGGED_DAYS_RANGE} days`,
+        })
+      }
+      const days = logged()
+      return response(200).json({
+        days: days.filter((d) => d >= asked.from && d <= asked.to),
+        firstLoggedOn: days[0] ?? null,
+      })
+    }),
     http.get('/api/entries', ({ query, response }) => {
       const date = query.get('date')
       if (!date) return response(400).json({ message: 'date is required' })

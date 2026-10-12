@@ -127,10 +127,41 @@ describe('AppCalendar', () => {
     expect(errors).toEqual([])
   })
 
-  it('emits each month the User pages to, across a year end', async () => {
-    const onPaged = vi.fn()
+  it('reports the six weeks it draws as soon as it opens', async () => {
+    const onShown = vi.fn()
     await renderSuspended(AppCalendar, {
-      props: { modelValue: '2026-12-08', onPaged },
+      props: { modelValue: '2026-10-08', onShown },
+    })
+
+    expect(onShown.mock.calls).toEqual([
+      [{ from: '2026-09-28', to: '2026-11-08' }],
+    ])
+  })
+
+  it('reports exactly the days it draws, first cell to last', async () => {
+    const onShown = vi.fn()
+    await renderSuspended(AppCalendar, {
+      props: { modelValue: '2026-10-08', onShown },
+    })
+
+    const days = screen
+      .getAllByRole('button', { name: /^\w+day, / })
+      .map((day) => day.getAttribute('aria-label'))
+    expect(days).toHaveLength(42)
+    expect([days[0], days.at(-1)]).toEqual([
+      'Monday, September 28, 2026',
+      'Sunday, November 8, 2026',
+    ])
+    expect(onShown).toHaveBeenLastCalledWith({
+      from: '2026-09-28',
+      to: '2026-11-08',
+    })
+  })
+
+  it('reports the six weeks of each month the User pages to, across a year end', async () => {
+    const onShown = vi.fn()
+    await renderSuspended(AppCalendar, {
+      props: { modelValue: '2026-12-08', onShown },
     })
     const user = userEvent.setup()
 
@@ -138,13 +169,18 @@ describe('AppCalendar', () => {
     await user.click(screen.getByRole('button', { name: 'Previous month' }))
     await user.click(screen.getByRole('button', { name: 'Previous month' }))
 
-    expect(onPaged.mock.calls).toEqual([['2027-01'], ['2026-12'], ['2026-11']])
+    expect(onShown.mock.calls).toEqual([
+      [{ from: '2026-11-30', to: '2027-01-10' }],
+      [{ from: '2026-12-28', to: '2027-02-07' }],
+      [{ from: '2026-11-30', to: '2027-01-10' }],
+      [{ from: '2026-10-26', to: '2026-12-06' }],
+    ])
   })
 
-  it('reports no page while the User moves between days of the shown month', async () => {
-    const onPaged = vi.fn()
+  it('reports nothing new while the User moves between days of the shown month', async () => {
+    const onShown = vi.fn()
     await renderSuspended(AppCalendar, {
-      props: { modelValue: '2026-10-08', onPaged },
+      props: { modelValue: '2026-10-08', onShown },
     })
     const user = userEvent.setup()
 
@@ -159,7 +195,7 @@ describe('AppCalendar', () => {
       screen.getByRole('button', { name: 'Tuesday, October 20, 2026' }),
     )
 
-    expect(onPaged).not.toHaveBeenCalled()
+    expect(onShown).toHaveBeenCalledOnce()
   })
 
   it('dots each marked day and no other', async () => {

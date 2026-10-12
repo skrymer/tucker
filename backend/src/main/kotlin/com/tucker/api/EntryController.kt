@@ -10,6 +10,7 @@ import com.tucker.domain.WeighedEntry
 import com.tucker.domain.WeighedPortion
 import com.tucker.persistence.EntryRepository
 import com.tucker.persistence.FoodRepository
+import com.tucker.persistence.LoggedDaysRepository
 import com.tucker.service.WeeklyReviewService
 import org.slf4j.LoggerFactory
 import org.springframework.format.annotation.DateTimeFormat
@@ -25,6 +26,7 @@ import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 import java.time.LocalDate
+import java.time.temporal.ChronoUnit
 
 /** API representation of an Entry — the sealed hierarchy flattened for the wire. */
 data class EntryResponse(
@@ -55,6 +57,13 @@ data class EntryResponse(
      * always has a name lives in the type (ADR 0002).
      */
     val name: String,
+)
+
+/** The days in a range that hold the User's Entries — the marks on a calendar's grid. */
+data class LoggedDaysResponse(
+    val days: List<LocalDate>,
+    /** The day of the User's earliest Entry, wherever it falls — the calendar's lower bound. */
+    val firstLoggedOn: LocalDate?,
 )
 
 /** A day's Entries and the calories they total — one Daily Log on the wire. */
@@ -113,6 +122,9 @@ private val logger = LoggerFactory.getLogger(EntryController::class.java)
  * day that will not render states nothing at all.
  */
 private const val UNRESOLVED_FOOD_NAME = "Unknown food"
+
+/** The widest logged-days range, in days: a month grid needs at most 42, and the cap bounds the query. */
+private const val MAX_LOGGED_DAYS_RANGE = 62
 
 /** The id a previewed Entry is built with: it is never stored, so it takes none from the sequence. */
 private const val PROSPECTIVE_ENTRY_ID = 0L
@@ -180,6 +192,7 @@ private fun List<Entry>.warnUnresolved(namesById: Map<Long, String>) {
 @RequestMapping("/api/entries")
 class EntryController(
     private val entries: EntryRepository,
+    private val loggedDays: LoggedDaysRepository,
     private val foods: FoodRepository,
     private val weeklyReview: WeeklyReviewService,
     private val userToday: UserToday,
@@ -194,6 +207,22 @@ class EntryController(
             date = date,
             entries = log.entries.toResponses(foods),
             caloriesConsumed = log.caloriesConsumed(),
+        )
+    }
+
+    /** The days from [from] to [to], both inclusive, holding at least one of the User's Entries. */
+    @GetMapping("/days")
+    fun loggedDays(
+        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) from: LocalDate,
+        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) to: LocalDate,
+    ): LoggedDaysResponse {
+        require(!from.isAfter(to)) { "a range must not end before it starts" }
+        require(ChronoUnit.DAYS.between(from, to) < MAX_LOGGED_DAYS_RANGE) {
+            "a range must span at most $MAX_LOGGED_DAYS_RANGE days"
+        }
+        return LoggedDaysResponse(
+            days = entries.caloriesByDay(from, to).keys.sorted(),
+            firstLoggedOn = loggedDays.first(),
         )
     }
 

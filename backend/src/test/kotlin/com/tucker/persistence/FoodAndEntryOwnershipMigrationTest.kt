@@ -226,11 +226,12 @@ class FoodAndEntryOwnershipMigrationTest {
             }
 
             // The indexes go the same way as the constraints — recreated by hand, invisible
-            // in every stored value. `idx_entry_logged_on` is the one that earns its keep:
-            // every daily-summary read finds its day through it.
+            // in every stored value. The list is the deployed schema's: every Entry read
+            // finds its day through `idx_entry_user_logged_on`, which replaced the rebuild's
+            // day-only `idx_entry_logged_on`.
             assertEquals(
                 listOf(
-                    "idx_entry_logged_on",
+                    "idx_entry_user_logged_on",
                     "idx_food_kind",
                     "idx_food_user_barcode",
                     "idx_recipe_ingredient_recipe",
