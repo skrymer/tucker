@@ -266,6 +266,31 @@ describe('DayLookupSection', () => {
     ).not.toBeInTheDocument()
   })
 
+  it('keeps the month paged to when both reads recover', async () => {
+    let failing = false
+    server.use(
+      failingRead('/api/entries/days', () => failing),
+      failingRead('/api/entries', () => failing),
+      ...dailyLogs(),
+    )
+    await renderSuspended(DayLookupSection)
+    await screen.findByText('Nothing logged on Mon 12 Oct.')
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: 'Previous month' }))
+    failing = true
+    await user.click(
+      screen.getByRole('button', { name: 'Thursday, September 10, 2026' }),
+    )
+    await screen.findByRole('heading', { name: "Couldn't load Thu 10 Sept" })
+    await user.click(screen.getByRole('button', { name: 'Previous month' }))
+    await screen.findByRole('heading', { name: "Couldn't load this card" })
+
+    failing = false
+    await user.click(screen.getByRole('button', { name: 'Retry' }))
+
+    expect(await screen.findByText('August 2026')).toBeVisible()
+  })
+
   it('lists every Entry of a picked past day, grams first, under its tally', async () => {
     // Four rows: one more than Today's capped list shows.
     server.use(

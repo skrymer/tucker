@@ -107,7 +107,10 @@ const { cardError, retryCard } = useCardError()
       nested
       class="mt-3"
       @retry="retryCard"
-    >
+    />
+    <!-- Hidden rather than unmounted, so the calendar keeps the month it was
+         showing through a failure and its retry. -->
+    <div v-show="!cardError">
       <p v-if="loggedDays.neverLogged.value" class="mt-3 text-sm text-muted">
         Nothing logged yet
       </p>
@@ -202,6 +205,6 @@ const { cardError, retryCard } = useCardError()
           </section>
         </LoadErrorState>
       </template>
-    </LoadErrorState>
+    </div>
   </UCard>
 </template>
