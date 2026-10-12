@@ -37,17 +37,20 @@ class LoggedDaysApiTest {
         }.andExpect { status { isCreated() } }
     }
 
+    private fun loggedDays(from: String, to: String) =
+        mockMvc.get("/api/entries/days") {
+            header(ACCESS_ASSERTION_HEADER, user)
+            param("from", from)
+            param("to", to)
+        }
+
     @Test
     fun `lists each day in the range that holds Entries once, ascending`() {
         logEstimated(LocalDate.of(2026, 10, 8))
         logEstimated(LocalDate.of(2026, 10, 7))
         logEstimated(LocalDate.of(2026, 10, 7))
 
-        mockMvc.get("/api/entries/days") {
-            header(ACCESS_ASSERTION_HEADER, user)
-            param("from", "2026-09-28")
-            param("to", "2026-11-08")
-        }.andExpect {
+        loggedDays(from = "2026-09-28", to = "2026-11-08").andExpect {
             status { isOk() }
             jsonPath("$.days.length()") { value(2) }
             jsonPath("$.days[0]") { value("2026-10-07") }
@@ -62,11 +65,7 @@ class LoggedDaysApiTest {
         logEstimated(LocalDate.of(2026, 8, 9))
         logEstimated(LocalDate.of(2026, 8, 10))
 
-        mockMvc.get("/api/entries/days") {
-            header(ACCESS_ASSERTION_HEADER, user)
-            param("from", "2026-06-29")
-            param("to", "2026-08-09")
-        }.andExpect {
+        loggedDays(from = "2026-06-29", to = "2026-08-09").andExpect {
             status { isOk() }
             jsonPath("$.days.length()") { value(2) }
             jsonPath("$.days[0]") { value("2026-06-29") }
@@ -80,11 +79,7 @@ class LoggedDaysApiTest {
         logEstimated(LocalDate.of(2026, 3, 14))
         logEstimated(LocalDate.of(2026, 6, 12))
 
-        mockMvc.get("/api/entries/days") {
-            header(ACCESS_ASSERTION_HEADER, user)
-            param("from", "2026-09-28")
-            param("to", "2026-11-08")
-        }.andExpect {
+        loggedDays(from = "2026-09-28", to = "2026-11-08").andExpect {
             status { isOk() }
             jsonPath("$.firstLoggedOn") { value("2026-03-14") }
         }
@@ -92,11 +87,7 @@ class LoggedDaysApiTest {
 
     @Test
     fun `a User with no Entries has no days and an explicit null firstLoggedOn`() {
-        val body = mockMvc.get("/api/entries/days") {
-            header(ACCESS_ASSERTION_HEADER, user)
-            param("from", "2026-09-28")
-            param("to", "2026-11-08")
-        }.andExpect {
+        val body = loggedDays(from = "2026-09-28", to = "2026-11-08").andExpect {
             status { isOk() }
             jsonPath("$.days") { isEmpty() }
         }.andReturn().response.contentAsString
@@ -107,31 +98,19 @@ class LoggedDaysApiTest {
 
     @Test
     fun `a range that ends before it starts is refused with 400`() {
-        mockMvc.get("/api/entries/days") {
-            header(ACCESS_ASSERTION_HEADER, user)
-            param("from", "2026-10-08")
-            param("to", "2026-10-07")
-        }.andExpect { status { isBadRequest() } }
+        loggedDays(from = "2026-10-08", to = "2026-10-07").andExpect { status { isBadRequest() } }
     }
 
     @Test
     fun `a range of 62 days is answered`() {
-        mockMvc.get("/api/entries/days") {
-            header(ACCESS_ASSERTION_HEADER, user)
-            param("from", "2026-09-01")
-            param("to", "2026-11-01")
-        }.andExpect { status { isOk() } }
+        loggedDays(from = "2026-09-01", to = "2026-11-01").andExpect { status { isOk() } }
     }
 
     @Test
     fun `a range of one day is answered`() {
         logEstimated(LocalDate.of(2026, 10, 7))
 
-        mockMvc.get("/api/entries/days") {
-            header(ACCESS_ASSERTION_HEADER, user)
-            param("from", "2026-10-07")
-            param("to", "2026-10-07")
-        }.andExpect {
+        loggedDays(from = "2026-10-07", to = "2026-10-07").andExpect {
             status { isOk() }
             jsonPath("$.days[0]") { value("2026-10-07") }
         }
@@ -139,10 +118,6 @@ class LoggedDaysApiTest {
 
     @Test
     fun `a range of 63 days is refused with 400`() {
-        mockMvc.get("/api/entries/days") {
-            header(ACCESS_ASSERTION_HEADER, user)
-            param("from", "2026-09-01")
-            param("to", "2026-11-02")
-        }.andExpect { status { isBadRequest() } }
+        loggedDays(from = "2026-09-01", to = "2026-11-02").andExpect { status { isBadRequest() } }
     }
 }

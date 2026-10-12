@@ -20,8 +20,8 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  /** The month now shown, ISO `yyyy-mm`. */
-  paged: [month: string]
+  /** The days drawn, ISO, both ends inclusive: on opening and on every page. */
+  shown: [grid: { from: string; to: string }]
 }>()
 
 /** The ISO strings at the interface, as the calendar's own dates. */
@@ -39,7 +39,7 @@ function useCalendarValues() {
 }
 
 /**
- * The day the calendar is showing, owned here so its month can be reported.
+ * The day the calendar is showing, owned here so the grid it draws can be reported.
  * It also follows the focused day, so most of its moves stay within a month.
  */
 function useShownMonth(opensOn?: DateValue) {
@@ -48,7 +48,8 @@ function useShownMonth(opensOn?: DateValue) {
   )
   watch(
     () => placeholder.value.toString().slice(0, 7),
-    (month) => emit('paged', month),
+    (month) => emit('shown', visibleGrid(month)),
+    { immediate: true },
   )
   return placeholder
 }
@@ -64,12 +65,14 @@ const isMarked = useMarkedDays()
 </script>
 
 <template>
+  <!-- Monday weeks, always six of them: the grid visibleGrid reports. -->
   <UCalendar
     v-model="selected"
     v-model:placeholder="placeholder"
     :min-value="minValue"
     :max-value="maxValue"
     :week-starts-on="1"
+    fixed-weeks
     :year-controls="false"
     prevent-deselect
   >

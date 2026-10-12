@@ -174,9 +174,10 @@ export function dailyLogs(
           message: `a range must span at most ${MAX_LOGGED_DAYS_RANGE} days`,
         })
       }
+      const days = logged()
       return response(200).json({
-        days: logged().filter((d) => d >= asked.from && d <= asked.to),
-        firstLoggedOn: logged()[0] ?? null,
+        days: days.filter((d) => d >= asked.from && d <= asked.to),
+        firstLoggedOn: days[0] ?? null,
       })
     }),
     http.get('/api/entries', ({ query, response }) => {

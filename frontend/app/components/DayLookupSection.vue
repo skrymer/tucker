@@ -2,6 +2,7 @@
 import type { components } from '#open-fetch-schemas/api'
 
 type LoggedDays = components['schemas']['LoggedDaysResponse']
+type CalendarGrid = ReturnType<typeof visibleGrid>
 
 const { $api } = useNuxtApp()
 
@@ -49,26 +50,28 @@ function useDayNaming(day: Ref<string>) {
  */
 function useLoggedDays() {
   const read = new Map<string, LoggedDays>()
+  /** Set by the calendar as it opens, and again on every page. */
   const {
-    selection: month,
+    selection: grid,
     data,
     error,
     load,
-  } = useWindowedFetch(localToday().slice(0, 7), async (month, signal) => {
-    const known = read.get(month)
-    if (known) return known
-    const answer = await $api('/api/entries/days', {
-      query: visibleGrid(month),
-      signal,
-    })
-    read.set(month, answer)
-    return answer
-  })
+  } = useWindowedFetch<CalendarGrid | null, LoggedDays | null>(
+    null,
+    async (grid, signal) => {
+      if (!grid) return null
+      const known = read.get(grid.from)
+      if (known) return known
+      const answer = await $api('/api/entries/days', { query: grid, signal })
+      read.set(grid.from, answer)
+      return answer
+    },
+  )
   const days = computed(() => data.value?.days ?? [])
   const firstLoggedOn = computed(() => data.value?.firstLoggedOn ?? undefined)
   /** Whether the User has no Entry on any day. */
   const neverLogged = computed(() => data.value?.firstLoggedOn === null)
-  return { month, days, firstLoggedOn, neverLogged, error, load }
+  return { grid, days, firstLoggedOn, neverLogged, error, load }
 }
 
 const { picked, shown, entries, tally, answered, error, pending, load } =
@@ -77,7 +80,6 @@ const loggedDays = useLoggedDays()
 // Not awaited: a read nothing else on /review needs must not hold the page's
 // Suspense, which waits on every awaited setup beneath it.
 void load()
-void loggedDays.load()
 const { heading, plain, lastDay } = useDayNaming(shown)
 </script>
 
@@ -96,7 +98,7 @@ const { heading, plain, lastDay } = useDayNaming(shown)
       :max="lastDay"
       :marked="loggedDays.days.value"
       class="mt-3"
-      @paged="loggedDays.month.value = $event"
+      @shown="loggedDays.grid.value = $event"
     />
     <!-- Its own error, under a calendar still in use: without its dots every
          day can still be picked. -->

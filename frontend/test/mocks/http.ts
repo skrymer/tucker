@@ -14,11 +14,14 @@ import { openGate } from '../async-gate'
 export const http = createOpenApiHttp<paths>({ baseUrl: '*' })
 
 /**
- * An unexpected server failure, for `response.untyped(serverError())`: the spec
- * declares a 500 on no endpoint, because no endpoint means to answer one.
+ * An unexpected server failure: the spec declares a 500 on no endpoint, because
+ * no endpoint means to answer one, so it is sent untyped.
  */
 export const serverError = () =>
   HttpResponse.json({ message: 'boom' }, { status: 500 })
+
+/** [path], spec-style, as an untyped handler's pattern on any origin. */
+const anyOrigin = (path: string) => `*${path.replace(/\{(\w+)\}/g, ':$1')}`
 
 /** [value] as Kotlin prints a Double in a refusal: `0.0`, never `0`. */
 export const kotlinDouble = (value: number) =>
@@ -96,7 +99,7 @@ export function failingRead(
   path: Parameters<typeof http.get>[0],
   isDown: () => boolean = () => true,
 ) {
-  return untypedHttp.get(`*${path.replace(/\{(\w+)\}/g, ':$1')}`, () =>
+  return untypedHttp.get(anyOrigin(path), () =>
     isDown() ? serverError() : undefined,
   )
 }
@@ -110,7 +113,7 @@ export function failingWrite<M extends 'post' | 'put' | 'delete'>(
   path: Parameters<(typeof http)[M]>[0],
   isDown: () => boolean = () => true,
 ) {
-  return untypedHttp[method](`*${path.replace(/\{(\w+)\}/g, ':$1')}`, () =>
+  return untypedHttp[method](anyOrigin(path), () =>
     isDown() ? serverError() : undefined,
   )
 }
@@ -129,14 +132,11 @@ export function held<M extends 'get' | 'post' | 'put' | 'delete'>(
   const { gate, release } = openGate()
   let asked!: () => void
   const arrived = new Promise<void>((resolve) => (asked = resolve))
-  const handler = untypedHttp[method](
-    `*${path.replace(/\{(\w+)\}/g, ':$1')}`,
-    async ({ request }) => {
-      if (matches && !(await matches(request.clone()))) return undefined
-      asked()
-      await gate
-      return undefined
-    },
-  )
+  const handler = untypedHttp[method](anyOrigin(path), async ({ request }) => {
+    if (matches && !(await matches(request.clone()))) return undefined
+    asked()
+    await gate
+    return undefined
+  })
   return { handler, arrived, release }
 }

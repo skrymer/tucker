@@ -194,7 +194,7 @@ class FoodAndEntryOwnershipMigrationTest {
     @Test
     fun `the rebuild keeps the constraints and indexes that only refuse the next bad row`() {
         val db = tempDir.resolve("constraints.db").toString()
-        migrate(db, upTo = null)
+        migrate(db, upTo = "13")
 
         connect(db).use { connection ->
             connection.seedTwoUsers()

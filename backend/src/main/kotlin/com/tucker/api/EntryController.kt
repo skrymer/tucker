@@ -220,7 +220,10 @@ class EntryController(
         require(ChronoUnit.DAYS.between(from, to) < MAX_LOGGED_DAYS_RANGE) {
             "a range must span at most $MAX_LOGGED_DAYS_RANGE days"
         }
-        return LoggedDaysResponse(days = loggedDays.between(from, to), firstLoggedOn = loggedDays.first())
+        return LoggedDaysResponse(
+            days = entries.caloriesByDay(from, to).keys.sorted(),
+            firstLoggedOn = loggedDays.first(),
+        )
     }
 
     @PostMapping("/weighed")
