@@ -200,6 +200,30 @@ describe('DayLookupSection', () => {
     expect(screen.queryByText(/Nothing logged on/)).not.toBeInTheDocument()
   })
 
+  it('still picks a day under its error while the logged days fail', async () => {
+    server.use(
+      failingRead('/api/entries/days'),
+      ...dailyLogs({ '2026-10-08': [weighed(1, 'Oats', 60, 233, 8)] }),
+    )
+    await renderSuspended(DayLookupSection)
+    const user = userEvent.setup()
+    const error = await screen.findByRole('heading', {
+      name: "Couldn't load logged days",
+    })
+    const thursday = screen.getByRole('button', {
+      name: 'Thursday, October 8, 2026',
+    })
+    expect(
+      thursday.compareDocumentPosition(error) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+
+    await user.click(thursday)
+
+    const panel = await screen.findByRole('region', { name: 'Thu 8 Oct' })
+    expect(within(panel).getByText('1 entry · 233 kcal')).toBeVisible()
+  })
+
   it('says the card failed to load once when both its reads fail, and retries both', async () => {
     let failing = true
     server.use(

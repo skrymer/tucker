@@ -194,7 +194,7 @@ class FoodAndEntryOwnershipMigrationTest {
     @Test
     fun `the rebuild keeps the constraints and indexes that only refuse the next bad row`() {
         val db = tempDir.resolve("constraints.db").toString()
-        migrate(db, upTo = "13")
+        migrate(db, upTo = null)
 
         connect(db).use { connection ->
             connection.seedTwoUsers()
@@ -227,10 +227,12 @@ class FoodAndEntryOwnershipMigrationTest {
 
             // The indexes go the same way as the constraints — recreated by hand, invisible
             // in every stored value. `idx_entry_logged_on` is the one that earns its keep:
-            // every daily-summary read finds its day through it.
+            // every daily-summary read finds its day through it. The list is the deployed
+            // schema's, so an index added since (V22's owner-and-day) is in it too.
             assertEquals(
                 listOf(
                     "idx_entry_logged_on",
+                    "idx_entry_user_logged_on",
                     "idx_food_kind",
                     "idx_food_user_barcode",
                     "idx_recipe_ingredient_recipe",
