@@ -420,21 +420,28 @@ Three things that rule is not:
 
 Rounded and soft — the friendly pole. Radius is generous; buttons are pills.
 
-| Token                | Value                           | Applies to                                             |
-| -------------------- | ------------------------------- | ------------------------------------------------------ |
-| `--ui-radius` (base) | `0.5rem` (8px)                  | Nuxt UI derives inputs/badges/menus from this          |
-| Input radius         | `rounded-md` = 1.5x base (12px) | `UInput`, `USelect`, popover content, `DateField`      |
-| Card radius          | 20px (`rounded-[1.25rem]`)      | `UCard`, tiles, the ring card                          |
-| Chip / mark radius   | 12px                            | entry marks, icon chips                                |
-| Button radius        | `9999px` (pill)                 | all buttons except the form-control trigger, + the FAB |
+A card, a viewfinder and an inset take the named radii (`rounded-card`,
+`rounded-inset`), never a stock `rounded-*` step: Nuxt UI scales those off
+`--ui-radius`, so here `rounded-xl` draws 24px, not the 12px its Tailwind name
+suggests. `/design`'s Shape section captions each specimen with what it renders.
+
+| Token                | Value                            | Applies to                                             |
+| -------------------- | -------------------------------- | ------------------------------------------------------ |
+| `--ui-radius` (base) | `0.5rem` (8px)                   | Nuxt UI derives inputs/badges/menus from this          |
+| Input radius         | `rounded-md` = 1.5x base (12px)  | `UInput`, `USelect`, popover content, `DateField`      |
+| Card radius          | 20px (`rounded-card`)            | `UCard`, tiles, the ring card                          |
+| Viewfinder radius    | the card radius (`rounded-card`) | both camera viewfinders: Check's and Add-Food's        |
+| Inset radius         | 12px (`rounded-inset`)           | inset panels and pick rows in a card, marks, chips     |
+| Card padding         | 16px, 20px from `lg`             | every `UCard`, set once in `app.config.ts`             |
+| Button radius        | `9999px` (pill)                  | all buttons except the form-control trigger, + the FAB |
 
 | Elevation | Shadow                                                                 | Use                                                           |
 | --------- | ---------------------------------------------------------------------- | ------------------------------------------------------------- |
 | Card      | `0 8px 22px -12px rgba(0,193,106,.28), 0 2px 6px -3px rgba(0,0,0,.06)` | resting cards — a soft **green-tinted** lift, not a grey drop |
 | Floating  | `0 10px 24px -6px rgba(0,193,106,.45)`                                 | the phone FAB                                                 |
 
-Spacing rhythm: `gap-4` (16px) between stacked cards; card padding `p-5` (20px)
-on desktop, `p-4` on phone.
+Spacing rhythm: `gap-4` (16px) between stacked cards. A card's padding comes
+from the card; a card never adds its own.
 
 ---
 
@@ -555,7 +562,7 @@ kcal`) sits beneath its own ring, so no arc is ever colour-alone. Calorie
   other gram figure on the screen), never colour alone; the segment **widths** are
   shares of the item's own calories, so the portion never redraws them.
 - **Viewfinder** — a Check's landing state is the camera itself: a black,
-  20px-radius surface with the instruction over it, capped at `max-w-md` so it
+  card-radius surface with the instruction over it, capped at `max-w-md` so it
   fills a phone but doesn't become a slab on desktop. A denied camera ends the
   screen (ADR 0022) — it offers no manual path, unlike the Add-Food scanner.
 - **Failure is the whole experience here**, because there is nothing else to
@@ -576,7 +583,8 @@ kcal`) sits beneath its own ring, so no arc is ever colour-alone. Calorie
 ## Component treatments
 
 - **Card** — white surface, 1px `border-default`, 20px radius, green-tinted card
-  shadow, `p-5`/`p-4`. The default container for every Today block.
+  shadow, padded by the card itself (Shape & elevation). The default container
+  for every Today block.
 - **Button** — pill. Primary = solid green; secondary = coral; low-emphasis =
   ghost/neutral. Icon buttons are circular.
 - **Form-control trigger** — a control that opens an overlay (today only
@@ -643,7 +651,7 @@ text-muted` what it cost and returned — `153 kcal · 13 g protein`, with
   The row never runs name and figures together on one line — that reading is kept
   for a **toast** and a **confirm dialog**, where the words are prose and there is
   nowhere to put a second line.
-- **Frequent-Foods cell** — a two-column grid of bordered `rounded-xl` cards, the
+- **Frequent-Foods cell** — a two-column grid of bordered `rounded-inset` cells, the
   Food's name over its `kcal · g protein /100g` in `text-xs`. The nutrient is
   named, as on every other Food surface: everything in Tucker is weighed in
   grams, so a bare gram figure beside a Food reads as a portion weight — and the
@@ -791,7 +799,9 @@ error nested inside a card, below.
 
 1. **`app/app.config.ts`** — `ui.colors`: `primary: 'green'`, `secondary:
 'coral'`, `neutral: 'neutral'`; plus the pill button (`rounded-full`) and card
-   (`rounded-[1.25rem] shadow-card`) slot overrides.
+   (`rounded-card shadow-card`, and its header, body and footer padding) slot
+   overrides; and `tv.twMergeConfig`, which names the radius tokens so
+   `rounded-card` replaces a component's stock corner rather than sitting beside it.
 2. **`app/assets/css/main.css`**
    - `@theme` — declare the custom `--color-coral-*` scale (Tailwind/Nuxt UI
      reads it as the `coral` palette).

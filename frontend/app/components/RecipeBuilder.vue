@@ -209,7 +209,7 @@ function onSave() {
         <li v-for="(line, index) in ingredients.lines.value" :key="index">
           <button
             type="button"
-            class="flex w-full items-center justify-between gap-3 rounded-lg border border-default px-3 py-2 text-left"
+            class="flex w-full items-center justify-between gap-3 rounded-inset border border-default px-3 py-2 text-left"
             @click="edit(index)"
           >
             <span class="font-medium text-default">{{

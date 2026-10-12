@@ -15,7 +15,7 @@ const emit = defineEmits<{ pick: [FoodResponse] }>()
       <button
         type="button"
         :aria-label="logFoodLabel(food)"
-        class="w-full rounded-md py-3 text-left hover:bg-elevated active:bg-elevated"
+        class="w-full rounded-inset py-3 text-left hover:bg-elevated active:bg-elevated"
         @click="emit('pick', food)"
       >
         <FigureRow :name="food.name" :figures="formatPer100g(food)">

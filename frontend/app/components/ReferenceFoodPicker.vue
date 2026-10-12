@@ -151,7 +151,7 @@ const willNotGuess = computed(
            none, so taking one back is as easy as making it (ADR 0027). -->
       <div
         v-if="food?.referenceFoodName"
-        class="flex items-center justify-between gap-3 rounded-xl bg-elevated/50 px-3 py-2"
+        class="flex items-center justify-between gap-3 rounded-inset bg-elevated/50 px-3 py-2"
       >
         <p class="min-w-0 text-sm">
           <span class="block text-muted">Currently borrowing from</span>
@@ -225,7 +225,7 @@ const willNotGuess = computed(
           <li v-for="candidate in candidates" :key="candidate.id">
             <button
               type="button"
-              class="w-full rounded-md py-2.5 text-left hover:bg-elevated active:bg-elevated"
+              class="w-full rounded-inset py-2.5 text-left hover:bg-elevated active:bg-elevated"
               :aria-busy="matching && claiming === candidate.id"
               @click="claimFor(candidate.id)"
             >
