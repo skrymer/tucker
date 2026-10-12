@@ -38,6 +38,7 @@ describe('DayLookupSection', () => {
 
   it('opens on today, selected and named as today', async () => {
     await renderSuspended(DayLookupSection)
+    await screen.findByText('Nothing logged on Mon 12 Oct.')
 
     expect(screen.getByRole('region', { name: 'Look up a day' })).toBeVisible()
     expect(
