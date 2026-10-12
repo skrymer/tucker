@@ -172,6 +172,24 @@ class CrossUserIsolationTest {
     }
 
     @Test
+    fun `another User's Entries never mark this User's logged days or set their first`() {
+        logEstimated(alice, MealEstimate("Alice's lunch out", calories = 700.0, protein = 40.0), on = earlier)
+        logEstimated(alice, MealEstimate("Alice's dinner", calories = 900.0, protein = 50.0), on = day.minusDays(1))
+        logEstimated(bob, MealEstimate("Bob's porridge", calories = 250.0, protein = 12.0))
+
+        mockMvc.get("/api/entries/days") {
+            header(ACCESS_ASSERTION_HEADER, bob)
+            param("from", "${earlier.minusDays(1)}")
+            param("to", "${day.plusDays(1)}")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.days.length()") { value(1) }
+            jsonPath("$.days[0]") { value("$day") }
+            jsonPath("$.firstLoggedOn") { value("$day") }
+        }
+    }
+
+    @Test
     fun `another User's Entries never rank this User's Frequent Foods`() {
         val oats = createFood(bob, "Bob's rolled oats")
         val skyr = createFood(bob, "Bob's skyr")
