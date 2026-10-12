@@ -96,8 +96,8 @@ export function failingRead(
   path: Parameters<typeof http.get>[0],
   isDown: () => boolean = () => true,
 ) {
-  return http.get(path, ({ response }) =>
-    isDown() ? response.untyped(serverError()) : undefined,
+  return untypedHttp.get(`*${path.replace(/\{(\w+)\}/g, ':$1')}`, () =>
+    isDown() ? serverError() : undefined,
   )
 }
 

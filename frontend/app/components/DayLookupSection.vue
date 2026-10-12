@@ -1,4 +1,8 @@
 <script setup lang="ts">
+import type { components } from '#open-fetch-schemas/api'
+
+type LoggedDays = components['schemas']['LoggedDaysResponse']
+
 const { $api } = useNuxtApp()
 
 /** The picked day and its Entries, re-read whenever another day is picked. */
@@ -39,11 +43,41 @@ function useDayNaming(day: Ref<string>) {
   return { heading, plain, lastDay }
 }
 
+/**
+ * The days holding an Entry across the month the calendar draws, each month
+ * read once for the visit.
+ */
+function useLoggedDays() {
+  const read = new Map<string, LoggedDays>()
+  const {
+    selection: month,
+    data,
+    error,
+    load,
+  } = useWindowedFetch(localToday().slice(0, 7), async (month, signal) => {
+    const known = read.get(month)
+    if (known) return known
+    const answer = await $api('/api/entries/days', {
+      query: visibleGrid(month),
+      signal,
+    })
+    read.set(month, answer)
+    return answer
+  })
+  const days = computed(() => data.value?.days ?? [])
+  const firstLoggedOn = computed(() => data.value?.firstLoggedOn ?? undefined)
+  /** Whether the User has no Entry on any day. */
+  const neverLogged = computed(() => data.value?.firstLoggedOn === null)
+  return { month, days, firstLoggedOn, neverLogged, error, load }
+}
+
 const { picked, shown, entries, tally, answered, error, pending, load } =
   usePickedDay()
+const loggedDays = useLoggedDays()
 // Not awaited: a read nothing else on /review needs must not hold the page's
 // Suspense, which waits on every awaited setup beneath it.
 void load()
+void loggedDays.load()
 const { heading, plain, lastDay } = useDayNaming(shown)
 </script>
 
@@ -52,7 +86,27 @@ const { heading, plain, lastDay } = useDayNaming(shown)
     <h2 id="day-lookup-heading" class="text-h2 text-highlighted">
       Look up a day
     </h2>
-    <AppCalendar v-model="picked" :max="lastDay" class="mt-3" />
+    <p v-if="loggedDays.neverLogged.value" class="mt-3 text-sm text-muted">
+      Nothing logged yet
+    </p>
+    <AppCalendar
+      v-else
+      v-model="picked"
+      :min="loggedDays.firstLoggedOn.value"
+      :max="lastDay"
+      :marked="loggedDays.days.value"
+      class="mt-3"
+      @paged="loggedDays.month.value = $event"
+    />
+    <!-- Its own error, under a calendar still in use: without its dots every
+         day can still be picked. -->
+    <LoadErrorState
+      :error="loggedDays.error.value"
+      title="Couldn't load logged days"
+      nested
+      class="mt-3"
+      @retry="loggedDays.load"
+    />
     <USeparator class="my-3" />
     <LoadErrorState
       :error="error"
