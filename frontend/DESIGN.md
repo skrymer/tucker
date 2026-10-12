@@ -714,7 +714,8 @@ text-muted` what it cost and returned — `153 kcal · 13 g protein`, with
 
 Three states share one shape (icon + heading + body + optional button, centred,
 `flex flex-col items-center gap-3 py-12 text-center`) but read differently
-through icon and colour, never through colour alone.
+through icon and colour, never through colour alone. The one exception is a load
+error nested inside a card, below.
 
 | State      | Icon                                 | Icon colour  | Heading pattern                          | Body                                   | Action                                    |
 | ---------- | ------------------------------------ | ------------ | ---------------------------------------- | -------------------------------------- | ----------------------------------------- |
@@ -734,12 +735,16 @@ through icon and colour, never through colour alone.
   message, and its Retry replays both. By the same rule a load error never
   stacks above an **empty** state that already answers the page: a User with no
   Foods can have no rotation, so a failed ranking read is not worth a panel over
-  the dead end that is.
-- **A load error inside a card is `nested`.** Where the failed region sits
-  under a card's own `h2` — the picked day in "Look up a day" — `LoadErrorState`
-  takes `nested`: the same icon, copy and Retry, with its heading one level down
-  (`h3`) and `py-6` in place of `py-12`, so the card keeps one top heading and
-  the error does not tower over the control left working above it.
+  the dead end that is. A **nested** load error is not one of the page's: it
+  belongs to a card whose own control still works (the look-up's calendar picks
+  another day), so it stands on its own.
+- **A load error inside a card is `nested`, and is one row.** Where the failed
+  region sits under a card's own `h2` — the picked day in "Look up a day" —
+  `LoadErrorState` takes `nested`: the same icon, copy and Retry, laid out as one
+  compact row in the footprint of the content it stands in for — a `size-5`
+  cloud-off, an `h3` heading in `text-label` with the hint under it, Retry at the
+  right. The card keeps one top heading, and the error never towers over the
+  control left working above it.
 - **Load error and signed out are deliberately different icons and verbs**
   (`cloud-off` / "Retry" vs. `lock` / "Sign back in"), because they call for
   different user actions — telling someone to "check your connection" when

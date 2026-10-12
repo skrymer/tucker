@@ -288,14 +288,15 @@ describe('DayLookupSection', () => {
     const panel = await screen.findByRole('region', {
       name: 'Today · Mon 12 Oct',
     })
-    expect(within(panel).getByRole('alert', { name: 'loading' })).toBeVisible()
+    // Decorative: the panel's aria-busy says it is loading, so the rows raise
+    // no alert of their own.
+    expect(within(panel).getByTestId('day-skeleton')).toBeInTheDocument()
+    expect(within(panel).queryByRole('alert')).not.toBeInTheDocument()
 
     read.release()
     await rendered
     await screen.findByText('Nothing logged on Mon 12 Oct.')
-    expect(
-      screen.queryByRole('alert', { name: 'loading' }),
-    ).not.toBeInTheDocument()
+    expect(screen.queryByTestId('day-skeleton')).not.toBeInTheDocument()
   })
 
   it('moves today, tomorrow and the last pickable day on when the day turns over', async () => {
