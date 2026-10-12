@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { components } from '#open-fetch-schemas/api'
+import type { CalendarGrid } from '~/utils/calendarGrid'
 
 type LoggedDays = components['schemas']['LoggedDaysResponse']
-type CalendarGrid = ReturnType<typeof visibleGrid>
 
 const { $api } = useNuxtApp()
 
