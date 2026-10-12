@@ -196,6 +196,7 @@ describe('DayLookupSection', () => {
 
   it('marks the day busy while a newly picked one loads', async () => {
     await renderSuspended(DayLookupSection)
+    await screen.findByText('Nothing logged on Mon 12 Oct.')
     const user = userEvent.setup()
     const read = held('get', '/api/entries')
     server.use(read.handler)
@@ -205,10 +206,10 @@ describe('DayLookupSection', () => {
     )
     await read.arrived
 
-    expect(screen.getByRole('region', { name: 'Thu 8 Oct' })).toHaveAttribute(
-      'aria-busy',
-      'true',
-    )
+    // Today is still what is on screen while Thursday is on its way.
+    expect(
+      screen.getByRole('region', { name: 'Today · Mon 12 Oct' }),
+    ).toHaveAttribute('aria-busy', 'true')
 
     read.release()
     await vi.waitFor(() =>
@@ -217,6 +218,42 @@ describe('DayLookupSection', () => {
         'false',
       ),
     )
+  })
+
+  it('heads the panel by the day it shows until a newly picked one arrives', async () => {
+    server.use(
+      ...dailyLogs({
+        '2026-10-08': [weighed(1, 'Oats', 60, 233, 8)],
+      }),
+    )
+    await renderSuspended(DayLookupSection)
+    const user = userEvent.setup()
+    await user.click(
+      screen.getByRole('button', { name: 'Thursday, October 8, 2026' }),
+    )
+    await screen.findByRole('region', { name: 'Thu 8 Oct' })
+
+    const read = held('get', '/api/entries')
+    server.use(read.handler)
+    await user.click(
+      screen.getByRole('button', { name: 'Tuesday, October 6, 2026' }),
+    )
+    await read.arrived
+
+    // Thursday's Oats are still on screen, so the panel still says Thursday.
+    const shown = screen.getByRole('region', { name: 'Thu 8 Oct' })
+    expect(within(shown).getByText('1 entry · 233 kcal')).toBeVisible()
+    expect(
+      screen.queryByRole('heading', { name: 'Tue 6 Oct' }),
+    ).not.toBeInTheDocument()
+
+    read.release()
+    const tuesday = await screen.findByRole('region', { name: 'Tue 6 Oct' })
+    expect(
+      within(tuesday).getByText('Nothing logged on Tue 6 Oct.', {
+        exact: true,
+      }),
+    ).toBeVisible()
   })
 
   it('draws the card while its first day is still loading, holding nothing up', async () => {
@@ -239,6 +276,25 @@ describe('DayLookupSection', () => {
     read.release()
     await rendered
     expect(await screen.findByText('1 entry · 233 kcal')).toBeVisible()
+  })
+
+  it('holds a loading skeleton where the first day will go, until it is answered', async () => {
+    const read = held('get', '/api/entries')
+    server.use(read.handler)
+
+    const rendered = renderSuspended(DayLookupSection)
+    await read.arrived
+    const panel = await screen.findByRole('region', {
+      name: 'Today · Mon 12 Oct',
+    })
+    expect(within(panel).getByRole('alert', { name: 'loading' })).toBeVisible()
+
+    read.release()
+    await rendered
+    await screen.findByText('Nothing logged on Mon 12 Oct.')
+    expect(
+      screen.queryByRole('alert', { name: 'loading' }),
+    ).not.toBeInTheDocument()
   })
 
   it('moves today, tomorrow and the last pickable day on when the day turns over', async () => {

@@ -18,28 +18,33 @@ function usePickedDay() {
   )
   /** Whether any day has been answered yet: until then the panel claims nothing. */
   const answered = computed(() => day.value !== null)
-  return { picked, entries, tally, answered, error, pending, load }
+  /**
+   * The day whose Entries are on screen. While a newly picked one loads the
+   * last answer stays up, dimmed, so the panel keeps naming the day it shows.
+   */
+  const shown = computed(() => day.value?.date ?? picked.value)
+  return { picked, shown, entries, tally, answered, error, pending, load }
 }
 
 /**
- * The picked day as Today names it, and the last day that can be picked —
- * both follow the clock, so a page left open past midnight moves on with it.
+ * A day as Today names it, and the last day that can be picked — both follow
+ * the clock, so a page left open past midnight moves on with it.
  */
-function useDayNaming(picked: Ref<string>) {
+function useDayNaming(day: Ref<string>) {
   const today = useLocalDay()
-  const heading = computed(() => dayHeading(picked.value, today.value))
-  const plain = computed(() => formatDayHeadingFromISO(picked.value))
+  const heading = computed(() => dayHeading(day.value, today.value))
+  const plain = computed(() => formatDayHeadingFromISO(day.value))
   /** The furthest day an Entry can be logged on (ADR 0035). */
   const lastDay = computed(() => localTomorrow(today.value))
   return { heading, plain, lastDay }
 }
 
-const { picked, entries, tally, answered, error, pending, load } =
+const { picked, shown, entries, tally, answered, error, pending, load } =
   usePickedDay()
 // Not awaited: a read nothing else on /review needs must not hold the page's
 // Suspense, which waits on every awaited setup beneath it.
 void load()
-const { heading, plain, lastDay } = useDayNaming(picked)
+const { heading, plain, lastDay } = useDayNaming(shown)
 </script>
 
 <template>
@@ -51,7 +56,7 @@ const { heading, plain, lastDay } = useDayNaming(picked)
     <USeparator class="my-3" />
     <LoadErrorState
       :error="error"
-      :title="`Couldn't load ${plain}`"
+      :title="`Couldn't load ${formatDayHeadingFromISO(picked)}`"
       nested
       @retry="load"
     >
@@ -71,7 +76,7 @@ const { heading, plain, lastDay } = useDayNaming(picked)
         >
           <h3
             id="day-lookup-day"
-            class="flex items-center gap-2 font-semibold text-highlighted"
+            class="flex items-center gap-2 text-h2 text-highlighted"
           >
             <UIcon
               name="i-lucide-calendar"
@@ -84,6 +89,16 @@ const { heading, plain, lastDay } = useDayNaming(picked)
             {{ tally }}
           </p>
         </div>
+        <!-- The first read only (ADR 0007's cold load); a later pick keeps the
+             last answer up instead. Faded in after the same 150 ms, in the
+             transition, so a fast answer never flashes it. -->
+        <Transition
+          appear
+          enter-from-class="opacity-0"
+          enter-active-class="transition-opacity delay-150"
+        >
+          <USkeleton v-if="!answered" class="mt-3 h-10 w-full" />
+        </Transition>
         <p v-if="answered && !entries.length" class="mt-2 text-sm text-muted">
           Nothing logged on {{ plain }}.
         </p>

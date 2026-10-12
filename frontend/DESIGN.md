@@ -719,7 +719,7 @@ through icon and colour, never through colour alone.
 | State      | Icon                                 | Icon colour  | Heading pattern                          | Body                                   | Action                                    |
 | ---------- | ------------------------------------ | ------------ | ---------------------------------------- | -------------------------------------- | ----------------------------------------- |
 | Empty      | subject icon (e.g. `i-lucide-salad`) | `text-muted` | "Build your…" — invites the first action | says what to do next                   | primary CTA (e.g. "Add your first food")  |
-| Load error | `i-lucide-cloud-off`                 | `text-error` | "Couldn't load your `<thing>`"           | "Check your connection and try again." | "Retry" — replays the same fetch          |
+| Load error | `i-lucide-cloud-off`                 | `text-error` | "Couldn't load `<what failed>`"          | "Check your connection and try again." | "Retry" — replays the same fetch          |
 | Signed out | `i-lucide-lock`                      | `text-error` | "You've been signed out"                 | "Sign back in to keep tracking."       | "Sign back in" — forces a real navigation |
 
 - **Empty** means "nothing here yet, and that's expected" — quiet, muted icon,
@@ -735,6 +735,11 @@ through icon and colour, never through colour alone.
   stacks above an **empty** state that already answers the page: a User with no
   Foods can have no rotation, so a failed ranking read is not worth a panel over
   the dead end that is.
+- **A load error inside a card is `nested`.** Where the failed region sits
+  under a card's own `h2` — the picked day in "Look up a day" — `LoadErrorState`
+  takes `nested`: the same icon, copy and Retry, with its heading one level down
+  (`h3`) and `py-6` in place of `py-12`, so the card keeps one top heading and
+  the error does not tower over the control left working above it.
 - **Load error and signed out are deliberately different icons and verbs**
   (`cloud-off` / "Retry" vs. `lock` / "Sign back in"), because they call for
   different user actions — telling someone to "check your connection" when
