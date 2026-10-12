@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { useAppConfig } from '#imports'
-import { classedElements } from '../../test/templates'
+import { appTemplates } from '../../test/templates'
 import { designSection, readFrontend, remToPx } from '../../test/designDoc'
 
 // Card shape is stated twice: in the app config's card theme and the stylesheet's
@@ -66,12 +66,14 @@ describe('the card shape', () => {
 })
 
 describe('using the shape tokens by name', () => {
-  it('never states an arbitrary radius in a template', () => {
-    const arbitrary = classedElements()
-      .filter(({ classes }) =>
-        classes.some((c) => /(^|:)rounded(-[a-z]+)?-\[/.test(c)),
-      )
-      .map(({ site }) => site)
+  it('never states an arbitrary radius in a component', () => {
+    // The whole source, not only static classes: a bound `:class`, a `:ui`
+    // string or a class constant in the script restates a radius just as well.
+    const arbitrary = appTemplates().flatMap(({ file, source }) =>
+      (source.match(/\brounded(-[a-z]+)?-\[[^\]]*\]/g) ?? []).map(
+        (radius) => `${file}: ${radius}`,
+      ),
+    )
 
     // A card-shaped corner is `rounded-card`; an inset's is `rounded-inset`
     // (DESIGN.md → Shape & elevation).

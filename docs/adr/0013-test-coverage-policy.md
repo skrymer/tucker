@@ -43,7 +43,8 @@ glue's failing red simply lives in the integrated test, not in a unit test.
    extracting duplicated code is the exception: it is extracted as a refactor, under the
    green tests that already cover both copies, and its own tests follow once the clone
    is gone, with their red shown on a mutant (the clone gate refuses any new test while
-   a clone stands; #411).
+   a clone stands; #411). The rule covers application code, not test support: a helper
+   under `frontend/test/` is pinned by the tests that use it, which fail when it breaks.
 6. **Tests are named by behaviour, never by implementation or issue number.**
 
 ### The test layers this produces

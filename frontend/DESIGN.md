@@ -431,7 +431,7 @@ suggests. `/design`'s Shape section captions each specimen with what it renders.
 | Input radius         | `rounded-md` = 1.5x base (12px)  | `UInput`, `USelect`, popover content, `DateField`      |
 | Card radius          | 20px (`rounded-card`)            | `UCard`, tiles, the ring card                          |
 | Viewfinder radius    | the card radius (`rounded-card`) | both camera viewfinders: Check's and Add-Food's        |
-| Inset radius         | 12px (`rounded-inset`)           | inset panels and pick rows in a card, marks, chips     |
+| Inset radius         | 12px (`rounded-inset`)           | inset panels and pick rows inside a card               |
 | Card padding         | 16px, 20px from `lg`             | every `UCard`, set once in `app.config.ts`             |
 | Button radius        | `9999px` (pill)                  | all buttons except the form-control trigger, + the FAB |
 
