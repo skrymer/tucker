@@ -97,6 +97,50 @@ test('holds the cold-load skeleton invisible for its first moment', async ({
   await expect(skeleton).toHaveCount(0)
 })
 
+// A dot has no accessible form, so the aria snapshot cannot see it: which days
+// carry one, and that it is painted, is read off the DOM.
+test('dots the days that hold Entries, and no other', async ({
+  goto,
+  network,
+  page,
+}) => {
+  // Tue 16 Jun 2026, local.
+  await pinToLocalMorning(page)
+  const oats = (id: number) =>
+    weighedEntry({
+      id,
+      foodId: 1,
+      foodName: 'Rolled oats',
+      grams: 60,
+      calories: 233,
+      protein: 8,
+    })
+  network.use(
+    ...dailyLogs({ '2026-06-11': [oats(1)], '2026-06-12': [oats(2)] }),
+  )
+
+  await goto('/review', { waitUntil: 'hydration' })
+  const card = page.getByRole('region', { name: 'Look up a day' })
+
+  await expect
+    .poll(() =>
+      card
+        .locator('[data-slot="cellTrigger"] [data-slot="base"]')
+        .evaluateAll((dots) =>
+          dots.map((dot) => ({
+            day: dot
+              .closest('[data-slot="cellTrigger"]')!
+              .getAttribute('aria-label'),
+            painted: getComputedStyle(dot).backgroundColor,
+          })),
+        ),
+    )
+    .toEqual([
+      { day: 'Thursday, June 11, 2026', painted: 'rgb(0, 193, 106)' },
+      { day: 'Friday, June 12, 2026', painted: 'rgb(0, 193, 106)' },
+    ])
+})
+
 test('is absent with Calorie Tracking off', async ({ goto, network, page }) => {
   network.use(profileOf(weightOnlyProfile))
 

@@ -24,6 +24,13 @@ async function pickDay(card: Locator, iso: string) {
   await card.getByRole('button', { name: calendarDayName(iso) }).click()
 }
 
+/** The dot [card]'s calendar draws on [iso]: present only on a day holding an Entry. */
+function dotOn(card: Locator, iso: string) {
+  return card
+    .getByRole('button', { name: calendarDayName(iso) })
+    .locator('[data-slot="base"]')
+}
+
 test('user looks up a past day, sees its Entries and tally, then an unlogged day', async ({
   page,
   goto,
@@ -60,6 +67,7 @@ test('user looks up a past day, sees its Entries and tally, then an unlogged day
   await expect(rows.nth(1)).toContainText(`Dinner ${stamp}`)
   await expect(rows.nth(1)).toContainText('538 kcal · 41 g protein')
   await expect(day.getByText(`Older ${stamp}`)).toBeHidden()
+  await expect(dotOn(card, recent)).toBeVisible()
 
   await pickDay(card, unlogged)
   const empty = card.getByRole('region', { name: dayHeading(unlogged) })
@@ -69,4 +77,8 @@ test('user looks up a past day, sees its Entries and tally, then an unlogged day
     }),
   ).toBeVisible()
   await expect(empty.getByRole('listitem')).toHaveCount(0)
+  await expect(dotOn(card, unlogged)).toHaveCount(0)
+
+  await pickDay(card, older)
+  await expect(dotOn(card, older)).toBeVisible()
 })
