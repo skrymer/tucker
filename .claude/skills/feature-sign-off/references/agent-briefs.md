@@ -72,8 +72,9 @@ change and why, in the pack, whenever a brief departs from its template. Pointin
 template's `HEAD` at the committed sha the gate judges is **not** an adaptation — the
 skill's gate 4 requires it — so it needs no note.
 
-**The pack copies, it does not recount.** A figure in it is copied from the saved
-output's own summary line, and every finding an agent returns gets a row, a
+**The pack copies, it does not recount.** A figure in it is the saved output's own
+summary line copied whole, never fields picked from it (#468 quoted a Vitest file's
+`environment` and `setup` and left out the `tests` where its boot landed), and every finding an agent returns gets a row, a
 "harmless" nit included — and so does a behaviour change the agent dismissed itself (an
 adversary's failed attack, a ledger's scope tail): #455 PR 2's pack read one as resolved. #443's pack recounted a hand-mutation run as "11/12" (the
 file said 10 of 11) and dropped a one-line nit; gate 5 had to correct both.
@@ -155,7 +156,8 @@ Repo: <path> (<a git worktree | the main checkout> — stay in it).
 The change: cd <worktree path> && git fetch -q origin &&
   git diff $(git merge-base origin/main HEAD) HEAD
 The issue it claims to fix: read it yourself with `gh issue view <n> --comments`
-— rulings are often comments — and do not take anyone's summary of it.
+— rulings are often comments — and do not take anyone's summary of it. Its parent
+PRD, where it has one: <`gh issue view <prd> --comments`, or "none">.
 Already read by other agents, so start here: <context-pack files>
 You may read anything else in the repo, including docs/adr/ and CONTEXT.md.
 

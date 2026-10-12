@@ -25,6 +25,7 @@ and [#237](https://github.com/skrymer/tucker/issues/237) (frontend).
   - `composables/useCalorieTracking.ts` — 1 of 17
   - The two rings — 40 of 40
   - `app/app.vue` — 30 of 30, and the engine never ran a test
+  - `app/app.config.ts` — 18 of 28, through a throwaway config
   - `composables/useWeightLogging.ts` — 0 of 12
   - `WeightSection.vue` and `WeightTile.vue` — hand-check only
   - `components/IntakeBreakdownSection.vue` — `no cov` alone, 6 of 54 in company
@@ -289,6 +290,25 @@ died with `FATAL ERROR: Reached heap limit` at V8's default 2 GB old-space — b
 reaching the message above. `NODE_OPTIONS=--max-old-space-size=8192` gets to the real
 error. This is the parent, not the test runner, so it is unrelated to the
 `testRunnerNodeArgs` finding the skill records as changing nothing.
+
+### `app/app.config.ts` — 18 of 28, through a throwaway config
+
+The committed config cannot reach it either: Nuxt loads the app config through
+`#build`, no test imports it, and the dry run aborts as app.vue's does ("Vitest failed
+to find test files related to mutated files … No tests were executed"). #468 swept it
+with a throwaway Stryker config — `vitest: { related: false }` and a Vitest config whose
+`include` is only `app/utils/cardShape.test.ts`, the test that reads `useAppConfig()` —
+outside `app/`, deleted afterwards: 28 mutants, 10 killed, 18 survived.
+
+| Survivor | Verdict |
+| --- | --- |
+| `tv` / `twMergeConfig` / `extend` / `theme` emptied, `radius: []`, `'card'` → `""` | killed by `e2e/card-shape.spec.ts` (card corner reads 16px; hand-mutant `tv: {}`) |
+| card `root` → `""` | killed by the same spec (hand-mutant) |
+| `'inset'` → `""` | equivalent: no `rounded-inset` reaches a Nuxt UI component's merged class |
+| `colors` emptied, `primary` → `""` | `primary` killed by `e2e/calendar.spec.ts` (`rgb(0, 193, 106)` fill) |
+| `secondary` / `neutral` / `success` / `warning` / `error` → `""`, button `base: 'rounded-full'` | real gap in the e2e layer, pre-existing (no spec measures them); left for a slice that touches them |
+
+The header / body / footer padding replacers are all killed by `cardShape.test.ts`.
 
 ### `composables/useWeightLogging.ts` — 0 of 12
 

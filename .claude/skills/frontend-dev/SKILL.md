@@ -156,6 +156,14 @@ assertion with the dev token), and no browser-level layer can reach it.
   Vitest has the same trap: a test that fakes the clock and submits such a form needs
   exactly `vi.useFakeTimers({ toFake: ['Date'], shouldAdvanceTime: true })` — faked
   timers, or a `Date` that does not tick, left the submit with zero calls in #443.
+- **A token class in a Nuxt UI slot must be named in `ui.tv.twMergeConfig`.**
+  tailwind-merge only knows Tailwind's stock names, so a `@theme` class such as
+  `rounded-card` in `app.config.ts` sits *beside* the slot's stock `rounded-lg` and
+  CSS order picks the winner — #468's cards drew 16px corners past every source test.
+  Name it under `extend.theme`, and pin it by measuring the rendered component.
+- **A guard that bans a class scans the whole SFC** (`appTemplates()`), not
+  `classedElements()`, which sees only static `class="…"` — a bound `:class`, a `:ui`
+  string or a script constant walks past it (#468's arbitrary-radius guard).
 - **A colour is measured in the mocked e2e, not in Vitest** — happy-dom computes no
   stylesheet (`e2e/calendar.spec.ts`, `e2e/type-scale.spec.ts`). Poll it
   (`expect.poll`): a Nuxt UI control with `transition-colors` reads an in-between

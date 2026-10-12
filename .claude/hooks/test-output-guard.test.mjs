@@ -23,6 +23,13 @@ test('lets a search that only mentions a test runner through', () => {
   assert.equal(refused('grep -rn "vitest" frontend/app | head -5'), false)
 })
 
+test('lets a lint of a test file through, which runs no test', () => {
+  assert.equal(
+    refused('pnpm exec eslint app/utils/cardShape.test.ts 2>&1 | tail -4'),
+    false,
+  )
+})
+
 test('lets a test run piped through tail run, which keeps the failures', () => {
   assert.equal(refused('pnpm test 2>&1 | tail -40'), false)
   assert.equal(refused('./gradlew test --tests X 2>&1 | tail -60'), false)

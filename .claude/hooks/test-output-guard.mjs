@@ -15,10 +15,11 @@ import { readFileSync } from 'node:fs'
  * A test suite Probity reads, invoked as a command — a package-manager call naming
  * vitest or the `test` script, or a Gradle test or build task. Matched within one
  * command (no `;`, `&` or `|` in between), so a search that merely mentions
- * "vitest" is not a test run.
+ * "vitest" is not a test run — and as a word of its own, so a path such as
+ * `cardShape.test.ts` handed to ESLint is not one either.
  */
 const TEST_RUN =
-  /\b(pnpm|npx|npm|yarn)\b[^;&|]*\b(vitest|test)\b|\bgradlew\b[^;&|]*\b(test|build)\b/
+  /\b(pnpm|npx|npm|yarn)\b[^;&|]*(?<![\w./-])(vitest|test)(?![\w./-])|\bgradlew\b[^;&|]*\b(test|build)\b/
 /**
  * Output piped into a filter that drops lines — or a `tail` shorter than Vitest's
  * five-line summary, which drops the pass count before the failures.
