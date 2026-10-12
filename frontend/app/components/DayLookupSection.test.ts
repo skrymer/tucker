@@ -189,6 +189,59 @@ describe('DayLookupSection', () => {
     expect(within(panel).getByText('1 entry · 233 kcal')).toBeVisible()
   })
 
+  it('shows no day at all for a User with no Entries', async () => {
+    server.use(...dailyLogs({}, { since: null }))
+    await renderSuspended(DayLookupSection)
+
+    await screen.findByText('Nothing logged yet')
+    expect(
+      screen.queryByRole('heading', { name: 'Today · Mon 12 Oct' }),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByText(/Nothing logged on/)).not.toBeInTheDocument()
+  })
+
+  it('says the card failed to load once when both its reads fail, and retries both', async () => {
+    let failing = true
+    server.use(
+      failingRead('/api/entries/days', () => failing),
+      failingRead('/api/entries', () => failing),
+      ...dailyLogs({ '2026-10-12': [weighed(1, 'Oats', 60, 233, 8)] }),
+    )
+    await renderSuspended(DayLookupSection)
+    const user = userEvent.setup()
+
+    expect(
+      await screen.findByRole('heading', {
+        name: "Couldn't load this card",
+        level: 3,
+      }),
+    ).toBeVisible()
+    expect(screen.getAllByRole('button', { name: 'Retry' })).toHaveLength(1)
+    expect(
+      screen.queryByRole('heading', { name: "Couldn't load logged days" }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', { name: "Couldn't load Mon 12 Oct" }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Previous month' }),
+    ).not.toBeInTheDocument()
+
+    failing = false
+    await user.click(screen.getByRole('button', { name: 'Retry' }))
+
+    const panel = await screen.findByRole('region', {
+      name: 'Today · Mon 12 Oct',
+    })
+    expect(within(panel).getByText('1 entry · 233 kcal')).toBeVisible()
+    await vi.waitFor(() =>
+      expect(dottedDays()).toEqual(['Monday, October 12, 2026']),
+    )
+    expect(
+      screen.queryByRole('heading', { name: "Couldn't load this card" }),
+    ).not.toBeInTheDocument()
+  })
+
   it('lists every Entry of a picked past day, grams first, under its tally', async () => {
     // Four rows: one more than Today's capped list shows.
     server.use(

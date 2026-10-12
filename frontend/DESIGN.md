@@ -601,9 +601,10 @@ kcal`) sits beneath its own ring, so no arc is ever colour-alone. Calorie
   signal_ (Guardrails): it is visual only, so a screen reader hears nothing
   about Entries. On the selected day the dot takes that day's text colour
   (`--ui-text-inverted`), since a primary dot vanishes into the primary circle.
-  Re-picking the selected day keeps it. It speaks ISO `yyyy-mm-dd`, and
-  reports the month the User pages to (`paged`, `yyyy-mm`) so a caller can
-  load that month's marks. `/design` shows it bounded and marked.
+  Re-picking the selected day keeps it. It speaks ISO `yyyy-mm-dd`, always
+  draws six Monday-start weeks, and reports the days it draws (`shown`,
+  `{ from, to }`) as it opens and on every page, so a caller can load the marks
+  for exactly those days. `/design` shows it bounded and marked.
 - **FAB** (phone) — solid green pill-circle, floating shadow, bottom-right above
   the tab bar (respects `env(safe-area-inset-bottom)`).
 - **Nav** — side rail on desktop (`lg:`), bottom tab bar on phone. Active item =
@@ -737,7 +738,9 @@ error nested inside a card, below.
   Foods can have no rotation, so a failed ranking read is not worth a panel over
   the dead end that is. A **nested** load error is not one of the page's: it
   belongs to a card whose own control still works (the look-up's calendar picks
-  another day), so it stands on its own.
+  another day), so it stands on its own. Two nested errors in one card follow
+  the page's rule: when both the look-up's reads fail, one row ("Couldn't load
+  this card") stands in for the whole card, and its Retry replays both.
 - **A load error inside a card is `nested`, and is one row.** Where the failed
   region sits under a card's own `h2` — the picked day in "Look up a day" —
   `LoadErrorState` takes `nested`: the same icon, copy and Retry, laid out as one
@@ -758,7 +761,9 @@ error nested inside a card, below.
   load — the full page body for a page's primary data (Today's summary, the
   Foods catalog, a Review), or just the one card for a secondary widget (e.g.
   Today's weight or goal-progress card). It never sits beside a misleading
-  empty state.
+  empty state. When the look-up's logged days fail, the region that failed is
+  the calendar's dots, not the calendar: it stays up, every day still pickable,
+  with the error row under it saying the dots are missing.
 - **Signed out is a single, page-level interstitial** — rendered once at the
   shell, not duplicated per-widget. If the session is gone, every fetch fails
   identically; one clear message beats six identical "Retry" cards that would
