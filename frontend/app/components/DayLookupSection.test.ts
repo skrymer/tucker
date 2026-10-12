@@ -26,6 +26,14 @@ function weighed(
   })
 }
 
+/** The calendar days carrying a dot, by their accessible names. */
+function dottedDays() {
+  return screen
+    .getAllByRole('button', { name: /^\w+day, / })
+    .filter((day) => day.querySelector('[data-slot="base"]'))
+    .map((day) => day.getAttribute('aria-label'))
+}
+
 describe('DayLookupSection', () => {
   beforeEach(() => {
     // Mon 12 Oct 2026, mid-morning local time; the clock keeps ticking.
@@ -47,6 +55,240 @@ describe('DayLookupSection', () => {
     expect(
       screen.getByRole('heading', { name: 'Today · Mon 12 Oct' }),
     ).toBeVisible()
+  })
+
+  it('dots the days that hold Entries, and no other', async () => {
+    server.use(
+      ...dailyLogs({
+        '2026-10-07': [weighed(1, 'Oats', 60, 233, 8)],
+        '2026-10-08': [weighed(2, 'Banana', 120, 107, 1.3)],
+      }),
+    )
+    await renderSuspended(DayLookupSection)
+    await screen.findByText('Nothing logged on Mon 12 Oct.')
+
+    await vi.waitFor(() =>
+      expect(dottedDays()).toEqual([
+        'Wednesday, October 7, 2026',
+        'Thursday, October 8, 2026',
+      ]),
+    )
+  })
+
+  it('dots the logged days of a month paged to', async () => {
+    // 10 Sep lies outside the six weeks October draws, so only a read of
+    // September's own grid can dot it.
+    server.use(...dailyLogs({ '2026-09-10': [weighed(1, 'Oats', 60, 233, 8)] }))
+    await renderSuspended(DayLookupSection)
+    await screen.findByText('Nothing logged on Mon 12 Oct.')
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole('button', { name: 'Previous month' }))
+
+    await vi.waitFor(() =>
+      expect(dottedDays()).toEqual(['Thursday, September 10, 2026']),
+    )
+  })
+
+  it('keeps the dots of a month already read, paging back to it', async () => {
+    // Each month's logged day lies outside the other's grid.
+    server.use(
+      ...dailyLogs({
+        '2026-09-10': [weighed(1, 'Oats', 60, 233, 8)],
+        '2026-10-12': [weighed(2, 'Banana', 120, 107, 1.3)],
+      }),
+    )
+    await renderSuspended(DayLookupSection)
+    await vi.waitFor(() =>
+      expect(dottedDays()).toEqual(['Monday, October 12, 2026']),
+    )
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: 'Previous month' }))
+    await vi.waitFor(() =>
+      expect(dottedDays()).toEqual(['Thursday, September 10, 2026']),
+    )
+
+    // Only October's first answer can dot it now.
+    server.use(failingRead('/api/entries/days'))
+    await user.click(screen.getByRole('button', { name: 'Next month' }))
+
+    await vi.waitFor(() =>
+      expect(dottedDays()).toEqual(['Monday, October 12, 2026']),
+    )
+  })
+
+  it('offers no day before the first Entry', async () => {
+    server.use(...dailyLogs({}, { since: '2026-10-05' }))
+    await renderSuspended(DayLookupSection)
+    const day = (name: string) => screen.getByRole('button', { name })
+
+    await vi.waitFor(() =>
+      expect(day('Sunday, October 4, 2026')).toHaveAttribute(
+        'aria-disabled',
+        'true',
+      ),
+    )
+    expect(day('Monday, October 5, 2026')).not.toHaveAttribute('aria-disabled')
+  })
+
+  it('does not page back past the month of the first Entry', async () => {
+    // Characterises UCalendar: a min value disables paging before its month.
+    server.use(...dailyLogs({}, { since: '2026-10-05' }))
+    await renderSuspended(DayLookupSection)
+
+    await vi.waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Previous month' }),
+      ).toBeDisabled(),
+    )
+  })
+
+  it('says nothing is logged yet in place of the calendar, for a User with no Entries', async () => {
+    server.use(...dailyLogs({}, { since: null }))
+    await renderSuspended(DayLookupSection)
+
+    expect(await screen.findByText('Nothing logged yet')).toBeVisible()
+    expect(
+      screen.queryByRole('button', { name: 'Previous month' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Monday, October 12, 2026' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('says the logged days failed to load beside the picked day, and retries them', async () => {
+    let failing = true
+    server.use(
+      failingRead('/api/entries/days', () => failing),
+      ...dailyLogs({ '2026-10-12': [weighed(1, 'Oats', 60, 233, 8)] }),
+    )
+    await renderSuspended(DayLookupSection)
+    const user = userEvent.setup()
+
+    expect(
+      await screen.findByRole('heading', {
+        name: "Couldn't load logged days",
+        level: 3,
+      }),
+    ).toBeVisible()
+    const panel = await screen.findByRole('region', {
+      name: 'Today · Mon 12 Oct',
+    })
+    expect(within(panel).getByText('1 entry · 233 kcal')).toBeVisible()
+    expect(dottedDays()).toEqual([])
+
+    failing = false
+    await user.click(screen.getByRole('button', { name: 'Retry' }))
+
+    await vi.waitFor(() =>
+      expect(dottedDays()).toEqual(['Monday, October 12, 2026']),
+    )
+    expect(
+      screen.queryByRole('heading', { name: "Couldn't load logged days" }),
+    ).not.toBeInTheDocument()
+    expect(within(panel).getByText('1 entry · 233 kcal')).toBeVisible()
+  })
+
+  it('shows no day at all for a User with no Entries', async () => {
+    server.use(...dailyLogs({}, { since: null }))
+    await renderSuspended(DayLookupSection)
+
+    await screen.findByText('Nothing logged yet')
+    expect(
+      screen.queryByRole('heading', { name: 'Today · Mon 12 Oct' }),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByText(/Nothing logged on/)).not.toBeInTheDocument()
+  })
+
+  it('still picks a day under its error while the logged days fail', async () => {
+    server.use(
+      failingRead('/api/entries/days'),
+      ...dailyLogs({ '2026-10-08': [weighed(1, 'Oats', 60, 233, 8)] }),
+    )
+    await renderSuspended(DayLookupSection)
+    const user = userEvent.setup()
+    const error = await screen.findByRole('heading', {
+      name: "Couldn't load logged days",
+    })
+    const thursday = screen.getByRole('button', {
+      name: 'Thursday, October 8, 2026',
+    })
+    expect(
+      thursday.compareDocumentPosition(error) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+
+    await user.click(thursday)
+
+    const panel = await screen.findByRole('region', { name: 'Thu 8 Oct' })
+    expect(within(panel).getByText('1 entry · 233 kcal')).toBeVisible()
+  })
+
+  it('says the card failed to load once when both its reads fail, and retries both', async () => {
+    let failing = true
+    server.use(
+      failingRead('/api/entries/days', () => failing),
+      failingRead('/api/entries', () => failing),
+      ...dailyLogs({ '2026-10-12': [weighed(1, 'Oats', 60, 233, 8)] }),
+    )
+    await renderSuspended(DayLookupSection)
+    const user = userEvent.setup()
+
+    expect(
+      await screen.findByRole('heading', {
+        name: "Couldn't load this card",
+        level: 3,
+      }),
+    ).toBeVisible()
+    expect(screen.getAllByRole('button', { name: 'Retry' })).toHaveLength(1)
+    expect(
+      screen.queryByRole('heading', { name: "Couldn't load logged days" }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', { name: "Couldn't load Mon 12 Oct" }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Previous month' }),
+    ).not.toBeInTheDocument()
+
+    failing = false
+    await user.click(screen.getByRole('button', { name: 'Retry' }))
+
+    const panel = await screen.findByRole('region', {
+      name: 'Today · Mon 12 Oct',
+    })
+    expect(within(panel).getByText('1 entry · 233 kcal')).toBeVisible()
+    await vi.waitFor(() =>
+      expect(dottedDays()).toEqual(['Monday, October 12, 2026']),
+    )
+    expect(
+      screen.queryByRole('heading', { name: "Couldn't load this card" }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('keeps the month paged to when both reads recover', async () => {
+    let failing = false
+    server.use(
+      failingRead('/api/entries/days', () => failing),
+      failingRead('/api/entries', () => failing),
+      ...dailyLogs(),
+    )
+    await renderSuspended(DayLookupSection)
+    await screen.findByText('Nothing logged on Mon 12 Oct.')
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: 'Previous month' }))
+    failing = true
+    await user.click(
+      screen.getByRole('button', { name: 'Thursday, September 10, 2026' }),
+    )
+    await screen.findByRole('heading', { name: "Couldn't load Thu 10 Sept" })
+    await user.click(screen.getByRole('button', { name: 'Previous month' }))
+    await screen.findByRole('heading', { name: "Couldn't load this card" })
+
+    failing = false
+    await user.click(screen.getByRole('button', { name: 'Retry' }))
+
+    expect(await screen.findByText('August 2026')).toBeVisible()
   })
 
   it('lists every Entry of a picked past day, grams first, under its tally', async () => {

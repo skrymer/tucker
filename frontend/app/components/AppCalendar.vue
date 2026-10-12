@@ -5,6 +5,10 @@ import {
   getLocalTimeZone,
   today,
 } from '@internationalized/date'
+import type { CalendarGrid, WeekStart } from '~/utils/calendarGrid'
+
+/** Monday: drawn by the calendar and counted by the grid it reports. */
+const WEEK_STARTS_ON: WeekStart = 1
 
 // Stryker disable next-line all: a compiler macro's arguments are hoisted out of setup()
 /** The selected day, ISO `yyyy-mm-dd`; `''` while none is. */
@@ -20,8 +24,8 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  /** The month now shown, ISO `yyyy-mm`. */
-  paged: [month: string]
+  /** The days drawn, ISO, both ends inclusive: on opening and on every page. */
+  shown: [grid: CalendarGrid]
 }>()
 
 /** The ISO strings at the interface, as the calendar's own dates. */
@@ -39,7 +43,7 @@ function useCalendarValues() {
 }
 
 /**
- * The day the calendar is showing, owned here so its month can be reported.
+ * The day the calendar is showing, owned here so the grid it draws can be reported.
  * It also follows the focused day, so most of its moves stay within a month.
  */
 function useShownMonth(opensOn?: DateValue) {
@@ -48,7 +52,8 @@ function useShownMonth(opensOn?: DateValue) {
   )
   watch(
     () => placeholder.value.toString().slice(0, 7),
-    (month) => emit('paged', month),
+    (month) => emit('shown', visibleGrid(month, WEEK_STARTS_ON)),
+    { immediate: true },
   )
   return placeholder
 }
@@ -64,12 +69,14 @@ const isMarked = useMarkedDays()
 </script>
 
 <template>
+  <!-- Always six weeks: the grid visibleGrid reports. -->
   <UCalendar
     v-model="selected"
     v-model:placeholder="placeholder"
     :min-value="minValue"
     :max-value="maxValue"
-    :week-starts-on="1"
+    :week-starts-on="WEEK_STARTS_ON"
+    fixed-weeks
     :year-controls="false"
     prevent-deselect
   >
