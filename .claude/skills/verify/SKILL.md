@@ -104,7 +104,9 @@ sweep every `v-if` branch hosting a changed class is an input state: #445's type
 first listed only "the tokens, the root size and the theme", and its audit found 7 of
 23 branches undriven (Maintenance, the banners, tracking off, recipes). Force a failure branch
 with a labelled fetch shim (a status, a network error, a hold), not a real-provider
-value that happens to fail differently: #454's "404 miss" timed out instead. **A
+value that happens to fail differently: #454's "404 miss" timed out instead. Install
+it once per page load — keep the real `fetch` on `window` and toggle flags after; a
+second install wraps the first and recurses. **A
 refactor claiming no behaviour change is proved against main on the same data**: build
 main's backend from source (`git archive <sha>:backend | docker build -t
 tucker-backend:main-<sha> -`; GHCR tags are `sha-<short>`, not the bare SHA), retag

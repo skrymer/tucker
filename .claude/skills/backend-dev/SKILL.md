@@ -108,6 +108,12 @@ not restate them.
   `prepareJooqDatabase` splits the SQL naively on `;`, and codegen dies naming neither.
 - **Never edit an applied migration** — the checksum changes and the next `docker compose up`
   refuses to start against your dev volume. Repair the stored checksum rather than wiping data.
+- **An owner-first composite index retires the single-column one.** Every read is
+  owner-scoped (ADR 0021), so once `(user_id, x)` exists an index on `(x)` alone is write
+  cost no query reads: drop it in a new migration in the same change, and confirm with
+  `EXPLAIN QUERY PLAN` (#476's V22 added `entry (user_id, logged_on)`; V23 dropped
+  `idx_entry_logged_on`). `FoodAndEntryOwnershipMigrationTest`'s closed index list is the
+  deployed schema's — update it, never re-scope its `migrate(upTo = …)`.
 - **Widening a constraint means rebuilding the table**, and the question to ask is "can
   everything that references it be rebuilt alongside it?", not "is this a rebuild?". An
   unowned row is **adopted, never deleted**, guarded on there being exactly one User.

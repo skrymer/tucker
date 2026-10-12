@@ -84,6 +84,9 @@ FIXED — #445 recorded an altitude finding FIXED with half of it unadopted, the
 breach of "answers each remedy" (#400, #455). A row citing the user's ruling quotes
 the question as asked; an item the question did not name is asked again. #445 folded
 a figure into a ruling that had named only the ring legend, and gate 5 rejected it.
+#476 broke both again — a FIXED row with an unadopted half, a row holding "(a) … (b)",
+and a ruling question that named only the paging half of a cold-load-and-paging
+finding — so write the ruling question from every clause of the finding.
 
 **Where a justification has to be tested, it is presented as a claim, attributed to
 nobody**: "It is claimed that `startedOn` is the only way to create a backdated Goal.
@@ -254,7 +257,9 @@ Method:
    request body field. Include inputs it widens by accepting a value it did not
    before.
 2. For each, work out the boundaries from the code: the validation rule, the cap,
-   the zero, the branch condition, the unit.
+   the zero, the branch condition, the unit. A boundary value must be one the app
+   accepts as data; where it refuses one (a day past what can be logged), name the
+   nearest value it does accept.
 3. Check the verdict for a concrete driven VALUE at each of those. A probe named
    without its value is not a probe. A value that resembles the fixtures is not a
    boundary.
