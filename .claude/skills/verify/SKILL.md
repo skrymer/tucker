@@ -149,7 +149,7 @@ resemble** — a value that looks like the happy path is not a probe.
 - **Ask before the desktop pass, not after it.** The resize only fails at the
   *phone* step, which is halfway through the gate, so the question lands after the
   stack is up and the desktop walk is done — and then everything waits on a human.
-  One `resize_window` + `innerWidth` check at the very start costs one tool call
+  One `resize_window` + screenshot check at the very start costs one tool call
   and moves the question to a moment where the user can answer it while you seed
   data.
 - **An un-maximized window floors at ~555px wide** (586px measured on another run), so
@@ -157,7 +157,9 @@ resemble** — a value that looks like the happy path is not a probe.
   still under Tucker's 1024px breakpoint, so the phone layout *is* genuinely exercised
   — say which width you actually used. For a true 412px check, lean on the Playwright
   **Mobile Chrome** project.
-- `navigate` can re-maximize; re-check `innerWidth` after every navigation.
+- `navigate` can re-maximize; re-check the layout in a screenshot after every
+  navigation. Never read `innerWidth` as the check — #468 read 2133px off a
+  ~500px phone-layout window and nearly ran the desktop pass on it.
 
 ## Driving — by ref, from the first click
 

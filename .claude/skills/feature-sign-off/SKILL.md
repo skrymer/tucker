@@ -39,9 +39,9 @@ needs it.
 
 1. **`/simplify` — clean it up.** Apply reuse / simplification / efficiency /
    altitude cleanups to the changed code. It *edits* the working tree, so run it
-   before the bug hunt — the reviewer then reads the code you're actually
-   shipping, not a draft. Re-run the relevant tests after it applies fixes. Every fix,
-   an agent's remedy most of all, is read against the issue's criteria first (#464).
+   before the bug hunt, so the reviewer reads the code you ship. Re-run the tests after
+   its fixes, and pin a consumer's output before a fix makes a helper serve it (#468). Every
+   fix, an agent's remedy most of all, is read against the issue's criteria first (#464).
 
    It fans out to **three** review agents in parallel — reuse+simplification (one
    agent: the two shared 3 of 3 findings when split), efficiency, and altitude — each
