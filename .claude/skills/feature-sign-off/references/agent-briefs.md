@@ -201,6 +201,9 @@ there is no issue, say so; do not write a substitute.
 **Fires:** only when two agents in the run reach opposing conclusions on the same
 question. Most runs never spawn it.
 **Costs:** one agent, on the critical path, when it fires.
+**Slots:** a position carries what its agent cited, never the author's resolution row,
+and the read line goes out as written — #432 widened it with a "for example" that was
+one position's framing, and the ruling came back as exactly that framing.
 
 ```
 Two reviewers reached opposing conclusions on one question. Decide it.
@@ -210,8 +213,8 @@ Repo: <path> (<a git worktree | the main checkout> — stay in it).
 
 The question: <the single question, phrased so both positions answer it>
 
-Position 1: <the position, and the evidence cited for it>
-Position 2: <the position, and the evidence cited for it>
+Position 1: <the position, and the evidence that agent cited — quoted from its transcript>
+Position 2: <the position, and the evidence that agent cited — quoted from its transcript>
 
 Both positions are unattributed, and that is deliberate — do not try to work out
 who said what, or which one is currently implemented. The state of the working
