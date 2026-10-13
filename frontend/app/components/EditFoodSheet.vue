@@ -41,6 +41,8 @@ function useCorrectionDraft() {
 }
 const { draft, tags } = useCorrectionDraft()
 const creatingTag = ref(false)
+/** Save waits until the sheet has shown which Recipes a correction reaches (ADR 0037). */
+const recipesKnown = ref(false)
 
 /**
  * Each macro as typed, for the preview: a number field commits its value only on
@@ -158,6 +160,13 @@ const { save, saving } = useCorrectionSave()
         <template v-else>— kcal /100g</template>
       </p>
 
+      <RecipesUsingFood
+        :key="food.id"
+        v-model:settled="recipesKnown"
+        :food-id="food.id"
+        :correction="macrosMoved ? typed : null"
+      />
+
       <UFormField label="Tags">
         <TagPicker v-model="tags" v-model:creating="creatingTag" />
       </UFormField>
@@ -170,7 +179,7 @@ const { save, saving } = useCorrectionSave()
         type="submit"
         color="primary"
         class="w-full justify-center"
-        :disabled="creatingTag"
+        :disabled="creatingTag || !recipesKnown"
         :loading="saving"
       >
         Save changes

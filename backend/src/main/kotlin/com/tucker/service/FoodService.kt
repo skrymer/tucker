@@ -117,7 +117,7 @@ class FoodService(
     fun correct(id: Long, name: String, macros: Macros, tagIds: Collection<Long>): Food? {
         if (!ownsAll(tagIds)) return null
         val corrected = foods.findById(id)?.let { foods.update(it.corrected(name, macros, tagIds)) } ?: return null
-        recipes.recipesUsing(id).forEach { foods.update(it.asFood()) }
+        recipes.recipesUsing(id).forEach { (_, recipe) -> foods.update(recipe.asFood()) }
         return corrected
     }
 

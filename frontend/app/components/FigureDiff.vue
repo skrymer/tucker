@@ -4,10 +4,8 @@
   is announced as "was", so the pair reads as a change and not as two numbers.
 -->
 <script setup lang="ts">
-type Figures = { kcal: number; protein: number }
-
 // Stryker disable next-line all: a compiler macro must stay a top-level statement
-const props = defineProps<{ before: Figures; after: Figures }>()
+const props = defineProps<{ before: Per100gFigures; after: Per100gFigures }>()
 
 const figures = computed(() =>
   (['kcal', 'protein'] as const).map((key) => ({

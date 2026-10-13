@@ -85,6 +85,27 @@ class ProjectionOwnerScopeTest {
     }
 
     @Test
+    fun `another User's Food does not exist for the caller`() {
+        val theirs = runAs(someoneElse) {
+            foods.insert(Food.plain(foods.nextId(), "Their oats", null, Nutrition(389.0, 16.9, 66.3, 6.9)))
+        }
+
+        assertEquals(false, foods.exists(theirs.id))
+    }
+
+    @Test
+    fun `another User's Recipe is never named as using the caller's Food`() {
+        val mine = foods.insert(Food.plain(foods.nextId(), "My oats", null, Nutrition(389.0, 16.9, 66.3, 6.9)))
+        runAs(someoneElse) {
+            recipes.insert(
+                Recipe(recipes.nextId(), "Their porridge", listOf(RecipeIngredient(mine, 80.0)), cookedWeightG = 300.0),
+            )
+        }
+
+        assertEquals(emptyList(), recipes.recipeNamesUsing(mine.id))
+    }
+
+    @Test
     fun `another User's Recipe is not a Recipe of the caller's`() {
         val theirs = runAs(someoneElse) {
             val oats = foods.insert(Food.plain(foods.nextId(), "Their oats", null, Nutrition(389.0, 16.9, 66.3, 6.9)))

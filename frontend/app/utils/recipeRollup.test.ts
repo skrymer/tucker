@@ -1,5 +1,45 @@
 import { describe, expect, it } from 'vitest'
-import { contribution, cookDownPercent, rollupRecipe } from './recipeRollup'
+import {
+  contribution,
+  cookDownPercent,
+  previewRecipeFigures,
+  rollupRecipe,
+} from './recipeRollup'
+
+/**
+ * A stew as the backend composes it: 300 g mince (4 × 31 + 9 × 10 = 214 kcal)
+ * and 100 g onion (4 × 1 + 4 × 9 = 40 kcal), cooked down to 200 g.
+ */
+const stew = {
+  id: 9,
+  name: 'Stew',
+  cookedWeightG: 200,
+  ingredients: [
+    { foodId: 1, grams: 300, caloriesPer100g: 214, proteinPer100g: 31 },
+    { foodId: 2, grams: 100, caloriesPer100g: 40, proteinPer100g: 1 },
+  ],
+}
+const mince = { proteinPer100g: 31, carbsPer100g: 0, fatPer100g: 10 }
+
+describe('previewRecipeFigures', () => {
+  it('reads what the backend rolled the Recipe up to while the Food is unchanged', () => {
+    // (642 + 40) / 200 × 100 = 341 kcal; (93 + 1) / 200 × 100 = 47 g protein —
+    // the figures FoodRecipesApiTest's stew is stored with.
+    expect(previewRecipeFigures(stew, 1, mince)).toEqual({
+      kcal: 341,
+      protein: 47,
+    })
+  })
+
+  it('moves the Recipe by the corrected ingredient’s share alone', () => {
+    // Mince corrected to 13 g protein: 4 × 13 + 9 × 10 = 142 kcal. The onion's
+    // 40 kcal and 1 g protein stand: (426 + 40) / 200 × 100 = 233 kcal and
+    // (39 + 1) / 200 × 100 = 20 g protein.
+    expect(
+      previewRecipeFigures(stew, 1, { ...mince, proteinPer100g: 13 }),
+    ).toEqual({ kcal: 233, protein: 20 })
+  })
+})
 
 describe('rollupRecipe', () => {
   it('re-expresses the ingredient totals per 100 g of the cooked weight', () => {

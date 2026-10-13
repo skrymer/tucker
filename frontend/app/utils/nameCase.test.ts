@@ -71,6 +71,9 @@ const ALLOWED: Record<string, Record<string, string>> = {
   'components/FoodPickList.vue': {
     'food.name': 'handed to FigureRow, which states it',
   },
+  'components/RecipesUsingFood.vue': {
+    'row.recipe.name': 'handed to FigureRow, which states it',
+  },
   'components/IntakeBreakdownSection.vue': {
     'row.name': 'intakeLegend states every legend row name',
     'focused.name': 'intakeLegend states every legend row name',

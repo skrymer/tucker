@@ -152,13 +152,20 @@ class RecipeRepository(
     fun recipeNamesUsing(foodId: Long): List<String> =
         dsl.recipeRowsUsing(foodId, currentUser.ownerId).map { it.value2() }.distinct()
 
-    /** The caller's Recipes that use the Food [foodId] as an ingredient, each loaded whole, by name. */
-    fun recipesUsing(foodId: Long): List<Recipe> {
+    /**
+     * The caller's Recipes that use the Food [foodId] as an ingredient, by name, each
+     * loaded whole beside its row as stored — whose figures are the ones saved, where
+     * the Recipe's own are a fresh roll-up of its lines.
+     */
+    fun recipesUsing(foodId: Long): List<Pair<Food, Recipe>> {
         val ids = dsl.recipeRowsUsing(foodId, currentUser.ownerId).map { it.value1().toLong() }
         // One read for the Recipes' rows and one for all their lines, whatever their number.
         val recipeFoods = foods.findByIds(ids).associateBy { it.id }
         val lines = ingredientsOf(ids)
-        return ids.mapNotNull { id -> recipeFoods[id]?.let { recipeOf(it, lines[id].orEmpty()) } }
+        return ids.mapNotNull { id ->
+            val stored = recipeFoods[id] ?: return@mapNotNull null
+            recipeOf(stored, lines[id].orEmpty())?.let { stored to it }
+        }
     }
 }
 
@@ -190,5 +197,5 @@ private fun DSLContext.recipeRowsUsing(foodId: Long, ownerId: Int): Result<Recor
         .join(FOOD).on(FOOD.ID.eq(RECIPE_INGREDIENT.RECIPE_ID))
         .where(RECIPE_INGREDIENT.INGREDIENT_FOOD_ID.eq(foodId.toInt()))
         .and(FOOD.USER_ID.eq(ownerId))
-        .orderBy(FOOD.NAME)
+        .orderBy(FOOD.NAME.lower())
         .fetch()

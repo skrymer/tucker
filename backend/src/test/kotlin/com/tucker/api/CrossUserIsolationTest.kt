@@ -641,6 +641,17 @@ class CrossUserIsolationTest {
     }
 
     @Test
+    fun `the Recipes using another User's Food are not found, exactly as an absent Food's are`() {
+        val oats = createFood(alice, "Alice's oats")
+        createRecipe(alice, "Alice's granola", oats)
+
+        mockMvc.get("/api/foods/$oats/recipes") { header(ACCESS_ASSERTION_HEADER, bob) }.andExpect {
+            status { isNotFound() }
+            jsonPath("$.message") { value("no Food with id $oats") }
+        }
+    }
+
+    @Test
     fun `editing another User's Recipe is not found and leaves it as it was`() {
         val granola = createRecipe(alice, "Alice's granola", createFood(alice, "Alice's oats"))
         // Bob's *own* Food as the ingredient, deliberately. Naming Alice's here would

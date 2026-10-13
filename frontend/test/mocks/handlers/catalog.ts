@@ -44,9 +44,6 @@ const byName = ordered(fold)
  */
 export const byFoodName = ordered(foldAscii)
 
-/** SQL `ORDER BY` with no collation: byte order, so every capital first. */
-const inBytes = ordered((name) => name)
-
 /** How the server refuses a Tag name over 30 characters. */
 export const tagNameTooLong = 'a Tag name must be at most 30 characters'
 
@@ -294,7 +291,7 @@ export function foodCatalog({
       const usedIn = [...compositions]
         .filter(([, lines]) => lines.some((l) => l.foodId === row.id))
         .map(([id]) => rowOf(id)!)
-        .sort(inBytes)
+        .sort(byFoodName)
         .map(({ name }) => name)
         .filter((name, at, names) => names.indexOf(name) === at)
       if (usedIn.length > 0) {
@@ -419,6 +416,33 @@ export function foodCatalog({
         })),
         tags,
       })
+    }),
+    // The Recipes weighing a Food in, each once, by name as the catalog lists
+    // them, with its figures and each line's as stored.
+    http.get('/api/foods/{id}/recipes', ({ params, response }) => {
+      const row = rowOf(params.id)
+      if (!row) {
+        return response(404).json({ message: `no Food with id ${params.id}` })
+      }
+      return response(200).json(
+        [...compositions]
+          .filter(([, lines]) => lines.some((l) => l.foodId === row.id))
+          .map(([id, lines]) => ({ recipe: rowOf(id)!, lines }))
+          .sort((a, b) => byFoodName(a.recipe, b.recipe))
+          .map(({ recipe, lines }) => ({
+            id: recipe.id,
+            name: recipe.name,
+            caloriesPer100g: recipe.caloriesPer100g,
+            proteinPer100g: recipe.proteinPer100g,
+            cookedWeightG: recipe.cookedWeightG!,
+            ingredients: lines.map(({ foodId, grams }) => ({
+              foodId,
+              grams,
+              caloriesPer100g: rowOf(foodId)!.caloriesPer100g,
+              proteinPer100g: rowOf(foodId)!.proteinPer100g,
+            })),
+          })),
+      )
     }),
     http.get('/api/foods/barcode/{barcode}', ({ params, response }) => {
       const owned = rows.find((row) => row.barcode === params.barcode)

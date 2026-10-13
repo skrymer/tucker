@@ -1,3 +1,9 @@
+/** A Food's calories and protein per 100 g. */
+export interface Per100gFigures {
+  kcal: number
+  protein: number
+}
+
 export interface RollupIngredient {
   caloriesPer100g: number
   proteinPer100g: number
@@ -40,6 +46,32 @@ export function rollupRecipe(
     per100gProtein: totalProtein * factor,
     rawSumG,
   }
+}
+
+/**
+ * A Recipe's calories and protein per 100 g with the Food [foodId] corrected to
+ * [draft] — a preview of a correction not yet saved, which the server re-rolls
+ * on save (ADR 0037, ADR 0002).
+ */
+export function previewRecipeFigures(
+  composition: {
+    cookedWeightG: number
+    ingredients: (RollupIngredient & { foodId: number })[]
+  },
+  foodId: number,
+  draft: Record<Macro, number>,
+): Per100gFigures {
+  const corrected = {
+    caloriesPer100g: previewCalories(draft),
+    proteinPer100g: draft.proteinPer100g,
+  }
+  const rollup = rollupRecipe(
+    composition.ingredients.map((line) =>
+      line.foodId === foodId ? { ...line, ...corrected } : line,
+    ),
+    composition.cookedWeightG,
+  )
+  return { kcal: rollup.per100gKcal, protein: rollup.per100gProtein }
 }
 
 /** What a weighed line adds to a batch, from its per-100 g figure. */

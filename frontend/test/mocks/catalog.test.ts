@@ -398,7 +398,7 @@ describe('foodCatalog', () => {
     expect(await useNuxtApp().$api('/api/foods')).toEqual([potato])
   })
 
-  it('refuses deleting a Food a Recipe weighs in 400, naming each Recipe in SQL byte order', async () => {
+  it('refuses deleting a Food a Recipe weighs in 400, naming each Recipe as the catalog orders them', async () => {
     server.use(
       ...foodCatalog({
         foods: [
@@ -427,11 +427,11 @@ describe('foodCatalog', () => {
       method: 'DELETE',
     })
 
-    // ORDER BY name with no collation compares bytes: every capital first.
+    // ORDER BY lower(name): case aside, so "apple pie" comes before "Stew".
     expect(answer.status).toBe(400)
     expect(await answer.json()).toEqual({
       message:
-        "Potato is an ingredient of Stew, apple pie and can't be deleted.",
+        "Potato is an ingredient of apple pie, Stew and can't be deleted.",
     })
     expect((await useNuxtApp().$api('/api/foods')).map((f) => f.name)).toEqual([
       'apple pie',

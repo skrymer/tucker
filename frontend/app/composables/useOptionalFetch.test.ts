@@ -152,6 +152,47 @@ describe('useOptionalFetch', () => {
     expect(signals[1]!.aborted).toBe(false)
   })
 
+  it('reports busy only once a read has taken 150 ms, so a fast one never flashes a spinner', async () => {
+    vi.useFakeTimers()
+    try {
+      let answer!: (value: { id: number }) => void
+      const { busy, load } = useOptionalFetch(
+        () => new Promise<{ id: number }>((resolve) => (answer = resolve)),
+      )
+
+      void load()
+      await vi.advanceTimersByTimeAsync(149)
+      expect(busy.value).toBe(false)
+      await vi.advanceTimersByTimeAsync(1)
+      expect(busy.value).toBe(true)
+
+      answer({ id: 1 })
+      await vi.advanceTimersByTimeAsync(400)
+      expect(busy.value).toBe(false)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('surfaces a read that outlasts its timeout as an error, so the page can stop waiting', async () => {
+    vi.useFakeTimers()
+    try {
+      const { data, error, pending, load } = useOptionalFetch(
+        () => new Promise<{ id: number }>(() => {}),
+        { timeoutMs: 8000 },
+      )
+
+      void load()
+      await vi.advanceTimersByTimeAsync(8000)
+
+      expect(data.value).toBeNull()
+      expect(error.value).not.toBeNull()
+      expect(pending.value).toBe(false)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('stays pending while the newest load is still out, whatever settled before it', async () => {
     const resolvers: ((value: { id: number }) => void)[] = []
     const fetcher = vi.fn(

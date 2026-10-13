@@ -1,0 +1,44 @@
+- dialog "Edit Rolled oats":
+    - /children: deep-equal
+    - heading "Edit Rolled oats" [level=2]
+    - button "Close"
+    - text: Name*
+    - textbox "Name*": Rolled oats
+    - text: Protein /100g*
+    - group:
+        - spinbutton "Protein /100g*": '31'
+        - button "Increment"
+        - button "Decrement"
+    - text: Carbs /100g*
+    - group:
+        - spinbutton "Carbs /100g*": '60'
+        - button "Increment"
+        - button "Decrement"
+    - text: Fat /100g*
+    - group:
+        - spinbutton "Fat /100g*": '7'
+        - button "Increment"
+        - button "Decrement"
+    - status: 427 kcal · 31 g protein /100g
+    - button "Used in 14 recipes" [expanded]
+    - list:
+        - /children: deep-equal
+        - listitem: Anzac biscuits 43 kcal · 3 g protein /100g
+        - listitem: Bircher muesli 64 kcal · 5 g protein /100g
+        - listitem: Crumble 107 kcal · 8 g protein /100g
+        - listitem: Flapjacks 128 kcal · 9 g protein /100g
+        - listitem: Granola 149 kcal · 11 g protein /100g
+        - listitem: Granola bars 171 kcal · 12 g protein /100g
+        - listitem: Meatloaf 192 kcal · 14 g protein /100g
+        - listitem: Muffins 214 kcal · 16 g protein /100g
+        - listitem: Oat bread 235 kcal · 17 g protein /100g
+        - listitem: Oat pancakes 256 kcal · 19 g protein /100g
+        - listitem: Overnight oats 278 kcal · 20 g protein /100g
+        - listitem: Porridge 21 kcal · 2 g protein /100g
+        - listitem: Protein balls 299 kcal · 22 g protein /100g
+        - listitem: Smoothie 85 kcal · 6 g protein /100g
+    - text: Tags breakfast
+    - button "breakfast"
+    - combobox "Tags"
+    - button "Show popup"
+    - button "Save changes"
