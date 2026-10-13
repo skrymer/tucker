@@ -17,8 +17,11 @@ const settled = defineModel<boolean>('settled', { required: true })
 /** The Recipes using the Food, read once for the Food the panel is mounted on. */
 function useRecipesUsing() {
   const { $api } = useNuxtApp()
-  const { data, error, load } = useOptionalFetch((signal) =>
-    $api('/api/foods/{id}/recipes', { path: { id: props.foodId }, signal }),
+  const { data, error, busy, load } = useOptionalFetch(
+    (signal) =>
+      $api('/api/foods/{id}/recipes', { path: { id: props.foodId }, signal }),
+    // A stalled read must not hold Save past ADR 0007's 8 s.
+    { timeoutMs: 8000 },
   )
   settled.value = false
   onMounted(async () => {
@@ -26,9 +29,10 @@ function useRecipesUsing() {
     settled.value = true
   })
   const recipes = computed(() => data.value ?? [])
-  return { recipes, error, load }
+  const checking = computed(() => busy.value && data.value === null)
+  return { recipes, error, checking, load }
 }
-const { recipes, error, load } = useRecipesUsing()
+const { recipes, error, checking, load } = useRecipesUsing()
 
 const rows = computed(() =>
   recipes.value.map((recipe) => {
@@ -54,8 +58,17 @@ const rows = computed(() =>
     title="Couldn't check which recipes use it"
     @retry="load"
   >
+    <p
+      v-if="checking"
+      role="status"
+      aria-label="Checking recipes"
+      class="flex items-center gap-2 px-3 py-2.5 text-label text-muted"
+    >
+      <UIcon name="i-lucide-loader-circle" class="size-4 animate-spin" />
+      Checking recipes…
+    </p>
     <UCollapsible
-      v-if="recipes.length"
+      v-else-if="recipes.length"
       class="rounded-inset border border-default"
     >
       <template #default="{ open }">

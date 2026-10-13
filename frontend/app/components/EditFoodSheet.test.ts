@@ -427,18 +427,90 @@ describe('EditFoodSheet’s Recipes', () => {
     expect(screen.getByRole('button', { name: 'Save changes' })).toBeEnabled()
   })
 
+  it('says it is checking which Recipes use the Food once the read takes over 150 ms', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    try {
+      const read = held('get', '/api/foods/{id}/recipes')
+      server.use(read.handler, ...usedTwice())
+      await renderSuspended(EditFoodSheet, { props: { food: oats } })
+      await read.arrived
+
+      await vi.advanceTimersByTimeAsync(150)
+
+      expect(
+        await screen.findByRole('status', { name: 'Checking recipes' }),
+      ).toBeVisible()
+      read.release()
+      await screen.findByRole('button', { name: 'Used in 2 recipes' })
+      await vi.advanceTimersByTimeAsync(400)
+      expect(
+        screen.queryByRole('status', { name: 'Checking recipes' }),
+      ).not.toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('puts the Recipes in place of its checking state the moment they arrive', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    try {
+      const read = held('get', '/api/foods/{id}/recipes')
+      server.use(read.handler, ...usedTwice())
+      await renderSuspended(EditFoodSheet, { props: { food: oats } })
+      await read.arrived
+      await vi.advanceTimersByTimeAsync(150)
+      await screen.findByRole('status', { name: 'Checking recipes' })
+
+      read.release()
+      await vi.waitFor(() =>
+        expect(
+          screen.getByRole('button', { name: 'Save changes' }),
+        ).toBeEnabled(),
+      )
+
+      expect(
+        screen.getByRole('button', { name: 'Used in 2 recipes' }),
+      ).toBeVisible()
+      expect(
+        screen.queryByRole('status', { name: 'Checking recipes' }),
+      ).not.toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('gives up on a Recipe read that stalls past 8 s, saying so and letting Save go ahead', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    try {
+      const read = held('get', '/api/foods/{id}/recipes')
+      server.use(read.handler, ...usedTwice())
+      await renderSuspended(EditFoodSheet, { props: { food: oats } })
+      await read.arrived
+      const save = screen.getByRole('button', { name: 'Save changes' })
+      expect(save).toBeDisabled()
+
+      await vi.advanceTimersByTimeAsync(8000)
+
+      expect(
+        await screen.findByText("Couldn't check which recipes use it"),
+      ).toBeVisible()
+      expect(save).toBeEnabled()
+      read.release()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('says nothing of Recipes when none uses the Food', async () => {
-    const read = held('get', '/api/foods/{id}/recipes')
-    server.use(
-      read.handler,
-      ...foodCatalog({ foods: [oats, porridge, granolaBars] }),
-    )
+    server.use(...foodCatalog({ foods: [oats, porridge, granolaBars] }))
     await renderSuspended(EditFoodSheet, { props: { food: oats } })
 
-    await read.arrived
-    read.release()
-    // Absence has nothing to wait for: give the answer time to land first.
-    await new Promise((resolve) => setTimeout(resolve, 50))
+    // Save is released once the Recipe read has answered.
+    await vi.waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Save changes' }),
+      ).toBeEnabled(),
+    )
 
     expect(screen.queryByText(/recipe/)).not.toBeInTheDocument()
   })

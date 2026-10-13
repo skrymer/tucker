@@ -179,8 +179,8 @@ const { save, saving } = useCorrectionSave()
         type="submit"
         color="primary"
         class="w-full justify-center"
-        :disabled="creatingTag"
-        :loading="saving || !recipesKnown"
+        :disabled="creatingTag || !recipesKnown"
+        :loading="saving"
       >
         Save changes
       </UButton>

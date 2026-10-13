@@ -5,13 +5,14 @@
  * question can change between calls — a re-read after a mutation is one, since
  * the answer in flight may predate it (ADR 0007 — supersede, don't reconcile).
  */
-type UseOptionalFetchOptions = Pick<UseAsyncActionOptions, 'mode'>
+type UseOptionalFetchOptions = Pick<UseAsyncActionOptions, 'mode' | 'timeoutMs'>
 
 /**
  * A read whose 404 means "none yet" rather than a failure: `data` is null and
  * so is `error`. Run ownership is `useAsyncAction`'s, so a superseded run —
  * aborted, or overtaken by a newer one — writes nothing either way: an abort is
- * not an application failure, and the run that caused it owns the screen.
+ * not an application failure, and the run that caused it owns the screen. A run
+ * that outlasts `timeoutMs` is a failure: nothing newer will answer for it.
  */
 export function useOptionalFetch<T>(
   fetcher: (signal: AbortSignal) => Promise<T>,
@@ -19,13 +20,19 @@ export function useOptionalFetch<T>(
 ) {
   const data = ref<T | null>(null) as Ref<T | null>
   const error = ref<unknown>(null)
-  const { pending, run } = useAsyncAction(fetcher, {
+  const { pending, busy, run } = useAsyncAction(fetcher, {
     mode: options.mode ?? 'guard',
+    timeoutMs: options.timeoutMs,
   })
 
   async function load() {
     try {
       const outcome = await run()
+      if (outcome.status === 'timedOut') {
+        data.value = null
+        error.value = new DOMException('The read timed out', 'TimeoutError')
+        return
+      }
       if (outcome.status !== 'ok') return
       data.value = outcome.value
       error.value = null
@@ -35,5 +42,5 @@ export function useOptionalFetch<T>(
     }
   }
 
-  return { data, error, pending, load }
+  return { data, error, pending, busy, load }
 }

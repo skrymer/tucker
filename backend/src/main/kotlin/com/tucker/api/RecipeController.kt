@@ -46,7 +46,8 @@ data class RecipeIngredientResponse(
  * A Recipe's composition for the read-only view (and the Slice 3 edit form): its
  * ingredient lines (name + grams) and the measured cooked weight. Distinct from
  * [FoodResponse], which carries only the *rolled-up* per-100g the catalog and log
- * picker need.
+ * picker need, and from [RecipeCompositionResponse], which carries each line's
+ * figures for previewing a correction rather than its name.
  */
 data class RecipeResponse(
     val id: Long,

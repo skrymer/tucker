@@ -392,6 +392,20 @@ class RecipeApiTest {
     }
 
     @Test
+    fun `a refused delete names the Recipes alphabetically whatever the case each was typed in`() {
+        val oatsId = createFood("Oats", 13.0, 60.0, 7.0)
+        createRecipe("Banana bread", 800.0, oatsId to 100.0)
+        createRecipe("apple crumble", 900.0, oatsId to 150.0)
+
+        mockMvc.delete("/api/foods/$oatsId").andExpect {
+            status { isBadRequest() }
+            jsonPath("$.message") {
+                value("Oats is an ingredient of apple crumble, Banana bread and can't be deleted.")
+            }
+        }
+    }
+
+    @Test
     fun `a logged Recipe cannot be deleted`() {
         // A Recipe is a Food, so the existing "has logged Entries" guard covers it.
         val minceId = createFood("Mince", 20.0, 0.0, 10.0)
