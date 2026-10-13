@@ -106,7 +106,10 @@ class FoodCorrectionApiTest {
             contentType = MediaType.APPLICATION_JSON
             content = """{"name":"Beef mince","proteinPer100g":13.0,"carbsPer100g":0.0,"fatPer100g":10.0,
                           "tagIds":[999999]}"""
-        }.andExpect { status { isNotFound() } }
+        }.andExpect {
+            status { isNotFound() }
+            jsonPath("$.message") { value("no Food with id $mince, or no Tag among [999999]") }
+        }
 
         mockMvc.get("/api/foods/$mince").andExpect {
             jsonPath("$.name") { value("Mince") }

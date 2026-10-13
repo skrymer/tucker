@@ -252,7 +252,7 @@ class FoodController(
             request.name,
             Macros(request.proteinPer100g, request.carbsPer100g, request.fatPer100g),
             request.tagIds,
-        ) ?: throw NotFoundException("no Food with id $id")
+        ) ?: throw NotFoundException("no Food with id $id, or no Tag among ${request.tagIds}")
         return describer.describe(corrected)
     }
 
