@@ -29,6 +29,9 @@ const COMPONENT_TESTING =
  */
 const IMPLEMENTATION =
   /\bpick(ed|ing)? ?up\b|\bissue #?\d+|\bslice \d+\b|\bnext slice\b|\bimplement\w*\b/i
+/** Shaping how a screen looks, which Tucker styles from its own tokens. */
+const SCREEN_DESIGN =
+  /\b(ui|ux) design\b|\bdesign (the |a |this )?(screen|page|layout|component)\b|\blook and feel\b|\bvisual design\b/i
 const TDD = new RegExp(
   [
     /\btdd\b|\bred[- ]green\b|\btests?\b|\btesting\b|\bspecs?\b/i.source,
@@ -47,6 +50,8 @@ export const MAX_REMINDERS = 3
  * `scope` says where the skill lives: 'project' ones must resolve under
  * .claude/skills/ and the test asserts they do; 'personal' ones live in the
  * user's own ~/.claude/skills/ and cannot be checked from the repo.
+ * `worktreeScoped` marks a skill a worktree serves its own copy of, which the
+ * reminder then says once, however many of its rules matched.
  */
 export const RULES = [
   {
@@ -82,14 +87,24 @@ export const RULES = [
     skill: 'frontend-dev',
     scope: 'project',
     pattern: IMPLEMENTATION,
-    why: 'before any frontend change; in a worktree, invoke its scoped copy.',
+    why: 'before any frontend change.',
+    worktreeScoped: true,
+  },
+  {
+    id: 'screen-design',
+    skill: 'frontend-dev',
+    scope: 'project',
+    pattern: SCREEN_DESIGN,
+    why: 'its Styling section before styling anything, and the voltagent-core-dev:ui-designer agent on screens.',
+    worktreeScoped: true,
   },
   {
     id: 'backend-dev',
     skill: 'backend-dev',
     scope: 'project',
     pattern: IMPLEMENTATION,
-    why: 'before any backend change; in a worktree, invoke its scoped copy.',
+    why: 'before any backend change.',
+    worktreeScoped: true,
   },
   {
     id: 'tdd',
@@ -120,13 +135,6 @@ export const RULES = [
     why: 'run the seven gates in order — not the gates ad hoc, and not after the commit.',
   },
   {
-    id: 'frontend-design',
-    skill: 'frontend-design',
-    scope: 'personal',
-    pattern: /\b(ui|ux) design\b|\bdesign (the |a |this )?(screen|page|layout|component)\b|\blook and feel\b|\bvisual design\b/i,
-    why: 'and collaborate with the voltagent-core-dev:ui-designer agent on screens.',
-  },
-  {
     id: 'check-adrs',
     skill: 'check-adrs',
     scope: 'project',
@@ -145,13 +153,18 @@ export const RULES = [
 /**
  * The rules whose skill this prompt should be reminded of, most specific
  * first. A skill the prompt already invokes by name is dropped — the reminder
- * would be telling Claude to do what the user just asked for.
+ * would be telling Claude to do what the user just asked for. Two rules naming
+ * one skill make one reminder, carrying both reasons, in one slot of the cap.
  */
 export function selectSkills(prompt) {
   if (typeof prompt !== 'string' || prompt.trim() === '') return []
-  return RULES.filter(
-    (rule) => rule.pattern.test(prompt) && !alreadyInvoked(prompt, rule.skill),
-  ).slice(0, MAX_REMINDERS)
+  const bySkill = new Map()
+  for (const rule of RULES) {
+    if (!rule.pattern.test(prompt) || alreadyInvoked(prompt, rule.skill)) continue
+    const first = bySkill.get(rule.skill)
+    bySkill.set(rule.skill, first ? { ...first, why: `${first.why} Also ${rule.why}` } : rule)
+  }
+  return [...bySkill.values()].slice(0, MAX_REMINDERS)
 }
 
 function alreadyInvoked(prompt, skill) {
@@ -161,7 +174,9 @@ function alreadyInvoked(prompt, skill) {
 /** The context block handed back to Claude. Empty when nothing matched. */
 export function render(rules) {
   if (rules.length === 0) return ''
-  const lines = rules.map((rule) => `- /${rule.skill} — ${rule.why}`)
+  const lines = rules.map(
+    (rule) => `- /${rule.skill} — ${rule.why}${rule.worktreeScoped ? ' In a worktree, invoke its scoped copy.' : ''}`,
+  )
   return [
     'Project convention — these skills cover what this prompt is about.',
     'Invoke each with the Skill tool BEFORE starting the work:',
