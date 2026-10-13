@@ -63,6 +63,7 @@ const ALLOWED: Record<string, Record<string, string>> = {
       'the local `name` computed is formatName(food.name)',
     '`Tags on ${name}`': 'the local `name` computed is formatName(food.name)',
     '`Tags for ${name}`': 'the local `name` computed is formatName(food.name)',
+    '`Edit ${name}`': 'the local `name` computed is formatName(food.name)',
     '`${tags.hidden} more tags on ${name}`':
       'the local `name` computed is formatName(food.name)',
     'tag.name':

@@ -1,13 +1,5 @@
 <script setup lang="ts">
-import { z } from 'zod'
 import type { components } from '#open-fetch-schemas/api'
-
-const schema = z.object({
-  name: z.string().min(1, 'Enter a name for this food'),
-  proteinPer100g: z.number({ error: 'Enter protein per 100 g' }),
-  carbsPer100g: z.number({ error: 'Enter carbs per 100 g' }),
-  fatPer100g: z.number({ error: 'Enter fat per 100 g' }),
-})
 
 const props = defineProps<{
   /**
@@ -125,7 +117,7 @@ function onSubmit() {
 <template>
   <UForm
     :state="state"
-    :schema="schema"
+    :schema="foodSchema"
     class="flex flex-col gap-4"
     @submit="onSubmit"
   >

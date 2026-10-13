@@ -40,8 +40,10 @@ describe('FoodList', () => {
 
   it('bubbles view with the picked recipe when the user taps its view button', async () => {
     const onView = vi.fn()
+    // A row's listeners pass straight through the list to it.
     await renderSuspended(FoodList, {
-      props: { foods: [...sampleFoods, cottagePie], onView },
+      props: { foods: [...sampleFoods, cottagePie] },
+      attrs: { onView },
     })
 
     await userEvent
@@ -56,7 +58,8 @@ describe('FoodList', () => {
   it("bubbles delete with the picked food when the user activates a row's delete button", async () => {
     const onDelete = vi.fn()
     await renderSuspended(FoodList, {
-      props: { foods: sampleFoods, onDelete },
+      props: { foods: sampleFoods },
+      attrs: { onDelete },
     })
 
     await userEvent

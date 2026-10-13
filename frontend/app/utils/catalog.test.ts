@@ -6,6 +6,7 @@ import {
   logFoodLabel,
   narrowFoods,
   opensAddSheet,
+  previewCalories,
   tagsOnOffer,
 } from './catalog'
 
@@ -170,5 +171,13 @@ describe('stating what a Food costs and returns', () => {
     expect(
       formatPer100g({ caloriesPer100g: 378.6, proteinPer100g: 13.2 }),
     ).toBe('379 kcal · 13 g protein /100g')
+  })
+})
+
+describe('previewing a Food’s calories from its macros', () => {
+  it('derives them as the server does: 4 kcal a gram of protein and carbs, 9 of fat', () => {
+    expect(
+      previewCalories({ proteinPer100g: 13, carbsPer100g: 60, fatPer100g: 7 }),
+    ).toBe(355)
   })
 })

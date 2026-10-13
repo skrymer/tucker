@@ -52,4 +52,16 @@ describe('FigureRow', () => {
 
     expect(screen.getByText('5 ingredients · makes 1,400 g')).toBeVisible()
   })
+
+  it('states figures that need markup, such as a before and after, in place of the plain line', async () => {
+    await renderSuspended(FigureRow, {
+      props: { name: 'Cottage pie' },
+      slots: { figures: '<del>255</del> 233 kcal · 30 g protein /100g' },
+    })
+
+    const name = screen.getByText('Cottage pie')
+    expect(name.parentElement?.nextElementSibling).toHaveTextContent(
+      /^255 233 kcal · 30 g protein \/100g$/,
+    )
+  })
 })

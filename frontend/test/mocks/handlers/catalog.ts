@@ -59,6 +59,27 @@ function tagName(given: string): { name: string } | { refused: string } {
 }
 
 type Row = Omit<FoodResponse, 'tags'> & { tagIds: number[] }
+type Macros = Pick<
+  components['schemas']['CorrectFoodRequest'],
+  'proteinPer100g' | 'carbsPer100g' | 'fatPer100g'
+>
+
+/**
+ * Why `Food.corrected` refuses correcting [row] to [name] and [macros], in its
+ * order — a Recipe, then a blank name, then a negative macro — or null.
+ */
+function correctionRefusal(
+  row: Row,
+  name: string,
+  macros: Macros,
+): string | null {
+  if (row.kind === 'RECIPE') {
+    return 'a Recipe is corrected through its composition, not its macros'
+  }
+  if (!name.replace(EDGES, '')) return 'Food name must not be blank'
+  const negative = Object.entries(macros).find(([, value]) => value < 0)
+  return negative ? `${negative[0]} must be >= 0` : null
+}
 type Shelved = { id: number; name: string; offCatalog: number }
 type Line = components['schemas']['CreateRecipeIngredient']
 type RecipeRequest = components['schemas']['CreateRecipeRequest']
@@ -278,6 +299,38 @@ export function foodCatalog({
       rows.splice(rows.indexOf(row), 1)
       compositions.delete(row.id)
       return response(204).empty()
+    }),
+    http.put('/api/foods/{id}', async ({ params, request, response }) => {
+      const { tagIds, name, ...macros } = await request.json()
+      if (!shelved(tagIds)) {
+        return response(404).json({ message: `no Tag among ${tagIds}` })
+      }
+      const row = rowOf(params.id)
+      if (!row) {
+        return response(404).json({ message: `no Food with id ${params.id}` })
+      }
+      const refused = correctionRefusal(row, name, macros)
+      if (refused) return response(400).json({ message: refused })
+      const { proteinPer100g: p, carbsPer100g: c, fatPer100g: f } = macros
+      Object.assign(row, {
+        name,
+        ...macros,
+        caloriesPer100g: 4 * p + 4 * c + 9 * f,
+        tagIds: distinct(tagIds),
+      })
+      // Every Recipe weighing it in is re-rolled in the same save (ADR 0037).
+      for (const [id, ingredients] of compositions) {
+        if (!ingredients.some((line) => line.foodId === row.id)) continue
+        const recipeRow = rowOf(id)!
+        const rerolled = compose(id, {
+          name: recipeRow.name,
+          cookedWeightG: recipeRow.cookedWeightG!,
+          ingredients,
+          tagIds: recipeRow.tagIds,
+        })
+        if ('row' in rerolled) rows[rows.indexOf(recipeRow)] = rerolled.row
+      }
+      return response(200).json(described(row))
     }),
     http.put('/api/foods/{id}/tags', async ({ params, request, response }) => {
       const row = rowOf(params.id)

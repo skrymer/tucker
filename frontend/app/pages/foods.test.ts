@@ -134,9 +134,9 @@ describe('/foods saving a new food', () => {
 })
 
 describe('/foods saving a Food’s Tags', () => {
-  it('names a save that failed for want of a connection in its own error toast', async () => {
+  it('names a correction that failed for want of a connection in its own error toast', async () => {
     server.use(
-      http.put('/api/foods/{id}/tags', ({ response }) =>
+      http.put('/api/foods/{id}', ({ response }) =>
         response(503).json(noConnection),
       ),
       ...foodCatalog({
@@ -147,13 +147,15 @@ describe('/foods saving a Food’s Tags', () => {
     const user = userEvent.setup()
     await renderSuspended(Foods)
 
-    await user.click(screen.getByRole('button', { name: 'Tags for Oats' }))
-    const sheet = screen.getByRole('dialog', { name: 'Tags for Oats' })
-    await user.click(within(sheet).getByRole('button', { name: 'Save tags' }))
+    await user.click(screen.getByRole('button', { name: 'Edit Oats' }))
+    const sheet = screen.getByRole('dialog', { name: 'Edit Oats' })
+    await user.click(
+      within(sheet).getByRole('button', { name: 'Save changes' }),
+    )
 
     await vi.waitFor(() =>
       expect(toastAdd).toHaveBeenCalledWith(
-        expect.objectContaining({ title: 'Could not save tags' }),
+        expect.objectContaining({ title: 'Could not save changes' }),
       ),
     )
   })

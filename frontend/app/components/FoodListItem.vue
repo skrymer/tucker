@@ -20,6 +20,7 @@ const emit = defineEmits<{
   view: [FoodResponse]
   match: [FoodResponse]
   tag: [FoodResponse]
+  edit: [FoodResponse]
 }>()
 
 const tags = computed(() => rowTags(props.food.tags ?? []))
@@ -79,7 +80,9 @@ const recipeSubline = computed(() => {
             type="button"
             :aria-label="`${tags.hidden} more tags on ${name}`"
             class="rounded-full"
-            @click="emit('tag', props.food)"
+            @click="
+              isRecipe ? emit('tag', props.food) : emit('edit', props.food)
+            "
           >
             <UBadge
               :label="`+${tags.hidden}`"
@@ -119,7 +122,10 @@ const recipeSubline = computed(() => {
       @click="emit('match', props.food)"
     />
 
+    <!-- A plain Food is corrected in one sheet that holds its Tags too
+         (ADR 0037); a Recipe keeps its own Tags sheet. -->
     <UButton
+      v-if="isRecipe"
       :aria-label="`Tags for ${name}`"
       icon="i-lucide-tag"
       color="neutral"
@@ -128,6 +134,17 @@ const recipeSubline = computed(() => {
       class="size-11 shrink-0 text-muted hover:text-default"
       :ui="{ base: 'justify-center' }"
       @click="emit('tag', props.food)"
+    />
+    <UButton
+      v-else
+      :aria-label="`Edit ${name}`"
+      icon="i-lucide-pencil"
+      color="neutral"
+      variant="ghost"
+      square
+      class="size-11 shrink-0 text-muted hover:text-default"
+      :ui="{ base: 'justify-center' }"
+      @click="emit('edit', props.food)"
     />
 
     <UButton

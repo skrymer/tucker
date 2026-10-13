@@ -13,7 +13,7 @@
 -->
 <script setup lang="ts">
 // Stryker disable next-line all: a compiler macro must stay a top-level statement
-defineProps<{ name: string; figures: string }>()
+defineProps<{ name: string; figures?: string }>()
 </script>
 
 <template>
@@ -23,7 +23,9 @@ defineProps<{ name: string; figures: string }>()
       <span class="truncate">{{ formatName(name) }}</span>
       <slot name="marker" />
     </span>
-    <span class="block text-sm text-muted">{{ figures }}</span>
+    <span class="block text-sm text-muted">
+      <slot name="figures">{{ figures }}</slot>
+    </span>
     <slot />
   </span>
 </template>
