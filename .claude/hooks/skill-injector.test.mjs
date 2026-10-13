@@ -105,9 +105,15 @@ test("a prompt about a screen's look is sent to Tucker's styling rules, not a ge
 })
 
 test('a prompt that is both new work and screen design still points at the Styling section', () => {
-  const block = render(selectSkills('implement the screen design for issue 12'))
+  const block = render(selectSkills('pick up issue 469: design the page'))
   assert.match(block, /^- \/frontend-dev — .*Styling/m)
   assert.equal(block.match(/^- \/frontend-dev /gm).length, 1)
+})
+
+test('new work that is not about a screen gets no styling reminder', () => {
+  const block = render(selectSkills('implement issue 12 in the backend'))
+  assert.match(block, /^- \/frontend-dev — /m)
+  assert.doesNotMatch(block, /Styling|ui-designer/)
 })
 
 test('an ordinary prompt gets no reminder at all', () => {

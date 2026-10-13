@@ -84,8 +84,15 @@ export const RULES = [
     id: 'frontend-dev',
     skill: 'frontend-dev',
     scope: 'project',
-    pattern: new RegExp(`${IMPLEMENTATION.source}|${SCREEN_DESIGN.source}`, 'i'),
-    why: 'before any frontend change, its Styling section before styling anything, and the voltagent-core-dev:ui-designer agent on screens; in a worktree, invoke its scoped copy.',
+    pattern: IMPLEMENTATION,
+    why: 'before any frontend change; in a worktree, invoke its scoped copy.',
+  },
+  {
+    id: 'screen-design',
+    skill: 'frontend-dev',
+    scope: 'project',
+    pattern: SCREEN_DESIGN,
+    why: 'its Styling section before styling anything, and the voltagent-core-dev:ui-designer agent on screens.',
   },
   {
     id: 'backend-dev',
@@ -141,13 +148,18 @@ export const RULES = [
 /**
  * The rules whose skill this prompt should be reminded of, most specific
  * first. A skill the prompt already invokes by name is dropped — the reminder
- * would be telling Claude to do what the user just asked for.
+ * would be telling Claude to do what the user just asked for. Two rules naming
+ * one skill make one reminder, carrying both reasons, in one slot of the cap.
  */
 export function selectSkills(prompt) {
   if (typeof prompt !== 'string' || prompt.trim() === '') return []
-  return RULES.filter(
-    (rule) => rule.pattern.test(prompt) && !alreadyInvoked(prompt, rule.skill),
-  ).slice(0, MAX_REMINDERS)
+  const bySkill = new Map()
+  for (const rule of RULES) {
+    if (!rule.pattern.test(prompt) || alreadyInvoked(prompt, rule.skill)) continue
+    const first = bySkill.get(rule.skill)
+    bySkill.set(rule.skill, first ? { ...first, why: `${first.why} Also ${rule.why}` } : rule)
+  }
+  return [...bySkill.values()].slice(0, MAX_REMINDERS)
 }
 
 function alreadyInvoked(prompt, skill) {
