@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mockNuxtImport, renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen, within } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
-import { food } from '~~/test/food-fixtures'
+import { food, recipe } from '~~/test/food-fixtures'
 import { foodCatalog } from '~~/test/mocks/handlers/catalog'
 import { catalogFails } from '~~/test/mocks/handlers/foods'
 import { held, http, noConnection } from '~~/test/mocks/http'
@@ -135,8 +135,40 @@ describe('/foods saving a new food', () => {
 
 describe('/foods saving a Food’s Tags', () => {
   it('names a save that failed for want of a connection in its own error toast', async () => {
+    const pie = recipe({
+      id: 8,
+      name: 'Cottage pie',
+      cookedWeightG: 1400,
+      ingredientCount: 5,
+    })
     server.use(
       http.put('/api/foods/{id}/tags', ({ response }) =>
+        response(503).json(noConnection),
+      ),
+      ...foodCatalog({
+        foods: [oats, pie],
+        tags: [{ id: 1, name: 'snack', foodCount: 0 }],
+      }),
+    )
+    const user = userEvent.setup()
+    await renderSuspended(Foods)
+
+    await user.click(
+      screen.getByRole('button', { name: 'Tags for Cottage pie' }),
+    )
+    const sheet = screen.getByRole('dialog', { name: 'Tags for Cottage pie' })
+    await user.click(within(sheet).getByRole('button', { name: 'Save tags' }))
+
+    await vi.waitFor(() =>
+      expect(toastAdd).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'Could not save tags' }),
+      ),
+    )
+  })
+
+  it('names a correction that failed for want of a connection in its own error toast', async () => {
+    server.use(
+      http.put('/api/foods/{id}', ({ response }) =>
         response(503).json(noConnection),
       ),
       ...foodCatalog({
@@ -147,13 +179,15 @@ describe('/foods saving a Food’s Tags', () => {
     const user = userEvent.setup()
     await renderSuspended(Foods)
 
-    await user.click(screen.getByRole('button', { name: 'Tags for Oats' }))
-    const sheet = screen.getByRole('dialog', { name: 'Tags for Oats' })
-    await user.click(within(sheet).getByRole('button', { name: 'Save tags' }))
+    await user.click(screen.getByRole('button', { name: 'Edit Oats' }))
+    const sheet = screen.getByRole('dialog', { name: 'Edit Oats' })
+    await user.click(
+      within(sheet).getByRole('button', { name: 'Save changes' }),
+    )
 
     await vi.waitFor(() =>
       expect(toastAdd).toHaveBeenCalledWith(
-        expect.objectContaining({ title: 'Could not save tags' }),
+        expect.objectContaining({ title: 'Could not save changes' }),
       ),
     )
   })

@@ -181,14 +181,17 @@ describe('FoodListItem', () => {
     ).toEqual(['Breakfast', 'post-workout'])
   })
 
-  it('shows four of six Tags and a "+2" that opens the Food’s Tags', async () => {
+  it('shows four of six Tags and a "+2" that opens the Food to correct', async () => {
     const oats = food({
       id: 4,
       name: 'Rolled oats',
       tags: ['a', 'b', 'c', 'd', 'e', 'f'].map((name, i) => ({ id: i, name })),
     })
+    const onEdit = vi.fn()
     const onTag = vi.fn()
-    await renderSuspended(FoodListItem, { props: { food: oats, onTag } })
+    await renderSuspended(FoodListItem, {
+      props: { food: oats, onEdit, onTag },
+    })
 
     const tags = screen.getByRole('list', { name: 'Tags on Rolled oats' })
     expect(
@@ -201,18 +204,49 @@ describe('FoodListItem', () => {
       .setup()
       .click(screen.getByRole('button', { name: '2 more tags on Rolled oats' }))
 
-    expect(onTag).toHaveBeenCalledWith(oats)
+    expect(onEdit).toHaveBeenCalledWith(oats)
+    expect(onTag).not.toHaveBeenCalled()
   })
 
-  it('emits tag when the user opens a Food’s Tags from its row', async () => {
+  it('keeps a Recipe’s own Tags: its tag button and its "+N" open them, and it offers no Edit', async () => {
+    const tagged = {
+      ...cottagePie,
+      tags: ['a', 'b', 'c', 'd', 'e', 'f'].map((name, i) => ({ id: i, name })),
+    }
     const onTag = vi.fn()
-    await renderSuspended(FoodListItem, { props: { food: skyr, onTag } })
+    const onEdit = vi.fn()
+    await renderSuspended(FoodListItem, {
+      props: { food: tagged, onTag, onEdit },
+    })
+    const user = userEvent.setup()
+
+    await user.click(
+      screen.getByRole('button', { name: 'Tags for Cottage pie' }),
+    )
+    await user.click(
+      screen.getByRole('button', { name: '2 more tags on Cottage pie' }),
+    )
+
+    expect(onTag).toHaveBeenNthCalledWith(1, tagged)
+    expect(onTag).toHaveBeenNthCalledWith(2, tagged)
+    expect(onEdit).not.toHaveBeenCalled()
+    expect(
+      screen.queryByRole('button', { name: 'Edit Cottage pie' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('emits edit when the user opens a plain Food to correct it, which holds its Tags too', async () => {
+    const onEdit = vi.fn()
+    await renderSuspended(FoodListItem, { props: { food: skyr, onEdit } })
 
     await userEvent
       .setup()
-      .click(screen.getByRole('button', { name: 'Tags for Skyr' }))
+      .click(screen.getByRole('button', { name: 'Edit Skyr' }))
 
-    expect(onTag).toHaveBeenCalledWith(skyr)
+    expect(onEdit).toHaveBeenCalledWith(skyr)
+    expect(
+      screen.queryByRole('button', { name: 'Tags for Skyr' }),
+    ).not.toBeInTheDocument()
   })
 
   it('emits delete when the user activates the delete button', async () => {

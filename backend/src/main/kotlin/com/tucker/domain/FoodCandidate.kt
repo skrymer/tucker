@@ -30,7 +30,7 @@ data class FoodCandidate(
         val protein = proteinPer100g ?: return null
         val carbs = carbsPer100g ?: return null
         val fat = fatPer100g ?: return null
-        return Nutrition.fromMacros(proteinPer100g = protein, carbsPer100g = carbs, fatPer100g = fat)
+        return Macros(proteinPer100g = protein, carbsPer100g = carbs, fatPer100g = fat).nutrition()
     }
 
     init {

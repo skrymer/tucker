@@ -448,6 +448,43 @@ class CrossUserIsolationTest {
     }
 
     @Test
+    fun `correcting another User's Food is not found, exactly as an absent one, and leaves it as it was`() {
+        val almonds = createFood(alice, "Alice's almonds")
+
+        for (id in listOf(almonds, 999_999L)) {
+            mockMvc.put("/api/foods/$id") {
+                header(ACCESS_ASSERTION_HEADER, bob)
+                contentType = MediaType.APPLICATION_JSON
+                content = """{"name":"Bob's rename","proteinPer100g":1.0,"carbsPer100g":1.0,"fatPer100g":1.0,
+                              "tagIds":[]}"""
+            }.andExpect { status { isNotFound() } }
+        }
+
+        mockMvc.get("/api/foods/$almonds") { header(ACCESS_ASSERTION_HEADER, alice) }.andExpect {
+            jsonPath("$.name") { value("Alice's almonds") }
+            jsonPath("$.proteinPer100g") { value(10.0) }
+        }
+    }
+
+    @Test
+    fun `correcting a Food to carry another User's Tag is not found, and leaves it as it was`() {
+        val skyr = createFood(bob, "Bob's skyr")
+        val alicesBreakfast = postForId(alice, "/api/tags", """{"name":"breakfast"}""")
+
+        mockMvc.put("/api/foods/$skyr") {
+            header(ACCESS_ASSERTION_HEADER, bob)
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"name":"Skyr","proteinPer100g":1.0,"carbsPer100g":1.0,"fatPer100g":1.0,
+                          "tagIds":[$alicesBreakfast]}"""
+        }.andExpect { status { isNotFound() } }
+
+        mockMvc.get("/api/foods/$skyr") { header(ACCESS_ASSERTION_HEADER, bob) }.andExpect {
+            jsonPath("$.name") { value("Bob's skyr") }
+            jsonPath("$.tags.length()") { value(0) }
+        }
+    }
+
+    @Test
     fun `putting another User's Tag on a Food is not found, exactly as an absent Tag is`() {
         val skyr = createFood(bob, "Bob's skyr")
         val alicesBreakfast = postForId(alice, "/api/tags", """{"name":"breakfast"}""")

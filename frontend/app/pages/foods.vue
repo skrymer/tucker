@@ -41,6 +41,9 @@ const foodToMatch = ref<FoodResponse | null>(null)
 /** The Food whose Tags are being set (ADR 0033) — non-null opens its sheet. */
 const foodToTag = ref<FoodResponse | null>(null)
 
+/** The plain Food being corrected (ADR 0037) — non-null opens its sheet. */
+const foodToEdit = ref<FoodResponse | null>(null)
+
 const manageTagsOpen = ref(false)
 </script>
 
@@ -84,6 +87,7 @@ const manageTagsOpen = ref(false)
         @view="recipeToView = $event"
         @match="foodToMatch = $event"
         @tag="foodToTag = $event"
+        @edit="foodToEdit = $event"
       />
       <FoodEmptyState v-else @add="open = true" />
     </LoadErrorState>
@@ -112,6 +116,8 @@ const manageTagsOpen = ref(false)
     <ManageTagsSheet v-model:open="manageTagsOpen" />
 
     <FoodTagsSheet :food="foodToTag" @close="foodToTag = null" />
+
+    <EditFoodSheet :food="foodToEdit" @close="foodToEdit = null" />
 
     <RecipeCompositionSheet
       :recipe="recipeToView"

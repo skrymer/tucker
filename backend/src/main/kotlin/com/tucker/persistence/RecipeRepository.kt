@@ -8,6 +8,7 @@ import com.tucker.jooq.Tables.FOOD
 import com.tucker.jooq.Tables.RECIPE_INGREDIENT
 import com.tucker.security.CurrentUser
 import org.jooq.DSLContext
+import org.jooq.Record2
 import org.jooq.Record3
 import org.jooq.Result
 import org.jooq.impl.DSL
@@ -85,18 +86,9 @@ class RecipeRepository(
     /** Load a Recipe with its ingredient Foods, or null if [id] is not a recipe. */
     fun findById(id: Long): Recipe? {
         val food = foods.findById(id) ?: return null
-        return when (val kind = food.kind) {
-            FoodKind.Plain -> null
-            is FoodKind.Recipe -> Recipe(
-                id = food.id,
-                name = food.name,
-                // `orEmpty`, so a Recipe whose lines are gone is refused by `Recipe`'s own
-                // invariant, which says what is wrong, rather than by a missing-key throw.
-                ingredients = ingredientsOf(listOf(id))[id].orEmpty(),
-                cookedWeightG = kind.cookedWeightG,
-                tagIds = food.tagIds,
-            )
-        }
+        // `orEmpty`, so a Recipe whose lines are gone is refused by `Recipe`'s own
+        // invariant, which says what is wrong, rather than by a missing-key throw.
+        return recipeOf(food, ingredientsOf(listOf(id))[id].orEmpty())
     }
 
     /**
@@ -107,7 +99,7 @@ class RecipeRepository(
      * `recipe_ingredient` carries no `user_id` — a Recipe *is* a Food row, so its
      * lines are owned through it (ADR 0021: eight owned tables, not nine) — so the
      * ownership predicate sits on the Recipe's Food row. Belt-and-braces rather than
-     * a reachable guard, as in [recipesUsingIngredient]: both callers resolve their
+     * a reachable guard, as in [recipesUsing]: both callers resolve their
      * ids through a scoped read first, so a foreign Recipe never reaches here.
      */
     fun ingredientsOf(recipeIds: Collection<Long>): Map<Long, List<RecipeIngredient>> {
@@ -153,25 +145,50 @@ class RecipeRepository(
     }
 
     /**
-     * The distinct names of Recipes that use the Food [foodId] as an ingredient,
-     * ordered for a stable message. Empty when the Food is not an ingredient of any
-     * Recipe. A deterministic existence query — the join to the recipe's Food row
-     * naturally ignores any orphaned ingredient line — mirroring
-     * [EntryRepository.referencesFood], not a caught FK violation; [FoodService]
-     * uses it to name what blocks a delete.
-     *
-     * Scoped to the current User's Recipes (ADR 0021). Belt-and-braces rather than a
-     * reachable guard — an ingredient line can only name a Food its Recipe's owner
-     * has — but these names are read back to whoever tried the delete, so it is worth
-     * the predicate that this can never answer "you can't, because of «somebody
-     * else's dinner»".
+     * The distinct names of the caller's Recipes that use the Food [foodId] as an
+     * ingredient, ordered for a stable message — what a delete names when it refuses.
+     * A projection rather than [recipesUsing] narrowed: the guard only names them.
      */
-    fun recipesUsingIngredient(foodId: Long): List<String> =
-        dsl.selectDistinct(FOOD.NAME)
-            .from(RECIPE_INGREDIENT)
-            .join(FOOD).on(FOOD.ID.eq(RECIPE_INGREDIENT.RECIPE_ID))
-            .where(RECIPE_INGREDIENT.INGREDIENT_FOOD_ID.eq(foodId.toInt()))
-            .and(FOOD.USER_ID.eq(currentUser.ownerId))
-            .orderBy(FOOD.NAME)
-            .fetch(FOOD.NAME)
+    fun recipeNamesUsing(foodId: Long): List<String> =
+        dsl.recipeRowsUsing(foodId, currentUser.ownerId).map { it.value2() }.distinct()
+
+    /** The caller's Recipes that use the Food [foodId] as an ingredient, each loaded whole, by name. */
+    fun recipesUsing(foodId: Long): List<Recipe> {
+        val ids = dsl.recipeRowsUsing(foodId, currentUser.ownerId).map { it.value1().toLong() }
+        // One read for the Recipes' rows and one for all their lines, whatever their number.
+        val recipeFoods = foods.findByIds(ids).associateBy { it.id }
+        val lines = ingredientsOf(ids)
+        return ids.mapNotNull { id -> recipeFoods[id]?.let { recipeOf(it, lines[id].orEmpty()) } }
+    }
 }
+
+/** [food] as the Recipe [ingredients] compose, or null if it is not a recipe. */
+private fun recipeOf(food: Food, ingredients: List<RecipeIngredient>): Recipe? =
+    when (val kind = food.kind) {
+        FoodKind.Plain -> null
+        is FoodKind.Recipe -> Recipe(
+            id = food.id,
+            name = food.name,
+            ingredients = ingredients,
+            cookedWeightG = kind.cookedWeightG,
+            tagIds = food.tagIds,
+        )
+    }
+
+/**
+ * Each Recipe of [ownerId] that uses the Food [foodId] as an ingredient, as (id, name),
+ * ordered by name. The join to the Recipe's Food row ignores any orphaned ingredient line.
+ *
+ * Scoped to the owner's Recipes (ADR 0021). Belt-and-braces rather than a reachable
+ * guard — an ingredient line can only name a Food its Recipe's owner has — but a delete
+ * reads these names back to whoever tried it, so it is worth the predicate that this
+ * can never answer "you can't, because of «somebody else's dinner»".
+ */
+private fun DSLContext.recipeRowsUsing(foodId: Long, ownerId: Int): Result<Record2<Int, String>> =
+    selectDistinct(RECIPE_INGREDIENT.RECIPE_ID, FOOD.NAME)
+        .from(RECIPE_INGREDIENT)
+        .join(FOOD).on(FOOD.ID.eq(RECIPE_INGREDIENT.RECIPE_ID))
+        .where(RECIPE_INGREDIENT.INGREDIENT_FOOD_ID.eq(foodId.toInt()))
+        .and(FOOD.USER_ID.eq(ownerId))
+        .orderBy(FOOD.NAME)
+        .fetch()
