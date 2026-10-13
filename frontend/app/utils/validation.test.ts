@@ -42,6 +42,13 @@ describe('foodSchema', () => {
     ])
   })
 
+  it('judges a blank name by what the server trims, not by what JavaScript trims', () => {
+    expect(refusals({ ...filled, name: '\u001F' })).toEqual([
+      'name: Enter a name for this food',
+    ])
+    expect(refusals({ ...filled, name: '﻿' })).toEqual([])
+  })
+
   it('refuses a name of only whitespace as no name, as the server would', () => {
     expect(refusals({ ...filled, name: ' \t ' })).toEqual([
       'name: Enter a name for this food',

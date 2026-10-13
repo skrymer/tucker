@@ -5,7 +5,6 @@ import com.tucker.domain.Food
 import com.tucker.domain.FoodCandidate
 import com.tucker.domain.FoodKind
 import com.tucker.domain.Macros
-import com.tucker.domain.Nutrition
 import com.tucker.domain.Tag
 import com.tucker.persistence.FoodRepository
 import com.tucker.service.BarcodeLookupService
@@ -239,11 +238,7 @@ class FoodController(
             id = foods.nextId(),
             name = request.name,
             barcode = request.barcode,
-            nutrition = Nutrition.fromMacros(
-                proteinPer100g = request.proteinPer100g,
-                carbsPer100g = request.carbsPer100g,
-                fatPer100g = request.fatPer100g,
-            ),
+            nutrition = Macros(request.proteinPer100g, request.carbsPer100g, request.fatPer100g).nutrition(),
         ).retagged(request.tagIds)
         val created = foodService.create(food) ?: throw NotFoundException("no Tag among ${request.tagIds}")
         return describer.describe(created)

@@ -17,7 +17,10 @@ sealed interface FoodKind {
 }
 
 /** The three macros per 100 g a User supplies for a Food; calories are derived from them. */
-data class Macros(val proteinPer100g: Double, val carbsPer100g: Double, val fatPer100g: Double)
+data class Macros(val proteinPer100g: Double, val carbsPer100g: Double, val fatPer100g: Double) {
+    /** The [Nutrition] these macros make, calories Atwater-derived. */
+    fun nutrition(): Nutrition = Nutrition.fromMacros(proteinPer100g, carbsPer100g, fatPer100g)
+}
 
 /**
  * A reusable definition of something edible — a name plus [Nutrition] per 100 g.
@@ -78,7 +81,7 @@ data class Food(
         return copy(
             name = name,
             tagIds = tagIds.toSet(),
-            nutrition = Nutrition.fromMacros(macros.proteinPer100g, macros.carbsPer100g, macros.fatPer100g),
+            nutrition = macros.nutrition(),
         )
     }
 

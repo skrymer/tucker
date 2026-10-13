@@ -9,15 +9,6 @@ const props = defineProps<{
 // Stryker restore all
 const emit = defineEmits<{ close: [] }>()
 
-const MACROS = ['proteinPer100g', 'carbsPer100g', 'fatPer100g'] as const
-type Macro = (typeof MACROS)[number]
-
-const MACRO_LABELS: Record<Macro, string> = {
-  proteinPer100g: 'Protein /100g',
-  carbsPer100g: 'Carbs /100g',
-  fatPer100g: 'Fat /100g',
-}
-
 /**
  * Run [seed] with each Food the sheet opens on: one sheet is handed Food after
  * Food, so each opening starts from that Food, never from the last one's edits.
@@ -65,7 +56,8 @@ function useTypedMacros() {
     for (const macro of MACROS) typed[macro] = food[macro] ?? 0
   })
   function onType(macro: Macro, event: Event) {
-    const text = (event.target as HTMLInputElement).value
+    // The field groups thousands as it formats ("1,000").
+    const text = (event.target as HTMLInputElement).value.replace(/,/g, '')
     typed[macro] = text.trim() === '' ? Number.NaN : Number(text)
   }
   return { typed, onType }
@@ -92,7 +84,6 @@ function useLiveFigures() {
 }
 const { complete, before, after, macrosMoved } = useLiveFigures()
 
-/** What Save sends: the fields as committed, and the Tags as picked. */
 function correctionOf(): components['schemas']['CorrectFoodRequest'] {
   return {
     name: draft.name,

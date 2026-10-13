@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import type { components } from '#open-fetch-schemas/api'
 
-// Every row's listeners (delete, view, match, tag, edit) reach it straight from
-// the page: FoodListItem declares them, and a list relaying each one would only
-// restate its contract.
+// A row's listeners reach it straight from the page: FoodListItem declares them,
+// and a list relaying each one would only restate its contract.
 // Stryker disable all: a compiler macro's arguments are hoisted out of setup()
 defineOptions({ inheritAttrs: false })
 withDefaults(

@@ -8,10 +8,15 @@ const SERVER_TRIMMED =
   '\\t\\n\\u000B\\f\\r\\u001C-\\u001F \\u00A0\\u1680\\u2000-\\u200A\\u2028\\u2029\\u202F\\u205F\\u3000'
 const EDGES = new RegExp(`^[${SERVER_TRIMMED}]+|[${SERVER_TRIMMED}]+$`, 'g')
 
+/** [text] trimmed as the server's Kotlin `trim()` trims it. */
+export function serverTrim(text: string): string {
+  return text.replace(EDGES, '')
+}
+
 /**
  * A Tag name as the server identifies it: trimmed as `TagName` trims, then
  * case-folded. Two names with one key are one Tag.
  */
 export function tagNameKey(name: string): string {
-  return name.replace(EDGES, '').toLowerCase()
+  return serverTrim(name).toLowerCase()
 }

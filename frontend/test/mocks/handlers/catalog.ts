@@ -64,6 +64,10 @@ type Macros = Pick<
   'proteinPer100g' | 'carbsPer100g' | 'fatPer100g'
 >
 
+/** A Food's calories per 100 g, as the server derives them (Atwater). */
+const caloriesOf = (m: Macros) =>
+  4 * m.proteinPer100g + 4 * m.carbsPer100g + 9 * m.fatPer100g
+
 /**
  * Why `Food.corrected` refuses correcting [row] to [name] and [macros], in its
  * order — a Recipe, then a blank name, then a negative macro — or null.
@@ -102,6 +106,9 @@ type RecipeRequest = components['schemas']['CreateRecipeRequest']
  *   ingredient (400); then a blank name, no lines or no cooked weight (400);
  *   then a Tag they do not have (404). Reading or updating an id that is not a
  *   Recipe is a 404.
+ * - Correcting a plain Food re-rolls every Recipe weighing it in (ADR 0037). It
+ *   is refused in the backend's order: a Tag the User does not have, then a Food
+ *   they do not have (404); then a Recipe, a blank name or a negative macro (400).
  * - Tags are listed by name ignoring case, each counted by the Foods carrying
  *   it — plus, where a [tags] entry states a `foodCount`, Foods outside this
  *   catalog that make up the difference. Creating a name the User already has
@@ -268,10 +275,9 @@ export function foodCatalog({
       if (!shelved(tagIds)) {
         return response(404).json({ message: `no Tag among ${tagIds}` })
       }
-      const { proteinPer100g: p, carbsPer100g: c, fatPer100g: f } = macros
       const row: Row = {
         ...food({ id: nextFoodId++, ...macros, barcode: barcode ?? null }),
-        caloriesPer100g: 4 * p + 4 * c + 9 * f,
+        caloriesPer100g: caloriesOf(macros),
         tagIds: distinct(tagIds),
       }
       rows.push(row)
@@ -311,11 +317,10 @@ export function foodCatalog({
       }
       const refused = correctionRefusal(row, name, macros)
       if (refused) return response(400).json({ message: refused })
-      const { proteinPer100g: p, carbsPer100g: c, fatPer100g: f } = macros
       Object.assign(row, {
         name,
         ...macros,
-        caloriesPer100g: 4 * p + 4 * c + 9 * f,
+        caloriesPer100g: caloriesOf(macros),
         tagIds: distinct(tagIds),
       })
       // Every Recipe weighing it in is re-rolled in the same save (ADR 0037).

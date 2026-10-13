@@ -163,6 +163,37 @@ describe('EditFoodSheet', () => {
     ])
   })
 
+  it('opens the next Food with its Tags field empty, not holding a name typed for the last one', async () => {
+    const skyr = food({ id: 2, name: 'Skyr' })
+    server.use(...foodCatalog({ foods: [oats, skyr] }))
+    const { rerender } = await renderSuspended(EditFoodSheet, {
+      props: { food: oats },
+    })
+
+    await userEvent
+      .setup()
+      .type(screen.getByRole('combobox', { name: 'Tags' }), 'supp')
+    await rerender({ food: null })
+    await rerender({ food: skyr })
+
+    expect(screen.getByRole('combobox', { name: 'Tags' })).toHaveValue('')
+  })
+
+  it('reads a figure typed with a thousands separator as the number it groups', async () => {
+    server.use(...foodCatalog({ foods: [oats] }))
+    await renderSuspended(EditFoodSheet, { props: { food: oats } })
+    const user = userEvent.setup()
+
+    const fat = screen.getByRole('spinbutton', { name: /^Fat/ })
+    await user.clear(fat)
+    await user.type(fat, '1,000')
+
+    // 4 × 31 + 4 × 60 + 9 × 1000
+    expect(screen.getByRole('status')).toHaveTextContent(
+      /^was 427 9364 kcal · 31 g protein \/100g$/,
+    )
+  })
+
   it('states no figures while a macro field is empty, rather than counting it as zero', async () => {
     server.use(...foodCatalog({ foods: [oats] }))
     await renderSuspended(EditFoodSheet, { props: { food: oats } })

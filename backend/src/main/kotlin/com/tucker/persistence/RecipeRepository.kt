@@ -85,19 +85,23 @@ class RecipeRepository(
     /** Load a Recipe with its ingredient Foods, or null if [id] is not a recipe. */
     fun findById(id: Long): Recipe? {
         val food = foods.findById(id) ?: return null
-        return when (val kind = food.kind) {
+        // `orEmpty`, so a Recipe whose lines are gone is refused by `Recipe`'s own
+        // invariant, which says what is wrong, rather than by a missing-key throw.
+        return recipeOf(food, ingredientsOf(listOf(id))[id].orEmpty())
+    }
+
+    /** [food] as the Recipe [ingredients] compose, or null if it is not a recipe. */
+    private fun recipeOf(food: Food, ingredients: List<RecipeIngredient>): Recipe? =
+        when (val kind = food.kind) {
             FoodKind.Plain -> null
             is FoodKind.Recipe -> Recipe(
                 id = food.id,
                 name = food.name,
-                // `orEmpty`, so a Recipe whose lines are gone is refused by `Recipe`'s own
-                // invariant, which says what is wrong, rather than by a missing-key throw.
-                ingredients = ingredientsOf(listOf(id))[id].orEmpty(),
+                ingredients = ingredients,
                 cookedWeightG = kind.cookedWeightG,
                 tagIds = food.tagIds,
             )
         }
-    }
 
     /**
      * The ingredient lines of every Recipe in [recipeIds], resolved to their Foods in
@@ -154,8 +158,8 @@ class RecipeRepository(
 
     /**
      * The caller's Recipes that use the Food [foodId] as an ingredient, each loaded
-     * whole, by name. Empty when the Food is not an ingredient of any Recipe; the join
-     * to the Recipe's Food row ignores any orphaned ingredient line.
+     * whole, ordered by name. Empty when the Food is not an ingredient of any Recipe;
+     * the join to the Recipe's Food row ignores any orphaned ingredient line.
      *
      * Scoped to the current User's Recipes (ADR 0021). Belt-and-braces rather than a
      * reachable guard — an ingredient line can only name a Food its Recipe's owner
@@ -163,13 +167,18 @@ class RecipeRepository(
      * the predicate that this can never answer "you can't, because of «somebody
      * else's dinner»".
      */
-    fun recipesUsing(foodId: Long): List<Recipe> =
-        dsl.selectDistinct(RECIPE_INGREDIENT.RECIPE_ID, FOOD.NAME)
+    fun recipesUsing(foodId: Long): List<Recipe> {
+        val ids = dsl.selectDistinct(RECIPE_INGREDIENT.RECIPE_ID, FOOD.NAME)
             .from(RECIPE_INGREDIENT)
             .join(FOOD).on(FOOD.ID.eq(RECIPE_INGREDIENT.RECIPE_ID))
             .where(RECIPE_INGREDIENT.INGREDIENT_FOOD_ID.eq(foodId.toInt()))
             .and(FOOD.USER_ID.eq(currentUser.ownerId))
             .orderBy(FOOD.NAME)
             .fetch(RECIPE_INGREDIENT.RECIPE_ID)
-            .mapNotNull { findById(it.toLong()) }
+            .map { it.toLong() }
+        // One read for the Recipes' rows and one for all their lines, whatever their number.
+        val recipeFoods = foods.findByIds(ids).associateBy { it.id }
+        val lines = ingredientsOf(ids)
+        return ids.mapNotNull { id -> recipeFoods[id]?.let { recipeOf(it, lines[id].orEmpty()) } }
+    }
 }

@@ -30,9 +30,6 @@ const emit = defineEmits<{
   submit: [components['schemas']['CreateFoodRequest']]
 }>()
 
-const MACROS = ['proteinPer100g', 'carbsPer100g', 'fatPer100g'] as const
-type Macro = (typeof MACROS)[number]
-
 /** The fields a seed supplies, its absent ones blank. */
 function seedOf(initial: typeof props.initial) {
   return {
@@ -140,34 +137,20 @@ function onSubmit() {
     </UFormField>
 
     <div class="grid grid-cols-3 gap-3">
-      <UFormField label="Protein /100g" name="proteinPer100g" required>
+      <UFormField
+        v-for="macro in MACROS"
+        :key="macro"
+        :label="MACRO_LABELS[macro]"
+        :name="macro"
+        required
+      >
         <NumberField
-          :model-value="state.proteinPer100g"
+          :model-value="state[macro]"
           :min="0"
           :step="0.1"
           class="w-full"
-          @input="markTouched('proteinPer100g')"
-          @update:model-value="updateMacro('proteinPer100g', $event)"
-        />
-      </UFormField>
-      <UFormField label="Carbs /100g" name="carbsPer100g" required>
-        <NumberField
-          :model-value="state.carbsPer100g"
-          :min="0"
-          :step="0.1"
-          class="w-full"
-          @input="markTouched('carbsPer100g')"
-          @update:model-value="updateMacro('carbsPer100g', $event)"
-        />
-      </UFormField>
-      <UFormField label="Fat /100g" name="fatPer100g" required>
-        <NumberField
-          :model-value="state.fatPer100g"
-          :min="0"
-          :step="0.1"
-          class="w-full"
-          @input="markTouched('fatPer100g')"
-          @update:model-value="updateMacro('fatPer100g', $event)"
+          @input="markTouched(macro)"
+          @update:model-value="updateMacro(macro, $event)"
         />
       </UFormField>
     </div>
