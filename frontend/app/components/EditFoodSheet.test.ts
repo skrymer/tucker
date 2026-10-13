@@ -740,11 +740,6 @@ describe('EditFoodSheet’s Reference Food match', () => {
     const shown = await catalogOnceReread()
     expect(shown.getByText('Tasty cheese')).toBeInTheDocument()
     expect(shown.queryByText(/Vitamins and minerals/)).not.toBeInTheDocument()
-    await vi.waitFor(() =>
-      expect(
-        within(sheet).queryByText(/Vitamins and minerals/),
-      ).not.toBeInTheDocument(),
-    )
     expect(sheet).toBeVisible()
     expect(onClose).not.toHaveBeenCalled()
     expect(toastAdd).not.toHaveBeenCalled()
@@ -796,11 +791,6 @@ describe('EditFoodSheet’s Reference Food match', () => {
         screen.queryByRole('dialog', { name: 'Match Tasty cheese' }),
       ).not.toBeInTheDocument(),
     )
-    expect(
-      within(sheet).getByText(
-        'Vitamins and minerals from Cheese, cheddar, reduced fat',
-      ),
-    ).toBeVisible()
     expect(name).toHaveValue('Vintage cheese')
     expect(onClose).not.toHaveBeenCalled()
   })

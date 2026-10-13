@@ -67,7 +67,7 @@ const ALLOWED: Record<string, Record<string, string>> = {
       'a Tag keeps the spelling its User gave it, so it is never recased (ADR 0033)',
   },
   'components/FoodMatchRow.vue': {
-    'current.referenceFoodName':
+    'food.referenceFoodName':
       'a published FSANZ name, stated as FSANZ writes it (ADR 0027)',
     '`Change what ${name} borrows vitamins and minerals from`':
       'the local `name` computed is formatName(food.name)',
@@ -89,8 +89,6 @@ const ALLOWED: Record<string, Record<string, string>> = {
   },
   'components/ReferenceFoodPicker.vue': {
     'candidate.name':
-      'a published FSANZ name, stated as FSANZ writes it (ADR 0027)',
-    'food.referenceFoodName':
       'a published FSANZ name, stated as FSANZ writes it (ADR 0027)',
   },
   'components/ManageTagsSheet.vue': {

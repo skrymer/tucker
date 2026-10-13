@@ -1808,10 +1808,15 @@ null` now means two things that earn opposite messages — the same trap
     Tracking on and a match present, so an unmatched Food is offered no way to make
     one (ADR 0027). Change opens the existing picker and Clear clears at once; neither
     is part of Save's draft, and closing the sheet undoes neither.
-  - **The row reads its match back from the catalog**, not from the Food the sheet
-    opened on. A Clear or Change re-reads the catalog; re-seeding the sheet from that
-    read would have wiped the User's unsaved name and macros, so the draft keeps
-    following the Food it opened on and only the match follows the catalog.
+  - **The sheet is handed the live Food, and seeds its draft on the Food's id.**
+    `/foods` reads the Food it edits out of the catalog by id, so a Clear or Change
+    shows in the sheet as soon as the catalog re-reads. The draft watch was keyed on
+    the object, which would have wiped the User's unsaved name and macros on that
+    re-read; it is keyed on the id now, and a page test pins it.
+  - **The picker no longer offers Unmatch.** Its "Currently borrowing from" block was
+    reachable only from the old row pencil, so Change would have opened a second way
+    out beside the sheet's Clear. `useMatchClear` takes the Food's id and is the one
+    clear.
   - **An Edit opening never flashes the read-only view** while the composition loads:
     the sheet opens on its editor or on nothing.
   - **A correction leaves the match alone** — already true of `Food.corrected`, and

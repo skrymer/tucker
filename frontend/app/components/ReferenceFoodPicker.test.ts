@@ -17,7 +17,7 @@ import ReferenceFoodPicker from './ReferenceFoodPicker.vue'
 
 type Search = components['schemas']['ReferenceFoodSearchResponse']
 
-const chicken = { id: 1, name: 'Chicken breast', referenceFoodName: null }
+const chicken = { id: 1, name: 'Chicken breast' }
 
 /** A catalog holding the chicken, with [referenceFoods] to borrow from. */
 function chickenCatalog(referenceFoods: { id: number; name: string }[]) {
@@ -91,7 +91,7 @@ describe('ReferenceFoodPicker', () => {
     )
 
     await renderSuspended(ReferenceFoodPicker, {
-      props: { food: { id: 3, name: 'LIGHT MILK', referenceFoodName: null } },
+      props: { food: { id: 3, name: 'LIGHT MILK' } },
     })
 
     // The qualifier is the whole of what a User reads when they tap to confirm a
@@ -158,60 +158,6 @@ describe('ReferenceFoodPicker', () => {
         'Vitamins and minerals from Chicken, breast, roasted',
       ),
     ).toBeVisible()
-  })
-
-  it('takes the borrow back on Unmatch, then closes and tells its page', async () => {
-    const cheddar = { id: 101, name: 'Cheese, cheddar, natural, regular fat' }
-    const cheeseCatalog = foodCatalog({
-      foods: [
-        food({
-          id: 1,
-          name: 'Tasty cheese',
-          referenceFoodId: cheddar.id,
-          referenceFoodName: cheddar.name,
-        }),
-      ],
-      referenceFoods: [cheddar],
-    })
-    server.use(...cheeseCatalog)
-    const onClose = vi.fn()
-    const onChanged = vi.fn()
-    await renderSuspended(besideCatalog(ReferenceFoodPicker), {
-      props: {
-        food: { id: 1, name: 'Tasty cheese', referenceFoodName: cheddar.name },
-        onClose,
-        onChanged,
-      },
-    })
-
-    await userEvent
-      .setup()
-      .click(screen.getByRole('button', { name: 'Unmatch' }))
-
-    await vi.waitFor(() => expect(onChanged).toHaveBeenCalledOnce())
-    expect(onClose).toHaveBeenCalledOnce()
-    expect(
-      (await catalogOnceReread()).queryByText(/vitamins and minerals from/i),
-    ).not.toBeInTheDocument()
-  })
-
-  it('names what a matched Food borrows now, beside the way to take it back', async () => {
-    await renderSuspended(ReferenceFoodPicker, {
-      props: {
-        food: {
-          id: 1,
-          name: 'Tasty cheese',
-          referenceFoodName: 'Cheese, cheddar, natural, regular fat',
-        },
-      },
-    })
-
-    // A wrong match is worse than none, which is why it is confirmed by a human
-    // and why taking it back has to be as easy as making it (ADR 0027).
-    expect(
-      screen.getByText(/Cheese, cheddar, natural, regular fat/),
-    ).toBeVisible()
-    expect(screen.getByRole('button', { name: 'Unmatch' })).toBeVisible()
   })
 
   it('carries the attribution the figures it shows are licensed under', async () => {

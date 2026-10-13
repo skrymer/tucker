@@ -9,7 +9,6 @@ type Search = components['schemas']['ReferenceFoodSearchResponse']
 export interface Matchable {
   id: number
   name: string
-  referenceFoodName?: string | null
 }
 
 // Stryker disable all: a compiler macro's arguments are hoisted out of setup()
@@ -124,13 +123,10 @@ const held = computed({
     if (food === null) emit('close')
   },
 })
-const { claim, clear, matching, unmatching } = useReferenceFoodMatch(
-  held,
-  async () => {
-    emit('changed')
-    await refreshFoodCatalog()
-  },
-)
+const { claim, matching } = useReferenceFoodMatch(held, async () => {
+  emit('changed')
+  await refreshFoodCatalog()
+})
 
 // The length guard is load-bearing, not redundant with the template's v-else-if:
 // while a search is in flight `suggestedId` is null and `foundNothing` false, so
@@ -147,28 +143,6 @@ const willNotGuess = computed(
     @update:open="(value) => !value && emit('close')"
   >
     <div class="flex flex-col gap-3">
-      <!-- What it borrows now, and the way back out. A wrong match is worse than
-           none, so taking one back is as easy as making it (ADR 0027). -->
-      <div
-        v-if="food?.referenceFoodName"
-        class="flex items-center justify-between gap-3 rounded-inset bg-elevated/50 px-3 py-2"
-      >
-        <p class="min-w-0 text-sm">
-          <span class="block text-muted">Currently borrowing from</span>
-          <span class="block truncate font-medium text-default">
-            {{ food.referenceFoodName }}
-          </span>
-        </p>
-        <UButton
-          label="Unmatch"
-          color="neutral"
-          variant="subtle"
-          class="min-h-11 shrink-0"
-          :loading="unmatching"
-          @click="clear"
-        />
-      </div>
-
       <!-- The sheet's primary control once the suggestion is not the answer, so
            it gets the room a phone needs. It opens holding the Food's own name,
            which is a starting point rather than a value to edit — hence one tap

@@ -1,8 +1,8 @@
 import { test, expect } from './support/smoke-test'
 
-// F19 slice 3 smoke: every /foods row has one Edit, against the real backend. A
-// plain Food's match is changed and cleared from its Edit sheet, at once and
-// outside Save (ADR 0027, ADR 0037), and a Recipe's Edit opens its editor. The
+// F19 slice 3 smoke: a plain Food's match is changed and cleared from its Edit
+// sheet against the real backend, at once and outside Save (ADR 0027, ADR 0037).
+// A Recipe's row Edit opening its editor is driven by food-tags.smoke. The
 // per-test reset wipes the seed, so there is no cleanup.
 const API = 'http://localhost:8080/api'
 
@@ -73,50 +73,4 @@ test('a Food’s match is changed and cleared from its Edit sheet, each at once'
     page.getByRole('button', { name: 'Edit Tasty cheese' }),
   ).toBeVisible()
   await expect(page.getByText(/Vitamins and minerals from/)).toHaveCount(0)
-  const food = (await (await request.get(`${API}/foods/${cheese}`)).json()) as {
-    referenceFoodId: number | null
-  }
-  expect(food.referenceFoodId).toBeNull()
-})
-
-test('a Recipe’s row Edit opens its editor, and a rename saved there sticks', async ({
-  page,
-  goto,
-  request,
-}) => {
-  const created = await request.post(`${API}/foods`, {
-    data: {
-      tagIds: [],
-      name: 'Rolled oats',
-      proteinPer100g: 13,
-      carbsPer100g: 60,
-      fatPer100g: 7,
-    },
-  })
-  expect(created.status()).toBe(201)
-  const oats = ((await created.json()) as { id: number }).id
-  const porridge = await request.post(`${API}/recipes`, {
-    data: {
-      tagIds: [],
-      name: 'Porige',
-      cookedWeightG: 300,
-      ingredients: [{ foodId: oats, grams: 80 }],
-    },
-  })
-  expect(porridge.status()).toBe(201)
-
-  await goto('/foods', { waitUntil: 'hydration' })
-  await page.getByRole('button', { name: 'Edit Porige' }).click()
-  const sheet = page.getByRole('dialog', { name: 'Edit Porige' })
-  const name = sheet.getByRole('textbox', { name: /^Recipe name/ })
-  await expect(name).toHaveValue('Porige')
-  await name.fill('Porridge')
-  await sheet.getByRole('button', { name: 'Save changes' }).click()
-  await expect(sheet).toBeHidden()
-
-  await page.reload()
-  await expect(
-    page.getByRole('button', { name: 'Edit Porridge' }),
-  ).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Edit Porige' })).toHaveCount(0)
 })

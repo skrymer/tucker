@@ -17,13 +17,14 @@ const emit = defineEmits<{ close: [] }>()
 /**
  * Run [seed] with each Food the sheet opens on: one sheet is handed Food after
  * Food, so each opening starts from that Food, never from the last one's edits.
+ * Keyed on the id, so a re-read of the same Food leaves the edits standing.
  */
 function onEachFood(
   seed: (food: components['schemas']['FoodResponse']) => void,
 ) {
   watch(
-    () => props.food,
-    (food) => food && seed(food),
+    () => props.food?.id,
+    () => props.food && seed(props.food),
     { immediate: true },
   )
 }

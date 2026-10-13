@@ -18,9 +18,11 @@ const route = useRoute()
 const router = useRouter()
 const open = ref(opensAddSheet(route.query))
 const selectedFood = ref<FoodResponse | null>(null)
-// The recipe whose row's view button was tapped — non-null opens the read-only
-// composition sheet.
-const recipeToView = ref<FoodResponse | null>(null)
+/**
+ * The Recipe whose row asked to open it, and whether on its editor (its Edit)
+ * or its read-only composition (View ingredients) — non-null opens the sheet.
+ */
+const recipeToOpen = ref<{ recipe: FoodResponse; edit: boolean } | null>(null)
 const isDesktop = useIsDesktop()
 
 // The hand-off is spent once the sheet closes; left in the URL it reopens the
@@ -33,26 +35,18 @@ watch(open, (isOpen) => {
 
 /**
  * The plain Food being corrected (ADR 0037) — non-null opens its sheet, which
- * also holds its Tags and its Reference Food match.
+ * also holds its Tags and its Reference Food match. Read from the catalog by id,
+ * so a match changed inside the sheet shows there as soon as the catalog re-reads.
  */
-const foodToEdit = ref<FoodResponse | null>(null)
-
-/** Whether the recipe sheet opens on its editor rather than its view. */
-const editingRecipe = ref(false)
+const foodIdToEdit = ref<number | null>(null)
+const foodToEdit = computed(
+  () => foods.value?.find((food) => food.id === foodIdToEdit.value) ?? null,
+)
 
 /** A row's Edit: a Recipe opens in its editor, a plain Food in its Edit sheet. */
 function edit(food: FoodResponse) {
-  if (food.kind === 'RECIPE') {
-    editingRecipe.value = true
-    recipeToView.value = food
-  } else {
-    foodToEdit.value = food
-  }
-}
-
-function view(recipe: FoodResponse) {
-  editingRecipe.value = false
-  recipeToView.value = recipe
+  if (food.kind === 'RECIPE') recipeToOpen.value = { recipe: food, edit: true }
+  else foodIdToEdit.value = food.id
 }
 
 const manageTagsOpen = ref(false)
@@ -95,7 +89,7 @@ const manageTagsOpen = ref(false)
         :foods="foods"
         :tracks-calories="tracksCalories"
         @delete="selectedFood = $event"
-        @view="view"
+        @view="recipeToOpen = { recipe: $event, edit: false }"
         @edit="edit"
       />
       <FoodEmptyState v-else @add="open = true" />
@@ -125,14 +119,14 @@ const manageTagsOpen = ref(false)
     <EditFoodSheet
       :food="foodToEdit"
       :tracks-calories="tracksCalories"
-      @close="foodToEdit = null"
+      @close="foodIdToEdit = null"
     />
 
     <RecipeCompositionSheet
-      :recipe="recipeToView"
+      :recipe="recipeToOpen?.recipe ?? null"
       :foods="foods ?? []"
-      :edit="editingRecipe"
-      @close="recipeToView = null"
+      :edit="recipeToOpen?.edit"
+      @close="recipeToOpen = null"
     />
   </section>
 </template>

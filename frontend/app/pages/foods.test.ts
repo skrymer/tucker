@@ -165,6 +165,44 @@ describe('/foods editing a Recipe', () => {
     expect(within(sheet).queryByText('Ingredients')).not.toBeInTheDocument()
   })
 
+  it('opens the read-only view from View ingredients after an Edit was closed', async () => {
+    const pie = recipe({
+      id: 8,
+      name: 'Cottage pie',
+      cookedWeightG: 1400,
+      ingredientCount: 1,
+    })
+    server.use(
+      ...foodCatalog({
+        foods: [oats, pie],
+        compositions: { [pie.id]: [{ foodId: oats.id, grams: 500 }] },
+      }),
+    )
+    const user = userEvent.setup()
+    await renderSuspended(Foods)
+    await user.click(screen.getByRole('button', { name: 'Edit Cottage pie' }))
+    const editor = screen.getByRole('dialog', { name: 'Edit Cottage pie' })
+    await within(editor).findByRole('textbox', { name: /^Recipe name/ })
+    await user.click(within(editor).getByRole('button', { name: 'Close' }))
+    await vi.waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: 'Edit Cottage pie' }),
+      ).not.toBeInTheDocument(),
+    )
+
+    await user.click(
+      screen.getByRole('button', { name: 'View ingredients in Cottage pie' }),
+    )
+
+    const view = screen.getByRole('dialog', { name: 'Cottage pie' })
+    expect(
+      await within(view).findByRole('button', { name: 'Edit recipe' }),
+    ).toBeVisible()
+    expect(
+      within(view).queryByRole('textbox', { name: /^Recipe name/ }),
+    ).not.toBeInTheDocument()
+  })
+
   it('shows no read-only view while the Recipe it opens to edit is still loading', async () => {
     const pie = recipe({
       id: 8,
@@ -217,6 +255,43 @@ describe('/foods a Food’s match', () => {
         name: 'Change what Tasty cheese borrows vitamins and minerals from',
       }),
     ).toBeVisible()
+  })
+
+  it('is cleared in the open sheet at once, which keeps the edits not yet saved', async () => {
+    const cheese = food({
+      id: 3,
+      name: 'Tasty cheese',
+      proteinPer100g: 25,
+      referenceFoodId: 9,
+      referenceFoodName: 'Cheese, cheddar, natural, regular fat',
+    })
+    server.use(...foodCatalog({ foods: [cheese] }))
+    const user = userEvent.setup()
+    await renderSuspended(Foods)
+    await user.click(screen.getByRole('button', { name: 'Edit Tasty cheese' }))
+    const sheet = screen.getByRole('dialog', { name: 'Edit Tasty cheese' })
+    const name = within(sheet).getByRole('textbox', { name: /^Name/ })
+    await user.clear(name)
+    await user.type(name, 'Vintage cheese')
+    const protein = within(sheet).getByRole('spinbutton', { name: /^Protein/ })
+    await user.clear(protein)
+    await user.type(protein, '24')
+    await user.tab()
+
+    await user.click(
+      within(sheet).getByRole('button', {
+        name: 'Clear what Tasty cheese borrows vitamins and minerals from',
+      }),
+    )
+
+    await vi.waitFor(() =>
+      expect(
+        within(sheet).queryByText(/Vitamins and minerals from/),
+      ).not.toBeInTheDocument(),
+    )
+    expect(sheet).toBeVisible()
+    expect(name).toHaveValue('Vintage cheese')
+    expect(protein).toHaveValue('24')
   })
 })
 
