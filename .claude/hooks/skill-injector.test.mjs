@@ -116,6 +116,13 @@ test('new work that is not about a screen gets no styling reminder', () => {
   assert.doesNotMatch(block, /Styling|ui-designer/)
 })
 
+test("a frontend-dev reminder says once to invoke the worktree's scoped copy, whichever rule raised it", () => {
+  for (const prompt of ['design the page', 'pick up issue 469: design the page']) {
+    const line = render(selectSkills(prompt)).match(/^- \/frontend-dev — .*$/m)?.[0] ?? ''
+    assert.equal(line.match(/scoped copy/g)?.length, 1, `${prompt}: ${line}`)
+  }
+})
+
 test('an ordinary prompt gets no reminder at all', () => {
   assert.deepEqual(skillsOf('what does IntakeBreakdown.of refuse?'), [])
 })

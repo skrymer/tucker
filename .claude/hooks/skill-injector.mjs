@@ -50,6 +50,8 @@ export const MAX_REMINDERS = 3
  * `scope` says where the skill lives: 'project' ones must resolve under
  * .claude/skills/ and the test asserts they do; 'personal' ones live in the
  * user's own ~/.claude/skills/ and cannot be checked from the repo.
+ * `worktreeScoped` marks a skill a worktree serves its own copy of, which the
+ * reminder then says once, however many of its rules matched.
  */
 export const RULES = [
   {
@@ -85,7 +87,8 @@ export const RULES = [
     skill: 'frontend-dev',
     scope: 'project',
     pattern: IMPLEMENTATION,
-    why: 'before any frontend change; in a worktree, invoke its scoped copy.',
+    why: 'before any frontend change.',
+    worktreeScoped: true,
   },
   {
     id: 'screen-design',
@@ -93,13 +96,15 @@ export const RULES = [
     scope: 'project',
     pattern: SCREEN_DESIGN,
     why: 'its Styling section before styling anything, and the voltagent-core-dev:ui-designer agent on screens.',
+    worktreeScoped: true,
   },
   {
     id: 'backend-dev',
     skill: 'backend-dev',
     scope: 'project',
     pattern: IMPLEMENTATION,
-    why: 'before any backend change; in a worktree, invoke its scoped copy.',
+    why: 'before any backend change.',
+    worktreeScoped: true,
   },
   {
     id: 'tdd',
@@ -169,7 +174,9 @@ function alreadyInvoked(prompt, skill) {
 /** The context block handed back to Claude. Empty when nothing matched. */
 export function render(rules) {
   if (rules.length === 0) return ''
-  const lines = rules.map((rule) => `- /${rule.skill} — ${rule.why}`)
+  const lines = rules.map(
+    (rule) => `- /${rule.skill} — ${rule.why}${rule.worktreeScoped ? ' In a worktree, invoke its scoped copy.' : ''}`,
+  )
   return [
     'Project convention — these skills cover what this prompt is about.',
     'Invoke each with the Skill tool BEFORE starting the work:',
