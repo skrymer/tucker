@@ -140,7 +140,7 @@ class FoodService(
         require(!entries.referencesFood(id)) {
             "${food.name} has logged Entries and can't be deleted."
         }
-        val usedInRecipes = recipes.recipesUsing(id).map { it.name }.distinct()
+        val usedInRecipes = recipes.recipeNamesUsing(id)
         require(usedInRecipes.isEmpty()) {
             "${food.name} is an ingredient of ${usedInRecipes.joinToString(", ")} and can't be deleted."
         }

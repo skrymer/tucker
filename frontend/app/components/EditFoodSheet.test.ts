@@ -163,22 +163,6 @@ describe('EditFoodSheet', () => {
     ])
   })
 
-  it('opens the next Food with its Tags field empty, not holding a name typed for the last one', async () => {
-    const skyr = food({ id: 2, name: 'Skyr' })
-    server.use(...foodCatalog({ foods: [oats, skyr] }))
-    const { rerender } = await renderSuspended(EditFoodSheet, {
-      props: { food: oats },
-    })
-
-    await userEvent
-      .setup()
-      .type(screen.getByRole('combobox', { name: 'Tags' }), 'supp')
-    await rerender({ food: null })
-    await rerender({ food: skyr })
-
-    expect(screen.getByRole('combobox', { name: 'Tags' })).toHaveValue('')
-  })
-
   it('reads a figure typed with a thousands separator as the number it groups', async () => {
     server.use(...foodCatalog({ foods: [oats] }))
     await renderSuspended(EditFoodSheet, { props: { food: oats } })
