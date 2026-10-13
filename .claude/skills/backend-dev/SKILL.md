@@ -20,6 +20,14 @@ not restate them.
   change first. (ADR 0002.)
 - **Speak `CONTEXT.md`.** It is the ubiquitous language — domain code uses exactly those
   terms, and a change to the model updates it in the same commit.
+- **A guard or a label reads a projection; a write reads the aggregate.** A read that only
+  checks or names something selects those columns — `ReferenceFoodRepository.namesOf`, the
+  delete guard's `RecipeRepository.recipeNamesUsing` — while a read that feeds a write loads
+  the whole aggregate, so its invariants run (`recipesUsing`, re-saving every Recipe a
+  correction reaches). A guard built on aggregates fails on any malformed one: a damaged
+  Recipe would turn "can't delete, it's in Gratin" into a 500. Two readers of one join share
+  a private select (`recipeRowsUsing`), so the owner predicate and ordering live once.
+  `FoodRepository.namesOf` (whole Foods narrowed to a name, on a list path) predates the rule.
 - **Scoping is implicit.** No repository signature carries a `userId`; a constructor-injected
   `CurrentUser` reads it from the security context, so there is no id to pass wrongly. A
   foreign id answers **exactly** as an absent one — the status code must never become an
