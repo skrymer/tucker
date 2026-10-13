@@ -120,11 +120,11 @@ export const RULES = [
     why: 'run the seven gates in order — not the gates ad hoc, and not after the commit.',
   },
   {
-    id: 'frontend-design',
-    skill: 'frontend-design',
-    scope: 'personal',
+    id: 'screen-design',
+    skill: 'frontend-dev',
+    scope: 'project',
     pattern: /\b(ui|ux) design\b|\bdesign (the |a |this )?(screen|page|layout|component)\b|\blook and feel\b|\bvisual design\b/i,
-    why: 'and collaborate with the voltagent-core-dev:ui-designer agent on screens.',
+    why: 'its Styling section first (DESIGN.md + /design, tokens by name); collaborate with the voltagent-core-dev:ui-designer agent on screens.',
   },
   {
     id: 'check-adrs',

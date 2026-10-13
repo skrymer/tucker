@@ -1,6 +1,6 @@
 ---
 name: frontend-dev
-description: The build-and-test workflow for the Tucker Nuxt frontend (Nuxt 4 + Nuxt UI 4, in frontend/). Use when building or changing ANY frontend functionality — a page, component, composable, util, or its tests. Sets the architecture rules, the four-layer test strategy, and the known gotchas, and routes to tdd, component-testing-best-practices, playwright-best-practices, msw, and feature-sign-off for detail. This is the build workflow, NOT visual design — for look-and-feel use frontend-design and frontend/DESIGN.md.
+description: The build-and-test workflow for the Tucker Nuxt frontend (Nuxt 4 + Nuxt UI 4, in frontend/). Use when building or changing ANY frontend functionality — a page, component, composable, util, or its tests. Sets the architecture rules, the styling rule (DESIGN.md's type and shape tokens, by name), the test strategy, and the known gotchas, and routes to tdd, component-testing-best-practices, playwright-best-practices, msw, and feature-sign-off for detail. Look and feel comes from frontend/DESIGN.md and the /design style guide, which this skill points at.
 ---
 
 # Frontend dev (Tucker)
@@ -21,9 +21,8 @@ it does not restate them.
   required fields, ranges, and messages, and its inferred type drives the form state. (ADR 0003.)
 - **Notifications: persistent retryable errors, quiet success.** Failed mutations surface a
   persistent error toast + Retry (centralised in `useApiMutation`); success is quiet. (ADR 0005.)
-- **Style through design tokens, never hex/class hacks.** Nuxt UI colour roles in `app.config.ts` +
-  `--ui-*`/`@theme` tokens in `main.css`; colour is never the only signal (icon + text).
-  (`frontend/DESIGN.md`.)
+- **Style by token name.** Type, shape and colour come from named tokens, never a restated
+  value — see [Styling](#styling--read-the-guidelines-then-use-tokens-by-name) below.
 - **SPA, same-origin `/api`.** `ssr: false`; a nitro route proxies `/api/**` to the backend; fetch
   client-side via the generated `nuxt-open-fetch` client. After a controller change regenerate:
   `./gradlew generateOpenApiDocs` (in `backend/`) then `pnpm exec nuxt prepare`. (ADR 0015.)
@@ -38,6 +37,38 @@ it does not restate them.
   links. No caller inventory either ("Shared by the Day Ring and a Check"): it goes stale the
   first time a caller moves — #471's gate 1 found three — so say *why* it is shared, and leave
   *who* to `git grep`.
+
+## Styling — read the guidelines, then use tokens by name
+
+**Before styling a feature**, read `frontend/DESIGN.md` → **Typography** (its *Scale* table) and
+**Shape & elevation** (and **Writing & structure** for any copy), and open `/design` (`app/pages/design.vue`) — the rendered style guide,
+captioned with what each specimen actually draws. The values live there and in the stylesheet
+only; this skill names them and never copies them.
+
+The rule, in the User's terms: **styling is consistent across the app** — every token is used by
+name, and no screen restates one inline.
+
+- **Type** — one class carries size, line-height, weight, tracking and face: `text-ring-figure` ·
+  `text-h1` · `text-stat` · `text-h2` · `text-body` · `text-label` · `text-eyebrow` (always with
+  `text-muted`). Write `text-h2`, never `text-lg font-bold`; ink is a separate class.
+- **Shape** — `rounded-card` and `rounded-inset`, never a stock `rounded-*` step (Nuxt UI rescales
+  those) or an arbitrary `rounded-[…]`. Card padding comes from the card (`app.config.ts`), so a
+  card never adds its own.
+- **Colour** — Nuxt UI colour roles in `app.config.ts` + `--ui-*`/`@theme` tokens in `main.css`,
+  never hex; colour is never the only signal (icon + text).
+- **A value the scale lacks is a new token**, added to DESIGN.md and the stylesheet together and
+  shown on `/design` — never one screen's inline class.
+
+The guards below enforce it. A red one means the change broke the rule above: go back to the
+token, don't loosen the guard.
+
+| Guard | Fails when |
+| --- | --- |
+| `app/utils/typeScale.test.ts` → `the type scale` | DESIGN.md's Scale table and `main.css`'s `@theme` disagree |
+| `app/utils/typeScale.test.ts` → `using the type scale by name` | a component restates a type token as stock size/weight classes, or an eyebrow isn't muted |
+| `app/utils/cardShape.test.ts` → `the card shape` | DESIGN.md's card padding or radii disagree with `app.config.ts` / `main.css` |
+| `app/utils/cardShape.test.ts` → `using the shape tokens by name` | any SFC states an arbitrary `rounded-[…]` |
+| `e2e/type-scale.spec.ts`, `e2e/card-shape.spec.ts` | rendered sizes, faces, padding or corners drift, or `/design`'s captions do |
 
 ## Test strategy — five layers, test-first
 
@@ -228,8 +259,7 @@ runs `backend-dev`'s half of that gate in the same pass.
 ## Related
 
 `tdd` · `component-testing-best-practices` · `playwright-best-practices` · `msw` · `mutation-test` ·
-`feature-sign-off` · `backend-dev` (the other half of a vertical slice) ·
-`frontend-design` (visuals only) + `frontend/DESIGN.md`. ADRs:
+`feature-sign-off` · `backend-dev` (the other half of a vertical slice) · `frontend/DESIGN.md`. ADRs:
 [0002](../../../docs/adr/0002-business-logic-belongs-in-the-backend.md) ·
 [0003](../../../docs/adr/0003-validate-forms-with-zod.md) ·
 [0004](../../../docs/adr/0004-compose-inline-composables.md) ·

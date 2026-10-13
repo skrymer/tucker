@@ -795,6 +795,28 @@ error nested inside a card, below.
 
 ---
 
+## Writing & structure
+
+Words are there to make a screen easier to use, so they get the same care as
+colour and spacing. Case is settled in [Case](#case); the rest is here.
+
+- **Name things by what the User controls.** The words are
+  [`CONTEXT.md`](../CONTEXT.md)'s — a Food, an Entry, a Weekly Review — never
+  how the system is built.
+- **An action keeps its name through the flow.** The button says what happens,
+  and what follows says it back: "Log entry" ends in "Entry logged", never
+  "Submit" and "Saved".
+- **An error says what failed and how to fix it**, in Tucker's voice: it does not
+  apologise and is never vague. An empty state invites the next action
+  ([Feedback states](#feedback-states--empty--load-error--signed-out)).
+- **Plain and specific beats clever.** Plain verbs, no filler, and each element
+  does one job: a label labels, a hint hints.
+- **Structure is information.** An eyebrow, a divider, a number or a badge says
+  something true about the content — a section, a sequence, a state — or it is
+  cut. Numbered markers only for a real sequence.
+
+---
+
 ## Mapping to Nuxt UI (implementation)
 
 1. **`app/app.config.ts`** — `ui.colors`: `primary: 'green'`, `secondary:
