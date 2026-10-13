@@ -147,6 +147,7 @@ test("every way of asking about a screen's look reaches the Styling section", ()
     'design the layout',
     'design a component',
     'design screen for Check',
+    'design this page',
     'the look and feel of Log',
     'the visual design of Review',
   ]) {
