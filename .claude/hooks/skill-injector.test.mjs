@@ -98,6 +98,70 @@ test('picking up an issue is reminded of both dev playbooks and red-green', () =
   assert.deepEqual(skillsOf('pickup issue 363'), ['frontend-dev', 'backend-dev', 'tdd'])
 })
 
+test("a prompt about a screen's look is sent to Tucker's styling rules, not a generic design skill", () => {
+  const skills = skillsOf('design the screen for the weekly review')
+  assert.ok(skills.includes('frontend-dev'), `got ${skills}`)
+  assert.ok(!skills.includes('frontend-design'), `got ${skills}`)
+})
+
+test('a prompt that is both new work and screen design still points at the Styling section', () => {
+  const block = render(selectSkills('pick up issue 469: design the page'))
+  assert.match(block, /^- \/frontend-dev — .*Styling/m)
+  assert.equal(block.match(/^- \/frontend-dev /gm).length, 1)
+})
+
+test('new work that is not about a screen gets no styling reminder', () => {
+  const block = render(selectSkills('implement issue 12 in the backend'))
+  assert.match(block, /^- \/frontend-dev — /m)
+  assert.doesNotMatch(block, /Styling|ui-designer/)
+})
+
+test("a frontend-dev reminder says once to invoke the worktree's scoped copy, whichever rule raised it", () => {
+  for (const prompt of ['design the page', 'pick up issue 469: design the page']) {
+    const line = render(selectSkills(prompt)).match(/^- \/frontend-dev — .*$/m)?.[0] ?? ''
+    assert.equal(line.match(/scoped copy/g)?.length, 1, `${prompt}: ${line}`)
+  }
+})
+
+test('a merged reminder keeps the reason of every rule that raised it, in table order', () => {
+  const line = render(selectSkills('pick up issue 469: design the page')).match(/^- \/frontend-dev — .*$/m)[0]
+  assert.equal(
+    line,
+    '- /frontend-dev — before any frontend change. Also its Styling section before styling anything, ' +
+      'and the voltagent-core-dev:ui-designer agent on screens. In a worktree, invoke its scoped copy.',
+  )
+})
+
+test('a merged reminder takes one slot of the cap', () => {
+  assert.deepEqual(skillsOf('pick up issue 469: design the page and add a test'), [
+    'frontend-dev',
+    'backend-dev',
+    'tdd',
+  ])
+})
+
+test("every way of asking about a screen's look reaches the Styling section", () => {
+  for (const prompt of [
+    'the ui design of Today',
+    'the ux design of Today',
+    'design the layout',
+    'design a component',
+    'design screen for Check',
+    'design this page',
+    'the look and feel of Log',
+    'the visual design of Review',
+  ]) {
+    assert.match(render(selectSkills(prompt)), /^- \/frontend-dev — .*Styling/m, prompt)
+  }
+})
+
+test('only the dev playbooks, which a worktree serves its own copy of, mention the worktree', () => {
+  const scoped = new Set(['frontend-dev', 'screen-design', 'backend-dev'])
+  for (const rule of RULES) {
+    assert.equal(/scoped copy/.test(render([rule])), scoped.has(rule.id), rule.id)
+  }
+})
+
 test('an ordinary prompt gets no reminder at all', () => {
   assert.deepEqual(skillsOf('what does IntakeBreakdown.of refuse?'), [])
 })

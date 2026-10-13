@@ -1,13 +1,5 @@
 <script setup lang="ts">
-import { z } from 'zod'
 import type { components } from '#open-fetch-schemas/api'
-
-const schema = z.object({
-  name: z.string().min(1, 'Enter a name for this food'),
-  proteinPer100g: z.number({ error: 'Enter protein per 100 g' }),
-  carbsPer100g: z.number({ error: 'Enter carbs per 100 g' }),
-  fatPer100g: z.number({ error: 'Enter fat per 100 g' }),
-})
 
 const props = defineProps<{
   /**
@@ -37,9 +29,6 @@ const props = defineProps<{
 const emit = defineEmits<{
   submit: [components['schemas']['CreateFoodRequest']]
 }>()
-
-const MACROS = ['proteinPer100g', 'carbsPer100g', 'fatPer100g'] as const
-type Macro = (typeof MACROS)[number]
 
 /** The fields a seed supplies, its absent ones blank. */
 function seedOf(initial: typeof props.initial) {
@@ -125,7 +114,7 @@ function onSubmit() {
 <template>
   <UForm
     :state="state"
-    :schema="schema"
+    :schema="foodSchema"
     class="flex flex-col gap-4"
     @submit="onSubmit"
   >
@@ -147,38 +136,11 @@ function onSubmit() {
       />
     </UFormField>
 
-    <div class="grid grid-cols-3 gap-3">
-      <UFormField label="Protein /100g" name="proteinPer100g" required>
-        <NumberField
-          :model-value="state.proteinPer100g"
-          :min="0"
-          :step="0.1"
-          class="w-full"
-          @input="markTouched('proteinPer100g')"
-          @update:model-value="updateMacro('proteinPer100g', $event)"
-        />
-      </UFormField>
-      <UFormField label="Carbs /100g" name="carbsPer100g" required>
-        <NumberField
-          :model-value="state.carbsPer100g"
-          :min="0"
-          :step="0.1"
-          class="w-full"
-          @input="markTouched('carbsPer100g')"
-          @update:model-value="updateMacro('carbsPer100g', $event)"
-        />
-      </UFormField>
-      <UFormField label="Fat /100g" name="fatPer100g" required>
-        <NumberField
-          :model-value="state.fatPer100g"
-          :min="0"
-          :step="0.1"
-          class="w-full"
-          @input="markTouched('fatPer100g')"
-          @update:model-value="updateMacro('fatPer100g', $event)"
-        />
-      </UFormField>
-    </div>
+    <MacroFields
+      :values="state"
+      @type="(macro) => markTouched(macro)"
+      @commit="updateMacro"
+    />
 
     <UFormField label="Tags">
       <TagPicker v-model="tags" v-model:creating="creatingTag" />
