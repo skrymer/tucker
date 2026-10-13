@@ -5712,10 +5712,12 @@
       },
       "RecipeCompositionResponse": {
         "required": [
+          "caloriesPer100g",
           "cookedWeightG",
           "id",
           "ingredients",
-          "name"
+          "name",
+          "proteinPer100g"
         ],
         "type": "object",
         "properties": {
@@ -5725,6 +5727,14 @@
           },
           "name": {
             "type": "string"
+          },
+          "caloriesPer100g": {
+            "type": "number",
+            "format": "double"
+          },
+          "proteinPer100g": {
+            "type": "number",
+            "format": "double"
           },
           "cookedWeightG": {
             "type": "number",

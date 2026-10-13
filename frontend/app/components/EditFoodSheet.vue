@@ -161,8 +161,7 @@ const { save, saving } = useCorrectionSave()
       <RecipesUsingFood
         :key="food.id"
         :food-id="food.id"
-        :moved="macrosMoved"
-        :typed="complete ? typed : null"
+        :correction="macrosMoved ? typed : null"
       />
 
       <UFormField label="Tags">

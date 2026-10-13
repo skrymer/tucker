@@ -421,7 +421,7 @@ export function foodCatalog({
       })
     }),
     // The Recipes weighing a Food in, each once, by name in byte order (an
-    // uncollated `ORDER BY`), with each line's per-100 g figures as stored.
+    // uncollated `ORDER BY`), with its figures and each line's as stored.
     http.get('/api/foods/{id}/recipes', ({ params, response }) => {
       const row = rowOf(params.id)
       if (!row) {
@@ -432,10 +432,12 @@ export function foodCatalog({
           .filter(([, lines]) => lines.some((l) => l.foodId === row.id))
           .map(([id, lines]) => ({ recipe: rowOf(id)!, lines }))
           .sort((a, b) => inBytes(a.recipe, b.recipe))
-          .map(({ recipe: { id, name, cookedWeightG }, lines }) => ({
-            id,
-            name,
-            cookedWeightG: cookedWeightG!,
+          .map(({ recipe, lines }) => ({
+            id: recipe.id,
+            name: recipe.name,
+            caloriesPer100g: recipe.caloriesPer100g,
+            proteinPer100g: recipe.proteinPer100g,
+            cookedWeightG: recipe.cookedWeightG!,
             ingredients: lines.map(({ foodId, grams }) => ({
               foodId,
               grams,

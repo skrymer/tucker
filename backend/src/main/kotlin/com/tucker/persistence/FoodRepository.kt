@@ -35,7 +35,7 @@ class FoodRepository(
         dsl.selectFrom(FOOD)
             .where(FOOD.ID.eq(id.toInt()))
             .and(FOOD.USER_ID.eq(currentUser.ownerId))
-            .fetchOne()?.toFood()?.let { carryingTags(listOf(it)).single() }
+            .fetchOne()?.toFood()?.let { dsl.carryingTags(listOf(it), currentUser.ownerId).single() }
 
     /**
      * The caller's own Food for [barcode], if they have saved one. Scoped like every
@@ -47,23 +47,25 @@ class FoodRepository(
         dsl.selectFrom(FOOD)
             .where(FOOD.BARCODE.eq(barcode))
             .and(FOOD.USER_ID.eq(currentUser.ownerId))
-            .fetchOne()?.toFood()?.let { carryingTags(listOf(it)).single() }
+            .fetchOne()?.toFood()?.let { dsl.carryingTags(listOf(it), currentUser.ownerId).single() }
 
-    fun findAll(): List<Food> = carryingTags(
+    fun findAll(): List<Food> = dsl.carryingTags(
         dsl.selectFrom(FOOD)
             .where(FOOD.USER_ID.eq(currentUser.ownerId))
             .orderBy(FOOD.NAME.lower())
             .fetch().map { it.toFood() },
+        currentUser.ownerId,
     )
 
     /** Load every Food in [ids] in a single query (used to resolve recipe ingredients). */
     fun findByIds(ids: Collection<Long>): List<Food> {
         if (ids.isEmpty()) return emptyList()
-        return carryingTags(
+        return dsl.carryingTags(
             dsl.selectFrom(FOOD)
                 .where(FOOD.ID.`in`(ids.map { it.toInt() }))
                 .and(FOOD.USER_ID.eq(currentUser.ownerId))
                 .fetch().map { it.toFood() },
+            currentUser.ownerId,
         )
     }
 
@@ -80,6 +82,10 @@ class FoodRepository(
             .fetch()
             .associate { (id, name) -> id.toLong() to name }
     }
+
+    /** Whether [id] is one of the caller's Foods — a guard's question, which loads none of it. */
+    fun exists(id: Long): Boolean =
+        dsl.fetchExists(FOOD, FOOD.ID.eq(id.toInt()).and(FOOD.USER_ID.eq(currentUser.ownerId)))
 
     /** Whether [id] is one of the caller's Recipes — a guard's question, which loads none of it. */
     fun isRecipe(id: Long): Boolean = dsl.fetchExists(
@@ -124,18 +130,6 @@ class FoodRepository(
         if (rowsChanged == 0) return null
         dsl.replaceTagsOf(food.id.toInt(), food.tagIds, currentUser.ownerId)
         return food
-    }
-
-    /** [foods] each holding the ids of the Tags it carries, read in one query. */
-    private fun carryingTags(foods: List<Food>): List<Food> {
-        if (foods.isEmpty()) return foods
-        val tagIdsByFood = dsl.select(FOOD_TAG.FOOD_ID, FOOD_TAG.TAG_ID)
-            .from(FOOD_TAG)
-            .join(FOOD).on(FOOD.ID.eq(FOOD_TAG.FOOD_ID))
-            .where(FOOD_TAG.FOOD_ID.`in`(foods.map { it.id.toInt() }))
-            .and(FOOD.USER_ID.eq(currentUser.ownerId))
-            .fetchGroups({ it[FOOD_TAG.FOOD_ID]!!.toLong() }, { it[FOOD_TAG.TAG_ID]!!.toLong() })
-        return foods.map { it.copy(tagIds = tagIdsByFood[it.id].orEmpty().toSet()) }
     }
 
     fun delete(id: Long) {
@@ -209,6 +203,18 @@ private fun DSLContext.replaceTagsOf(foodId: Int, tagIds: Set<Long>, ownerId: In
         .and(FOOD_TAG.FOOD_ID.`in`(select(FOOD.ID).from(FOOD).where(FOOD.USER_ID.eq(ownerId))))
         .execute()
     linkTags(foodId, tagIds, ownerId)
+}
+
+/** [foods] each holding the ids of [ownerId]'s Tags it carries, read in one query. */
+private fun DSLContext.carryingTags(foods: List<Food>, ownerId: Int): List<Food> {
+    if (foods.isEmpty()) return foods
+    val tagIdsByFood = select(FOOD_TAG.FOOD_ID, FOOD_TAG.TAG_ID)
+        .from(FOOD_TAG)
+        .join(FOOD).on(FOOD.ID.eq(FOOD_TAG.FOOD_ID))
+        .where(FOOD_TAG.FOOD_ID.`in`(foods.map { it.id.toInt() }))
+        .and(FOOD.USER_ID.eq(ownerId))
+        .fetchGroups({ it[FOOD_TAG.FOOD_ID]!!.toLong() }, { it[FOOD_TAG.TAG_ID]!!.toLong() })
+    return foods.map { it.copy(tagIds = tagIdsByFood[it.id].orEmpty().toSet()) }
 }
 
 /** Link the Food [foodId] to [tagIds], alongside whatever it already carries. */

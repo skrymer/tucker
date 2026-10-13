@@ -4,53 +4,40 @@
   Recipe uses the Food.
 -->
 <script setup lang="ts">
-import type { components } from '#open-fetch-schemas/api'
-
 // Stryker disable next-line all: a compiler macro must stay a top-level statement
 const props = defineProps<{
   foodId: number
-  moved: boolean
-  /** The Food's macros as typed, or null while one has no figure. */
-  typed: Record<Macro, number> | null
+  /** The Food's macros as typed once one has moved, else null. */
+  correction: Record<Macro, number> | null
 }>()
 
 /** The Recipes using the Food, read once for the Food the panel is mounted on. */
 function useRecipesUsing() {
   const { $api } = useNuxtApp()
-  const recipes = ref<components['schemas']['RecipeCompositionResponse'][]>([])
-  const error = ref<unknown>(null)
-  async function load() {
-    error.value = null
-    try {
-      recipes.value = await $api('/api/foods/{id}/recipes', {
-        path: { id: props.foodId },
-      })
-    } catch (caught) {
-      error.value = caught
-    }
-  }
+  const { data, error, load } = useOptionalFetch((signal) =>
+    $api('/api/foods/{id}/recipes', { path: { id: props.foodId }, signal }),
+  )
   onMounted(load)
-  return { recipes, error, retry: load }
+  const recipes = computed(() => data.value ?? [])
+  return { recipes, error, load }
 }
-const { recipes, error, retry } = useRecipesUsing()
-
-const expanded = ref(false)
+const { recipes, error, load } = useRecipesUsing()
 
 const rows = computed(() =>
   recipes.value.map((recipe) => {
-    const rollup = rollupRecipe(recipe.ingredients, recipe.cookedWeightG)
-    const before = { kcal: rollup.per100gKcal, protein: rollup.per100gProtein }
+    const before = {
+      kcal: recipe.caloriesPer100g,
+      protein: recipe.proteinPer100g,
+    }
     return {
       recipe,
       before,
-      after: props.typed
-        ? previewRecipeFigures(recipe, props.foodId, props.typed)
+      after: props.correction
+        ? previewRecipeFigures(recipe, props.foodId, props.correction)
         : before,
     }
   }),
 )
-
-const recipeNoun = (count: number) => (count === 1 ? 'recipe' : 'recipes')
 </script>
 
 <template>
@@ -58,42 +45,47 @@ const recipeNoun = (count: number) => (count === 1 ? 'recipe' : 'recipes')
     nested
     :error="error"
     title="Couldn't check which recipes use it"
-    @retry="retry"
+    @retry="load"
   >
-    <section v-if="recipes.length" class="rounded-inset border border-default">
-      <button
-        type="button"
-        class="flex w-full items-center gap-2 rounded-inset px-3 py-2.5 text-label text-default focus-visible:outline-2 focus-visible:outline-primary"
-        :aria-expanded="expanded"
-        @click="expanded = !expanded"
-      >
-        <UIcon
-          name="i-lucide-cooking-pot"
-          class="size-4 shrink-0 text-primary"
-        />
-        <span>
-          {{ moved ? 'Also updates' : 'Used in' }}
-          {{ recipes.length }} {{ recipeNoun(recipes.length) }}
-        </span>
-        <UIcon
-          name="i-lucide-chevron-down"
-          class="ms-auto size-4 text-muted transition-transform"
-          :class="expanded && 'rotate-180'"
-        />
-      </button>
-      <!-- Scrolls inside the panel at about four rows, so Save stays in reach. -->
-      <ul
-        v-if="expanded"
-        class="max-h-48 divide-y divide-default overflow-y-auto border-t border-default px-3 tabular-nums"
-      >
-        <li v-for="row in rows" :key="row.recipe.id" class="py-2">
-          <FigureRow :name="row.recipe.name">
-            <template #figures>
-              <FigureDiff :before="row.before" :after="row.after" />
-            </template>
-          </FigureRow>
-        </li>
-      </ul>
-    </section>
+    <UCollapsible
+      v-if="recipes.length"
+      class="rounded-inset border border-default"
+    >
+      <template #default="{ open }">
+        <button
+          type="button"
+          class="flex w-full items-center gap-2 rounded-inset px-3 py-2.5 text-label text-default focus-visible:outline-2 focus-visible:outline-primary"
+        >
+          <UIcon
+            name="i-lucide-cooking-pot"
+            class="size-4 shrink-0 text-primary"
+          />
+          <span>
+            {{ correction ? 'Also updates' : 'Used in' }}
+            {{ recipes.length }}
+            {{ recipes.length === 1 ? 'recipe' : 'recipes' }}
+          </span>
+          <UIcon
+            name="i-lucide-chevron-down"
+            class="ms-auto size-4 text-muted transition-transform"
+            :class="open && 'rotate-180'"
+          />
+        </button>
+      </template>
+      <template #content>
+        <!-- Scrolls inside the panel at about four rows, so Save stays in reach. -->
+        <ul
+          class="max-h-48 divide-y divide-default overflow-y-auto border-t border-default px-3 tabular-nums"
+        >
+          <li v-for="row in rows" :key="row.recipe.id" class="py-2">
+            <FigureRow :name="row.recipe.name">
+              <template #figures>
+                <FigureDiff :before="row.before" :after="row.after" />
+              </template>
+            </FigureRow>
+          </li>
+        </ul>
+      </template>
+    </UCollapsible>
   </LoadErrorState>
 </template>

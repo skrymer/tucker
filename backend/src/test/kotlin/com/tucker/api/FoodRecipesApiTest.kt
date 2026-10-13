@@ -1,6 +1,8 @@
 package com.tucker.api
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.tucker.domain.Nutrition
+import com.tucker.persistence.FoodRepository
 import com.tucker.security.WithTuckerUser
 import org.hamcrest.Matchers.closeTo
 import org.junit.jupiter.api.Test
@@ -22,6 +24,7 @@ class FoodRecipesApiTest {
 
     @Autowired lateinit var mockMvc: MockMvc
     @Autowired lateinit var objectMapper: ObjectMapper
+    @Autowired lateinit var foods: FoodRepository
 
     @Test
     fun `the Recipes using a Food come alphabetically, each with its cooked weight and ingredient lines`() {
@@ -50,6 +53,19 @@ class FoodRecipesApiTest {
             jsonPath("$[1].ingredients[1].grams") { value(100.0) }
             jsonPath("$[1].ingredients[1].caloriesPer100g", closeTo(40.0, 0.001))
             jsonPath("$[1].ingredients[1].proteinPer100g", closeTo(1.0, 0.001))
+        }
+    }
+
+    @Test
+    fun `each Recipe comes with the figures it is stored with, not a roll-up of its lines`() {
+        val mince = createFood("Mince", protein = 31.0, carbs = 0.0, fat = 10.0) // 214 kcal /100g
+        val pie = createRecipe("Cottage pie", 400.0, mince to 400.0) // rolls up to 214 kcal, 31 g
+        val stored = foods.findById(pie)!!
+        foods.update(stored.copy(nutrition = Nutrition(220.0, 32.0, null, null)))
+
+        mockMvc.get("/api/foods/$mince/recipes").andExpect {
+            jsonPath("$[0].caloriesPer100g", closeTo(220.0, 0.001))
+            jsonPath("$[0].proteinPer100g", closeTo(32.0, 0.001))
         }
     }
 

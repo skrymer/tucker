@@ -405,6 +405,25 @@ describe('EditFoodSheet’s Recipes', () => {
     expect(screen.queryByText(/recipe/)).not.toBeInTheDocument()
   })
 
+  it('states each Recipe at the figures it is stored with, not a roll-up of its lines', async () => {
+    server.use(
+      ...foodCatalog({
+        // Stored at 90 kcal and 7 g protein, where its line rolls up to 85.4 and 6.2.
+        foods: [oats, { ...porridge, caloriesPer100g: 90, proteinPer100g: 7 }],
+        compositions: { 3: [{ foodId: 1, grams: 50 }] },
+      }),
+    )
+    await renderSuspended(EditFoodSheet, { props: { food: oats } })
+
+    await userEvent
+      .setup()
+      .click(await screen.findByRole('button', { name: 'Used in 1 recipe' }))
+
+    expect(screen.getByRole('listitem')).toHaveTextContent(
+      /^Porridge\s*90 kcal · 7 g protein \/100g$/,
+    )
+  })
+
   it('lists each Recipe by name over its figures once expanded', async () => {
     server.use(...usedTwice())
     await renderSuspended(EditFoodSheet, { props: { food: oats } })

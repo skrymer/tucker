@@ -1,4 +1,8 @@
-import type { components } from '#open-fetch-schemas/api'
+/** A Food's calories and protein per 100 g. */
+export interface Per100gFigures {
+  kcal: number
+  protein: number
+}
 
 export interface RollupIngredient {
   caloriesPer100g: number
@@ -50,10 +54,13 @@ export function rollupRecipe(
  * on save (ADR 0037, ADR 0002).
  */
 export function previewRecipeFigures(
-  composition: components['schemas']['RecipeCompositionResponse'],
+  composition: {
+    cookedWeightG: number
+    ingredients: (RollupIngredient & { foodId: number })[]
+  },
   foodId: number,
   draft: Record<Macro, number>,
-): { kcal: number; protein: number } {
+): Per100gFigures {
   const corrected = {
     caloriesPer100g: previewCalories(draft),
     proteinPer100g: draft.proteinPer100g,

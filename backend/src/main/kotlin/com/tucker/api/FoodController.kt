@@ -177,19 +177,25 @@ data class CompositionLineResponse(
 )
 
 /**
- * A Recipe a correction of a Food reaches, composed enough for the client to preview
- * its figures before → after on unsaved input (ADR 0037).
+ * A Recipe a correction of a Food reaches: its figures as stored, and its lines with
+ * their figures, so the client can preview before → after on unsaved input (ADR 0037).
+ * Not [RecipeResponse], which names each line for the Recipe's own view and carries
+ * no figures.
  */
 data class RecipeCompositionResponse(
     val id: Long,
     val name: String,
+    val caloriesPer100g: Double,
+    val proteinPer100g: Double,
     val cookedWeightG: Double,
     val ingredients: List<CompositionLineResponse>,
 )
 
-private fun Recipe.toCompositionResponse() = RecipeCompositionResponse(
+private fun Recipe.toCompositionResponse(stored: Food) = RecipeCompositionResponse(
     id = id,
     name = name,
+    caloriesPer100g = stored.nutrition.caloriesPer100g,
+    proteinPer100g = stored.nutrition.proteinPer100g,
     cookedWeightG = cookedWeightG,
     ingredients = ingredients.map { line ->
         CompositionLineResponse(
@@ -241,8 +247,8 @@ class FoodController(
     @Transactional(readOnly = true)
     @GetMapping("/{id}/recipes")
     fun recipesUsing(@PathVariable id: Long): List<RecipeCompositionResponse> {
-        if (foods.namesOf(listOf(id)).isEmpty()) throw NotFoundException("no Food with id $id")
-        return recipes.recipesUsing(id).map { it.toCompositionResponse() }
+        if (!foods.exists(id)) throw NotFoundException("no Food with id $id")
+        return recipes.recipesUsing(id).map { (stored, recipe) -> recipe.toCompositionResponse(stored) }
     }
 
     /** Match [id] to a **Reference Food**, so it borrows that food's micronutrients. */
