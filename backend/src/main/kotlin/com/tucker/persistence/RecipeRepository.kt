@@ -197,5 +197,5 @@ private fun DSLContext.recipeRowsUsing(foodId: Long, ownerId: Int): Result<Recor
         .join(FOOD).on(FOOD.ID.eq(RECIPE_INGREDIENT.RECIPE_ID))
         .where(RECIPE_INGREDIENT.INGREDIENT_FOOD_ID.eq(foodId.toInt()))
         .and(FOOD.USER_ID.eq(ownerId))
-        .orderBy(FOOD.NAME)
+        .orderBy(FOOD.NAME.lower())
         .fetch()

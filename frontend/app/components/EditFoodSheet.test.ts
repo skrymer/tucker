@@ -403,6 +403,30 @@ describe('EditFoodSheet’s Recipes', () => {
     ).toBeVisible()
   })
 
+  it('holds Save until it knows which Recipes the correction reaches', async () => {
+    const read = held('get', '/api/foods/{id}/recipes')
+    server.use(read.handler, ...usedTwice())
+    await renderSuspended(EditFoodSheet, { props: { food: oats } })
+    const save = screen.getByRole('button', { name: 'Save changes' })
+
+    await read.arrived
+
+    expect(save).toBeDisabled()
+    read.release()
+    await screen.findByRole('button', { name: 'Used in 2 recipes' })
+    expect(save).toBeEnabled()
+  })
+
+  it('lets Save go ahead when it could not read which Recipes use the Food', async () => {
+    server.use(failingRead('/api/foods/{id}/recipes'), ...usedTwice())
+    await renderSuspended(EditFoodSheet, { props: { food: oats } })
+
+    expect(
+      await screen.findByText("Couldn't check which recipes use it"),
+    ).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Save changes' })).toBeEnabled()
+  })
+
   it('says nothing of Recipes when none uses the Food', async () => {
     const read = held('get', '/api/foods/{id}/recipes')
     server.use(

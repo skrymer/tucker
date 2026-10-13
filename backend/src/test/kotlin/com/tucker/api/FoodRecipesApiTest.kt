@@ -2,7 +2,13 @@ package com.tucker.api
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.tucker.domain.Nutrition
+import com.tucker.domain.Recipe
+import com.tucker.domain.RecipeIngredient
+import com.tucker.domain.User
 import com.tucker.persistence.FoodRepository
+import com.tucker.persistence.RecipeRepository
+import com.tucker.persistence.UserRepository
+import com.tucker.security.runAs
 import com.tucker.security.WithTuckerUser
 import org.hamcrest.Matchers.closeTo
 import org.junit.jupiter.api.Test
@@ -25,6 +31,8 @@ class FoodRecipesApiTest {
     @Autowired lateinit var mockMvc: MockMvc
     @Autowired lateinit var objectMapper: ObjectMapper
     @Autowired lateinit var foods: FoodRepository
+    @Autowired lateinit var recipes: RecipeRepository
+    @Autowired lateinit var users: UserRepository
 
     @Test
     fun `the Recipes using a Food come alphabetically, each with its cooked weight and ingredient lines`() {
@@ -66,6 +74,34 @@ class FoodRecipesApiTest {
         mockMvc.get("/api/foods/$mince/recipes").andExpect {
             jsonPath("$[0].caloriesPer100g", closeTo(220.0, 0.001))
             jsonPath("$[0].proteinPer100g", closeTo(32.0, 0.001))
+        }
+    }
+
+    @Test
+    fun `the Recipes using a Food are alphabetical whatever the case each name was typed in`() {
+        val oats = createFood("Oats", protein = 13.0, carbs = 60.0, fat = 7.0)
+        createRecipe("Banana bread", 800.0, oats to 100.0)
+        createRecipe("apple crumble", 900.0, oats to 150.0)
+
+        mockMvc.get("/api/foods/$oats/recipes").andExpect {
+            jsonPath("$[0].name") { value("apple crumble") }
+            jsonPath("$[1].name") { value("Banana bread") }
+        }
+    }
+
+    @Test
+    fun `another User's Recipe is never among the Recipes using the caller's Food`() {
+        val mince = createFood("Mince", protein = 31.0, carbs = 0.0, fat = 10.0)
+        createRecipe("Cottage pie", 400.0, mince to 400.0)
+        val theirs = users.insertIfAbsent(User(users.nextId(), "someone-else@tucker.invalid"))
+        val mine = foods.findById(mince)!!
+        runAs(theirs) {
+            recipes.insert(Recipe(recipes.nextId(), "Their stew", listOf(RecipeIngredient(mine, 300.0)), 300.0))
+        }
+
+        mockMvc.get("/api/foods/$mince/recipes").andExpect {
+            jsonPath("$.length()") { value(1) }
+            jsonPath("$[0].name") { value("Cottage pie") }
         }
     }
 

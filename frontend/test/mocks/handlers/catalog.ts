@@ -44,9 +44,6 @@ const byName = ordered(fold)
  */
 export const byFoodName = ordered(foldAscii)
 
-/** SQL `ORDER BY` with no collation: byte order, so every capital first. */
-const inBytes = ordered((name) => name)
-
 /** How the server refuses a Tag name over 30 characters. */
 export const tagNameTooLong = 'a Tag name must be at most 30 characters'
 
@@ -294,7 +291,7 @@ export function foodCatalog({
       const usedIn = [...compositions]
         .filter(([, lines]) => lines.some((l) => l.foodId === row.id))
         .map(([id]) => rowOf(id)!)
-        .sort(inBytes)
+        .sort(byFoodName)
         .map(({ name }) => name)
         .filter((name, at, names) => names.indexOf(name) === at)
       if (usedIn.length > 0) {
@@ -420,8 +417,8 @@ export function foodCatalog({
         tags,
       })
     }),
-    // The Recipes weighing a Food in, each once, by name in byte order (an
-    // uncollated `ORDER BY`), with its figures and each line's as stored.
+    // The Recipes weighing a Food in, each once, by name as the catalog lists
+    // them, with its figures and each line's as stored.
     http.get('/api/foods/{id}/recipes', ({ params, response }) => {
       const row = rowOf(params.id)
       if (!row) {
@@ -431,7 +428,7 @@ export function foodCatalog({
         [...compositions]
           .filter(([, lines]) => lines.some((l) => l.foodId === row.id))
           .map(([id, lines]) => ({ recipe: rowOf(id)!, lines }))
-          .sort((a, b) => inBytes(a.recipe, b.recipe))
+          .sort((a, b) => byFoodName(a.recipe, b.recipe))
           .map(({ recipe, lines }) => ({
             id: recipe.id,
             name: recipe.name,

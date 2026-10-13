@@ -10,6 +10,9 @@ const props = defineProps<{
   /** The Food's macros as typed once one has moved, else null. */
   correction: Record<Macro, number> | null
 }>()
+/** Whether the first read has answered, either way — what Save waits on. */
+// Stryker disable next-line all: a compiler macro must stay a top-level statement
+const settled = defineModel<boolean>('settled', { required: true })
 
 /** The Recipes using the Food, read once for the Food the panel is mounted on. */
 function useRecipesUsing() {
@@ -17,7 +20,11 @@ function useRecipesUsing() {
   const { data, error, load } = useOptionalFetch((signal) =>
     $api('/api/foods/{id}/recipes', { path: { id: props.foodId }, signal }),
   )
-  onMounted(load)
+  settled.value = false
+  onMounted(async () => {
+    await load()
+    settled.value = true
+  })
   const recipes = computed(() => data.value ?? [])
   return { recipes, error, load }
 }
