@@ -107,7 +107,7 @@ class RecipeRepository(
      * `recipe_ingredient` carries no `user_id` — a Recipe *is* a Food row, so its
      * lines are owned through it (ADR 0021: eight owned tables, not nine) — so the
      * ownership predicate sits on the Recipe's Food row. Belt-and-braces rather than
-     * a reachable guard, as in [recipesUsingIngredient]: both callers resolve their
+     * a reachable guard, as in [recipesUsing]: both callers resolve their
      * ids through a scoped read first, so a foreign Recipe never reaches here.
      */
     fun ingredientsOf(recipeIds: Collection<Long>): Map<Long, List<RecipeIngredient>> {
@@ -153,25 +153,23 @@ class RecipeRepository(
     }
 
     /**
-     * The distinct names of Recipes that use the Food [foodId] as an ingredient,
-     * ordered for a stable message. Empty when the Food is not an ingredient of any
-     * Recipe. A deterministic existence query — the join to the recipe's Food row
-     * naturally ignores any orphaned ingredient line — mirroring
-     * [EntryRepository.referencesFood], not a caught FK violation; [FoodService]
-     * uses it to name what blocks a delete.
+     * The caller's Recipes that use the Food [foodId] as an ingredient, each loaded
+     * whole, by name. Empty when the Food is not an ingredient of any Recipe; the join
+     * to the Recipe's Food row ignores any orphaned ingredient line.
      *
      * Scoped to the current User's Recipes (ADR 0021). Belt-and-braces rather than a
      * reachable guard — an ingredient line can only name a Food its Recipe's owner
-     * has — but these names are read back to whoever tried the delete, so it is worth
+     * has — but a delete reads these names back to whoever tried it, so it is worth
      * the predicate that this can never answer "you can't, because of «somebody
      * else's dinner»".
      */
-    fun recipesUsingIngredient(foodId: Long): List<String> =
-        dsl.selectDistinct(FOOD.NAME)
+    fun recipesUsing(foodId: Long): List<Recipe> =
+        dsl.selectDistinct(RECIPE_INGREDIENT.RECIPE_ID, FOOD.NAME)
             .from(RECIPE_INGREDIENT)
             .join(FOOD).on(FOOD.ID.eq(RECIPE_INGREDIENT.RECIPE_ID))
             .where(RECIPE_INGREDIENT.INGREDIENT_FOOD_ID.eq(foodId.toInt()))
             .and(FOOD.USER_ID.eq(currentUser.ownerId))
             .orderBy(FOOD.NAME)
-            .fetch(FOOD.NAME)
+            .fetch(RECIPE_INGREDIENT.RECIPE_ID)
+            .mapNotNull { findById(it.toLong()) }
 }

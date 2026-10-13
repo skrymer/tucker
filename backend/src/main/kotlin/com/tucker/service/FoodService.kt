@@ -3,6 +3,7 @@ package com.tucker.service
 import com.tucker.api.NotFoundException
 import com.tucker.domain.Food
 import com.tucker.domain.FrequentFoods
+import com.tucker.domain.Macros
 import com.tucker.domain.Recipe
 import com.tucker.persistence.EntryRepository
 import com.tucker.persistence.FoodRepository
@@ -107,6 +108,19 @@ class FoodService(
         return foods.findById(id)?.let { foods.update(it.retagged(tagIds)) }
     }
 
+    /**
+     * Correct the Food [id] to [name], [macros] and exactly [tagIds] (ADR 0037), and
+     * re-roll every Recipe using it, since a Recipe stores its figures when saved
+     * (ADR 0019).
+     */
+    @Transactional
+    fun correct(id: Long, name: String, macros: Macros, tagIds: Collection<Long>): Food? {
+        if (!ownsAll(tagIds)) return null
+        val corrected = foods.findById(id)?.let { foods.update(it.corrected(name, macros, tagIds)) } ?: return null
+        recipes.recipesUsing(id).forEach { foods.update(it.asFood()) }
+        return corrected
+    }
+
     private fun ownsAll(tagIds: Collection<Long>): Boolean =
         tags.findByIds(tagIds).map { it.id }.containsAll(tagIds)
 
@@ -126,7 +140,7 @@ class FoodService(
         require(!entries.referencesFood(id)) {
             "${food.name} has logged Entries and can't be deleted."
         }
-        val usedInRecipes = recipes.recipesUsingIngredient(id)
+        val usedInRecipes = recipes.recipesUsing(id).map { it.name }.distinct()
         require(usedInRecipes.isEmpty()) {
             "${food.name} is an ingredient of ${usedInRecipes.joinToString(", ")} and can't be deleted."
         }
