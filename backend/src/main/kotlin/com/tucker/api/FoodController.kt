@@ -5,8 +5,10 @@ import com.tucker.domain.Food
 import com.tucker.domain.FoodCandidate
 import com.tucker.domain.FoodKind
 import com.tucker.domain.Macros
+import com.tucker.domain.Recipe
 import com.tucker.domain.Tag
 import com.tucker.persistence.FoodRepository
+import com.tucker.persistence.RecipeRepository
 import com.tucker.service.BarcodeLookupService
 import com.tucker.service.FoodService
 import org.springframework.format.annotation.DateTimeFormat
@@ -163,6 +165,42 @@ internal fun Food.toResponse(
     tags = tags.sortedBy { it.name }.map { FoodTagResponse(it.id, it.name.value) },
 )
 
+/**
+ * One ingredient line of a [RecipeCompositionResponse]: the grams weighed in and the
+ * ingredient's per-100 g figures, which is all a Recipe's roll-up reads.
+ */
+data class CompositionLineResponse(
+    val foodId: Long,
+    val grams: Double,
+    val caloriesPer100g: Double,
+    val proteinPer100g: Double,
+)
+
+/**
+ * A Recipe a correction of a Food reaches, composed enough for the client to preview
+ * its figures before → after on unsaved input (ADR 0037).
+ */
+data class RecipeCompositionResponse(
+    val id: Long,
+    val name: String,
+    val cookedWeightG: Double,
+    val ingredients: List<CompositionLineResponse>,
+)
+
+private fun Recipe.toCompositionResponse() = RecipeCompositionResponse(
+    id = id,
+    name = name,
+    cookedWeightG = cookedWeightG,
+    ingredients = ingredients.map { line ->
+        CompositionLineResponse(
+            foodId = line.ingredient.id,
+            grams = line.grams,
+            caloriesPer100g = line.ingredient.nutrition.caloriesPer100g,
+            proteinPer100g = line.ingredient.nutrition.proteinPer100g,
+        )
+    },
+)
+
 /** Which **Reference Food** a Food should borrow its micronutrients from. */
 data class MatchReferenceFoodRequest(val referenceFoodId: Long)
 
@@ -170,6 +208,7 @@ data class MatchReferenceFoodRequest(val referenceFoodId: Long)
 @RequestMapping("/api/foods")
 class FoodController(
     private val foods: FoodRepository,
+    private val recipes: RecipeRepository,
     private val foodService: FoodService,
     private val barcodeLookup: BarcodeLookupService,
     private val describer: FoodDescriber,
@@ -196,6 +235,14 @@ class FoodController(
     fun byId(@PathVariable id: Long): FoodResponse {
         val food = foods.findById(id) ?: throw NotFoundException("no Food with id $id")
         return describer.describe(food)
+    }
+
+    /** The caller's Recipes using the Food [id], alphabetically: what a correction of it reaches. */
+    @Transactional(readOnly = true)
+    @GetMapping("/{id}/recipes")
+    fun recipesUsing(@PathVariable id: Long): List<RecipeCompositionResponse> {
+        if (foods.namesOf(listOf(id)).isEmpty()) throw NotFoundException("no Food with id $id")
+        return recipes.recipesUsing(id).map { it.toCompositionResponse() }
     }
 
     /** Match [id] to a **Reference Food**, so it borrows that food's micronutrients. */
