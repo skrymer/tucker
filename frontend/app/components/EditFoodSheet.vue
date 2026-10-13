@@ -53,7 +53,7 @@ function useTypedMacros() {
     fatPer100g: 0,
   })
   onEachFood((food) => {
-    for (const macro of MACROS) typed[macro] = food[macro] ?? 0
+    for (const macro of MACROS) typed[macro] = food[macro] ?? Number.NaN
   })
   function onType(macro: Macro, event: Event) {
     // The field groups thousands as it formats ("1,000").

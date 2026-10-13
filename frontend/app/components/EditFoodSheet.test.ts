@@ -163,6 +163,45 @@ describe('EditFoodSheet', () => {
     ])
   })
 
+  it('opens a Food stored without a carbs figure on no figures, as its empty field shows', async () => {
+    // Stored before calories were derived from all three macros: 4 × 20 + 9 × 10.
+    const legacy = food({
+      id: 3,
+      name: 'Mince',
+      caloriesPer100g: 170,
+      proteinPer100g: 20,
+      carbsPer100g: null,
+      fatPer100g: 10,
+    })
+    server.use(...foodCatalog({ foods: [legacy] }))
+
+    await renderSuspended(EditFoodSheet, { props: { food: legacy } })
+
+    expect(screen.getByRole('spinbutton', { name: /^Carbs/ })).toHaveValue('')
+    expect(screen.getByRole('status')).toHaveTextContent(/^— kcal \/100g$/)
+    expect(
+      screen.queryByText(
+        "Food you've already logged keeps the figures it was logged with.",
+      ),
+    ).not.toBeInTheDocument()
+  })
+
+  it('opens the next Food with its Tags field empty, not holding a name typed for the last one', async () => {
+    const skyr = food({ id: 2, name: 'Skyr' })
+    server.use(...foodCatalog({ foods: [oats, skyr] }))
+    const { rerender } = await renderSuspended(EditFoodSheet, {
+      props: { food: oats },
+    })
+
+    await userEvent
+      .setup()
+      .type(screen.getByRole('combobox', { name: 'Tags' }), 'supp')
+    await rerender({ food: null })
+    await rerender({ food: skyr })
+
+    expect(screen.getByRole('combobox', { name: 'Tags' })).toHaveValue('')
+  })
+
   it('reads a figure typed with a thousands separator as the number it groups', async () => {
     server.use(...foodCatalog({ foods: [oats] }))
     await renderSuspended(EditFoodSheet, { props: { food: oats } })

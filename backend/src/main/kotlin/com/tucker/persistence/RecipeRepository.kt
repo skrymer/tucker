@@ -91,7 +91,6 @@ class RecipeRepository(
         return recipeOf(food, ingredientsOf(listOf(id))[id].orEmpty())
     }
 
-
     /**
      * The ingredient lines of every Recipe in [recipeIds], resolved to their Foods in
      * one pass rather than one query per Recipe. A **Micronutrient Intake** reads a
@@ -151,11 +150,11 @@ class RecipeRepository(
      * A projection rather than [recipesUsing] narrowed: the guard only names them.
      */
     fun recipeNamesUsing(foodId: Long): List<String> =
-        dsl.recipesUsing(foodId, currentUser.ownerId).map { it.value2() }.distinct()
+        dsl.recipeRowsUsing(foodId, currentUser.ownerId).map { it.value2() }.distinct()
 
     /** The caller's Recipes that use the Food [foodId] as an ingredient, each loaded whole, by name. */
     fun recipesUsing(foodId: Long): List<Recipe> {
-        val ids = dsl.recipesUsing(foodId, currentUser.ownerId).map { it.value1().toLong() }
+        val ids = dsl.recipeRowsUsing(foodId, currentUser.ownerId).map { it.value1().toLong() }
         // One read for the Recipes' rows and one for all their lines, whatever their number.
         val recipeFoods = foods.findByIds(ids).associateBy { it.id }
         val lines = ingredientsOf(ids)
@@ -185,7 +184,7 @@ private fun recipeOf(food: Food, ingredients: List<RecipeIngredient>): Recipe? =
  * reads these names back to whoever tried it, so it is worth the predicate that this
  * can never answer "you can't, because of «somebody else's dinner»".
  */
-private fun DSLContext.recipesUsing(foodId: Long, ownerId: Int): Result<Record2<Int, String>> =
+private fun DSLContext.recipeRowsUsing(foodId: Long, ownerId: Int): Result<Record2<Int, String>> =
     selectDistinct(RECIPE_INGREDIENT.RECIPE_ID, FOOD.NAME)
         .from(RECIPE_INGREDIENT)
         .join(FOOD).on(FOOD.ID.eq(RECIPE_INGREDIENT.RECIPE_ID))
