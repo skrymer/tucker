@@ -136,13 +136,13 @@ class FoodService(
      */
     @Transactional
     fun delete(id: Long) {
-        val food = foods.findById(id) ?: return
+        val name = foods.namesOf(listOf(id))[id] ?: return
         require(!entries.referencesFood(id)) {
-            "${food.name} has logged Entries and can't be deleted."
+            "$name has logged Entries and can't be deleted."
         }
         val usedInRecipes = recipes.recipeNamesUsing(id)
         require(usedInRecipes.isEmpty()) {
-            "${food.name} is an ingredient of ${usedInRecipes.joinToString(", ")} and can't be deleted."
+            "$name is an ingredient of ${usedInRecipes.joinToString(", ")} and can't be deleted."
         }
         foods.delete(id)
     }

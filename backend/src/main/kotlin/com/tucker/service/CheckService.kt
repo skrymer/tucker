@@ -104,7 +104,7 @@ class CheckService(
      * distinction exists to avoid.
      */
     private fun noBudgetReason(): String =
-        if (profiles.get()?.tracksCalories == false) {
+        if (profiles.tracksCalories() == false) {
             "a Check needs a Calorie Budget; turn calorie tracking on"
         } else {
             "a Check needs a Calorie Budget; finish setup first"

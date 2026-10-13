@@ -42,6 +42,10 @@ class WeightMeasurementRepository(
             .limit(1)
             .fetchOne()?.toDomain()
 
+    /** Whether the caller has weighed in at all — setup's guard, which needs no reading. */
+    fun any(): Boolean =
+        dsl.fetchExists(WEIGHT_MEASUREMENT, WEIGHT_MEASUREMENT.USER_ID.eq(currentUser.ownerId))
+
     fun deleteById(id: Long): Int =
         dsl.deleteFrom(WEIGHT_MEASUREMENT)
             .where(WEIGHT_MEASUREMENT.ID.eq(id.toInt()))
