@@ -64,6 +64,12 @@ function useTypedMacros() {
 }
 const { typed, onType } = useTypedMacros()
 
+/** A committed macro — typed and left, or stepped with its buttons, which type nothing. */
+function commit(macro: Macro, value: number | undefined) {
+  draft[macro] = value
+  typed[macro] = value ?? Number.NaN
+}
+
 /** The Food's own figures, before and with its macros as typed. */
 function useLiveFigures() {
   const complete = computed(() =>
@@ -77,8 +83,10 @@ function useLiveFigures() {
     kcal: previewCalories(typed),
     protein: typed.proteinPer100g,
   }))
-  const macrosMoved = computed(() =>
-    MACROS.some((macro) => typed[macro] !== (props.food?.[macro] ?? 0)),
+  const macrosMoved = computed(
+    () =>
+      complete.value &&
+      MACROS.some((macro) => typed[macro] !== (props.food?.[macro] ?? 0)),
   )
   return { complete, before, after, macrosMoved }
 }
@@ -143,11 +151,7 @@ const { save, saving } = useCorrectionSave()
         <UInput v-model="draft.name" class="w-full" />
       </UFormField>
 
-      <MacroFields
-        :values="draft"
-        @type="onType"
-        @commit="(macro, value) => (draft[macro] = value)"
-      />
+      <MacroFields :values="draft" @type="onType" @commit="commit" />
 
       <p role="status" class="text-label text-muted tabular-nums">
         <FigureDiff v-if="complete" :before="before" :after="after" />

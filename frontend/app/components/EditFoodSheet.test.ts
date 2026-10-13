@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { mockNuxtImport, renderSuspended } from '@nuxt/test-utils/runtime'
-import { screen } from '@testing-library/vue'
+import { screen, within } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import { besideCatalog, catalogOnceReread, tagsOn } from '~~/test/catalog-host'
 import { foodCatalog } from '~~/test/mocks/handlers/catalog'
@@ -205,6 +205,24 @@ describe('EditFoodSheet', () => {
     expect(screen.getByRole('status')).toHaveTextContent(/^— kcal \/100g$/)
   })
 
+  it('restates the Food’s figures when a macro is stepped with its buttons', async () => {
+    server.use(...foodCatalog({ foods: [oats] }))
+    await renderSuspended(EditFoodSheet, { props: { food: oats } })
+
+    const fat = screen.getByRole('spinbutton', { name: /^Fat/ })
+    await userEvent
+      .setup()
+      .click(
+        within(fat.parentElement!).getByRole('button', { name: 'Increment' }),
+      )
+
+    // 4 × 31 + 4 × 60 + 9 × 7.1 = 427.9
+    expect(fat).toHaveValue('7.1')
+    expect(screen.getByRole('status')).toHaveTextContent(
+      /^was 427 428 kcal · 31 g protein \/100g$/,
+    )
+  })
+
   it('states no figures while a macro field holds only spaces', async () => {
     server.use(...foodCatalog({ foods: [oats] }))
     await renderSuspended(EditFoodSheet, { props: { food: oats } })
@@ -215,6 +233,21 @@ describe('EditFoodSheet', () => {
 
     expect(protein).toHaveValue(' ')
     expect(screen.getByRole('status')).toHaveTextContent(/^— kcal \/100g$/)
+  })
+
+  it('says nothing about logged food while a cleared macro has no figure yet', async () => {
+    server.use(...foodCatalog({ foods: [oats] }))
+    await renderSuspended(EditFoodSheet, { props: { food: oats } })
+
+    await userEvent
+      .setup()
+      .clear(screen.getByRole('spinbutton', { name: /^Protein/ }))
+
+    expect(
+      screen.queryByText(
+        "Food you've already logged keeps the figures it was logged with.",
+      ),
+    ).not.toBeInTheDocument()
   })
 
   it('says logged food keeps its figures only once a macro has moved, not for a rename', async () => {
