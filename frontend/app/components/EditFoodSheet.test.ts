@@ -4,9 +4,9 @@ import { screen, within } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import { besideCatalog, catalogOnceReread, tagsOn } from '~~/test/catalog-host'
 import { foodCatalog } from '~~/test/mocks/handlers/catalog'
-import { held, http, noConnection } from '~~/test/mocks/http'
+import { failingRead, held, http, noConnection } from '~~/test/mocks/http'
 import { server } from '~~/test/mocks/node'
-import { food } from '~~/test/food-fixtures'
+import { food, recipe } from '~~/test/food-fixtures'
 import EditFoodSheet from './EditFoodSheet.vue'
 
 const { toastAdd } = vi.hoisted(() => ({ toastAdd: vi.fn() }))
@@ -345,5 +345,150 @@ describe('EditFoodSheet', () => {
       (await catalogOnceReread()).getByText('Rolled oast').parentElement
         ?.nextElementSibling,
     ).toHaveTextContent('355 kcal · 13 g protein /100g')
+  })
+})
+
+describe('EditFoodSheet’s Recipes', () => {
+  // 427 × 50 / 250 = 85.4 kcal and 31 × 50 / 250 = 6.2 g protein /100g.
+  const porridge = recipe({
+    id: 3,
+    name: 'Porridge',
+    caloriesPer100g: 85.4,
+    proteinPer100g: 6.2,
+    cookedWeightG: 250,
+    ingredientCount: 1,
+  })
+  // 427 × 300 / 400 = 320.25 kcal and 31 × 300 / 400 = 23.25 g protein /100g.
+  const granolaBars = recipe({
+    id: 4,
+    name: 'Granola bars',
+    caloriesPer100g: 320.25,
+    proteinPer100g: 23.25,
+    cookedWeightG: 400,
+    ingredientCount: 1,
+  })
+  const usedTwice = () =>
+    foodCatalog({
+      foods: [oats, porridge, granolaBars],
+      compositions: {
+        3: [{ foodId: 1, grams: 50 }],
+        4: [{ foodId: 1, grams: 300 }],
+      },
+    })
+
+  it('says how many Recipes use the Food, its list collapsed', async () => {
+    server.use(...usedTwice())
+
+    await renderSuspended(EditFoodSheet, { props: { food: oats } })
+
+    const toggle = await screen.findByRole('button', {
+      name: 'Used in 2 recipes',
+    })
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByText('Porridge')).not.toBeInTheDocument()
+    expect(screen.queryByText('Granola bars')).not.toBeInTheDocument()
+  })
+
+  it('says nothing of Recipes when none uses the Food', async () => {
+    const read = held('get', '/api/foods/{id}/recipes')
+    server.use(
+      read.handler,
+      ...foodCatalog({ foods: [oats, porridge, granolaBars] }),
+    )
+    await renderSuspended(EditFoodSheet, { props: { food: oats } })
+
+    await read.arrived
+    read.release()
+    // Absence has nothing to wait for: give the answer time to land first.
+    await new Promise((resolve) => setTimeout(resolve, 50))
+
+    expect(screen.queryByText(/recipe/)).not.toBeInTheDocument()
+  })
+
+  it('lists each Recipe by name over its figures once expanded', async () => {
+    server.use(...usedTwice())
+    await renderSuspended(EditFoodSheet, { props: { food: oats } })
+    const toggle = await screen.findByRole('button', {
+      name: 'Used in 2 recipes',
+    })
+
+    await userEvent.setup().click(toggle)
+
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    const rows = screen.getAllByRole('listitem')
+    expect(rows).toHaveLength(2)
+    expect(rows[0]).toHaveTextContent(
+      /^Granola bars\s*320 kcal · 23 g protein \/100g$/,
+    )
+    expect(rows[1]).toHaveTextContent(
+      /^Porridge\s*85 kcal · 6 g protein \/100g$/,
+    )
+  })
+
+  it('says the Recipes are also updated once a macro moves, before the field is left', async () => {
+    server.use(...usedTwice())
+    await renderSuspended(EditFoodSheet, { props: { food: oats } })
+    await screen.findByRole('button', { name: 'Used in 2 recipes' })
+    const user = userEvent.setup()
+
+    const protein = screen.getByRole('spinbutton', { name: /^Protein/ })
+    await user.clear(protein)
+    await user.type(protein, '13')
+
+    expect(protein).toHaveFocus()
+    expect(
+      screen.getByRole('button', { name: 'Also updates 2 recipes' }),
+    ).toHaveAttribute('aria-expanded', 'false')
+    expect(
+      screen.queryByRole('button', { name: 'Used in 2 recipes' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('restates each Recipe’s figures before → after as a macro is typed, before the field is left', async () => {
+    server.use(...usedTwice())
+    await renderSuspended(EditFoodSheet, { props: { food: oats } })
+    const user = userEvent.setup()
+    await user.click(
+      await screen.findByRole('button', { name: 'Used in 2 recipes' }),
+    )
+
+    const protein = screen.getByRole('spinbutton', { name: /^Protein/ })
+    await user.clear(protein)
+    await user.type(protein, '13')
+
+    // Oats corrected: 4 × 13 + 4 × 60 + 9 × 7 = 355 kcal /100g. Granola bars:
+    // 355 × 300 / 400 = 266.25 kcal, 13 × 300 / 400 = 9.75 g protein. Porridge:
+    // 355 × 50 / 250 = 71 kcal, 13 × 50 / 250 = 2.6 g protein.
+    expect(protein).toHaveFocus()
+    const [granolaBars, porridge] = screen.getAllByRole('listitem')
+    expect(granolaBars).toHaveTextContent(
+      /^Granola bars\s*was 320 266 kcal · was 23 10 g protein \/100g$/,
+    )
+    expect(porridge).toHaveTextContent(
+      /^Porridge\s*was 85 71 kcal · was 6 3 g protein \/100g$/,
+    )
+  })
+
+  it('says it could not read which Recipes use the Food, and its Retry reads them', async () => {
+    let down = true
+    server.use(
+      failingRead('/api/foods/{id}/recipes', () => down),
+      ...usedTwice(),
+    )
+    await renderSuspended(EditFoodSheet, { props: { food: oats } })
+
+    expect(
+      await screen.findByText("Couldn't check which recipes use it"),
+    ).toBeVisible()
+
+    down = false
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Retry' }))
+
+    expect(
+      await screen.findByRole('button', { name: 'Used in 2 recipes' }),
+    ).toBeVisible()
+    expect(
+      screen.queryByText("Couldn't check which recipes use it"),
+    ).not.toBeInTheDocument()
   })
 })

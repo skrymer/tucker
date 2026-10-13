@@ -420,6 +420,31 @@ export function foodCatalog({
         tags,
       })
     }),
+    // The Recipes weighing a Food in, each once, by name in byte order (an
+    // uncollated `ORDER BY`), with each line's per-100 g figures as stored.
+    http.get('/api/foods/{id}/recipes', ({ params, response }) => {
+      const row = rowOf(params.id)
+      if (!row) {
+        return response(404).json({ message: `no Food with id ${params.id}` })
+      }
+      return response(200).json(
+        [...compositions]
+          .filter(([, lines]) => lines.some((l) => l.foodId === row.id))
+          .map(([id, lines]) => ({ recipe: rowOf(id)!, lines }))
+          .sort((a, b) => inBytes(a.recipe, b.recipe))
+          .map(({ recipe: { id, name, cookedWeightG }, lines }) => ({
+            id,
+            name,
+            cookedWeightG: cookedWeightG!,
+            ingredients: lines.map(({ foodId, grams }) => ({
+              foodId,
+              grams,
+              caloriesPer100g: rowOf(foodId)!.caloriesPer100g,
+              proteinPer100g: rowOf(foodId)!.proteinPer100g,
+            })),
+          })),
+      )
+    }),
     http.get('/api/foods/barcode/{barcode}', ({ params, response }) => {
       const owned = rows.find((row) => row.barcode === params.barcode)
       if (owned) {

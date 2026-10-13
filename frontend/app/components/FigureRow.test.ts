@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { renderSuspended } from '@nuxt/test-utils/runtime'
-import { screen } from '@testing-library/vue'
+import { screen, within } from '@testing-library/vue'
 import FigureRow from './FigureRow.vue'
 
 describe('FigureRow', () => {
@@ -51,5 +51,17 @@ describe('FigureRow', () => {
     })
 
     expect(screen.getByText('5 ingredients · makes 1,400 g')).toBeVisible()
+  })
+
+  it('takes its figures as markup where a plain line cannot say them, such as a figure that moved', async () => {
+    await renderSuspended(FigureRow, {
+      props: { name: 'Stew' },
+      slots: { figures: '<del>341</del> 233 kcal /100g' },
+    })
+
+    const name = screen.getByText('Stew')
+    const figures = name.parentElement?.nextElementSibling
+    expect(figures).toHaveTextContent('341 233 kcal /100g')
+    expect(within(figures as HTMLElement).getByText('341')).toBeVisible()
   })
 })

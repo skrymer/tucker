@@ -158,6 +158,13 @@ const { save, saving } = useCorrectionSave()
         <template v-else>— kcal /100g</template>
       </p>
 
+      <RecipesUsingFood
+        :key="food.id"
+        :food-id="food.id"
+        :moved="macrosMoved"
+        :typed="complete ? typed : null"
+      />
+
       <UFormField label="Tags">
         <TagPicker v-model="tags" v-model:creating="creatingTag" />
       </UFormField>
