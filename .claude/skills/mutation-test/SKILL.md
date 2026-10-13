@@ -300,9 +300,12 @@ tests (~1–5 tests, not all 473), which is what makes this affordable as a gate
   debugging the runner. Single **Survived** mutants are false the same way when their
   only killer is the page test that mounts the component (`foods.test.ts`): Stryker's
   related-test set left the page tests out, and #454's 3 false survivors were these.
-- **A dry run that fails on "failing tests" after Extract Component** is a bare
-  `defineEmits` / `defineProps` in the new child — give it its `// Stryker disable
-  next-line all` at extraction ([known-survivors.md](references/known-survivors.md)).
+- **Every compiler macro a change writes gets its `// Stryker disable next-line all`
+  as it is written** — `defineProps`, `defineEmits`, and `defineModel` too, not only
+  after Extract Component. A mutated one kills the run, and the symptom varies: "failing
+  tests" in the dry run, `stryMutAct_9fa48 is not defined`, "No tests were found", or a
+  file that comes back entirely NoCoverage (#433's `defineModel('settled', …)` did the
+  last two). Mechanism: [known-survivors.md](references/known-survivors.md#vue-compiler-macros-break-the-run-before-it-starts).
 - **No mutator can flag the normalising call that isn't there.** This is about the
   *missing* fold, and no engine reaches it: there is no call node to mutate, so
   `fold(a).includes(fold(b))` scores exactly the same as `a.includes(fold(b))`.
