@@ -389,7 +389,7 @@ describe('EditFoodSheet’s Recipes', () => {
     expect(screen.queryByText('Granola bars')).not.toBeInTheDocument()
   })
 
-  it('says nothing of Recipes while it is still reading them', async () => {
+  it('names no Recipe count before the read has answered', async () => {
     const read = held('get', '/api/foods/{id}/recipes')
     server.use(read.handler, ...usedTwice())
     await renderSuspended(EditFoodSheet, { props: { food: oats } })
@@ -479,6 +479,31 @@ describe('EditFoodSheet’s Recipes', () => {
     }
   })
 
+  it('gives a slow Recipe read its whole 8 s before giving up on it', async () => {
+    // Only the timers are faked, and nothing advances them but the test, so no
+    // wall-clock time spent rendering reaches the 8 s clock.
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    const read = held('get', '/api/foods/{id}/recipes')
+    try {
+      server.use(read.handler, ...usedTwice())
+      await renderSuspended(EditFoodSheet, { props: { food: oats } })
+      await read.arrived
+
+      await vi.advanceTimersByTimeAsync(7999)
+
+      expect(
+        screen.getByRole('button', { name: 'Save changes' }),
+      ).toBeDisabled()
+      expect(
+        screen.queryByText("Couldn't check which recipes use it"),
+      ).not.toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+      read.release()
+    }
+    await screen.findByRole('button', { name: 'Used in 2 recipes' })
+  })
+
   it('gives up on a Recipe read that stalls past 8 s, saying so and letting Save go ahead', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     try {
@@ -499,6 +524,21 @@ describe('EditFoodSheet’s Recipes', () => {
     } finally {
       vi.useRealTimers()
     }
+  })
+
+  it('holds Save without a spinner while it reads the Recipes, since Save started nothing', async () => {
+    const read = held('get', '/api/foods/{id}/recipes')
+    server.use(read.handler, ...usedTwice())
+    await renderSuspended(EditFoodSheet, { props: { food: oats } })
+    await read.arrived
+
+    const save = screen.getByRole('button', { name: 'Save changes' })
+    expect(save).toBeDisabled()
+    // Nuxt UI draws a loading button's spinner as a spinning icon inside it, with
+    // no role or name to find it by.
+    expect(save.querySelector('.animate-spin')).toBeNull()
+    read.release()
+    await screen.findByRole('button', { name: 'Used in 2 recipes' })
   })
 
   it('says nothing of Recipes when none uses the Food', async () => {
