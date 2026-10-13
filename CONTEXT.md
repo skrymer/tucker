@@ -725,6 +725,12 @@ goal progress and the adaptive Maintenance correction. It can't be dated in the
 future, where "today" is the user's _local_ day — the client supplies it, so a
 reading entered just after local midnight isn't rejected while the server (UTC)
 clock still lags a day behind.
+A User holds at most one reading per day, and any past day's reading can be
+added, corrected or removed. A correction changes the **Trend Weight** from that
+day on — the live trend, **Goal Progress** and the next **Weekly Review**'s
+**Maintenance** all read it — but never rewrites a review already held, nor a
+**Goal**'s stored start weight: those state what the trend was when they were
+taken.
 _Avoid_: weigh-in
 
 **Trend Weight**:
