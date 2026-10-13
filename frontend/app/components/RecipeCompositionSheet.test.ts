@@ -201,6 +201,30 @@ describe('RecipeCompositionSheet', () => {
     ).not.toBeInTheDocument()
   })
 
+  it('holds a loading skeleton while a recipe opened to edit loads, then the editor', async () => {
+    const read = held('get', '/api/recipes/{id}')
+    server.use(read.handler, ...kitchen())
+    await renderSuspended(RecipeCompositionSheet, {
+      props: { recipe: cottagePie, foods: catalog, edit: true },
+    })
+    await read.arrived
+
+    // Decorative: the region's aria-busy says it is loading, so the rows raise
+    // no alert of their own (USkeleton is a role="alert").
+    const loading = screen.getByRole('region', { name: 'Loading recipe' })
+    expect(loading).toHaveAttribute('aria-busy', 'true')
+    expect(within(loading).getByTestId('recipe-skeleton')).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+
+    read.release()
+    expect(await screen.findByLabelText(/recipe name/i)).toHaveDisplayValue(
+      'Cottage Pie',
+    )
+    expect(
+      screen.queryByRole('region', { name: 'Loading recipe' }),
+    ).not.toBeInTheDocument()
+  })
+
   it('opens the pre-filled edit builder from the composition view', async () => {
     server.use(...kitchen())
     const user = userEvent.setup()

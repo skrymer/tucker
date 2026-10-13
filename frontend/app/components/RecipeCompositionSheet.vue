@@ -108,10 +108,22 @@ function useEditMode() {
     () => {
       editing.value = props.edit
     },
+    { immediate: true },
   )
-  // The builder's `initial`: the fetched cooked weight and name, plus each
-  // ingredient line resolved to its full catalog Food (for the live rollup).
-  const editInitial = computed(() => {
+  return {
+    editing,
+    start: () => {
+      editing.value = true
+    },
+  }
+}
+
+/**
+ * The builder's `initial`: the fetched cooked weight and name, plus each
+ * ingredient line resolved to its full catalog Food (for the live rollup).
+ */
+function useEditSeed() {
+  return computed(() => {
     const comp = composition.value
     if (!comp) return null
     // Every ingredient resolves: an ingredient Food can't be deleted while a
@@ -128,16 +140,10 @@ function useEditMode() {
       tags: comp.tags,
     }
   })
-  return {
-    editing,
-    start: () => {
-      editing.value = true
-    },
-    editInitial,
-  }
 }
 
-const { editing, start: startEditing, editInitial } = useEditMode()
+const { editing, start: startEditing } = useEditMode()
+const editInitial = useEditSeed()
 
 const title = computed(() => {
   const name = formatName(props.recipe?.name ?? '')
@@ -166,6 +172,26 @@ const round = (n: number) => Math.round(n)
         :pending="pending"
         @submit="saveEdit"
       />
+
+      <!-- Edit, still loading: the builder's shape, on an opening that asked for
+           the editor (ADR 0007's cold load). The rows are decorative — the
+           region's aria-busy says it is loading, and each USkeleton would
+           otherwise raise an alert. -->
+      <section v-else-if="editing" aria-label="Loading recipe" aria-busy="true">
+        <div
+          aria-hidden="true"
+          data-testid="recipe-skeleton"
+          class="appear-late flex flex-col gap-4"
+        >
+          <USkeleton class="h-10 w-full" />
+          <USkeleton
+            v-for="row in 2"
+            :key="row"
+            class="h-12 w-full rounded-inset"
+          />
+          <USkeleton class="h-10 w-1/2" />
+        </div>
+      </section>
 
       <!-- View: the read-only composition, with an Edit affordance. Never shown
            to an opening that asked for the editor, even while it loads. -->

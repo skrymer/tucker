@@ -161,7 +161,7 @@ describe('useReferenceFoodMatch', () => {
 
     await vi.waitFor(() =>
       expect(toastAdd).toHaveBeenCalledWith(
-        expect.objectContaining({ title: 'Could not unmatch this food' }),
+        expect.objectContaining({ title: 'Could not clear this match' }),
       ),
     )
     // Nothing refreshed: the borrow still stands until the server says otherwise.

@@ -39,7 +39,7 @@ export function useMatchClear(onChanged: () => void | Promise<void>) {
         path: { id: foodId },
       }),
     {
-      errorTitle: 'Could not unmatch this food',
+      errorTitle: 'Could not clear this match',
       onSuccess: async () => {
         await onChanged()
       },

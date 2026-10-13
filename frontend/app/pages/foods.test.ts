@@ -7,6 +7,7 @@ import { foodCatalog } from '~~/test/mocks/handlers/catalog'
 import { catalogFails } from '~~/test/mocks/handlers/foods'
 import { held, http, noConnection } from '~~/test/mocks/http'
 import { server } from '~~/test/mocks/node'
+import { profileOf, weightOnlyProfile } from '~~/test/mocks/handlers/profile'
 import Foods from './foods.vue'
 
 const { toastAdd } = vi.hoisted(() => ({ toastAdd: vi.fn() }))
@@ -26,6 +27,9 @@ const oats = food({
 beforeEach(() => {
   toastAdd.mockClear()
   server.use(...foodCatalog({ foods: [oats] }))
+  // Calorie Tracking is app-wide state that settles once, so every test states
+  // its own: Tucker's default here, unless a test says otherwise.
+  useCalorieTracking().readFrom(null)
 })
 
 /** Fills the open Add sheet with a Food named "Skyr" and saves it. */
@@ -255,6 +259,33 @@ describe('/foods a Food’s match', () => {
         name: 'Change what Tasty cheese borrows vitamins and minerals from',
       }),
     ).toBeVisible()
+  })
+
+  it('is absent from the Edit sheet of a User who does not count calories', async () => {
+    const cheese = food({
+      id: 3,
+      name: 'Tasty cheese',
+      referenceFoodId: 9,
+      referenceFoodName: 'Cheese, cheddar, natural, regular fat',
+    })
+    server.use(
+      profileOf(weightOnlyProfile),
+      ...foodCatalog({ foods: [cheese] }),
+    )
+    useCalorieTracking().readFrom(weightOnlyProfile)
+    const user = userEvent.setup()
+    await renderSuspended(Foods)
+
+    await user.click(screen.getByRole('button', { name: 'Edit Tasty cheese' }))
+
+    const sheet = screen.getByRole('dialog', { name: 'Edit Tasty cheese' })
+    expect(within(sheet).getByRole('textbox', { name: /^Name/ })).toBeVisible()
+    expect(
+      within(sheet).queryByText(/Vitamins and minerals from/),
+    ).not.toBeInTheDocument()
+    expect(
+      within(sheet).queryByRole('button', { name: /vitamins and minerals/ }),
+    ).not.toBeInTheDocument()
   })
 
   it('is cleared in the open sheet at once, which keeps the edits not yet saved', async () => {
