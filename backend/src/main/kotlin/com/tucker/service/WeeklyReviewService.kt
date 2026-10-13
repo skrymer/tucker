@@ -50,11 +50,11 @@ class WeeklyReviewService(
         if (!setupComplete()) return false
         // The same overdue predicate the Weekly-Review Reminder asks (ADR 0010) —
         // a missing review is itself overdue, so the very first one bootstraps here.
-        val latestOn = reviews.latest()?.reviewedOn
+        val latestOn = reviews.latestReviewedOn()
         // A review a device a day ahead stamped (ADR 0014) does not stand here yet, so
         // the cadence is judged from the one that does, and none standing is overdue.
         val cadenceFrom = if (latestOn == today.plusDays(1)) {
-            reviews.latestTwoOnOrBefore(today).firstOrNull()?.reviewedOn
+            reviews.latestReviewedOnOrBefore(today)
         } else {
             latestOn
         }
@@ -77,7 +77,7 @@ class WeeklyReviewService(
      * it: with tracking off a Calorie Budget is absent by choice, so absence alone
      * can no longer tell the client whether the User still has setup to finish.
      */
-    fun setupComplete(): Boolean = profiles.get() != null && weights.latest() != null
+    fun setupComplete(): Boolean = profiles.exists() && weights.any()
 
     /**
      * Force-recompute the review for [on], overwriting any existing same-day record.

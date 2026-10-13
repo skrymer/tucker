@@ -6,7 +6,9 @@ import com.tucker.domain.WeeklyReview
 import com.tucker.jooq.Tables.WEEKLY_REVIEW
 import com.tucker.jooq.tables.records.WeeklyReviewRecord
 import com.tucker.security.CurrentUser
+import org.jooq.Condition
 import org.jooq.DSLContext
+import org.jooq.impl.DSL
 import org.springframework.stereotype.Repository
 import java.time.LocalDate
 
@@ -34,12 +36,14 @@ class WeeklyReviewRepository(
      * (is one due?), which a review stamped by a device a day ahead does answer.
      * Never a day's figures: those come from [latestTwoOnOrBefore].
      */
-    fun latest(): WeeklyReview? =
-        dsl.selectFrom(WEEKLY_REVIEW)
-            .where(WEEKLY_REVIEW.USER_ID.eq(currentUser.ownerId))
-            .orderBy(WEEKLY_REVIEW.REVIEWED_ON.desc())
-            .limit(1)
-            .fetchOne()?.toDomain()
+    fun latest(): WeeklyReview? = dsl.newestReview(currentUser.ownerId)
+
+    /** The date of the newest review, whatever it is — [latest]'s question, as one column. */
+    fun latestReviewedOn(): LocalDate? = dsl.newestReviewDate(currentUser.ownerId)
+
+    /** The date of the newest review standing on [date] — dated on or before it. */
+    fun latestReviewedOnOrBefore(date: LocalDate): LocalDate? =
+        dsl.newestReviewDate(currentUser.ownerId, WEEKLY_REVIEW.REVIEWED_ON.le(date.toString()))
 
     /**
      * The most recent review dated strictly before [date], if any — the value the
@@ -47,12 +51,7 @@ class WeeklyReviewRepository(
      * global latest, so a same-day recompute or a later-dated review can't be held.
      */
     fun latestBefore(date: LocalDate): WeeklyReview? =
-        dsl.selectFrom(WEEKLY_REVIEW)
-            .where(WEEKLY_REVIEW.REVIEWED_ON.lt(date.toString()))
-            .and(WEEKLY_REVIEW.USER_ID.eq(currentUser.ownerId))
-            .orderBy(WEEKLY_REVIEW.REVIEWED_ON.desc())
-            .limit(1)
-            .fetchOne()?.toDomain()
+        dsl.newestReview(currentUser.ownerId, WEEKLY_REVIEW.REVIEWED_ON.lt(date.toString()))
 
     /**
      * The most recent review dated strictly before [date] that carries Intake
@@ -60,13 +59,11 @@ class WeeklyReviewRepository(
      * which is exactly where the engine has to tell a toggle from a stretch.
      */
     fun latestWithTargetsBefore(date: LocalDate): WeeklyReview? =
-        dsl.selectFrom(WEEKLY_REVIEW)
-            .where(WEEKLY_REVIEW.REVIEWED_ON.lt(date.toString()))
-            .and(WEEKLY_REVIEW.USER_ID.eq(currentUser.ownerId))
-            .and(WEEKLY_REVIEW.MAINTENANCE_KCAL.isNotNull)
-            .orderBy(WEEKLY_REVIEW.REVIEWED_ON.desc())
-            .limit(1)
-            .fetchOne()?.toDomain()
+        dsl.newestReview(
+            currentUser.ownerId,
+            WEEKLY_REVIEW.REVIEWED_ON.lt(date.toString()),
+            WEEKLY_REVIEW.MAINTENANCE_KCAL.isNotNull,
+        )
 
     /** The caller's review recorded on [reviewedOn], if one exists — unique per User. */
     fun findByReviewedOn(reviewedOn: LocalDate): WeeklyReview? =
@@ -120,6 +117,22 @@ class WeeklyReviewRepository(
  * and V15's CHECK holds them to it, so a row is never assembled by asking
  * four times whether there are targets.
  */
+/** [ownerId]'s newest review meeting every one of [conditions], if any. */
+private fun DSLContext.newestReview(ownerId: Int, vararg conditions: Condition): WeeklyReview? =
+    selectFrom(WEEKLY_REVIEW)
+        .where(listOf(WEEKLY_REVIEW.USER_ID.eq(ownerId)) + conditions)
+        .orderBy(WEEKLY_REVIEW.REVIEWED_ON.desc())
+        .limit(1)
+        .fetchOne()?.toDomain()
+
+/** The date of [ownerId]'s newest review meeting every one of [conditions], if any. */
+private fun DSLContext.newestReviewDate(ownerId: Int, vararg conditions: Condition): LocalDate? =
+    select(DSL.max(WEEKLY_REVIEW.REVIEWED_ON))
+        .from(WEEKLY_REVIEW)
+        .where(listOf(WEEKLY_REVIEW.USER_ID.eq(ownerId)) + conditions)
+        .fetchOne(0, String::class.java)
+        ?.let(LocalDate::parse)
+
 private fun WeeklyReviewRecord.writeTargets(targets: IntakeTargets?) {
     maintenanceKcal = targets?.maintenance?.kcal
     maintenanceBasis = targets?.maintenance?.basis?.name

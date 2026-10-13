@@ -68,13 +68,13 @@ class DailySummaryService(
         val setupComplete = weeklyReview.catchUpIfDue(date)
         val log = DailyLog(date, entries.findByDate(date))
         val recent = weeklyReview.reviewsStandingOn(date)
-        val activeGoal = goals.findActive()
+        val goalActive = goals.hasActive()
         val summary = DailySummary(
             setupComplete = setupComplete,
             log = log,
             recent = recent,
-            goalActive = activeGoal != null,
-            trend = if (activeGoal == null) WeightTrend.from(weights.findAll()) else null,
+            goalActive = goalActive,
+            trend = if (goalActive) null else WeightTrend.from(weights.findAll()),
         )
 
         // Redundant, kept as a guard: last-seen on the client's local day (ADR 0014,

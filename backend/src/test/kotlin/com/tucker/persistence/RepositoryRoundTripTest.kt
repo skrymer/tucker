@@ -65,6 +65,15 @@ class RepositoryRoundTripTest {
     }
 
     @Test
+    fun `Food names read by id without loading the Foods`() {
+        val oats = foods.insert(Food.plain(foods.nextId(), "Rolled oats", null, Nutrition(389.0, 16.9, 66.3, 6.9)))
+        val skyr = foods.insert(Food.plain(foods.nextId(), "Skyr", null, Nutrition(63.0, 11.0, 4.0, 0.2)))
+
+        assertEquals(mapOf(oats.id to "Rolled oats", skyr.id to "Skyr"), foods.namesOf(listOf(oats.id, skyr.id)))
+        assertEquals(emptyMap(), foods.namesOf(emptyList()))
+    }
+
+    @Test
     fun `foods are listed alphabetically ignoring case`() {
         foods.insert(Food.plain(foods.nextId(), "banana", null, Nutrition(89.0, 1.1, 22.8, 0.3)))
         foods.insert(Food.plain(foods.nextId(), "Cherry", null, Nutrition(50.0, 1.0, 12.0, 0.3)))
@@ -113,6 +122,15 @@ class RepositoryRoundTripTest {
     }
 
     @Test
+    fun `whether the User has weighed in reads without loading a reading`() {
+        assertEquals(false, weights.any())
+
+        weights.save(WeightMeasurement(weights.nextId(), LocalDate.of(2026, 5, 22), 88.4))
+
+        assertEquals(true, weights.any())
+    }
+
+    @Test
     fun `a weight measurement is replaced when re-saved for the same day`() {
         val date = LocalDate.of(2026, 5, 22)
         weights.save(WeightMeasurement(weights.nextId(), date, 88.4))
@@ -144,6 +162,16 @@ class RepositoryRoundTripTest {
     }
 
     @Test
+    fun `whether the User has an active Goal reads without loading it, counting no inactive one`() {
+        goals.insert(Goal(goals.nextId(), LocalDate.of(2026, 4, 1), 92.0, 85.0, 0.5, active = false))
+        assertEquals(false, goals.hasActive())
+
+        goals.insert(Goal(goals.nextId(), LocalDate.of(2026, 5, 1), 90.0, 80.0, 0.5, active = true))
+
+        assertEquals(true, goals.hasActive())
+    }
+
+    @Test
     fun `the active Goal round-trips`() {
         goals.insert(Goal(goals.nextId(), LocalDate.of(2026, 5, 1), 90.0, 80.0, 0.5, active = true))
         val active = goals.findActive()
@@ -169,6 +197,24 @@ class RepositoryRoundTripTest {
         assertNotNull(loaded)
         assertEquals(Sex.MALE, loaded.sex)
         assertEquals(182.0, loaded.heightCm)
+    }
+
+    @Test
+    fun `whether the User has a Profile reads without loading it`() {
+        assertEquals(false, profiles.exists())
+
+        profiles.save(Profile(Sex.MALE, LocalDate.of(1985, 6, 15), 182.0))
+
+        assertEquals(true, profiles.exists())
+    }
+
+    @Test
+    fun `whether the User counts calories reads without loading the Profile, and is unknown without one`() {
+        assertNull(profiles.tracksCalories())
+
+        profiles.save(Profile(Sex.MALE, LocalDate.of(1985, 6, 15), 182.0, tracksCalories = false))
+
+        assertEquals(false, profiles.tracksCalories())
     }
 
     @Test
@@ -205,6 +251,26 @@ class RepositoryRoundTripTest {
         // The two stamps share one row but must not clobber one another.
         assertEquals(sentOn, reminderState.lastReminderSentOn())
         assertEquals(LocalDate.of(2026, 6, 10), reminderState.lastSeenOn())
+    }
+
+    @Test
+    fun `the newest review's date reads without loading a review`() {
+        assertNull(reviews.latestReviewedOn())
+
+        reviewOn(LocalDate.of(2026, 6, 17))
+        reviewOn(LocalDate.of(2026, 6, 10))
+
+        assertEquals(LocalDate.of(2026, 6, 17), reviews.latestReviewedOn())
+    }
+
+    @Test
+    fun `the newest review's date on or before a day reads without loading a review`() {
+        reviewOn(LocalDate.of(2026, 6, 10))
+        reviewOn(LocalDate.of(2026, 6, 17))
+
+        assertNull(reviews.latestReviewedOnOrBefore(LocalDate.of(2026, 6, 9)))
+        assertEquals(LocalDate.of(2026, 6, 10), reviews.latestReviewedOnOrBefore(LocalDate.of(2026, 6, 16)))
+        assertEquals(LocalDate.of(2026, 6, 17), reviews.latestReviewedOnOrBefore(LocalDate.of(2026, 6, 17)))
     }
 
     @Test
@@ -282,6 +348,18 @@ class RepositoryRoundTripTest {
     }
 
     @Test
+    fun `whether an id is a Recipe reads without loading it`() {
+        val oats = foods.insert(Food.plain(foods.nextId(), "Oats", null, Nutrition(389.0, 16.9, 66.3, 6.9)))
+        val porridge = recipes.insert(
+            Recipe(recipes.nextId(), "Porridge", listOf(RecipeIngredient(oats, 80.0)), cookedWeightG = 300.0),
+        )
+
+        assertEquals(false, foods.isRecipe(oats.id))
+        assertEquals(true, foods.isRecipe(porridge.id))
+        assertEquals(false, foods.isRecipe(999_999L))
+    }
+
+    @Test
     fun `a Recipe rolls up its ingredients and round-trips`() {
         val oats = foods.insert(Food.plain(foods.nextId(), "Oats", null, Nutrition(389.0, 16.9, 66.3, 6.9)))
         val milk = foods.insert(Food.plain(foods.nextId(), "Milk", null, Nutrition(64.0, 3.4, 4.8, 3.6)))
@@ -299,4 +377,7 @@ class RepositoryRoundTripTest {
         // (389*0.8 + 64*3.0) = 503.2 kcal over 360 g of finished dish
         assertEquals(503.2 / 360.0 * 100.0, loaded.nutrition().caloriesPer100g, 1e-9)
     }
+
+    private fun reviewOn(day: LocalDate) =
+        reviews.insert(WeeklyReview(reviews.nextId(), day, trendWeightKg = 86.0, intakeTargets = null))
 }

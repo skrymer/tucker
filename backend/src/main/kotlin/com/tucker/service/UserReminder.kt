@@ -72,9 +72,9 @@ class UserReminder(
             zone = ZoneId.of(profile.timezone),
             reminderHour = profile.reminderHour,
             remindersEnabled = profile.remindersEnabled,
-            setupComplete = weights.latest() != null,
+            setupComplete = weights.any(),
             hasSubscription = subs.isNotEmpty(),
-            latestReviewOn = reviews.latest()?.reviewedOn,
+            latestReviewOn = reviews.latestReviewedOn(),
             lastSeenOn = reminderState.lastSeenOn(),
             lastReminderSentOn = reminderState.lastReminderSentOn(),
         )

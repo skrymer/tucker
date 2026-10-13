@@ -117,7 +117,7 @@ class RecipeController(
         // Two questions, not one: this rejects an id that is not a *recipe* (a plain
         // Food, or nothing), while the scoped update below rejects one that is not the
         // caller's. Both answer 404, and neither is redundant.
-        recipes.findById(id) ?: throw NotFoundException("no recipe with id $id")
+        if (!foods.isRecipe(id)) throw NotFoundException("no recipe with id $id")
         val recipe = request.toRecipe(id = id)
         val updated = foodService.updateRecipe(recipe)
             ?: throw NotFoundException("no recipe with id $id, or no Tag among ${request.tagIds}")

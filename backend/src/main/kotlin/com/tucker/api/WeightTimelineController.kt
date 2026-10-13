@@ -159,7 +159,7 @@ class WeightTimelineController(
      * complete setup is treated as the default the Profile would give them (ADR 0024).
      */
     private fun evidenceOver(from: LocalDate, to: LocalDate): TimelineEvidence? =
-        if (profiles.get()?.tracksCalories == false) {
+        if (profiles.tracksCalories() == false) {
             goals.findActive()?.let { GoalTrajectory(it) }
         } else {
             TimelineIntake(
