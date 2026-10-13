@@ -143,23 +143,11 @@ const { save, saving } = useCorrectionSave()
         <UInput v-model="draft.name" class="w-full" />
       </UFormField>
 
-      <div class="grid grid-cols-3 gap-3">
-        <UFormField
-          v-for="macro in MACROS"
-          :key="macro"
-          :label="MACRO_LABELS[macro]"
-          :name="macro"
-          required
-        >
-          <NumberField
-            v-model="draft[macro]"
-            :min="0"
-            :step="0.1"
-            class="w-full"
-            @input="onType(macro, $event)"
-          />
-        </UFormField>
-      </div>
+      <MacroFields
+        :values="draft"
+        @type="onType"
+        @commit="(macro, value) => (draft[macro] = value)"
+      />
 
       <p role="status" class="text-label text-muted tabular-nums">
         <FigureDiff v-if="complete" :before="before" :after="after" />

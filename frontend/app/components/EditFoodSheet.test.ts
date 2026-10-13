@@ -205,6 +205,18 @@ describe('EditFoodSheet', () => {
     expect(screen.getByRole('status')).toHaveTextContent(/^— kcal \/100g$/)
   })
 
+  it('states no figures while a macro field holds only spaces', async () => {
+    server.use(...foodCatalog({ foods: [oats] }))
+    await renderSuspended(EditFoodSheet, { props: { food: oats } })
+    const user = userEvent.setup()
+    const protein = screen.getByRole('spinbutton', { name: /^Protein/ })
+    await user.clear(protein)
+    await user.type(protein, ' ')
+
+    expect(protein).toHaveValue(' ')
+    expect(screen.getByRole('status')).toHaveTextContent(/^— kcal \/100g$/)
+  })
+
   it('says logged food keeps its figures only once a macro has moved, not for a rename', async () => {
     server.use(...foodCatalog({ foods: [oats] }))
     await renderSuspended(EditFoodSheet, { props: { food: oats } })

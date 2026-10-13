@@ -136,24 +136,11 @@ function onSubmit() {
       />
     </UFormField>
 
-    <div class="grid grid-cols-3 gap-3">
-      <UFormField
-        v-for="macro in MACROS"
-        :key="macro"
-        :label="MACRO_LABELS[macro]"
-        :name="macro"
-        required
-      >
-        <NumberField
-          :model-value="state[macro]"
-          :min="0"
-          :step="0.1"
-          class="w-full"
-          @input="markTouched(macro)"
-          @update:model-value="updateMacro(macro, $event)"
-        />
-      </UFormField>
-    </div>
+    <MacroFields
+      :values="state"
+      @type="(macro) => markTouched(macro)"
+      @commit="updateMacro"
+    />
 
     <UFormField label="Tags">
       <TagPicker v-model="tags" v-model:creating="creatingTag" />
