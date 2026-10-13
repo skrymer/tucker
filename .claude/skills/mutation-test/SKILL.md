@@ -22,9 +22,14 @@ production) are still found by hand.
 **So are the Claude Code hooks** (`.claude/hooks/*.mjs`): neither engine reaches them.
 Sweep a hook by hand — a list of named mutants, each an exact string replacement that
 must match once, applied to a scratch copy of `.claude/hooks/` with `node_modules`
-symlinked in, then `node --test` per copy; re-sweep after every later fix. A mutant
-killed by a test that fakes an external tool proves nothing about the real tool, so
-check the fake has the tool's process structure (#411: `.bin/jscpd` is a node wrapper).
+symlinked in and `.claude/skills/` copied dereferenced (`cp -rL`: three skills are
+relative symlinks, and a plain copy fails skill-injector's skill-exists test whatever
+the mutant), then `node --test` per copy; re-sweep after every later fix. List a mutant
+per changed behaviour, not per changed line — each regex alternative, each joined part
+of a string, each cap or ordering claim a comment makes (#469's first list missed
+nine). A mutant killed by a test that fakes an external tool proves nothing about the
+real tool, so check the fake has the tool's process structure (#411: `.bin/jscpd` is a
+node wrapper).
 
 ## Run each sweep bounded, and one at a time
 
