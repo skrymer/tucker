@@ -29,6 +29,9 @@ const COMPONENT_TESTING =
  */
 const IMPLEMENTATION =
   /\bpick(ed|ing)? ?up\b|\bissue #?\d+|\bslice \d+\b|\bnext slice\b|\bimplement\w*\b/i
+/** Shaping how a screen looks, which Tucker styles from its own tokens. */
+const SCREEN_DESIGN =
+  /\b(ui|ux) design\b|\bdesign (the |a |this )?(screen|page|layout|component)\b|\blook and feel\b|\bvisual design\b/i
 const TDD = new RegExp(
   [
     /\btdd\b|\bred[- ]green\b|\btests?\b|\btesting\b|\bspecs?\b/i.source,
@@ -81,8 +84,8 @@ export const RULES = [
     id: 'frontend-dev',
     skill: 'frontend-dev',
     scope: 'project',
-    pattern: IMPLEMENTATION,
-    why: 'before any frontend change; in a worktree, invoke its scoped copy.',
+    pattern: new RegExp(`${IMPLEMENTATION.source}|${SCREEN_DESIGN.source}`, 'i'),
+    why: 'before any frontend change, its Styling section before styling anything, and the voltagent-core-dev:ui-designer agent on screens; in a worktree, invoke its scoped copy.',
   },
   {
     id: 'backend-dev',
@@ -118,13 +121,6 @@ export const RULES = [
     scope: 'project',
     pattern: /\bsign[- ]?off\b|\bsigned[- ]?off\b|ready to (commit|push|ship)|\b(open|raise) (a|the) pr\b|\brun the gates\b|\bwrap (this |it )?up\b/i,
     why: 'run the seven gates in order — not the gates ad hoc, and not after the commit.',
-  },
-  {
-    id: 'screen-design',
-    skill: 'frontend-dev',
-    scope: 'project',
-    pattern: /\b(ui|ux) design\b|\bdesign (the |a |this )?(screen|page|layout|component)\b|\blook and feel\b|\bvisual design\b/i,
-    why: 'its Styling section first (DESIGN.md + /design, tokens by name); collaborate with the voltagent-core-dev:ui-designer agent on screens.',
   },
   {
     id: 'check-adrs',

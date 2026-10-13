@@ -41,23 +41,20 @@ it does not restate them.
 ## Styling — read the guidelines, then use tokens by name
 
 **Before styling a feature**, read `frontend/DESIGN.md` → **Typography** (its *Scale* table) and
-**Shape & elevation** (and **Writing & structure** for any copy), and open `/design` (`app/pages/design.vue`) — the rendered style guide,
-captioned with what each specimen actually draws. The values live there and in the stylesheet
-only; this skill names them and never copies them.
+**Shape & elevation** — and **Writing & structure** for any copy — and open `/design`
+(`app/pages/design.vue`), the rendered style guide, captioned with what each specimen draws. The values and the reasons live there and in the
+stylesheet only; this skill names them and never copies them.
 
 The rule, in the User's terms: **styling is consistent across the app** — every token is used by
 name, and no screen restates one inline.
 
-- **Type** — one class carries size, line-height, weight, tracking and face: `text-ring-figure` ·
-  `text-h1` · `text-stat` · `text-h2` · `text-body` · `text-label` · `text-eyebrow` (always with
-  `text-muted`). Write `text-h2`, never `text-lg font-bold`; ink is a separate class.
-- **Shape** — `rounded-card` and `rounded-inset`, never a stock `rounded-*` step (Nuxt UI rescales
-  those) or an arbitrary `rounded-[…]`. Card padding comes from the card (`app.config.ts`), so a
-  card never adds its own.
-- **Colour** — Nuxt UI colour roles in `app.config.ts` + `--ui-*`/`@theme` tokens in `main.css`,
-  never hex; colour is never the only signal (icon + text).
-- **A value the scale lacks is a new token**, added to DESIGN.md and the stylesheet together and
-  shown on `/design` — never one screen's inline class.
+- **Type** — the Scale table's tokens (`text-h2`, `text-body`, `text-eyebrow`, …), never stock
+  size and weight classes.
+- **Shape** — a card, viewfinder or inset takes `rounded-card` / `rounded-inset`, never a stock
+  `rounded-*` step or an arbitrary radius; a card never adds its own padding.
+- **Colour** — the Nuxt UI colour roles and `--ui-*`/`@theme` tokens (DESIGN.md → Colour,
+  Mapping to Nuxt UI), never hex.
+- **A value the scale lacks** — DESIGN.md → Guardrails says how it becomes a token.
 
 The guards below enforce it. A red one means the change broke the rule above: go back to the
 token, don't loosen the guard.

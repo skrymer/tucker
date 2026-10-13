@@ -762,8 +762,8 @@ error nested inside a card, below.
   they're actually signed out is wrong advice.
 - **One vocabulary for the session boundary: _sign in / sign out_.** The app says
   "Signed in as…", "Sign out", "You've been signed out", "Sign back in" — never
-  "log in". An action keeps its name across the whole flow, and the boundary is
-  crossed in both directions, so the two directions have to be the same word.
+  "log in". The boundary is crossed in both directions, so the two directions
+  have to be the same word ([Writing & structure](#writing--structure)).
   (Cloudflare's own `/cdn-cgi/access/logout` path is theirs, not copy.)
 - **Placement:** a load-error state replaces the specific region that failed to
   load — the full page body for a page's primary data (Today's summary, the
@@ -807,8 +807,8 @@ colour and spacing. Case is settled in [Case](#case); the rest is here.
   and what follows says it back: "Log entry" ends in "Entry logged", never
   "Submit" and "Saved".
 - **An error says what failed and how to fix it**, in Tucker's voice: it does not
-  apologise and is never vague. An empty state invites the next action
-  ([Feedback states](#feedback-states--empty--load-error--signed-out)).
+  apologise and is never vague. The empty and error states themselves are
+  [Feedback states](#feedback-states--empty--load-error--signed-out).
 - **Plain and specific beats clever.** Plain verbs, no filler, and each element
   does one job: a label labels, a hint hints.
 - **Structure is information.** An eyebrow, a divider, a number or a badge says
@@ -863,6 +863,11 @@ colour and spacing. Case is settled in [Case](#case); the rest is here.
   and nothing executable notices — review is the only guard on the _shape_.
   `nameCase.test.ts` guards the narrower rule: that a name is stated in sentence
   case wherever a template renders one.
+- **Type and shape are used by name** (see [Scale](#scale) and
+  [Shape & elevation](#shape--elevation)): a screen wears a token, never the
+  values it stands for. A value the scale lacks becomes a new token — added here
+  and to the stylesheet in one change, and shown on `/design` — never one
+  screen's inline class.
 - **One voice for case** (see [Case](#case)): Tucker writes in sentence case, and
   a name a User typed is _stated_ in it too, via `formatName` — never Title Case,
   never as typed. Display only: the stored name is never rewritten, and neither a

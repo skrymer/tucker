@@ -104,6 +104,12 @@ test("a prompt about a screen's look is sent to Tucker's styling rules, not a ge
   assert.ok(!skills.includes('frontend-design'), `got ${skills}`)
 })
 
+test('a prompt that is both new work and screen design still points at the Styling section', () => {
+  const block = render(selectSkills('implement the screen design for issue 12'))
+  assert.match(block, /^- \/frontend-dev — .*Styling/m)
+  assert.equal(block.match(/^- \/frontend-dev /gm).length, 1)
+})
+
 test('an ordinary prompt gets no reminder at all', () => {
   assert.deepEqual(skillsOf('what does IntakeBreakdown.of refuse?'), [])
 })
