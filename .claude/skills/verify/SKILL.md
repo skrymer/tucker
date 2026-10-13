@@ -253,7 +253,10 @@ and checks each against a concrete value in the verdict.
   every endpoint that can put the app in that state, unbounded ones included:
   `/api/summary?date=` takes no ±1 check and runs a due review, so it can seed review
   history on any date. #358's verdict called a state unseedable over the API; the
-  resolutions pass showed the recipe.
+  resolutions pass showed the recipe. And look past today's endpoints to the rows
+  already stored: a nullable column whose create path was tightened later still holds
+  the state, so seed the row directly. #432 called a Food with no carbs figure
+  unreachable; the column is nullable, and the state was a real bug.
 - Append the result to the verdict, so a reviewer sees what was checked:
   `verdict audit: 4 inputs — 3 COVERED, 1 UNCOVERED (start date = today) → drove it ✅`
   Write it only after marking every value the audit named DRIVEN (quote it) or NOT

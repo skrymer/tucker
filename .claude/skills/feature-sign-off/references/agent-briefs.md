@@ -77,17 +77,20 @@ summary line copied whole, never fields picked from it (#468 quoted a Vitest fil
 `environment` and `setup` and left out the `tests` where its boot landed), and every finding an agent returns gets a row, a
 "harmless" nit included — and so does a behaviour change the agent dismissed itself (an
 adversary's failed attack, a ledger's scope tail): #455 PR 2's pack read one as resolved. #443's pack recounted a hand-mutation run as "11/12" (the
-file said 10 of 11) and dropped a one-line nit; gate 5 had to correct both.
+file said 10 of 11) and dropped a one-line nit; gate 5 had to correct both. A row says
+re-recorded, withdrawn or superseded only once that edit is in the file, and a
+re-resolution marks the row it replaces in the same edit: #469 claimed two re-records
+that gate 5 found unmade.
 
-**One row per remedy, and a ruling covers only what its question named.** A finding
-that proposes two remedies gets two rows, so the one not adopted cannot hide under
-FIXED — #445 recorded an altitude finding FIXED with half of it unadopted, the third
-breach of "answers each remedy" (#400, #455). A row citing the user's ruling quotes
-the question as asked; an item the question did not name is asked again. #445 folded
-a figure into a ruling that had named only the ring legend, and gate 5 rejected it.
-#476 broke both again — a FIXED row with an unadopted half, a row holding "(a) … (b)",
-and a ruling question that named only the paging half of a cold-load-and-paging
-finding — so write the ruling question from every clause of the finding.
+**One row per remedy, and a ruling covers only what its question named.** Every pack
+row is `| id | agent | finding | remedy (one) | resolution |`, and a finding that
+proposes two remedies is split into two rows *before* any resolution is written — so
+the one not adopted cannot hide under FIXED, or under a dismissal that answers only the
+other. Prose alone did not hold this: #445 and #476 each recorded a half-adopted remedy
+as FIXED, and #469 broke it three ways in one run (a dismissal answering one of two
+remedies, a FIXED row with half a remedy taken, a row holding "merge or fold"). A row
+citing the user's ruling quotes the question as asked; an item the question did not
+name is asked again, so write the ruling question from every clause of the finding.
 
 **Where a justification has to be tested, it is presented as a claim, attributed to
 nobody**: "It is claimed that `startedOn` is the only way to create a backdated Goal.
@@ -201,6 +204,9 @@ there is no issue, say so; do not write a substitute.
 **Fires:** only when two agents in the run reach opposing conclusions on the same
 question. Most runs never spawn it.
 **Costs:** one agent, on the critical path, when it fires.
+**Slots:** a position carries what its agent cited, never the author's resolution row,
+and the read line goes out as written — #432 widened it with a "for example" that was
+one position's framing, and the ruling came back as exactly that framing.
 
 ```
 Two reviewers reached opposing conclusions on one question. Decide it.
@@ -210,8 +216,8 @@ Repo: <path> (<a git worktree | the main checkout> — stay in it).
 
 The question: <the single question, phrased so both positions answer it>
 
-Position 1: <the position, and the evidence cited for it>
-Position 2: <the position, and the evidence cited for it>
+Position 1: <the position, and the evidence that agent cited — quoted from its transcript>
+Position 2: <the position, and the evidence that agent cited — quoted from its transcript>
 
 Both positions are unattributed, and that is deliberate — do not try to work out
 who said what, or which one is currently implemented. The state of the working
