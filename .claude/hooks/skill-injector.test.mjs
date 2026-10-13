@@ -123,10 +123,35 @@ test("a frontend-dev reminder says once to invoke the worktree's scoped copy, wh
   }
 })
 
-test('a merged reminder keeps the reason of every rule that raised it', () => {
+test('a merged reminder keeps the reason of every rule that raised it, in table order', () => {
   const line = render(selectSkills('pick up issue 469: design the page')).match(/^- \/frontend-dev — .*$/m)[0]
-  assert.match(line, /before any frontend change/)
-  assert.match(line, /Styling section/)
+  assert.equal(
+    line,
+    '- /frontend-dev — before any frontend change. Also its Styling section before styling anything, ' +
+      'and the voltagent-core-dev:ui-designer agent on screens. In a worktree, invoke its scoped copy.',
+  )
+})
+
+test('a merged reminder takes one slot of the cap', () => {
+  assert.deepEqual(skillsOf('pick up issue 469: design the page and add a test'), [
+    'frontend-dev',
+    'backend-dev',
+    'tdd',
+  ])
+})
+
+test("every way of asking about a screen's look reaches the Styling section", () => {
+  for (const prompt of [
+    'the ui design of Today',
+    'the ux design of Today',
+    'design the layout',
+    'design a component',
+    'design screen for Check',
+    'the look and feel of Log',
+    'the visual design of Review',
+  ]) {
+    assert.match(render(selectSkills(prompt)), /^- \/frontend-dev — .*Styling/m, prompt)
+  }
 })
 
 test('only the dev playbooks, which a worktree serves its own copy of, mention the worktree', () => {
