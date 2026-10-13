@@ -69,9 +69,9 @@ needs it.
    container layers are out of scope in both, so keep checking those by hand (an
    unanchored aria-snapshot regex and a substring `getByText` both pass a change they
    should have caught). Budget roughly a minute for a frontend scope and a few for a
-   backend one. SKIP the stack with a note if the diff touches no mutable source there
-   (docs, config, tests only); that skill's step 1 owns the base, the command and the
-   SKIP-vs-STOP rule.
+   backend one. SKIP a stack, with a note, only if the diff touches no mutable source
+   there (docs, config, tests only) — a `.claude/hooks/*.mjs` change is swept by hand
+   per that skill, never SKIPped (#469). Its step 1 owns the base, command and STOP rule.
 
 3. **`/code-review medium` — hunt correctness bugs.** Review the (now-simplified)
    diff for real bugs. **Run it at `medium` effort**, not the default high: at
@@ -490,10 +490,10 @@ Why the gates sit in this order, why two overlap, and why a briefed agent is not
 - **A fix is pinned only by a test that fails when the fix's wiring is removed.** Prove
   it with that control — delete the call, show the named test red — and save the output.
   A check installed in a hook (`afterEach`) is pinned only through the hook: in Vitest
-  that is an `it.fails` test, since a hook error counts as its expected failure. #400's
-  first fix called the assertion directly; removing it from `afterEach` left the suite
-  green, and gate 5 rejected it. A fix of several parts is ablated **part by part**, on a
-  fresh copy without `build/`; a part whose removal changes nothing is deleted
-  ([rationale](references/rationale.md#ablation)).
+  that is an `it.fails` test, since a hook error counts as its expected failure (#400).
+  A test named for a combination first shows its input meets each condition — a RED
+  proves the assertion, not the fixture (#469 took an agent's prompt that missed one).
+  A fix of several parts is ablated **part by part**, on a fresh copy without `build/`;
+  a part whose removal changes nothing is deleted ([why](references/rationale.md#ablation)).
 - This skill assumes the work is built and tested. It is the *exit* gate, not a
   substitute for red-green TDD during development.
