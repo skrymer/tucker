@@ -112,11 +112,6 @@ class WeeklyReviewRepository(
     }
 }
 
-/**
- * Write the four target columns from one branch. They are one value object,
- * and V15's CHECK holds them to it, so a row is never assembled by asking
- * four times whether there are targets.
- */
 /** [ownerId]'s newest review meeting every one of [conditions], if any. */
 private fun DSLContext.newestReview(ownerId: Int, vararg conditions: Condition): WeeklyReview? =
     selectFrom(WEEKLY_REVIEW)
@@ -133,6 +128,11 @@ private fun DSLContext.newestReviewDate(ownerId: Int, vararg conditions: Conditi
         .fetchOne(0, String::class.java)
         ?.let(LocalDate::parse)
 
+/**
+ * Write the four target columns from one branch. They are one value object,
+ * and V15's CHECK holds them to it, so a row is never assembled by asking
+ * four times whether there are targets.
+ */
 private fun WeeklyReviewRecord.writeTargets(targets: IntakeTargets?) {
     maintenanceKcal = targets?.maintenance?.kcal
     maintenanceBasis = targets?.maintenance?.basis?.name
