@@ -995,7 +995,7 @@ class.
 
 ### `persistence` and `service` — the class 6 glue
 
-**Repository write glue** — `FoodRepository.applyFrom` L100–101, `WeeklyReviewRepository.insert`
+**Repository write glue** — `FoodRepository.kt`'s top-level `applyFrom` L160–161, `WeeklyReviewRepository.insert`
 L85, `RecipeRepository.delete` L122.
 
 **Verdict: killed by an out-of-scope layer.** Each is a field-by-field projection onto
@@ -1007,11 +1007,11 @@ the mapping twice and break on every schema change (ADR 0013, thin glue).
 - **Caveat on `applyFrom`'s carbs and fat setters:** the out-of-scope evidence is thin. No fast test reads either column back, and no smoke checks it (#455's triage).
 
 **Equivalent, not glue** (re-triaged in #455):
-- **The `isEmpty()` early returns** replaced with an empty collection. These are `FoodRepository.findByIds`, `FoodRepository.carryingTags`, `TagRepository.findByIds`, and `RecipeRepository.ingredientCounts` / `ingredientsOf`. Each mutant returns empty for an input that was already empty. The whole-method hand-mutations recorded below tested a different mutant.
+- **The `isEmpty()` early returns** replaced with an empty collection. These are `FoodRepository.findByIds`, `FoodRepository.namesOf`, `FoodRepository.carryingTags`, `TagRepository.findByIds`, and `RecipeRepository.ingredientCounts` / `ingredientsOf`. Each mutant returns empty for an input that was already empty. The whole-method hand-mutations recorded below tested a different mutant.
 - **`GoalRepository.insert`'s `setActive` / `setReachedOn` removed.** `goal.active` is `DEFAULT 1`, `reached_on` defaults to NULL, and `Goal.started` always builds an active, unreached Goal. No layer can tell the difference.
 
 **Deletion return counts** — `PushSubscriptionRepository.deleteByEndpoint` L77,
-`WeightMeasurementRepository.deleteById` L48.
+`WeightMeasurementRepository.deleteById` L53.
 
 **`EntryRepository.findById`'s negated conditional (NO_COVERAGE) is dead code.** The method has zero callers, on `main` too. It was left in place by the user's choice (2026-10-09), so there is no test to write.
 
