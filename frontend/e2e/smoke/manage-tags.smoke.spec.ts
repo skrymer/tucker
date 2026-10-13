@@ -57,11 +57,11 @@ test('a Tag created in Manage tags, put on a Food and deleted leaves the Food in
   `)
   await manage.getByRole('button', { name: 'Close' }).click()
 
-  await page.getByRole('button', { name: 'Tags for Rolled oats' }).click()
-  const tagging = page.getByRole('dialog', { name: 'Tags for Rolled oats' })
-  await tagging.getByRole('combobox').fill('Snack')
+  await page.getByRole('button', { name: 'Edit Rolled oats' }).click()
+  const tagging = page.getByRole('dialog', { name: 'Edit Rolled oats' })
+  await tagging.getByRole('combobox', { name: 'Tags' }).fill('Snack')
   await page.getByRole('option', { name: 'Snack', exact: true }).click()
-  await tagging.getByRole('button', { name: 'Save tags' }).click()
+  await tagging.getByRole('button', { name: 'Save changes' }).click()
   await expect(tagging).toBeHidden()
 
   await goto('/log', { waitUntil: 'hydration' })

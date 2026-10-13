@@ -6,9 +6,9 @@
     - list:
         - listitem:
             - text: Oats 380 kcal · 13 g protein /100g
-            - button "Tags for Oats"
+            - button "Edit Oats"
             - button "Delete Oats"
         - listitem:
             - text: Skyr 64 kcal · 11 g protein /100g
-            - button "Tags for Skyr"
+            - button "Edit Skyr"
             - button "Delete Skyr"
