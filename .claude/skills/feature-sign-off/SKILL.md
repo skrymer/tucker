@@ -38,25 +38,23 @@ needs it.
    is spawned — fix, re-run. Its one-line verdict opens gate 5's pack (#464 left it out).
 
 1. **`/simplify` — clean it up.** Apply reuse / simplification / efficiency /
-   altitude cleanups to the changed code. It *edits* the working tree, so run it
-   before the bug hunt, so the reviewer reads the code you ship. Re-run the tests after
-   its fixes, and pin a consumer's output before a fix makes a helper serve it (#468). Every
+   altitude cleanups to the changed code. It *edits* the working tree, so run it before
+   the bug hunt, so the reviewer reads the code you ship. Re-run the tests after its
+   fixes; pin a consumer's output before a fix makes a helper serve it (#468); extract here
+   a fix that leaves two files' markup identical, not at the clone gate later (#432). Every
    fix, an agent's remedy most of all, is read against the issue's criteria first (#464).
 
    It fans out to **three** review agents in parallel — reuse+simplification (one
    agent: the two shared 3 of 3 findings when split), efficiency, and altitude — each
    sent its angle line verbatim from [`references/agent-briefs.md`](references/agent-briefs.md#the-simplify-angles--gate-1).
 
-   **Sweep the doc comments in the same pass.** Every JSDoc/KDoc the diff adds or
-   touches must be brief, present-tense, and non-obvious: it says what the thing
-   *is* and any rule a reader would get wrong, and nothing the signature already
-   says. Delete changelog prose ("used to…", "previously…", "changed so…"),
-   issue/PR numbers, and bug narration — git and ADRs hold the why. Longer rationale
-   goes in a linked ADR. A cross-reference repointed off a deleted symbol is re-read
-   against its new target: the link resolves while the claim goes false (#464). A layout finding (a line too long, a
-   comment to rewrap) is closed by measuring it, not by assuming an edit or the
-   formatter reflowed it: #407 recorded a rewrap as done, and gate 5 found the
-   111-character line still there.
+   **Sweep the doc comments in the same pass.** Every JSDoc/KDoc the diff adds or touches
+   is brief, present-tense and non-obvious: what the thing *is* and any rule a reader would
+   get wrong, nothing the signature says. Delete changelog prose ("used to…"), issue/PR
+   numbers and bug narration; longer rationale goes in a linked ADR. A cross-reference
+   repointed off a deleted symbol is re-read against its new target: the link resolves
+   while the claim goes false (#464). A layout finding (a line too long) is closed by
+   measuring it: #407 recorded a rewrap as done, and gate 5 found the 111-character line.
 
 2. **`/mutation-test` — do the tests actually catch bugs?** Run the engine for **each
    stack the diff touches** — StrykerJS over Vitest in `frontend/`, pitest over the
@@ -65,7 +63,9 @@ needs it.
    the missing test), a kill by an out-of-scope layer (name the spec), an equivalent
    mutant (record why), or a false survivor the engine never ran a test against (settle
    it by hand-mutating). It runs here, not later, for two reasons: the code is final
-   after gate 1, and it *adds tests* that gate 3 must then review. The browser and
+   after gate 1 — so take the scope from gate 1's commit, never the first diff, whose
+   fixes reach other files (#432 left two unswept) — and it *adds tests* that gate 3
+   must then review. The browser and
    container layers are out of scope in both, so keep checking those by hand (an
    unanchored aria-snapshot regex and a substring `getByText` both pass a change they
    should have caught). Budget roughly a minute for a frontend scope and a few for a
@@ -204,9 +204,9 @@ needs it.
    Take it on the file as committed — after Prettier and the pre-commit hook — and
    stamp it with `git rev-parse HEAD:<file>` (#408), and every saved run log with `git
    rev-parse HEAD` + `git status --short`: #455's unstamped logs cost gate 5 two rebuilds.
-   That copy runs lint and typecheck but **not Vitest**, which cannot resolve modules
-   through the symlinked `node_modules` (measured, #402), so any test result the agent
-   may need goes in the pack as saved output.
+   That copy runs Vitest only with `node_modules` hard-linked (`cp -al`, then `nuxt
+   prepare`) — a symlinked one cannot resolve modules (#402) — and the pack carries
+   saved output anyway.
    It answers three questions and nothing else:
 
    - **Does each fix address the finding it cites, without introducing something
@@ -369,10 +369,10 @@ output, cite it in gate 5's pack, and record there that the agents split and why
 arbiter was spawned. #408 settled such a split by a lint run and left it unrecorded,
 which gate 5 sent back.
 
-Gate 1's three-agent fan-out is where this happens most, but the rule is not scoped
-there: gate 3 and gate 4 can split the same way, when a correctness fix runs into a
-recorded constraint. The trigger is narrow — *opposing answers to one question*, not
-two findings you have to prioritise. **The arbiter's pick is what lands.** If you
+Gate 1's fan-out is where this happens most, but gates 3 and 4 can split the same way,
+when a correctness fix runs into a recorded constraint. The trigger is narrow —
+*opposing answers to one question*, not two findings to prioritise — and includes a
+resolution adopting one agent's remedy for lines another agent's would change (#432). **The arbiter's pick is what lands.** If you
 override it, that override goes into gate 5's pack as its own finding-and-resolution
 pair; a rule that forbade the override outright would be unenforceable, since you
 write the code either way.
@@ -390,18 +390,18 @@ losing a finding:
   read `log.vue`, `catalog.ts` and the ADRs, at ~15–35 tool calls apiece. Write the
   diff to a scratch file — **one per gate** (`diff-gate1.patch`, `diff-gate3.patch`),
   never one shared file rewritten as fixes land, or gate 5 cannot replay what an
-  agent judged (#358's gate-1 input was overwritten) — *and* inline the
-  three-to-five files the angle actually needs, then say which further reading is expected. Naming the files it will need
-  is also what stops it wandering — and it must carry the contract's
-  read-anything-else sentence, so the pack cannot double as a fence.
+  agent judged (#358's gate-1 input was overwritten) — *and* inline the three-to-five
+  files the angle needs, saying which further reading is expected; naming them stops it
+  wandering, and the contract's read-anything-else sentence keeps the pack from fencing.
 - **Batch the fixes, not one test run each.** Findings arrive in groups and most are
   independent. Apply a whole gate's worth, then run the touched spec once. Except a fix
   you prove by hand-mutation — one at a time, to watch that single mutant die — and a
   test that passes on write because the code already delivers it (a gate-3 ledger gap,
   say): show its red on a throwaway copy, or with `-PmutationFullMatrix` on the backend,
   never by mutating the source in place, which the TDD hook refuses. `mutation-test`
-  carries both recipes. "It passes on write, so it can't go RED" never leaves behaviour
-  unpinned; gate 5 rejects it. **Save every red as it fails.** A fix that corrects a
+  carries both recipes. "It passes on write" never leaves behaviour unpinned, nor
+  justifies deleting the test: the red removes the line the justification names (#432's
+  `v-if`), and a "framework does it" claim owes the same red. **Save every red as it fails.** A fix that corrects a
   claim first `git grep`s its wording: #411 fixed CLAUDE.md, missed the hook's comment.
 
   Every gate fix follows a large agent report, which is exactly when Probity loses
