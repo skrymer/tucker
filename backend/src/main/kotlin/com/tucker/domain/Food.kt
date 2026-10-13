@@ -16,6 +16,12 @@ sealed interface FoodKind {
     }
 }
 
+/** The three macros per 100 g a User supplies for a Food; calories are derived from them. */
+data class Macros(val proteinPer100g: Double, val carbsPer100g: Double, val fatPer100g: Double) {
+    /** The [Nutrition] these macros make, calories Atwater-derived. */
+    fun nutrition(): Nutrition = Nutrition.fromMacros(proteinPer100g, carbsPer100g, fatPer100g)
+}
+
 /**
  * A reusable definition of something edible — a name plus [Nutrition] per 100 g.
  * A Recipe is a Food of kind [FoodKind.Recipe]; see [Recipe] for how one is built.
@@ -64,6 +70,20 @@ data class Food(
 
     /** This Food carrying exactly [tagIds]. */
     fun retagged(tagIds: Collection<Long>): Food = copy(tagIds = tagIds.toSet())
+
+    /**
+     * This Food with the old values replaced as never having been true (ADR 0037).
+     * Calories are re-derived from [macros]; the barcode and the Reference Food match
+     * are kept. Refused for a Recipe, whose macros come from its composition.
+     */
+    fun corrected(name: String, macros: Macros, tagIds: Collection<Long>): Food {
+        require(kind is FoodKind.Plain) { "a Recipe is corrected through its composition, not its macros" }
+        return copy(
+            name = name,
+            tagIds = tagIds.toSet(),
+            nutrition = macros.nutrition(),
+        )
+    }
 
     companion object {
         /** A plain (non-recipe) Food. */

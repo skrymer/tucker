@@ -1,21 +1,18 @@
 <script setup lang="ts">
 import type { components } from '#open-fetch-schemas/api'
 
-type FoodResponse = components['schemas']['FoodResponse']
-
+// A row's listeners reach it straight from the page: FoodListItem declares them,
+// and a list relaying each one would only restate its contract.
 // Stryker disable all: a compiler macro's arguments are hoisted out of setup()
+defineOptions({ inheritAttrs: false })
 withDefaults(
-  defineProps<{ foods: FoodResponse[]; tracksCalories?: boolean }>(),
+  defineProps<{
+    foods: components['schemas']['FoodResponse'][]
+    tracksCalories?: boolean
+  }>(),
   { tracksCalories: true },
 )
 // Stryker restore all
-
-const emit = defineEmits<{
-  delete: [FoodResponse]
-  view: [FoodResponse]
-  match: [FoodResponse]
-  tag: [FoodResponse]
-}>()
 </script>
 
 <template>
@@ -24,10 +21,7 @@ const emit = defineEmits<{
       <FoodListItem
         :food="food"
         :tracks-calories="tracksCalories"
-        @delete="(picked) => emit('delete', picked)"
-        @view="(picked) => emit('view', picked)"
-        @match="(picked) => emit('match', picked)"
-        @tag="(picked) => emit('tag', picked)"
+        v-bind="$attrs"
       />
     </li>
   </ul>

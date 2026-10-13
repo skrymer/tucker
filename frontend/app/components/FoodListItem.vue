@@ -20,6 +20,7 @@ const emit = defineEmits<{
   view: [FoodResponse]
   match: [FoodResponse]
   tag: [FoodResponse]
+  edit: [FoodResponse]
 }>()
 
 const tags = computed(() => rowTags(props.food.tags ?? []))
@@ -27,6 +28,24 @@ const tags = computed(() => rowTags(props.food.tags ?? []))
 const isRecipe = computed(() => props.food.kind === 'RECIPE')
 
 const name = computed(() => formatName(props.food.name))
+
+/**
+ * Where the row's Tags are changed: a plain Food is corrected in one sheet that
+ * holds its Tags too (ADR 0037); a Recipe keeps its own Tags sheet.
+ */
+const rowAction = computed(() =>
+  isRecipe.value
+    ? {
+        label: `Tags for ${name.value}`,
+        icon: 'i-lucide-tag',
+        open: () => emit('tag', props.food),
+      }
+    : {
+        label: `Edit ${name.value}`,
+        icon: 'i-lucide-pencil',
+        open: () => emit('edit', props.food),
+      },
+)
 
 // The recipe row's meta subline, e.g. "5 ingredients · makes 1,400 g".
 const recipeSubline = computed(() => {
@@ -79,7 +98,7 @@ const recipeSubline = computed(() => {
             type="button"
             :aria-label="`${tags.hidden} more tags on ${name}`"
             class="rounded-full"
-            @click="emit('tag', props.food)"
+            @click="rowAction.open"
           >
             <UBadge
               :label="`+${tags.hidden}`"
@@ -120,14 +139,14 @@ const recipeSubline = computed(() => {
     />
 
     <UButton
-      :aria-label="`Tags for ${name}`"
-      icon="i-lucide-tag"
+      :aria-label="rowAction.label"
+      :icon="rowAction.icon"
       color="neutral"
       variant="ghost"
       square
       class="size-11 shrink-0 text-muted hover:text-default"
       :ui="{ base: 'justify-center' }"
-      @click="emit('tag', props.food)"
+      @click="rowAction.open"
     />
 
     <UButton

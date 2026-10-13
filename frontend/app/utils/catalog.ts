@@ -99,3 +99,18 @@ export function tagsOnOffer(foods: FoodResponse[]): FoodResponse['tags'] {
     return x < y ? -1 : 1
   })
 }
+
+/**
+ * A Food's calories per 100 g from macros not yet saved, by the Atwater factors
+ * the server derives them with. A preview of the User's own input only: what is
+ * stored is always the server's figure (ADR 0002).
+ */
+export function previewCalories(macros: {
+  proteinPer100g: number
+  carbsPer100g: number
+  fatPer100g: number
+}): number {
+  return (
+    4 * macros.proteinPer100g + 4 * macros.carbsPer100g + 9 * macros.fatPer100g
+  )
+}

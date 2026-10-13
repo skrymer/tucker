@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { tagNameKey } from './tagName'
+import { serverTrim, tagNameKey } from './tagName'
+
+describe('serverTrim', () => {
+  it('strips what the server’s trim strips, and keeps what it keeps', () => {
+    expect(serverTrim('\u001F Oats　\u001C')).toBe('Oats')
+    expect(serverTrim('﻿Oats ')).toBe('﻿Oats')
+  })
+})
 
 describe('tagNameKey', () => {
   it('trims a control separator the server trims and JavaScript keeps', () => {

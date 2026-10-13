@@ -62,7 +62,7 @@ const ALLOWED: Record<string, Record<string, string>> = {
     '`Change what ${name} borrows vitamins and minerals from`':
       'the local `name` computed is formatName(food.name)',
     '`Tags on ${name}`': 'the local `name` computed is formatName(food.name)',
-    '`Tags for ${name}`': 'the local `name` computed is formatName(food.name)',
+    'name.value': 'the local `name` computed is formatName(food.name)',
     '`${tags.hidden} more tags on ${name}`':
       'the local `name` computed is formatName(food.name)',
     'tag.name':

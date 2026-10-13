@@ -1,12 +1,22 @@
 import type { Page } from '@playwright/test'
 import { expect, test } from './support/test'
-import { food, type FoodResponse } from '../test/food-fixtures'
+import { food, recipe, type FoodResponse } from '../test/food-fixtures'
 import { foodCatalog } from '../test/mocks/handlers/catalog'
 
 type Tag = NonNullable<FoodResponse['tags']>[number]
 
 /** Rolled oats, carrying [tags]. */
 const oats = (tags: Tag[] = []) => food({ id: 1, name: 'Rolled oats', tags })
+
+/** A Recipe, Cottage pie, carrying [tags] — a Recipe keeps its own Tags sheet. */
+const pie = (tags: Tag[] = []) =>
+  recipe({
+    id: 2,
+    name: 'Cottage pie',
+    cookedWeightG: 1400,
+    ingredientCount: 5,
+    tags,
+  })
 
 /** The Tags a catalog row shows. */
 const rowTags = (page: Page, name: string) =>
@@ -28,7 +38,7 @@ async function fillNewFood(page: Page) {
   return { sheet, form, name, tags }
 }
 
-test('a User tags a Food from its row, and the row shows the Tag', async ({
+test('a User tags a Food from its Edit sheet, and the row shows the Tag', async ({
   page,
   goto,
   network,
@@ -36,11 +46,11 @@ test('a User tags a Food from its row, and the row shows the Tag', async ({
   network.use(...foodCatalog({ foods: [oats()] }))
   await goto('/foods', { waitUntil: 'hydration' })
 
-  await page.getByRole('button', { name: 'Tags for Rolled oats' }).click()
-  const sheet = page.getByRole('dialog', { name: 'Tags for Rolled oats' })
-  await sheet.getByRole('combobox').fill('breakfast')
+  await page.getByRole('button', { name: 'Edit Rolled oats' }).click()
+  const sheet = page.getByRole('dialog', { name: 'Edit Rolled oats' })
+  await sheet.getByRole('combobox', { name: 'Tags' }).fill('breakfast')
   await page.getByRole('option', { name: /breakfast/ }).click()
-  await sheet.getByRole('button', { name: 'Save tags' }).click()
+  await sheet.getByRole('button', { name: 'Save changes' }).click()
 
   await expect(sheet).toBeHidden()
   await expect(rowTags(page, 'Rolled oats')).toHaveText(['breakfast'])
@@ -63,12 +73,12 @@ test('Save stays reachable while the Tag list is open, and saves only what was c
   )
   await goto('/foods', { waitUntil: 'hydration' })
 
-  await page.getByRole('button', { name: 'Tags for Rolled oats' }).click()
-  const sheet = page.getByRole('dialog', { name: 'Tags for Rolled oats' })
-  await sheet.getByRole('combobox').click()
+  await page.getByRole('button', { name: 'Edit Rolled oats' }).click()
+  const sheet = page.getByRole('dialog', { name: 'Edit Rolled oats' })
+  await sheet.getByRole('combobox', { name: 'Tags' }).click()
   await expect(page.getByRole('listbox')).toBeVisible()
   await sheet
-    .getByRole('button', { name: 'Save tags' })
+    .getByRole('button', { name: 'Save changes' })
     .click({ timeout: 3000 })
 
   await expect(sheet).toBeHidden()
@@ -85,8 +95,8 @@ test('a name entered straight after a pick is created and saved beside it', asyn
   )
   await goto('/foods', { waitUntil: 'hydration' })
 
-  await page.getByRole('button', { name: 'Tags for Rolled oats' }).click()
-  const sheet = page.getByRole('dialog', { name: 'Tags for Rolled oats' })
+  await page.getByRole('button', { name: 'Edit Rolled oats' }).click()
+  const sheet = page.getByRole('dialog', { name: 'Edit Rolled oats' })
   const picker = sheet.getByRole('combobox', { name: 'Tags' })
   await picker.click()
   await page.getByRole('option', { name: 'snack' }).click()
@@ -95,13 +105,13 @@ test('a name entered straight after a pick is created and saved beside it', asyn
   await page.keyboard.insertText('supper')
   await picker.press('Enter')
   await expect(sheet.getByText('supper', { exact: true })).toBeVisible()
-  await sheet.getByRole('button', { name: 'Save tags' }).click()
+  await sheet.getByRole('button', { name: 'Save changes' }).click()
 
   await expect(sheet).toBeHidden()
   await expect(rowTags(page, 'Rolled oats')).toHaveText(['snack', 'supper'])
 })
 
-test('a row carrying six Tags shows four and a "+2" that opens its Tags', async ({
+test('a row carrying six Tags shows four and a "+2" that opens the Food to edit', async ({
   page,
   goto,
   network,
@@ -124,7 +134,107 @@ test('a row carrying six Tags shows four and a "+2" that opens its Tags', async 
   await page.getByRole('button', { name: '2 more tags on Rolled oats' }).click()
 
   await expect(
-    page.getByRole('dialog', { name: 'Tags for Rolled oats' }),
+    page.getByRole('dialog', { name: 'Edit Rolled oats' }),
+  ).toBeVisible()
+})
+
+test('a User tags a Recipe from its row with the Tags sheet, and the row shows the Tag', async ({
+  page,
+  goto,
+  network,
+}) => {
+  network.use(...foodCatalog({ foods: [pie()] }))
+  await goto('/foods', { waitUntil: 'hydration' })
+
+  await page.getByRole('button', { name: 'Tags for Cottage pie' }).click()
+  const sheet = page.getByRole('dialog', { name: 'Tags for Cottage pie' })
+  await sheet.getByRole('combobox').fill('breakfast')
+  await page.getByRole('option', { name: /breakfast/ }).click()
+  await sheet.getByRole('button', { name: 'Save tags' }).click()
+
+  await expect(sheet).toBeHidden()
+  await expect(rowTags(page, 'Cottage pie')).toHaveText(['breakfast'])
+})
+
+test('the Tags sheet’s Save stays reachable while the Tag list is open, and saves only what was chosen', async ({
+  page,
+  goto,
+  network,
+}) => {
+  network.use(
+    ...foodCatalog({
+      foods: [pie()],
+      tags: [
+        { id: 1, name: 'breakfast' },
+        { id: 2, name: 'dessert' },
+        { id: 3, name: 'snack' },
+      ],
+    }),
+  )
+  await goto('/foods', { waitUntil: 'hydration' })
+
+  await page.getByRole('button', { name: 'Tags for Cottage pie' }).click()
+  const sheet = page.getByRole('dialog', { name: 'Tags for Cottage pie' })
+  await sheet.getByRole('combobox').click()
+  await expect(page.getByRole('listbox')).toBeVisible()
+  await sheet
+    .getByRole('button', { name: 'Save tags' })
+    .click({ timeout: 3000 })
+
+  await expect(sheet).toBeHidden()
+  await expect(rowTags(page, 'Cottage pie')).toHaveCount(0)
+})
+
+test('in the Tags sheet, a name entered straight after a pick is created and saved beside it', async ({
+  page,
+  goto,
+  network,
+}) => {
+  network.use(
+    ...foodCatalog({ foods: [pie()], tags: [{ id: 1, name: 'snack' }] }),
+  )
+  await goto('/foods', { waitUntil: 'hydration' })
+
+  await page.getByRole('button', { name: 'Tags for Cottage pie' }).click()
+  const sheet = page.getByRole('dialog', { name: 'Tags for Cottage pie' })
+  const picker = sheet.getByRole('combobox', { name: 'Tags' })
+  await picker.click()
+  await page.getByRole('option', { name: 'snack' }).click()
+  await expect(page.getByRole('listbox')).toBeHidden()
+  // As a phone keyboard commits it: one input event, not a keystroke per letter.
+  await page.keyboard.insertText('supper')
+  await picker.press('Enter')
+  await expect(sheet.getByText('supper', { exact: true })).toBeVisible()
+  await sheet.getByRole('button', { name: 'Save tags' }).click()
+
+  await expect(sheet).toBeHidden()
+  await expect(rowTags(page, 'Cottage pie')).toHaveText(['snack', 'supper'])
+})
+
+test('a Recipe row carrying six Tags shows four and a "+2" that opens its Tags', async ({
+  page,
+  goto,
+  network,
+}) => {
+  const six = ['a', 'b', 'c', 'd', 'e', 'f'].map((name, i) => ({
+    id: i + 1,
+    name,
+  }))
+  network.use(...foodCatalog({ foods: [pie(six)] }))
+  await goto('/foods', { waitUntil: 'hydration' })
+
+  await expect(rowTags(page, 'Cottage pie')).toHaveText([
+    'a',
+    'b',
+    'c',
+    'd',
+    '+2',
+  ])
+
+  await page.getByRole('button', { name: '2 more tags on Cottage pie' }).click()
+
+  await expect(
+    page.getByRole('dialog', { name: 'Tags for Cottage pie' }),
   ).toBeVisible()
 })
 

@@ -1,0 +1,27 @@
+- dialog "Edit Rolled oats":
+    - /children: deep-equal
+    - heading "Edit Rolled oats" [level=2]
+    - button "Close"
+    - text: Name*
+    - textbox "Name*": Rolled oats
+    - text: Protein /100g*
+    - group:
+        - spinbutton "Protein /100g*": '31'
+        - button "Increment"
+        - button "Decrement"
+    - text: Carbs /100g*
+    - group:
+        - spinbutton "Carbs /100g*": '60'
+        - button "Increment"
+        - button "Decrement"
+    - text: Fat /100g*
+    - group:
+        - spinbutton "Fat /100g*": '7'
+        - button "Increment"
+        - button "Decrement"
+    - status: 427 kcal · 31 g protein /100g
+    - text: Tags breakfast
+    - button "breakfast"
+    - combobox "Tags"
+    - button "Show popup"
+    - button "Save changes"

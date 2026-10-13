@@ -4,7 +4,7 @@ import com.tucker.domain.BarcodeLookup
 import com.tucker.domain.Food
 import com.tucker.domain.FoodCandidate
 import com.tucker.domain.FoodKind
-import com.tucker.domain.Nutrition
+import com.tucker.domain.Macros
 import com.tucker.domain.Tag
 import com.tucker.persistence.FoodRepository
 import com.tucker.service.BarcodeLookupService
@@ -74,6 +74,21 @@ data class CreateFoodRequest(
     val fatPer100g: Double,
     val tagIds: List<Long>,
 )
+
+// Two wire bodies that share fields on purpose: nesting one in the other would move the wire.
+/* jscpd:ignore-start */
+/**
+ * Request to correct a plain Food (ADR 0037): the same three macros as [CreateFoodRequest],
+ * calories derived from them. No barcode — it comes from the scanner, never a correction.
+ */
+data class CorrectFoodRequest(
+    val name: String,
+    val proteinPer100g: Double,
+    val carbsPer100g: Double,
+    val fatPer100g: Double,
+    val tagIds: List<Long>,
+)
+/* jscpd:ignore-end */
 
 /**
  * A [FoodCandidate] on the wire (ADR 0006): normalised per-100g macros with
@@ -223,14 +238,22 @@ class FoodController(
             id = foods.nextId(),
             name = request.name,
             barcode = request.barcode,
-            nutrition = Nutrition.fromMacros(
-                proteinPer100g = request.proteinPer100g,
-                carbsPer100g = request.carbsPer100g,
-                fatPer100g = request.fatPer100g,
-            ),
+            nutrition = Macros(request.proteinPer100g, request.carbsPer100g, request.fatPer100g).nutrition(),
         ).retagged(request.tagIds)
         val created = foodService.create(food) ?: throw NotFoundException("no Tag among ${request.tagIds}")
         return describer.describe(created)
+    }
+
+    /** Correct a plain Food's name, macros and Tags (ADR 0037). The barcode is not correctable. */
+    @PutMapping("/{id}")
+    fun correct(@PathVariable id: Long, @RequestBody request: CorrectFoodRequest): FoodResponse {
+        val corrected = foodService.correct(
+            id,
+            request.name,
+            Macros(request.proteinPer100g, request.carbsPer100g, request.fatPer100g),
+            request.tagIds,
+        ) ?: throw NotFoundException("no Food with id $id, or no Tag among ${request.tagIds}")
+        return describer.describe(corrected)
     }
 
     /**
