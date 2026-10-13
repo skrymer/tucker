@@ -185,6 +185,16 @@ TypeError, so a hand copy without it leaves every assertion green.
 `AppCalendar.test.ts` pins it through Nuxt's `vue:error` hook ("raises no error when
 the User picks the selected day again").
 
+### `components/DayLookupSection.vue` — 1 of 25
+
+| Where                                        | Mutant                        | Verdict        |
+| -------------------------------------------- | ----------------------------- | -------------- |
+| `tally`'s `day.value?.caloriesConsumed ?? 0` | `?.` → `.` (OptionalChaining) | **Equivalent** |
+
+`tally` is a lazy computed read only under `v-if="entries.length"`, and `entries` is
+non-empty only when `day.value` is non-null, so the unguarded read is never reached
+with `day.value` null.
+
 ### `utils/date.ts` `isoToCalendarDate` — 1 of 7
 
 | Where                                   | Mutant      | Verdict      |

@@ -74,7 +74,12 @@ reproduces real user behaviour (focus, key sequences, pointer events). Call
   that reaction did *not* happen must now let it run (`vi.useFakeTimers()` +
   `vi.runAllTimers()`) before asserting, or it passes whatever the code does. #435
   deferred a stop by 250 ms and its "stops listening once its surface is gone" test
-  went silently vacuous; re-audit those tests in the same change.
+  went silently vacuous; re-audit those tests in the same change. The same goes for a
+  read taken **out of awaited setup** (`void load()`): `renderSuspended` now returns
+  before the answer, so every test asserting straight after render — positive ones
+  included — checks the unanswered state. Make each wait for text only the answer
+  renders (#475's "opens on today" passed with the read broken, and its busy test
+  passed only because the click aborted the unanswered first read).
 - Never assert on CSS classes, DOM structure, `wrapper.vm`, or emitted internals.
 - A toast never renders under `renderSuspended`, which mounts no toaster. Mock
   `useToast` with `mockNuxtImport` and assert what `add` is handed — the title and

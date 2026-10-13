@@ -116,6 +116,16 @@ assertion with the dev token), and no browser-level layer can reach it.
   `aria-label` here is silently inert — both Day Ring meters shipped announced as "47%" and "46%"
   with nothing saying which was calories. The percentage is still on `aria-valuenow`, which is where
   a value belongs. Assert through `toHaveAccessibleName` / the aria snapshot, never the attribute.
+- **`USkeleton` is a `role="alert"` with `aria-live`** — hardcoded, like `USlider`'s
+  "Thumb" below, so every skeleton row announces "loading" and a fast answer still
+  alerts. Put the rows in an `aria-hidden` wrapper and let the region's `aria-busy`
+  say it is loading (`DayLookupSection`). Before adopting a Nuxt UI component the app
+  has not used, read its `node_modules/@nuxt/ui/dist/runtime/components/*.vue` for
+  the roles and aria attributes it sets.
+- **`<Transition appear>` does not run for an element mounted with its component
+  inside a page's Suspense** — the enter classes never apply, so a delayed reveal
+  shows at full opacity from its first frame. Delay it with CSS instead: `.appear-late`
+  in `main.css` (#475's skeleton flashed on a 17 ms answer).
 - **`USlider`** — the same attr-fallthrough trap, but **no such prop**, so the remedy differs: the
   thumb's accessible name is hardcoded to `"Thumb"` and nothing overrides it
   (attr fallthrough lands on the root, which has no role). Wrap it in a `role="group"` labelled
@@ -193,8 +203,13 @@ assertion with the dev token), and no browser-level layer can reach it.
 - **A guard that bans a class scans the whole SFC** (`appTemplates()`), not
   `classedElements()`, which sees only static `class="…"` — a bound `:class`, a `:ui`
   string or a script constant walks past it (#468's arbitrary-radius guard).
-- **A colour is measured in the mocked e2e, not in Vitest** — happy-dom computes no
-  stylesheet (`e2e/calendar.spec.ts`, `e2e/type-scale.spec.ts`). Poll it
+- **A colour, an opacity or a reveal delay is measured in the mocked e2e, not in
+  Vitest** — happy-dom computes no stylesheet (`e2e/calendar.spec.ts`,
+  `e2e/type-scale.spec.ts`, `e2e/day-lookup.spec.ts`). That includes every visual
+  clause of a ruling — "fades in after 150 ms", "not dimmed": #475 pinned its skeleton
+  ruling in Vitest alone, and both its fade and its no-dim clause broke past every
+  suite. Read a reveal's opacity **at insertion** (a `MutationObserver` in
+  `addInitScript`), since by the time a locator resolves the delay is over. Poll it
   (`expect.poll`): a Nuxt UI control with `transition-colors` reads an in-between
   colour right after a click. And mind the token names: `bg-inverted` is the
   *inverted background* (dark in light mode); the text on a solid primary fill is

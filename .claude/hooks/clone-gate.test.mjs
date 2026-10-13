@@ -117,9 +117,10 @@ test('a new test is refused while a branch file clones another source file', () 
   assert.match(reason, /inline composable/)
   assert.match(reason, /app\/utils\//)
   assert.match(reason, /green tests that already cover both copies/)
-  // Probity refuses a new app/utils/ export no test drives, so that extract has
-  // its own order.
-  assert.match(reason, /stub the export/)
+  // Probity refuses a new app/utils/ export, component, prop or slot no test
+  // drives, so that extract has its own order.
+  assert.match(reason, /new component, prop or slot/)
+  assert.match(reason, /stub it, wrap the copy you will delete/)
   assert.match(reason, /drive it red-green from the stub/)
   assert.match(
     reason,
