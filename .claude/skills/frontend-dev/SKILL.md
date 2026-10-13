@@ -42,8 +42,9 @@ it does not restate them.
 
 **Before styling a feature**, read `frontend/DESIGN.md` → **Typography** (its *Scale* table) and
 **Shape & elevation** — and **Writing & structure** for any copy — and open `/design`
-(`app/pages/design.vue`), the rendered style guide, captioned with what each specimen draws. The values and the reasons live there and in the
-stylesheet only; this skill names them and never copies them.
+(`app/pages/design.vue`), the rendered style guide, captioned with what each specimen draws.
+The values and the reasons live there and in the stylesheet only; this skill names them and
+never copies them.
 
 The rule, in the User's terms: **styling is consistent across the app** — every token is used by
 name, and no screen restates one inline.
@@ -53,7 +54,7 @@ name, and no screen restates one inline.
 - **Shape** — a card, viewfinder or inset takes `rounded-card` / `rounded-inset`, never a stock
   `rounded-*` step or an arbitrary radius; a card never adds its own padding.
 - **Colour** — the Nuxt UI colour roles and `--ui-*`/`@theme` tokens (DESIGN.md → Colour,
-  Mapping to Nuxt UI), never hex.
+  Mapping to Nuxt UI), never hex, and never the only signal (DESIGN.md → Guardrails).
 - **A value the scale lacks** — DESIGN.md → Guardrails says how it becomes a token.
 
 The guards below enforce it. A red one means the change broke the rule above: go back to the
