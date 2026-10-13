@@ -123,6 +123,19 @@ test("a frontend-dev reminder says once to invoke the worktree's scoped copy, wh
   }
 })
 
+test('a merged reminder keeps the reason of every rule that raised it', () => {
+  const line = render(selectSkills('pick up issue 469: design the page')).match(/^- \/frontend-dev — .*$/m)[0]
+  assert.match(line, /before any frontend change/)
+  assert.match(line, /Styling section/)
+})
+
+test('only the dev playbooks, which a worktree serves its own copy of, mention the worktree', () => {
+  const scoped = new Set(['frontend-dev', 'screen-design', 'backend-dev'])
+  for (const rule of RULES) {
+    assert.equal(/scoped copy/.test(render([rule])), scoped.has(rule.id), rule.id)
+  }
+})
+
 test('an ordinary prompt gets no reminder at all', () => {
   assert.deepEqual(skillsOf('what does IntakeBreakdown.of refuse?'), [])
 })
