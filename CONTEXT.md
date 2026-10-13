@@ -61,7 +61,7 @@ A Food referenced by at least one **Entry** — or used as an ingredient in a
 ingredients are part of its definition, so a referenced Food is rejected (it stays
 in the catalog) with a message naming what references it; only a Food that is
 neither logged nor an ingredient can be removed.
-A Food's name, macros, **Tags** and **Reference Food** match can be **corrected**; its barcode cannot — a
+A Food's name, macros and **Tags** can be **corrected**; its barcode cannot — a
 barcode comes from the scanner, so a wrong one is fixed by deleting the Food and
 scanning again. A correction says the old
 figures were never true, not that the product changed — a reformulated product is a
