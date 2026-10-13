@@ -8,6 +8,11 @@ import { catalogFails } from '~~/test/mocks/handlers/foods'
 import { held, http, noConnection } from '~~/test/mocks/http'
 import { server } from '~~/test/mocks/node'
 import { profileOf, weightOnlyProfile } from '~~/test/mocks/handlers/profile'
+import { referenceFoodsFor } from '~~/test/mocks/handlers/reference-foods'
+import {
+  referenceFoodCandidate,
+  referenceFoodSearch,
+} from '~~/test/micronutrient-fixtures'
 import Foods from './foods.vue'
 
 const { toastAdd } = vi.hoisted(() => ({ toastAdd: vi.fn() }))
@@ -259,6 +264,47 @@ describe('/foods a Food’s match', () => {
         name: 'Change what Tasty cheese borrows vitamins and minerals from',
       }),
     ).toBeVisible()
+  })
+
+  it('is changed through the search in the same sheet, which then names the new match', async () => {
+    const cheese = food({
+      id: 3,
+      name: 'Tasty cheese',
+      referenceFoodId: 9,
+      referenceFoodName: 'Cheese, cheddar, natural, regular fat',
+    })
+    const reduced = { id: 12, name: 'Cheese, cheddar, reduced fat' }
+    server.use(
+      ...foodCatalog({ foods: [cheese], referenceFoods: [reduced] }),
+      referenceFoodsFor({
+        'Tasty cheese': referenceFoodSearch({
+          suggestedId: reduced.id,
+          candidates: [referenceFoodCandidate(reduced)],
+        }),
+      }),
+    )
+    const user = userEvent.setup()
+    await renderSuspended(Foods)
+    await user.click(screen.getByRole('button', { name: 'Edit Tasty cheese' }))
+    const sheet = screen.getByRole('dialog', { name: 'Edit Tasty cheese' })
+
+    await user.click(
+      within(sheet).getByRole('button', {
+        name: 'Change what Tasty cheese borrows vitamins and minerals from',
+      }),
+    )
+    await user.click(
+      await within(sheet).findByRole('button', {
+        name: /Cheese, cheddar, reduced fat/,
+      }),
+    )
+
+    expect(
+      await within(sheet).findByText(
+        'Vitamins and minerals from Cheese, cheddar, reduced fat',
+      ),
+    ).toBeVisible()
+    expect(sheet).toHaveAccessibleName('Edit Tasty cheese')
   })
 
   it('is absent from the Edit sheet of a User who does not count calories', async () => {

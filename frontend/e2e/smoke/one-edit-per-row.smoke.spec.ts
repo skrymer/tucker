@@ -47,7 +47,10 @@ test('a Food’s match is changed and cleared from its Edit sheet, each at once'
       name: 'Change what Tasty cheese borrows vitamins and minerals from',
     })
     .click()
+  // The search takes over the same sheet: one modal layer, never two.
   const picker = page.getByRole('dialog', { name: 'Match Tasty cheese' })
+  await expect(picker).toBeVisible()
+  await expect(page.getByRole('dialog')).toHaveCount(1)
   await picker
     .getByRole('button', { name: second!.name, exact: false })
     .first()

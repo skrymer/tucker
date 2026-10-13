@@ -1,6 +1,11 @@
 import { expect, test } from './support/test'
 import { food, recipe } from '../test/food-fixtures'
 import { foodCatalog } from '../test/mocks/handlers/catalog'
+import { referenceFoodsFor } from '../test/mocks/handlers/reference-foods'
+import {
+  referenceFoodCandidate,
+  referenceFoodSearch,
+} from '../test/micronutrient-fixtures'
 
 /** Rolled oats with protein mistyped as 31: 4 × 31 + 4 × 60 + 9 × 7 = 427 kcal. */
 const oats = food({
@@ -96,6 +101,60 @@ test('a matched Food’s Edit sheet holds its match, with Change and Clear', asy
   await expect(
     page.getByRole('dialog', { name: 'Edit Tasty cheese' }),
   ).toMatchAriaSnapshot()
+})
+
+test('Change turns the Edit sheet into the match search, with a way back', async ({
+  page,
+  goto,
+  network,
+}) => {
+  const reduced = { id: 12, name: 'Cheese, cheddar, reduced fat' }
+  network.use(
+    ...foodCatalog({
+      foods: [
+        food({
+          id: 3,
+          name: 'Tasty cheese',
+          referenceFoodId: 9,
+          referenceFoodName: 'Cheese, cheddar, natural, regular fat',
+        }),
+      ],
+      referenceFoods: [reduced],
+    }),
+    referenceFoodsFor({
+      'Tasty cheese': referenceFoodSearch({
+        suggestedId: reduced.id,
+        candidates: [referenceFoodCandidate(reduced)],
+      }),
+    }),
+  )
+  await goto('/foods', { waitUntil: 'hydration' })
+  await page.getByRole('button', { name: 'Edit Tasty cheese' }).click()
+
+  await page
+    .getByRole('dialog', { name: 'Edit Tasty cheese' })
+    .getByRole('button', {
+      name: 'Change what Tasty cheese borrows vitamins and minerals from',
+    })
+    .click()
+
+  // One sheet, its body the search: a phone never stacks a second over it.
+  const sheet = page.getByRole('dialog', { name: 'Match Tasty cheese' })
+  await expect(sheet.getByText('Suggested')).toBeVisible()
+  await expect(page.getByRole('dialog')).toHaveCount(1)
+  await expect(sheet).toMatchAriaSnapshot()
+
+  // Back leads the header row, at the 44px tap target (DESIGN.md → Sheet
+  // navigation).
+  const back = await sheet.getByRole('button', { name: 'Back' }).boundingBox()
+  const title = await sheet
+    .getByRole('heading', { name: 'Match Tasty cheese' })
+    .boundingBox()
+  expect(back!.height).toBeGreaterThanOrEqual(44)
+  expect(back!.x + back!.width).toBeLessThanOrEqual(title!.x)
+  expect(
+    Math.abs(back!.y + back!.height / 2 - (title!.y + title!.height / 2)),
+  ).toBeLessThan(4)
 })
 
 test('the figures follow each keystroke while the field still has focus', async ({

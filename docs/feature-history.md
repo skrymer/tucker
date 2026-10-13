@@ -1817,6 +1817,16 @@ null` now means two things that earn opposite messages — the same trap
     reachable only from the old row pencil, so Change would have opened a second way
     out beside the sheet's Clear. `useMatchClear` takes the Food's id and is the one
     clear.
+  - **Change steps the sheet inside itself rather than stacking a second one.** The
+    first build opened the picker as a sheet over the Edit sheet, the app's first
+    keyboard-raising Dialog stacked on another; `/check-adrs` flagged it against
+    ADR 0017, and the user ruled for one modal layer. The picker's body is now
+    `ReferenceFoodSearch`, hosted by the Edit sheet (title "Match …", a `Back` in
+    the header) and by `ReferenceFoodPicker` on `/review`. DESIGN.md's **Sheet
+    navigation** records the rule and `/design` shows the header; `reka-ui` became
+    a direct dependency for the header's `DialogTitle` / `DialogClose`.
+  - **A Recipe opened to edit shows a skeleton while it loads** (the user's ruling
+    on ADR 0007), not an empty body.
   - **An Edit opening never flashes the read-only view** while the composition loads:
     the sheet opens on its editor or on nothing.
   - **A correction leaves the match alone** — already true of `Food.corrected`, and

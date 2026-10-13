@@ -470,6 +470,37 @@ const calendarDay = ref('2026-10-08')
       </UCard>
     </div>
 
+    <!-- ── Sheet navigation ───────────────────────────────────── -->
+    <div class="flex flex-col gap-4">
+      <h2 class="text-h2 text-highlighted">Sheet navigation</h2>
+      <UCard class="max-w-md">
+        <!-- The header of a sheet stepped inside itself: Back leads, the title
+             names the step, Close stays the corner exit. Never a second sheet
+             stacked over the first. -->
+        <div
+          role="group"
+          aria-label="Sheet header"
+          class="flex items-center gap-1.5 border-b border-default pb-3"
+        >
+          <SheetBackButton />
+          <p class="min-w-0 truncate font-semibold text-highlighted">
+            Match Tasty cheese
+          </p>
+          <UButton
+            icon="i-lucide-x"
+            color="neutral"
+            variant="ghost"
+            aria-label="Close"
+            class="ms-auto"
+          />
+        </div>
+        <p class="pt-3 text-sm text-muted">
+          Back returns to the sheet's previous step with what was typed there
+          kept; Close leaves the sheet.
+        </p>
+      </UCard>
+    </div>
+
     <!-- ── Calendar ───────────────────────────────────────────── -->
     <div class="flex flex-col gap-4">
       <h2 class="text-h2 text-highlighted">Calendar</h2>

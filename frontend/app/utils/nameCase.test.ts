@@ -87,7 +87,7 @@ const ALLOWED: Record<string, Record<string, string>> = {
   'components/RecipeCompositionSheet.vue': {
     name: 'inside the `title` computed, which states it before interpolating',
   },
-  'components/ReferenceFoodPicker.vue': {
+  'components/ReferenceFoodSearch.vue': {
     'candidate.name':
       'a published FSANZ name, stated as FSANZ writes it (ADR 0027)',
   },

@@ -140,16 +140,36 @@ function useCorrectionSave() {
   return { save, saving }
 }
 const { save, saving } = useCorrectionSave()
+
+/**
+ * Whether the sheet's body is the match search rather than the form: one modal
+ * layer, never a second sheet over this one (ADR 0017).
+ */
+const picking = ref(false)
+onEachFood(() => {
+  picking.value = false
+})
 </script>
 
 <template>
   <ResponsiveOverlay
     :open="food !== null"
-    :title="food ? `Edit ${formatName(food.name)}` : ''"
+    :title="
+      food ? `${picking ? 'Match' : 'Edit'} ${formatName(food.name)}` : ''
+    "
     @update:open="(value) => !value && emit('close')"
   >
+    <template v-if="picking" #leading>
+      <SheetBackButton @click="picking = false" />
+    </template>
+    <ReferenceFoodSearch
+      v-if="food && picking"
+      :food="food"
+      @close="picking = false"
+    />
     <UForm
       v-if="food"
+      v-show="!picking"
       :state="draft"
       :schema="foodSchema"
       class="flex flex-col gap-4"
@@ -177,7 +197,11 @@ const { save, saving } = useCorrectionSave()
         <TagPicker v-model="tags" v-model:creating="creatingTag" />
       </UFormField>
 
-      <FoodMatchRow v-if="tracksCalories" :food="food" />
+      <FoodMatchRow
+        v-if="tracksCalories"
+        :food="food"
+        @change="picking = true"
+      />
 
       <p v-if="macrosMoved" class="text-label text-dimmed">
         Food you've already logged keeps the figures it was logged with.

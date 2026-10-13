@@ -745,6 +745,113 @@ describe('EditFoodSheet’s Reference Food match', () => {
     expect(toastAdd).not.toHaveBeenCalled()
   })
 
+  it('opens the match search in the same sheet, never a second one over it', async () => {
+    server.use(...foodCatalog({ foods: [cheese] }))
+    await renderSuspended(EditFoodSheet, {
+      props: { food: cheese, tracksCalories: true },
+    })
+
+    await userEvent.setup().click(
+      screen.getByRole('button', {
+        name: 'Change what Tasty cheese borrows vitamins and minerals from',
+      }),
+    )
+
+    // One modal layer on a phone: the sheet's body becomes the search. Counted
+    // with hidden ones, since a sheet stacked over it would hide this one.
+    const sheets = screen.getAllByRole('dialog', { hidden: true })
+    expect(sheets).toHaveLength(1)
+    expect(sheets[0]).toHaveAccessibleName('Match Tasty cheese')
+    expect(
+      within(sheets[0]!).getByRole('textbox', {
+        name: 'Search the food database',
+      }),
+    ).toHaveValue('Tasty cheese')
+    expect(
+      within(sheets[0]!).getByRole('button', { name: 'Back' }),
+    ).toBeVisible()
+    expect(
+      within(sheets[0]!).queryByRole('button', { name: 'Save changes' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('offers its way back in the header, before the title, as a phone sheet does', async () => {
+    server.use(...foodCatalog({ foods: [cheese] }))
+    await renderSuspended(EditFoodSheet, {
+      props: { food: cheese, tracksCalories: true },
+    })
+    await userEvent.setup().click(
+      screen.getByRole('button', {
+        name: 'Change what Tasty cheese borrows vitamins and minerals from',
+      }),
+    )
+
+    const sheet = screen.getByRole('dialog', { name: 'Match Tasty cheese' })
+    const heading = within(sheet).getByRole('heading', {
+      name: 'Match Tasty cheese',
+    })
+    const back = within(sheet).getByRole('button', { name: 'Back' })
+    expect(
+      back.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+  })
+
+  it('reopens on the form, not on a match search it was closed in', async () => {
+    server.use(...foodCatalog({ foods: [cheese] }))
+    const { rerender } = await renderSuspended(EditFoodSheet, {
+      props: { food: cheese, tracksCalories: true },
+    })
+    await userEvent.setup().click(
+      screen.getByRole('button', {
+        name: 'Change what Tasty cheese borrows vitamins and minerals from',
+      }),
+    )
+    expect(
+      screen.getByRole('dialog', { name: 'Match Tasty cheese' }),
+    ).toBeVisible()
+
+    await rerender({ food: null })
+    await rerender({ food: cheese })
+
+    const sheet = screen.getByRole('dialog', { name: 'Edit Tasty cheese' })
+    expect(
+      within(sheet).getByRole('button', { name: 'Save changes' }),
+    ).toBeVisible()
+  })
+
+  it('goes back from the match search to the form, its unsaved edits standing and nothing matched', async () => {
+    server.use(...foodCatalog({ foods: [cheese] }))
+    await renderSuspended(besideCatalog(EditFoodSheet), {
+      props: { food: cheese, tracksCalories: true },
+    })
+    const user = userEvent.setup()
+    const name = screen.getByRole('textbox', { name: /^Name/ })
+    await user.clear(name)
+    await user.type(name, 'Vintage cheese')
+    await user.click(
+      screen.getByRole('button', {
+        name: 'Change what Tasty cheese borrows vitamins and minerals from',
+      }),
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Back' }))
+
+    const sheet = screen.getByRole('dialog', { name: 'Edit Tasty cheese' })
+    expect(within(sheet).getByRole('textbox', { name: /^Name/ })).toHaveValue(
+      'Vintage cheese',
+    )
+    expect(
+      within(sheet).getByText(
+        'Vitamins and minerals from Cheese, cheddar, natural, regular fat',
+      ),
+    ).toBeVisible()
+    expect(
+      within(sheet).queryByRole('textbox', {
+        name: 'Search the food database',
+      }),
+    ).not.toBeInTheDocument()
+  })
+
   it('changes the match through the picker straight away, keeping the sheet and its unsaved edits', async () => {
     const reduced = { id: 12, name: 'Cheese, cheddar, reduced fat' }
     server.use(
@@ -786,12 +893,13 @@ describe('EditFoodSheet’s Reference Food match', () => {
         'Vitamins and minerals from Cheese, cheddar, reduced fat',
       ),
     ).toBeInTheDocument()
-    await vi.waitFor(() =>
-      expect(
-        screen.queryByRole('dialog', { name: 'Match Tasty cheese' }),
-      ).not.toBeInTheDocument(),
+    // Back on the form, in the same sheet, with the edits not yet saved.
+    expect(
+      await screen.findByRole('dialog', { name: 'Edit Tasty cheese' }),
+    ).toBe(sheet)
+    expect(within(sheet).getByRole('textbox', { name: /^Name/ })).toHaveValue(
+      'Vintage cheese',
     )
-    expect(name).toHaveValue('Vintage cheese')
     expect(onClose).not.toHaveBeenCalled()
   })
 

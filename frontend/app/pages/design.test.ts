@@ -68,6 +68,24 @@ describe('/design', () => {
     ).toBeVisible()
   })
 
+  it('shows a sheet stepped inside itself: Back, then its title, then Close', async () => {
+    await renderSuspended(Design)
+
+    const section = screen
+      .getByRole('heading', { name: 'Sheet navigation' })
+      .closest('div')!
+    const header = within(section).getByRole('group', { name: 'Sheet header' })
+    expect(header).toHaveTextContent(/^Back\s*Match Tasty cheese$/)
+    expect(
+      within(header)
+        .getAllByRole('button')
+        .map(
+          (button) =>
+            button.getAttribute('aria-label') ?? button.textContent?.trim(),
+        ),
+    ).toEqual(['Back', 'Close'])
+  })
+
   it('shows the one calendar with marked days and a bounded range', async () => {
     await renderSuspended(Design)
 

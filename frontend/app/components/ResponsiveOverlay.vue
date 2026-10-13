@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { DialogClose, DialogTitle } from 'reka-ui'
 /**
  * Escape and the backdrop are refused, and the corner close is the sheet's one
  * exit — its *universal* out, since no sheet here carries a Cancel (ADR 0017).
@@ -40,6 +41,24 @@ const bottomSheetUi = {
     :dismissible="false"
     :ui="isDesktop ? undefined : bottomSheetUi"
   >
+    <!-- A leading control — a sheet's Back — sits before the title in the header,
+         beside the heading rather than inside it, so it never joins the sheet's
+         name (DESIGN.md → Sheet navigation). -->
+    <template v-if="$slots.leading" #header>
+      <slot name="leading" />
+      <DialogTitle class="min-w-0 truncate font-semibold text-highlighted">
+        {{ title }}
+      </DialogTitle>
+      <DialogClose as-child>
+        <UButton
+          icon="i-lucide-x"
+          color="neutral"
+          variant="ghost"
+          aria-label="Close"
+          class="ms-auto"
+        />
+      </DialogClose>
+    </template>
     <template #body><slot /></template>
   </UModal>
 </template>

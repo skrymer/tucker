@@ -1,0 +1,17 @@
+- dialog "Match Tasty cheese":
+    - /children: deep-equal
+    - button "Back"
+    - heading "Match Tasty cheese" [level=2]
+    - button "Close"
+    - textbox "Search the food database": Tasty cheese
+    - button "Clear search"
+    - list:
+        - listitem:
+            - button "Cheese, cheddar, reduced fat Suggested Iron 0.4 mg · Zinc 0.8 mg · Selenium 18 µg"
+    - contentinfo:
+        - paragraph:
+            - text: Based on the Australian Food Composition Database (Release 3), Food Standards Australia New Zealand, used under
+            - link "the CC BY-SA 3.0 AU data user licence":
+                - /url: https://www.foodstandards.gov.au/science-data/monitoringnutrients/afcd/datauserlicenceagreement
+            - text: .
+        - button "About this data"

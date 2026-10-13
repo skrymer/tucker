@@ -1,16 +1,14 @@
 <script setup lang="ts">
 import type { components } from '#open-fetch-schemas/api'
-import type { Matchable } from './ReferenceFoodPicker.vue'
 
 // Stryker disable next-line all: a compiler macro's arguments are hoisted out of setup()
 const props = defineProps<{ food: components['schemas']['FoodResponse'] }>()
+// Stryker disable next-line all: a compiler macro's arguments are hoisted out of setup()
+const emit = defineEmits<{ change: [] }>()
 
 const name = computed(() => formatName(props.food.name))
 
 const { clear, unmatching } = useMatchClear(refreshFoodCatalog)
-
-/** The Food a new match is being picked for — non-null opens the picker. */
-const matching = ref<Matchable | null>(null)
 </script>
 
 <template>
@@ -28,7 +26,7 @@ const matching = ref<Matchable | null>(null)
         color="neutral"
         variant="subtle"
         class="min-h-11"
-        @click="matching = food"
+        @click="emit('change')"
       />
       <UButton
         label="Clear"
@@ -41,6 +39,4 @@ const matching = ref<Matchable | null>(null)
       />
     </div>
   </div>
-
-  <ReferenceFoodPicker :food="matching" @close="matching = null" />
 </template>
