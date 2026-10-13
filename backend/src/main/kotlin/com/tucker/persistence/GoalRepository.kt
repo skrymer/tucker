@@ -34,6 +34,10 @@ class GoalRepository(
             .and(GOAL.USER_ID.eq(currentUser.ownerId))
             .fetchOne()?.toGoal()
 
+    /** Whether the caller has an active Goal — a guard's question, which needs none of it. */
+    fun hasActive(): Boolean =
+        dsl.fetchExists(GOAL, GOAL.ACTIVE.eq(1).and(GOAL.USER_ID.eq(currentUser.ownerId)))
+
     /** Every Goal, newest first — the active one plus the inactive history. */
     fun findAll(): List<Goal> =
         dsl.selectFrom(GOAL)

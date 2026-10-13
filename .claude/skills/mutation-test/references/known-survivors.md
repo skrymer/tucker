@@ -18,7 +18,7 @@ and [#237](https://github.com/skrymer/tucker/issues/237) (frontend).
 - Where the score stands
 - Frontend — StrykerJS
   - Vue compiler macros break the run before it starts
-  - Presentation tokens (8) — accepted, deliberately unasserted
+  - Presentation tokens (10) — accepted, deliberately unasserted
   - `components/DateField.vue` — 1 of 20
   - `utils/date.ts` `isoToCalendarDate` — 1 of 7
   - `components/ProfileForm.vue` — 2 of 58
@@ -70,6 +70,7 @@ and [#237](https://github.com/skrymer/tucker/issues/237) (frontend).
   - Log for tomorrow (#443) — `useBudgetGate.ts` 9 of 42, backend 6 carried from #442
   - Lint refactor (#454) — 216 new of 532, 54 real gaps closed
   - Detekt rules (#455 PR 3) — 767 of 856, 4 real gaps closed
+  - Correct a Food (#432) — `EditFoodSheet.vue` 64 of 73, backend 116 of 128
   - Noise removed at the source
 - What the score still cannot ask for
 
@@ -146,12 +147,13 @@ rejects the unused variable.
 Upstream is [stryker-js#3305](https://github.com/stryker-mutator/stryker-js/issues/3305),
 closed stale and still unfixed on Stryker 10.
 
-### Presentation tokens (8) — accepted, deliberately unasserted
+### Presentation tokens (10) — accepted, deliberately unasserted
 
 | Where                                                         | Mutants |
 | ------------------------------------------------------------- | ------- |
 | `navigation.ts` — every `navDestinations` `icon` → `""`       | 5       |
 | `reviewLedger.ts` — every `REVIEW_BASIS_BADGE` `color` → `""` | 3       |
+| `FoodListItem.vue` — `rowAction`'s two `icon`s → `""`         | 2       |
 
 **Verdict: real gap, accepted by decision.** They are killable, and a test that
 kills one pins the token (`i-lucide-house`, `primary`) rather than a rule — so it
@@ -733,9 +735,10 @@ makes the third and fourth collapsing onto them invisible. Only the hand-rolled
 message…*, and that is a different call.
 
 **`watch(open, …)` and `watch(recipeToView, …)` (5, plus `:200`).** **Equivalent
-mutants.** `if (!isOpen)` → `if (true)`: dropping `?add=1` on the way in changes
-nothing, the sheet being open already. `if (opensAddSheet(route.query))` → `if (true)`
-replaces the query with itself when there is no `add` to spend, and
+mutants.** The guard is now one `if (isOpen || !opensAddSheet(route.query)) return`.
+→ `if (false)` and `||` → `&&` only add a pass on the way in, dropping `?add=1` from a
+sheet already open, which changes nothing, or replacing the query with itself when
+there is no `add` to spend; and
 `router.replace({ query: rest })` → `{}` drops a query `/foods` never has anything
 else in. `sheetSession`'s `if (true)` and `--` both keep the value distinct per open,
 which is the only thing `savingFromThisSheet` compares. `if (food) deleteFood(food)` →
@@ -1005,7 +1008,7 @@ class.
 
 ### `persistence` and `service` — the class 6 glue
 
-**Repository write glue** — `FoodRepository.applyFrom` L100–101, `WeeklyReviewRepository.insert`
+**Repository write glue** — `FoodRepository.kt`'s top-level `applyFrom` L160–161, `WeeklyReviewRepository.insert`
 L85, `RecipeRepository.delete` L122.
 
 **Verdict: killed by an out-of-scope layer.** Each is a field-by-field projection onto
@@ -1017,11 +1020,11 @@ the mapping twice and break on every schema change (ADR 0013, thin glue).
 - **Caveat on `applyFrom`'s carbs and fat setters:** the out-of-scope evidence is thin. No fast test reads either column back, and no smoke checks it (#455's triage).
 
 **Equivalent, not glue** (re-triaged in #455):
-- **The `isEmpty()` early returns** replaced with an empty collection. These are `FoodRepository.findByIds`, `FoodRepository.carryingTags`, `TagRepository.findByIds`, and `RecipeRepository.ingredientCounts` / `ingredientsOf`. Each mutant returns empty for an input that was already empty. The whole-method hand-mutations recorded below tested a different mutant.
+- **The `isEmpty()` early returns** replaced with an empty collection. These are `FoodRepository.findByIds`, `FoodRepository.namesOf`, `FoodRepository.carryingTags`, `TagRepository.findByIds`, and `RecipeRepository.ingredientCounts` / `ingredientsOf`. Each mutant returns empty for an input that was already empty. The whole-method hand-mutations recorded below tested a different mutant.
 - **`GoalRepository.insert`'s `setActive` / `setReachedOn` removed.** `goal.active` is `DEFAULT 1`, `reached_on` defaults to NULL, and `Goal.started` always builds an active, unreached Goal. No layer can tell the difference.
 
 **Deletion return counts** — `PushSubscriptionRepository.deleteByEndpoint` L77,
-`WeightMeasurementRepository.deleteById` L48.
+`WeightMeasurementRepository.deleteById` L53.
 
 **`EntryRepository.findById`'s negated conditional (NO_COVERAGE) is dead code.** The method has zero callers, on `main` too. It was left in place by the user's choice (2026-10-09), so there is no test to write.
 
@@ -1527,6 +1530,35 @@ L51/L77 above) have tests; three were pre-existing.
   removed and `--no-build-cache`, `VapidKeyStoreTest` fails 3/3 ("Failed to load
   ApplicationContext"). The first attempt kept `build/`, replayed a cached `:test`, and
   read as a survivor.
+
+### Correct a Food (#432) — `EditFoodSheet.vue` 64 of 73, backend 116 of 128
+
+The frontend scope scored 218 of 240. Its one real gap, a macro field holding only a
+space previewed as zero, is closed ('states no figures while a macro field holds only
+spaces'). The rest, all **equivalent** unless named otherwise:
+
+- **`EditFoodSheet.vue`'s initial values** — `draft` → `{}`, its `name: ''`, `tags`,
+  `typed` → `{}`, and `creatingTag` → `true`. The immediate `onEachFood` seed writes
+  every key before the form under `v-if="food"` can read one, and `TagPicker` writes
+  `creating` on mount, as `AddFoodForm`'s does. Hand copies passed 13/13 with a
+  `vue:error` hook raising nothing.
+- **`EditFoodSheet.vue`'s `props.food?.` ×3 and `if (props.food)` → `if (true)`** —
+  `before`, `macrosMoved` and `save` are read only under `v-if="food"`, and Retry
+  replays its captured arguments without calling `save`.
+- **`AddFoodForm.vue`'s `touched` → `{}`** — a missing key reads `undefined`, as falsy
+  as `false`, and the reactive proxy tracks it once set (the `LogGramsSheet` verdict).
+- **`AddFoodForm.vue`'s `if (!next)` → `if (false)`** — `initial` is never falsy:
+  `FoodBuilder` always passes an object and `IngredientPicker` passes none, so the watch
+  never fires with one.
+- **`FoodListItem.vue`'s `rowAction` icons** — a row in the presentation-tokens table,
+  not here.
+- **`Macros.getCarbsPer100g` → 0 (pitest)** — no production code calls the getter;
+  `nutrition()` reads the field. The protein and fat getters die only because the API
+  test's helper reads them.
+
+The backend's other 11 are standing verdicts: eight `FoodResponse` accessors (false
+survivors), `RecipeRepository`'s two `isEmpty()` returns and `FoodService.frequent`'s
+`requireWindow`.
 
 ### Noise removed at the source
 

@@ -134,7 +134,7 @@ class GoalService(
      */
     @Transactional
     fun deactivateActiveGoal(today: LocalDate) {
-        if (goals.findActive() == null) return
+        if (!goals.hasActive()) return
         goals.deactivateAll()
         weeklyReview.recomputeFor(today)
     }

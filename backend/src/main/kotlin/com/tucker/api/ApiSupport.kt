@@ -1,8 +1,8 @@
 package com.tucker.api
 
 import com.tucker.domain.Entry
+import com.tucker.domain.WeighedEntry
 import com.tucker.persistence.FoodRepository
-import com.tucker.persistence.foodsOf
 
 /**
  * The catalog and every Provider were asked about [barcode], and none knew it.
@@ -21,6 +21,6 @@ internal fun barcodeNotFound(barcode: String) =
 internal fun providersUnreachable(barcode: String) =
     ServiceUnavailableException("could not reach a nutrition source for barcode $barcode")
 
-/** [foodsOf] narrowed to what most callers want: the name to print beside an Entry. */
+/** The name to print beside each weighed Entry, by Food id — a label, so names alone. */
 internal fun FoodRepository.namesOf(entries: List<Entry>): Map<Long, String> =
-    foodsOf(entries).mapValues { (_, food) -> food.name }
+    namesOf(entries.filterIsInstance<WeighedEntry>().map { it.foodId }.distinct())

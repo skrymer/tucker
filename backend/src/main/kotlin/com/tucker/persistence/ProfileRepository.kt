@@ -31,6 +31,17 @@ class ProfileRepository(
             .where(PROFILE.USER_ID.eq(currentUser.ownerId))
             .fetchOne()?.toProfile()
 
+    /** Whether the caller has a Profile — setup's guard, which needs none of it. */
+    fun exists(): Boolean = dsl.fetchExists(PROFILE, PROFILE.USER_ID.eq(currentUser.ownerId))
+
+    /** Whether the caller counts calories, or null with no Profile — a guard's one column. */
+    fun tracksCalories(): Boolean? =
+        dsl.select(PROFILE.TRACKS_CALORIES)
+            .from(PROFILE)
+            .where(PROFILE.USER_ID.eq(currentUser.ownerId))
+            .fetchOne(PROFILE.TRACKS_CALORIES)
+            ?.let { it != 0 }
+
     /**
      * Replace the caller's own Profile, or write their first one.
      *

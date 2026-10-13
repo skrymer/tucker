@@ -20,6 +20,14 @@ not restate them.
   change first. (ADR 0002.)
 - **Speak `CONTEXT.md`.** It is the ubiquitous language — domain code uses exactly those
   terms, and a change to the model updates it in the same commit.
+- **A guard or a label reads a projection; a write reads the aggregate.** A read that only
+  checks or names something selects those columns — `ReferenceFoodRepository.namesOf`, the
+  delete guard's `RecipeRepository.recipeNamesUsing` — while a read that feeds a write loads
+  the whole aggregate, so its invariants run (`recipesUsing`, re-saving every Recipe a
+  correction reaches). A guard built on aggregates fails on any malformed one: a damaged
+  Recipe would turn "can't delete, it's in Gratin" into a 500. Two readers of one join share
+  a private select (`recipeRowsUsing`), so the owner predicate and ordering live once.
+  `FoodRepository.namesOf` (whole Foods narrowed to a name, on a list path) predates the rule.
 - **Scoping is implicit.** No repository signature carries a `userId`; a constructor-injected
   `CurrentUser` reads it from the security context, so there is no id to pass wrongly. A
   foreign id answers **exactly** as an absent one — the status code must never become an
@@ -133,7 +141,10 @@ not restate them.
   `Recipe(cookedWeightG=…)`, and inlining one by hand drifts the casing. #455's sealed
   `FoodKind` turned "…not a RECIPE" into "…not a Recipe" in a wire-unchanged refactor, and
   only `/code-review` noticed. Before changing a type, `git grep '\${.*<prop>'` on
-  `origin/main` and pin each message it reaches in the API test first.
+  `origin/main` and pin each message it reaches in the API test first. On a **new**
+  endpoint, every refusal test asserts `$.message` as well as the status, and a service
+  null that stands for two refusals gets a message naming both: #432's "no Food with id
+  206" answered a missing Tag, and only the walk-through's audit noticed.
 - **Detekt's `ReturnCount` allows 2.** A guard plus a match flattens to one elvis
   `?: return null` and a `return when (val x = …)`, not a nested `?.let`.
 - **The SEVERE "Unknown function: datetime('now')" during jOOQ codegen is benign noise.**
@@ -170,8 +181,11 @@ How the moves land here:
   wire change `OpenApiSnapshotTest` will catch. **A controller's `@Transactional` must
   still cover every read left in the controller** — #455 moved Frequent Foods' ranking into
   `FoodService` and left `FoodDescriber`'s reads outside the transaction, green on every
-  test. Pin it the way `FrequentFoodsReadTransactionTest` does: record the transaction each
-  statement runs in and assert there is one.
+  test. Pin it by recording the transaction each statement runs in and asserting there
+  is one — keyed on what is bound to it (`TransactionSynchronizationManager
+  .getResourceMap()`, as `FoodCorrectionTransactionTest` does), never its name: every
+  repository write is transactional under its own method's name, so two separate
+  `FoodRepository.update` transactions share one and the check passes vacuously (#432).
 - **Move Class out to a public domain type, and it owes its own test in the same change**
   (ADR 0013 rules 2 and 5) — the service tests that drove it while it was private are not
   its spec. #455's `AdaptiveWindow` was moved untested and gate 5 sent it back.

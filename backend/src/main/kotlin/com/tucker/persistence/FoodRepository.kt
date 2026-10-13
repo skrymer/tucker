@@ -67,11 +67,31 @@ class FoodRepository(
         )
     }
 
+    /**
+     * The name of every caller's Food in [ids], in one query — what a label or a refusal
+     * message needs, without the nutrition and Tags [findByIds] loads beside it.
+     */
+    fun namesOf(ids: Collection<Long>): Map<Long, String> {
+        if (ids.isEmpty()) return emptyMap()
+        return dsl.select(FOOD.ID, FOOD.NAME)
+            .from(FOOD)
+            .where(FOOD.ID.`in`(ids.map { it.toInt() }))
+            .and(FOOD.USER_ID.eq(currentUser.ownerId))
+            .fetch()
+            .associate { (id, name) -> id.toLong() to name }
+    }
+
+    /** Whether [id] is one of the caller's Recipes — a guard's question, which loads none of it. */
+    fun isRecipe(id: Long): Boolean = dsl.fetchExists(
+        FOOD,
+        FOOD.ID.eq(id.toInt()).and(FOOD.KIND.eq(RECIPE_KIND)).and(FOOD.USER_ID.eq(currentUser.ownerId)),
+    )
+
     @Transactional
     fun insert(food: Food): Food {
         val rec = dsl.newRecord(FOOD)
         rec.id = food.id.toInt()
-        rec.applyFrom(food)
+        rec.applyFrom(food, currentUser.ownerId)
         rec.store()
         dsl.linkTags(rec.id, food.tagIds, currentUser.ownerId)
         return food
@@ -95,7 +115,7 @@ class FoodRepository(
     @Transactional
     fun update(food: Food): Food? {
         val rec = dsl.newRecord(FOOD)
-        rec.applyFrom(food)
+        rec.applyFrom(food, currentUser.ownerId)
         val rowsChanged = dsl.update(FOOD)
             .set(rec)
             .where(FOOD.ID.eq(food.id.toInt()))
@@ -104,23 +124,6 @@ class FoodRepository(
         if (rowsChanged == 0) return null
         dsl.replaceTagsOf(food.id.toInt(), food.tagIds, currentUser.ownerId)
         return food
-    }
-
-    /** Project a [Food]'s fields onto a [FoodRecord] (shared by insert and update). */
-    private fun FoodRecord.applyFrom(food: Food) {
-        userId = currentUser.ownerId
-        name = food.name
-        kind = when (food.kind) {
-            FoodKind.Plain -> PLAIN_KIND
-            is FoodKind.Recipe -> RECIPE_KIND
-        }
-        barcode = food.barcode
-        caloriesPer_100g = food.nutrition.caloriesPer100g
-        proteinPer_100g = food.nutrition.proteinPer100g
-        carbsPer_100g = food.nutrition.carbsPer100g
-        fatPer_100g = food.nutrition.fatPer100g
-        cookedWeightG = (food.kind as? FoodKind.Recipe)?.cookedWeightG
-        referenceFoodId = food.referenceFoodId?.toInt()
     }
 
     /** [foods] each holding the ids of the Tags it carries, read in one query. */
@@ -141,21 +144,38 @@ class FoodRepository(
             .and(FOOD.USER_ID.eq(currentUser.ownerId))
             .execute()
     }
-
-    private fun FoodRecord.toFood(): Food = Food(
-        id = id!!.toLong(),
-        name = name,
-        kind = storedKind(),
-        barcode = barcode,
-        nutrition = Nutrition(
-            caloriesPer100g = caloriesPer_100g,
-            proteinPer100g = proteinPer_100g,
-            carbsPer100g = carbsPer_100g,
-            fatPer100g = fatPer_100g,
-        ),
-        referenceFoodId = referenceFoodId?.toLong(),
-    )
 }
+
+/** Project a [Food]'s fields onto a [FoodRecord] owned by [ownerId] (shared by insert and update). */
+private fun FoodRecord.applyFrom(food: Food, ownerId: Int) {
+    userId = ownerId
+    name = food.name
+    kind = when (food.kind) {
+        FoodKind.Plain -> PLAIN_KIND
+        is FoodKind.Recipe -> RECIPE_KIND
+    }
+    barcode = food.barcode
+    caloriesPer_100g = food.nutrition.caloriesPer100g
+    proteinPer_100g = food.nutrition.proteinPer100g
+    carbsPer_100g = food.nutrition.carbsPer100g
+    fatPer_100g = food.nutrition.fatPer100g
+    cookedWeightG = (food.kind as? FoodKind.Recipe)?.cookedWeightG
+    referenceFoodId = food.referenceFoodId?.toInt()
+}
+
+private fun FoodRecord.toFood(): Food = Food(
+    id = id!!.toLong(),
+    name = name,
+    kind = storedKind(),
+    barcode = barcode,
+    nutrition = Nutrition(
+        caloriesPer100g = caloriesPer_100g,
+        proteinPer100g = proteinPer_100g,
+        carbsPer100g = carbsPer_100g,
+        fatPer100g = fatPer_100g,
+    ),
+    referenceFoodId = referenceFoodId?.toLong(),
+)
 
 // How `food.kind` spells each FoodKind.
 private const val PLAIN_KIND = "FOOD"
