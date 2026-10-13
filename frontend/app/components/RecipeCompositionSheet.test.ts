@@ -1,15 +1,21 @@
 import { describe, expect, it, vi } from 'vitest'
 import { defineComponent } from 'vue'
-import { renderSuspended } from '@nuxt/test-utils/runtime'
+import { mockNuxtImport, renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen, within } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import { settle } from '~~/test/async-gate'
 import { besideCatalog, catalogOnceReread, tagsOn } from '~~/test/catalog-host'
 import { food, recipe } from '~~/test/food-fixtures'
 import { foodCatalog } from '~~/test/mocks/handlers/catalog'
-import { failingRead, held } from '~~/test/mocks/http'
+import { failingRead, failingWrite, held } from '~~/test/mocks/http'
 import { server } from '~~/test/mocks/node'
 import RecipeCompositionSheet from './RecipeCompositionSheet.vue'
+
+const { toastAdd } = vi.hoisted(() => ({ toastAdd: vi.fn() }))
+mockNuxtImport('useToast', () => () => ({
+  add: toastAdd,
+  remove: vi.fn(),
+}))
 
 const mince = food({
   id: 1,
@@ -165,6 +171,36 @@ describe('RecipeCompositionSheet', () => {
     expect(screen.queryByText('Mince')).not.toBeInTheDocument()
   })
 
+  it('shows the newly opened recipe, not a still-in-flight previous one’s failure', async () => {
+    // Cottage Pie's read is held until released, then fails; Beef stew's
+    // answers at once.
+    let failing = false
+    const cottagePieRead = held('get', '/api/recipes/{id}', (request) =>
+      request.url.endsWith('/api/recipes/4'),
+    )
+    server.use(
+      cottagePieRead.handler,
+      failingRead('/api/recipes/{id}', () => failing),
+      ...kitchen(),
+    )
+
+    const { rerender } = await renderSuspended(RecipeCompositionSheet, {
+      props: { recipe: cottagePie },
+    })
+    await cottagePieRead.arrived
+    await rerender({ recipe: beefStew })
+    expect(await screen.findByText('Beef')).toBeVisible()
+
+    failing = true
+    cottagePieRead.release()
+    await settle()
+
+    expect(screen.getByText('Beef')).toBeVisible()
+    expect(
+      screen.queryByText("Couldn't load your recipe"),
+    ).not.toBeInTheDocument()
+  })
+
   it('opens the pre-filled edit builder from the composition view', async () => {
     server.use(...kitchen())
     const user = userEvent.setup()
@@ -205,6 +241,27 @@ describe('RecipeCompositionSheet', () => {
     const shown = await catalogOnceReread()
     expect(shown.getByText('Cottage pie')).toBeVisible()
     expect(shown.getByText('2 ingredients · makes 1,500 g')).toBeVisible()
+  })
+
+  it('names a failed save in its own error toast, and stays open', async () => {
+    server.use(failingWrite('put', '/api/recipes/{id}'), ...kitchen())
+    const onClose = vi.fn()
+    const user = userEvent.setup()
+    await renderSuspended(RecipeCompositionSheet, {
+      props: { recipe: cottagePie, foods: catalog, onClose },
+    })
+
+    await user.click(
+      await screen.findByRole('button', { name: /edit recipe/i }),
+    )
+    await user.click(screen.getByRole('button', { name: /save changes/i }))
+
+    await vi.waitFor(() =>
+      expect(toastAdd).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'Could not save recipe' }),
+      ),
+    )
+    expect(onClose).not.toHaveBeenCalled()
   })
 
   it('seeds the edit builder with each ingredient under its own food', async () => {
