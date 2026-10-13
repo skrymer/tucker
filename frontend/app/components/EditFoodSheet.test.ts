@@ -389,6 +389,20 @@ describe('EditFoodSheet’s Recipes', () => {
     expect(screen.queryByText('Granola bars')).not.toBeInTheDocument()
   })
 
+  it('says nothing of Recipes while it is still reading them', async () => {
+    const read = held('get', '/api/foods/{id}/recipes')
+    server.use(read.handler, ...usedTwice())
+    await renderSuspended(EditFoodSheet, { props: { food: oats } })
+
+    await read.arrived
+
+    expect(screen.queryByText(/recipe/)).not.toBeInTheDocument()
+    read.release()
+    expect(
+      await screen.findByRole('button', { name: 'Used in 2 recipes' }),
+    ).toBeVisible()
+  })
+
   it('says nothing of Recipes when none uses the Food', async () => {
     const read = held('get', '/api/foods/{id}/recipes')
     server.use(

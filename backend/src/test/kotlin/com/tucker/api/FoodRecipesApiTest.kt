@@ -70,6 +70,16 @@ class FoodRecipesApiTest {
     }
 
     @Test
+    fun `each Recipe using a Food carries its own id`() {
+        val mince = createFood("Mince", protein = 31.0, carbs = 0.0, fat = 10.0)
+        val pie = createRecipe("Cottage pie", 400.0, mince to 400.0)
+
+        mockMvc.get("/api/foods/$mince/recipes").andExpect {
+            jsonPath("$[0].id") { value(pie) }
+        }
+    }
+
+    @Test
     fun `a Food no Recipe uses is used in none`() {
         val oats = createFood("Rolled oats", protein = 13.0, carbs = 60.0, fat = 7.0)
 
