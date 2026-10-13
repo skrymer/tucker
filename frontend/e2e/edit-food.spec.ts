@@ -68,6 +68,36 @@ test('the Edit sheet holds the Food’s name, macros, figures and Tags', async (
   ).toMatchAriaSnapshot()
 })
 
+test('a matched Food’s Edit sheet holds its match, with Change and Clear', async ({
+  page,
+  goto,
+  network,
+}) => {
+  network.use(
+    ...foodCatalog({
+      foods: [
+        food({
+          id: 3,
+          name: 'Tasty cheese',
+          caloriesPer100g: 397,
+          proteinPer100g: 25,
+          carbsPer100g: 0,
+          fatPer100g: 33,
+          referenceFoodId: 9,
+          referenceFoodName: 'Cheese, cheddar, natural, regular fat',
+        }),
+      ],
+    }),
+  )
+  await goto('/foods', { waitUntil: 'hydration' })
+
+  await page.getByRole('button', { name: 'Edit Tasty cheese' }).click()
+
+  await expect(
+    page.getByRole('dialog', { name: 'Edit Tasty cheese' }),
+  ).toMatchAriaSnapshot()
+})
+
 test('the figures follow each keystroke while the field still has focus', async ({
   page,
   goto,

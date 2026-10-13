@@ -60,7 +60,7 @@ test('a Tag put on a Food from its Edit sheet is still there after a reload', as
   ])
 })
 
-test('a Tag put on a Recipe from its Tags sheet is still there after a reload', async ({
+test('a Tag put on a Recipe in the editor its row’s Edit opens is still there after a reload', async ({
   page,
   goto,
   request,
@@ -76,7 +76,6 @@ test('a Tag put on a Recipe from its Tags sheet is still there after a reload', 
   })
   expect(created.status()).toBe(201)
   const oats = ((await created.json()) as { id: number }).id
-  // A Recipe keeps its own Tags sheet.
   const porridge = await request.post(`${API}/recipes`, {
     data: {
       tagIds: [],
@@ -93,15 +92,15 @@ test('a Tag put on a Recipe from its Tags sheet is still there after a reload', 
 
   await goto('/foods', { waitUntil: 'hydration' })
 
-  await page.getByRole('button', { name: 'Tags for Porridge' }).click()
-  const sheet = page.getByRole('dialog', { name: 'Tags for Porridge' })
-  const picker = sheet.getByRole('combobox')
+  await page.getByRole('button', { name: 'Edit Porridge' }).click()
+  const sheet = page.getByRole('dialog', { name: 'Edit Porridge' })
+  const picker = sheet.getByRole('combobox', { name: 'Tags' })
 
   await picker.fill('breakfast')
   await page.getByRole('option', { name: /breakfast/ }).click()
   await picker.fill('snack')
   await page.getByRole('option', { name: 'Snack', exact: true }).click()
-  await sheet.getByRole('button', { name: 'Save tags' }).click()
+  await sheet.getByRole('button', { name: 'Save changes' }).click()
   await expect(sheet).toBeHidden()
 
   await page.reload()

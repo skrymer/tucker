@@ -133,39 +133,94 @@ describe('/foods saving a new food', () => {
   })
 })
 
-describe('/foods saving a Food’s Tags', () => {
-  it('names a save that failed for want of a connection in its own error toast', async () => {
+describe('/foods editing a Recipe', () => {
+  it('opens the Recipe editor straight in edit mode from the row’s Edit', async () => {
     const pie = recipe({
       id: 8,
       name: 'Cottage pie',
       cookedWeightG: 1400,
-      ingredientCount: 5,
+      ingredientCount: 1,
     })
     server.use(
-      http.put('/api/foods/{id}/tags', ({ response }) =>
-        response(503).json(noConnection),
-      ),
       ...foodCatalog({
         foods: [oats, pie],
-        tags: [{ id: 1, name: 'snack', foodCount: 0 }],
+        compositions: { [pie.id]: [{ foodId: oats.id, grams: 500 }] },
       }),
     )
     const user = userEvent.setup()
     await renderSuspended(Foods)
 
-    await user.click(
-      screen.getByRole('button', { name: 'Tags for Cottage pie' }),
-    )
-    const sheet = screen.getByRole('dialog', { name: 'Tags for Cottage pie' })
-    await user.click(within(sheet).getByRole('button', { name: 'Save tags' }))
+    await user.click(screen.getByRole('button', { name: 'Edit Cottage pie' }))
 
-    await vi.waitFor(() =>
-      expect(toastAdd).toHaveBeenCalledWith(
-        expect.objectContaining({ title: 'Could not save tags' }),
-      ),
-    )
+    const sheet = screen.getByRole('dialog', { name: 'Edit Cottage pie' })
+    expect(
+      await within(sheet).findByRole('textbox', { name: /^Recipe name/ }),
+    ).toHaveValue('Cottage pie')
+    expect(
+      within(sheet).getByRole('button', { name: 'Save changes' }),
+    ).toBeVisible()
+    expect(
+      within(sheet).queryByRole('button', { name: 'Edit recipe' }),
+    ).not.toBeInTheDocument()
+    expect(within(sheet).queryByText('Ingredients')).not.toBeInTheDocument()
   })
 
+  it('shows no read-only view while the Recipe it opens to edit is still loading', async () => {
+    const pie = recipe({
+      id: 8,
+      name: 'Cottage pie',
+      cookedWeightG: 1400,
+      ingredientCount: 1,
+    })
+    const { handler, arrived, release } = held('get', '/api/recipes/{id}')
+    server.use(
+      handler,
+      ...foodCatalog({
+        foods: [oats, pie],
+        compositions: { [pie.id]: [{ foodId: oats.id, grams: 500 }] },
+      }),
+    )
+    const user = userEvent.setup()
+    await renderSuspended(Foods)
+
+    await user.click(screen.getByRole('button', { name: 'Edit Cottage pie' }))
+    await arrived
+
+    const sheet = screen.getByRole('dialog', { name: 'Edit Cottage pie' })
+    expect(within(sheet).queryByText('Ingredients')).not.toBeInTheDocument()
+    expect(within(sheet).queryByText('Makes')).not.toBeInTheDocument()
+
+    release()
+    expect(
+      await within(sheet).findByRole('textbox', { name: /^Recipe name/ }),
+    ).toHaveValue('Cottage pie')
+  })
+})
+
+describe('/foods a Food’s match', () => {
+  it('is changed from the Food’s Edit sheet, the row offering nothing else for it', async () => {
+    const cheese = food({
+      id: 3,
+      name: 'Tasty cheese',
+      referenceFoodId: 9,
+      referenceFoodName: 'Cheese, cheddar, natural, regular fat',
+    })
+    server.use(...foodCatalog({ foods: [cheese] }))
+    const user = userEvent.setup()
+    await renderSuspended(Foods)
+
+    await user.click(screen.getByRole('button', { name: 'Edit Tasty cheese' }))
+
+    const sheet = screen.getByRole('dialog', { name: 'Edit Tasty cheese' })
+    expect(
+      within(sheet).getByRole('button', {
+        name: 'Change what Tasty cheese borrows vitamins and minerals from',
+      }),
+    ).toBeVisible()
+  })
+})
+
+describe('/foods saving a Food’s correction', () => {
   it('names a correction that failed for want of a connection in its own error toast', async () => {
     server.use(
       http.put('/api/foods/{id}', ({ response }) =>

@@ -1,5 +1,6 @@
 import { expect, test } from './support/test'
-import { food } from '../test/food-fixtures'
+import { food, recipe } from '../test/food-fixtures'
+import { foodCatalog } from '../test/mocks/handlers/catalog'
 import { catalogOf } from '../test/mocks/handlers/foods'
 
 test('the Foods page shows the catalog from the API', async ({
@@ -65,4 +66,40 @@ test('the catalog states every name in one voice, however each was typed', async
   await expect(rows.nth(2)).toContainText('Low fat milk')
   await expect(rows.nth(3)).toContainText('Rolled oats')
   await expect(rows.nth(4)).toContainText('UHT milk')
+})
+
+test('every row offers one Edit: a plain, a matched and a Recipe row', async ({
+  page,
+  goto,
+  network,
+}) => {
+  network.use(
+    ...foodCatalog({
+      foods: [
+        recipe({
+          id: 1,
+          name: 'Cottage pie',
+          caloriesPer100g: 120,
+          proteinPer100g: 9,
+          cookedWeightG: 1400,
+          ingredientCount: 5,
+        }),
+        food({ id: 2, name: 'Skyr', caloriesPer100g: 64, proteinPer100g: 11 }),
+        food({
+          id: 3,
+          name: 'Tasty cheese',
+          caloriesPer100g: 397,
+          proteinPer100g: 25,
+          referenceFoodId: 9,
+          referenceFoodName: 'Cheese, cheddar, natural, regular fat',
+        }),
+      ],
+    }),
+  )
+
+  await goto('/foods', { waitUntil: 'hydration' })
+
+  // A plain Food is Edit · Delete, matched or not — its match is changed in
+  // the Edit sheet — and a Recipe adds its read-only View ingredients.
+  await expect(page.getByRole('main').getByRole('list')).toMatchAriaSnapshot()
 })

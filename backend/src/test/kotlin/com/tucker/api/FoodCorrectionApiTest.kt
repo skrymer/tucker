@@ -2,6 +2,8 @@ package com.tucker.api
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.tucker.domain.Macros
+import com.tucker.domain.ReferenceFoodQuery
+import com.tucker.persistence.ReferenceFoodRepository
 import com.tucker.security.WithTuckerUser
 import org.hamcrest.Matchers.closeTo
 import org.hamcrest.Matchers.contains
@@ -25,6 +27,7 @@ class FoodCorrectionApiTest {
 
     @Autowired lateinit var mockMvc: MockMvc
     @Autowired lateinit var objectMapper: ObjectMapper
+    @Autowired lateinit var referenceFoods: ReferenceFoodRepository
 
     @Test
     fun `a corrected Food answers with its new name and macros, calories derived from them`() {
@@ -156,6 +159,26 @@ class FoodCorrectionApiTest {
         mockMvc.get("/api/foods/$oats").andExpect {
             jsonPath("$.name") { value("Rolled oast") }
             jsonPath("$.tags.length()") { value(1) }
+        }
+    }
+
+    @Test
+    fun `a correction of a matched Food's name and macros leaves what it borrows from unchanged`() {
+        val cheese = createFood("Tasty chese", protein = 52.0, carbs = 0.0, fat = 33.0)
+        val cheddar = referenceFoods
+            .search(ReferenceFoodQuery.of("Tasty cheese", referenceFoods.synonyms()), limit = 1)
+            .first().food
+        mockMvc.put("/api/foods/$cheese/reference-food") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"referenceFoodId":${cheddar.id}}"""
+        }.andExpect { status { isOk() } }
+
+        correct(cheese, "Tasty cheese", Macros(proteinPer100g = 25.0, carbsPer100g = 0.0, fatPer100g = 33.0))
+
+        mockMvc.get("/api/foods/$cheese").andExpect {
+            jsonPath("$.name") { value("Tasty cheese") }
+            jsonPath("$.referenceFoodId") { value(cheddar.id) }
+            jsonPath("$.referenceFoodName") { value(cheddar.name) }
         }
     }
 

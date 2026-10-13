@@ -106,27 +106,20 @@ describe('FoodListItem', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('emits match when the user changes what a matched Food borrows', async () => {
+  it('offers a matched Food only Edit and Delete, its match being changed in the Edit sheet', async () => {
     const cheese = food({
       id: 3,
       name: 'Tasty cheese',
       referenceFoodId: 9,
       referenceFoodName: 'Cheese, cheddar, natural, regular fat',
     })
-    const onMatch = vi.fn()
-    await renderSuspended(FoodListItem, {
-      props: { food: cheese, onMatch },
-    })
+    await renderSuspended(FoodListItem, { props: { food: cheese } })
 
-    // A wrong match is worse than none, so changing or clearing one has to be as
-    // easy as making it — and the queue on /review no longer lists this Food.
-    await userEvent.setup().click(
-      screen.getByRole('button', {
-        name: 'Change what Tasty cheese borrows vitamins and minerals from',
-      }),
-    )
-
-    expect(onMatch).toHaveBeenCalledWith(cheese)
+    expect(
+      screen
+        .getAllByRole('button')
+        .map((button) => button.getAttribute('aria-label')),
+    ).toEqual(['Edit Tasty cheese', 'Delete Tasty cheese'])
   })
 
   it('leaves an unmatched Food carrying no marker of any kind', async () => {
@@ -188,9 +181,8 @@ describe('FoodListItem', () => {
       tags: ['a', 'b', 'c', 'd', 'e', 'f'].map((name, i) => ({ id: i, name })),
     })
     const onEdit = vi.fn()
-    const onTag = vi.fn()
     await renderSuspended(FoodListItem, {
-      props: { food: oats, onEdit, onTag },
+      props: { food: oats, onEdit },
     })
 
     const tags = screen.getByRole('list', { name: 'Tags on Rolled oats' })
@@ -205,34 +197,37 @@ describe('FoodListItem', () => {
       .click(screen.getByRole('button', { name: '2 more tags on Rolled oats' }))
 
     expect(onEdit).toHaveBeenCalledWith(oats)
-    expect(onTag).not.toHaveBeenCalled()
   })
 
-  it('keeps a Recipe’s own Tags: its tag button and its "+N" open them, and it offers no Edit', async () => {
+  it('offers a Recipe View ingredients, Edit and Delete, its Edit and its "+N" both opening it to edit', async () => {
     const tagged = {
       ...cottagePie,
       tags: ['a', 'b', 'c', 'd', 'e', 'f'].map((name, i) => ({ id: i, name })),
     }
-    const onTag = vi.fn()
     const onEdit = vi.fn()
     await renderSuspended(FoodListItem, {
-      props: { food: tagged, onTag, onEdit },
+      props: { food: tagged, onEdit },
     })
     const user = userEvent.setup()
 
-    await user.click(
-      screen.getByRole('button', { name: 'Tags for Cottage pie' }),
-    )
+    expect(
+      screen
+        .getAllByRole('button')
+        .map((button) => button.getAttribute('aria-label')),
+    ).toEqual([
+      '2 more tags on Cottage pie',
+      'View ingredients in Cottage pie',
+      'Edit Cottage pie',
+      'Delete Cottage pie',
+    ])
+
+    await user.click(screen.getByRole('button', { name: 'Edit Cottage pie' }))
     await user.click(
       screen.getByRole('button', { name: '2 more tags on Cottage pie' }),
     )
 
-    expect(onTag).toHaveBeenNthCalledWith(1, tagged)
-    expect(onTag).toHaveBeenNthCalledWith(2, tagged)
-    expect(onEdit).not.toHaveBeenCalled()
-    expect(
-      screen.queryByRole('button', { name: 'Edit Cottage pie' }),
-    ).not.toBeInTheDocument()
+    expect(onEdit).toHaveBeenNthCalledWith(1, tagged)
+    expect(onEdit).toHaveBeenNthCalledWith(2, tagged)
   })
 
   it('emits edit when the user opens a plain Food to correct it, which holds its Tags too', async () => {

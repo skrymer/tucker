@@ -1,10 +1,15 @@
 <script setup lang="ts">
 import type { components } from '#open-fetch-schemas/api'
 
-/** The Food being corrected — non-null opens the sheet. */
+/**
+ * The Food being corrected — non-null opens the sheet. `tracksCalories` gates its
+ * Reference Food match, read from the setting rather than from whether a match
+ * happens to be set (ADR 0027).
+ */
 // Stryker disable all: a compiler macro's arguments are hoisted out of setup()
 const props = defineProps<{
   food: components['schemas']['FoodResponse'] | null
+  tracksCalories?: boolean
 }>()
 // Stryker restore all
 const emit = defineEmits<{ close: [] }>()
@@ -170,6 +175,8 @@ const { save, saving } = useCorrectionSave()
       <UFormField label="Tags">
         <TagPicker v-model="tags" v-model:creating="creatingTag" />
       </UFormField>
+
+      <FoodMatchRow v-if="tracksCalories" :food="food" />
 
       <p v-if="macrosMoved" class="text-label text-dimmed">
         Food you've already logged keeps the figures it was logged with.

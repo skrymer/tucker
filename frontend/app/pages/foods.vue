@@ -32,17 +32,28 @@ watch(open, (isOpen) => {
 })
 
 /**
- * Changing or clearing what a Food borrows its micronutrients from. The queue on
- * `/review` is the one way *into* a match (ADR 0027), and it stops listing a Food
- * that has one — so the way back out lives here, beside the subline naming it.
+ * The plain Food being corrected (ADR 0037) — non-null opens its sheet, which
+ * also holds its Tags and its Reference Food match.
  */
-const foodToMatch = ref<FoodResponse | null>(null)
-
-/** The Food whose Tags are being set (ADR 0033) — non-null opens its sheet. */
-const foodToTag = ref<FoodResponse | null>(null)
-
-/** The plain Food being corrected (ADR 0037) — non-null opens its sheet. */
 const foodToEdit = ref<FoodResponse | null>(null)
+
+/** Whether the recipe sheet opens on its editor rather than its view. */
+const editingRecipe = ref(false)
+
+/** A row's Edit: a Recipe opens in its editor, a plain Food in its Edit sheet. */
+function edit(food: FoodResponse) {
+  if (food.kind === 'RECIPE') {
+    editingRecipe.value = true
+    recipeToView.value = food
+  } else {
+    foodToEdit.value = food
+  }
+}
+
+function view(recipe: FoodResponse) {
+  editingRecipe.value = false
+  recipeToView.value = recipe
+}
 
 const manageTagsOpen = ref(false)
 </script>
@@ -84,10 +95,8 @@ const manageTagsOpen = ref(false)
         :foods="foods"
         :tracks-calories="tracksCalories"
         @delete="selectedFood = $event"
-        @view="recipeToView = $event"
-        @match="foodToMatch = $event"
-        @tag="foodToTag = $event"
-        @edit="foodToEdit = $event"
+        @view="view"
+        @edit="edit"
       />
       <FoodEmptyState v-else @add="open = true" />
     </LoadErrorState>
@@ -111,17 +120,18 @@ const manageTagsOpen = ref(false)
 
     <DeleteFoodConfirm :food="selectedFood" @close="selectedFood = null" />
 
-    <ReferenceFoodPicker :food="foodToMatch" @close="foodToMatch = null" />
-
     <ManageTagsSheet v-model:open="manageTagsOpen" />
 
-    <FoodTagsSheet :food="foodToTag" @close="foodToTag = null" />
-
-    <EditFoodSheet :food="foodToEdit" @close="foodToEdit = null" />
+    <EditFoodSheet
+      :food="foodToEdit"
+      :tracks-calories="tracksCalories"
+      @close="foodToEdit = null"
+    />
 
     <RecipeCompositionSheet
       :recipe="recipeToView"
       :foods="foods ?? []"
+      :edit="editingRecipe"
       @close="recipeToView = null"
     />
   </section>

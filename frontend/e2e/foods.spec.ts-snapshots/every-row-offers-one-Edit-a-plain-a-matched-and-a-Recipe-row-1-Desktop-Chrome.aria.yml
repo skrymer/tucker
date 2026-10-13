@@ -1,0 +1,15 @@
+- list:
+    - /children: deep-equal
+    - listitem:
+        - text: Cottage pie Recipe 120 kcal · 9 g protein /100g 5 ingredients · makes 1,400 g
+        - button "View ingredients in Cottage pie"
+        - button "Edit Cottage pie"
+        - button "Delete Cottage pie"
+    - listitem:
+        - text: Skyr 64 kcal · 11 g protein /100g
+        - button "Edit Skyr"
+        - button "Delete Skyr"
+    - listitem:
+        - text: Tasty cheese 397 kcal · 25 g protein /100g Vitamins and minerals from Cheese, cheddar, natural, regular fat
+        - button "Edit Tasty cheese"
+        - button "Delete Tasty cheese"
