@@ -84,7 +84,9 @@ adversary's failed attack, a ledger's scope tail): #455 PR 2's pack read one as 
 file said 10 of 11) and dropped a one-line nit; gate 5 had to correct both. A row says
 re-recorded, withdrawn or superseded only once that edit is in the file, and a
 re-resolution marks the row it replaces in the same edit: #469 claimed two re-records
-that gate 5 found unmade.
+that gate 5 found unmade. A row for a probe owed to gate 6 cites the figures the verdict
+file records (the width, the driven value), never the planned ones: #496's pack said
+"x 429" and "save 81.4", and the verdict held neither.
 
 **One row per remedy, and a ruling covers only what its question named.** Every pack
 row is `| id | agent | finding | remedy (one) | resolution |`, and a finding that
