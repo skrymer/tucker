@@ -52,6 +52,22 @@ describe('WeightHistorySection', () => {
     ).not.toHaveAttribute('aria-disabled', 'true')
   })
 
+  it('opens the next day for picking once the clock turns over', async () => {
+    server.use(...bodyAndPlan({ profile: null, readings: [], today: TODAY }))
+    await renderSuspended(WeightHistorySection)
+    await screen.findByText('No weight on Mon 12 Oct.')
+    const nextDay = () =>
+      screen.getByRole('button', { name: 'Tuesday, October 13, 2026' })
+    expect(nextDay()).toHaveAttribute('aria-disabled', 'true')
+
+    vi.setSystemTime(new Date(2026, 9, 13, 9, 0))
+    document.dispatchEvent(new Event('visibilitychange'))
+
+    await vi.waitFor(() =>
+      expect(nextDay()).not.toHaveAttribute('aria-disabled', 'true'),
+    )
+  })
+
   it('offers neither the empty state nor Add weight until the readings have been read', async () => {
     const read = held('get', '/api/weight')
     server.use(

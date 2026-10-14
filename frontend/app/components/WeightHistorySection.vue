@@ -1,7 +1,8 @@
 <script setup lang="ts">
 const { $api } = useNuxtApp()
 
-const picked = ref(localToday())
+const today = useLocalDay()
+const picked = ref(today.value)
 const plain = computed(() => formatDayHeadingFromISO(picked.value))
 
 /** Every reading the User has taken, read once for the visit. */
@@ -36,7 +37,7 @@ const emit = defineEmits<{
 /** Adds a reading to the picked day; the sheet locks its date to it. */
 function useBackfill() {
   const { sheetOpen, saving, logWeight } = useWeightLogging({
-    today: () => localToday(),
+    today: () => today.value,
     // No success toast: the day's dot and reading appear in the card itself.
     onSaved: async () => {
       emit('saved')
@@ -65,7 +66,7 @@ const backfill = useBackfill()
     <div v-show="!readings.error.value">
       <AppCalendar
         v-model="picked"
-        :max="localToday()"
+        :max="today"
         :marked="readings.days.value"
         class="mt-3"
       />
