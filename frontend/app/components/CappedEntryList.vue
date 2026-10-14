@@ -1,3 +1,7 @@
+<!--
+  A day's Entries capped to the most recent few, behind a Show all ↔ Show less
+  control. `action` passes through to every row's far end.
+-->
 <script setup lang="ts">
 import type { components } from '#open-fetch-schemas/api'
 
@@ -5,10 +9,6 @@ type EntryResponse = components['schemas']['EntryResponse']
 
 const props = defineProps<{
   entries: EntryResponse[]
-}>()
-
-defineSlots<{
-  action?: (props: { entry: EntryResponse }) => unknown
 }>()
 
 // Cap the list so a long day never buries what sits below it. Entries arrive
