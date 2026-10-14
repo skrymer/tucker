@@ -7,9 +7,9 @@ import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
 
 /**
- * Application logic for recording a [WeightMeasurement]. A measurement write is the
- * only moment the smoothed Trend Weight can move, so it is also the one place a Goal
- * can cross its target — after persisting the reading we stamp the active Goal as
+ * Application logic for recording or removing a [WeightMeasurement]. A measurement
+ * write is the only moment the smoothed Trend Weight can move, so it is also the one
+ * place a Goal can cross its target — after each write we stamp the active Goal as
  * reached if it just crossed (ADR 0008). Both run in one transaction.
  */
 @Service
@@ -23,5 +23,11 @@ class WeightMeasurementService(
         val saved = weights.save(measurement)
         goals.stampReachedIfCrossed(today)
         return saved
+    }
+
+    @Transactional
+    fun delete(id: Long, today: LocalDate) {
+        weights.deleteById(id)
+        goals.stampReachedIfCrossed(today)
     }
 }

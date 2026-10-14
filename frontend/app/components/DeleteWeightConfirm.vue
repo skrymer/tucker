@@ -23,7 +23,12 @@ function useWeightDeletion() {
   const { $api } = useNuxtApp()
   const { execute } = useApiMutation(
     (reading: Reading) =>
-      $api('/api/weight/{id}', { method: 'DELETE', path: { id: reading.id } }),
+      $api('/api/weight/{id}', {
+        method: 'DELETE',
+        path: { id: reading.id },
+        // The day the Goal-reached check stamps, should the delete cross it.
+        query: { clientToday: localToday() },
+      }),
     {
       // No success toast: the day's dot and reading leave the card.
       errorTitle: 'Could not delete weight',

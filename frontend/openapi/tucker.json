@@ -3315,6 +3315,15 @@
               "type": "integer",
               "format": "int64"
             }
+          },
+          {
+            "name": "clientToday",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
           }
         ],
         "responses": {

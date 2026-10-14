@@ -68,7 +68,7 @@ A Goal is **reached** when the live **Trend Weight** first meets its target
 latest EWMA point, which *only* moves when a **Weight Measurement** is added,
 edited, or deleted — not the clock, not a review. So the only moment the trend can
 cross the target is on a measurement write, giving one clean write point: on
-Weight Measurement create/edit, recompute the trend and stamp the active Goal's
+Weight Measurement create/edit/delete, recompute the trend and stamp the active Goal's
 new `reachedOn` if it just crossed. No side-effects on GET, no scheduler, no
 crossing ever missed. No debounce is added — the EWMA smoothing (10% weight per
 reading) already absorbs a single low morning weigh-in, so a crossing is real.
