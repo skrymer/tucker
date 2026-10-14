@@ -1,11 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { renderSuspended } from '@nuxt/test-utils/runtime'
+import { mockNuxtImport, renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen, within } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
-import { failingRead, held } from '~~/test/mocks/http'
+import { failingRead, failingWrite, held } from '~~/test/mocks/http'
 import { server } from '~~/test/mocks/node'
 import { bodyAndPlan } from '~~/test/mocks/handlers/body'
 import WeightHistorySection from './WeightHistorySection.vue'
+
+const { toastAdd } = vi.hoisted(() => ({ toastAdd: vi.fn() }))
+mockNuxtImport('useToast', () => () => ({
+  add: toastAdd,
+  remove: vi.fn(),
+}))
 
 const TODAY = '2026-10-12'
 
@@ -15,6 +21,26 @@ function dottedDays() {
     .getAllByRole('button', { name: /^\w+day, / })
     .filter((day) => day.querySelector('[data-slot="base"]'))
     .map((day) => day.getAttribute('aria-label'))
+}
+
+/** Picks Fri 9 Oct, opens its Edit, and saves `kg` in its place. */
+async function correctFriday(
+  user: ReturnType<typeof userEvent.setup>,
+  kg: string,
+) {
+  await user.click(
+    screen.getByRole('button', { name: 'Friday, October 9, 2026' }),
+  )
+  await user.click(
+    await screen.findByRole('button', { name: 'Edit weight on Fri 9 Oct' }),
+  )
+  const dialog = await screen.findByRole('dialog', { name: 'Log weight' })
+  const weight = within(dialog).getByLabelText(/Weight \(kg\)/)
+  await user.clear(weight)
+  await user.type(weight, kg)
+  // A number field commits its model on blur, so leave it before submitting.
+  await user.tab()
+  await user.click(within(dialog).getByRole('button', { name: 'Save weight' }))
 }
 
 describe('WeightHistorySection', () => {
@@ -132,6 +158,113 @@ describe('WeightHistorySection', () => {
     expect(
       screen.queryByRole('button', { name: 'Add weight' }),
     ).not.toBeInTheDocument()
+  })
+
+  it('offers Edit on a picked day holding a reading, and not on one without', async () => {
+    server.use(
+      ...bodyAndPlan({
+        profile: null,
+        today: TODAY,
+        readings: [{ id: 1, measuredOn: '2026-10-09', weightKg: 80.9 }],
+      }),
+    )
+    await renderSuspended(WeightHistorySection)
+    await screen.findByText('No weight on Mon 12 Oct.')
+    const user = userEvent.setup()
+
+    expect(screen.queryByRole('button', { name: /^Edit/ })).toBeNull()
+
+    await user.click(
+      screen.getByRole('button', { name: 'Friday, October 9, 2026' }),
+    )
+
+    expect(
+      await screen.findByRole('button', { name: 'Edit weight on Fri 9 Oct' }),
+    ).toBeVisible()
+  })
+
+  it("opens Edit on the picked day's stored kg, with the date locked to it", async () => {
+    server.use(
+      ...bodyAndPlan({
+        profile: null,
+        today: TODAY,
+        readings: [{ id: 1, measuredOn: '2026-10-09', weightKg: 80.9 }],
+      }),
+    )
+    await renderSuspended(WeightHistorySection)
+    await screen.findByText('No weight on Mon 12 Oct.')
+    const user = userEvent.setup()
+    await user.click(
+      screen.getByRole('button', { name: 'Friday, October 9, 2026' }),
+    )
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Edit weight on Fri 9 Oct' }),
+    )
+
+    const dialog = await screen.findByRole('dialog', { name: 'Log weight' })
+    expect(within(dialog).getByLabelText(/Weight \(kg\)/)).toHaveValue('80.9')
+    expect(within(dialog).queryByLabelText(/^Date/)).toBeNull()
+  })
+
+  it("replaces the picked day's reading with the corrected one", async () => {
+    server.use(
+      ...bodyAndPlan({
+        profile: null,
+        today: TODAY,
+        readings: [
+          { id: 1, measuredOn: '2026-10-07', weightKg: 81.2 },
+          { id: 2, measuredOn: '2026-10-09', weightKg: 80.9 },
+        ],
+      }),
+    )
+    await renderSuspended(WeightHistorySection)
+    await screen.findByText('No weight on Mon 12 Oct.')
+
+    await correctFriday(userEvent.setup(), '79.6')
+
+    expect(await screen.findByText('79.6 kg')).toBeVisible()
+    expect(screen.queryByText('80.9 kg')).not.toBeInTheDocument()
+    expect(dottedDays()).toEqual([
+      'Wednesday, October 7, 2026',
+      'Friday, October 9, 2026',
+    ])
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('keeps the old reading under a persistent error when a correction fails, and its Retry saves it', async () => {
+    toastAdd.mockClear()
+    let down = true
+    server.use(
+      failingWrite('post', '/api/weight', () => down),
+      ...bodyAndPlan({
+        profile: null,
+        today: TODAY,
+        readings: [{ id: 1, measuredOn: '2026-10-09', weightKg: 80.9 }],
+      }),
+    )
+    await renderSuspended(WeightHistorySection)
+    await screen.findByText('No weight on Mon 12 Oct.')
+
+    await correctFriday(userEvent.setup(), '79.6')
+
+    await vi.waitFor(() =>
+      expect(toastAdd).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Could not save weight',
+          duration: Infinity,
+        }),
+      ),
+    )
+    expect(screen.getByRole('dialog', { name: 'Log weight' })).toBeVisible()
+    expect(screen.getByText('80.9 kg')).toBeInTheDocument()
+    expect(screen.queryByText('79.6 kg')).not.toBeInTheDocument()
+
+    down = false
+    toastAdd.mock.calls.at(-1)![0].actions[0].onClick()
+
+    expect(await screen.findByText('79.6 kg')).toBeVisible()
+    expect(screen.queryByText('80.9 kg')).not.toBeInTheDocument()
   })
 
   it("does not show another day's reading on a day that has none", async () => {

@@ -269,7 +269,8 @@ here.
 - **F20** — Weight history on `/review`: add, correct or remove a past Weight
   Measurement (PRD [#495](https://github.com/skrymer/tucker/issues/495)). Slice 1
   ([#496](https://github.com/skrymer/tucker/issues/496)) is the card, with Profile's
-  weight section retired; Edit (#497) and Delete (#498) follow.
+  weight section retired; slice 2
+  ([#497](https://github.com/skrymer/tucker/issues/497)) is Edit. Delete (#498) follows.
 
 ## Architecture
 

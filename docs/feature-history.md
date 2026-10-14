@@ -1862,3 +1862,16 @@ null` now means two things that earn opposite messages — the same trap
     removed and the page computes `goalEnabled` inline.
   - **The card pushes the Intake Breakdown ring below the fold on desktop**, so the
     ring-hover e2e scrolls it into view before moving the pointer by page coordinates.
+  - **Slice 2 (#497) — Edit.** A picked day holding a reading shows the Today tile's
+    ghost pencil beside its kg, named "Edit weight on <day>" (the user's ruling over a
+    first outline "Edit" text button). It opens the same `LogWeightSheet` with the date
+    locked and `initialWeightKg` prefilled; the save goes through the same POST, which
+    replaces the day's reading in place. No backend change. The smoke corrects a
+    reading inside a week whose review is already held and shows the live trend and
+    goal hero move while the review's Trend Weight and the Goal's start weight do not.
+  - **ADR 0004's "a sheet owns its mutation" now exempts a shared form sheet**:
+    `LogWeightSheet` stays presentational and each surface saves through
+    `useWeightLogging`, which /check-adrs had flagged as the doc overstating the code.
+  - **A mistyped reading that crosses the Goal latches it reached**, and correcting
+    it does not unlatch — reachable on `main` through Today's tile, and by design per
+    `CONTEXT.md` › Goal. Left to [#505](https://github.com/skrymer/tucker/issues/505).

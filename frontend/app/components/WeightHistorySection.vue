@@ -34,9 +34,12 @@ const emit = defineEmits<{
   saved: []
 }>()
 
-/** Adds a reading to the picked day; the sheet locks its date to it. */
-function useBackfill() {
-  const { sheetOpen, saving, logWeight } = useWeightLogging({
+/**
+ * Adds or corrects the picked day's reading; the sheet locks its date to it,
+ * and the server replaces a day's reading rather than adding a second.
+ */
+function usePickedDayLogging() {
+  return useWeightLogging({
     today: () => today.value,
     // No success toast: the day's dot and reading appear in the card itself.
     onSaved: async () => {
@@ -44,9 +47,8 @@ function useBackfill() {
       await readings.load()
     },
   })
-  return { sheetOpen, saving, logWeight }
 }
-const backfill = useBackfill()
+const logging = usePickedDayLogging()
 </script>
 
 <template>
@@ -78,29 +80,38 @@ const backfill = useBackfill()
         aria-hidden="true"
         class="appear-late h-8 w-1/3"
       />
-      <p
+      <div
         v-else-if="readings.pickedReading.value"
-        class="text-stat text-default"
+        class="flex items-center justify-between gap-3"
       >
-        {{ readings.pickedReading.value.weightKg.toFixed(1) }} kg
-      </p>
+        <p class="text-stat text-default">
+          {{ readings.pickedReading.value.weightKg.toFixed(1) }} kg
+        </p>
+        <UButton
+          variant="ghost"
+          icon="i-lucide-pencil"
+          :aria-label="`Edit weight on ${plain}`"
+          @click="logging.sheetOpen.value = true"
+        />
+      </div>
       <template v-else>
         <p class="text-sm text-muted">No weight on {{ plain }}.</p>
         <UButton
           icon="i-lucide-plus"
           color="primary"
           class="mt-3"
-          @click="backfill.sheetOpen.value = true"
+          @click="logging.sheetOpen.value = true"
         >
           Add weight
         </UButton>
       </template>
     </div>
     <LogWeightSheet
-      v-model:open="backfill.sheetOpen.value"
+      v-model:open="logging.sheetOpen.value"
       :date="picked"
-      :pending="backfill.saving.value"
-      @submit="backfill.logWeight"
+      :initial-weight-kg="readings.pickedReading.value?.weightKg"
+      :pending="logging.saving.value"
+      @submit="logging.logWeight"
     />
   </UCard>
 </template>

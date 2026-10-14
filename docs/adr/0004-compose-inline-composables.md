@@ -51,6 +51,10 @@ consumer justifies the move.
   every mutation on a sheet's behalf and thread the result back down. A sheet
   whose whole job is that one mutation closes itself once it lands; a sheet that
   manages several (`ManageTagsSheet`'s create, rename and delete) stays open.
+  A form sheet that several surfaces share, each with its own follow-up to the
+  save, stays presentational instead: `LogWeightSheet` only emits `submit`, and
+  each surface runs the save through the shared `useWeightLogging`, which owns
+  the sheet's open state and closes it only once the save lands.
 - The Food catalog is **one keyed read** (`useFoodCatalog`) that every catalog
   mutation re-reads directly (`refreshFoodCatalog`), rather than a `changed`
   event relayed up through each parent. A sheet emits `changed` only for data
