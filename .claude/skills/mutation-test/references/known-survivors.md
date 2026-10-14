@@ -355,7 +355,7 @@ on both Playwright projects.
 `reachedSince` reduce and the form-closing `watch`, none of which any change has
 swept.
 
-`components/WeightHistorySection.vue` scores 19/23 on its own tests; the two
+`components/WeightHistorySection.vue` scores 24/26 on its own tests; the two
 `?? []` fallbacks (`days`, `pickedReading`) are equivalent: before the read answers
 they yield a non-date mark and no match, which draws exactly what an empty list
 draws. `pages/profile/index.vue:135`'s `weights.value?.length` is equivalent too —

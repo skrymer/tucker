@@ -39,6 +39,41 @@ describe('WeightHistorySection', () => {
     expect(screen.getByRole('button', { name: 'Add weight' })).toBeVisible()
   })
 
+  it('refuses the day after today, and offers today', async () => {
+    server.use(...bodyAndPlan({ profile: null, readings: [], today: TODAY }))
+    await renderSuspended(WeightHistorySection)
+    await screen.findByText('No weight on Mon 12 Oct.')
+
+    expect(
+      screen.getByRole('button', { name: 'Tuesday, October 13, 2026' }),
+    ).toHaveAttribute('aria-disabled', 'true')
+    expect(
+      screen.getByRole('button', { name: 'Monday, October 12, 2026' }),
+    ).not.toHaveAttribute('aria-disabled', 'true')
+  })
+
+  it('offers neither the empty state nor Add weight until the readings have been read', async () => {
+    const read = held('get', '/api/weight')
+    server.use(
+      ...bodyAndPlan({
+        profile: null,
+        today: TODAY,
+        readings: [{ id: 1, measuredOn: TODAY, weightKg: 80.9 }],
+      }),
+    )
+    server.use(read.handler)
+    await renderSuspended(WeightHistorySection)
+    await read.arrived
+
+    expect(screen.queryByText(/No weight on/)).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Add weight' }),
+    ).not.toBeInTheDocument()
+
+    read.release()
+    expect(await screen.findByText('80.9 kg')).toBeVisible()
+  })
+
   it('dots the days that hold a reading, and no other', async () => {
     server.use(
       ...bodyAndPlan({

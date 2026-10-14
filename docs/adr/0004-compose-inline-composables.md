@@ -32,7 +32,7 @@ consumer justifies the move.
 - Single-consumer concerns stay **inline** in the same `.vue` file (e.g.
   `useProfileForm`, `useGoalSubmission` in `/profile`). A concern is **extracted**
   to `app/composables/` only when a second component needs it — `useWeightLogging`
-  was extracted because `/today` and `/profile` both log weight.
+  was extracted because `/today` and `/review` both log weight.
 - Cross-cutting mutation boilerplate — re-entry guard, pending flag, failure
   toast, post-success side effects — lives in the shared `useApiMutation` factory;
   concern composables build on it rather than re-implementing it.

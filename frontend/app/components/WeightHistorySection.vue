@@ -6,12 +6,22 @@ const plain = computed(() => formatDayHeadingFromISO(picked.value))
 
 /** Every reading the User has taken, read once for the visit. */
 function useReadings() {
-  const { data, error, load } = useOptionalFetch(() => $api('/api/weight'))
+  const {
+    data,
+    error,
+    load: read,
+  } = useOptionalFetch(() => $api('/api/weight'))
+  /** Whether the first read has come back; until then no day is known empty. */
+  const answered = ref(false)
+  async function load() {
+    await read()
+    answered.value = true
+  }
   const days = computed(() => (data.value ?? []).map((r) => r.measuredOn))
   const pickedReading = computed(
     () => (data.value ?? []).find((r) => r.measuredOn === picked.value) ?? null,
   )
-  return { days, pickedReading, error, load }
+  return { days, pickedReading, answered, error, load }
 }
 const readings = useReadings()
 // Not awaited: a read nothing else on /review needs must not hold the page's
@@ -60,7 +70,17 @@ const backfill = useBackfill()
         class="mt-3"
       />
       <USeparator class="my-3" />
-      <p v-if="readings.pickedReading.value" class="text-stat text-default">
+      <!-- The cold load only: a refetch keeps the last answer up. Decorative,
+           so hidden from assistive tech, as the Day Lookup's is. -->
+      <USkeleton
+        v-if="!readings.answered.value"
+        aria-hidden="true"
+        class="appear-late h-8 w-1/3"
+      />
+      <p
+        v-else-if="readings.pickedReading.value"
+        class="text-stat text-default"
+      >
         {{ readings.pickedReading.value.weightKg.toFixed(1) }} kg
       </p>
       <template v-else>
