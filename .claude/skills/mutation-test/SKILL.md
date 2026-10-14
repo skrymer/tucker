@@ -296,7 +296,10 @@ tests (~1–5 tests, not all 473), which is what makes this affordable as a gate
   while the sandbox copies it, and the run dies in its first second with `ENOENT …
   copyfile '.nuxt/dev/index.mjs.map'`.
 - **`.vue` mutates the `<script>` block only** — templates are untouched. A
-  template-only defect (a wrong class, a missing `v-if`) needs a component test.
+  template-only defect (a wrong class, a missing `v-if`) needs a component test, and a
+  template fix gets one hand-mutant per attribute it changed: one no mutant turned red is
+  unpinned (a walk-through probe), never covered by a sibling's red — #497 credited a
+  label's red to the `variant` and `icon` beside it.
 - **`app/pages/design.vue` is excluded** — a static design reference with no
   behaviour to pin.
 - A **timeout** verdict is not a survivor: it usually means an infinite loop, which
