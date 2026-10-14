@@ -271,21 +271,23 @@ test('user deletes a mistyped reading inside a reviewed week, and only the live 
   await expect(card.getByRole('button', { name: 'Add weight' })).toBeVisible()
   await expect(dotOn(card, mistyped)).toHaveCount(0)
   await expect(dotOn(card, isoShiftDays(today, -1))).toBeVisible()
-  const readings = (await (await request.get(`${API}/weight`)).json()) as {
-    measuredOn: string
-  }[]
+  const from = isoShiftDays(today, -27)
+  const [readings, { days }, progressAfter] = (await Promise.all(
+    ['weight', `weight-timeline?from=${from}&to=${today}`, 'goal/progress'].map(
+      async (path) => (await request.get(`${API}/${path}`)).json(),
+    ),
+  )) as [
+    { measuredOn: string }[],
+    { days: Parameters<typeof timelineLine>[0][] },
+    { currentTrendKg: number; startWeightKg: number },
+  ]
   expect(readings.map((r) => r.measuredOn)).not.toContain(mistyped)
   expect(readings).toHaveLength(20)
 
   // The timeline and the goal hero re-read without a reload, onto the risen trend.
-  const from = isoShiftDays(today, -27)
-  const { days } = (await (
-    await request.get(`${API}/weight-timeline?from=${from}&to=${today}`)
-  ).json()) as { days: Parameters<typeof timelineLine>[0][] }
   const emptied = days.find((day) => day.date === mistyped)!
   expect(emptied.weightKg).toBeNull()
   await expect(timeline.getByText(timelineLine(emptied, true))).toBeAttached()
-  const progressAfter = await (await request.get(`${API}/goal/progress`)).json()
   expect(progressAfter.currentTrendKg).toBeGreaterThan(
     progressBefore.currentTrendKg + 0.5,
   )

@@ -274,22 +274,14 @@ function deleteQuestion(tag: { name: string; foodCount: number }) {
                 foodCount(tag.foodCount)
               }}</span>
             </span>
-            <UButton
+            <RowActionButton
+              action="edit"
               :aria-label="`Rename ${tag.name}`"
-              icon="i-lucide-pencil"
-              color="neutral"
-              variant="ghost"
-              square
-              class="size-11 justify-center text-muted"
               @click="startRename(tag)"
             />
-            <UButton
+            <RowActionButton
+              action="delete"
               :aria-label="`Delete ${tag.name}`"
-              icon="i-lucide-trash-2"
-              color="neutral"
-              variant="ghost"
-              square
-              class="size-11 justify-center text-muted"
               @click="ask(tag.id, 'delete')"
             />
           </div>

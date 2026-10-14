@@ -28,9 +28,8 @@ const loggedToday = computed(
         <p class="text-stat text-default">
           {{ latest!.weightKg.toFixed(1) }} kg
         </p>
-        <UButton
-          variant="ghost"
-          icon="i-lucide-pencil"
+        <RowActionButton
+          action="edit"
           aria-label="Edit today's weight"
           @click="
             () => {

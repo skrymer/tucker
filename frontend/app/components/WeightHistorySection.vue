@@ -1,8 +1,4 @@
 <script setup lang="ts">
-import type { components } from '#open-fetch-schemas/api'
-
-type WeightMeasurement = components['schemas']['WeightMeasurementResponse']
-
 const { $api } = useNuxtApp()
 
 const today = useLocalDay()
@@ -57,7 +53,7 @@ function usePickedDayLogging() {
 const logging = usePickedDayLogging()
 
 /** The reading the confirm is asking about; null while it is shut. */
-const toDelete = ref<WeightMeasurement | null>(null)
+const toDelete = ref<typeof readings.pickedReading.value>(null)
 </script>
 
 <template>
@@ -97,19 +93,14 @@ const toDelete = ref<WeightMeasurement | null>(null)
           {{ readings.pickedReading.value.weightKg.toFixed(1) }} kg
         </p>
         <div class="flex items-center gap-1">
-          <UButton
-            variant="ghost"
-            icon="i-lucide-pencil"
+          <RowActionButton
+            action="edit"
             :aria-label="`Edit weight on ${plain}`"
             @click="logging.sheetOpen.value = true"
           />
-          <UButton
+          <RowActionButton
+            action="delete"
             :aria-label="`Delete weight on ${plain}`"
-            icon="i-lucide-trash-2"
-            color="neutral"
-            variant="ghost"
-            square
-            class="text-muted hover:text-default"
             @click="toDelete = readings.pickedReading.value"
           />
         </div>
