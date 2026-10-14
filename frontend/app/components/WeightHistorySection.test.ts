@@ -1,11 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { renderSuspended } from '@nuxt/test-utils/runtime'
+import { mockNuxtImport, renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen, within } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
-import { failingRead, held } from '~~/test/mocks/http'
+import { failingRead, failingWrite, held } from '~~/test/mocks/http'
 import { server } from '~~/test/mocks/node'
 import { bodyAndPlan } from '~~/test/mocks/handlers/body'
 import WeightHistorySection from './WeightHistorySection.vue'
+
+const { toastAdd } = vi.hoisted(() => ({ toastAdd: vi.fn() }))
+mockNuxtImport('useToast', () => () => ({
+  add: toastAdd,
+  remove: vi.fn(),
+}))
 
 const TODAY = '2026-10-12'
 
@@ -212,6 +218,52 @@ describe('WeightHistorySection', () => {
       'Friday, October 9, 2026',
     ])
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('keeps the old reading under a persistent error when a correction fails, and its Retry saves it', async () => {
+    toastAdd.mockClear()
+    let down = true
+    server.use(
+      failingWrite('post', '/api/weight', () => down),
+      ...bodyAndPlan({
+        profile: null,
+        today: TODAY,
+        readings: [{ id: 1, measuredOn: '2026-10-09', weightKg: 80.9 }],
+      }),
+    )
+    await renderSuspended(WeightHistorySection)
+    await screen.findByText('No weight on Mon 12 Oct.')
+    const user = userEvent.setup()
+    await user.click(
+      screen.getByRole('button', { name: 'Friday, October 9, 2026' }),
+    )
+    await user.click(await screen.findByRole('button', { name: 'Edit' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Log weight' })
+    const weight = within(dialog).getByLabelText(/Weight \(kg\)/)
+    await user.clear(weight)
+    await user.type(weight, '79.6')
+    await user.tab()
+    await user.click(
+      within(dialog).getByRole('button', { name: 'Save weight' }),
+    )
+
+    await vi.waitFor(() =>
+      expect(toastAdd).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Could not save weight',
+          duration: Infinity,
+        }),
+      ),
+    )
+    expect(screen.getByRole('dialog', { name: 'Log weight' })).toBeVisible()
+    expect(screen.getByText('80.9 kg')).toBeInTheDocument()
+    expect(screen.queryByText('79.6 kg')).not.toBeInTheDocument()
+
+    down = false
+    toastAdd.mock.calls.at(-1)![0].actions[0].onClick()
+
+    expect(await screen.findByText('79.6 kg')).toBeVisible()
+    expect(screen.queryByText('80.9 kg')).not.toBeInTheDocument()
   })
 
   it("does not show another day's reading on a day that has none", async () => {
