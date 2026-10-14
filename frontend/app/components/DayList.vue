@@ -18,20 +18,6 @@ const emit = defineEmits<{
 // Static per day: both lists can share a page, and each names its own region.
 const headingId = `day-list-${props.day}`
 const heading = computed(() => relativeDayHeading(props.day, props.date))
-// Cap the list so a long day never buries what sits below it. Entries arrive
-// oldest-first (ORDER BY id), so the most recent few — a just-logged one
-// included — are the visible tail.
-function useCappedEntries() {
-  const VISIBLE = 3
-  const { expanded, label, toggle } = useExpander(() => props.entries.length)
-  const canExpand = computed(() => props.entries.length > VISIBLE)
-  const visibleEntries = computed(() =>
-    expanded.value ? props.entries : props.entries.slice(-VISIBLE),
-  )
-  return { visibleEntries, canExpand, expanderLabel: label, toggle }
-}
-
-const { visibleEntries, canExpand, expanderLabel, toggle } = useCappedEntries()
 
 const tally = computed(() =>
   formatDayTally(props.entries.length, props.caloriesConsumed),
@@ -58,7 +44,7 @@ const tally = computed(() =>
         {{ tally }}
       </p>
     </div>
-    <EntryList :entries="visibleEntries" class="mt-2">
+    <CappedEntryList :entries="entries" class="mt-2">
       <template #action="{ entry }">
         <UButton
           :aria-label="`Delete ${formatEntryName(entry)}`"
@@ -71,18 +57,6 @@ const tally = computed(() =>
           @click="emit('delete', entry)"
         />
       </template>
-    </EntryList>
-
-    <UButton
-      v-if="canExpand"
-      variant="ghost"
-      color="neutral"
-      size="sm"
-      block
-      class="mt-2"
-      @click="toggle"
-    >
-      {{ expanderLabel }}
-    </UButton>
+    </CappedEntryList>
   </UCard>
 </template>
