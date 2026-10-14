@@ -56,4 +56,15 @@ describe('CappedEntryList', () => {
     expect(screen.queryByText('Breakfast')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Show all 5' })).toBeVisible()
   })
+
+  it('offers no Show all when the day is exactly as long as the list shows', async () => {
+    await renderSuspended(CappedEntryList, {
+      props: { entries: fiveEntries.slice(-3) },
+    })
+
+    expect(screen.getAllByRole('listitem')).toHaveLength(3)
+    expect(
+      screen.queryByRole('button', { name: /show all/i }),
+    ).not.toBeInTheDocument()
+  })
 })
