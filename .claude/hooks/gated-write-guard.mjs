@@ -57,7 +57,24 @@ const scriptWrites = (command, path) =>
   command.includes(path) &&
   [...command.matchAll(SCRIPT_WRITE)].some((call) => !writesScratch(call))
 
-const segmentsOf = (command) => command.split(/;|&&|\|\||\n|\|/)
+/** Quoted strings, or the operators that separate commands outside them. */
+const SEPARATOR_OR_QUOTED = /'[^']*'|"(?:[^"\\]|\\.)*"|;|&&|\|\||\|/g
+
+/**
+ * The commands a line holds. A `;` inside a quoted `sed` script is not a
+ * separator; every line still is, so a stray quote cannot run past it.
+ */
+const segmentsOf = (command) =>
+  command.split('\n').flatMap((line) => {
+    const segments = []
+    let start = 0
+    for (const match of line.matchAll(SEPARATOR_OR_QUOTED)) {
+      if (/^['"]/.test(match[0])) continue
+      segments.push(line.slice(start, match.index))
+      start = match.index + match[0].length
+    }
+    return [...segments, line.slice(start)]
+  })
 
 /**
  * The deny the hook answers with, or null when the command may run.

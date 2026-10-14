@@ -20,6 +20,17 @@ test('refuses sed -i on a gated frontend file', () => {
   )
 })
 
+test('refuses a sed -i whose quoted script holds several ;-separated expressions', () => {
+  assert.equal(
+    refused("sed -i 's/a/b/g; s/c/d/' app/components/FoodMatchRow.vue"),
+    true,
+  )
+  assert.equal(
+    refused('sed -i "s/a/b/; s/c/d/" backend/src/main/kotlin/A.kt'),
+    true,
+  )
+})
+
 test('refuses a redirect or tee onto a gated file', () => {
   assert.equal(refused('cat > frontend/app/utils/x.ts <<EOF\nx\nEOF'), true)
   assert.equal(refused('echo y >> backend/src/main/kotlin/A.kt'), true)
