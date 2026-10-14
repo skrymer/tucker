@@ -195,9 +195,8 @@ const { cardError, retryCard } = useCardError()
             >
               Nothing logged on {{ plain }}.
             </p>
-            <!-- Every Entry, uncapped: the look-up answers the question in full,
-             and is read-only on every day (deletion stays on Today). -->
-            <EntryList
+            <!-- Read-only on every day: deletion stays on Today. -->
+            <CappedEntryList
               v-else-if="entries.length"
               :entries="entries"
               class="mt-2"

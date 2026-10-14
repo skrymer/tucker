@@ -291,8 +291,8 @@ describe('DayLookupSection', () => {
     expect(await screen.findByText('August 2026')).toBeVisible()
   })
 
-  it('lists every Entry of a picked past day, grams first, under its tally', async () => {
-    // Four rows: one more than Today's capped list shows.
+  it("shows a picked past day's three most recent Entries under a tally of all of them, and Show all ↔ Show less", async () => {
+    // Four rows: one more than the capped list shows.
     server.use(
       ...dailyLogs({
         '2026-10-08': [
@@ -311,17 +311,27 @@ describe('DayLookupSection', () => {
     )
 
     const panel = await screen.findByRole('region', { name: 'Thu 8 Oct' })
-    expect(within(panel).getByText('4 entries · 781 kcal')).toBeVisible()
-    const rows = within(panel).getAllByRole('listitem')
-    expect(rows.map((row) => row.textContent)).toEqual([
-      'Oats60 g · 233 kcal · 8 g protein',
+    const rows = () =>
+      within(panel)
+        .getAllByRole('listitem')
+        .map((row) => row.textContent)
+    const lastThree = [
       'Banana120 g · 107 kcal · 1 g protein',
       'Chicken breast200 g · 330 kcal · 62 g protein',
       'Rice233 g · 111 kcal · 9 g protein',
-    ])
+    ]
+    expect(within(panel).getByText('4 entries · 781 kcal')).toBeVisible()
+    expect(rows()).toEqual(lastThree)
+
+    await user.click(within(panel).getByRole('button', { name: 'Show all 4' }))
+    expect(rows()).toEqual(['Oats60 g · 233 kcal · 8 g protein', ...lastThree])
+    expect(within(panel).getByText('4 entries · 781 kcal')).toBeVisible()
+
+    await user.click(within(panel).getByRole('button', { name: 'Show less' }))
+    expect(rows()).toEqual(lastThree)
     expect(
-      within(panel).queryByRole('button', { name: /show all/i }),
-    ).not.toBeInTheDocument()
+      within(panel).getByRole('button', { name: 'Show all 4' }),
+    ).toBeVisible()
   })
 
   it('flags an estimated Entry and states no grams for it', async () => {
