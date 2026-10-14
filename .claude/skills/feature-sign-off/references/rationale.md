@@ -7,6 +7,7 @@ for when a gate's order or overlap looks arbitrary and you are tempted to change
 - The design notes
 - Why /verify runs twice
 - Citations
+- Dismissals rest on evidence
 - Ablation
 - What the fan-out costs
 - Rendering a diagram
@@ -83,6 +84,17 @@ Today's), ADR 0014 (it says the client owns today, not that a page reads it once
 and a deleted prototype in place of PRD #441, which did hold the tally format. All
 three were rejected, and the first turned out to be a regression the user then ruled
 into the change. Quoting the source at the moment of writing is what catches it.
+
+## Dismissals rest on evidence
+
+A claim about what the code does is a source too, and a test that passed on the unfixed
+code is not evidence that nothing is wrong. #496 dismissed a stale-clock finding because
+the test written to show it was green without the fix; gate 5 rejected it ("a passing
+test with an unidentified mechanism does not show the finding is false"), and the defect
+reproduced once the assertion took its original form. Two more dismissals that run rested
+on an unquoted claim: that the sheet stays open until a reload (the composable closes it
+first) and that no nested route exists to use as an example (the matcher takes any path).
+Show the assertion red on a scratch copy of the pre-fix code, and quote the line.
 
 ## Ablation
 

@@ -79,6 +79,7 @@ transcripts, and a path not written down then is a directory hunt later.
    stands when the dismissal is written** — an ADR, another issue's scope
    (`gh issue view`), a precedent (`git grep` on `origin/main`) — never a handoff or
    prototype that no longer exists ([rationale](references/rationale.md#citations)).
+   **A claim about the code is quoted too, and a test that passed on unfixed code clears nothing** ([why](references/rationale.md#dismissals-rest-on-evidence)).
    **"Pre-existing" holds only if the harm is reachable on `main`** — a root cause that predates the diff, given a new consumer
    by it, is the diff's harm: F18 slice 6 called a JS/Kotlin trim split pre-existing,
    and gate 5 rejected it because the slice's own merge preview turned a harmless
