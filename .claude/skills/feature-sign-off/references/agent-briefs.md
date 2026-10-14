@@ -56,7 +56,9 @@ agent, and the six below.
   agent's first finding. It applies to **every** angle line, the `/simplify` three's and
   `/check-adrs`' included, which have no template to copy and so are where it slips in:
   #411's check-adrs brief named two ADRs "e.g." and both came back UNCERTAIN. Name the
-  kind of thing to look for, never an instance of it.
+  kind of thing to look for, never an instance of it. A context pack is where to
+  *start reading*, so it names only files the diff touches or the issue cites; a
+  `/check-adrs` pack names no ADR, since choosing which ones apply is its job (#433).
 - The conclusion of another agent in the same run. Two briefs are exempt because that
   material *is* their subject: the arbiter's, which is given both positions, and the
   **resolutions agent's**, which is given every finding, every dismissal and the
@@ -499,7 +501,10 @@ Report one row per diagram, in the file's order:
 - STALE — name each element, edge or label that no longer matches, cite the code
   (file:line) it should match, and write the replacement Mermaid line. A mismatch
   this diff did not cause is still STALE; never report it as an aside. A gap you
-  judge is not a mismatch goes in that row's CURRENT line, with its reason.
+  judge is not a mismatch goes in that row's CURRENT line, with its reason. Each
+  Level 3 diagram draws one flow, not a whole container, and a label names a
+  component's part in that flow: a component doing more than its label says is not
+  STALE for that.
 
 Then once, at the end:
 - MISSING — something the diff adds that no diagram draws but a diagram at that

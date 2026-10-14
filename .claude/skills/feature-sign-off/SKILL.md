@@ -164,15 +164,16 @@ needs it.
    it, and the ledger judged a semantics that no longer shipped.
 
    When code-review's fixes land, re-check **only the files they touched** against
-   the constraints `/check-adrs` cited and the rows the ledger and the diagram
-   auditor returned — a read of a handful of lines rather than a second run. A
+   the constraints `/check-adrs` cited, the rows the ledger and the diagram auditor
+   returned, and any gate-1 dismissal whose reason the fix changed (#433). A
    ledger row is re-checked against **the criterion's own words**, not the ADRs: a
    fix that now answers a different criterion than the one filed is UNSOUND and goes
    to the user, exactly as the ledger's own UNSOUND would. #435's denied-camera fix
    honoured every ADR and silently contradicted AC6 as written; gate 5 caught it.
    Likewise any item an agent explicitly marks "the user's call" goes to the user —
    the pack does not decide it. The adversary needs no re-check after a correctness
-   fix; a user ruling that adds behaviour gets it re-run on that commit (#476).
+   fix; a user ruling that adds behaviour gets it re-run on that commit (#476), and
+   the ledger re-run on the criterion the ruling amended (#433).
 
    **Gate 2's verdicts do need one, after every later fix** — gate 2's own triage's,
    gate 3's, a gate-5 re-resolution's, a gate-6 fix's: re-run the scoped mutation sweep over the files
@@ -180,9 +181,8 @@ needs it.
    F18 slice 5: an "equivalent, guard mode never aborts" survivor became a real gap
    the moment a gate-3 fix switched that read to `latest`. Measured in #435: two
    fixes written after gate 5 each left a new real gap only the re-sweep found.
-   The one exception is a fix confined to a `.vue` template: Stryker mutates the
-   `<script>` block only, so there is nothing new to sweep — say so in the pack
-   rather than skipping silently.
+   Stryker mutates a `.vue` file's `<script>` only, so the template lines of any fix
+   are pinned by hand-mutated copies instead — say so in the pack (#433).
 
    Gate 2 does **not** join them. It writes tests, and gate 3's test-quality pass
    reviews them — in the measured run it caught a vacuous assertion in a test

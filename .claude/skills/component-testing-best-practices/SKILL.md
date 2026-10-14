@@ -69,6 +69,10 @@ reproduces real user behaviour (focus, key sequences, pointer events). Call
 - For mutually-exclusive states, also assert the alternatives are absent
   (`queryBy*` + `.not.toBeInTheDocument()`) — a positive-only check still passes
   if a regression renders two states at once.
+- **Pin a time threshold on both sides**: at n − 1 it has not fired, at n it has. "Gave
+  up by 8 s" alone passes a 3 s timeout (#433). For a timer started at mount, fake only
+  `setTimeout`/`clearTimeout` before rendering and advance them by hand — not
+  `shouldAdvanceTime`, which leaks render time into the clock and flaked under suite load.
 - **A "did not happen" assertion is only as late as the reaction it waits for.** When a
   change defers a reaction — a timer, a debounce, a `nextTick` — every test asserting
   that reaction did *not* happen must now let it run (`vi.useFakeTimers()` +

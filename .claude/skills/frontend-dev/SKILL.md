@@ -214,6 +214,12 @@ assertion with the dev token), and no browser-level layer can reach it.
   colour right after a click. And mind the token names: `bg-inverted` is the
   *inverted background* (dark in light mode); the text on a solid primary fill is
   `--ui-text-inverted`, so a mark that must match it is `bg-(--ui-text-inverted)`.
+- **A fix that holds a control on another read creates a new stall.** Disabling Save
+  until a read answers holds it for as long as the read hangs — on `/api` that is
+  until the proxy gives up (~100 s), where `main` never held it at all. Give that read
+  ADR 0007's 8 s `timeoutMs` (`useOptionalFetch` takes one) and treat `timedOut` as a
+  failed read that releases the control, red-first, before the user is asked how the
+  wait should look (#433's gate 5 rejected the first fix for exactly this).
 - **Stale Playwright build** — the mocked e2e rebuilds `.nuxt/e2e` from scratch every run, so it cannot
   serve a stale build; the smokes still build through `@nuxt/test-utils`, so if a UI change doesn't show
   in a smoke run, `rm -rf frontend/.nuxt/test`.

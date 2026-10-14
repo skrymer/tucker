@@ -147,6 +147,11 @@ not restate them.
   206" answered a missing Tag, and only the walk-through's audit noticed.
 - **Detekt's `ReturnCount` allows 2.** A guard plus a match flattens to one elvis
   `?: return null` and a `return when (val x = …)`, not a nested `?.let`.
+- **An `ORDER BY` on a name a User typed sorts by `lower(name)`**, as the catalog
+  does. A bare `ORDER BY name` is byte order in SQLite, so "apple crumble" lists after
+  "Zucchini loaf" — and the MSW mock, which mirrors the backend faithfully, cannot
+  notice. A test of "alphabetical" seeds a lowercase-initial name (#433's Recipe list
+  shipped capitals-first past its own order test, whose names were all capitalised).
 - **The SEVERE "Unknown function: datetime('now')" during jOOQ codegen is benign noise.**
 
 ## Refactor step — Detekt names the smell
