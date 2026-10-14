@@ -1,7 +1,8 @@
 <!--
   Every Entry it is given, uncapped, as Tucker draws a row: its name, its
-  figures grams first, and the estimate badge. The far end of a row is the caller's (`action`),
-  since only it knows whether an Entry can be acted on there.
+  figures grams first, and the estimate badge. The far end of a row is the
+  caller's (`action`), since only it knows whether an Entry can be acted on
+  there.
 -->
 <script setup lang="ts">
 import type { components } from '#open-fetch-schemas/api'

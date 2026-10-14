@@ -185,12 +185,12 @@ TypeError, so a hand copy without it leaves every assertion green.
 `AppCalendar.test.ts` pins it through Nuxt's `vue:error` hook ("raises no error when
 the User picks the selected day again").
 
-### `components/DayLookupSection.vue` — 3 of 52
+### `components/DayLookupSection.vue` — 3 of 55
 
-| Where                                        | Mutant                                     | Verdict        |
-| -------------------------------------------- | ------------------------------------------ | -------------- |
-| `tally`'s `day.value?.caloriesConsumed ?? 0` | `?.` → `.` (OptionalChaining)              | **Equivalent** |
-| `useLoggedDays`' `if (!grid) return null`    | `!grid` → `false` (ConditionalExpression)  | **Equivalent** |
+| Where                                        | Mutant                                           | Verdict        |
+| -------------------------------------------- | ------------------------------------------------ | -------------- |
+| `tally`'s `day.value?.caloriesConsumed ?? 0` | `?.` → `.` (OptionalChaining)                    | **Equivalent** |
+| `useLoggedDays`' `if (!grid) return null`    | `!grid` → `false` (ConditionalExpression)        | **Equivalent** |
 | `useLoggedDays`' `data.value?.days ?? []`    | `[]` → `["Stryker was here"]` (ArrayDeclaration) | **Equivalent** |
 
 `tally` is a lazy computed read only under `v-if="entries.length"`, and `entries` is
