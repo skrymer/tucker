@@ -613,6 +613,19 @@ kcal`) sits beneath its own ring, so no arc is ever colour-alone. Calorie
   draws six Monday-start weeks, and reports the days it draws (`shown`,
   `{ from, to }`) as it opens and on every page, so a caller can load the marks
   for exactly those days. `/design` shows it bounded and marked.
+- **Sheet navigation** — a sheet that needs a second step (picking a Reference
+  Food from a Food's Edit sheet) **steps inside itself**: its body becomes the
+  step and its title names it, and it is never a second sheet stacked over the
+  first. On a phone two stacked modal layers mean two dimmed backdrops, an
+  ambiguous Close, and two owners of focus and the soft keyboard (the class of
+  freeze ADR 0017 records on the installed iOS PWA). The way back is
+  `SheetBackButton` — a chevron and **Back**, ghost/neutral, at the 44px tap
+  target — in the header's leading slot (`ResponsiveOverlay`'s `#leading`),
+  **before the title and outside the heading**, so it never joins the sheet's
+  name. Back returns to the previous step with what was typed there kept; the
+  corner Close still leaves the sheet from any step, and the sheet reopens on its
+  first step. A small confirm over a sheet is not a step and is out of this
+  rule. `/design` shows the header.
 - **FAB** (phone) — solid green pill-circle, floating shadow, bottom-right above
   the tab bar (respects `env(safe-area-inset-bottom)`).
 - **Nav** — side rail on desktop (`lg:`), bottom tab bar on phone. Active item =

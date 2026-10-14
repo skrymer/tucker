@@ -1,6 +1,7 @@
 import { expect, test } from './support/test'
 import { food, recipe } from '../test/food-fixtures'
 import { foodCatalog } from '../test/mocks/handlers/catalog'
+import { http } from '../test/mocks/http'
 
 // F9 Slice 2: the catalog distinction + read-only composition view with /api
 // mocked, on both Desktop and Mobile Chrome (the responsive check). A recipe row
@@ -65,4 +66,39 @@ test('a recipe reads as a recipe in the catalog and opens its composition', asyn
   await expect(sheet.getByText('900 g')).toBeVisible()
   await expect(sheet.getByText(/makes/i)).toBeVisible()
   await expect(sheet.getByText('1,400 g')).toBeVisible()
+})
+
+test('closing a recipe while its composition is still loading raises no error', async ({
+  page,
+  goto,
+  network,
+}) => {
+  network.use(
+    // The composition never answers, so the sheet closes over an unanswered read.
+    http.get('/api/recipes/{id}', () => new Promise<never>(() => {})),
+    ...foodCatalog({
+      foods: [
+        food({ id: 1, name: 'Beef mince' }),
+        recipe({
+          id: 2,
+          name: 'Cottage pie',
+          cookedWeightG: 1400,
+          ingredientCount: 1,
+        }),
+      ],
+      compositions: { 2: [{ foodId: 1, grams: 500 }] },
+    }),
+  )
+  await goto('/foods', { waitUntil: 'hydration' })
+
+  await page
+    .getByRole('button', { name: 'View ingredients in Cottage pie' })
+    .click()
+  const sheet = page.getByRole('dialog', { name: 'Cottage pie' })
+  await expect(sheet).toBeVisible()
+  await sheet.getByRole('button', { name: 'Close' }).click()
+
+  // The fixture fails the test on any console error or uncaught exception, which
+  // is what a render reading the gone recipe during the close would raise.
+  await expect(sheet).toBeHidden()
 })

@@ -18,8 +18,6 @@ const props = withDefaults(
 const emit = defineEmits<{
   delete: [FoodResponse]
   view: [FoodResponse]
-  match: [FoodResponse]
-  tag: [FoodResponse]
   edit: [FoodResponse]
 }>()
 
@@ -30,22 +28,10 @@ const isRecipe = computed(() => props.food.kind === 'RECIPE')
 const name = computed(() => formatName(props.food.name))
 
 /**
- * Where the row's Tags are changed: a plain Food is corrected in one sheet that
- * holds its Tags too (ADR 0037); a Recipe keeps its own Tags sheet.
+ * Every row's one way into its details, Tags included: a plain Food's Edit sheet
+ * or a Recipe's editor (ADR 0037).
  */
-const rowAction = computed(() =>
-  isRecipe.value
-    ? {
-        label: `Tags for ${name.value}`,
-        icon: 'i-lucide-tag',
-        open: () => emit('tag', props.food),
-      }
-    : {
-        label: `Edit ${name.value}`,
-        icon: 'i-lucide-pencil',
-        open: () => emit('edit', props.food),
-      },
-)
+const edit = () => emit('edit', props.food)
 
 // The recipe row's meta subline, e.g. "5 ingredients · makes 1,400 g".
 const recipeSubline = computed(() => {
@@ -58,7 +44,7 @@ const recipeSubline = computed(() => {
 <template>
   <!-- The row body states the Food and takes no tap of its own — logging is its
        own destination (ADR 0028). Beside it the list icon views a recipe's
-       composition, the pencil changes a borrow and the trash deletes. -->
+       composition, the pencil edits and the trash deletes. -->
   <div class="flex items-center gap-1">
     <div class="min-w-0 flex-1 py-3">
       <FigureRow :name="food.name" :figures="formatPer100g(food)">
@@ -83,8 +69,8 @@ const recipeSubline = computed(() => {
         </span>
       </FigureRow>
 
-      <!-- Tags are the User's words, spelled as given; the +N opens the same
-           sheet as the tag action (ADR 0033). -->
+      <!-- Tags are the User's words, spelled as given; the +N opens what
+           Edit opens (ADR 0033). -->
       <ul
         v-if="tags.shown.length"
         :aria-label="`Tags on ${name}`"
@@ -98,7 +84,7 @@ const recipeSubline = computed(() => {
             type="button"
             :aria-label="`${tags.hidden} more tags on ${name}`"
             class="rounded-full"
-            @click="rowAction.open"
+            @click="edit"
           >
             <UBadge
               :label="`+${tags.hidden}`"
@@ -123,30 +109,15 @@ const recipeSubline = computed(() => {
       @click="emit('view', props.food)"
     />
 
-    <!-- The way back out of a match. The queue on /review is the one way *in*
-         (ADR 0027), and it no longer lists a Food that has one — so changing or
-         clearing it lives beside the subline that names it. -->
     <UButton
-      v-if="tracksCalories && food.referenceFoodName"
-      :aria-label="`Change what ${name} borrows vitamins and minerals from`"
+      :aria-label="`Edit ${name}`"
       icon="i-lucide-pencil"
       color="neutral"
       variant="ghost"
       square
       class="size-11 shrink-0 text-muted hover:text-default"
       :ui="{ base: 'justify-center' }"
-      @click="emit('match', props.food)"
-    />
-
-    <UButton
-      :aria-label="rowAction.label"
-      :icon="rowAction.icon"
-      color="neutral"
-      variant="ghost"
-      square
-      class="size-11 shrink-0 text-muted hover:text-default"
-      :ui="{ base: 'justify-center' }"
-      @click="rowAction.open"
+      @click="edit"
     />
 
     <UButton

@@ -12,8 +12,10 @@ const props = withDefaults(
     recipe: FoodResponse | null
     /** The catalog, so the edit builder can resolve its pre-filled ingredients. */
     foods?: FoodResponse[]
+    /** Opens the recipe straight in its editor rather than its read-only view. */
+    edit?: boolean
   }>(),
-  { foods: () => [] },
+  { foods: () => [], edit: false },
 )
 // Stryker restore all
 const emit = defineEmits<{
@@ -95,22 +97,33 @@ const { composition, ingredients, cookedWeightG, error, retry } =
   useRecipeComposition(() => props.recipe)
 
 /**
- * View ⇄ edit within the one sheet. The read-only composition leads; the Edit
- * action swaps in the recipe builder, pre-filled from the composition already
- * fetched (Slice 3 reuses that GET). Opening a different recipe — or reopening
- * the sheet — returns to the read-only view.
+ * View ⇄ edit within the one sheet, the builder pre-filled from the composition
+ * already fetched. Each opening starts where it was asked to: the read-only view,
+ * or the editor when the row's Edit opened it.
  */
 function useEditMode() {
   const editing = ref(false)
   watch(
     () => props.recipe,
     () => {
-      editing.value = false
+      editing.value = props.edit
     },
+    { immediate: true },
   )
-  // The builder's `initial`: the fetched cooked weight and name, plus each
-  // ingredient line resolved to its full catalog Food (for the live rollup).
-  const editInitial = computed(() => {
+  return {
+    editing,
+    start: () => {
+      editing.value = true
+    },
+  }
+}
+
+/**
+ * The builder's `initial`: the fetched cooked weight and name, plus each
+ * ingredient line resolved to its full catalog Food (for the live rollup).
+ */
+function useEditSeed() {
+  return computed(() => {
     const comp = composition.value
     if (!comp) return null
     // Every ingredient resolves: an ingredient Food can't be deleted while a
@@ -127,16 +140,10 @@ function useEditMode() {
       tags: comp.tags,
     }
   })
-  return {
-    editing,
-    start: () => {
-      editing.value = true
-    },
-    editInitial,
-  }
 }
 
-const { editing, start: startEditing, editInitial } = useEditMode()
+const { editing, start: startEditing } = useEditMode()
+const editInitial = useEditSeed()
 
 const title = computed(() => {
   const name = formatName(props.recipe?.name ?? '')
@@ -166,8 +173,29 @@ const round = (n: number) => Math.round(n)
         @submit="saveEdit"
       />
 
-      <!-- View: the read-only composition, with an Edit affordance. -->
-      <div v-else class="flex flex-col gap-4">
+      <!-- Edit, still loading: the builder's shape, on an opening that asked for
+           the editor (ADR 0007's cold load). The rows are decorative — the
+           region's aria-busy says it is loading, and each USkeleton would
+           otherwise raise an alert. -->
+      <section v-else-if="editing" aria-label="Loading recipe" aria-busy="true">
+        <div
+          aria-hidden="true"
+          data-testid="recipe-skeleton"
+          class="appear-late flex flex-col gap-4"
+        >
+          <USkeleton class="h-10 w-full" />
+          <USkeleton
+            v-for="row in 2"
+            :key="row"
+            class="h-12 w-full rounded-inset"
+          />
+          <USkeleton class="h-10 w-1/2" />
+        </div>
+      </section>
+
+      <!-- View: the read-only composition, with an Edit affordance. Never shown
+           to an opening that asked for the editor, even while it loads. -->
+      <div v-else-if="!editing" class="flex flex-col gap-4">
         <!-- Ingredients: name left, grams right, tabular-nums. -->
         <section aria-label="Ingredients" class="flex flex-col gap-2">
           <p class="text-eyebrow text-muted">Ingredients</p>

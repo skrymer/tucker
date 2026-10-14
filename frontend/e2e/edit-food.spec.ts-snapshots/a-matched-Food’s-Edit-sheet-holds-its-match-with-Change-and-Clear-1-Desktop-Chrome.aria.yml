@@ -1,0 +1,29 @@
+- dialog "Edit Tasty cheese":
+    - /children: deep-equal
+    - heading "Edit Tasty cheese" [level=2]
+    - button "Close"
+    - text: Name*
+    - textbox "Name*": Tasty cheese
+    - text: Protein /100g*
+    - group:
+        - spinbutton "Protein /100g*": '25'
+        - button "Increment"
+        - button "Decrement"
+    - text: Carbs /100g*
+    - group:
+        - spinbutton "Carbs /100g*": '0'
+        - button "Increment"
+        - button "Decrement" [disabled]
+    - text: Fat /100g*
+    - group:
+        - spinbutton "Fat /100g*": '33'
+        - button "Increment"
+        - button "Decrement"
+    - status: 397 kcal · 25 g protein /100g
+    - text: Tags
+    - combobox "Tags"
+    - button "Show popup"
+    - paragraph: Vitamins and minerals from Cheese, cheddar, natural, regular fat
+    - button "Change what Tasty cheese borrows vitamins and minerals from": Change
+    - button "Clear what Tasty cheese borrows vitamins and minerals from": Clear
+    - button "Save changes"

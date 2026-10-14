@@ -59,14 +59,20 @@ const ALLOWED: Record<string, Record<string, string>> = {
     '`Delete ${name}`': 'the local `name` computed is formatName(food.name)',
     '`View ingredients in ${name}`':
       'the local `name` computed is formatName(food.name)',
-    '`Change what ${name} borrows vitamins and minerals from`':
-      'the local `name` computed is formatName(food.name)',
+    '`Edit ${name}`': 'the local `name` computed is formatName(food.name)',
     '`Tags on ${name}`': 'the local `name` computed is formatName(food.name)',
-    'name.value': 'the local `name` computed is formatName(food.name)',
     '`${tags.hidden} more tags on ${name}`':
       'the local `name` computed is formatName(food.name)',
     'tag.name':
       'a Tag keeps the spelling its User gave it, so it is never recased (ADR 0033)',
+  },
+  'components/FoodMatchRow.vue': {
+    'food.referenceFoodName':
+      'a published FSANZ name, stated as FSANZ writes it (ADR 0027)',
+    '`Change what ${name} borrows vitamins and minerals from`':
+      'the local `name` computed is formatName(food.name)',
+    '`Clear what ${name} borrows vitamins and minerals from`':
+      'the local `name` computed is formatName(food.name)',
   },
   'components/FoodPickList.vue': {
     'food.name': 'handed to FigureRow, which states it',
@@ -81,10 +87,8 @@ const ALLOWED: Record<string, Record<string, string>> = {
   'components/RecipeCompositionSheet.vue': {
     name: 'inside the `title` computed, which states it before interpolating',
   },
-  'components/ReferenceFoodPicker.vue': {
+  'components/ReferenceFoodSearch.vue': {
     'candidate.name':
-      'a published FSANZ name, stated as FSANZ writes it (ADR 0027)',
-    'food.referenceFoodName':
       'a published FSANZ name, stated as FSANZ writes it (ADR 0027)',
   },
   'components/ManageTagsSheet.vue': {

@@ -29,8 +29,8 @@ function useMatchClaim(food: Picked, settled: () => Promise<void>) {
   return { claim, matching: pending }
 }
 
-/** Taking the picked Food's borrow back. */
-function useMatchClear(food: Picked, settled: () => Promise<void>) {
+/** Taking a Food's borrow back; [onChanged] runs once the server has answered. */
+export function useMatchClear(onChanged: () => void | Promise<void>) {
   const { $api } = useNuxtApp()
   const { execute, pending } = useApiMutation(
     (foodId: number) =>
@@ -38,16 +38,20 @@ function useMatchClear(food: Picked, settled: () => Promise<void>) {
         method: 'DELETE',
         path: { id: foodId },
       }),
-    { errorTitle: 'Could not unmatch this food', onSuccess: settled },
+    {
+      errorTitle: 'Could not clear this match',
+      onSuccess: async () => {
+        await onChanged()
+      },
+    },
   )
-  const clear = () => food.value && execute(food.value.id)
-  return { clear, unmatching: pending }
+  // The Food travels as the argument, so a Retry clears the one that failed.
+  return { clear: (foodId: number) => execute(foodId), unmatching: pending }
 }
 
 /**
- * Claiming and taking back the borrow a **Food** makes of a **Reference Food**
- * (ADR 0027), for the two surfaces that own a picker: the match queue on
- * `/review` and the catalog on `/foods`.
+ * Claiming the borrow a **Food** makes of a **Reference Food** (ADR 0027), from
+ * the Reference Food picker.
  *
  * [food] is the picker's own open/closed state — non-null is open — and is
  * cleared when the server answers, never optimistically on the tap: until then
@@ -62,8 +66,8 @@ export function useReferenceFoodMatch(
     food.value = null
     await onChanged()
   }
-  // `matching` and `unmatching` are the picker's in-flight signal: the sheet
-  // deliberately stays open until the server answers, so without them there is
-  // nothing at all between the tap and the close (ADR 0007).
-  return { ...useMatchClaim(food, settled), ...useMatchClear(food, settled) }
+  // `matching` is the picker's in-flight signal: the sheet deliberately stays
+  // open until the server answers, so without it there is nothing at all
+  // between the tap and the close (ADR 0007).
+  return useMatchClaim(food, settled)
 }

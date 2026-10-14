@@ -1,10 +1,9 @@
 import { test, expect } from './support/smoke-test'
 
 // F18 slice 1 smoke: a User tags a Food against the real backend — a plain Food from
-// its Edit sheet, a Recipe from its own Tags sheet (ADR 0037) — the Tag created as it
-// is typed, the Food's Tags saved by id — and the
-// Tag is still on the row after a reload, so it was persisted rather than held in
-// the page. An existing Tag typed in another case is offered by the list and
+// its Edit sheet, a Recipe from the editor its row's Edit opens (ADR 0037) — the Tag
+// created as it is typed, the Food's Tags saved by id — and the Tag is still on the
+// row after a reload, so it was persisted rather than held in the page. An existing Tag typed in another case is offered by the list and
 // picked there, keeping its own spelling. The per-test reset wipes the seed, so
 // there is no cleanup.
 const API = 'http://localhost:8080/api'
@@ -60,7 +59,7 @@ test('a Tag put on a Food from its Edit sheet is still there after a reload', as
   ])
 })
 
-test('a Tag put on a Recipe from its Tags sheet is still there after a reload', async ({
+test('a Tag put on a Recipe in the editor its row’s Edit opens is still there after a reload', async ({
   page,
   goto,
   request,
@@ -76,7 +75,6 @@ test('a Tag put on a Recipe from its Tags sheet is still there after a reload', 
   })
   expect(created.status()).toBe(201)
   const oats = ((await created.json()) as { id: number }).id
-  // A Recipe keeps its own Tags sheet.
   const porridge = await request.post(`${API}/recipes`, {
     data: {
       tagIds: [],
@@ -93,15 +91,15 @@ test('a Tag put on a Recipe from its Tags sheet is still there after a reload', 
 
   await goto('/foods', { waitUntil: 'hydration' })
 
-  await page.getByRole('button', { name: 'Tags for Porridge' }).click()
-  const sheet = page.getByRole('dialog', { name: 'Tags for Porridge' })
-  const picker = sheet.getByRole('combobox')
+  await page.getByRole('button', { name: 'Edit Porridge' }).click()
+  const sheet = page.getByRole('dialog', { name: 'Edit Porridge' })
+  const picker = sheet.getByRole('combobox', { name: 'Tags' })
 
   await picker.fill('breakfast')
   await page.getByRole('option', { name: /breakfast/ }).click()
   await picker.fill('snack')
   await page.getByRole('option', { name: 'Snack', exact: true }).click()
-  await sheet.getByRole('button', { name: 'Save tags' }).click()
+  await sheet.getByRole('button', { name: 'Save changes' }).click()
   await expect(sheet).toBeHidden()
 
   await page.reload()

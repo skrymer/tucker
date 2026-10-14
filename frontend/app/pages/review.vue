@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { components } from '#open-fetch-schemas/api'
-import type { Matchable } from '~/components/ReferenceFoodPicker.vue'
+import type { Matchable } from '~/components/ReferenceFoodSearch.vue'
 
 type TimelineResponse = components['schemas']['WeightTimelineResponse']
 type BreakdownResponse = components['schemas']['IntakeBreakdownResponse']

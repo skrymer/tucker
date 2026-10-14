@@ -1,10 +1,15 @@
 <script setup lang="ts">
 import type { components } from '#open-fetch-schemas/api'
 
-/** The Food being corrected — non-null opens the sheet. */
+/**
+ * The Food being corrected — non-null opens the sheet. `tracksCalories` gates its
+ * Reference Food match, read from the setting rather than from whether a match
+ * happens to be set (ADR 0027).
+ */
 // Stryker disable all: a compiler macro's arguments are hoisted out of setup()
 const props = defineProps<{
   food: components['schemas']['FoodResponse'] | null
+  tracksCalories?: boolean
 }>()
 // Stryker restore all
 const emit = defineEmits<{ close: [] }>()
@@ -12,13 +17,14 @@ const emit = defineEmits<{ close: [] }>()
 /**
  * Run [seed] with each Food the sheet opens on: one sheet is handed Food after
  * Food, so each opening starts from that Food, never from the last one's edits.
+ * Keyed on the id, so a re-read of the same Food leaves the edits standing.
  */
 function onEachFood(
   seed: (food: components['schemas']['FoodResponse']) => void,
 ) {
   watch(
-    () => props.food,
-    (food) => food && seed(food),
+    () => props.food?.id,
+    () => props.food && seed(props.food),
     { immediate: true },
   )
 }
@@ -134,16 +140,36 @@ function useCorrectionSave() {
   return { save, saving }
 }
 const { save, saving } = useCorrectionSave()
+
+/**
+ * Whether the sheet's body is the match search rather than the form: one modal
+ * layer, never a second sheet over this one (ADR 0017).
+ */
+const picking = ref(false)
+onEachFood(() => {
+  picking.value = false
+})
 </script>
 
 <template>
   <ResponsiveOverlay
     :open="food !== null"
-    :title="food ? `Edit ${formatName(food.name)}` : ''"
+    :title="
+      food ? `${picking ? 'Match' : 'Edit'} ${formatName(food.name)}` : ''
+    "
     @update:open="(value) => !value && emit('close')"
   >
+    <template v-if="picking" #leading>
+      <SheetBackButton @click="picking = false" />
+    </template>
+    <ReferenceFoodSearch
+      v-if="food && picking"
+      :food="food"
+      @close="picking = false"
+    />
     <UForm
       v-if="food"
+      v-show="!picking"
       :state="draft"
       :schema="foodSchema"
       class="flex flex-col gap-4"
@@ -170,6 +196,12 @@ const { save, saving } = useCorrectionSave()
       <UFormField label="Tags">
         <TagPicker v-model="tags" v-model:creating="creatingTag" />
       </UFormField>
+
+      <FoodMatchRow
+        v-if="tracksCalories"
+        :food="food"
+        @change="picking = true"
+      />
 
       <p v-if="macrosMoved" class="text-label text-dimmed">
         Food you've already logged keeps the figures it was logged with.

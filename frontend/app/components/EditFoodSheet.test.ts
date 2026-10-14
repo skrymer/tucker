@@ -1,9 +1,14 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mockNuxtImport, renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen, within } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import { besideCatalog, catalogOnceReread, tagsOn } from '~~/test/catalog-host'
 import { foodCatalog } from '~~/test/mocks/handlers/catalog'
+import { referenceFoodsFor } from '~~/test/mocks/handlers/reference-foods'
+import {
+  referenceFoodCandidate,
+  referenceFoodSearch,
+} from '~~/test/micronutrient-fixtures'
 import { failingRead, held, http, noConnection } from '~~/test/mocks/http'
 import { server } from '~~/test/mocks/node'
 import { food, recipe } from '~~/test/food-fixtures'
@@ -659,5 +664,261 @@ describe('EditFoodSheet’s Recipes', () => {
     expect(
       screen.queryByText("Couldn't check which recipes use it"),
     ).not.toBeInTheDocument()
+  })
+})
+
+describe('EditFoodSheet’s Reference Food match', () => {
+  const cheese = food({
+    id: 3,
+    name: 'Tasty cheese',
+    caloriesPer100g: 397,
+    proteinPer100g: 25,
+    carbsPer100g: 0,
+    fatPer100g: 33,
+    referenceFoodId: 9,
+    referenceFoodName: 'Cheese, cheddar, natural, regular fat',
+  })
+
+  beforeEach(() => toastAdd.mockClear())
+
+  it('names what a matched Food borrows its vitamins and minerals from, with Change and Clear', async () => {
+    server.use(...foodCatalog({ foods: [cheese] }))
+
+    await renderSuspended(EditFoodSheet, {
+      props: { food: cheese, tracksCalories: true },
+    })
+
+    const sheet = screen.getByRole('dialog', { name: 'Edit Tasty cheese' })
+    expect(
+      within(sheet).getByText(
+        'Vitamins and minerals from Cheese, cheddar, natural, regular fat',
+      ),
+    ).toBeVisible()
+    expect(
+      within(sheet).getByRole('button', {
+        name: 'Change what Tasty cheese borrows vitamins and minerals from',
+      }),
+    ).toBeVisible()
+    expect(
+      within(sheet).getByRole('button', {
+        name: 'Clear what Tasty cheese borrows vitamins and minerals from',
+      }),
+    ).toBeVisible()
+  })
+
+  it('offers an unmatched Food no way to make a match, the queue on /review being the one way in', async () => {
+    server.use(...foodCatalog({ foods: [oats] }))
+
+    await renderSuspended(EditFoodSheet, {
+      props: { food: oats, tracksCalories: true },
+    })
+
+    const sheet = screen.getByRole('dialog', { name: 'Edit Rolled oast' })
+    expect(
+      within(sheet).queryByText(/Vitamins and minerals/),
+    ).not.toBeInTheDocument()
+    expect(
+      within(sheet).queryByRole('button', { name: /vitamins and minerals/ }),
+    ).not.toBeInTheDocument()
+    expect(within(sheet).getByRole('textbox', { name: /^Name/ })).toBeVisible()
+  })
+
+  it('clears the match straight away, without waiting for Save, and stays open', async () => {
+    server.use(...foodCatalog({ foods: [cheese] }))
+    const onClose = vi.fn()
+    await renderSuspended(besideCatalog(EditFoodSheet), {
+      props: { food: cheese, tracksCalories: true, onClose },
+    })
+    const sheet = screen.getByRole('dialog', { name: 'Edit Tasty cheese' })
+
+    await userEvent.setup().click(
+      within(sheet).getByRole('button', {
+        name: 'Clear what Tasty cheese borrows vitamins and minerals from',
+      }),
+    )
+
+    const shown = await catalogOnceReread()
+    expect(shown.getByText('Tasty cheese')).toBeInTheDocument()
+    expect(shown.queryByText(/Vitamins and minerals/)).not.toBeInTheDocument()
+    expect(sheet).toBeVisible()
+    expect(onClose).not.toHaveBeenCalled()
+    expect(toastAdd).not.toHaveBeenCalled()
+  })
+
+  it('opens the match search in the same sheet, never a second one over it', async () => {
+    server.use(...foodCatalog({ foods: [cheese] }))
+    await renderSuspended(EditFoodSheet, {
+      props: { food: cheese, tracksCalories: true },
+    })
+
+    await userEvent.setup().click(
+      screen.getByRole('button', {
+        name: 'Change what Tasty cheese borrows vitamins and minerals from',
+      }),
+    )
+
+    // One modal layer on a phone: the sheet's body becomes the search. Counted
+    // with hidden ones, since a sheet stacked over it would hide this one.
+    const sheets = screen.getAllByRole('dialog', { hidden: true })
+    expect(sheets).toHaveLength(1)
+    expect(sheets[0]).toHaveAccessibleName('Match Tasty cheese')
+    expect(
+      within(sheets[0]!).getByRole('textbox', {
+        name: 'Search the food database',
+      }),
+    ).toHaveValue('Tasty cheese')
+    expect(
+      within(sheets[0]!).getByRole('button', { name: 'Back' }),
+    ).toBeVisible()
+    expect(
+      within(sheets[0]!).queryByRole('button', { name: 'Save changes' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('offers its way back in the header, before the title, as a phone sheet does', async () => {
+    server.use(...foodCatalog({ foods: [cheese] }))
+    await renderSuspended(EditFoodSheet, {
+      props: { food: cheese, tracksCalories: true },
+    })
+    await userEvent.setup().click(
+      screen.getByRole('button', {
+        name: 'Change what Tasty cheese borrows vitamins and minerals from',
+      }),
+    )
+
+    const sheet = screen.getByRole('dialog', { name: 'Match Tasty cheese' })
+    const heading = within(sheet).getByRole('heading', {
+      name: 'Match Tasty cheese',
+    })
+    const back = within(sheet).getByRole('button', { name: 'Back' })
+    expect(
+      back.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+  })
+
+  it('reopens on the form, not on a match search it was closed in', async () => {
+    server.use(...foodCatalog({ foods: [cheese] }))
+    const { rerender } = await renderSuspended(EditFoodSheet, {
+      props: { food: cheese, tracksCalories: true },
+    })
+    await userEvent.setup().click(
+      screen.getByRole('button', {
+        name: 'Change what Tasty cheese borrows vitamins and minerals from',
+      }),
+    )
+    expect(
+      screen.getByRole('dialog', { name: 'Match Tasty cheese' }),
+    ).toBeVisible()
+
+    await rerender({ food: null })
+    await rerender({ food: cheese })
+
+    const sheet = screen.getByRole('dialog', { name: 'Edit Tasty cheese' })
+    expect(
+      within(sheet).getByRole('button', { name: 'Save changes' }),
+    ).toBeVisible()
+  })
+
+  it('goes back from the match search to the form, its unsaved edits standing and nothing matched', async () => {
+    server.use(...foodCatalog({ foods: [cheese] }))
+    await renderSuspended(besideCatalog(EditFoodSheet), {
+      props: { food: cheese, tracksCalories: true },
+    })
+    const user = userEvent.setup()
+    const name = screen.getByRole('textbox', { name: /^Name/ })
+    await user.clear(name)
+    await user.type(name, 'Vintage cheese')
+    await user.click(
+      screen.getByRole('button', {
+        name: 'Change what Tasty cheese borrows vitamins and minerals from',
+      }),
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Back' }))
+
+    const sheet = screen.getByRole('dialog', { name: 'Edit Tasty cheese' })
+    expect(within(sheet).getByRole('textbox', { name: /^Name/ })).toHaveValue(
+      'Vintage cheese',
+    )
+    expect(
+      within(sheet).getByText(
+        'Vitamins and minerals from Cheese, cheddar, natural, regular fat',
+      ),
+    ).toBeVisible()
+    expect(
+      within(sheet).queryByRole('textbox', {
+        name: 'Search the food database',
+      }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('changes the match through the picker straight away, keeping the sheet and its unsaved edits', async () => {
+    const reduced = { id: 12, name: 'Cheese, cheddar, reduced fat' }
+    server.use(
+      ...foodCatalog({ foods: [cheese], referenceFoods: [reduced] }),
+      referenceFoodsFor({
+        'Tasty cheese': referenceFoodSearch({
+          suggestedId: reduced.id,
+          candidates: [referenceFoodCandidate(reduced)],
+        }),
+      }),
+    )
+    const onClose = vi.fn()
+    await renderSuspended(besideCatalog(EditFoodSheet), {
+      props: { food: cheese, tracksCalories: true, onClose },
+    })
+    const user = userEvent.setup()
+    const sheet = screen.getByRole('dialog', { name: 'Edit Tasty cheese' })
+    const name = within(sheet).getByRole('textbox', { name: /^Name/ })
+    await user.clear(name)
+    await user.type(name, 'Vintage cheese')
+
+    await user.click(
+      within(sheet).getByRole('button', {
+        name: 'Change what Tasty cheese borrows vitamins and minerals from',
+      }),
+    )
+    const picker = await screen.findByRole('dialog', {
+      name: 'Match Tasty cheese',
+    })
+    await user.click(
+      await within(picker).findByRole('button', {
+        name: /Cheese, cheddar, reduced fat/,
+      }),
+    )
+
+    const shown = await catalogOnceReread()
+    expect(
+      shown.getByText(
+        'Vitamins and minerals from Cheese, cheddar, reduced fat',
+      ),
+    ).toBeInTheDocument()
+    // Back on the form, in the same sheet, with the edits not yet saved.
+    expect(
+      await screen.findByRole('dialog', { name: 'Edit Tasty cheese' }),
+    ).toBe(sheet)
+    expect(within(sheet).getByRole('textbox', { name: /^Name/ })).toHaveValue(
+      'Vintage cheese',
+    )
+    expect(onClose).not.toHaveBeenCalled()
+  })
+
+  it('says nothing about a match to a User who does not count calories', async () => {
+    server.use(...foodCatalog({ foods: [cheese] }))
+
+    await renderSuspended(EditFoodSheet, {
+      props: { food: cheese, tracksCalories: false },
+    })
+
+    // Gated on the setting, never on whether the Food happens to hold a match
+    // (ADR 0027), as the catalog row is.
+    const sheet = screen.getByRole('dialog', { name: 'Edit Tasty cheese' })
+    expect(
+      within(sheet).queryByText(/Vitamins and minerals/),
+    ).not.toBeInTheDocument()
+    expect(
+      within(sheet).queryByRole('button', { name: /vitamins and minerals/ }),
+    ).not.toBeInTheDocument()
+    expect(within(sheet).getByRole('textbox', { name: /^Name/ })).toBeVisible()
   })
 })

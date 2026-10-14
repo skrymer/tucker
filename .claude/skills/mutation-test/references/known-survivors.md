@@ -18,7 +18,7 @@ and [#237](https://github.com/skrymer/tucker/issues/237) (frontend).
 - Where the score stands
 - Frontend — StrykerJS
   - Vue compiler macros break the run before it starts
-  - Presentation tokens (10) — accepted, deliberately unasserted
+  - Presentation tokens (8) — accepted, deliberately unasserted
   - `components/DateField.vue` — 1 of 20
   - `utils/date.ts` `isoToCalendarDate` — 1 of 7
   - `components/ProfileForm.vue` — 2 of 58
@@ -29,8 +29,8 @@ and [#237](https://github.com/skrymer/tucker/issues/237) (frontend).
   - `composables/useWeightLogging.ts` — 0 of 12
   - `WeightSection.vue` and `WeightTile.vue` — hand-check only
   - `components/IntakeBreakdownSection.vue` — `no cov` alone, 6 of 54 in company
-  - `components/ReferenceFoodPicker.vue` — 4 of 52
-  - `composables/useReferenceFoodMatch.ts` — 0 of 27
+  - `components/ReferenceFoodSearch.vue` — 5 of 62
+  - `composables/useReferenceFoodMatch.ts` — 0 of 28
   - `components/DaySummary.vue` — 0 of 17
   - `server/routes/sign-in.get.ts` — 2 of 2, both reported `no cov`
   - `plugins/auth-gate.client.ts` — 10 of 10
@@ -41,7 +41,7 @@ and [#237](https://github.com/skrymer/tucker/issues/237) (frontend).
   - `utils/catalog.ts` — 0 of 21, and the score was a lie
   - `pages/log.vue` — 14 of 57
   - `components/AddSheet.vue` — 21 of 118
-  - `pages/foods.vue` — 19 of 71, and 18 with no coverage
+  - `pages/foods.vue` — 6 of 27
   - `composables/useAsyncAction.ts` + `composables/useApiMutation.ts` — 24 of 158
 - Backend — pitest
   - Excluded from `--targetClasses` (28) — false survivors the tool cannot see
@@ -62,7 +62,7 @@ and [#237](https://github.com/skrymer/tucker/issues/237) (frontend).
   - `date.ts`'s cached `Intl.DateTimeFormat` — every literal of a module-level formatter, false survivors, settled by hand
   - Weight Timeline, the intake half — backend 87 of 90
   - Tags, backend — 159 of 178
-  - Tags, frontend — `FoodTagsSheet.vue` 35 of 39, `rowTags.ts` 10 of 10
+  - Tags, frontend — `TagPicker.vue` 12 of 88, `rowTags.ts` 10 of 10
   - Tags on a Recipe — `RecipeBuilder.vue` 93 of 147, 44 of them already there
   - Tags on Log — `catalog.ts` 48 of 54, `log.vue` and `TagChips.vue` unattributed
   - Manage tags — `ManageTagsSheet.vue` 56 of 61, then 2 carried
@@ -70,7 +70,8 @@ and [#237](https://github.com/skrymer/tucker/issues/237) (frontend).
   - Log for tomorrow (#443) — `useBudgetGate.ts` 9 of 42, backend 6 carried from #442
   - Lint refactor (#454) — 216 new of 532, 54 real gaps closed
   - Detekt rules (#455 PR 3) — 767 of 856, 4 real gaps closed
-  - Correct a Food (#432) — `EditFoodSheet.vue` 64 of 73, backend 116 of 128
+  - Correct a Food (#432) — `EditFoodSheet.vue` 67 of 78, backend 116 of 128
+  - One edit per row (#434) — `RecipeCompositionSheet.vue` 73 of 79
   - Noise removed at the source
 - What the score still cannot ask for
 
@@ -147,13 +148,12 @@ rejects the unused variable.
 Upstream is [stryker-js#3305](https://github.com/stryker-mutator/stryker-js/issues/3305),
 closed stale and still unfixed on Stryker 10.
 
-### Presentation tokens (10) — accepted, deliberately unasserted
+### Presentation tokens (8) — accepted, deliberately unasserted
 
 | Where                                                         | Mutants |
 | ------------------------------------------------------------- | ------- |
 | `navigation.ts` — every `navDestinations` `icon` → `""`       | 5       |
 | `reviewLedger.ts` — every `REVIEW_BASIS_BADGE` `color` → `""` | 3       |
-| `FoodListItem.vue` — `rowAction`'s two `icon`s → `""`         | 2       |
 
 **Verdict: real gap, accepted by decision.** They are killable, and a test that
 kills one pins the token (`i-lucide-house`, `primary`) rather than a rule — so it
@@ -423,13 +423,17 @@ whole `useRing` feed (`data`, `categories`, each arc's `name` and `color`) was
 unreachable because the ring is `aria-hidden` by design, and is asserted through the
 chart's own props — the only seam it has. See also the palette guard below.
 
-### `components/ReferenceFoodPicker.vue` — 4 of 52
+### `components/ReferenceFoodSearch.vue` — 5 of 62
+
+#434 split the search out of `ReferenceFoodPicker.vue`, which is now an overlay around
+it with no script to mutate, so the picker's survivors moved here verbatim. The search
+renders inside `EditFoodSheet` (Change steps the sheet into it) and inside the picker.
 
 **`const query = ref('')` (1)** — StringLiteral.
 
 **Verdict: equivalent mutant.** The initialiser is dead in every state where the box
-is observable. The picker lives inside `ResponsiveOverlay` → `UModal`, a Reka Dialog
-with no `force-mount`, so it is in the DOM only while `food !== null` — and the
+is observable. The search is mounted only while its host holds a Food — the picker's
+Reka Dialog has no `force-mount`, and `EditFoodSheet` renders it under `v-if` — and the
 `watch(food, …, { immediate: true })` assigns `query.value = current.name` on every
 transition to non-null, in a `pre`-flush watcher that runs *before* render. Both
 consumers mount it with `food` starting `null`. Killing it would take
@@ -464,7 +468,19 @@ mounted and the handler is synchronous; Nuxt UI's `Input.vue` renders its `<inpu
 ref="inputRef">` unconditionally and exposes it. Hand-checked per the protocol: both
 `?.` deleted, suite stays green at 20 passed.
 
-### `composables/useReferenceFoodMatch.ts` — 0 of 27
+**`held`'s setter `if (food === null) emit('close')` → `if (true)` (1).** **Equivalent.**
+The only writer of `held` is the claim's settle, which always writes `null`, now that
+the search has no Clear of its own.
+
+`if (!current) return` in the `food` watch was a **real gap** once the search could be
+unmounted from under its Food: the mutant only throws inside the watcher, which Vue
+swallows. Killed by *lets go of its Food without error when its host takes it away*,
+which hooks `vue:error`.
+
+### `composables/useReferenceFoodMatch.ts` — 0 of 28
+
+The clear now lives in the exported `useMatchClear`, which takes the Food's id; its
+`errorTitle` reads "Could not clear this match", as the button says Clear.
 
 Was 2 — both `errorTitle` literals, killed by asserting the toast **title** rather than
 only that a toast was raised, which is the verdict `useWeightLogging` already records.
@@ -680,7 +696,7 @@ per open, not increase.
 **Two nobody can run here (2).** `cache: 'no-store'` → `""` is a browser fetch
 semantic that `registerEndpoint` never honours — a **real gap** with no layer to put
 it in, since the mocked Playwright suite stubs the same requests. `{ mode: 'latest' }`
-→ `{ mode: "" }` is the standing `ReferenceFoodPicker` verdict: supersession is safe
+→ `{ mode: "" }` is the standing `ReferenceFoodSearch` verdict: supersession is safe
 on `useAsyncAction`'s generation counter, and only the *abort* is lost, which nothing
 observable depends on.
 
@@ -691,70 +707,25 @@ The two `no cov` are the same discriminant again — the branch ternary's final
 `: { kind: 'manual' }` fallback, reached only by a response that is neither
 `EXISTING` nor a candidate, which the backend does not produce.
 
-### `pages/foods.vue` — 19 of 71, and 18 with no coverage
+### `pages/foods.vue` — 6 of 27
 
-The catalog page. **Every survivor is glue** — `useApiMutation` option objects, their
-`errorTitle` strings, their `onSuccess: () => refresh()` arrows, and two defensive
-guards — which ADR 0013 says is driven by the integrated test rather than given one
-of its own. Stryker cannot run those layers, so they survive by construction. #303
-leaves it at **34 killed / 19 survived / 18 no cov**, up from the 22/22 the issue
-reported. What moved the score is the closed-world toast assertion in
-`foods.test.ts`; the `handleCreateIngredient` gap #303 also closed is at the
-Playwright layer, which no Stryker score can show. (Don't reconcile the two figures
-by subtraction — the baseline was taken against the file as F16 slice 3 left it.)
+The catalog page no longer calls `useApiMutation`, so the option objects, `errorTitle`
+strings and `onSuccess` arrows earlier sweeps recorded here are not in this file. At
+#434: **21 killed, 6 survived**, one compile error. All six are **equivalent**:
 
-**The four mutations' option objects and their `onSuccess` (8).** Four whole option
-objects emptied to `{}` (`:73`, `:98`, `:116`, `:140`), three `onSuccess: () =>
-refresh()` arrows blanked (`:77`, `:100`, `:118` — the fourth, `handleEditRecipe`'s
-at `:142`, reports `no cov` rather than surviving), and `:108`'s whole request arrow
-replaced by `() => undefined`. Each is **killed by an out-of-scope layer**, with a
-named killer:
-
-| mutation | killer | what it asserts |
-| --- | --- | --- |
-| `handleSubmit` | `e2e/smoke/add-food.smoke.spec.ts` | the new row, with its derived kcal |
-| `handleCreateIngredient` | `e2e/recipe-builder.spec.ts` › *user adds a new food inline…* | the POST body, and the Food in the catalog behind the closed sheet |
-| `handleSubmitRecipe` | `e2e/smoke/create-recipe.smoke.spec.ts` | the recipe's row |
-| `handleEditRecipe` | `e2e/smoke/recipe-edit.smoke.spec.ts` | the sheet closing, and the recipe re-read over the API |
-
-The `handleCreateIngredient` row is the one #303 added; before it, that mutation was
-a real gap with no killer at any layer. `recipe-edit`'s is the weakest of the four —
-it never reads the row, so it kills the emptied option object but would not catch
-`refresh()` removed on its own. That mutant is `no cov` rather than a survivor, so
-nothing is claimed for it here.
-
-**The five `errorTitle` strings (5).** A **real gap**, carried, and explicitly *not*
-the accepted presentation-token class above — the same verdict this file already
-reaches for `useWeightLogging` and `ReferenceFoodPicker`, and for the same
-mechanism: ADR 0005 makes the title the whole of what a User is told, and
-`useApiMutation` derives `errorToastId` from it, so a blanked title collides two
-unrelated failures onto one toast. Two of the five are already the same string
-(`'Could not add food'`, deliberately — both are an add failing), which is what
-makes the third and fourth collapsing onto them invisible. Only the hand-rolled
-`onValidationError` toast is pinned, by `foods.test.ts` › *surfaces the rule
-message…*, and that is a different call.
-
-**`watch(open, …)` and `watch(recipeToView, …)` (5, plus `:200`).** **Equivalent
-mutants.** The guard is now one `if (isOpen || !opensAddSheet(route.query)) return`.
-→ `if (false)` and `||` → `&&` only add a pass on the way in, dropping `?add=1` from a
-sheet already open, which changes nothing, or replacing the query with itself when
-there is no `add` to spend; and
-`router.replace({ query: rest })` → `{}` drops a query `/foods` never has anything
-else in. `sheetSession`'s `if (true)` and `--` both keep the value distinct per open,
-which is the only thing `savingFromThisSheet` compares. `if (food) deleteFood(food)` →
-`if (true)` is unreachable: the confirm dialog renders only with a Food selected.
-
-`watch(recipeToView, …)` clearing `createdIngredient` is the same shape and reports
-`no cov` for all four of its mutants: `RecipeBuilder`'s own `createdIngredient` watcher
-is not `immediate` and every assignment is a fresh object off a fresh response, so no
-sequence makes a stale value fire it. Symmetric with `watch(open, …)`'s clear, and kept
-for that symmetry.
-
-**The 18 with no coverage** are those four plus the request shapes of the four
-mutations — the paths, the methods, the bodies and the two `onSuccess` blocks — which
-no Vitest test reaches at all. Each is **killed by an out-of-scope layer**, by the same
-smoke named above for its mutation: a blanked path or method fails the request the smoke
-asserts the result of.
+- **`watch(open, …)`'s add-sheet hand-off (3).** The guard is one `if (isOpen ||
+  !opensAddSheet(route.query)) return`. → `if (false)` and `||` → `&&` only add a pass
+  on the way in, dropping `?add=1` from a sheet already open, which changes nothing, or
+  replacing the query with itself when there is no `add` to spend; and
+  `router.replace({ query: rest })` → `{}` drops a query `/foods` never has anything
+  else in.
+- **`foodToEdit`'s computed (3).** `if (id === null) return null` → `if (false)`: a null
+  id finds no Food and falls through to `null` anyway. `last?.id === id` → `true`: the
+  sheet is modal, so `foodIdToEdit` cannot be re-pointed without closing it, and `last`
+  is always the same Food. `last?.` → `last.`: the sheet opens only on a listed row, so
+  `last` is never null on the path where the read misses. Its `find(() => true)` is
+  killed by *opens the Edit sheet on the Food whose row was tapped, not the first one
+  listed*.
 
 ### `composables/useAsyncAction.ts` + `composables/useApiMutation.ts` — 24 of 158
 
@@ -1292,44 +1263,36 @@ Swept scoped to the F18 slice-1 classes (`Tag`, `TagName`, `Food`, `TagRepositor
   `findByIds`, and `RecipeRepository.ingredientCounts` / `ingredientsOf` (the
   Micronutrient false survivors, which moved line but not verdict).
 
-### Tags, frontend — `FoodTagsSheet.vue` 35 of 39, `rowTags.ts` 10 of 10
+### Tags, frontend — `TagPicker.vue` 12 of 88, `rowTags.ts` 10 of 10
 
-`FoodListItem.vue`'s one `NO_COVERAGE` (`props.food.tags ?? []`) and `FoodTagsSheet`'s
-`food?.tags ?? []` are **equivalent**: the wire always carries `tags` (ADR 0023), so
-the fallback is unreachable. The sheet's other three are equivalent too — the initial
-`draft` is overwritten by the immediate `watch`, the abort `signal` matters only on a
-cancellation no test drives, and the initial search term is cleared by Reka on open
-(the empty-field assertion passes under the mutant). The five real gaps the first
-sweep found — offering nothing before the Tags load, not fetching while closed, adding
-a created Tag to a Food wearing none, and the two `errorTitle` literals — are closed.
-`foods.vue`'s `useFoodTagging` request and option objects are **killed by
-`e2e/food-tags.spec.ts`**, which asserts the PUT body and the sheet closing;
-`if (target)` is equivalent, Save being reachable only from an open sheet.
+`FoodListItem.vue`'s one `NO_COVERAGE` (`props.food.tags ?? []`) is **equivalent**: the
+wire always carries `tags` (ADR 0023), so the fallback is unreachable.
 
-**The picker moved to `TagPicker.vue`** (F18 slice 3), shared by `FoodTagsSheet` and
-`AddFoodForm`; the sheet's equivalents above now live there. Also equivalent: `lastTyped`
-seeded (written before it is read), and `creating`/`creatingTag` starting `true` (the
-picker's immediate watch writes `false` on mount). Hand-mutating copies against main
-settled that `pick()`'s bare-string branch survived there too, so the sheet's "35 of 39"
-above was incomplete; call a survivor pre-existing only after running it against main.
-That branch turned out to be **dead**, not merely untested: UInputMenu never forwards the
-tags input's own add, so a name entered with the list shut became a chip with no Tag
-behind it. It is gone; `enterTyped` takes that Enter in the capture phase instead, and
-only `e2e/food-tags.spec.ts` can reach it — happy-dom runs no microtask checkpoint between
+`TagPicker.vue` is hosted by `EditFoodSheet`, `AddFoodForm` and `RecipeBuilder`, and is
+specified on its own in `TagPicker.test.ts` through a host holding the Tags. (#434
+deleted `FoodTagsSheet.vue` and its test, which had been the picker's only spec; three
+mutants survived every remaining host suite until the spec was ported.) Hand-mutating
+copies against main settled that `pick()`'s old bare-string branch survived there too;
+call a survivor pre-existing only after running it against main. That branch turned out
+to be **dead**, not merely untested: UInputMenu never forwards the tags input's own add,
+so a name entered with the list shut became a chip with no Tag behind it. It is gone;
+`enterTyped` takes that Enter in the capture phase instead, and only
+`e2e/food-tags.spec.ts` can reach it — happy-dom runs no microtask checkpoint between
 listeners, so Reka's post-`nextTick` `defaultPrevented` check sees a bubbling
 `preventDefault` there that it never sees in a browser.
 
-`TagPicker.vue` scores **72 of 86** before its last two tests, which kill three more (the
-Enter flag forced on, and its reset removed). Beyond the two carried over above (the
-`signal`, the initial search term), the remaining survivors are:
-- **Killed by `e2e/food-tags.spec.ts`:** `enterTyped`'s create call forced off or
-  deleted, and the `trim` that decides whether a name was typed. The Vitest layer
-  structurally cannot reach them. The spaces-only test pins the `trim`; "a name entered
-  with the Tag list closed" pins the create.
-- **Equivalent:** `lastSent` seeded, since it is written before it is read.
-- **Equivalent:** three mutants that empty `pick`'s `kept` when no Enter is picking.
-  They leave `picked = held`, and Reka hands back the held list in the order it was
-  given. Forcing `kept` to *all* of `picked` is **not** equivalent. The two-Tag
+At #434: **74 killed and 2 timed out, 11 survived, 1 no coverage**:
+- **Equivalent:** the abort `signal` (`:19` → `{}`), which matters only on a
+  cancellation no test drives.
+- **Equivalent:** `lastSent` seeded (`:42`), since it is written before it is read, and
+  the initial `searchTerm` (`:83`), which Reka clears on open.
+- **Killed by `e2e/food-tags.spec.ts`:** `enterTyped`'s create (`:110`, four survivors
+  and the no-coverage deletion) and the `trim` that decides whether a name was typed
+  (`:107`). The Vitest layer structurally cannot reach them. The spaces-only test pins
+  the `trim`; "a name entered with the Tag list closed" pins the create.
+- **Equivalent:** three mutants on `:118` that empty `pick`'s `kept` when no Enter is
+  picking. They leave `picked = held`, and Reka hands back the held list in the order
+  it was given. Forcing `kept` to *all* of `picked` is **not** equivalent. The two-Tag
   take-off test kills it.
 
 `useApiMutation.ts` scores **72 of 80** with the `retry` hook, which is killed. Its
@@ -1531,7 +1494,7 @@ L51/L77 above) have tests; three were pre-existing.
   ApplicationContext"). The first attempt kept `build/`, replayed a cached `:test`, and
   read as a survivor.
 
-### Correct a Food (#432) — `EditFoodSheet.vue` 64 of 73, backend 116 of 128
+### Correct a Food (#432) — `EditFoodSheet.vue` 67 of 78, backend 116 of 128
 
 The frontend scope scored 218 of 240. Its one real gap, a macro field holding only a
 space previewed as zero, is closed ('states no figures while a macro field holds only
@@ -1550,8 +1513,10 @@ spaces'). The rest, all **equivalent** unless named otherwise:
 - **`AddFoodForm.vue`'s `if (!next)` → `if (false)`** — `initial` is never falsy:
   `FoodBuilder` always passes an object and `IngredientPicker` passes none, so the watch
   never fires with one.
-- **`FoodListItem.vue`'s `rowAction` icons** — a row in the presentation-tokens table,
-  not here.
+- **`EditFoodSheet.vue`'s `recipesKnown` → `true`** (#434) — `RecipesUsingFood` sets
+  `settled = false` in its setup on every mount, in the same flush.
+- **`EditFoodSheet.vue`'s `picking` → `true`** (#434) — the immediate `onEachFood` seeds
+  `picking = false` whenever a Food is set, and with no Food nothing renders.
 - **`Macros.getCarbsPer100g` → 0 (pitest)** — no production code calls the getter;
   `nutrition()` reads the field. The protein and fat getters die only because the API
   test's helper reads them.
@@ -1559,6 +1524,30 @@ spaces'). The rest, all **equivalent** unless named otherwise:
 The backend's other 11 are standing verdicts: eight `FoodResponse` accessors (false
 survivors), `RecipeRepository`'s two `isEmpty()` returns and `FoodService.frequent`'s
 `requireWindow`.
+
+### One edit per row (#434) — `RecipeCompositionSheet.vue` 73 of 79
+
+Two real gaps predating the slice are closed: the save's `errorTitle` (*names a failed
+save in its own error toast, and stays open*) and a previous Recipe's late failure
+landing on the next one (*shows the newly opened recipe, not a still-in-flight previous
+one's failure*). Two mutants first called equivalent were not — each throws once the
+sheet has closed, which `vue:error` or the console sees: the catch's `recipe()?.` (*lets
+a read that fails after the sheet closed go without error*) and the cooked weight's
+`recipe()?.` (`e2e/recipe-catalog.spec.ts` › *closing a recipe while its composition
+is still loading raises no error*). The six left are **equivalent**:
+
+- **`:45` `if (props.recipe)` → `if (true)`** — Save is reachable only in the editor of
+  an open Recipe, and Retry replays its captured arguments without calling `save`.
+- **`:68` `if (!current) return` → `if (false)`** — the watch calls `load` only with a
+  Recipe, and Retry renders only inside an open sheet.
+- **`:79` the success path's `recipe()?.` → `recipe().`** — a response landing after
+  close throws inside the `try`, and its own `catch` drops it (`recipe()?.id` there is
+  not the requested id).
+- **`:105` `editing = ref(false)` → `true`** — the immediate watch writes
+  `editing = props.edit` before the first render.
+- **`:134` the unresolved line's `[]`** — unreachable: an ingredient Food cannot be
+  deleted while a Recipe references it, and `/api/foods` returns the whole catalog.
+- **`:149` `props.recipe?.name ?? ''`** — the title renders only while a Recipe is open.
 
 ### Noise removed at the source
 

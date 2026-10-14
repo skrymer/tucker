@@ -375,10 +375,11 @@ class CrossUserIsolationTest {
     fun `deleting another User's Tag is no content, exactly as an absent one, and leaves it on their Food`() {
         val almonds = createFood(alice, "Alice's almonds")
         val snack = postForId(alice, "/api/tags", """{"name":"snack"}""")
-        mockMvc.put("/api/foods/$almonds/tags") {
+        mockMvc.put("/api/foods/$almonds") {
             header(ACCESS_ASSERTION_HEADER, alice)
             contentType = MediaType.APPLICATION_JSON
-            content = """{"tagIds":[$snack]}"""
+            content = """{"name":"Alice's almonds","proteinPer100g":10.0,"carbsPer100g":4.0,"fatPer100g":0.2,
+                          "tagIds":[$snack]}"""
         }.andExpect { status { isOk() } }
 
         mockMvc.delete("/api/tags/$snack") { header(ACCESS_ASSERTION_HEADER, bob) }
@@ -432,22 +433,6 @@ class CrossUserIsolationTest {
     }
 
     @Test
-    fun `tagging another User's Food is not found and leaves it untagged`() {
-        val almonds = createFood(alice, "Alice's almonds")
-        val snack = postForId(bob, "/api/tags", """{"name":"snack"}""")
-
-        mockMvc.put("/api/foods/$almonds/tags") {
-            header(ACCESS_ASSERTION_HEADER, bob)
-            contentType = MediaType.APPLICATION_JSON
-            content = """{"tagIds":[$snack]}"""
-        }.andExpect { status { isNotFound() } }
-
-        mockMvc.get("/api/foods/$almonds") { header(ACCESS_ASSERTION_HEADER, alice) }.andExpect {
-            jsonPath("$.tags.length()") { value(0) }
-        }
-    }
-
-    @Test
     fun `correcting another User's Food is not found, exactly as an absent one, and leaves it as it was`() {
         val almonds = createFood(alice, "Alice's almonds")
 
@@ -480,22 +465,6 @@ class CrossUserIsolationTest {
 
         mockMvc.get("/api/foods/$skyr") { header(ACCESS_ASSERTION_HEADER, bob) }.andExpect {
             jsonPath("$.name") { value("Bob's skyr") }
-            jsonPath("$.tags.length()") { value(0) }
-        }
-    }
-
-    @Test
-    fun `putting another User's Tag on a Food is not found, exactly as an absent Tag is`() {
-        val skyr = createFood(bob, "Bob's skyr")
-        val alicesBreakfast = postForId(alice, "/api/tags", """{"name":"breakfast"}""")
-
-        mockMvc.put("/api/foods/$skyr/tags") {
-            header(ACCESS_ASSERTION_HEADER, bob)
-            contentType = MediaType.APPLICATION_JSON
-            content = """{"tagIds":[$alicesBreakfast]}"""
-        }.andExpect { status { isNotFound() } }
-
-        mockMvc.get("/api/foods/$skyr") { header(ACCESS_ASSERTION_HEADER, bob) }.andExpect {
             jsonPath("$.tags.length()") { value(0) }
         }
     }

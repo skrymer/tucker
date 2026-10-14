@@ -78,15 +78,17 @@ test('a matched Food moves the coverage figure and names its borrow in the catal
   const subline = page.getByText(/Vitamins and minerals from Cheese, cheddar/)
   await expect(subline).toBeVisible()
 
-  // A match is reversible, and taking it back is as easy as making it.
-  await page
+  // A match is reversible, and taking it back is as easy as making it: the
+  // Food's Edit sheet clears it at once.
+  await page.getByRole('button', { name: 'Edit Tasty cheese' }).click()
+  const sheet = page.getByRole('dialog', { name: 'Edit Tasty cheese' })
+  await sheet
     .getByRole('button', {
-      name: 'Change what Tasty cheese borrows vitamins and minerals from',
+      name: 'Clear what Tasty cheese borrows vitamins and minerals from',
     })
     .click()
-  await page.getByRole('button', { name: 'Unmatch' }).click()
 
-  await expect(subline).toBeHidden()
+  await expect(page.getByText(/Vitamins and minerals from/)).toHaveCount(0)
 
   await goto('/review', { waitUntil: 'hydration' })
   await expect(

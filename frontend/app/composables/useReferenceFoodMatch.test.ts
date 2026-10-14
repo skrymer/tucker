@@ -7,7 +7,7 @@ import { food } from '~~/test/food-fixtures'
 import { foodCatalog } from '~~/test/mocks/handlers/catalog'
 import { failingWrite } from '~~/test/mocks/http'
 import { server } from '~~/test/mocks/node'
-import { useReferenceFoodMatch } from './useReferenceFoodMatch'
+import { useMatchClear, useReferenceFoodMatch } from './useReferenceFoodMatch'
 
 const { toastAdd } = vi.hoisted(() => ({ toastAdd: vi.fn() }))
 mockNuxtImport('useToast', () => () => ({ add: toastAdd, remove: vi.fn() }))
@@ -45,16 +45,36 @@ function host() {
           (f) => `${f.name} borrows ${f.referenceFoodName ?? 'nothing'}`,
         )
       }
-      const { claim, clear } = useReferenceFoodMatch(held, refresh)
-      return { claim: () => claim(cheddar.id), clear: () => clear(), borrows }
+      const { claim } = useReferenceFoodMatch(held, refresh)
+      return { claim: () => claim(cheddar.id), borrows }
     },
     template: `<div>
       <button @click="claim">claim</button>
-      <button @click="clear">clear</button>
       <ul><li v-for="line in borrows" :key="line">{{ line }}</li></ul>
     </div>`,
   })
   return { component, held }
+}
+
+/** A host clearing the borrow of the Food [foodId], refreshing as a page does. */
+function clearHost(foodId: number) {
+  return defineComponent({
+    setup() {
+      const { $api } = useNuxtApp()
+      const borrows = ref<string[]>([])
+      const refresh = async () => {
+        borrows.value = (await $api('/api/foods')).map(
+          (f) => `${f.name} borrows ${f.referenceFoodName ?? 'nothing'}`,
+        )
+      }
+      const { clear } = useMatchClear(refresh)
+      return { clear: () => clear(foodId), borrows }
+    },
+    template: `<div>
+      <button @click="clear">clear</button>
+      <ul><li v-for="line in borrows" :key="line">{{ line }}</li></ul>
+    </div>`,
+  })
 }
 
 const borrowLines = () =>
@@ -115,10 +135,9 @@ describe('useReferenceFoodMatch', () => {
     )
   })
 
-  it('takes the borrow back for the held Food, then closes it and refreshes', async () => {
+  it('takes the borrow back for the Food it is handed, then refreshes', async () => {
     server.use(...catalogWith([cheese.id, chicken.id]))
-    const { component, held } = host()
-    await renderSuspended(component)
+    await renderSuspended(clearHost(cheese.id))
 
     await userEvent.setup().click(screen.getByRole('button', { name: 'clear' }))
 
@@ -128,27 +147,34 @@ describe('useReferenceFoodMatch', () => {
         'Tasty cheese borrows nothing',
       ]),
     )
-    expect(held.value).toBeNull()
   })
-  it('names the unmatch when taking the borrow back fails, and stays on that Food', async () => {
+  it('names the unmatch when taking the borrow back fails, and its Retry takes back that Food’s', async () => {
     toastAdd.mockClear()
+    let failing = true
     server.use(
-      failingWrite('delete', '/api/foods/{id}/reference-food'),
-      ...catalogWith([cheese.id]),
+      failingWrite('delete', '/api/foods/{id}/reference-food', () => failing),
+      ...catalogWith([cheese.id, chicken.id]),
     )
 
-    const { component, held } = host()
-    await renderSuspended(component)
+    await renderSuspended(clearHost(cheese.id))
     await userEvent.setup().click(screen.getByRole('button', { name: 'clear' }))
 
     await vi.waitFor(() =>
       expect(toastAdd).toHaveBeenCalledWith(
-        expect.objectContaining({ title: 'Could not unmatch this food' }),
+        expect.objectContaining({ title: 'Could not clear this match' }),
       ),
     )
-    // `settled` never ran, so the sheet is still on the Food whose unmatch was
-    // lost — the Retry in that toast has something to go back to (ADR 0005).
-    expect(held.value).not.toBeNull()
+    // Nothing refreshed: the borrow still stands until the server says otherwise.
     expect(borrowLines()).toEqual([])
+
+    failing = false
+    await toastAdd.mock.calls.at(-1)![0].actions[0].onClick()
+
+    await vi.waitFor(() =>
+      expect(borrowLines()).toEqual([
+        'Chicken breast borrows Cheese, cheddar, natural, regular fat',
+        'Tasty cheese borrows nothing',
+      ]),
+    )
   })
 })

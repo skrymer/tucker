@@ -1,6 +1,6 @@
 # Feature history
 
-The slice-by-slice record of every frontend increment (F1–F18): what each slice
+The slice-by-slice record of every frontend increment (F1–F19): what each slice
 shipped, and the non-obvious findings, traps and deviations its sign-off turned
 up. Moved out of `CLAUDE.md`, which keeps only the roster, to keep the start-up
 context small. The decisions themselves live in the ADRs (`docs/adr/`) and the
@@ -1739,3 +1739,107 @@ null` now means two things that earn opposite messages — the same trap
     new-name field takes focus on desktop only, as `LogGramsSheet` does — on a phone
     that focus pops the keyboard over the sheet.
 
+
+- **F19** — **Correct a Food**: fix its name, macros and Tags in one sheet
+  (**shipped**, all three slices; PRD
+  [#431](https://github.com/skrymer/tucker/issues/431),
+  [ADR 0037](docs/adr/0037-editing-a-food-is-a-correction.md)). A correction says
+  the old values were never true, not that the product changed: every Recipe using
+  the Food is re-rolled in the same save, while Entries keep the calories and
+  protein they snapshotted and read under the corrected name, since they never
+  snapshotted it. The barcode is not editable. Designed through `/grill-with-docs`
+  over a throwaway prototype (branch `prototype/edit-food`, deleted in slice 2).
+  Three slices: [#432](https://github.com/skrymer/tucker/issues/432) correct a Food
+  end-to-end, [#433](https://github.com/skrymer/tucker/issues/433) the Recipes a
+  correction reaches, [#434](https://github.com/skrymer/tucker/issues/434) one Edit
+  per row. **Out of scope:** editing a barcode, versioning a Food, rewriting an
+  Entry's figures or a past Weekly Review, creating a match from the Edit sheet, and
+  bulk edits.
+
+  Slice 1 ([#432](https://github.com/skrymer/tucker/issues/432), shipped
+  [#490](https://github.com/skrymer/tucker/pull/490)) — **correct a Food** — ✅ done.
+  `PUT /api/foods/{id}` takes the name, three macros and `tagIds`; `Food.corrected`
+  re-derives calories by Atwater, keeps the barcode, match and kind, and refuses a
+  Recipe. `EditFoodSheet` replaces a plain Food's Tags button.
+  - **The Recipe re-roll is in the correction's transaction from day one**, so no
+    Recipe is stale between slices. `FoodCorrectionTransactionTest` pins it by what is
+    bound to the transaction, not its name: every repository write is transactional
+    under its own method's name, so two separate `FoodRepository.update` transactions
+    share one and a name check passes vacuously.
+  - **The figure line follows keystrokes, not commits.** A number field commits only
+    on blur, so the preview reads the field's own `input` events, and the stepper
+    buttons, which type nothing, commit directly. `FigureDiff` strikes a figure only
+    when its rounded value moved, with a hidden "was" for a screen reader.
+  - **ADR 0037 was drafted as 0035 on the prototype branch**; that number had been
+    taken on `main` in between.
+  - **Beyond the issue:** Add Food now refuses a name of only server-trimmed
+    whitespace (the shared `foodSchema`), both Food forms share `MacroFields`, and
+    the delete guard names blocking Recipes through a names-only projection — a guard
+    built on whole aggregates turned a damaged Recipe into a 500.
+  - **The walk-through's verdict audit caught a 404 that named the wrong thing**: an
+    absent Tag answered "no Food with id …". A service null standing for two refusals
+    now carries a message naming both.
+
+  Slice 2 ([#433](https://github.com/skrymer/tucker/issues/433), shipped
+  [#493](https://github.com/skrymer/tucker/pull/493)) — **the Recipes a correction
+  reaches, shown before saving** — ✅ done. `GET /api/foods/{id}/recipes` lists the
+  caller's Recipes using the Food, alphabetical case aside as the catalog is, each
+  with its stored figures, cooked weight and ingredient lines. `RecipesUsingFood`
+  sits under the figure line: collapsed "Used in N recipes", "Also updates N recipes"
+  once a macro moves, and every row before → after on each keystroke through
+  `previewRecipeFigures` (ADR 0002's preview carve-out).
+  - **Save waits on the read** (the user's ruling at sign-off, now criteria on #433):
+    disabled with no spinner until the Recipe read answers, "Checking recipes…" past
+    150 ms, and a failed or >8 s read shows a Retry and releases Save (ADR 0007).
+    `useOptionalFetch` gained `timeoutMs` and `busy` for it.
+  - **"Before" is the Recipe's stored figure**, not a client roll-up, so an unchanged
+    draft can never show a diff the server would not.
+  - **Byte order was caught by review**: the first list sorted mixed case apart. The
+    delete refusal's Recipe names now share the same case-aside query.
+  - **`FigureRow` gained a `figures` slot**, defaulting to today's string, so a diff
+    can carry markup.
+
+  Slice 3 ([#434](https://github.com/skrymer/tucker/issues/434)) — **one Edit per
+  row** — ✅ done, **and with it F19**. A plain Food row is Edit · Delete, matched or
+  not; a Recipe row is View ingredients · Edit · Delete, its Edit and its "+N" opening
+  the Recipe editor straight in edit mode. `FoodTagsSheet` and the row's match pencil
+  are gone.
+  - **The match lives in the Edit sheet** (`FoodMatchRow`), shown only with Calorie
+    Tracking on and a match present, so an unmatched Food is offered no way to make
+    one (ADR 0027). Change opens the existing picker and Clear clears at once; neither
+    is part of Save's draft, and closing the sheet undoes neither.
+  - **The sheet is handed the live Food, and seeds its draft on the Food's id.**
+    `/foods` reads the Food it edits out of the catalog by id, so a Clear or Change
+    shows in the sheet as soon as the catalog re-reads. The draft watch was keyed on
+    the object, which would have wiped the User's unsaved name and macros on that
+    re-read; it is keyed on the id now, and a page test pins it. **A re-read that
+    fails empties the catalog**, and the first build of this closed the sheet over
+    the draft (found by the resolutions pass, measured against `main`): the page
+    keeps the Food it last read while the catalog has none.
+  - **`TagPicker` has a spec of its own.** Deleting `FoodTagsSheet.test.ts` took the
+    picker's de facto spec with it — three mutants then survived every remaining
+    suite — so its picker-level tests moved to `TagPicker.test.ts`, through a host
+    that holds the Tags and a Save as every form does.
+  - **The picker no longer offers Unmatch.** Its "Currently borrowing from" block was
+    reachable only from the old row pencil, so Change would have opened a second way
+    out beside the sheet's Clear. `useMatchClear` takes the Food's id and is the one
+    clear.
+  - **Change steps the sheet inside itself rather than stacking a second one.** The
+    first build opened the picker as a sheet over the Edit sheet, the app's first
+    keyboard-raising Dialog stacked on another; `/check-adrs` flagged it against
+    ADR 0017, and the user ruled for one modal layer. The picker's body is now
+    `ReferenceFoodSearch`, hosted by the Edit sheet (title "Match …", a `Back` in
+    the header) and by `ReferenceFoodPicker` on `/review`. DESIGN.md's **Sheet
+    navigation** records the rule and `/design` shows the header; `reka-ui` became
+    a direct dependency for the header's `DialogTitle` / `DialogClose`.
+  - **A Recipe opened to edit shows a skeleton while it loads** (the user's ruling
+    on ADR 0007), not an empty body.
+  - **An Edit opening never flashes the read-only view** while the composition loads:
+    the sheet opens on its editor or on nothing.
+  - **A correction leaves the match alone** — already true of `Food.corrected`, and
+    now pinned by an API test, shown red on a copy whose correction drops it.
+  - **`PUT /api/foods/{id}/tags` is removed** (the user's ruling), with
+    `FoodService.retag`: plain Foods take their Tags when created or corrected, and
+    Recipes through their editor, so nothing in the app called it. The tests that
+    seeded Tags through it now create or correct the Food instead, and its two
+    cross-User refusals already had correction twins from slice 1.

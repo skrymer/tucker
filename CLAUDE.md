@@ -264,11 +264,8 @@ here.
 - **F18** — ✅ Tags (PRD [#360](https://github.com/skrymer/tucker/issues/360),
   [ADR 0033](docs/adr/0033-a-tag-is-the-users-own-thing-not-a-word-on-a-food.md)).
   Open: [#385](https://github.com/skrymer/tucker/issues/385).
-- **F19** — Correct a Food (PRD [#431](https://github.com/skrymer/tucker/issues/431),
-  [ADR 0037](docs/adr/0037-editing-a-food-is-a-correction.md)). Slices
-  [#432](https://github.com/skrymer/tucker/issues/432),
-  [#433](https://github.com/skrymer/tucker/issues/433),
-  [#434](https://github.com/skrymer/tucker/issues/434).
+- **F19** — ✅ Correct a Food (PRD [#431](https://github.com/skrymer/tucker/issues/431),
+  [ADR 0037](docs/adr/0037-editing-a-food-is-a-correction.md)).
 
 ## Architecture
 

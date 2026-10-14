@@ -334,18 +334,6 @@ export function foodCatalog({
       }
       return response(200).json(described(row))
     }),
-    http.put('/api/foods/{id}/tags', async ({ params, request, response }) => {
-      const row = rowOf(params.id)
-      if (!row) {
-        return response(404).json({ message: `no Food with id ${params.id}` })
-      }
-      const { tagIds } = await request.json()
-      if (!shelved(tagIds)) {
-        return response(404).json({ message: `no Tag among ${tagIds}` })
-      }
-      row.tagIds = distinct(tagIds)
-      return response(200).json(described(row))
-    }),
     http.put(
       '/api/foods/{id}/reference-food',
       async ({ params, request, response }) => {

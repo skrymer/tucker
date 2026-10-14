@@ -188,14 +188,19 @@ test('a matched food in the catalog names its borrow and can take it back', asyn
     ),
   ).toBeVisible()
 
-  await page
+  await page.getByRole('button', { name: 'Edit Chicken breast' }).click()
+  const sheet = page.getByRole('dialog', { name: 'Edit Chicken breast' })
+  await sheet
     .getByRole('button', {
-      name: 'Change what Chicken breast borrows vitamins and minerals from',
+      name: 'Clear what Chicken breast borrows vitamins and minerals from',
     })
     .click()
-  await page.getByRole('button', { name: 'Unmatch' }).click()
 
-  await expect(page.getByText(/Vitamins and minerals from/)).toBeHidden()
+  // Cleared at once, in the sheet and on the row behind it, with no Save.
+  await expect(page.getByText(/Vitamins and minerals from/)).toHaveCount(0)
+  await sheet.getByRole('button', { name: 'Close' }).click()
+  await expect(sheet).toBeHidden()
+  await expect(page.getByText(/Vitamins and minerals from/)).toHaveCount(0)
 })
 
 test('with Calorie Tracking off the catalog says nothing about a borrow', async ({
