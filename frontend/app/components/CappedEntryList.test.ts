@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen } from '@testing-library/vue'
+import userEvent from '@testing-library/user-event'
+import { h } from 'vue'
 import { estimatedEntry } from '~~/test/entry-fixtures'
 import CappedEntryList from './CappedEntryList.vue'
 
@@ -25,6 +27,33 @@ describe('CappedEntryList', () => {
     expect(screen.getByText('Dinner')).toBeVisible()
     expect(screen.queryByText('Breakfast')).not.toBeInTheDocument()
     expect(screen.queryByText('Morning snack')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Show all 5' })).toBeVisible()
+  })
+
+  it('reveals every entry, each with its action, with Show all and folds back with Show less', async () => {
+    await renderSuspended(CappedEntryList, {
+      props: { entries: fiveEntries },
+      slots: {
+        action: ({ entry }: { entry: { name: string } }) =>
+          h('button', `Act on ${entry.name}`),
+      },
+    })
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole('button', { name: 'Show all 5' }))
+
+    expect(screen.getAllByRole('listitem')).toHaveLength(5)
+    expect(
+      screen.getByRole('button', { name: 'Act on Breakfast' }),
+    ).toBeVisible()
+    expect(
+      screen.queryByRole('button', { name: /show all/i }),
+    ).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Show less' }))
+
+    expect(screen.getAllByRole('listitem')).toHaveLength(3)
+    expect(screen.queryByText('Breakfast')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Show all 5' })).toBeVisible()
   })
 })
