@@ -134,6 +134,49 @@ describe('WeightHistorySection', () => {
     ).not.toBeInTheDocument()
   })
 
+  it('offers Edit on a picked day holding a reading, and not on one without', async () => {
+    server.use(
+      ...bodyAndPlan({
+        profile: null,
+        today: TODAY,
+        readings: [{ id: 1, measuredOn: '2026-10-09', weightKg: 80.9 }],
+      }),
+    )
+    await renderSuspended(WeightHistorySection)
+    await screen.findByText('No weight on Mon 12 Oct.')
+    const user = userEvent.setup()
+
+    expect(screen.queryByRole('button', { name: 'Edit' })).toBeNull()
+
+    await user.click(
+      screen.getByRole('button', { name: 'Friday, October 9, 2026' }),
+    )
+
+    expect(await screen.findByRole('button', { name: 'Edit' })).toBeVisible()
+  })
+
+  it("opens Edit on the picked day's stored kg, with the date locked to it", async () => {
+    server.use(
+      ...bodyAndPlan({
+        profile: null,
+        today: TODAY,
+        readings: [{ id: 1, measuredOn: '2026-10-09', weightKg: 80.9 }],
+      }),
+    )
+    await renderSuspended(WeightHistorySection)
+    await screen.findByText('No weight on Mon 12 Oct.')
+    const user = userEvent.setup()
+    await user.click(
+      screen.getByRole('button', { name: 'Friday, October 9, 2026' }),
+    )
+
+    await user.click(await screen.findByRole('button', { name: 'Edit' }))
+
+    const dialog = await screen.findByRole('dialog', { name: 'Log weight' })
+    expect(within(dialog).getByLabelText(/Weight \(kg\)/)).toHaveValue('80.9')
+    expect(within(dialog).queryByLabelText(/^Date/)).toBeNull()
+  })
+
   it("does not show another day's reading on a day that has none", async () => {
     server.use(
       ...bodyAndPlan({

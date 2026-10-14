@@ -78,12 +78,20 @@ const backfill = useBackfill()
         aria-hidden="true"
         class="appear-late h-8 w-1/3"
       />
-      <p
-        v-else-if="readings.pickedReading.value"
-        class="text-stat text-default"
-      >
-        {{ readings.pickedReading.value.weightKg.toFixed(1) }} kg
-      </p>
+      <template v-else-if="readings.pickedReading.value">
+        <p class="text-stat text-default">
+          {{ readings.pickedReading.value.weightKg.toFixed(1) }} kg
+        </p>
+        <UButton
+          icon="i-lucide-pencil"
+          color="neutral"
+          variant="outline"
+          class="mt-3"
+          @click="backfill.sheetOpen.value = true"
+        >
+          Edit
+        </UButton>
+      </template>
       <template v-else>
         <p class="text-sm text-muted">No weight on {{ plain }}.</p>
         <UButton
@@ -99,6 +107,7 @@ const backfill = useBackfill()
     <LogWeightSheet
       v-model:open="backfill.sheetOpen.value"
       :date="picked"
+      :initial-weight-kg="readings.pickedReading.value?.weightKg"
       :pending="backfill.saving.value"
       @submit="backfill.logWeight"
     />
