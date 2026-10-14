@@ -34,8 +34,11 @@ const emit = defineEmits<{
   saved: []
 }>()
 
-/** Adds a reading to the picked day; the sheet locks its date to it. */
-function useBackfill() {
+/**
+ * Adds or corrects the picked day's reading; the sheet locks its date to it,
+ * and the server replaces a day's reading rather than adding a second.
+ */
+function usePickedDayLogging() {
   const { sheetOpen, saving, logWeight } = useWeightLogging({
     today: () => today.value,
     // No success toast: the day's dot and reading appear in the card itself.
@@ -46,7 +49,7 @@ function useBackfill() {
   })
   return { sheetOpen, saving, logWeight }
 }
-const backfill = useBackfill()
+const logging = usePickedDayLogging()
 </script>
 
 <template>
@@ -87,7 +90,7 @@ const backfill = useBackfill()
           color="neutral"
           variant="outline"
           class="mt-3"
-          @click="backfill.sheetOpen.value = true"
+          @click="logging.sheetOpen.value = true"
         >
           Edit
         </UButton>
@@ -98,18 +101,18 @@ const backfill = useBackfill()
           icon="i-lucide-plus"
           color="primary"
           class="mt-3"
-          @click="backfill.sheetOpen.value = true"
+          @click="logging.sheetOpen.value = true"
         >
           Add weight
         </UButton>
       </template>
     </div>
     <LogWeightSheet
-      v-model:open="backfill.sheetOpen.value"
+      v-model:open="logging.sheetOpen.value"
       :date="picked"
       :initial-weight-kg="readings.pickedReading.value?.weightKg"
-      :pending="backfill.saving.value"
-      @submit="backfill.logWeight"
+      :pending="logging.saving.value"
+      @submit="logging.logWeight"
     />
   </UCard>
 </template>
