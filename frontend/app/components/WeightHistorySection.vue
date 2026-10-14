@@ -39,7 +39,7 @@ const emit = defineEmits<{
  * and the server replaces a day's reading rather than adding a second.
  */
 function usePickedDayLogging() {
-  const { sheetOpen, saving, logWeight } = useWeightLogging({
+  return useWeightLogging({
     today: () => today.value,
     // No success toast: the day's dot and reading appear in the card itself.
     onSaved: async () => {
@@ -47,7 +47,6 @@ function usePickedDayLogging() {
       await readings.load()
     },
   })
-  return { sheetOpen, saving, logWeight }
 }
 const logging = usePickedDayLogging()
 </script>
@@ -81,20 +80,20 @@ const logging = usePickedDayLogging()
         aria-hidden="true"
         class="appear-late h-8 w-1/3"
       />
-      <template v-else-if="readings.pickedReading.value">
+      <div
+        v-else-if="readings.pickedReading.value"
+        class="flex items-center justify-between gap-3"
+      >
         <p class="text-stat text-default">
           {{ readings.pickedReading.value.weightKg.toFixed(1) }} kg
         </p>
         <UButton
+          variant="ghost"
           icon="i-lucide-pencil"
-          color="neutral"
-          variant="outline"
-          class="mt-3"
+          :aria-label="`Edit weight on ${plain}`"
           @click="logging.sheetOpen.value = true"
-        >
-          Edit
-        </UButton>
-      </template>
+        />
+      </div>
       <template v-else>
         <p class="text-sm text-muted">No weight on {{ plain }}.</p>
         <UButton

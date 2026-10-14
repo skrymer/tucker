@@ -23,6 +23,26 @@ function dottedDays() {
     .map((day) => day.getAttribute('aria-label'))
 }
 
+/** Picks Fri 9 Oct, opens its Edit, and saves `kg` in its place. */
+async function correctFriday(
+  user: ReturnType<typeof userEvent.setup>,
+  kg: string,
+) {
+  await user.click(
+    screen.getByRole('button', { name: 'Friday, October 9, 2026' }),
+  )
+  await user.click(
+    await screen.findByRole('button', { name: 'Edit weight on Fri 9 Oct' }),
+  )
+  const dialog = await screen.findByRole('dialog', { name: 'Log weight' })
+  const weight = within(dialog).getByLabelText(/Weight \(kg\)/)
+  await user.clear(weight)
+  await user.type(weight, kg)
+  // A number field commits its model on blur, so leave it before submitting.
+  await user.tab()
+  await user.click(within(dialog).getByRole('button', { name: 'Save weight' }))
+}
+
 describe('WeightHistorySection', () => {
   beforeEach(() => {
     // Mon 12 Oct 2026, mid-morning local time; the clock keeps ticking.
@@ -152,13 +172,15 @@ describe('WeightHistorySection', () => {
     await screen.findByText('No weight on Mon 12 Oct.')
     const user = userEvent.setup()
 
-    expect(screen.queryByRole('button', { name: 'Edit' })).toBeNull()
+    expect(screen.queryByRole('button', { name: /^Edit/ })).toBeNull()
 
     await user.click(
       screen.getByRole('button', { name: 'Friday, October 9, 2026' }),
     )
 
-    expect(await screen.findByRole('button', { name: 'Edit' })).toBeVisible()
+    expect(
+      await screen.findByRole('button', { name: 'Edit weight on Fri 9 Oct' }),
+    ).toBeVisible()
   })
 
   it("opens Edit on the picked day's stored kg, with the date locked to it", async () => {
@@ -176,7 +198,9 @@ describe('WeightHistorySection', () => {
       screen.getByRole('button', { name: 'Friday, October 9, 2026' }),
     )
 
-    await user.click(await screen.findByRole('button', { name: 'Edit' }))
+    await user.click(
+      await screen.findByRole('button', { name: 'Edit weight on Fri 9 Oct' }),
+    )
 
     const dialog = await screen.findByRole('dialog', { name: 'Log weight' })
     expect(within(dialog).getByLabelText(/Weight \(kg\)/)).toHaveValue('80.9')
@@ -196,20 +220,8 @@ describe('WeightHistorySection', () => {
     )
     await renderSuspended(WeightHistorySection)
     await screen.findByText('No weight on Mon 12 Oct.')
-    const user = userEvent.setup()
-    await user.click(
-      screen.getByRole('button', { name: 'Friday, October 9, 2026' }),
-    )
 
-    await user.click(await screen.findByRole('button', { name: 'Edit' }))
-    const dialog = await screen.findByRole('dialog', { name: 'Log weight' })
-    const weight = within(dialog).getByLabelText(/Weight \(kg\)/)
-    await user.clear(weight)
-    await user.type(weight, '79.6')
-    await user.tab()
-    await user.click(
-      within(dialog).getByRole('button', { name: 'Save weight' }),
-    )
+    await correctFriday(userEvent.setup(), '79.6')
 
     expect(await screen.findByText('79.6 kg')).toBeVisible()
     expect(screen.queryByText('80.9 kg')).not.toBeInTheDocument()
@@ -233,19 +245,8 @@ describe('WeightHistorySection', () => {
     )
     await renderSuspended(WeightHistorySection)
     await screen.findByText('No weight on Mon 12 Oct.')
-    const user = userEvent.setup()
-    await user.click(
-      screen.getByRole('button', { name: 'Friday, October 9, 2026' }),
-    )
-    await user.click(await screen.findByRole('button', { name: 'Edit' }))
-    const dialog = await screen.findByRole('dialog', { name: 'Log weight' })
-    const weight = within(dialog).getByLabelText(/Weight \(kg\)/)
-    await user.clear(weight)
-    await user.type(weight, '79.6')
-    await user.tab()
-    await user.click(
-      within(dialog).getByRole('button', { name: 'Save weight' }),
-    )
+
+    await correctFriday(userEvent.setup(), '79.6')
 
     await vi.waitFor(() =>
       expect(toastAdd).toHaveBeenCalledWith(

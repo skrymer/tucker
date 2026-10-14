@@ -1,4 +1,4 @@
-import type { Locator } from '@playwright/test'
+import type { APIRequestContext, Locator } from '@playwright/test'
 import { test, expect } from './support/smoke-test'
 import {
   calendarDayName,
@@ -8,7 +8,7 @@ import {
   todayIso,
 } from '../support/date'
 import { timelineLine } from '../support/weight-timeline'
-import { expectStatus } from './support/seeding'
+import { expectCreated, expectStatus } from './support/seeding'
 
 // "Weight history" against the real backend: a day missed inside the Weight
 // Timeline's window is backfilled from the card, and the same reading then
@@ -23,6 +23,31 @@ async function pickDay(card: Locator, iso: string) {
     await card.getByRole('button', { name: 'Previous month' }).click()
   }
   await card.getByRole('button', { name: calendarDayName(iso) }).click()
+}
+
+/**
+ * Three weeks of daily weighing up to [today], drifting down from 82 kg by
+ * 0.05 kg a day, with no reading on [skip].
+ */
+async function seedDailyWeighing(
+  request: APIRequestContext,
+  today: string,
+  skip?: string,
+) {
+  for (let back = 20; back >= 0; back--) {
+    const on = isoShiftDays(today, -back)
+    if (on === skip) continue
+    await expectStatus(
+      request.post(`${API}/weight`, {
+        data: {
+          date: on,
+          weightKg: Number((82 - (20 - back) * 0.05).toFixed(1)),
+          clientToday: today,
+        },
+      }),
+      200,
+    )
+  }
 }
 
 /** The dot [card]'s calendar draws on [iso]: present only on a day holding a reading. */
@@ -40,21 +65,7 @@ test('user backfills a missed day and sees it in the calendar and the Weight Tim
   const today = todayIso()
   const missed = isoShiftDays(today, -10)
 
-  // Three weeks of daily weighing, one day short.
-  for (let back = 20; back >= 0; back--) {
-    const on = isoShiftDays(today, -back)
-    if (on === missed) continue
-    await expectStatus(
-      request.post(`${API}/weight`, {
-        data: {
-          date: on,
-          weightKg: Number((82 - (20 - back) * 0.05).toFixed(1)),
-          clientToday: today,
-        },
-      }),
-      200,
-    )
-  }
+  await seedDailyWeighing(request, today, missed)
 
   await goto('/review', { waitUntil: 'hydration' })
   const card = page.getByRole('region', { name: 'Weight history' })
@@ -109,21 +120,9 @@ test('user corrects a reading inside a reviewed week, and only the live trend fo
     }),
     200,
   )
-  // Three weeks of daily weighing, drifting down from 82 kg: 81.1 kg on the
-  // corrected day.
-  for (let back = 20; back >= 0; back--) {
-    await expectStatus(
-      request.post(`${API}/weight`, {
-        data: {
-          date: isoShiftDays(today, -back),
-          weightKg: Number((82 - (20 - back) * 0.05).toFixed(1)),
-          clientToday: today,
-        },
-      }),
-      200,
-    )
-  }
-  await expectStatus(
+  // 81.1 kg on the corrected day.
+  await seedDailyWeighing(request, today)
+  await expectCreated(
     request.post(`${API}/goal`, {
       data: {
         startedOn: today,
@@ -132,17 +131,18 @@ test('user corrects a reading inside a reviewed week, and only the live trend fo
         clientToday: today,
       },
     }),
-    201,
   )
 
-  // Opening Today fires this week's review, which holds the trend as it stood.
-  await goto('/', { waitUntil: 'hydration' })
-  const reviewBefore = await (await request.get(`${API}/weekly-review`)).json()
-  expect(reviewBefore.reviewedOn, 'the run crossed UTC midnight').toBe(today)
-  const goalBefore = await (await request.get(`${API}/goal`)).json()
-  const progressBefore = await (
-    await request.get(`${API}/goal/progress`)
+  // This week's review holds the trend as it stood.
+  const reviewBefore = await (
+    await request.post(`${API}/weekly-review?clientToday=${today}`)
   ).json()
+  expect(reviewBefore.reviewedOn, 'the run crossed UTC midnight').toBe(today)
+  const [goalBefore, progressBefore] = await Promise.all(
+    ['goal', 'goal/progress'].map(async (path) =>
+      (await request.get(`${API}/${path}`)).json(),
+    ),
+  )
 
   await goto('/review', { waitUntil: 'hydration' })
   const card = page.getByRole('region', { name: 'Weight history' })
@@ -154,7 +154,9 @@ test('user corrects a reading inside a reviewed week, and only the live trend fo
 
   await pickDay(card, corrected)
   await expect(card.getByText('81.1 kg', { exact: true })).toBeVisible()
-  await card.getByRole('button', { name: 'Edit' }).click()
+  await card
+    .getByRole('button', { name: `Edit weight on ${dayHeading(corrected)}` })
+    .click()
   const sheet = page.getByRole('dialog', { name: 'Log weight' })
   await expect(sheet.getByLabel(/weight \(kg\)/i)).toHaveValue('81.1')
   await sheet.getByLabel(/weight \(kg\)/i).fill('77.1')
@@ -190,10 +192,13 @@ test('user corrects a reading inside a reviewed week, and only the live trend fo
   await expect(now).toHaveText(`${progressAfter.currentTrendKg.toFixed(1)} kg`)
 
   // What was recorded before the correction states the trend as it was then.
-  const reviewAfter = await (await request.get(`${API}/weekly-review`)).json()
+  const [reviewAfter, goalAfter] = await Promise.all(
+    ['weekly-review', 'goal'].map(async (path) =>
+      (await request.get(`${API}/${path}`)).json(),
+    ),
+  )
   expect(reviewAfter.id).toBe(reviewBefore.id)
   expect(reviewAfter.trendWeightKg).toBe(reviewBefore.trendWeightKg)
-  const goalAfter = await (await request.get(`${API}/goal`)).json()
   expect(goalAfter.startWeightKg).toBe(goalBefore.startWeightKg)
   expect(progressAfter.startWeightKg).toBe(goalBefore.startWeightKg)
 })

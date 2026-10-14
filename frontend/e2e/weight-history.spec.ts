@@ -67,7 +67,7 @@ test("corrects a picked day's reading, prefilled and quietly", async ({
   const card = page.getByRole('region', { name: 'Weight history' })
   await card.getByRole('button', { name: 'Thursday, June 11, 2026' }).click()
   await expect(card.getByText('81.2 kg')).toBeVisible()
-  await card.getByRole('button', { name: 'Edit' }).click()
+  await card.getByRole('button', { name: 'Edit weight on Thu 11 Jun' }).click()
 
   const sheet = page.getByRole('dialog', { name: 'Log weight' })
   await expect(sheet.getByLabel('Weight (kg)')).toHaveValue('81.2')
