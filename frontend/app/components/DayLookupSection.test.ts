@@ -334,6 +334,44 @@ describe('DayLookupSection', () => {
     ).toBeVisible()
   })
 
+  it('starts a newly picked day collapsed, after Show all on the last one', async () => {
+    server.use(
+      ...dailyLogs({
+        '2026-10-08': [1, 2, 3, 4].map((id) =>
+          weighed(id, `Thu ${id}`, 100, 100, 1),
+        ),
+        '2026-10-06': [1, 2, 3, 4, 5].map((id) =>
+          weighed(10 + id, `Tue ${id}`, 100, 100, 1),
+        ),
+      }),
+    )
+    await renderSuspended(DayLookupSection)
+    const user = userEvent.setup()
+    await user.click(
+      screen.getByRole('button', { name: 'Thursday, October 8, 2026' }),
+    )
+    const thursday = await screen.findByRole('region', { name: 'Thu 8 Oct' })
+    await user.click(
+      within(thursday).getByRole('button', { name: 'Show all 4' }),
+    )
+
+    await user.click(
+      screen.getByRole('button', { name: 'Tuesday, October 6, 2026' }),
+    )
+
+    const tuesday = await screen.findByRole('region', { name: 'Tue 6 Oct' })
+    expect(within(tuesday).getAllByRole('listitem')).toHaveLength(3)
+    expect(within(tuesday).getByText('Tue 3')).toBeVisible()
+    expect(within(tuesday).getByText('Tue 5')).toBeVisible()
+    expect(within(tuesday).queryByText('Tue 2')).not.toBeInTheDocument()
+    expect(
+      within(tuesday).getByRole('button', { name: 'Show all 5' }),
+    ).toBeVisible()
+    expect(
+      within(tuesday).queryByRole('button', { name: 'Show less' }),
+    ).not.toBeInTheDocument()
+  })
+
   it('flags an estimated Entry and states no grams for it', async () => {
     server.use(
       ...dailyLogs({

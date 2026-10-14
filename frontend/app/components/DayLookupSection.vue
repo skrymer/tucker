@@ -195,9 +195,11 @@ const { cardError, retryCard } = useCardError()
             >
               Nothing logged on {{ plain }}.
             </p>
-            <!-- Read-only on every day: deletion stays on Today. -->
+            <!-- Read-only on every day: deletion stays on Today. Keyed by the
+             day, so each newly shown one opens collapsed. -->
             <CappedEntryList
               v-else-if="entries.length"
+              :key="shown"
               :entries="entries"
               class="mt-2"
             />
