@@ -8,7 +8,7 @@ import { held } from '../test/mocks/http'
 // "Look up a day" on /review: an inline month that opens on today, and under it
 // the Entries of whichever day is picked — read-only, with no verdict on it.
 
-test('sits after the Intake Breakdown and lists a picked past day in full', async ({
+test("sits after the Intake Breakdown and lists a picked past day's last three Entries, then all of them", async ({
   goto,
   network,
   page,
@@ -40,6 +40,14 @@ test('sits after the Intake Breakdown and lists a picked past day in full', asyn
           calories: 305,
           protein: 6,
         }),
+        weighedEntry({
+          id: 4,
+          foodId: 3,
+          foodName: 'Greek yoghurt',
+          grams: 170,
+          calories: 99,
+          protein: 17,
+        }),
       ],
     }),
   )
@@ -54,9 +62,24 @@ test('sits after the Intake Breakdown and lists a picked past day in full', asyn
   ).toHaveAccessibleName('Look up a day')
 
   await card.getByRole('button', { name: 'Thursday, June 11, 2026' }).click()
-  await expect(card.getByRole('region', { name: 'Thu 11 Jun' })).toBeVisible()
+  const day = card.getByRole('region', { name: 'Thu 11 Jun' })
+  await expect(day).toBeVisible()
 
   await expect(card).toMatchAriaSnapshot()
+
+  await day.getByRole('button', { name: 'Show all 4' }).click()
+  await expect(day).toMatchAriaSnapshot(`
+    - region "Thu 11 Jun":
+      - /children: deep-equal
+      - heading "Thu 11 Jun" [level=3]
+      - paragraph: 4 entries · 1,287 kcal
+      - list:
+        - listitem: Rolled oats 60 g · 233 kcal · 8 g protein
+        - listitem: Pub burger est. 650 kcal · 35 g protein
+        - listitem: Basmati rice 233 g · 305 kcal · 6 g protein
+        - listitem: Greek yoghurt 170 g · 99 kcal · 17 g protein
+      - button "Show less"
+  `)
 })
 
 // ADR 0007: a placeholder waits 150 ms before showing, so a fast answer never

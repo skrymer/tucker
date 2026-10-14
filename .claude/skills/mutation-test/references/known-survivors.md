@@ -185,15 +185,24 @@ TypeError, so a hand copy without it leaves every assertion green.
 `AppCalendar.test.ts` pins it through Nuxt's `vue:error` hook ("raises no error when
 the User picks the selected day again").
 
-### `components/DayLookupSection.vue` — 1 of 25
+### `components/DayLookupSection.vue` — 3 of 55
 
-| Where                                        | Mutant                        | Verdict        |
-| -------------------------------------------- | ----------------------------- | -------------- |
-| `tally`'s `day.value?.caloriesConsumed ?? 0` | `?.` → `.` (OptionalChaining) | **Equivalent** |
+| Where                                        | Mutant                                           | Verdict        |
+| -------------------------------------------- | ------------------------------------------------ | -------------- |
+| `tally`'s `day.value?.caloriesConsumed ?? 0` | `?.` → `.` (OptionalChaining)                    | **Equivalent** |
+| `useLoggedDays`' `if (!grid) return null`    | `!grid` → `false` (ConditionalExpression)        | **Equivalent** |
+| `useLoggedDays`' `data.value?.days ?? []`    | `[]` → `["Stryker was here"]` (ArrayDeclaration) | **Equivalent** |
 
 `tally` is a lazy computed read only under `v-if="entries.length"`, and `entries` is
 non-empty only when `day.value` is non-null, so the unguarded read is never reached
 with `day.value` null.
+
+The logged-days read runs only when `grid` changes (`useWindowedFetch`'s watch) or on a
+Retry, and a Retry shows only after a read that failed with a grid. `grid` starts null
+and is set only by `AppCalendar`'s `shown`, which always carries one. So nothing ever
+reads with `grid` null. The `days` fallback goes to `:marked`, and `AppCalendar` marks a
+day only if the set holds its ISO date. A non-date string marks nothing. All three
+survive `main` too (803e0ee, #501's sign-off).
 
 ### `utils/date.ts` `isoToCalendarDate` — 1 of 7
 

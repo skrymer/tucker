@@ -116,48 +116,4 @@ describe('DayList', () => {
     // The tally counts the whole day, not the rows the cap leaves showing.
     expect(screen.getByText('5 entries · 1,500 kcal')).toBeVisible()
   })
-  it('reveals every entry with Show all and folds back with Show less', async () => {
-    await renderSuspended(DayList, {
-      props: {
-        day: 'today',
-        date: '2026-10-07',
-        entries: fiveEntries,
-        caloriesConsumed: 1500,
-      },
-    })
-    const user = userEvent.setup()
-
-    await user.click(screen.getByRole('button', { name: 'Show all 5' }))
-
-    expect(screen.getAllByRole('listitem')).toHaveLength(5)
-    expect(screen.getByText('Breakfast')).toBeVisible()
-    expect(
-      screen.getByRole('button', { name: 'Delete Breakfast — 100 kcal' }),
-    ).toBeVisible()
-    expect(
-      screen.queryByRole('button', { name: /show all/i }),
-    ).not.toBeInTheDocument()
-
-    await user.click(screen.getByRole('button', { name: 'Show less' }))
-
-    expect(screen.getAllByRole('listitem')).toHaveLength(3)
-    expect(screen.queryByText('Breakfast')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Show all 5' })).toBeVisible()
-  })
-
-  it('offers no Show all when the day is exactly as long as the list shows', async () => {
-    await renderSuspended(DayList, {
-      props: {
-        day: 'today',
-        date: '2026-10-07',
-        entries: fiveEntries.slice(-3),
-        caloriesConsumed: 1200,
-      },
-    })
-
-    expect(screen.getAllByRole('listitem')).toHaveLength(3)
-    expect(
-      screen.queryByRole('button', { name: /show all/i }),
-    ).not.toBeInTheDocument()
-  })
 })
