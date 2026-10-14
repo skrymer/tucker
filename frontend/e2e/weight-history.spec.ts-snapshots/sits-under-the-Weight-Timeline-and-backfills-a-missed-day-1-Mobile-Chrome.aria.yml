@@ -100,3 +100,4 @@
     - separator
     - paragraph: 80.6 kg
     - button "Edit weight on Sat 13 Jun"
+    - button "Delete weight on Sat 13 Jun"

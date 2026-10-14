@@ -177,7 +177,7 @@ const { pending, execute: runReview } = useApiMutation(
 
     <!-- Ungated like the timeline above it: weight is the premise. A saved
          reading moves the trend, the timeline and the Goal's progress. -->
-    <WeightHistorySection @saved="refreshWeightFigures" />
+    <WeightHistorySection @changed="refreshWeightFigures" />
 
     <!-- One gate, in setup: with Calorie Tracking off nothing was fetched, so
          there is neither a breakdown to render nor an error to report. -->

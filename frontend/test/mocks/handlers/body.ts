@@ -216,6 +216,13 @@ export function bodyAndPlan(seed: {
       }
       return response(200).json(saved)
     }),
+    // An absent id deletes nothing and still answers 204, as the backend's
+    // owner-scoped delete does.
+    http.delete('/api/weight/{id}', ({ params, response }) => {
+      const gone = readings.findIndex((r) => r.id === Number(params.id))
+      if (gone !== -1) readings.splice(gone, 1)
+      return response(204).empty()
+    }),
     http.get('/api/weight/trend', ({ response }) => {
       const trend = trendOf(readings)
       return trend === null
