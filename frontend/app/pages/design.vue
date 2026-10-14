@@ -483,7 +483,7 @@ const calendarDay = ref('2026-10-08')
           class="flex items-center gap-1.5 border-b border-default pb-3"
         >
           <SheetBackButton />
-          <p class="min-w-0 truncate font-semibold text-highlighted">
+          <p class="min-w-0 font-semibold text-balance text-highlighted">
             Match Tasty cheese
           </p>
           <UButton
