@@ -230,6 +230,19 @@ assertion with the dev token), and no browser-level layer can reach it.
   moves behaviour-preserving: a Check that re-read `localToday()` on every mount, a
   scanner canvas rebuilt on every sheet opening, and an `emit` that hit an unmounted
   picker.
+- **`truncate` does nothing on an `h1`–`h3`.** `main.css` gives headings `text-wrap:
+  balance` outside any `@layer`, and an unlayered declaration beats every Tailwind
+  utility, so `white-space: nowrap` never applies and the heading wraps. Measure the
+  rendered height rather than trusting the class. #434's sheet title wraps for this
+  reason, and `ResponsiveOverlay.vue`'s `min-w-0 truncate` on it is inert until the
+  rule moves into `@layer base`.
+- **A failed `useAsyncData` refresh resets `data` to its default** (`null` here), so
+  anything derived from it goes too. #434's Edit sheet closed over the User's unsaved
+  edits when a catalog re-read failed. Hold the last value where losing it costs
+  something: `computed((last) => read ?? last)`, as `foods.vue`'s `foodToEdit` does.
+- **`reka-ui` is pinned to the exact version Nuxt UI resolves**, because
+  `ResponsiveOverlay` imports it directly. Bump the two together, or the tree holds two
+  copies of Reka.
 
 ## Refactor step — the lint names the smell
 

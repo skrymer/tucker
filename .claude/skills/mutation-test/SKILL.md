@@ -177,9 +177,11 @@ Identical for both stacks; only step 1 and 2's commands differ.
      equivalent, then false survivor, and was neither: a third row between the
      colliding pair showed the fallback unreachable because of a real bug (#385).
      **A green hand copy is not proof either when the mutant throws in a Vue event
-     handler** — Vue swallows it. Hook `useNuxtApp().hook('vue:error', …)` and assert
-     nothing arrived: #474's copy without `prevent-deselect` passed every test and
-     raised three TypeErrors.
+     handler, a watcher or a render** — Vue swallows it. Hook
+     `useNuxtApp().hook('vue:error', …)` and assert nothing arrived: #474's copy
+     without `prevent-deselect` passed every test and raised three TypeErrors. A mutant
+     whose only effect is that throw is a **real gap**, not equivalent — "the User sees
+     nothing" is not equivalence (#434's `recipe()?.` after a close).
    - **False survivor** — a test *does* kill it, but the engine never ran that
      test. Suspect it whenever a whole class scores 0%, and **settle it by
      hand-mutating a throwaway copy and running the suite against it**: if tests
@@ -204,7 +206,8 @@ Identical for both stacks; only step 1 and 2's commands differ.
    **Check [`references/known-survivors.md`](references/known-survivors.md) first.**
    Every mutant a full sweep leaves alive already has a verdict there, with the
    evidence. Triage what your *change* introduced; only re-litigate an entry if the
-   code under it moved, and retire one whose code your change deleted — nothing else
+   code under it moved, and retire one whose code your change deleted, in the same
+   feature PR — it is the feature's code, not process — since nothing else
    notices (#464's retro found a `MEMORY_ERROR` entry on code gone two commits earlier).
 
    **Call a survivor "pre-existing" only after running that mutant against
@@ -248,6 +251,12 @@ compound shell command whose text mentions `git`. Run it as two plain calls: `gi
 merge-base origin/main HEAD`, then `git diff --name-only <that sha> -- app server` from
 `frontend/` (plus `git ls-files --others --exclude-standard -- app server`), and filter
 the output by eye.
+
+**A test file the diff deletes takes its subject's spec with it**, and the command above
+filters it out. For each test file deleted or gutted, read its imports with `git show
+<base>:<file>` and add the sources it rendered, children included, to `--mutate`. #434
+deleted `FoodTagsSheet.test.ts`, `TagPicker.vue`'s only real spec, and three mutants
+then survived every remaining host suite until gate 5 found them.
 
 Run (in `frontend/`):
 
@@ -473,7 +482,8 @@ domain code and **~1.6s for anything a controller test covers**.
 ## Delegating triage
 
 With more than ~3 survivors, spawn a subagent (`Agent`, general-purpose,
-explicitly **read-only**) to classify them and return only the verdicts. The
+explicitly **read-only**) to classify them and return only the verdicts. Brief it from
+the template in `feature-sign-off/references/agent-briefs.md` (*The survivor triage*). The
 report is bulky, the conclusion is small, and the classification is judgement
 work. Write the tests yourself afterwards — don't let the agent edit the tree.
 

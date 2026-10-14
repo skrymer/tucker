@@ -34,6 +34,13 @@ if [ $# -eq 0 ]; then
   exit 2
 fi
 
+# Stamp the tree the sweep ran on, so a saved log names its commit and any
+# uncommitted change without anyone remembering to.
+if git rev-parse --git-dir >/dev/null 2>&1; then
+  echo "bounded-run: HEAD $(git rev-parse HEAD)"
+  git status --short | sed 's/^/bounded-run: /'
+fi
+
 # The binary existing is not the same as a systemd *user* manager being reachable: in a
 # container or a bus-less CI shell `--user` fails to connect, and since the real command is
 # exec'd it would never run at all. Probe once, and fall back rather than take the command

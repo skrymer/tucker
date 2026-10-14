@@ -106,7 +106,9 @@ first listed only "the tokens, the root size and the theme", and its audit found
 with a labelled fetch shim (a status, a network error, a hold), not a real-provider
 value that happens to fail differently: #454's "404 miss" timed out instead. Install
 it once per page load — keep the real `fetch` on `window` and toggle flags after; a
-second install wraps the first and recurses. **A
+second install wraps the first and recurses. **Reload before reading the page again**
+after a shim or a write made straight to the API: neither re-reads the page's data, so
+a stale row there is not a finding until a fresh page shows it (#434 chased one twice). **A
 refactor claiming no behaviour change is proved against main on the same data**: build
 main's backend from source (`git archive <sha>:backend | docker build -t
 tucker-backend:main-<sha> -`; GHCR tags are `sha-<short>`, not the bare SHA), retag
@@ -145,7 +147,8 @@ resemble** — a value that looks like the happy path is not a probe.
   session and failed in #442, so it counts as one of the two attempts above, not a
   third route. After two, **ask the user to unmaximize the Chrome window**, or take the
   labelled fallback — a Pixel 7 Playwright context against
-  the same dev server and data works for a single live probe too.
+  the same dev server and data works for a single live probe too
+  ([recipe](references/playwright-fallback.md)).
 - **Ask before the desktop pass, not after it.** The resize only fails at the
   *phone* step, which is halfway through the gate, so the question lands after the
   stack is up and the desktop walk is done — and then everything waits on a human.
@@ -193,7 +196,12 @@ Related, all cheap:
   every type. Setting it through the native setter plus an `input` event drives v-model,
   but it is **not typed entry** — it skips the keystroke and blur timing where F18 slice 5's
   bug lived. Label such probes in the verdict, and drive the golden path and one boundary
-  with real keystrokes (or Playwright `pressSequentially`).
+  with real keystrokes (or Playwright `pressSequentially`). When typing will not land at
+  all, take the [labelled Playwright fallback](references/playwright-fallback.md).
+- **Assert the precondition of a `javascript_tool` action before the committing
+  click.** A selector that matches nothing changes nothing, and the Save after it
+  saves the record unchanged — a probe that reads as passed. #434 lost two Tag probes
+  that way to a chip selector that found no chip.
 - **A sheet stuck in `data-state="closed"` invalidates reopen and reset probes.** It never
   unmounts, so a DOM click reopens the same instance with its old state — a false FAIL
   (#444: "still on Tomorrow, fields filled"; a focused headless Pixel 7 reopened on Today,
@@ -262,8 +270,10 @@ and checks each against a concrete value in the verdict.
   Write it only after marking every value the audit named DRIVEN (quote it) or NOT
   DRIVEN (with the reason), and copy its counts rather than recounting: #454's line
   claimed all values driven, and gate 5's re-check found four in neither list.
-  **DRIVEN means the branch the audit named answered** — a value that came back
-  through another branch is NOT DRIVEN, with that reason. #455 marked a rate DRIVEN
+  **DRIVEN means the branch the audit named answered, every clause of it, live** — a
+  value that came back through another branch is NOT DRIVEN, with that reason, and so is
+  one that skipped a clause the audit named (its Retry) or was seen only after a
+  reload the audit did not ask for (#434's three). #455 marked a rate DRIVEN
   that the server accepted (201) instead of refusing, and gate 5 sent it back. So
   beside each DRIVEN, quote the output only that branch renders (the "since" date,
   the delta, the absent badge), and a NOT DRIVEN reason quotes the `v-if` the changed

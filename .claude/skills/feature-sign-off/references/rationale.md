@@ -5,6 +5,7 @@ for when a gate's order or overlap looks arbitrary and you are tempted to change
 
 ## Contents
 - The design notes
+- Why /verify runs twice
 - Citations
 - Ablation
 - What the fan-out costs
@@ -62,6 +63,15 @@ for when a gate's order or overlap looks arbitrary and you are tempted to change
   bought was a narrower question, asked in the author's terms. That is a milder
   defect than agreement, and it is still the defect the contract exists for — a
   claim to test beats a claim to check.
+
+## Why /verify runs twice
+
+Gates 1 and 3 change behaviour as a matter of course, so a single up-front walk-through
+is stale by the time the code is final — measured, not feared: in the run this order
+was written from, `/simplify` changed an error state and `/code-review` changed the
+feature's own matching rule, and the walk-through had to be redone anyway. So the cheap
+half runs first, to stop the expensive gates being spent on a surface that does not
+load, and the real one runs last, on the code that ships.
 
 ## Citations
 

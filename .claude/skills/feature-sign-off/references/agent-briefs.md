@@ -14,6 +14,7 @@ author felt. The repo makes this move elsewhere: `app/utils/exits.ts` and
 
 - The prompt contract — what every brief carries and never carries
 - The `/simplify` angles — gate 1's three angle lines
+- The survivor triage — gate 2's read-only classifier
 - Brief A — the adversary (gate 3)
 - Brief B — the blind arbiter (on a split)
 - Brief C — the verdict auditor (gate 6)
@@ -53,8 +54,9 @@ agent, and the six below.
   overwrites only the same-day record)". It is not a defence, but it is a finding
   handed over: in #358 that example became the check's first FAIL, and in #400 an
   efficiency angle's "e.g. every request now passing through a router" became that
-  agent's first finding. It applies to **every** angle line, the `/simplify` three's and
-  `/check-adrs`' included, which have no template to copy and so are where it slips in:
+  agent's first finding. It applies to **every** angle line, the `/simplify` three's, the
+  survivor triage's and `/check-adrs`' included — the places it slips in most (#434's
+  triage brief named the deleted files it expected survivors in):
   #411's check-adrs brief named two ADRs "e.g." and both came back UNCERTAIN. Name the
   kind of thing to look for, never an instance of it. A context pack is where to
   *start reading*, so it names only files the diff touches or the issue cites; a
@@ -145,6 +147,31 @@ Angle: ALTITUDE. Does each change sit at the right depth — fixing the root cau
 the underlying mechanism, rather than patching a symptom, special-casing shared
 infrastructure, or splitting one concern across layers? Where it does not, name the
 change at the right depth and what it would absorb.
+```
+
+## The survivor triage — gate 2
+
+**Fires:** when a scoped sweep leaves more than ~3 survivors (`mutation-test`'s
+*Delegating triage*). One agent, read-only. Fill the slots with paths, never with the
+survivors you expect or the verdicts you lean to.
+
+```
+READ-ONLY: do not edit, create or delete any file, in the repo or outside it.
+
+A mutation sweep ran over [scoped source files, as the --mutate list] at [sha].
+Survivors and no-coverage mutants, one per line: [survivors file path]. The full report
+is [mutation.json / mutations.xml path]. Standing verdicts for earlier sweeps are in
+.claude/skills/mutation-test/references/known-survivors.md, and the four verdicts and
+their rules are in .claude/skills/mutation-test/SKILL.md (step 3). The change under
+test: [the one diff command]. Read anything else you want.
+
+For every line of the survivors file, return one row:
+| file:line | mutator → replacement | verdict | evidence |
+verdict is one of: real gap, killed by an out-of-scope layer (name the spec and test),
+equivalent, false survivor, or standing (quote the known-survivors entry, and say
+whether the code under it moved). Evidence cites the source lines that decide it. A
+mutant whose only effect is a thrown error is not equivalent; say where the error goes.
+Return rows for every line, including the ones you are unsure of, marked UNSURE.
 ```
 
 ## Brief A — the adversary
