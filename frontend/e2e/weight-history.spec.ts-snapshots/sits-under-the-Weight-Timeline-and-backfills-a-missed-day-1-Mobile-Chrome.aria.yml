@@ -99,3 +99,4 @@
     - heading "Event Date, June 2026" [level=2]
     - separator
     - paragraph: 80.6 kg
+    - button "Edit"
