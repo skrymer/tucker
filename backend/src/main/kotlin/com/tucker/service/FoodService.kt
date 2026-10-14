@@ -99,16 +99,6 @@ class FoodService(
     fun updateRecipe(recipe: Recipe): Food? = if (ownsAll(recipe.tagIds)) recipes.update(recipe) else null
 
     /**
-     * Put exactly [tagIds] on the Food [id], or return null having written nothing when
-     * the Food or one of the Tags is not the caller's (ADR 0033).
-     */
-    @Transactional
-    fun retag(id: Long, tagIds: Collection<Long>): Food? {
-        if (!ownsAll(tagIds)) return null
-        return foods.findById(id)?.let { foods.update(it.retagged(tagIds)) }
-    }
-
-    /**
      * Correct the Food [id] to [name], [macros] and exactly [tagIds] (ADR 0037), and
      * re-roll every Recipe using it, since a Recipe stores its figures when saved
      * (ADR 0019).

@@ -1,28 +1,31 @@
 import type { APIRequestContext } from '@playwright/test'
 import { test, expect } from './support/smoke-test'
-import { create, expectStatus } from './support/seeding'
+import { create } from './support/seeding'
 import { entryRow } from '../support/entry-row'
 import { enterGrams, pickFoodToLog } from '../support/log-page'
 
-// F18 slice 2 smoke: Log narrowed by a Tag against the real backend. Tags two
-// Foods over the API, then narrows Log by that Tag and logs one of them. What
-// only the real stack can show is that the chips come from the Tags each Food
-// already carries on `GET /api/foods` — so a Tag carrying nothing, which
-// `GET /api/tags` would list, is never offered. The per-test reset wipes the
-// seed, so there is no cleanup.
-const API = 'http://localhost:8080/api'
+// F18 slice 2 smoke: Log narrowed by a Tag against the real backend. Creates two
+// Foods carrying a Tag over the API, then narrows Log by that Tag and logs one
+// of them. What only the real stack can show is that the chips come from the
+// Tags each Food already carries on `GET /api/foods` — so a Tag carrying
+// nothing, which `GET /api/tags` would list, is never offered. The per-test
+// reset wipes the seed, so there is no cleanup.
 
 /**
  * A Food whose macros make 57.8 kcal per 100 g under Atwater — the figure the
  * last assertion is read against, derived by the backend and never sent.
  */
-const createFood = (request: APIRequestContext, name: string) =>
+const createFood = (
+  request: APIRequestContext,
+  name: string,
+  tagIds: number[] = [],
+) =>
   create(request, '/foods', {
     name,
     proteinPer100g: 10,
     carbsPer100g: 4,
     fatPer100g: 0.2,
-    tagIds: [],
+    tagIds,
   })
 
 test('a Tag narrows Log to the Foods carrying it, and one is logged from there', async ({
@@ -30,19 +33,11 @@ test('a Tag narrows Log to the Foods carrying it, and one is logged from there',
   goto,
   request,
 }) => {
-  const oats = await createFood(request, 'Rolled oats')
-  const eggs = await createFood(request, 'Free-range eggs')
-  await createFood(request, 'Weekday chilli')
   const breakfast = await create(request, '/tags', { name: 'breakfast' })
   await create(request, '/tags', { name: 'Snack' })
-  for (const food of [oats, eggs]) {
-    await expectStatus(
-      request.put(`${API}/foods/${food}/tags`, {
-        data: { tagIds: [breakfast] },
-      }),
-      200,
-    )
-  }
+  await createFood(request, 'Rolled oats', [breakfast])
+  await createFood(request, 'Free-range eggs', [breakfast])
+  await createFood(request, 'Weekday chilli')
 
   await goto('/log', { waitUntil: 'hydration' })
 

@@ -146,9 +146,10 @@ class FoodCorrectionApiTest {
     fun `a correction that does not say which Tags the Food carries is refused, and nothing is written`() {
         val oats = createFood("Rolled oast", protein = 31.0, carbs = 60.0, fat = 7.0)
         val breakfast = createTag("breakfast")
-        mockMvc.put("/api/foods/$oats/tags") {
+        mockMvc.put("/api/foods/$oats") {
             contentType = MediaType.APPLICATION_JSON
-            content = """{"tagIds":[$breakfast]}"""
+            content = """{"name":"Rolled oast","proteinPer100g":31.0,"carbsPer100g":60.0,"fatPer100g":7.0,
+                          "tagIds":[$breakfast]}"""
         }.andExpect { status { isOk() } }
 
         mockMvc.put("/api/foods/$oats") {

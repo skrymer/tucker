@@ -64,10 +64,11 @@ class FrequentFoodsReadTransactionTest {
                 content = """{"name":"breakfast"}"""
             }.andReturn().response.contentAsString,
         )
-        mockMvc.put("/api/foods/$oats/tags") {
+        mockMvc.put("/api/foods/$oats") {
             header(ACCESS_ASSERTION_HEADER, reader)
             contentType = MediaType.APPLICATION_JSON
-            content = """{"tagIds":[$breakfast]}"""
+            content = """{"name":"Rolled oats","proteinPer100g":13.0,"carbsPer100g":60.0,
+                          "fatPer100g":7.0,"tagIds":[$breakfast]}"""
         }.andExpect { status { isOk() } }
         val entry = idOf(
             mockMvc.post("/api/entries/weighed") {

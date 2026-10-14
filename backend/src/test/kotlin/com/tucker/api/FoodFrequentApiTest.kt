@@ -83,9 +83,10 @@ class FoodFrequentApiTest {
                 content = """{"name":"breakfast"}"""
             }.andReturn().response.contentAsString,
         )
-        mockMvc.put("/api/foods/$oats/tags") {
+        mockMvc.put("/api/foods/$oats") {
             contentType = MediaType.APPLICATION_JSON
-            content = """{"tagIds":[$breakfast]}"""
+            content = """{"name":"Rolled oats","proteinPer100g":31.0,"carbsPer100g":0.0,"fatPer100g":3.6,
+                          "tagIds":[$breakfast]}"""
         }.andExpect { status { isOk() } }
         logWeighed(oats)
 

@@ -1831,5 +1831,8 @@ null` now means two things that earn opposite messages — the same trap
     the sheet opens on its editor or on nothing.
   - **A correction leaves the match alone** — already true of `Food.corrected`, and
     now pinned by an API test, shown red on a copy whose correction drops it.
-  - **`PUT /api/foods/{id}/tags` has no caller left in the app**: plain Foods take
-    their Tags through the correction and Recipes through their editor.
+  - **`PUT /api/foods/{id}/tags` is removed** (the user's ruling), with
+    `FoodService.retag`: plain Foods take their Tags when created or corrected, and
+    Recipes through their editor, so nothing in the app called it. The tests that
+    seeded Tags through it now create or correct the Food instead, and its two
+    cross-User refusals already had correction twins from slice 1.

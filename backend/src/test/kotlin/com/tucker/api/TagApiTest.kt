@@ -204,9 +204,14 @@ class TagApiTest {
         content = """{"name":"$name"}"""
     }
 
-    private fun tagFood(food: Long, vararg tags: Long) = mockMvc.put("/api/foods/$food/tags") {
+    /** Correct [food] to carry exactly [tags], restating the name and macros it was created with. */
+    private fun tagFood(food: Long, vararg tags: Long) = mockMvc.put("/api/foods/$food") {
+        val name = objectMapper.readTree(
+            mockMvc.get("/api/foods/$food").andReturn().response.contentAsString,
+        )["name"].asText()
         contentType = MediaType.APPLICATION_JSON
-        content = """{"tagIds":[${tags.joinToString(",")}]}"""
+        content = """{"name":"$name","proteinPer100g":13.0,"carbsPer100g":60.0,"fatPer100g":7.0,
+                      "tagIds":[${tags.joinToString(",")}]}"""
     }.andExpect { status { isOk() } }
 
     private fun createFood(name: String): Long = idOf(

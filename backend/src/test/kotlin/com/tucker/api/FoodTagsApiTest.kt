@@ -16,7 +16,10 @@ import org.springframework.test.web.servlet.post
 import org.springframework.test.web.servlet.put
 import org.springframework.transaction.annotation.Transactional
 
-/** `PUT /api/foods/{id}/tags` — which **Tags** a Food carries (ADR 0033). */
+/**
+ * Which **Tags** a Food carries (ADR 0033): set when it is created, and when it is
+ * corrected (ADR 0037).
+ */
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
@@ -33,10 +36,7 @@ class FoodTagsApiTest {
         val snack = createTag("snack")
         val breakfast = createTag("Breakfast")
 
-        mockMvc.put("/api/foods/$oats/tags") {
-            contentType = MediaType.APPLICATION_JSON
-            content = """{"tagIds":[$snack,$breakfast]}"""
-        }.andExpect {
+        retagging(oats, snack, breakfast).andExpect {
             status { isOk() }
             jsonPath("$.tags.length()") { value(2) }
         }
@@ -48,6 +48,21 @@ class FoodTagsApiTest {
             jsonPath("$.tags[0].name") { value("Breakfast") }
             jsonPath("$.tags[1].id") { value(snack) }
             jsonPath("$.tags[1].name") { value("snack") }
+        }
+    }
+
+    @Test
+    fun `a Food's Tags have no endpoint of their own, its correction setting them`() {
+        val oats = createFood("Rolled oats")
+        val breakfast = createTag("breakfast")
+
+        mockMvc.put("/api/foods/$oats/tags") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"tagIds":[$breakfast]}"""
+        }.andExpect { status { isNotFound() } }
+
+        mockMvc.get("/api/foods/$oats").andExpect {
+            jsonPath("$.tags.length()") { value(0) }
         }
     }
 
@@ -114,10 +129,7 @@ class FoodTagsApiTest {
         val breakfast = createTag("breakfast")
         retag(oats, breakfast)
 
-        mockMvc.put("/api/foods/$oats/tags") {
-            contentType = MediaType.APPLICATION_JSON
-            content = """{"tagIds":[$breakfast,999999]}"""
-        }.andExpect {
+        retagging(oats, breakfast, 999999).andExpect {
             status { isNotFound() }
         }
 
@@ -183,10 +195,17 @@ class FoodTagsApiTest {
     }
 
     private fun retag(foodId: Long, vararg tagIds: Long) {
-        mockMvc.put("/api/foods/$foodId/tags") {
-            contentType = MediaType.APPLICATION_JSON
-            content = """{"tagIds":[${tagIds.joinToString(",")}]}"""
-        }.andExpect { status { isOk() } }
+        retagging(foodId, *tagIds).andExpect { status { isOk() } }
+    }
+
+    /** Correct [foodId] to carry exactly [tagIds], restating the name and macros it was created with. */
+    private fun retagging(foodId: Long, vararg tagIds: Long) = mockMvc.put("/api/foods/$foodId") {
+        val name = objectMapper.readTree(
+            mockMvc.get("/api/foods/$foodId").andReturn().response.contentAsString,
+        )["name"].asText()
+        contentType = MediaType.APPLICATION_JSON
+        content = """{"name":"$name","proteinPer100g":13.0,"carbsPer100g":60.0,"fatPer100g":7.0,
+                      "tagIds":[${tagIds.joinToString(",")}]}"""
     }
 
     private fun createFood(name: String): Long {
