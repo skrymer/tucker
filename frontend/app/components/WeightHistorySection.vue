@@ -39,8 +39,8 @@ function useBackfill() {
     today: () => localToday(),
     // No success toast: the day's dot and reading appear in the card itself.
     onSaved: async () => {
-      await readings.load()
       emit('saved')
+      await readings.load()
     },
   })
   return { sheetOpen, saving, logWeight }

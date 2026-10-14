@@ -214,7 +214,7 @@ describe('WeightHistorySection', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
-  it('tells its page a reading was saved, once the card holds it', async () => {
+  it('tells its page a reading was saved', async () => {
     server.use(...bodyAndPlan({ profile: null, readings: [], today: TODAY }))
     const onSaved = vi.fn()
     await renderSuspended(WeightHistorySection, { props: { onSaved } })
