@@ -177,6 +177,17 @@ describe('GoalSection', () => {
     ).not.toBeInTheDocument()
   })
 
+  it('points to Today for the weight a goal waits on when disabled', async () => {
+    await renderSuspended(GoalSection, {
+      props: { goals: [], currentTrend: null, disabled: true },
+    })
+
+    expect(screen.getByRole('link', { name: 'Today' })).toHaveAttribute(
+      'href',
+      '/',
+    )
+  })
+
   it('offers no history affordance while maintaining, past goals or not', async () => {
     // Maintenance is the absence of an active Goal (ADR 0008), so past goals are
     // ordinary there — the section is the durable status and its re-entry, not a

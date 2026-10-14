@@ -74,7 +74,8 @@ watch(
 
     <!-- Gated: a weight reading must exist before a goal can be set. -->
     <p v-if="props.disabled" class="text-sm text-muted">
-      Log your weight first to set a goal.
+      Log your weight first, on <ULink to="/" class="underline">Today</ULink>,
+      to set a goal.
     </p>
 
     <template v-else>

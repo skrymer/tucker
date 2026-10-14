@@ -40,42 +40,38 @@ async function saveDetails() {
 }
 
 describe('/profile progressive disclosure', () => {
-  it('disables Weight and Goal with explanatory copy when there is no profile', async () => {
+  it('disables Goal with explanatory copy when there is no profile', async () => {
     holds(null)
     await renderSuspended(Profile)
 
-    const weight = screen.getByRole('region', { name: /^weight$/i })
-    expect(within(weight).getByText(/set your profile first/i)).toBeVisible()
-    expect(
-      within(weight).queryByRole('button', { name: /add weight/i }),
-    ).toBeNull()
-
     const goal = screen.getByRole('region', { name: /^goal$/i })
     expect(within(goal).getByText(/log your weight first/i)).toBeVisible()
     expect(within(goal).queryByLabelText(/target weight/i)).toBeNull()
   })
 
-  it('enables Weight but keeps Goal disabled when a profile exists with no weight', async () => {
+  it('keeps Goal disabled when a profile exists with no weight', async () => {
     holds(baselineProfile)
     await renderSuspended(Profile)
 
-    const weight = screen.getByRole('region', { name: /^weight$/i })
-    expect(
-      within(weight).getByRole('button', { name: /add weight/i }),
-    ).toBeVisible()
-    expect(within(weight).queryByText(/set your profile first/i)).toBeNull()
+    const goal = screen.getByRole('region', { name: /^goal$/i })
+    expect(within(goal).getByText(/log your weight first/i)).toBeVisible()
+    expect(within(goal).queryByLabelText(/target weight/i)).toBeNull()
+  })
+
+  it('keeps Goal disabled when a weight exists but no profile does', async () => {
+    holds(null, [reading])
+    await renderSuspended(Profile)
 
     const goal = screen.getByRole('region', { name: /^goal$/i })
     expect(within(goal).getByText(/log your weight first/i)).toBeVisible()
     expect(within(goal).queryByLabelText(/target weight/i)).toBeNull()
   })
 
-  it('renders the sections in order: Goal, Weight, Your details, Reminder', async () => {
+  it('renders the sections in order: Goal, Your details, Reminder', async () => {
     holds(baselineProfile, [reading])
     await renderSuspended(Profile)
 
     const goal = screen.getByRole('heading', { name: /^goal$/i })
-    const weight = screen.getByRole('heading', { name: /^weight$/i })
     const details = screen.getByRole('heading', { name: /your details/i })
     const reminder = screen.getByRole('heading', {
       name: /weekly-review reminder/i,
@@ -87,23 +83,16 @@ describe('/profile progressive disclosure', () => {
         Node.DOCUMENT_POSITION_FOLLOWING,
       )
 
-    expect(follows(goal, weight)).toBe(true)
-    expect(follows(weight, details)).toBe(true)
+    expect(follows(goal, details)).toBe(true)
     expect(follows(details, reminder)).toBe(true)
   })
 
-  it('enables all three sections once a profile and a weight exist', async () => {
+  it('enables both sections once a profile and a weight exist', async () => {
     holds(baselineProfile, [reading])
     await renderSuspended(Profile)
 
     // Profile section is always interactive.
     expect(saveProfile()).toBeVisible()
-
-    const weight = screen.getByRole('region', { name: /^weight$/i })
-    expect(
-      within(weight).getByRole('button', { name: /add weight/i }),
-    ).toBeVisible()
-    expect(within(weight).queryByText(/set your profile first/i)).toBeNull()
 
     // Goal is unlocked: the maintenance status offers re-entry via "Start a
     // goal", no gating copy. (The form itself stays behind that CTA.)
@@ -113,19 +102,28 @@ describe('/profile progressive disclosure', () => {
     ).toBeVisible()
     expect(within(goal).queryByText(/log your weight first/i)).toBeNull()
   })
+
+  it('carries no Weight section, with or without readings', async () => {
+    holds(baselineProfile, [reading])
+    await renderSuspended(Profile)
+
+    expect(screen.getByRole('region', { name: /^goal$/i })).toBeVisible()
+    expect(screen.queryByRole('region', { name: /^weight$/i })).toBeNull()
+    expect(screen.queryByRole('button', { name: /add weight/i })).toBeNull()
+  })
 })
 
 describe('/profile when a section fails to load', () => {
-  it('shows a retryable error in place of the Weight section', async () => {
+  it('shows a retryable error in place of the Goal section when the readings fail to load', async () => {
     holds(null)
     server.use(failingRead('/api/weight'))
     await renderSuspended(Profile)
 
     expect(
-      screen.getByRole('heading', { name: "Couldn't load your weight" }),
+      screen.getByRole('heading', { name: "Couldn't load your goal" }),
     ).toBeVisible()
     expect(
-      screen.queryByRole('region', { name: /^weight$/i }),
+      screen.queryByRole('region', { name: /^goal$/i }),
     ).not.toBeInTheDocument()
   })
 
@@ -322,38 +320,5 @@ describe('/profile when the backend refuses a goal', () => {
         'false',
       )
     }
-  })
-})
-
-describe('/profile logging a weight', () => {
-  it('keeps the weight sheet up, reporting busy, until the save lands', async () => {
-    // The sheet is the confirmation: dismissing it optimistically claims a
-    // reading is stored before the server has said so (ADR 0007).
-    const save = held('post', '/api/weight')
-    holds(baselineProfile)
-    server.use(save.handler)
-    await renderSuspended(Profile)
-    const user = userEvent.setup()
-
-    const weight = screen.getByRole('region', { name: /^weight$/i })
-    await user.click(
-      within(weight).getByRole('button', { name: /add weight/i }),
-    )
-    await user.type(screen.getByLabelText(/weight \(kg\)/i), '84.2')
-    // A number field commits its model on blur, so leave it before submitting.
-    await user.tab()
-
-    const saveWeight = () =>
-      screen.getByRole('button', { name: /save weight/i })
-    expect(saveWeight()).toBeEnabled()
-    await user.click(saveWeight())
-
-    await save.arrived
-    await vi.waitFor(() => expect(saveWeight()).toBeDisabled())
-
-    save.release()
-    await vi.waitFor(() =>
-      expect(screen.queryByRole('dialog', { name: /log weight/i })).toBeNull(),
-    )
   })
 })

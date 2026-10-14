@@ -39,6 +39,10 @@ const {
 // and a section that waits on a read it does not need appears a round trip late.
 const openingReads = Promise.all([refreshGoalProgress(), refreshTimeline()])
 
+/** A saved reading moves the trend, so the timeline and the Goal's progress. */
+const refreshWeightFigures = () =>
+  Promise.all([refreshTimeline(), refreshGoalProgress()])
+
 // The Weekly Review ledger: the history of the adaptive engine's recomputes,
 // newest-first, plus a manual "run review now" trigger. Reuses the existing
 // per-aggregate endpoints — no composite UI endpoint (ADR 0002).
@@ -170,6 +174,10 @@ const { pending, execute: runReview } = useApiMutation(
         :pending="timelinePending"
       />
     </LoadErrorState>
+
+    <!-- Ungated like the timeline above it: weight is the premise. A saved
+         reading moves the trend, the timeline and the Goal's progress. -->
+    <WeightHistorySection @saved="refreshWeightFigures" />
 
     <!-- One gate, in setup: with Calorie Tracking off nothing was fetched, so
          there is neither a breakdown to render nor an error to report. -->

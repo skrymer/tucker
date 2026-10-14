@@ -59,10 +59,9 @@ test('the Profile page saves the profile and shows it again on the next visit', 
   await page.getByLabel(/height/i).fill('180')
   await page.getByRole('button', { name: /save profile/i }).click()
 
-  // A Profile unlocks the Weight section: the save has landed.
-  const weight = page.getByRole('region', { name: /^weight$/i })
+  // A Profile unlocks the reminder settings: the save has landed.
   await expect(
-    weight.getByRole('button', { name: /add weight/i }),
+    page.getByRole('heading', { name: /weekly-review reminder/i }),
   ).toBeVisible()
 
   await page.reload()

@@ -272,6 +272,8 @@ test.describe('with Calorie Tracking on', () => {
 
     const ring = page.locator('.intake-ring')
     await expect(ring).toBeVisible()
+    // Below the fold, and the pointer is moved by page coordinates.
+    await ring.scrollIntoViewIfNeeded()
 
     // Straight up from the middle is the first arc: the ring starts at twelve
     // o'clock and the backend ranks the biggest slice first. Driven by geometry
