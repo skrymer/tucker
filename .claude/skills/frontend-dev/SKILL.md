@@ -56,6 +56,10 @@ name, and no screen restates one inline.
 - **Colour** — the Nuxt UI colour roles and `--ui-*`/`@theme` tokens (DESIGN.md → Colour,
   Mapping to Nuxt UI), never hex, and never the only signal (DESIGN.md → Guardrails).
 - **A value the scale lacks** — DESIGN.md → Guardrails says how it becomes a token.
+- **An action another surface already offers** takes that surface's control: read it and
+  copy its shape (variant, icon, placement, how it is named) before building one. #497's
+  card shipped an outline "Edit" text button beside Today's ghost pencil for the same
+  edit, and undoing it cost a user ruling, four aria baselines and an amended criterion.
 
 The guards below enforce it. A red one means the change broke the rule above: go back to the
 token, don't loosen the guard.

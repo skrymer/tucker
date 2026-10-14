@@ -96,6 +96,16 @@ on an unquoted claim: that the sheet stays open until a reload (the composable c
 first) and that no nested route exists to use as an example (the matcher takes any path).
 Show the assertion red on a scratch copy of the pre-fix code, and quote the line.
 
+A claim that **nothing in the repo does X** carries the search that would have found X:
+start at the precedent the finding itself cited, and search without a context window
+piped into a second filter. #497 dismissed "no smoke issues concurrent writes" on
+`grep -B1 -A3 'Promise.all' … | grep post`, whose three-line window stopped one line
+short of the POST in the very file the efficiency agent cited. And a **measurement**
+offered as evidence checks every response's status (`curl -sf`, or
+`-w '%{http_code}'`) and times the path the code under judgement takes: the same
+dismissal's timing script discarded statuses and went through the dev proxy while the
+smoke calls the backend directly. Gate 5 rejected both.
+
 ## Ablation
 
 #442's phone fix was a header row's `flex-wrap` plus `whitespace-nowrap` on the

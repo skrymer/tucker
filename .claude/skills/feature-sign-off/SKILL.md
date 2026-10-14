@@ -24,8 +24,9 @@ Run them in this sequence — the order is deliberate. Address what each surface
 reachability pass first, the real walk-through last, on the code that ships
 ([why](references/rationale.md#why-verify-runs-twice)).
 
-**Record every agent's `output_file` path as you spawn it.** Gate 5 reads those
-transcripts, and a path not written down then is a directory hunt later.
+**Record every agent's `output_file` path as you spawn it, and stamp each run log as you
+write it** (`git rev-parse HEAD` + `git status --short`, from a scratchpad script): gate 5
+reads both, and #455's and #497's unstamped logs could not be placed.
 
 0. **`/verify` (reachability) — does it run at all?** One viewport, the golden
    path, no probes. Two minutes. FAIL or BLOCKED stops the sign-off before an agent
@@ -178,7 +179,7 @@ transcripts, and a path not written down then is a directory hunt later.
    the moment a gate-3 fix switched that read to `latest`. Measured in #435: two
    fixes written after gate 5 each left a new real gap only the re-sweep found.
    Stryker mutates a `.vue` file's `<script>` only, so the template lines of any fix
-   are pinned by hand-mutated copies instead — say so in the pack (#433).
+   are pinned by hand-mutated copies, one per changed attribute — say so in the pack (#433).
 
    Gate 2 does **not** join them. It writes tests, and gate 3's test-quality pass
    reviews them — in the measured run it caught a vacuous assertion in a test
@@ -198,8 +199,7 @@ transcripts, and a path not written down then is a directory hunt later.
    named path: the agent is read-only, so a question only a run can answer needs that
    run supplied — or the brief allows a throwaway copy in the scratchpad and says so.
    Take it on the file as committed — after Prettier and the pre-commit hook — and
-   stamp it with `git rev-parse HEAD:<file>` (#408), and every saved run log with `git
-   rev-parse HEAD` + `git status --short`: #455's unstamped logs cost gate 5 two rebuilds.
+   stamp it with `git rev-parse HEAD:<file>` (#408), and every run log as the top says.
    That copy runs Vitest only with `node_modules` hard-linked (`cp -al`, then `nuxt
    prepare`) — a symlinked one cannot resolve modules (#402) — and the pack carries
    saved output anyway.

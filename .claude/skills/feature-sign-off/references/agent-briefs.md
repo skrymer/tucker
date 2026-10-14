@@ -80,7 +80,9 @@ skill's gate 4 requires it — so it needs no note.
 summary line copied whole, never fields picked from it (#468 quoted a Vitest file's
 `environment` and `setup` and left out the `tests` where its boot landed), and every finding an agent returns gets a row, a
 "harmless" nit included — and so does a behaviour change the agent dismissed itself (an
-adversary's failed attack, a ledger's scope tail): #455 PR 2's pack read one as resolved. #443's pack recounted a hand-mutation run as "11/12" (the
+adversary's failed attack, a ledger's scope tail): #455 PR 2's pack read one as resolved.
+A re-run brief's report is diffed against the first run's, and each attack or row it adds
+is its own row — "fail as in run 1" hid two new attacks in #497. #443's pack recounted a hand-mutation run as "11/12" (the
 file said 10 of 11) and dropped a one-line nit; gate 5 had to correct both. A row says
 re-recorded, withdrawn or superseded only once that edit is in the file, and a
 re-resolution marks the row it replaces in the same edit: #469 claimed two re-records
