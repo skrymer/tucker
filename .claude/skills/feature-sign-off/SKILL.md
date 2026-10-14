@@ -12,26 +12,20 @@ issue asked for, or out of step with the project's recorded decisions. Each gate
 a real skill — this skill is the conductor that runs them in the right order and
 acts on what they find.
 
-Run it from a clean-enough working tree where the feature's behaviour is done.
-It does **not** replace TDD during the build; it's the final sweep after.
+Run it from a clean-enough working tree where the feature's behaviour is done, and
+run **`/handoff` before gate 0**, so the long run can resume in a fresh session. It does **not** replace TDD during the build; it's the final sweep after.
 
 ## The seven gates, in order
 
 Run them in this sequence — the order is deliberate. Address what each surfaces
 *before* starting the next.
 
-**`/verify` runs twice, and that is the whole shape of this list.** Gates 1 and 3
-change behaviour as a matter of course, so a single up-front walk-through is stale
-by the time the code is final — measured, not feared: in the run this order was
-written from, `/simplify` changed an error state and `/code-review` changed the
-feature's own matching rule, and the walk-through had to be redone anyway. So the
-cheap half runs first, to stop the expensive gates being spent on a surface that
-does not load, and the real one runs last, on the code that ships.
+**`/verify` runs twice, and that is the whole shape of this list**: a cheap
+reachability pass first, the real walk-through last, on the code that ships
+([why](references/rationale.md#why-verify-runs-twice)).
 
 **Record every agent's `output_file` path as you spawn it.** Gate 5 reads those
-transcripts, and a path not written down when the agent ran is a directory hunt
-later — so this one instruction has to be obeyed several gates before the gate that
-needs it.
+transcripts, and a path not written down then is a directory hunt later.
 
 0. **`/verify` (reachability) — does it run at all?** One viewport, the golden
    path, no probes. Two minutes. FAIL or BLOCKED stops the sign-off before an agent
@@ -172,8 +166,9 @@ needs it.
    honoured every ADR and silently contradicted AC6 as written; gate 5 caught it.
    Likewise any item an agent explicitly marks "the user's call" goes to the user —
    the pack does not decide it. The adversary needs no re-check after a correctness
-   fix; a user ruling that adds behaviour gets it re-run on that commit (#476), and
-   the ledger re-run on the criterion the ruling amended (#433).
+   fix. A user ruling that adds behaviour, or settles how a criterion is met, is one
+   step: `gh issue edit` the criterion in the user's words, then re-run Briefs A and D
+   on that commit (#476, #433; #434 did neither, and gate 5 sent it back).
 
    **Gate 2's verdicts do need one, after every later fix** — gate 2's own triage's,
    gate 3's, a gate-5 re-resolution's, a gate-6 fix's: re-run the scoped mutation sweep over the files
@@ -372,7 +367,9 @@ which gate 5 sent back.
 Gate 1's fan-out is where this happens most, but gates 3 and 4 can split the same way,
 when a correctness fix runs into a recorded constraint. The trigger is narrow —
 *opposing answers to one question*, not two findings to prioritise — and includes a
-resolution adopting one agent's remedy for lines another agent's would change (#432). **The arbiter's pick is what lands.** If you
+resolution adopting one agent's remedy for lines another agent's would change (#432). **The arbiter's pick is what lands** — after you test any state its "strongest case
+against" names: #434's arbiter named the sheet closing over a draft, called it arguably
+correct, and gate 5 found exactly that harm. If you
 override it, that override goes into gate 5's pack as its own finding-and-resolution
 pair; a rule that forbade the override outright would be unenforceable, since you
 write the code either way.
@@ -480,7 +477,9 @@ Why the gates sit in this order, why two overlap, and why a briefed agent is not
   isn't — one that answers **each** remedy the finding names, not only the first (#400,
   #455). A mid-sign-off handoff passes findings and every remedy on, never verdicts: #455's
   "justify, don't fix" list held three dismissals gate 5 rejected, and #455 PR 2's "Detekt
-  refused it" a fourth. An unaddressed finding means the sign-off isn't done.
+  refused it" a fourth. A dismissal reading "no worse than `main`" or "pre-existing"
+  cites a drive of the same User steps on main, or it is not written: #434 wrote two
+  from reading main, and gate 5 rejected both. An unaddressed finding means the sign-off isn't done.
 - **"Verify on device" is a resolution only once the probe is in the issue.** A risk
   deferred to a post-deploy or on-device check is written into that acceptance
   criterion, with the exact steps, in the same step as the deferral — or nothing will
