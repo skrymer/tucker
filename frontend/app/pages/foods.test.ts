@@ -5,7 +5,8 @@ import userEvent from '@testing-library/user-event'
 import { food, recipe } from '~~/test/food-fixtures'
 import { foodCatalog } from '~~/test/mocks/handlers/catalog'
 import { catalogFails } from '~~/test/mocks/handlers/foods'
-import { held, http, noConnection } from '~~/test/mocks/http'
+import { failingRead, held, http, noConnection } from '~~/test/mocks/http'
+import { settle } from '~~/test/async-gate'
 import { server } from '~~/test/mocks/node'
 import { profileOf, weightOnlyProfile } from '~~/test/mocks/handlers/profile'
 import { referenceFoodsFor } from '~~/test/mocks/handlers/reference-foods'
@@ -305,6 +306,69 @@ describe('/foods a Food’s match', () => {
       ),
     ).toBeVisible()
     expect(sheet).toHaveAccessibleName('Edit Tasty cheese')
+
+    // Closed without a Save, and the Change stands on the row.
+    await user.click(within(sheet).getByRole('button', { name: 'Close' }))
+    await vi.waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: 'Edit Tasty cheese' }),
+      ).not.toBeInTheDocument(),
+    )
+    expect(
+      screen.getByText(
+        'Vitamins and minerals from Cheese, cheddar, reduced fat',
+      ),
+    ).toBeVisible()
+  })
+
+  it('opens the Edit sheet on the Food whose row was tapped, not the first one listed', async () => {
+    const skyr = food({ id: 4, name: 'Skyr' })
+    server.use(...foodCatalog({ foods: [oats, skyr] }))
+    const user = userEvent.setup()
+    await renderSuspended(Foods)
+
+    await user.click(screen.getByRole('button', { name: 'Edit Skyr' }))
+
+    const sheet = screen.getByRole('dialog', { name: 'Edit Skyr' })
+    expect(within(sheet).getByRole('textbox', { name: /^Name/ })).toHaveValue(
+      'Skyr',
+    )
+  })
+
+  it('keeps the sheet and its unsaved edits when the re-read after a Clear fails', async () => {
+    const cheese = food({
+      id: 3,
+      name: 'Tasty cheese',
+      referenceFoodId: 9,
+      referenceFoodName: 'Cheese, cheddar, natural, regular fat',
+    })
+    let catalogDown = false
+    server.use(
+      failingRead('/api/foods', () => catalogDown),
+      ...foodCatalog({ foods: [cheese] }),
+    )
+    const user = userEvent.setup()
+    await renderSuspended(Foods)
+    await user.click(screen.getByRole('button', { name: 'Edit Tasty cheese' }))
+    const sheet = screen.getByRole('dialog', { name: 'Edit Tasty cheese' })
+    const name = within(sheet).getByRole('textbox', { name: /^Name/ })
+    await user.clear(name)
+    await user.type(name, 'Vintage cheese')
+
+    catalogDown = true
+    await user.click(
+      within(sheet).getByRole('button', {
+        name: 'Clear what Tasty cheese borrows vitamins and minerals from',
+      }),
+    )
+    await settle()
+
+    expect(
+      screen.getByRole('dialog', { name: 'Edit Tasty cheese' }),
+    ).toBeVisible()
+    expect(within(sheet).getByRole('textbox', { name: /^Name/ })).toHaveValue(
+      'Vintage cheese',
+    )
   })
 
   it('is absent from the Edit sheet of a User who does not count calories', async () => {

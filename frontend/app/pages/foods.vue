@@ -36,12 +36,17 @@ watch(open, (isOpen) => {
 /**
  * The plain Food being corrected (ADR 0037) — non-null opens its sheet, which
  * also holds its Tags and its Reference Food match. Read from the catalog by id,
- * so a match changed inside the sheet shows there as soon as the catalog re-reads.
+ * so a match changed inside the sheet shows there as soon as the catalog re-reads;
+ * a re-read that fails empties the catalog, and the sheet keeps the Food it last
+ * read rather than closing over the User's unsaved edits.
  */
 const foodIdToEdit = ref<number | null>(null)
-const foodToEdit = computed(
-  () => foods.value?.find((food) => food.id === foodIdToEdit.value) ?? null,
-)
+const foodToEdit = computed<FoodResponse | null>((last) => {
+  const id = foodIdToEdit.value
+  if (id === null) return null
+  const read = foods.value?.find((food) => food.id === id)
+  return read ?? (last?.id === id ? last : null)
+})
 
 /** A row's Edit: a Recipe opens in its editor, a plain Food in its Edit sheet. */
 function edit(food: FoodResponse) {

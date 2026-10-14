@@ -201,6 +201,29 @@ describe('RecipeCompositionSheet', () => {
     ).not.toBeInTheDocument()
   })
 
+  it('lets a read that fails after the sheet closed go without error', async () => {
+    let failing = false
+    const read = held('get', '/api/recipes/{id}')
+    server.use(
+      read.handler,
+      failingRead('/api/recipes/{id}', () => failing),
+      ...kitchen(),
+    )
+    const errors = vi.fn()
+    useNuxtApp().hook('vue:error', errors)
+    const { rerender } = await renderSuspended(RecipeCompositionSheet, {
+      props: { recipe: cottagePie },
+    })
+    await read.arrived
+
+    await rerender({ recipe: null })
+    failing = true
+    read.release()
+    await settle()
+
+    expect(errors).not.toHaveBeenCalled()
+  })
+
   it('holds a loading skeleton while a recipe opened to edit loads, then the editor', async () => {
     const read = held('get', '/api/recipes/{id}')
     server.use(read.handler, ...kitchen())

@@ -1812,7 +1812,14 @@ null` now means two things that earn opposite messages — the same trap
     `/foods` reads the Food it edits out of the catalog by id, so a Clear or Change
     shows in the sheet as soon as the catalog re-reads. The draft watch was keyed on
     the object, which would have wiped the User's unsaved name and macros on that
-    re-read; it is keyed on the id now, and a page test pins it.
+    re-read; it is keyed on the id now, and a page test pins it. **A re-read that
+    fails empties the catalog**, and the first build of this closed the sheet over
+    the draft (found by the resolutions pass, measured against `main`): the page
+    keeps the Food it last read while the catalog has none.
+  - **`TagPicker` has a spec of its own.** Deleting `FoodTagsSheet.test.ts` took the
+    picker's de facto spec with it — three mutants then survived every remaining
+    suite — so its picker-level tests moved to `TagPicker.test.ts`, through a host
+    that holds the Tags and a Save as every form does.
   - **The picker no longer offers Unmatch.** Its "Currently borrowing from" block was
     reachable only from the old row pencil, so Change would have opened a second way
     out beside the sheet's Clear. `useMatchClear` takes the Food's id and is the one
