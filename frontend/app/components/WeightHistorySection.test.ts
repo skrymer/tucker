@@ -177,6 +177,43 @@ describe('WeightHistorySection', () => {
     expect(within(dialog).queryByLabelText(/^Date/)).toBeNull()
   })
 
+  it("replaces the picked day's reading with the corrected one", async () => {
+    server.use(
+      ...bodyAndPlan({
+        profile: null,
+        today: TODAY,
+        readings: [
+          { id: 1, measuredOn: '2026-10-07', weightKg: 81.2 },
+          { id: 2, measuredOn: '2026-10-09', weightKg: 80.9 },
+        ],
+      }),
+    )
+    await renderSuspended(WeightHistorySection)
+    await screen.findByText('No weight on Mon 12 Oct.')
+    const user = userEvent.setup()
+    await user.click(
+      screen.getByRole('button', { name: 'Friday, October 9, 2026' }),
+    )
+
+    await user.click(await screen.findByRole('button', { name: 'Edit' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Log weight' })
+    const weight = within(dialog).getByLabelText(/Weight \(kg\)/)
+    await user.clear(weight)
+    await user.type(weight, '79.6')
+    await user.tab()
+    await user.click(
+      within(dialog).getByRole('button', { name: 'Save weight' }),
+    )
+
+    expect(await screen.findByText('79.6 kg')).toBeVisible()
+    expect(screen.queryByText('80.9 kg')).not.toBeInTheDocument()
+    expect(dottedDays()).toEqual([
+      'Wednesday, October 7, 2026',
+      'Friday, October 9, 2026',
+    ])
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
   it("does not show another day's reading on a day that has none", async () => {
     server.use(
       ...bodyAndPlan({
