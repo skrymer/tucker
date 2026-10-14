@@ -1568,6 +1568,19 @@ is still loading raises no error*). The six left are **equivalent**:
   deleted while a Recipe references it, and `/api/foods` returns the whole catalog.
 - **`:149` `props.recipe?.name ?? ''`** — the title renders only while a Recipe is open.
 
+### Delete a weight (#498) — `DeleteWeightConfirm.vue` 18 of 19, backend 7 of 7
+
+- **`DeleteWeightConfirm.vue:18`, the `described` computed's `''` — equivalent.** It is
+  read only while `reading` is null, and the dialog is `:open="reading !== null"`.
+  `DeleteFoodConfirm`'s `food?.name ?? ''` is the same shape.
+- `RowActionButton.vue` has no `<script>` logic, so Stryker makes no mutants; its
+  template is pinned by hand-mutants against `e2e/row-action.spec.ts`. Icon, `color`,
+  `variant`, `size-11`, `text-muted`, `hover:text-default` and `justify-center` each
+  turn it red. `square` and `shrink-0` turned nothing red, even beside a long Food name
+  at 412px, so they were deleted.
+- `ManageTagsSheet.vue`, `FoodListItem.vue` and `WeightHistorySection.vue` keep their
+  standing survivors above; this change touched their templates only.
+
 ### Noise removed at the source
 
 Four `getLog()` companion accessors (`MartijndwarsWebPushSender`, `RecordingWebPushSender`,
