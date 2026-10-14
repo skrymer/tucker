@@ -14,7 +14,7 @@ describe('isDestinationActive', () => {
   })
 
   it('marks a destination active on one of its nested child routes', () => {
-    expect(isDestinationActive('/profile', '/profile/weight')).toBe(true)
+    expect(isDestinationActive('/profile', '/profile/nested-child')).toBe(true)
   })
 
   it('marks the Today root active at the root', () => {

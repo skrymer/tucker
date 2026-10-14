@@ -31,15 +31,12 @@ test.describe('the identity byline', () => {
 // failure has to name the page it happened on. Each asserts its heading first —
 // without that anchor, "no identity chrome" would also pass on a page that
 // never rendered at all.
-// Every other page there is: the four sibling nav tabs plus /profile's own
-// sub-route, which is the one place a byline could plausibly leak by being on
-// the wrong side of a layout.
+// Every other page there is: the sibling nav tabs.
 const OTHER_PAGES = [
   { path: '/', heading: 'Today' },
   { path: '/foods', heading: 'Foods' },
   { path: '/check', heading: 'Check' },
   { path: '/review', heading: 'Review' },
-  { path: '/profile/weight', heading: 'Weight history' },
 ]
 
 for (const { path, heading } of OTHER_PAGES) {

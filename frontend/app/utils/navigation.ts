@@ -57,9 +57,8 @@ const overflow: NavDestination[] = [
  * path.
  */
 export function isDestinationActive(to: string, path: string): boolean {
-  // A destination is active on its own route and on any nested child (e.g.
-  // Profile stays active on /profile/weight), matched on a path-segment
-  // boundary so a string-prefix sibling can't light it up.
+  // A destination is active on its own route and on any nested child, matched
+  // on a path-segment boundary so a string-prefix sibling can't light it up.
   //
   // The Today root is exact-only. That boundary match spells out to
   // `path.startsWith('//')` for it, which no ordinary route satisfies — but a

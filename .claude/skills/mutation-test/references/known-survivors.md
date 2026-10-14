@@ -27,7 +27,7 @@ and [#237](https://github.com/skrymer/tucker/issues/237) (frontend).
   - `app/app.vue` — 30 of 30, and the engine never ran a test
   - `app/app.config.ts` — 18 of 28, through a throwaway config
   - `composables/useWeightLogging.ts` — 0 of 12
-  - `WeightSection.vue` and `WeightTile.vue` — hand-check only
+  - `WeightTile.vue` — hand-check only
   - `components/IntakeBreakdownSection.vue` — `no cov` alone, 6 of 54 in company
   - `components/ReferenceFoodSearch.vue` — 5 of 62
   - `composables/useReferenceFoodMatch.ts` — 0 of 28
@@ -334,9 +334,9 @@ pins that a passed `errorTitle` becomes the title; only the per-call-site litera
 left, and `toast.spec.ts` already pins `'Could not save profile'` at the Playwright
 layer.
 
-### `WeightSection.vue` and `WeightTile.vue` — hand-check only
+### `WeightTile.vue` — hand-check only
 
-Neither can be instrumented: `defineModel<boolean>('open', { default: false })` dies
+It cannot be instrumented: `defineModel<boolean>('open', { default: false })` dies
 in the dry run with `stryMutAct_9fa48 is not defined`, naming a _consumer's_ test.
 Same mechanism as `withDefaults(defineProps<…>(), { … })` above — Stryker wraps the
 options object in a coverage call and a compiler macro may not reference locally
@@ -347,14 +347,24 @@ so it has never surfaced.
 Hand-checked instead, both mutants killed: `{ default: false }` → `true` fails 8
 tests; replacing the model with a local `ref(false)` — so the parent's
 `v-model:open` is ignored and the sheet can never close — fails
-`/profile logging a weight keeps the weight sheet up…` for `WeightSection`, and
 `today.spec.ts`'s `the weight sheet stays put, reporting busy, until the save lands`
-on both Playwright projects for `WeightTile`.
+on both Playwright projects.
 
 `components/GoalForm.vue` (14/16) and `components/GoalSection.vue` (19/33) are
 **pre-existing and untriaged**; their survivors sit on the Zod messages, the
 `reachedSince` reduce and the form-closing `watch`, none of which any change has
 swept.
+
+`components/WeightHistorySection.vue` scores 24/26 on its own tests; the two
+`?? []` fallbacks (`days`, `pickedReading`) are equivalent: before the read answers
+they yield a non-date mark and no match, which draws exactly what an empty list
+draws. `pages/profile/index.vue:135`'s `weights.value?.length` is equivalent too —
+`weights` is null only when the read failed, and then `LoadErrorState` does not
+render the slot that reads `goalEnabled`. `pages/review.vue` comes back entirely
+`NoCoverage` (36 mutants), the page-mounted-by-Nuxt class above; the card's wiring
+there (`refreshWeightFigures` on `saved`) is killed by
+`e2e/smoke/weight-history.smoke.spec.ts`, which asserts the Weight Timeline re-reads
+after a backfill.
 
 `components/LogWeightSheet.vue`'s remaining survivors are all in the re-seed
 `watch(() => props.open)`. **Pre-existing and untriaged** — #241 only swapped its

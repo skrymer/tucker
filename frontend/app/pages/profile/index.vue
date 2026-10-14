@@ -123,41 +123,18 @@ const {
 // render correctly, so one error state covers both and retries whichever
 // (or both) failed.
 const goalSectionError = computed(
-  () => goalsError.value ?? currentTrendError.value,
+  () => goalsError.value ?? currentTrendError.value ?? weightsError.value,
 )
 function retryGoalSection() {
-  return Promise.all([refreshGoals(), refreshCurrentTrend()])
+  return Promise.all([refreshGoals(), refreshCurrentTrend(), refreshWeights()])
 }
 
-// The user's local date — the latest weight a backfill may target.
-const today = localToday()
-
-// The latest reading gates the Goal section (a weight must exist before a goal).
-const latestWeight = computed(
-  () => sortByMeasuredOnDesc(weights.value ?? [])[0] ?? null,
+// The Goal section unlocks once a Profile and a weight reading exist; saving
+// re-fetches the upstream state, so it reacts without a full reload.
+const goalEnabled = computed(
+  () => profile.value !== null && (weights.value?.length ?? 0) > 0,
 )
 
-const activeGoal = computed(() => goals.value?.find((g) => g.active) ?? null)
-
-// Progressive disclosure: each section unlocks once its prerequisite exists.
-// Saving a section re-fetches the upstream state, so the next section reacts
-// without a full reload.
-const gating = computed(() =>
-  useProfileGating(profile.value, latestWeight.value, activeGoal.value),
-)
-
-const {
-  sheetOpen: weightSheetOpen,
-  saving: savingWeight,
-  logWeight,
-} = useWeightLogging({
-  today,
-  // No success toast: the new reading appears in the weight trend below. A new
-  // reading also moves the Trend Weight, so refresh it for the Goal form.
-  onSaved: async () => {
-    await Promise.all([refreshWeights(), refreshCurrentTrend()])
-  },
-})
 const {
   submit: submitGoal,
   refusal: goalRefusal,
@@ -178,8 +155,7 @@ await Promise.all([loadProfile(), refreshCurrentTrend()])
     </div>
 
     <!--
-      The at-a-glance state leads: the Goal, then the current Weight (its full
-      history lives on /profile/weight). The body-stats form and reminder
+      The at-a-glance state leads: the Goal. The body-stats form and reminder
       settings follow as the less-often-touched setup (#105).
     -->
     <LoadErrorState
@@ -192,23 +168,8 @@ await Promise.all([loadProfile(), refreshCurrentTrend()])
         :current-trend="currentTrend"
         :refusal="goalRefusal"
         :pending="savingGoal"
-        :disabled="!gating.goalEnabled"
+        :disabled="!goalEnabled"
         @submit="submitGoal"
-      />
-    </LoadErrorState>
-
-    <LoadErrorState
-      :error="weightsError"
-      title="Couldn't load your weight"
-      @retry="refreshWeights"
-    >
-      <WeightSection
-        v-model:open="weightSheetOpen"
-        :today="today"
-        :measurements="weights ?? []"
-        :pending="savingWeight"
-        :disabled="!gating.weightEnabled"
-        @logged="logWeight"
       />
     </LoadErrorState>
 

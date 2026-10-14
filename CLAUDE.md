@@ -266,6 +266,10 @@ here.
   Open: [#385](https://github.com/skrymer/tucker/issues/385).
 - **F19** — ✅ Correct a Food (PRD [#431](https://github.com/skrymer/tucker/issues/431),
   [ADR 0037](docs/adr/0037-editing-a-food-is-a-correction.md)).
+- **F20** — Weight history on `/review`: add, correct or remove a past Weight
+  Measurement (PRD [#495](https://github.com/skrymer/tucker/issues/495)). Slice 1
+  ([#496](https://github.com/skrymer/tucker/issues/496)) is the card, with Profile's
+  weight section retired; Edit (#497) and Delete (#498) follow.
 
 ## Architecture
 

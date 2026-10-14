@@ -39,8 +39,8 @@ Budget on screen. "What do I maintain on" has an owner already.
 
 **The raw readings are shown, and never read against.** Goal Progress and the
 adaptive correction run on the Trend Weight, "never on a single raw measurement",
-and that is a rule about *computation*; `/profile`'s weight list has always
-displayed the readings themselves. Drawing them as **points** rather than a second
+and that is a rule about *computation*; the readings themselves are displayed
+(`/review`'s Weight history card shows a picked day's raw kg). Drawing them as **points** rather than a second
 line is what keeps the distinction visible: two lines read as two comparable
 trends, and the noisy one then looks like a legitimate alternative reading.
 Scattered points beneath a gliding line read as *measurements, and the line

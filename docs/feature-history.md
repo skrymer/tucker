@@ -1843,3 +1843,22 @@ null` now means two things that earn opposite messages — the same trap
     Recipes through their editor, so nothing in the app called it. The tests that
     seeded Tags through it now create or correct the Food instead, and its two
     cross-User refusals already had correction twins from slice 1.
+
+- **F20** — **Weight history** on `/review`: add, correct or remove a past Weight
+  Measurement (PRD [#495](https://github.com/skrymer/tucker/issues/495)). Slices:
+  [#496](https://github.com/skrymer/tucker/issues/496) the card and Profile's weight
+  section retired, #497 Edit, #498 Delete.
+  - **Slice 1 (#496) — the card.** `WeightHistorySection` sits directly under the Weight
+    Timeline, ungated by Calorie Tracking: the shared `AppCalendar` with a dot on every
+    day holding a reading, opening on local today, no earliest limit, nothing after
+    today. A picked day shows its raw kg only, or "No weight on <day>" with **Add
+    weight**, which opens `LogWeightSheet` with the date locked to that day. A save
+    re-reads the list and emits `saved`, and the page re-reads the Weight Timeline and
+    Goal Progress; no success toast. No backend change.
+  - **Profile lost its Weight section**, `/profile/weight` and the components only they
+    used (`WeightSection`, `WeightList`, `WeightListItem`, `WeightSummary`). The Goal
+    section still gates on a reading, and its empty state now links to Today.
+    With `weightEnabled` gone `useProfileGating` answered one boolean, so it was
+    removed and the page computes `goalEnabled` inline.
+  - **The card pushes the Intake Breakdown ring below the fold on desktop**, so the
+    ring-hover e2e scrolls it into view before moving the pointer by page coordinates.
