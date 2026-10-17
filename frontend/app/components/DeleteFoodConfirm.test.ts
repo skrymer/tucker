@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event'
 import { besideCatalog, catalog, catalogOnceReread } from '~~/test/catalog-host'
 import { food } from '~~/test/food-fixtures'
 import { foodCatalog } from '~~/test/mocks/handlers/catalog'
+import { held } from '~~/test/mocks/http'
 import { server } from '~~/test/mocks/node'
 import DeleteFoodConfirm from './DeleteFoodConfirm.vue'
 
@@ -74,6 +75,22 @@ describe('DeleteFoodConfirm', () => {
     const shown = await catalogOnceReread()
     expect(shown.getByText('Bread')).toBeVisible()
     expect(shown.queryByText('Oats')).not.toBeInTheDocument()
+  })
+
+  it('reports Delete busy until the delete lands', async () => {
+    const remove = held('delete', '/api/foods/{id}')
+    server.use(...foodCatalog({ foods: [oats] }))
+    server.use(remove.handler)
+    await renderSuspended(besideCatalog(DeleteFoodConfirm), {
+      props: { food: oats },
+    })
+    const confirm = () => screen.getByRole('button', { name: /^delete$/i })
+
+    await userEvent.setup().click(confirm())
+
+    await remove.arrived
+    await vi.waitFor(() => expect(confirm()).toBeDisabled())
+    remove.release()
   })
 
   it('states why a food with logged entries was not deleted, and closes', async () => {

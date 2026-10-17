@@ -1,10 +1,12 @@
 import type { Locator, Page } from '@playwright/test'
 import { expect, test } from './support/test'
 import { pinToLocalMorning } from './support/date'
+import { weighedEntry } from '../test/entry-fixtures'
 import { food } from '../test/food-fixtures'
 import { bodyAndPlan } from '../test/mocks/handlers/body'
 import { foodCatalog } from '../test/mocks/handlers/catalog'
 import { weightOnlyProfile } from '../test/mocks/handlers/profile'
+import { summaryOf } from '../test/mocks/handlers/summary'
 
 // Edit and delete on a row, measured: one colour (the muted text token, until
 // hovered) and one 44px tap target wherever they appear. `rowAction.test.ts`
@@ -12,11 +14,12 @@ import { weightOnlyProfile } from '../test/mocks/handlers/profile'
 // browser can say.
 
 /**
- * The colour [locator] draws in, its box, the icon it shows, and how far that
- * icon's centre sits from the box's.
+ * The colour [locator] draws in, its laid-out size (untouched by a sheet's
+ * opening transform), the icon it shows, and how far that icon's centre sits
+ * from the box's.
  */
 const drawn = (locator: Locator) =>
-  locator.evaluate((el) => {
+  locator.evaluate((el: HTMLElement) => {
     const box = el.getBoundingClientRect()
     const icon = el.querySelector('.iconify')!
     const glyph = icon.getBoundingClientRect()
@@ -24,8 +27,8 @@ const drawn = (locator: Locator) =>
     return {
       color: getComputedStyle(el).color,
       ring: getComputedStyle(el).boxShadow,
-      width: box.width,
-      height: box.height,
+      width: el.offsetWidth,
+      height: el.offsetHeight,
       icon: [...icon.classList].find((c) => c.startsWith('i-lucide:')),
       offCentre: [
         offCentre(glyph.x + glyph.width / 2, box.x + box.width / 2),
@@ -116,6 +119,72 @@ test("draws Today's weight edit and the Weight history's edit and delete alike, 
   }
   await expectHoveredAs(historyEdit, lit)
   await expectHoveredAs(historyDelete, lit)
+})
+
+test("draws an Entry's delete on Today as the same row action", async ({
+  goto,
+  network,
+  page,
+}) => {
+  await pinToLocalMorning(page)
+  network.use(
+    summaryOf({
+      caloriesConsumed: 240,
+      proteinConsumed: 8,
+      estimatedCalorieShare: 0,
+      setupComplete: true,
+      calorieBudget: 2000,
+      proteinFloor: 140,
+      caloriesRemaining: 1760,
+      dayStatus: 'on-target',
+      entries: [
+        weighedEntry({
+          id: 1,
+          calories: 240,
+          protein: 8,
+          foodId: 3,
+          foodName: 'Oats',
+          grams: 60,
+        }),
+      ],
+    }),
+  )
+
+  await goto('/', { waitUntil: 'hydration' })
+
+  expect(
+    await drawn(page.getByRole('button', { name: /^Delete Oats/ })),
+  ).toEqual({
+    color: await resolved(page, 'var(--ui-text-muted)'),
+    ring: 'none',
+    width: 44,
+    height: 44,
+    offCentre: [0, 0],
+    icon: 'i-lucide:trash-2',
+  })
+})
+
+test("keeps a Tag's rename and delete whole beside a name as long as a Tag's can be", async ({
+  goto,
+  network,
+  page,
+}) => {
+  // 30 characters, the cap, with nowhere for the line to break, on a 360px
+  // phone — the narrowest common Android width.
+  const name = 'postworkoutproteinsnackoptions'
+  network.use(...foodCatalog({ tags: [{ id: 1, name }] }))
+  await page.setViewportSize({ width: 360, height: 780 })
+
+  await goto('/foods', { waitUntil: 'hydration' })
+  await page.getByRole('button', { name: 'Manage tags' }).click()
+  const sheet = page.getByRole('dialog', { name: 'Manage tags' })
+
+  expect({
+    rename: (await drawn(sheet.getByRole('button', { name: `Rename ${name}` })))
+      .width,
+    delete: (await drawn(sheet.getByRole('button', { name: `Delete ${name}` })))
+      .width,
+  }).toEqual({ rename: 44, delete: 44 })
 })
 
 test("keeps a long-named Food's edit and delete whole beside its name", async ({

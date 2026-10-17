@@ -331,6 +331,87 @@ describe('WeightHistorySection', () => {
     expect(dottedDays()).toEqual([])
   })
 
+  it('keeps the confirm up, reporting busy, until the delete lands', async () => {
+    const remove = held('delete', '/api/weight/{id}')
+    server.use(
+      ...bodyAndPlan({
+        profile: null,
+        today: TODAY,
+        readings: [{ id: 1, measuredOn: '2026-10-09', weightKg: 80.9 }],
+      }),
+    )
+    server.use(remove.handler)
+    await renderSuspended(WeightHistorySection)
+    await screen.findByText('No weight on Mon 12 Oct.')
+    const user = userEvent.setup()
+    await user.click(
+      screen.getByRole('button', { name: 'Friday, October 9, 2026' }),
+    )
+    await user.click(
+      await screen.findByRole('button', { name: 'Delete weight on Fri 9 Oct' }),
+    )
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Delete this weight?',
+    })
+    const confirm = () => within(dialog).getByRole('button', { name: 'Delete' })
+    await user.click(confirm())
+
+    await remove.arrived
+    await vi.waitFor(() => expect(confirm()).toBeDisabled())
+
+    remove.release()
+    await vi.waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: 'Delete this weight?' }),
+      ).toBeNull(),
+    )
+  })
+
+  it("leaves another reading's confirm open when an earlier failed delete's Retry lands", async () => {
+    toastAdd.mockClear()
+    let down = true
+    server.use(
+      failingWrite('delete', '/api/weight/{id}', () => down),
+      ...bodyAndPlan({
+        profile: null,
+        today: TODAY,
+        readings: [
+          { id: 1, measuredOn: '2026-10-07', weightKg: 81.2 },
+          { id: 2, measuredOn: '2026-10-09', weightKg: 80.9 },
+        ],
+      }),
+    )
+    await renderSuspended(WeightHistorySection)
+    await screen.findByText('No weight on Mon 12 Oct.')
+    const user = userEvent.setup()
+    const askToDelete = async (day: string, button: string) => {
+      await user.click(screen.getByRole('button', { name: day }))
+      await user.click(await screen.findByRole('button', { name: button }))
+      return screen.findByRole('dialog', { name: 'Delete this weight?' })
+    }
+
+    const friday = await askToDelete(
+      'Friday, October 9, 2026',
+      'Delete weight on Fri 9 Oct',
+    )
+    await user.click(within(friday).getByRole('button', { name: 'Delete' }))
+    await vi.waitFor(() => expect(toastAdd).toHaveBeenCalled())
+    await user.click(within(friday).getByRole('button', { name: 'Cancel' }))
+    await vi.waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+
+    const wednesday = await askToDelete(
+      'Wednesday, October 7, 2026',
+      'Delete weight on Wed 7 Oct',
+    )
+    down = false
+    await toastAdd.mock.calls.at(-1)![0].actions[0].onClick()
+
+    expect(wednesday).toHaveTextContent('81.2 kg on Wed 7 Oct will be removed')
+    expect(
+      screen.getByRole('dialog', { name: 'Delete this weight?' }),
+    ).toBeVisible()
+  })
+
   it("opens Edit on the picked day's stored kg, with the date locked to it", async () => {
     server.use(
       ...bodyAndPlan({

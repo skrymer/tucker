@@ -8,11 +8,25 @@ const props = defineProps<{ food: FoodResponse | null }>()
 
 const emit = defineEmits<{ close: [] }>()
 
+/** The toast stating why the backend refused the delete. */
+function refusal(message: string) {
+  return {
+    title: 'Could not delete food',
+    description: message,
+    color: 'error' as const,
+    // Assertive and dismissible, but no Retry — the rejection is permanent.
+    type: 'foreground' as const,
+    duration: Infinity,
+    close: true,
+    progress: false,
+  }
+}
+
 /** Deleting the Food; the confirm closes once it is gone, or refused. */
 function useFoodDeletion() {
   const { $api } = useNuxtApp()
   const toast = useToast()
-  const { execute } = useApiMutation(
+  const { pending, execute } = useApiMutation(
     (food: FoodResponse) =>
       $api('/api/foods/{id}', { method: 'DELETE', path: { id: food.id } }),
     {
@@ -27,30 +41,25 @@ function useFoodDeletion() {
       // connection" retry toast — retrying never succeeds — and close.
       onValidationError: (message) => {
         emit('close')
-        toast.add({
-          title: 'Could not delete food',
-          description: message,
-          color: 'error',
-          // Assertive and dismissible, but no Retry — the rejection is permanent.
-          type: 'foreground',
-          duration: Infinity,
-          close: true,
-          progress: false,
-        })
+        toast.add(refusal(message))
       },
     },
   )
-  return () => props.food && execute(props.food)
+  return {
+    pending,
+    confirm: () => props.food && execute(props.food),
+  }
 }
-const deleteFood = useFoodDeletion()
+const deletion = useFoodDeletion()
 </script>
 
 <template>
   <ConfirmDeleteDialog
     :open="food !== null"
     title="Delete this food?"
+    :pending="deletion.pending.value"
     @cancel="emit('close')"
-    @confirm="deleteFood"
+    @confirm="deletion.confirm"
   >
     <span class="font-medium">{{ formatName(food?.name ?? '') }}</span> will be
     removed from your catalog. A food you've logged entries against, or used as

@@ -11,7 +11,7 @@ defineProps<{ action: 'edit' | 'delete' }>()
     :icon="action === 'edit' ? 'i-lucide-pencil' : 'i-lucide-trash-2'"
     color="neutral"
     variant="ghost"
-    class="size-11 text-muted hover:text-default"
+    class="size-11 shrink-0 text-muted hover:text-default"
     :ui="{ base: 'justify-center' }"
   />
 </template>

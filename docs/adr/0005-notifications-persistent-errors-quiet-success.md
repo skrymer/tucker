@@ -160,11 +160,11 @@ Four properties of that are deliberate:
   truncates (`FigureRow`). The Frequent-Foods tile is the third answer — it wraps
   to two lines, having no room to the side (frontend/DESIGN.md).
 
-  Measured at a 320px column (the real CSS chain: `main p-4` → 288px, `UCard
-  p-4` → 256px, name span 212px), the second line costs **+12px** and not a full
-  one, because the row's 36px delete button already sets its height floor — which
-  is why the ledger's three-row cap still stands now that *every* row is two
-  lines. A two-column row (name left, figures right) stays rejected for the
+  Measured at a 320px viewport (the row 241px wide, the name span 189px), the
+  second line costs **nothing**: the row's delete is a 44px row action
+  (`RowActionButton`, the tap target DESIGN.md sets), so it already holds the row
+  at 60px, and the two lines stand 43px tall inside that — which is why the
+  ledger's three-row cap still stands now that *every* row is two lines. A two-column row (name left, figures right) stays rejected for the
   phone: it is compact only by abbreviating to `11 g`, the ambiguity the
   spelled-out unit exists to avoid. Two *rows* are not that — the pair gets the
   full width and the far end carries only the action. `pages/design.vue` is kept

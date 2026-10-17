@@ -13,6 +13,7 @@ import org.springframework.test.web.servlet.post
 import org.springframework.test.web.servlet.put
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
+import java.time.ZoneOffset
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -86,7 +87,8 @@ class WeightApiTest {
     @Test
     fun `DELETE weight that brings the trend to the target stamps the active Goal reached on the client's day`() {
         // The client a day ahead of the server, so the stamp shows whose day it took.
-        val clientToday = LocalDate.now().plusDays(1)
+        // The server's day is UTC's (`Clock.systemUTC()`), whatever the host's zone.
+        val clientToday = LocalDate.now(ZoneOffset.UTC).plusDays(1)
         mockMvc.put("/api/profile") {
             contentType = MediaType.APPLICATION_JSON
             content = """{"sex":"MALE","birthDate":"1986-05-22","heightCm":180.0}"""

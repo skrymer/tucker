@@ -3,7 +3,7 @@ import type { components } from '#open-fetch-schemas/api'
 
 type EntryResponse = components['schemas']['EntryResponse']
 
-const props = defineProps<{ entry: EntryResponse | null }>()
+const props = defineProps<{ entry: EntryResponse | null; pending?: boolean }>()
 
 const emit = defineEmits<{
   confirm: []
@@ -22,6 +22,7 @@ const entryName = computed(() =>
   <ConfirmDeleteDialog
     :open="entry !== null"
     title="Delete this entry?"
+    :pending="pending"
     @cancel="emit('cancel')"
     @confirm="emit('confirm')"
   >

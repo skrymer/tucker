@@ -8,7 +8,7 @@ import { dailyLogs } from '~~/test/mocks/handlers/entries'
 import { weightMeasurements } from '~~/test/mocks/handlers/weight'
 import { goalInProgress } from '~~/test/mocks/handlers/goal'
 import { summaryOf, type SummaryDay } from '~~/test/mocks/handlers/summary'
-import { http, serverError } from '~~/test/mocks/http'
+import { held, http, serverError } from '~~/test/mocks/http'
 import { server } from '~~/test/mocks/node'
 import { ref, type Ref } from 'vue'
 import Today from './index.vue'
@@ -281,6 +281,32 @@ describe("/ with today's Entries", () => {
       expect(screen.queryByRole('region')).not.toBeInTheDocument(),
     )
     expect(screen.getByText('0 / 2000 kcal')).toBeVisible()
+  })
+
+  it("reports an Entry's Delete busy until the delete lands", async () => {
+    const remove = held('delete', '/api/entries/{id}')
+    server.use(
+      summaryOf({ ...DAY, entries: [todaysSalmon] }),
+      http.delete('/api/entries/{id}', ({ response }) => response(204).empty()),
+    )
+    server.use(remove.handler)
+    await renderToday()
+    const user = userEvent.setup()
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'Delete Salmon — 150 g · 312 kcal · 33 g protein',
+      }),
+    )
+    const confirm = async () =>
+      within(await screen.findByRole('dialog')).getByRole('button', {
+        name: 'Delete',
+      })
+
+    await user.click(await confirm())
+
+    await remove.arrived
+    await vi.waitFor(async () => expect(await confirm()).toBeDisabled())
+    remove.release()
   })
 })
 

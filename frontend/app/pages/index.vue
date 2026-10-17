@@ -89,7 +89,7 @@ const { execute: switchToMaintenance } = useApiMutation(
 // feedback.
 const selectedEntry = ref<EntryResponse | null>(null)
 
-const { execute: deleteEntry } = useApiMutation(
+const { pending: deletingEntry, execute: deleteEntry } = useApiMutation(
   (entry: EntryResponse) =>
     $api('/api/entries/{id}', { method: 'DELETE', path: { id: entry.id } }),
   {
@@ -206,6 +206,7 @@ const {
     </LoadErrorState>
     <DeleteEntryConfirm
       :entry="selectedEntry"
+      :pending="deletingEntry"
       @cancel="selectedEntry = null"
       @confirm="confirmDeleteEntry"
     />
