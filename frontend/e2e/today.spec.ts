@@ -10,6 +10,7 @@ import {
 import { weightMeasurements } from '../test/mocks/handlers/weight'
 import { expect, test } from './support/test'
 import { pinToLocalMorning } from './support/date'
+import { sampleDialogText } from './support/dialog'
 import { rings } from './support/ring'
 
 // The baseline was last weighed on a day long past and has no Goal, so
@@ -62,6 +63,35 @@ test('the Today page shows the daily summary from the API', async ({
   // Playwright keeps one baseline per project (Desktop / Mobile Chrome), and
   // with the FAB gone the two now read alike.
   await expect(page.getByRole('main')).toMatchAriaSnapshot()
+})
+
+test('keeps naming the Entry while its delete confirm closes', async ({
+  page,
+  goto,
+  network,
+}) => {
+  network.use(summaryOf(DAY_WITH_ENTRIES))
+
+  await goto('/', { waitUntil: 'hydration' })
+  await page
+    .getByRole('button', {
+      name: 'Delete Oats — 60 g · 240 kcal · 8 g protein',
+    })
+    .click()
+  const confirm = page.getByRole('dialog', { name: 'Delete this entry?' })
+  await expect(confirm).toBeVisible()
+  const seen = await sampleDialogText(page)
+  await confirm.getByRole('button', { name: 'Cancel' }).click()
+  await expect(confirm).toBeHidden()
+
+  const frames = await seen()
+  expect(frames.length).toBeGreaterThan(1)
+  expect(
+    frames.filter(
+      (text) =>
+        !text.includes('Oats — 60 g · 240 kcal · 8 g protein will be removed'),
+    ),
+  ).toEqual([])
 })
 
 test("tomorrow's Entries are listed below today's, under their own day", async ({

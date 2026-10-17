@@ -12,9 +12,10 @@ const emit = defineEmits<{
 
 // The entry named with its figures, so the confirm is unambiguous about which
 // line it removes. One string, where the Today row lays the same words over two:
-// a dialog's prose has nowhere to put a second line.
-const entryName = computed(() =>
-  props.entry ? formatEntryName(props.entry) : '',
+// a dialog's prose has nowhere to put a second line. Held on the last Entry
+// asked about while the dialog animates closed.
+const entryName = computed<string>((last) =>
+  props.entry ? formatEntryName(props.entry) : (last ?? ''),
 )
 </script>
 

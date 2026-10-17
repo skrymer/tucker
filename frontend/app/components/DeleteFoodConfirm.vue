@@ -8,6 +8,11 @@ const props = defineProps<{ food: FoodResponse | null }>()
 
 const emit = defineEmits<{ close: [] }>()
 
+/** The last Food asked about, held while the dialog animates closed. */
+const asked = computed<FoodResponse | null>(
+  (last) => props.food ?? last ?? null,
+)
+
 /** The toast stating why the backend refused the delete. */
 function refusal(message: string) {
   return {
@@ -82,7 +87,7 @@ const deletion = useFoodDeletion()
     @cancel="emit('close')"
     @confirm="deletion.confirm"
   >
-    <span class="font-medium">{{ formatName(food?.name ?? '') }}</span> will be
+    <span class="font-medium">{{ formatName(asked?.name ?? '') }}</span> will be
     removed from your catalog. A food you've logged entries against, or used as
     a recipe ingredient, can't be deleted — your entries and recipes depend on
     it.

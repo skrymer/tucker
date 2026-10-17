@@ -1585,7 +1585,15 @@ is still loading raises no error*). The six left are **equivalent**:
   confirm has first opened, when nothing renders. Before that hold existed the fallback
   was *not* equivalent: a closing confirm read "will be removed…" with no reading named
   (`e2e/weight-history.spec.ts` › *keeps naming the reading while its delete confirm
-  closes*). Food's and Entry's confirms still do this on `main`.
+  closes*). Food's and Entry's confirms did this on `main` too, and hold theirs the
+  same way now. `DeleteEntryConfirm.vue`'s `entryName` fallback: `last && ''` is
+  **killed by an out-of-scope layer** — it is `main`'s blank name on close, which
+  `e2e/today.spec.ts` › *keeps naming the Entry while its delete confirm closes* fails
+  on both projects; the bare `''` (NoCoverage) is **equivalent**, as `described`'s is.
+- `GoalSection.vue`'s `gated` (an active Goal shows with no reading) was a **real gap**
+  for the no-Goal case: `() => false` kept every test green while a disabled section
+  offered "Start a goal". Pinned by *with no goal and no reading, offers nothing to start
+  and waits on a weight*. Its other 8 survivors are the untriaged ones above.
 - The transient-failure `errorTitle` was a **real gap** in both `DeleteFoodConfirm.vue`
   and `pages/index.vue`, older than #498 (only Food's permanent-refusal title was
   asserted). Both are pinned now.

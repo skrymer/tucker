@@ -1902,8 +1902,13 @@ null` now means two things that earn opposite messages — the same trap
     /review read "Now 90.4 kg — Tracked on your smoothed trend weight" over nothing.
     Ruled at gate 6: the plan figures are now null with no trend (ADR 0023's explicit
     null), and /review's hero and Today's tile say "Log a weight to see where you stand
-    on your Goal." with the target. Profile still greys its Goal section in that state
-    — left open for the user.
+    on your Goal." with the target. Profile, which greyed its whole Goal section in
+    that state, now shows the active Goal and gates only setting a new one ("…to set
+    a new goal."), ruled at the end of sign-off.
+  - **A delete confirm keeps naming its item while it closes** — the reading's did
+    from the start (`computed((last) => …)`); the Food's and Entry's went blank for
+    the leave animation on `main` too, and hold theirs the same way now. The three
+    e2e specs sample the dialog per frame (`e2e/support/dialog.ts`).
   - **Trap:** the dev stack's backend image predated the branch's backend commit, so
     the first live crossing probe read `reachedOn: null`. Rebuild
     (`docker compose build backend`) before a walk-through of a backend change.

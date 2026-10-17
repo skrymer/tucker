@@ -1,4 +1,5 @@
 import { expect, test } from './support/test'
+import { sampleDialogText } from './support/dialog'
 import { food, recipe } from '../test/food-fixtures'
 import { foodCatalog } from '../test/mocks/handlers/catalog'
 import { catalogOf } from '../test/mocks/handlers/foods'
@@ -23,6 +24,31 @@ test('the Foods page shows the catalog from the API', async ({
   // floating action button on phone. Closed-world, so it is also what
   // carries "no row logs a Food": a returning Log button is a diff.
   await expect(page.getByRole('main')).toMatchAriaSnapshot()
+})
+
+test('keeps naming the Food while its delete confirm closes', async ({
+  page,
+  goto,
+  network,
+}) => {
+  network.use(catalogOf([food({ id: 1, name: 'rolled oats' })]))
+
+  await goto('/foods', { waitUntil: 'hydration' })
+  await page
+    .getByRole('main')
+    .getByRole('button', { name: 'Delete Rolled oats' })
+    .click()
+  const confirm = page.getByRole('dialog', { name: 'Delete this food?' })
+  await expect(confirm).toBeVisible()
+  const seen = await sampleDialogText(page)
+  await confirm.getByRole('button', { name: 'Cancel' }).click()
+  await expect(confirm).toBeHidden()
+
+  const frames = await seen()
+  expect(frames.length).toBeGreaterThan(1)
+  expect(
+    frames.filter((text) => !text.includes('Rolled oats will be removed')),
+  ).toEqual([])
 })
 
 test('the Foods page shows the empty state when the catalog is empty', async ({

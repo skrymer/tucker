@@ -1,5 +1,6 @@
 import { expect, test } from './support/test'
 import { pinToLocalMorning } from './support/date'
+import { sampleDialogText } from './support/dialog'
 import { toastRegion } from './support/toast'
 import { steadyDays, weightTimeline } from '../test/weight-timeline-fixtures'
 import { bodyAndPlan } from '../test/mocks/handlers/body'
@@ -106,28 +107,14 @@ test('keeps naming the reading while its delete confirm closes', async ({
     .click()
   const confirm = page.getByRole('dialog', { name: 'Delete this weight?' })
   await expect(confirm).toBeVisible()
-  // The body's text on every frame from here until the dialog is gone — a
-  // closing dialog stays drawn through its leave animation.
-  await page.evaluate(() => {
-    const seen: string[] = []
-    Object.assign(window, { seen })
-    const sample = () => {
-      const dialog = document.querySelector('[role="dialog"]')
-      if (!dialog) return
-      seen.push(dialog.textContent ?? '')
-      requestAnimationFrame(sample)
-    }
-    sample()
-  })
+  const seen = await sampleDialogText(page)
   await confirm.getByRole('button', { name: 'Cancel' }).click()
   await expect(confirm).toBeHidden()
 
-  const seen = await page.evaluate(
-    () => (window as unknown as { seen: string[] }).seen,
-  )
-  expect(seen.length).toBeGreaterThan(1)
+  const frames = await seen()
+  expect(frames.length).toBeGreaterThan(1)
   expect(
-    seen.filter(
+    frames.filter(
       (text) => !text.includes('81.2 kg on Thu 11 Jun will be removed'),
     ),
   ).toEqual([])
