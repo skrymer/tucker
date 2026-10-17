@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { parse } from 'vue/compiler-sfc'
 import { appTemplates } from '../../test/templates'
 
 // An edit or delete icon on a row is one control wherever it appears: the same
@@ -6,21 +7,71 @@ import { appTemplates } from '../../test/templates'
 // same action read green in one place and grey in the next.
 
 /**
- * A UButton with no label: self-closing, or closed with nothing between. Its
- * attributes may hold a `>` (an arrow function), so it runs on to the first
- * `/>` or `></UButton>` that comes before any other tag.
+ * A row action's glyph — edit, delete, or a Recipe's ingredients — named in a
+ * static `icon` or a bound one's expression.
  */
-const ICON_ONLY_BUTTON =
-  /<UButton\b(?:(?!<|\/>|>\s*<\/UButton>)[\s\S])*(?:\/>|>\s*<\/UButton>)/g
+const EDIT_OR_DELETE_ICON = /i-lucide-(?:pencil|square-pen|trash|list\b)/
 
-/** An edit or delete glyph named in an `icon` attribute, static or bound. */
-const EDIT_OR_DELETE_ICON = /\bicon="[^"]*i-lucide-(?:pencil|square-pen|trash)/
+type TemplateNode = {
+  type: number
+  tag?: string
+  content?: string
+  children?: TemplateNode[]
+  props?: {
+    type: number
+    name: string
+    value?: { content: string }
+    arg?: { content: string }
+    exp?: { content: string }
+  }[]
+  loc: { source: string }
+}
 
-/** Every icon-only edit or delete UButton in [source], as written. */
-function restyledRowActions(source: string): string[] {
-  return [...source.matchAll(ICON_ONLY_BUTTON)]
-    .map(([tag]) => tag!)
-    .filter((tag) => EDIT_OR_DELETE_ICON.test(tag))
+/** Vue's node types: an element, its text, and a static or bound attribute. */
+const ELEMENT = 1
+const TEXT = 2
+const ATTRIBUTE = 6
+const DIRECTIVE = 7
+
+/** What a node's `icon` names, written statically or bound. */
+function iconOf(node: TemplateNode): string {
+  const icon = node.props?.find(
+    (p) =>
+      (p.type === ATTRIBUTE && p.name === 'icon') ||
+      (p.type === DIRECTIVE && p.arg?.content === 'icon'),
+  )
+  return icon?.value?.content ?? icon?.exp?.content ?? ''
+}
+
+/** A UButton with no label: no children, or only whitespace. */
+const isIconOnly = (node: TemplateNode) =>
+  (node.children ?? []).every(
+    (child) => child.type === TEXT && !child.content?.trim(),
+  )
+
+/** Every UButton in [nodes], however deep. */
+function buttonsIn(nodes: TemplateNode[]): TemplateNode[] {
+  return nodes.flatMap((node) => [
+    ...(node.type === ELEMENT && node.tag === 'UButton' ? [node] : []),
+    ...buttonsIn(node.children ?? []),
+  ])
+}
+
+/**
+ * Every icon-only edit or delete UButton in [template], as written — read by
+ * Vue's own parser, so no attribute's content can end the tag early.
+ */
+function restyledRowActions(template: string): string[] {
+  const { descriptor } = parse(
+    template.includes('<template')
+      ? template
+      : `<template>${template}</template>`,
+  )
+  const root = descriptor.template?.ast as TemplateNode | undefined
+  return buttonsIn(root?.children ?? [])
+    .filter((button) => isIconOnly(button))
+    .filter((button) => EDIT_OR_DELETE_ICON.test(iconOf(button)))
+    .map((button) => button.loc.source)
 }
 
 describe('edit and delete row actions', () => {
@@ -47,6 +98,14 @@ describe('edit and delete row actions', () => {
     [
       'an empty open-and-close tag',
       '<UButton icon="i-lucide-trash-2"></UButton>',
+    ],
+    [
+      'a button whose other attribute holds a <',
+      '<UButton :disabled="count < 3" icon="i-lucide-trash-2" />',
+    ],
+    [
+      "a Recipe's view-ingredients icon",
+      '<UButton icon="i-lucide-list" aria-label="View ingredients in Gratin" />',
     ],
     [
       'another pencil or trash glyph',

@@ -12,9 +12,12 @@ const emit = defineEmits<{
   deleted: []
 }>()
 
+/** The last reading asked about, held while the dialog animates closed. */
+const asked = computed<Reading | null>((last) => props.reading ?? last ?? null)
+
 const described = computed(() =>
-  props.reading
-    ? `${props.reading.weightKg.toFixed(1)} kg on ${formatDayHeadingFromISO(props.reading.measuredOn)}`
+  asked.value
+    ? `${asked.value.weightKg.toFixed(1)} kg on ${formatDayHeadingFromISO(asked.value.measuredOn)}`
     : '',
 )
 

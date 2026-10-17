@@ -22,18 +22,27 @@ function refusal(message: string) {
   }
 }
 
-/** Deleting the Food; the confirm closes once it is gone, or refused. */
+/**
+ * Deleting the Food; the confirm closes once it is gone, or refused — unless it
+ * has since moved on to another Food, as a late Retry of a failed delete finds.
+ */
 function useFoodDeletion() {
   const { $api } = useNuxtApp()
   const toast = useToast()
+  let deleting: FoodResponse | null = null
   const { pending, execute } = useApiMutation(
-    (food: FoodResponse) =>
-      $api('/api/foods/{id}', { method: 'DELETE', path: { id: food.id } }),
+    (food: FoodResponse) => {
+      deleting = food
+      return $api('/api/foods/{id}', {
+        method: 'DELETE',
+        path: { id: food.id },
+      })
+    },
     {
       // No success toast: the row disappears from the list.
       errorTitle: 'Could not delete food',
       onSuccess: () => {
-        emit('close')
+        if (props.food?.id === deleting?.id) emit('close')
         return refreshFoodCatalog()
       },
       // A Food with logged Entries can't be deleted: the backend refuses with a

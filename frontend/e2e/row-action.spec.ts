@@ -2,7 +2,7 @@ import type { Locator, Page } from '@playwright/test'
 import { expect, test } from './support/test'
 import { pinToLocalMorning } from './support/date'
 import { weighedEntry } from '../test/entry-fixtures'
-import { food } from '../test/food-fixtures'
+import { food, recipe } from '../test/food-fixtures'
 import { bodyAndPlan } from '../test/mocks/handlers/body'
 import { foodCatalog } from '../test/mocks/handlers/catalog'
 import { weightOnlyProfile } from '../test/mocks/handlers/profile'
@@ -185,6 +185,42 @@ test("keeps a Tag's rename and delete whole beside a name as long as a Tag's can
     delete: (await drawn(sheet.getByRole('button', { name: `Delete ${name}` })))
       .width,
   }).toEqual({ rename: 44, delete: 44 })
+})
+
+test("draws a Recipe's ingredients as the same row action", async ({
+  goto,
+  network,
+  page,
+}) => {
+  network.use(
+    ...foodCatalog({
+      foods: [
+        recipe({
+          id: 1,
+          name: 'Cottage pie',
+          caloriesPer100g: 120,
+          proteinPer100g: 9,
+          cookedWeightG: 1400,
+          ingredientCount: 5,
+        }),
+      ],
+    }),
+  )
+
+  await goto('/foods', { waitUntil: 'hydration' })
+
+  expect(
+    await drawn(
+      page.getByRole('button', { name: 'View ingredients in Cottage pie' }),
+    ),
+  ).toEqual({
+    color: await resolved(page, 'var(--ui-text-muted)'),
+    ring: 'none',
+    width: 44,
+    height: 44,
+    offCentre: [0, 0],
+    icon: 'i-lucide:list',
+  })
 })
 
 test("keeps a long-named Food's edit and delete whole beside its name", async ({

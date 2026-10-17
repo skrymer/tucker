@@ -86,16 +86,25 @@ const { execute: switchToMaintenance } = useApiMutation(
 // intake a Weekly Review has already counted. A tapped trash icon selects the
 // row; confirming removes it and refreshes both days, whose totals then
 // re-derive without it. No success toast (ADR 0005): the vanishing row is the
-// feedback.
+// feedback. The confirm closes only on its own Entry: a late Retry of an
+// earlier failed delete leaves another Entry's confirm open.
 const selectedEntry = ref<EntryResponse | null>(null)
+let deletedEntry: EntryResponse | null = null
 
 const { pending: deletingEntry, execute: deleteEntry } = useApiMutation(
-  (entry: EntryResponse) =>
-    $api('/api/entries/{id}', { method: 'DELETE', path: { id: entry.id } }),
+  (entry: EntryResponse) => {
+    deletedEntry = entry
+    return $api('/api/entries/{id}', {
+      method: 'DELETE',
+      path: { id: entry.id },
+    })
+  },
   {
     errorTitle: 'Could not delete entry',
     onSuccess: async () => {
-      selectedEntry.value = null
+      if (selectedEntry.value?.id === deletedEntry?.id) {
+        selectedEntry.value = null
+      }
       await Promise.all([refresh(), refreshTomorrow()])
     },
   },

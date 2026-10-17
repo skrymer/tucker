@@ -97,15 +97,10 @@ const recipeSubline = computed(() => {
       </ul>
     </div>
 
-    <UButton
+    <RowActionButton
       v-if="isRecipe"
+      action="ingredients"
       :aria-label="`View ingredients in ${name}`"
-      icon="i-lucide-list"
-      color="neutral"
-      variant="ghost"
-      square
-      class="size-11 shrink-0 text-muted hover:text-default"
-      :ui="{ base: 'justify-center' }"
       @click="emit('view', props.food)"
     />
 

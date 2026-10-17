@@ -83,6 +83,56 @@ test("corrects a picked day's reading, prefilled and quietly", async ({
   await expect(card).toMatchAriaSnapshot()
 })
 
+test('keeps naming the reading while its delete confirm closes', async ({
+  goto,
+  network,
+  page,
+}) => {
+  const today = await pinToLocalMorning(page)
+  network.use(
+    weightTimelineOf(weightTimeline({ days: steadyDays(28, today, 80) })),
+    ...bodyAndPlan({
+      profile: weightOnlyProfile,
+      today,
+      readings: [{ id: 1, measuredOn: '2026-06-11', weightKg: 81.2 }],
+    }),
+  )
+
+  await goto('/review', { waitUntil: 'hydration' })
+  const card = page.getByRole('region', { name: 'Weight history' })
+  await card.getByRole('button', { name: 'Thursday, June 11, 2026' }).click()
+  await card
+    .getByRole('button', { name: 'Delete weight on Thu 11 Jun' })
+    .click()
+  const confirm = page.getByRole('dialog', { name: 'Delete this weight?' })
+  await expect(confirm).toBeVisible()
+  // The body's text on every frame from here until the dialog is gone — a
+  // closing dialog stays drawn through its leave animation.
+  await page.evaluate(() => {
+    const seen: string[] = []
+    Object.assign(window, { seen })
+    const sample = () => {
+      const dialog = document.querySelector('[role="dialog"]')
+      if (!dialog) return
+      seen.push(dialog.textContent ?? '')
+      requestAnimationFrame(sample)
+    }
+    sample()
+  })
+  await confirm.getByRole('button', { name: 'Cancel' }).click()
+  await expect(confirm).toBeHidden()
+
+  const seen = await page.evaluate(
+    () => (window as unknown as { seen: string[] }).seen,
+  )
+  expect(seen.length).toBeGreaterThan(1)
+  expect(
+    seen.filter(
+      (text) => !text.includes('81.2 kg on Thu 11 Jun will be removed'),
+    ),
+  ).toEqual([])
+})
+
 test("deletes a picked day's reading once confirmed, and quietly", async ({
   goto,
   network,
