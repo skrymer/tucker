@@ -277,7 +277,11 @@ was flipped to `true`, and `ReviewLedgerItem.test.ts` now pins it.
 14/26 with 18 uncovered. **Pre-existing and untriaged** — neither page has been
 swept; #248 added `index.test.ts` (the page had none) but scoped it to the Calorie
 Tracking branches, so the fetch and mutation wiring around them is still unasserted
-at this layer. `components/GoalProgressHero.vue` is 18/25, likewise pre-existing.
+at this layer. `components/GoalProgressHero.vue` is 25/33 (#498), its 7 survivors
+the same pre-existing, untriaged ones: the strip's three labels (`'Start'`, `'Now'`,
+`'Target'` → `""`) and the `observedRate` computed (×4). #498's eighth, the
+`plannedFinishDate ?? ''` fallback (NoCoverage), is equivalent: `planned` is read only
+in the tracked branch, where the backend always sends a finish date.
 
 ### `app/app.vue` — 30 of 30, and the engine never ran a test
 

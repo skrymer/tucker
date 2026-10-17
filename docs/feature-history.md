@@ -1895,4 +1895,15 @@ null` now means two things that earn opposite messages — the same trap
     Its first sweep shows the trap: a width read with `getBoundingClientRect` inside
     an opening modal reads the zoom-in transform as a squeeze; use `offsetWidth`.
   - **Every delete confirm reports busy** (`ConfirmDeleteDialog`'s `pending`), the
-    Food and Entry confirms included.
+    Food and Entry confirms included, and a late Retry of a failed delete closes only
+    its own confirm on all three (the refused Food path included).
+  - **An active Goal with no readings** became reachable (no UI could delete a reading
+    before). Goal Progress fell back to the start weight as the "current trend", so
+    /review read "Now 90.4 kg — Tracked on your smoothed trend weight" over nothing.
+    Ruled at gate 6: the plan figures are now null with no trend (ADR 0023's explicit
+    null), and /review's hero and Today's tile say "Log a weight to see where you stand
+    on your Goal." with the target. Profile still greys its Goal section in that state
+    — left open for the user.
+  - **Trap:** the dev stack's backend image predated the branch's backend commit, so
+    the first live crossing probe read `reachedOn: null`. Rebuild
+    (`docker compose build backend`) before a walk-through of a backend change.

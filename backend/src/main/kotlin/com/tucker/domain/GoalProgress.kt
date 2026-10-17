@@ -33,11 +33,11 @@ data class GoalProgress(
         /** Tolerance band around the planned rate for on-pace classification (±20%). */
         private const val PACE_BAND = 0.20
 
-        /** Project progress for [goal] given the live [currentTrendKg] and [today]. */
         /** The trend's distance above the target, never below zero. */
         private fun kgToGo(goal: Goal, currentTrendKg: Double) =
             (currentTrendKg - goal.targetWeightKg).coerceAtLeast(0.0)
 
+        /** Project progress for [goal] given the live [currentTrendKg] and [today]. */
         fun planned(goal: Goal, currentTrendKg: Double, today: LocalDate): GoalProgress {
             val kgToGo = kgToGo(goal, currentTrendKg)
             val totalToLose = goal.startWeightKg - goal.targetWeightKg
