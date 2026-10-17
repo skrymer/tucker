@@ -131,6 +131,49 @@ describe('/foods deleting a food after an earlier delete failed', () => {
     expect(toastAdd).toHaveBeenCalledTimes(failures)
   })
 
+  it("leaves another food's confirm open when the earlier delete's Retry is refused", async () => {
+    let down = true
+    const bread = food({ id: 8, name: 'Bread' })
+    server.use(
+      failingWrite('delete', '/api/foods/{id}', () => down),
+      // Oats has logged Entries, so once the connection is back its delete is refused.
+      ...foodCatalog({ foods: [oats, bread], logged: [oats.id] }),
+    )
+    await renderSuspended(Foods)
+    const user = userEvent.setup()
+    const askToDelete = async (name: string) => {
+      await user.click(
+        await screen.findByRole('button', { name: `Delete ${name}` }),
+      )
+      return screen.findByRole('dialog', { name: /delete this food/i })
+    }
+    const oatsConfirm = await askToDelete('Oats')
+    await user.click(
+      within(oatsConfirm).getByRole('button', { name: /^delete$/i }),
+    )
+    await vi.waitFor(() => expect(toastAdd).toHaveBeenCalled())
+    await user.click(
+      within(oatsConfirm).getByRole('button', { name: 'Cancel' }),
+    )
+    await vi.waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+
+    const breadConfirm = await askToDelete('Bread')
+    down = false
+    await toastAdd.mock.calls.at(-1)![0].actions[0].onClick()
+
+    await vi.waitFor(() =>
+      expect(toastAdd).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          description: "Oats has logged Entries and can't be deleted.",
+        }),
+      ),
+    )
+    expect(breadConfirm).toHaveTextContent('Bread will be removed')
+    expect(
+      screen.getByRole('dialog', { name: /delete this food/i }),
+    ).toBeVisible()
+  })
+
   it("leaves another food's confirm open when the earlier delete's Retry lands", async () => {
     let down = true
     const bread = food({ id: 8, name: 'Bread' })

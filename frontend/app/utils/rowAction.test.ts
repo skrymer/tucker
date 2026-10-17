@@ -33,14 +33,19 @@ const TEXT = 2
 const ATTRIBUTE = 6
 const DIRECTIVE = 7
 
-/** What a node's `icon` names, written statically or bound. */
+/** A UButton's icon props: its icon, and the one before or after a label. */
+const ICON_PROPS = ['icon', 'leading-icon', 'trailing-icon']
+
+/** What a node's icon props name, written statically or bound. */
 function iconOf(node: TemplateNode): string {
-  const icon = node.props?.find(
-    (p) =>
-      (p.type === ATTRIBUTE && p.name === 'icon') ||
-      (p.type === DIRECTIVE && p.arg?.content === 'icon'),
-  )
-  return icon?.value?.content ?? icon?.exp?.content ?? ''
+  return (node.props ?? [])
+    .filter(
+      (p) =>
+        (p.type === ATTRIBUTE && ICON_PROPS.includes(p.name)) ||
+        (p.type === DIRECTIVE && ICON_PROPS.includes(p.arg?.content ?? '')),
+    )
+    .map((p) => p.value?.content ?? p.exp?.content ?? '')
+    .join(' ')
 }
 
 /** A UButton with no label: no children, or only whitespace. */
@@ -107,6 +112,8 @@ describe('edit and delete row actions', () => {
       "a Recipe's view-ingredients icon",
       '<UButton icon="i-lucide-list" aria-label="View ingredients in Gratin" />',
     ],
+    ['a trailing icon', '<UButton trailing-icon="i-lucide-trash-2" />'],
+    ['a bound leading icon', `<UButton :leading-icon="'i-lucide-pencil'" />`],
     [
       'another pencil or trash glyph',
       '<UButton icon="i-lucide-square-pen" /><UButton icon="i-lucide-trash" />',
