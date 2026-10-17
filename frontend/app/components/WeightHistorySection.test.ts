@@ -367,6 +367,42 @@ describe('WeightHistorySection', () => {
     )
   })
 
+  it('removes a reading whose failed delete is retried after its confirm was cancelled, raising no second error', async () => {
+    toastAdd.mockClear()
+    let down = true
+    server.use(
+      failingWrite('delete', '/api/weight/{id}', () => down),
+      ...bodyAndPlan({
+        profile: null,
+        today: TODAY,
+        readings: [{ id: 1, measuredOn: '2026-10-09', weightKg: 80.9 }],
+      }),
+    )
+    await renderSuspended(WeightHistorySection)
+    await screen.findByText('No weight on Mon 12 Oct.')
+    const user = userEvent.setup()
+    await user.click(
+      screen.getByRole('button', { name: 'Friday, October 9, 2026' }),
+    )
+    await user.click(
+      await screen.findByRole('button', { name: 'Delete weight on Fri 9 Oct' }),
+    )
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Delete this weight?',
+    })
+    await user.click(within(dialog).getByRole('button', { name: 'Delete' }))
+    await vi.waitFor(() => expect(toastAdd).toHaveBeenCalled())
+    await user.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+    await vi.waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    const failures = toastAdd.mock.calls.length
+
+    down = false
+    await toastAdd.mock.calls.at(-1)![0].actions[0].onClick()
+
+    expect(await screen.findByText('No weight on Fri 9 Oct.')).toBeVisible()
+    expect(toastAdd).toHaveBeenCalledTimes(failures)
+  })
+
   it("leaves another reading's confirm open when an earlier failed delete's Retry lands", async () => {
     toastAdd.mockClear()
     let down = true

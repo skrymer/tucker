@@ -1,11 +1,11 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mockNuxtImport, renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import { besideCatalog, catalog, catalogOnceReread } from '~~/test/catalog-host'
 import { food } from '~~/test/food-fixtures'
 import { foodCatalog } from '~~/test/mocks/handlers/catalog'
-import { held } from '~~/test/mocks/http'
+import { failingWrite, held } from '~~/test/mocks/http'
 import { server } from '~~/test/mocks/node'
 import DeleteFoodConfirm from './DeleteFoodConfirm.vue'
 
@@ -23,6 +23,8 @@ const oats = food({
 })
 
 describe('DeleteFoodConfirm', () => {
+  beforeEach(() => toastAdd.mockClear())
+
   it('asks the user to confirm deleting the named food', async () => {
     await renderSuspended(DeleteFoodConfirm, { props: { food: oats } })
 
@@ -75,6 +77,30 @@ describe('DeleteFoodConfirm', () => {
     const shown = await catalogOnceReread()
     expect(shown.getByText('Bread')).toBeVisible()
     expect(shown.queryByText('Oats')).not.toBeInTheDocument()
+  })
+
+  it('names a failed delete in its own persistent error toast', async () => {
+    server.use(
+      failingWrite('delete', '/api/foods/{id}'),
+      ...foodCatalog({ foods: [oats] }),
+    )
+    await renderSuspended(besideCatalog(DeleteFoodConfirm), {
+      props: { food: oats },
+    })
+
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: /^delete$/i }))
+
+    await vi.waitFor(() =>
+      expect(toastAdd).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Could not delete food',
+          duration: Infinity,
+          actions: [expect.objectContaining({ label: 'Retry' })],
+        }),
+      ),
+    )
   })
 
   it('reports Delete busy until the delete lands', async () => {

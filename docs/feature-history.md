@@ -1875,3 +1875,24 @@ null` now means two things that earn opposite messages — the same trap
   - **A mistyped reading that crosses the Goal latches it reached**, and correcting
     it does not unlatch — reachable on `main` through Today's tile, and by design per
     `CONTEXT.md` › Goal. Left to [#505](https://github.com/skrymer/tucker/issues/505).
+  - **Slice 3 (#498) — Delete.** A picked day holding a reading shows a trash beside
+    the pencil, "Delete weight on <day>". `DeleteWeightConfirm` asks through
+    `ConfirmDeleteDialog` and owns the `DELETE`; the card re-reads and emits
+    `changed` (renamed from `saved`), and /review refreshes the Weight Timeline and
+    goal hero. No success toast; a failure keeps the dialog up under the persistent
+    error with Retry, and a late Retry closes only its own reading's confirm.
+  - **A delete runs the Goal-reached check a save does** (the user's ruling at gate 1,
+    over the issue's "No backend change"): `WeightMeasurementService.delete` stamps
+    the active Goal if the removal brings the Trend Weight to target, anchored on a
+    new optional `clientToday` query param. ADR 0008's write point names delete.
+    Un-latching stays #505's.
+  - **Every edit and delete icon on a row is one `RowActionButton`** (the user's
+    ruling: "Not green in someplaces and grey in others"): neutral ghost, muted
+    until hovered, 44px. Today's weight pencil turned grey and Today's Entry delete
+    grew 36→44px (+1px on a two-line row at 320px; ADR 0005 re-measured).
+    `rowAction.test.ts` refuses an edit or delete icon styled in place, and
+    `e2e/row-action.spec.ts` measures colour, ring, hover, size, icon and centring.
+    Its first sweep shows the trap: a width read with `getBoundingClientRect` inside
+    an opening modal reads the zoom-in transform as a squeeze; use `offsetWidth`.
+  - **Every delete confirm reports busy** (`ConfirmDeleteDialog`'s `pending`), the
+    Food and Entry confirms included.
