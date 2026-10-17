@@ -1568,28 +1568,34 @@ is still loading raises no error*). The six left are **equivalent**:
   deleted while a Recipe references it, and `/api/foods` returns the whole catalog.
 - **`:149` `props.recipe?.name ?? ''`** — the title renders only while a Recipe is open.
 
-### Delete a weight (#498) — `DeleteWeightConfirm.vue` 18 of 19, backend 7 of 7
+### Delete a weight (#498) — the delete confirms, `RowActionButton`, backend 7 of 7
 
-- **`DeleteWeightConfirm.vue:18`, the `described` computed's `''` — equivalent.** It is
-  read only while `reading` is null, and the dialog is `:open="reading !== null"`.
-  `DeleteFoodConfirm`'s `food?.name ?? ''` is the same shape.
-- **`DeleteWeightConfirm.vue`, the late-Retry check's `deleting?.id` — equivalent.**
-  `deleting` is set in the mutation before `onSuccess` can run. Its partner,
-  `props.reading?.id`, was a **real gap**: a failed delete retried after its confirm was
-  cancelled threw in `onSuccess`, raising a second error and leaving the reading on
-  screen. It is pinned now.
-- `DeleteFoodConfirm.vue`'s transient-failure `errorTitle` was a **real gap**, older than
-  #498 (only the permanent refusal's title was asserted). It is pinned now.
-- `pages/index.vue` keeps its pre-existing, untriaged survivors above. #498 only passes
-  the Entry delete's `pending` to its confirm.
-- `RowActionButton.vue` has no `<script>` logic, so Stryker makes no mutants; its
-  template is pinned by hand-mutants against `e2e/row-action.spec.ts`. Icon, `color`,
+- **The late-Retry checks' `deleting?.id` / `deletedEntry?.id` — equivalent**
+  (`DeleteWeightConfirm`, `DeleteFoodConfirm`, `pages/index.vue`). The mutation function
+  sets them before `onSuccess` can run. Each partner (`props.reading?.id`,
+  `props.food?.id`, `selectedEntry.value?.id`) was a **real gap**: a failed delete,
+  retried after its confirm was cancelled, threw in `onSuccess`, raising a second error
+  and leaving the item on screen. All three are pinned now.
+- **`DeleteWeightConfirm.vue`, the `described` computed's `''` — equivalent.** `asked`
+  holds the last reading through the leave animation, so it is null only before the
+  confirm has first opened, when nothing renders. Before that hold existed the fallback
+  was *not* equivalent: a closing confirm read "will be removed…" with no reading named
+  (`e2e/weight-history.spec.ts` › *keeps naming the reading while its delete confirm
+  closes*). Food's and Entry's confirms still do this on `main`.
+- The transient-failure `errorTitle` was a **real gap** in both `DeleteFoodConfirm.vue`
+  and `pages/index.vue`, older than #498 (only Food's permanent-refusal title was
+  asserted). Both are pinned now.
+- `pages/index.vue` keeps its other pre-existing, untriaged survivors above, including
+  `confirmDeleteEntry`'s `if (entry)` → `true`.
+- `RowActionButton.vue`'s `ICONS` map scores 4 of 4. Stryker makes no mutants of its
+  template, which is pinned by hand-mutants against `e2e/row-action.spec.ts`. Icon, `color`,
   `variant`, `size-11`, `shrink-0`, `text-muted`, `hover:text-default` and
   `justify-center` each turn it red. `shrink-0` is red only beside a 30-character
   unbroken Tag at a 360px phone; at 412px nothing squeezes it. `square` turned nothing
   red, so it was deleted.
-- `ManageTagsSheet.vue`, `FoodListItem.vue` and `WeightHistorySection.vue` keep their
-  standing survivors above; this change touched their templates only.
+- `ManageTagsSheet.vue` and `FoodListItem.vue` keep their standing survivors above
+  (this change touched only their templates), and so does `WeightHistorySection.vue`,
+  whose script gained `readingsChanged` and `toDelete`, both killed.
 
 ### Noise removed at the source
 

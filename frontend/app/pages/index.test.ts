@@ -289,6 +289,43 @@ describe("/ with today's Entries", () => {
     expect(screen.getByText('0 / 2000 kcal')).toBeVisible()
   })
 
+  it('deletes an Entry whose failed delete is retried after its confirm was cancelled, raising no second error', async () => {
+    toastAdd.mockClear()
+    let down = true
+    let entries = [todaysSalmon]
+    server.use(
+      summaryOf(() => ({ ...DAY, entries })),
+      http.delete('/api/entries/{id}', ({ params, response }) => {
+        entries = entries.filter((e) => e.id !== Number(params.id))
+        return response(204).empty()
+      }),
+    )
+    server.use(failingWrite('delete', '/api/entries/{id}', () => down))
+    await renderToday()
+    const user = userEvent.setup()
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'Delete Salmon — 150 g · 312 kcal · 33 g protein',
+      }),
+    )
+    const confirm = await screen.findByRole('dialog', {
+      name: 'Delete this entry?',
+    })
+    await user.click(within(confirm).getByRole('button', { name: 'Delete' }))
+    await vi.waitFor(() => expect(toastAdd).toHaveBeenCalled())
+    await user.click(within(confirm).getByRole('button', { name: 'Cancel' }))
+    await vi.waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    const failures = toastAdd.mock.calls.length
+
+    down = false
+    await toastAdd.mock.calls.at(-1)![0].actions[0].onClick()
+
+    await vi.waitFor(() =>
+      expect(screen.queryByRole('region')).not.toBeInTheDocument(),
+    )
+    expect(toastAdd).toHaveBeenCalledTimes(failures)
+  })
+
   it("leaves another Entry's confirm open when an earlier failed delete's Retry lands", async () => {
     toastAdd.mockClear()
     let down = true

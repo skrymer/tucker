@@ -104,6 +104,33 @@ describe('/foods deleting a food with logged entries', () => {
 })
 
 describe('/foods deleting a food after an earlier delete failed', () => {
+  it('deletes a food whose failed delete is retried after its confirm was cancelled, raising no second error', async () => {
+    let down = true
+    server.use(
+      failingWrite('delete', '/api/foods/{id}', () => down),
+      ...foodCatalog({ foods: [oats] }),
+    )
+    await renderSuspended(Foods)
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('button', { name: 'Delete Oats' }))
+    const confirm = await screen.findByRole('dialog', {
+      name: /delete this food/i,
+    })
+    await user.click(within(confirm).getByRole('button', { name: /^delete$/i }))
+    await vi.waitFor(() => expect(toastAdd).toHaveBeenCalled())
+    await user.click(within(confirm).getByRole('button', { name: 'Cancel' }))
+    await vi.waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    const failures = toastAdd.mock.calls.length
+
+    down = false
+    await toastAdd.mock.calls.at(-1)![0].actions[0].onClick()
+
+    await vi.waitFor(() =>
+      expect(screen.queryByText('Oats')).not.toBeInTheDocument(),
+    )
+    expect(toastAdd).toHaveBeenCalledTimes(failures)
+  })
+
   it("leaves another food's confirm open when the earlier delete's Retry lands", async () => {
     let down = true
     const bread = food({ id: 8, name: 'Bread' })
