@@ -304,3 +304,51 @@ test('user deletes a mistyped reading inside a reviewed week, and only the live 
   expect(goalAfter.startWeightKg).toBe(goalBefore.startWeightKg)
   expect(progressAfter.startWeightKg).toBe(goalBefore.startWeightKg)
 })
+
+test('user deletes the only reading under an active Goal, and the Goal asks for a weight rather than showing a trend', async ({
+  page,
+  goto,
+  request,
+}) => {
+  const today = todayIso()
+  await expectStatus(
+    request.put(`${API}/profile`, {
+      data: { sex: 'MALE', birthDate: '1990-06-15', heightCm: 180 },
+    }),
+    200,
+  )
+  await expectStatus(
+    request.post(`${API}/weight`, {
+      data: { date: today, weightKg: 84.6, clientToday: today },
+    }),
+    200,
+  )
+  await expectCreated(
+    request.post(`${API}/goal`, {
+      data: {
+        startedOn: today,
+        targetWeightKg: 78,
+        rateKgPerWeek: 0.5,
+        clientToday: today,
+      },
+    }),
+  )
+
+  await goto('/review', { waitUntil: 'hydration' })
+  const card = page.getByRole('region', { name: 'Weight history' })
+  await card
+    .getByRole('button', { name: `Delete weight on ${dayHeading(today)}` })
+    .click()
+  const confirm = page.getByRole('dialog', { name: 'Delete this weight?' })
+  await confirm.getByRole('button', { name: 'Delete' }).click()
+  await expect(confirm).toBeHidden()
+
+  await expect(
+    card.getByText(`No weight on ${dayHeading(today)}.`, { exact: true }),
+  ).toBeVisible()
+  await expect(
+    page.getByText('Log a weight to see where you stand on your Goal.'),
+  ).toBeVisible()
+  await expect(page.getByText('Now', { exact: true })).toHaveCount(0)
+  await expect(page.getByRole('progressbar')).toHaveCount(0)
+})

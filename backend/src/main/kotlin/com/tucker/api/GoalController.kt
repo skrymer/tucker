@@ -35,6 +35,8 @@ data class GoalResponse(
 )
 /* jscpd:ignore-end */
 
+// The wire shape mirrors GoalProgress's fields on purpose, as GoalResponse mirrors Goal's.
+/* jscpd:ignore-start */
 /**
  * Progress against the active Goal. The planned fields project from the Goal and
  * the live Trend Weight; the pace fields (how the trend is *actually* moving) are
@@ -43,10 +45,11 @@ data class GoalResponse(
 data class GoalProgressResponse(
     val startWeightKg: Double,
     val targetWeightKg: Double,
-    val currentTrendKg: Double,
-    val kgToGo: Double,
-    val percentComplete: Double,
-    val plannedFinishDate: LocalDate,
+    /** Null with no Weight Measurement, and with it the three plan figures below. */
+    val currentTrendKg: Double?,
+    val kgToGo: Double?,
+    val percentComplete: Double?,
+    val plannedFinishDate: LocalDate?,
     val plannedRateKgPerWeek: Double,
     val paceStatus: PaceStatus?,
     val observedRateKgPerWeek: Double?,
@@ -54,6 +57,7 @@ data class GoalProgressResponse(
     /** The date this Goal was reached (trend met target), or null while still pursuing it (ADR 0008). */
     val reachedOn: LocalDate?,
 )
+/* jscpd:ignore-end */
 
 /**
  * Request to set a new weight-loss Goal.
@@ -117,8 +121,8 @@ class GoalController(
     fun progress(): GoalProgressResponse {
         val goal = goals.findActive() ?: throw NotFoundException("no active Goal")
         // Progress runs on the smoothed Trend Weight; the observed pace reads its
-        // slope over the trailing window. Before any reading exists, the user is
-        // by definition still at the Goal's captured start weight.
+        // slope over the trailing window. With every reading removed there is no
+        // trend, and the plan's figures come back null rather than guessed.
         val trend = WeightTrend.from(weights.findAll())
         return GoalProgress.forGoal(goal, trend, userToday.serverToday()).toResponse(goal.reachedOn)
     }

@@ -35,7 +35,31 @@ const stalled: GoalProgress = {
   observedFinishDate: null,
 }
 
+// Every reading removed: the Goal stands, but there is no trend to measure.
+const untracked: GoalProgress = {
+  ...withheld,
+  currentTrendKg: null,
+  kgToGo: null,
+  percentComplete: null,
+  plannedFinishDate: null,
+}
+
 describe('GoalProgressHero', () => {
+  it('asks for a weight in place of any figure a trend would give, with no readings', async () => {
+    await renderSuspended(GoalProgressHero, { props: { progress: untracked } })
+
+    expect(
+      screen.getByText('Log a weight to see where you stand on your Goal.'),
+    ).toBeVisible()
+    expect(screen.getByText('Target')).toBeVisible()
+    expect(screen.getByText('80.0 kg')).toBeVisible()
+    expect(screen.queryByRole('progressbar')).toBeNull()
+    expect(screen.queryByText(/%$/)).toBeNull()
+    expect(screen.queryByText('Now')).toBeNull()
+    expect(screen.queryByText('Planned finish')).toBeNull()
+    expect(screen.queryByText(/smoothed trend weight/)).toBeNull()
+  })
+
   it('leads with percent complete and a completion progress bar', async () => {
     await renderSuspended(GoalProgressHero, { props: { progress: withheld } })
 

@@ -9,6 +9,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.delete
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
 import org.springframework.test.web.servlet.put
@@ -73,6 +74,29 @@ class GoalProgressApiTest {
             jsonPath("$.observedFinishDate") { value(nullValue()) }
             // The trend (89) is still above target (80), so the Goal isn't reached.
             jsonPath("$.reachedOn") { value(nullValue()) }
+        }
+    }
+
+    @Test
+    fun `with every reading deleted the Goal stands but its plan figures are explicit nulls`() {
+        seedProfile()
+        val saved = mockMvc.post("/api/weight") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"date":"$today","weightKg":90.0}"""
+        }.andExpect { status { isOk() } }.andReturn().response.contentAsString
+        seedGoal(targetWeightKg = 80.0, rateKgPerWeek = 0.5)
+        val id = Regex("""\"id\":(\d+)""").find(saved)!!.groupValues[1]
+        mockMvc.delete("/api/weight/$id").andExpect { status { isNoContent() } }
+
+        mockMvc.get("/api/goal/progress").andExpect {
+            status { isOk() }
+            jsonPath("$.startWeightKg") { value(90.0) }
+            jsonPath("$.targetWeightKg") { value(80.0) }
+            jsonPath("$.plannedRateKgPerWeek") { value(0.5) }
+            jsonPath("$.currentTrendKg") { value(nullValue()) }
+            jsonPath("$.kgToGo") { value(nullValue()) }
+            jsonPath("$.percentComplete") { value(nullValue()) }
+            jsonPath("$.plannedFinishDate") { value(nullValue()) }
         }
     }
 
