@@ -197,6 +197,7 @@ const {
         <ReachedGoalBanner
           v-if="goalProgress?.reachedOn"
           :target-weight-kg="goalProgress.targetWeightKg"
+          :tracked="goalProgress.currentTrendKg != null"
           @switch-to-maintenance="switchToMaintenance"
         />
         <MaintainingTile

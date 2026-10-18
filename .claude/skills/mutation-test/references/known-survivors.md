@@ -1594,6 +1594,12 @@ is still loading raises no error*). The six left are **equivalent**:
   for the no-Goal case: `() => false` kept every test green while a disabled section
   offered "Start a goal". Pinned by *with no goal and no reading, offers nothing to start
   and waits on a weight*. Its other 8 survivors are the untriaged ones above.
+- `ReachedGoalBanner.vue`'s `tracked` branch is template-only, so Stryker makes no
+  mutant of it; three hand-mutants (the tracked `<p>` forced on, the `v-else` `<p>`
+  forced off, Switch to maintenance's `v-if` dropped) each fail its test. The page's
+  `:tracked="goalProgress.currentTrendKg != null"` is pinned by
+  `e2e/reached-goal.spec.ts` › *a reached goal with every reading deleted claims no
+  trend…*, red on a copy passing `true`.
 - The transient-failure `errorTitle` was a **real gap** in both `DeleteFoodConfirm.vue`
   and `pages/index.vue`, older than #498 (only Food's permanent-refusal title was
   asserted). Both are pinned now.

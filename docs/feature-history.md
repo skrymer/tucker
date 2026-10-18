@@ -1904,7 +1904,14 @@ null` now means two things that earn opposite messages — the same trap
     null), and /review's hero and Today's tile say "Log a weight to see where you stand
     on your Goal." with the target. Profile, which greyed its whole Goal section in
     that state, now shows the active Goal and gates only setting a new one ("…to set
-    a new goal."), ruled at the end of sign-off.
+    a new goal."), ruled at the end of sign-off. A *reached* Goal there kept its
+    banner saying "Your trend weight has reached your target", and its Switch to
+    maintenance hit the review recompute's "no weight measurements" 400 under a
+    "check your connection" Retry that could never land. Ruled at gate 6 ("wait on a
+    weight", over making the switch skip the recompute, which would have left the
+    Goal's deficit Budget standing under Maintenance): with no trend the banner reads
+    "You reached your target of … Log a weight to see where you stand on your Goal."
+    and offers only Set a lower goal.
   - **A delete confirm keeps naming its item while it closes** — the reading's did
     from the start (`computed((last) => …)`); the Food's and Entry's went blank for
     the leave animation on `main` too, and hold theirs the same way now. The three
