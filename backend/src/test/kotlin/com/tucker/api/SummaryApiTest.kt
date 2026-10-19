@@ -149,6 +149,29 @@ class SummaryApiTest {
     }
 
     @Test
+    fun `the first reading after every reading was deleted recomputes today's review from it`() {
+        val today = LocalDate.now()
+        // A held review from two days ago, built on readings since deleted.
+        seedReview(today.minusDays(2), budgetKcal = 1000.0, floorG = 100.0)
+        mockMvc.get("/api/weight").andReturn().response.contentAsString
+            .let { Regex(""""id":(\d+)""").findAll(it).map { m -> m.groupValues[1] }.toList() }
+            .forEach { id -> mockMvc.delete("/api/weight/$id").andExpect { status { isNoContent() } } }
+
+        mockMvc.post("/api/weight") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"date":"$today","weightKg":90.0}"""
+        }.andExpect { status { isOk() } }
+
+        val review = reviews.findByReviewedOn(today)
+        assertEquals(90.0, review?.trendWeightKg)
+        mockMvc.get("/api/summary") { param("date", "$today") }.andExpect {
+            status { isOk() }
+            jsonPath("$.trendWeightKg") { value(90.0) }
+            jsonPath("$.calorieBudget", closeTo(review!!.intakeTargets!!.calorieBudgetKcal, 1e-6))
+        }
+    }
+
+    @Test
     fun `the summary reports setup complete once a Profile and a Weight Measurement exist`() {
         val day = LocalDate.now()
         maintenanceSetup(day)
