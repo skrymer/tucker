@@ -54,9 +54,14 @@ against it instead. An aborted read rejects as it would in a browser, which
 Each part is pinned by `test/mocks/node.test.ts`, which does not install the server
 itself — its unhandled-request tests are what show the global wiring.
 
-Nuxt Icon looks up any icon it was not bundled with on `api.iconify.design`. The server
-answers that with a 404 (`iconLookup`), so no test reaches the CDN; the `[Icon] failed to
-load` lines on stderr are that, and harmless.
+Nuxt Icon looks up any icon it was not bundled with on `api.iconify.design`. Both layers
+answer that with a 404 from one handler (`iconLookup`, `test/mocks/http.ts`), so no test
+reaches the CDN and no icon is drawn in either; the `[Icon] failed to load` lines on
+stderr are that, and harmless. The Playwright fixture routes the host itself
+(`answerIconLookups`), because `@msw/playwright` passes a `.json` request through as a
+static asset before any handler sees it — a handler for one never runs.
+`e2e/icon-lookup.spec.ts` pins it with the CDN's name unresolvable: without the route,
+a DNS outage failed 91 mocked specs on `net::ERR_NAME_NOT_RESOLVED`.
 
 Measured and rejected: jsdom (54 tests in 5 files fail, and relative URLs still need the
 rebind), nuxt-msw (msw 2 only, unpublished since 2024-11), a `getResponse` bridge (works, but

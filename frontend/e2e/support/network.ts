@@ -1,9 +1,9 @@
 import type { BrowserContext, Fixtures } from '@playwright/test'
-import type { AnyHandler } from 'msw'
+import { getResponse, type AnyHandler } from 'msw'
 import { defineNetworkFixture, type NetworkFixture } from '@msw/playwright'
 import { expect } from '@nuxt/test-utils/playwright'
 import { handlers as baseline } from '../../test/mocks/handlers'
-import { fellThrough } from '../../test/mocks/http'
+import { fellThrough, iconLookup } from '../../test/mocks/http'
 
 export interface NetworkFixtures {
   handlers: AnyHandler[]
@@ -13,8 +13,9 @@ export interface NetworkFixtures {
 /**
  * Answers `/api` from the shared MSW handlers (ADR 0034), the same baseline the
  * Vitest suite uses. A spec overrides it with `network.use(...)`, and a request
- * to `/api` that no handler covers fails the test. Anything else — the app's own
- * pages, chunks and service worker — goes to the server.
+ * to `/api` that no handler covers fails the test. An icon lookup on the Iconify
+ * CDN misses, as in Vitest. Anything else — the app's own pages, chunks and
+ * service worker — goes to the server.
  *
  * Interception rides Playwright's own routing, not an MSW worker script, so the
  * app's Workbox service worker stays the only one on its scope. A `page.route`
@@ -40,6 +41,7 @@ export const networkFixtures: Fixtures<
         onUnhandledFrame: () => {},
       })
 
+      await answerIconLookups(context)
       await network.enable()
       await use(network)
       await network.disable()
@@ -48,4 +50,17 @@ export const networkFixtures: Fixtures<
     },
     { auto: true },
   ],
+}
+
+/**
+ * Answer the Iconify CDN from `iconLookup`, as the Vitest server does, so no test
+ * reaches it. It needs a route of its own: the network fixture passes any `.json`
+ * request through as a static asset before a handler sees it.
+ */
+async function answerIconLookups(context: BrowserContext) {
+  await context.route('https://api.iconify.design/**', async (route) => {
+    const request = new Request(route.request().url())
+    const response = await getResponse([iconLookup], request)
+    await route.fulfill({ status: response?.status ?? 404 })
+  })
 }
