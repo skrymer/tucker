@@ -1906,7 +1906,7 @@ null` now means two things that earn opposite messages — the same trap
     that state, now shows the active Goal and gates only setting a new one ("…to set
     a new goal."), ruled at the end of sign-off. A *reached* Goal there kept its
     banner saying "Your trend weight has reached your target", and its Switch to
-    maintenance hit the review recompute's "no weight measurements" 400 under a
+    maintenance hit the review recompute's "no weight measurements" 409 under a
     "check your connection" Retry that could never land. Ruled at gate 6 ("wait on a
     weight", over making the switch skip the recompute, which would have left the
     Goal's deficit Budget standing under Maintenance): with no trend the banner reads

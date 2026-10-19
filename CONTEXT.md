@@ -683,7 +683,9 @@ Budget, and the Floor are (re)computed. A day's figures — on `/`, in a **Check
 in a **Budget Projection** — come from the review **standing on** that day: the
 latest dated on or before it, never a later one. Only the cadence (is a review
 due?) and a **Check** from a client that sends no day ask for the newest review
-whatever its date. Reviews fire by **lazy catch-up**: on the daily-summary
+whatever its date. With no **Weight Measurement** left, no review stands on any
+day: one held from before the last reading was removed stays stored, but none of
+those surfaces states a figure from it until a reading is logged. Reviews fire by **lazy catch-up**: on the daily-summary
 read that opening Tucker performs — today `/` and a **Check**, not every screen — if
 the latest review is a week or more old, the engine runs one review snapping to
 today (it does not replay each missed week — the adaptive window already looks
