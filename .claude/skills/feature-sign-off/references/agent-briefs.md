@@ -1,6 +1,6 @@
 # Agent briefs
 
-The prompt contract every fan-out gate's agents are written to, and the six briefs
+The prompt contract every fan-out gate's agents are written to, and the seven briefs
 written out in full here. Copy the brief, fill the bracketed slots, send it.
 
 Why a file rather than prose in the skill: a brief that is a **template** can be
@@ -21,12 +21,13 @@ author felt. The repo makes this move elsewhere: `app/utils/exits.ts` and
 - Brief D — the acceptance ledger (gate 3)
 - Brief E — the lesson miner (retro)
 - Brief F — the diagram auditor (gate 3)
+- Brief G — `/code-review` as an agent (gate 3)
 
 ## The prompt contract
 
 Applies to **every** agent any gate spawns — the `/simplify` three, the agents
 `/code-review` fans out to (it runs inline itself), `/check-adrs`, the resolutions
-agent, and the six below.
+agent, and the seven below.
 
 **A brief carries:**
 
@@ -155,8 +156,8 @@ change at the right depth and what it would absorb.
 
 ## The survivor triage — gate 2
 
-**Fires:** when a scoped sweep leaves more than ~3 survivors (`mutation-test`'s
-*Delegating triage*). One agent, read-only. Fill the slots with paths, never with the
+**Fires:** when a scoped sweep leaves more than ~3 survivors without a standing verdict
+on unmoved code (`mutation-test`'s *Delegating triage*). One agent, read-only. Fill the slots with paths, never with the
 survivors you expect or the verdicts you lean to.
 
 ```
@@ -559,3 +560,36 @@ the skill's gate 3 is what catches a layout the edit broke.
 off row against this transcript. The fix is an edit to `docs/architecture.md` on the
 feature branch itself — unlike a skill edit, the diagrams describe the code, so they
 ship with the change that moved it.
+
+## Brief G — code-review as an agent (gate 3)
+
+**Fires:** when gate 3's correctness hunt runs as a background agent rather than inline.
+A hand-written brief is where instances slip in: #498's listed what to look for ("… and a
+device a day ahead"), which became the agent's one finding, and named three files the
+diff did not touch. Gate 5 flagged both.
+
+```
+READ-ONLY: do not edit, create, delete or move any file. Read-only shell commands only,
+apart from `git fetch`, which touches nothing but remote refs.
+
+Hunt correctness bugs in a change. Correctness only: not reuse, simplification,
+efficiency, naming or style — other agents in this run own those.
+
+Repo: <path> (<a git worktree | the main checkout> — stay in it).
+The change: cd <worktree path> && git fetch -q origin &&
+  git diff $(git merge-base origin/main <sha>) <sha>
+What it does: <description in the code's own terms — no assessment, no defence>
+Start reading here: <context-pack files, every one touched by the diff or cited by
+the issue>. You may read anything else in the repo.
+
+Judge each state by what the User sees in it, not by whether a function's return
+value is right on its own terms.
+
+For each defect, return one row:
+| file:line | defect | failure scenario (the User steps or data state that hit it) |
+"No findings" is a complete and valued answer.
+```
+
+**No worked examples, ever.** The template names the kind of thing to find and leaves
+every instance to the agent; a slot filled with one is the contract broken, and gate 5
+checks the sent prompt against this block.

@@ -37,21 +37,19 @@ node wrapper).
 memory-capped systemd scope:
 
 ```bash
-scripts/bounded-run.sh --cap 10G -- pnpm exec stryker run --mutate "app/utils/csrf.ts"
-scripts/bounded-run.sh --cap 8G  -- ./gradlew mutationTest -PmutationTargets='com.tucker.domain.Goal'
+scripts/bounded-run.sh --cap 10G --log <new-file> -- pnpm exec stryker run --mutate "app/utils/csrf.ts"
+TZ=Etc/UTC scripts/bounded-run.sh --cap 8G --log <new-file> -- ./gradlew mutationTest -PmutationTargets='com.tucker.domain.Goal'
 ```
+
+pitest runs under `TZ=Etc/UTC`, or UTC-evening date tests go red and stop it (#498, 38).
 
 `bounded-run.sh` is Linux + systemd only; elsewhere it warns and runs unbounded, and
 the config caps below are then the only guard.
 
-This is not belt-and-braces. `systemd-oomd` kills on **user-slice** memory
-pressure — it does not kill the process that grew, it kills a whole cgroup — so
-an unbounded sweep does not fail alone, it takes the terminal and the Claude Code
-session running in it. That happened twice (2026-08-23 and 2026-08-25); the
-journal records `Killed .../vte-spawn-….scope due to memory pressure … being
-63.62% > 50.00% for > 20s`. Inside a scope the kernel reclaims and, failing that,
-kills within that cgroup only, and the failure reads as a dead worker rather than
-a vanished session.
+This is not belt-and-braces. `systemd-oomd` kills a whole cgroup on **user-slice**
+memory pressure, so an unbounded sweep takes the terminal and the Claude Code session
+with it — twice (2026-08-23, 2026-08-25: `Killed .../vte-spawn-….scope due to memory
+pressure`). Inside a scope the kernel kills within that cgroup only: a dead worker.
 
 **Do not run the two sweeps concurrently.** Overlapping them is where the OOM came
 from: they are separately affordable and jointly not. Sequential costs wall-clock
@@ -181,7 +179,10 @@ Identical for both stacks; only step 1 and 2's commands differ.
      `useNuxtApp().hook('vue:error', …)` and assert nothing arrived: #474's copy
      without `prevent-deselect` passed every test and raised three TypeErrors. A mutant
      whose only effect is that throw is a **real gap**, not equivalent — "the User sees
-     nothing" is not equivalence (#434's `recipe()?.` after a close).
+     nothing" is not equivalence (#434's `recipe()?.` after a close). Nor is a fallback
+     read only while an overlay is closed: it keeps rendering through its leave
+     animation. #498 called a confirm's `''` fallback equivalent ("`:open` is false");
+     a frame-sampling e2e showed "will be removed…" with no name (12–14 frames on main).
    - **False survivor** — a test *does* kill it, but the engine never ran that
      test. Suspect it whenever a whole class scores 0%, and **settle it by
      hand-mutating a throwaway copy and running the suite against it**: if tests
@@ -372,7 +373,7 @@ naming one that doesn't exist is harmless.
 Run (in `backend/`):
 
 ```bash
-./gradlew mutationTest -PmutationTargets='com.tucker.domain.Entry,com.tucker.domain.Entry$*'
+TZ=Etc/UTC ./gradlew mutationTest -PmutationTargets='com.tucker.domain.Entry,com.tucker.domain.Entry$*'
 ```
 
 Bare `./gradlew mutationTest` sweeps the whole backend — minutes. Scope it. The
@@ -484,11 +485,12 @@ domain code and **~1.6s for anything a controller test covers**.
 
 ## Delegating triage
 
-With more than ~3 survivors, spawn a subagent (`Agent`, general-purpose,
-explicitly **read-only**) to classify them and return only the verdicts. Brief it from
-the template in `feature-sign-off/references/agent-briefs.md` (*The survivor triage*). The
-report is bulky, the conclusion is small, and the classification is judgement
-work. Write the tests yourself afterwards — don't let the agent edit the tree.
+With more than ~3 survivors without a standing `known-survivors` entry on unmoved code
+(#498 triaged 9, 11 and 6 inline, nearly all standing, and gate 5 upheld every verdict),
+spawn a read-only general-purpose `Agent` to classify them and return only the verdicts,
+briefed from `feature-sign-off/references/agent-briefs.md` (*The survivor triage*): the
+report is bulky, the conclusion small, and the classification judgement work.
+Write the tests yourself afterwards — don't let the agent edit the tree.
 
 ## Related
 

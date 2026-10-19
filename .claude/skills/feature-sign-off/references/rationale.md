@@ -132,6 +132,12 @@ agents. The four standing additions take a run of that shape from three to seven
 
 ## Rendering a diagram
 
+Mermaid parses a diagram that no longer reads, and the C4 renderer places elements by
+statement order, so one new element can push a label through a box. For a C4 block
+read GitHub's preview: headless Chrome reports `screen.availWidth` as 800px, so it
+draws two per row whatever `UpdateLayoutConfig` says. A flowchart or ER block is
+checked headless:
+
 `npx @mermaid-js/mermaid-cli -p pup.json -i block.mmd -o block.png`, where `pup.json`
 is `{"executablePath": "<~/.cache/ms-playwright/chromium-*/chrome-linux64/chrome>",
 "args": ["--no-sandbox"]}` — without it mmdc exits 2 here. Extract the block with
