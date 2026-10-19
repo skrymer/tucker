@@ -1912,6 +1912,13 @@ null` now means two things that earn opposite messages — the same trap
     Goal's deficit Budget standing under Maintenance): with no trend the banner reads
     "You reached your target of … Log a weight to see where you stand on your Goal."
     and offers only Set a lower goal.
+  - **With no reading, Today reads as before the first weigh-in.** The daily summary
+    still served the held review's Budget, Floor and Trend Weight, so "Finish setup to
+    see your calorie budget" sat beside a 1983 kcal ring, and a Maintaining card would
+    have shown the review's trend. Ruled at gate 6, fix in this PR:
+    `DailySummaryService` reads no review while setup is incomplete; the review stays
+    stored. `SummaryApiTest`'s `seedReview` now writes the Profile and reading every
+    real review stands on.
   - **A delete confirm keeps naming its item while it closes** — the reading's did
     from the start (`computed((last) => …)`); the Food's and Entry's went blank for
     the leave animation on `main` too, and hold theirs the same way now. The three

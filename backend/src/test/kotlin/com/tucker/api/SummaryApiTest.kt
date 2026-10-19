@@ -15,6 +15,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.delete
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
 import org.springframework.test.web.servlet.put
@@ -34,13 +35,22 @@ class SummaryApiTest {
     @Autowired lateinit var reminderState: ReminderStateRepository
     @Autowired lateinit var goals: GoalRepository
 
-    /** A review inserted directly, standing in for one the adaptive engine ran. */
+    /**
+     * A review inserted directly, standing in for one the adaptive engine ran — with
+     * the Profile and reading every real review stands on.
+     */
     private fun seedReview(
         on: LocalDate,
         budgetKcal: Double,
         floorG: Double,
-    ): WeeklyReview =
-        reviews.insert(
+    ): WeeklyReview {
+        savedProfile()
+        mockMvc.post("/api/weight") {
+            contentType = MediaType.APPLICATION_JSON
+            // A reading can't be dated ahead of today, as a device-ahead review can.
+            content = """{"date":"${minOf(on, LocalDate.now())}","weightKg":86.0}"""
+        }.andExpect { status { isOk() } }
+        return reviews.insert(
             WeeklyReview(
                 id = reviews.nextId(),
                 reviewedOn = on,
@@ -52,6 +62,7 @@ class SummaryApiTest {
                 ),
             ),
         )
+    }
 
     private fun completeSetup(on: LocalDate) {
         mockMvc.put("/api/profile") {
@@ -103,6 +114,38 @@ class SummaryApiTest {
             // there is no Trend Weight, so no review can run whatever the User counts.
             jsonPath("$.setupComplete") { value(false) }
         }
+    }
+
+    @Test
+    fun `with every reading deleted the summary presents nothing from the review still held`() {
+        val day = LocalDate.now()
+        completeSetup(day)
+        mockMvc.get("/api/summary") { param("date", "$day") }
+            .andExpect { jsonPath("$.calorieBudget") { isNumber() } }
+        val readingId = mockMvc.get("/api/weight").andReturn().response.contentAsString
+            .let { Regex(""""id":(\d+)""").find(it)!!.groupValues[1] }
+        mockMvc.delete("/api/weight/$readingId") { param("clientToday", "$day") }
+            .andExpect { status { isNoContent() } }
+
+        val body = mockMvc.get("/api/summary") {
+            param("date", "$day")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.setupComplete") { value(false) }
+        }.andReturn().response.contentAsString
+
+        // As before the first weigh-in: no Trend Weight, so no Maintenance, Budget or Floor.
+        listOf(
+            "calorieBudget", "proteinFloor", "caloriesRemaining", "proteinRemaining",
+            "dayStatus", "trendWeightKg", "budgetChange", "heldReason",
+        ).forEach { field ->
+            assertTrue(
+                body.contains(""""$field":null"""),
+                "expected $field to be an explicit null, body was $body",
+            )
+        }
+        // The review is history, not rewritten by the removal.
+        assertEquals(86.0, reviews.findByReviewedOn(day)?.trendWeightKg)
     }
 
     @Test

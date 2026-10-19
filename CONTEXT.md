@@ -771,6 +771,8 @@ single raw measurement:
   the Trend Weight over the trailing 28 days, expressed as an observed rate of
   loss (kg/week) and an *observed* finish date projected from it. The observed
   pace is withheld until at least 14 days of **Weight Measurements** exist.
+With no Weight Measurement left there is no Trend Weight, so neither reading
+exists: the Goal stands, with its target, and asks for a weight.
 _Avoid_: ETA, projection
 
 **Pace Status**:
