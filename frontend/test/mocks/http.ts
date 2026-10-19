@@ -91,6 +91,15 @@ export function fellThrough(uncovered: string[]) {
 }
 
 /**
+ * Nuxt Icon looks up an icon it was not bundled with on the Iconify CDN. A test
+ * never needs the glyph, so the lookup misses here instead of reaching the network.
+ */
+export const iconLookup = untypedHttp.get(
+  'https://api.iconify.design/*',
+  () => new HttpResponse(null, { status: 404 }),
+)
+
+/**
  * A read of [path] the server fails while [isDown] holds, falling through to the
  * handler under it once it does not. Every time, not once: ofetch retries a
  * failed GET by itself.

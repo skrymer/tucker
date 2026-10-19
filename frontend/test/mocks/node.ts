@@ -1,20 +1,10 @@
 import { afterAll, afterEach, beforeAll } from 'vitest'
-import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
 import { createFetch } from 'ofetch'
 import { handlers } from './handlers'
-import { describeRequest, fellThrough } from './http'
+import { describeRequest, fellThrough, iconLookup } from './http'
 
 const unhandled: string[] = []
-
-/**
- * Nuxt Icon looks up an icon it was not bundled with on the Iconify CDN. A test
- * never needs the glyph, so the lookup misses here instead of reaching the network.
- */
-const iconLookup = http.get(
-  'https://api.iconify.design/*',
-  () => new HttpResponse(null, { status: 404 }),
-)
 
 /** The Vitest server, holding the baseline. A test overrides it with `server.use()`. */
 export const server = setupServer(
