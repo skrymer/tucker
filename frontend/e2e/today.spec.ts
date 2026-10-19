@@ -244,6 +244,50 @@ test("logging a weight from the tile shows it as today's weight", async ({
   await expect(page.getByRole('button', { name: 'Log weight' })).toHaveCount(0)
 })
 
+test('a first weight logged from the tile brings the Budget in without a reload', async ({
+  page,
+  goto,
+  network,
+}) => {
+  // No reading yet, so the summary presents no review; once one is saved, the
+  // catch-up that summary runs has a Budget to state.
+  let weighed = false
+  network.use(
+    http.post('/api/weight', () => {
+      weighed = true
+      return undefined
+    }),
+    ...weightMeasurements(null),
+    summaryOf(() => ({
+      caloriesConsumed: 0,
+      proteinConsumed: 0,
+      estimatedCalorieShare: 0,
+      setupComplete: weighed,
+      calorieBudget: weighed ? 2400 : null,
+      proteinFloor: weighed ? 168 : null,
+      caloriesRemaining: weighed ? 2400 : null,
+      dayStatus: weighed ? 'in-progress' : null,
+      trendWeightKg: weighed ? 84.2 : null,
+      entries: [],
+      budgetChange: null,
+    })),
+  )
+
+  await goto('/', { waitUntil: 'hydration' })
+  await expect(page.getByText(/no budget yet/i)).toBeVisible()
+
+  await page.getByRole('button', { name: 'Log weight' }).click()
+  await page.getByLabel(/weight \(kg\)/i).fill('84.2')
+  await page
+    .getByRole('dialog', { name: /log weight/i })
+    .getByRole('button', { name: /save weight/i })
+    .click()
+
+  await expect(page.getByText('0 / 2400 kcal')).toBeVisible()
+  await expect(page.getByText(/no budget yet/i)).toHaveCount(0)
+  await expect(page.getByText(/finish setup/i)).toHaveCount(0)
+})
+
 test('the weight sheet stays put, reporting busy, until the save lands', async ({
   page,
   goto,

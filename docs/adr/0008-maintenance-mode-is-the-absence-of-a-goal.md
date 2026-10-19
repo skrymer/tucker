@@ -180,6 +180,12 @@ endpoint:
   check uses the live trend, which exists from day one). Maintenance Mode is
   entered normally; Drift Status reads "gathering data" until 14 days exist, and
   the maintaining card still shows Budget/Floor.
+- A reached Goal whose readings have **all been deleted** keeps its latch, and the
+  fork **waits on a weight**: the banner says the target was reached, asks for a
+  weight, and offers *Switch to maintenance* only once one is logged, since the
+  recompute that lifts the Budget needs a Trend Weight. *Set a lower goal* still
+  leads to `/profile`, where setting a Goal likewise waits on a weight. This is not a
+  dismiss state: both prongs return with the first reading. (Ruled in #498.)
 
 ## Consequences
 

@@ -117,9 +117,10 @@ function confirmDeleteEntry() {
 
 // Saving a reading from the dashboard is silent (no success toast) — the tile
 // updating to it is feedback enough. A new reading also nudges the trend, so
-// goal progress is refreshed alongside it.
+// goal progress is refreshed alongside it, and the summary too: a first reading
+// is what lets it state a Budget.
 async function onWeightSaved() {
-  await Promise.all([refreshLatestWeight(), refreshGoalProgress()])
+  await Promise.all([refreshLatestWeight(), refreshGoalProgress(), refresh()])
 }
 const {
   sheetOpen: weightSheetOpen,
