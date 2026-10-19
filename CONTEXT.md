@@ -692,8 +692,9 @@ the latest review is a week or more old, the engine runs one review snapping to
 today (it does not replay each missed week — the adaptive window already looks
 back two weeks). When the latest review is dated tomorrow — a device already on
 tomorrow stamped it — the age is judged from the review standing on today instead,
-and none standing counts as overdue. A manual "run now" trigger, a **Goal**-change recompute and a
-**Calorie Tracking**-change recompute also exist.
+and none standing counts as overdue. A manual "run now" trigger, a **Goal**-change recompute, a
+**Calorie Tracking**-change recompute and the recompute on the first reading logged
+after none also exist.
 There is no scheduler. Every recompute is stamped on the user's _local_ today —
 the client supplies it, the server never substitutes its own wall-clock day (the
 "client owns today" boundary rule; see [ADR 0014](docs/adr/0014-client-owns-today.md)

@@ -69,7 +69,10 @@ place the two halves of the app can disagree.
    /api/profile` therefore carries `clientToday`, exactly as `POST`/`DELETE
    /api/goal` do (ADR 0014). Only on an actual change of the setting, and only
    once setup is complete: a first Profile turns nothing on or off, and a
-   recompute with no Weight Measurement has no Trend Weight to run against.
+   recompute with no Weight Measurement has no Trend Weight to run against. A
+   change made while every reading is deleted is therefore picked up by the first
+   reading logged after none, which force-recomputes today's review through the
+   same `recomputeFor` (ruled in #498).
 
 5. **Turning Calorie Tracking on after a weight-only *stretch* is a cold start.**
    `estimateMaintenance` holds the prior review's Maintenance when it cannot
