@@ -27,6 +27,7 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.http.MediaType
 import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.delete
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
 import org.springframework.test.web.servlet.put
@@ -67,12 +68,24 @@ class CheckApiTest {
             }
         }
 
-    /** A review inserted directly, standing in for one the adaptive engine ran. */
+    /**
+     * A review inserted directly, standing in for one the adaptive engine ran — with
+     * the Profile and reading every real review stands on.
+     */
     private fun seedTargets(
         budgetKcal: Double = 2492.0,
         floorG: Double = 170.0,
         on: LocalDate = LocalDate.now(),
     ) {
+        mockMvc.put("/api/profile") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"sex":"MALE","birthDate":"1986-05-22","heightCm":180.0}"""
+        }.andExpect { status { isOk() } }
+        mockMvc.post("/api/weight") {
+            contentType = MediaType.APPLICATION_JSON
+            // A reading can't be dated ahead of today, as a device-ahead review can.
+            content = """{"date":"${minOf(on, LocalDate.now())}","weightKg":86.0}"""
+        }.andExpect { status { isOk() } }
         reviews.insert(
             WeeklyReview(
                 id = reviews.nextId(),
@@ -257,6 +270,28 @@ class CheckApiTest {
         // the Floor, so with neither there is nothing honest to say (ADR 0022).
         providerKnows(nutellaBarcode, nutella(nutellaBarcode))
 
+        mockMvc.get("/api/check/$nutellaBarcode").andExpect {
+            status { isConflict() }
+            jsonPath("$.message") { value("a Check needs a Calorie Budget; finish setup first") }
+        }
+    }
+
+    @Test
+    fun `with every reading deleted a Check is refused as before setup, with the client's day or without`() {
+        val today = LocalDate.now()
+        seedTargets(on = today)
+        mockMvc.get("/api/weight").andReturn().response.contentAsString
+            .let { Regex(""""id":(\d+)""").findAll(it).map { m -> m.groupValues[1] }.toList() }
+            .forEach { id ->
+                mockMvc.delete("/api/weight/$id").andExpect { status { isNoContent() } }
+            }
+        providerKnows(nutellaBarcode, nutella(nutellaBarcode))
+
+        // The review stays stored, but with no Trend Weight it presents no Budget.
+        mockMvc.get("/api/check/$nutellaBarcode") { param("clientToday", "$today") }.andExpect {
+            status { isConflict() }
+            jsonPath("$.message") { value("a Check needs a Calorie Budget; finish setup first") }
+        }
         mockMvc.get("/api/check/$nutellaBarcode").andExpect {
             status { isConflict() }
             jsonPath("$.message") { value("a Check needs a Calorie Budget; finish setup first") }

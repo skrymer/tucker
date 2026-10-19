@@ -14,6 +14,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.delete
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
 import org.springframework.test.web.servlet.put
@@ -34,8 +35,20 @@ class EntryPreviewApiTest {
 
     private val date = LocalDate.of(2026, 6, 18)
 
-    /** A review inserted directly, standing in for one the adaptive engine ran. */
+    /**
+     * A review inserted directly, standing in for one the adaptive engine ran — with
+     * the Profile and reading every real review stands on.
+     */
     private fun seedBudget(budgetKcal: Double, floorG: Double = 150.0, on: LocalDate = date) {
+        mockMvc.put("/api/profile") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"sex":"MALE","birthDate":"1986-05-22","heightCm":180.0}"""
+        }.andExpect { status { isOk() } }
+        mockMvc.post("/api/weight") {
+            contentType = MediaType.APPLICATION_JSON
+            // A reading can't be dated ahead of today, as a device-ahead review can.
+            content = """{"date":"${minOf(on, LocalDate.now())}","weightKg":86.0}"""
+        }.andExpect { status { isOk() } }
         reviews.insert(
             WeeklyReview(
                 id = reviews.nextId(),
@@ -143,6 +156,27 @@ class EntryPreviewApiTest {
             status { isOk() }
             jsonPath("$.wouldExceedBudget") { value(false) }
             jsonPath("$.projectedCaloriesConsumed", closeTo(600.0, 1e-6))
+            jsonPath("$.calorieBudget") { value(null) }
+            jsonPath("$.overByKcal") { value(null) }
+        }
+    }
+
+    @Test
+    fun `previewing with every reading deleted reports no budget to exceed, as before the first Weight Measurement`() {
+        seedBudget(2000.0)
+        mockMvc.get("/api/weight").andReturn().response.contentAsString
+            .let { objectMapper.readTree(it) }
+            .forEach { reading ->
+                mockMvc.delete("/api/weight/${reading.get("id").asLong()}")
+                    .andExpect { status { isNoContent() } }
+            }
+
+        mockMvc.post("/api/entries/estimated/preview") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"date":"$date","label":"feast","calories":3000.0,"protein":null}"""
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.wouldExceedBudget") { value(false) }
             jsonPath("$.calorieBudget") { value(null) }
             jsonPath("$.overByKcal") { value(null) }
         }

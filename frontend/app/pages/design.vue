@@ -372,13 +372,8 @@ const calendarDay = ref('2026-10-08')
             aria-label="Add"
           />
           <UButton color="secondary">Protein</UButton>
-          <UButton
-            color="neutral"
-            variant="ghost"
-            icon="i-lucide-trash-2"
-            square
-            aria-label="Delete"
-          />
+          <RowActionButton action="edit" aria-label="Edit" />
+          <RowActionButton action="delete" aria-label="Delete" />
         </div>
       </div>
     </div>
@@ -402,12 +397,8 @@ const calendarDay = ref('2026-10-08')
               name="Rolled oats"
               figures="80 g · 302 kcal · 11 g protein"
             />
-            <UButton
-              icon="i-lucide-trash-2"
-              color="neutral"
-              variant="ghost"
-              square
-              class="size-9 shrink-0 text-muted"
+            <RowActionButton
+              action="delete"
               aria-label="Delete Rolled oats — 80 g · 302 kcal · 11 g protein"
             />
           </li>
@@ -417,12 +408,8 @@ const calendarDay = ref('2026-10-08')
                 <EstimateBadge />
               </template>
             </FigureRow>
-            <UButton
-              icon="i-lucide-trash-2"
-              color="neutral"
-              variant="ghost"
-              square
-              class="size-9 shrink-0 text-muted"
+            <RowActionButton
+              action="delete"
               aria-label="Delete Flat white — 90 kcal"
             />
           </li>
@@ -432,12 +419,8 @@ const calendarDay = ref('2026-10-08')
               name="Kangaroo burger"
               figures="150 g · 219 kcal · 33 g protein"
             />
-            <UButton
-              icon="i-lucide-trash-2"
-              color="neutral"
-              variant="ghost"
-              square
-              class="size-9 shrink-0 text-muted"
+            <RowActionButton
+              action="delete"
               aria-label="Delete Kangaroo burger — 150 g · 219 kcal · 33 g protein"
             />
           </li>

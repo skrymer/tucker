@@ -1,8 +1,8 @@
 <script setup lang="ts">
 // The confirm before a delete: what goes, in the body slot, then Cancel and a
-// destructive Delete. Dismissing the dialog is a Cancel.
+// destructive Delete, busy while [pending]. Dismissing the dialog is a Cancel.
 // Stryker disable next-line all: a compiler macro must stay a top-level statement
-defineProps<{ open: boolean; title: string }>()
+defineProps<{ open: boolean; title: string; pending?: boolean }>()
 const emit = defineEmits<{ confirm: []; cancel: [] }>()
 </script>
 
@@ -19,7 +19,9 @@ const emit = defineEmits<{ confirm: []; cancel: [] }>()
     <template #footer>
       <div class="flex justify-end gap-2">
         <UButton variant="ghost" @click="emit('cancel')">Cancel</UButton>
-        <UButton color="error" @click="emit('confirm')">Delete</UButton>
+        <UButton color="error" :loading="pending" @click="emit('confirm')">
+          Delete
+        </UButton>
       </div>
     </template>
   </UModal>

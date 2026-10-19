@@ -177,6 +177,42 @@ describe('GoalSection', () => {
     ).not.toBeInTheDocument()
   })
 
+  it('with no goal and no reading, offers nothing to start and waits on a weight', async () => {
+    await renderSuspended(GoalSection, {
+      props: { goals: [], currentTrend: null, disabled: true },
+    })
+
+    const section = screen.getByRole('region', { name: /^goal$/i })
+    expect(section).toHaveAttribute('aria-disabled', 'true')
+    expect(section).toHaveTextContent(
+      'Log your weight first, on Today, to set a goal.',
+    )
+    expect(section).not.toHaveTextContent(/new goal/i)
+    expect(
+      screen.queryByRole('button', { name: /start a goal/i }),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByText(/maintaining/i)).not.toBeInTheDocument()
+  })
+
+  it('still shows the active goal when disabled, and only setting a new one waits on a weight', async () => {
+    await renderSuspended(GoalSection, {
+      props: { goals: [activeGoal], currentTrend: null, disabled: true },
+    })
+
+    const section = screen.getByRole('region', { name: /^goal$/i })
+    expect(section).not.toHaveAttribute('aria-disabled')
+    expect(screen.getByText(/80\.0 kg/)).toBeVisible()
+    expect(screen.getByText(/0\.5 kg\/week/)).toBeVisible()
+    expect(screen.getByText(/1 May 2026/)).toBeVisible()
+    expect(section).toHaveTextContent(
+      'Log your weight first, on Today, to set a new goal.',
+    )
+    expect(
+      screen.queryByRole('button', { name: /set a new goal/i }),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByText(/maintaining/i)).not.toBeInTheDocument()
+  })
+
   it('points to Today for the weight a goal waits on when disabled', async () => {
     await renderSuspended(GoalSection, {
       props: { goals: [], currentTrend: null, disabled: true },

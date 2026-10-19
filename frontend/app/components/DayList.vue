@@ -46,14 +46,9 @@ const tally = computed(() =>
     </div>
     <CappedEntryList :entries="entries" class="mt-2">
       <template #action="{ entry }">
-        <UButton
+        <RowActionButton
+          action="delete"
           :aria-label="`Delete ${formatEntryName(entry)}`"
-          icon="i-lucide-trash-2"
-          color="neutral"
-          variant="ghost"
-          square
-          class="size-9 shrink-0 text-muted hover:text-default"
-          :ui="{ base: 'justify-center' }"
           @click="emit('delete', entry)"
         />
       </template>

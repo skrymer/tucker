@@ -587,6 +587,11 @@ kcal`) sits beneath its own ring, so no arc is ever colour-alone. Calorie
   for every Today block.
 - **Button** — pill. Primary = solid green; secondary = coral; low-emphasis =
   ghost/neutral. Icon buttons are circular.
+- **Row action** — an icon action on a row (edit or delete on an Entry, a Food, a
+  Tag or a weight, and a Recipe's ingredients) is `RowActionButton`, wherever it
+  appears: ghost/neutral, `text-muted` until hovered, at the 44px tap target. The
+  same action never reads green on one screen and grey on the next;
+  `rowAction.test.ts` refuses one styled in place.
 - **Form-control trigger** — a control that opens an overlay (today only
   `DateField`, which opens a calendar) is a button by markup but a _field_ by
   role, so it wears the input treatment, not the pill: `rounded-md` and the

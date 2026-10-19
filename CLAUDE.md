@@ -266,11 +266,12 @@ here.
   Open: [#385](https://github.com/skrymer/tucker/issues/385).
 - **F19** — ✅ Correct a Food (PRD [#431](https://github.com/skrymer/tucker/issues/431),
   [ADR 0037](docs/adr/0037-editing-a-food-is-a-correction.md)).
-- **F20** — Weight history on `/review`: add, correct or remove a past Weight
-  Measurement (PRD [#495](https://github.com/skrymer/tucker/issues/495)). Slice 1
-  ([#496](https://github.com/skrymer/tucker/issues/496)) is the card, with Profile's
-  weight section retired; slice 2
-  ([#497](https://github.com/skrymer/tucker/issues/497)) is Edit. Delete (#498) follows.
+- **F20** — ✅ Weight history on `/review`: add, correct or remove a past Weight
+  Measurement (PRD [#495](https://github.com/skrymer/tucker/issues/495)), in three
+  slices — the card ([#496](https://github.com/skrymer/tucker/issues/496)), Edit
+  ([#497](https://github.com/skrymer/tucker/issues/497)) and Delete
+  ([#498](https://github.com/skrymer/tucker/issues/498)). Open:
+  [#505](https://github.com/skrymer/tucker/issues/505).
 
 ## Architecture
 

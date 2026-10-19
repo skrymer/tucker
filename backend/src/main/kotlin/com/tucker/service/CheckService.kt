@@ -69,7 +69,7 @@ class CheckService(
     /**
      * Check [barcode] against the targets standing on [today]; see [CheckOutcome] for
      * the cases. A null [today] is a client that sends no day, which gets the newest
-     * review whatever its date.
+     * review whatever its date — none while no reading stands.
      */
     fun check(barcode: String, today: LocalDate?): CheckOutcome {
         val pending = PendingCheck(barcode, targetsStandingOn(today))
@@ -89,7 +89,8 @@ class CheckService(
     /** The targets a Check on [today] is measured against, or refused for want of a Budget. */
     private fun targetsStandingOn(today: LocalDate?): IntakeTargets {
         val review = if (today == null) {
-            reviews.latest()
+            // As reviewsStandingOn: with no reading, a held review presents nothing.
+            reviews.latest()?.takeIf { weeklyReview.setupComplete() }
         } else {
             weeklyReview.reviewsStandingOn(today).firstOrNull()
         }

@@ -10,14 +10,17 @@ import java.time.LocalDate
  *  - the **observed pace** — how fast the trend is *actually* moving over the
  *    trailing window, its [PaceStatus] against the plan, and the finish date that
  *    pace projects. Withheld until enough measurement history exists.
+ *
+ * With no reading there is no Trend Weight, so the plan's figures are null too:
+ * the Goal still stands, but nothing can be said about where the User is on it.
  */
 data class GoalProgress(
     val startWeightKg: Double,
     val targetWeightKg: Double,
-    val currentTrendKg: Double,
-    val kgToGo: Double,
-    val percentComplete: Double,
-    val plannedFinishDate: LocalDate,
+    val currentTrendKg: Double?,
+    val kgToGo: Double?,
+    val percentComplete: Double?,
+    val plannedFinishDate: LocalDate?,
     val plannedRateKgPerWeek: Double,
     val observedRateKgPerWeek: Double? = null,
     val paceStatus: PaceStatus? = null,
@@ -30,9 +33,13 @@ data class GoalProgress(
         /** Tolerance band around the planned rate for on-pace classification (±20%). */
         private const val PACE_BAND = 0.20
 
+        /** The trend's distance above the target, never below zero. */
+        private fun kgToGo(goal: Goal, currentTrendKg: Double) =
+            (currentTrendKg - goal.targetWeightKg).coerceAtLeast(0.0)
+
         /** Project progress for [goal] given the live [currentTrendKg] and [today]. */
         fun planned(goal: Goal, currentTrendKg: Double, today: LocalDate): GoalProgress {
-            val kgToGo = (currentTrendKg - goal.targetWeightKg).coerceAtLeast(0.0)
+            val kgToGo = kgToGo(goal, currentTrendKg)
             val totalToLose = goal.startWeightKg - goal.targetWeightKg
             val lost = goal.startWeightKg - currentTrendKg
             val percentComplete = (lost / totalToLose * PERCENT).coerceIn(0.0, PERCENT)
@@ -51,20 +58,31 @@ data class GoalProgress(
         /**
          * Full progress for [goal] against the smoothed [trend] as of [today]:
          * the planned projection plus the *observed pace* — how fast the Trend
-         * Weight is actually moving. The current trend is the latest trend point,
-         * or the Goal's start weight before any measurement exists.
+         * Weight is actually moving. With no measurement there is no trend, and
+         * only the Goal's own figures are known.
          */
         fun forGoal(goal: Goal, trend: WeightTrend, today: LocalDate): GoalProgress {
-            val currentTrendKg = trend.latest()?.trendKg ?: goal.startWeightKg
+            val currentTrendKg = trend.latest()?.trendKg ?: return untracked(goal)
             val base = planned(goal, currentTrendKg, today)
             val observedRate = trend.observedRateKgPerWeek(today) ?: return base
-            return base.withPace(observedRate, goal.rateKgPerWeek, today)
+            return base.withPace(observedRate, goal.rateKgPerWeek, kgToGo(goal, currentTrendKg), today)
         }
+
+        private fun untracked(goal: Goal) = GoalProgress(
+            startWeightKg = goal.startWeightKg,
+            targetWeightKg = goal.targetWeightKg,
+            currentTrendKg = null,
+            kgToGo = null,
+            percentComplete = null,
+            plannedFinishDate = null,
+            plannedRateKgPerWeek = goal.rateKgPerWeek,
+        )
 
         /** Classify [observedRate] against the [plannedRate] and project a finish. */
         private fun GoalProgress.withPace(
             observedRate: Double,
             plannedRate: Double,
+            kgToGo: Double,
             today: LocalDate,
         ): GoalProgress {
             // A flat or rising trend has no loss to project a finish from.

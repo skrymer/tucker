@@ -1,5 +1,6 @@
 import { expect, test } from './support/test'
 import { pinToLocalMorning } from './support/date'
+import { sampleDialogText } from './support/dialog'
 import { toastRegion } from './support/toast'
 import { steadyDays, weightTimeline } from '../test/weight-timeline-fixtures'
 import { bodyAndPlan } from '../test/mocks/handlers/body'
@@ -79,6 +80,78 @@ test("corrects a picked day's reading, prefilled and quietly", async ({
   await expect(sheet).toBeHidden()
   await expect(card.getByText('80.4 kg')).toBeVisible()
   await expect(card.getByText('81.2 kg')).toHaveCount(0)
+  await expect(toastRegion(page).getByRole('listitem')).toHaveCount(0)
+  await expect(card).toMatchAriaSnapshot()
+})
+
+test('keeps naming the reading while its delete confirm closes', async ({
+  goto,
+  network,
+  page,
+}) => {
+  const today = await pinToLocalMorning(page)
+  network.use(
+    weightTimelineOf(weightTimeline({ days: steadyDays(28, today, 80) })),
+    ...bodyAndPlan({
+      profile: weightOnlyProfile,
+      today,
+      readings: [{ id: 1, measuredOn: '2026-06-11', weightKg: 81.2 }],
+    }),
+  )
+
+  await goto('/review', { waitUntil: 'hydration' })
+  const card = page.getByRole('region', { name: 'Weight history' })
+  await card.getByRole('button', { name: 'Thursday, June 11, 2026' }).click()
+  await card
+    .getByRole('button', { name: 'Delete weight on Thu 11 Jun' })
+    .click()
+  const confirm = page.getByRole('dialog', { name: 'Delete this weight?' })
+  await expect(confirm).toBeVisible()
+  const seen = await sampleDialogText(page)
+  await confirm.getByRole('button', { name: 'Cancel' }).click()
+  await expect(confirm).toBeHidden()
+
+  const frames = await seen()
+  expect(frames.length).toBeGreaterThan(1)
+  expect(
+    frames.filter(
+      (text) => !text.includes('81.2 kg on Thu 11 Jun will be removed'),
+    ),
+  ).toEqual([])
+})
+
+test("deletes a picked day's reading once confirmed, and quietly", async ({
+  goto,
+  network,
+  page,
+}) => {
+  // Tue 16 Jun 2026, local.
+  const today = await pinToLocalMorning(page)
+  network.use(
+    weightTimelineOf(weightTimeline({ days: steadyDays(28, today, 80) })),
+    ...bodyAndPlan({
+      profile: weightOnlyProfile,
+      today,
+      readings: [{ id: 1, measuredOn: '2026-06-11', weightKg: 81.2 }],
+    }),
+  )
+
+  await goto('/review', { waitUntil: 'hydration' })
+
+  const card = page.getByRole('region', { name: 'Weight history' })
+  await card.getByRole('button', { name: 'Thursday, June 11, 2026' }).click()
+  await card
+    .getByRole('button', { name: 'Delete weight on Thu 11 Jun' })
+    .click()
+
+  const confirm = page.getByRole('dialog', { name: 'Delete this weight?' })
+  await expect(confirm).toContainText(
+    '81.2 kg on Thu 11 Jun will be removed, and your trend weight re-derives without it.',
+  )
+  await confirm.getByRole('button', { name: 'Delete' }).click()
+
+  await expect(confirm).toBeHidden()
+  await expect(card.getByText('No weight on Thu 11 Jun.')).toBeVisible()
   await expect(toastRegion(page).getByRole('listitem')).toHaveCount(0)
   await expect(card).toMatchAriaSnapshot()
 })

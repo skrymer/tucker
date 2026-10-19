@@ -1875,3 +1875,62 @@ null` now means two things that earn opposite messages — the same trap
   - **A mistyped reading that crosses the Goal latches it reached**, and correcting
     it does not unlatch — reachable on `main` through Today's tile, and by design per
     `CONTEXT.md` › Goal. Left to [#505](https://github.com/skrymer/tucker/issues/505).
+  - **Slice 3 (#498) — Delete.** A picked day holding a reading shows a trash beside
+    the pencil, "Delete weight on <day>". `DeleteWeightConfirm` asks through
+    `ConfirmDeleteDialog` and owns the `DELETE`; the card re-reads and emits
+    `changed` (renamed from `saved`), and /review refreshes the Weight Timeline and
+    goal hero. No success toast; a failure keeps the dialog up under the persistent
+    error with Retry, and a late Retry closes only its own reading's confirm.
+  - **A delete runs the Goal-reached check a save does** (the user's ruling at gate 1,
+    over the issue's "No backend change"): `WeightMeasurementService.delete` stamps
+    the active Goal if the removal brings the Trend Weight to target, anchored on a
+    new optional `clientToday` query param. ADR 0008's write point names delete.
+    Un-latching stays #505's.
+  - **Every edit and delete icon on a row is one `RowActionButton`** (the user's
+    ruling: "Not green in someplaces and grey in others"): neutral ghost, muted
+    until hovered, 44px. Today's weight pencil turned grey and Today's Entry delete
+    grew 36→44px (+1px on a two-line row at 320px; ADR 0005 re-measured).
+    `rowAction.test.ts` refuses an edit or delete icon styled in place, and
+    `e2e/row-action.spec.ts` measures colour, ring, hover, size, icon and centring.
+    Its first sweep shows the trap: a width read with `getBoundingClientRect` inside
+    an opening modal reads the zoom-in transform as a squeeze; use `offsetWidth`.
+  - **Every delete confirm reports busy** (`ConfirmDeleteDialog`'s `pending`), the
+    Food and Entry confirms included, and a late Retry of a failed delete closes only
+    its own confirm on all three (the refused Food path included).
+  - **An active Goal with no readings** became reachable (no UI could delete a reading
+    before). Goal Progress fell back to the start weight as the "current trend", so
+    /review read "Now 90.4 kg — Tracked on your smoothed trend weight" over nothing.
+    Ruled at gate 6: the plan figures are now null with no trend (ADR 0023's explicit
+    null), and /review's hero and Today's tile say "Log a weight to see where you stand
+    on your Goal." with the target. Profile, which greyed its whole Goal section in
+    that state, now shows the active Goal and gates only setting a new one ("…to set
+    a new goal."), ruled at the end of sign-off. A *reached* Goal there kept its
+    banner saying "Your trend weight has reached your target", and its Switch to
+    maintenance hit the review recompute's "no weight measurements" 409 under a
+    "check your connection" Retry that could never land. Ruled at gate 6 ("wait on a
+    weight", over making the switch skip the recompute, which would have left the
+    Goal's deficit Budget standing under Maintenance): with no trend the banner reads
+    "You reached your target of … Log a weight to see where you stand on your Goal."
+    and offers only Set a lower goal.
+  - **With no reading, Today reads as before the first Weight Measurement.** The daily
+    summary still served the held review's Budget, Floor and Trend Weight, so "Finish
+    setup to see your calorie budget" sat beside a 1983 kcal ring, and a Maintaining
+    card would have shown the review's trend. Ruled at gate 6, fix in this PR:
+    `WeeklyReviewService.reviewsStandingOn` returns no review while setup is
+    incomplete, so the summary, the Budget Projection and a Check agree (the first fix
+    guarded the summary alone, and the log sheet still warned against the held
+    Budget), and a Check sent with no client day applies the same rule to the
+    newest review; the review stays stored. The first reading logged after none
+    force-recomputes today's review (ruled at the end of sign-off, after code review
+    showed a Calorie Tracking change made with no reading recomputing nothing, so
+    the held review would stand again under the old setting); a first-ever reading
+    has no review held and still bootstraps through catch-up. The `SummaryApiTest`, `EntryPreviewApiTest` and
+    `CheckApiTest` review seeds now write the Profile and reading every real review
+    stands on.
+  - **A delete confirm keeps naming its item while it closes** — the reading's did
+    from the start (`computed((last) => …)`); the Food's and Entry's went blank for
+    the leave animation on `main` too, and hold theirs the same way now. The three
+    e2e specs sample the dialog per frame (`e2e/support/dialog.ts`).
+  - **Trap:** the dev stack's backend image predated the branch's backend commit, so
+    the first live crossing probe read `reachedOn: null`. Rebuild
+    (`docker compose build backend`) before a walk-through of a backend change.

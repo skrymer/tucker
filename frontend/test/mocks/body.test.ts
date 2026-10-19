@@ -418,6 +418,61 @@ describe('bodyAndPlan', () => {
     expect(goal?.reachedOn).toBe('2026-05-08')
   })
 
+  it('stamps the active Goal reached on the day a deleted reading brings the trend to its target', async () => {
+    server.use(
+      ...bodyAndPlan({
+        profile: baselineProfile,
+        today: '2026-05-03',
+        // The 95.0 holds the trend at 0.9 × 79.9 + 0.1 × 95.0 = 81.41.
+        readings: [
+          { id: 1, measuredOn: '2026-05-01', weightKg: 79.9 },
+          { id: 2, measuredOn: '2026-05-02', weightKg: 95 },
+        ],
+        goals: [
+          {
+            id: 4,
+            startedOn: '2026-04-01',
+            startWeightKg: 90,
+            targetWeightKg: 80,
+            rateKgPerWeek: 0.5,
+            active: true,
+            reachedOn: null,
+          },
+        ],
+      }),
+    )
+    const { $api } = useNuxtApp()
+
+    await $api('/api/weight/{id}', {
+      method: 'DELETE',
+      path: { id: 2 },
+      query: { clientToday: '2026-05-03' },
+    })
+
+    const [goal] = await $api('/api/goals')
+    expect(goal?.reachedOn).toBe('2026-05-03')
+  })
+
+  it('refuses a delete stamped with any day but today', async () => {
+    server.use(
+      ...bodyAndPlan({
+        profile: baselineProfile,
+        today: '2026-05-03',
+        readings: [{ id: 1, measuredOn: '2026-05-01', weightKg: 80 }],
+      }),
+    )
+    const { $api } = useNuxtApp()
+
+    const refused = await $api('/api/weight/{id}', {
+      method: 'DELETE',
+      path: { id: 1 },
+      query: { clientToday: '2026-05-02' },
+    }).catch((error) => error.data)
+
+    expect(refused).toEqual({ message: '2026-05-02 is not today' })
+    expect(await $api('/api/weight')).toHaveLength(1)
+  })
+
   it('judges a rate against the Profile as last saved, which turning Calorie Tracking off removes Maintenance from', async () => {
     const profile = {
       ...baselineProfile,

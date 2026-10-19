@@ -67,7 +67,7 @@ class DailySummaryService(
         // against a current Budget.
         val setupComplete = weeklyReview.catchUpIfDue(date)
         val log = DailyLog(date, entries.findByDate(date))
-        val recent = weeklyReview.reviewsStandingOn(date)
+        val recent = weeklyReview.reviewsStandingOn(date, setupComplete)
         val goalActive = goals.hasActive()
         val summary = DailySummary(
             setupComplete = setupComplete,

@@ -202,3 +202,153 @@ test('user corrects a reading inside a reviewed week, and only the live trend fo
   expect(goalAfter.startWeightKg).toBe(goalBefore.startWeightKg)
   expect(progressAfter.startWeightKg).toBe(goalBefore.startWeightKg)
 })
+
+test('user deletes a mistyped reading inside a reviewed week, and only the live trend follows', async ({
+  page,
+  goto,
+  request,
+}) => {
+  const today = todayIso()
+  const mistyped = isoShiftDays(today, -2)
+
+  await expectStatus(
+    request.put(`${API}/profile`, {
+      data: { sex: 'MALE', birthDate: '1990-06-15', heightCm: 180 },
+    }),
+    200,
+  )
+  await seedDailyWeighing(request, today)
+  // 71.1 typed for 81.1: a slip that drags the trend down a kilo.
+  await expectStatus(
+    request.post(`${API}/weight`, {
+      data: { date: mistyped, weightKg: 71.1, clientToday: today },
+    }),
+    200,
+  )
+  await expectCreated(
+    request.post(`${API}/goal`, {
+      data: {
+        startedOn: today,
+        targetWeightKg: 70,
+        rateKgPerWeek: 0.5,
+        clientToday: today,
+      },
+    }),
+  )
+
+  // This week's review holds the trend as it stood, slip included.
+  const reviewBefore = await (
+    await request.post(`${API}/weekly-review?clientToday=${today}`)
+  ).json()
+  expect(reviewBefore.reviewedOn, 'the run crossed UTC midnight').toBe(today)
+  const [goalBefore, progressBefore] = await Promise.all(
+    ['goal', 'goal/progress'].map(async (path) =>
+      (await request.get(`${API}/${path}`)).json(),
+    ),
+  )
+
+  await goto('/review', { waitUntil: 'hydration' })
+  const card = page.getByRole('region', { name: 'Weight history' })
+  const timeline = page.getByRole('region', { name: 'Your weight' })
+  const now = page
+    .getByText('Now', { exact: true })
+    .locator('xpath=following-sibling::dd')
+  await expect(now).toHaveText(`${progressBefore.currentTrendKg.toFixed(1)} kg`)
+
+  await pickDay(card, mistyped)
+  await expect(card.getByText('71.1 kg', { exact: true })).toBeVisible()
+  await card
+    .getByRole('button', { name: `Delete weight on ${dayHeading(mistyped)}` })
+    .click()
+  const confirm = page.getByRole('dialog', { name: 'Delete this weight?' })
+  await confirm.getByRole('button', { name: 'Delete' }).click()
+  await expect(confirm).toBeHidden()
+
+  // The day is empty again, on screen and in the store.
+  await expect(
+    card.getByText(`No weight on ${dayHeading(mistyped)}.`, { exact: true }),
+  ).toBeVisible()
+  await expect(card.getByRole('button', { name: 'Add weight' })).toBeVisible()
+  await expect(dotOn(card, mistyped)).toHaveCount(0)
+  await expect(dotOn(card, isoShiftDays(today, -1))).toBeVisible()
+  const from = isoShiftDays(today, -27)
+  const [readings, { days }, progressAfter] = (await Promise.all(
+    ['weight', `weight-timeline?from=${from}&to=${today}`, 'goal/progress'].map(
+      async (path) => (await request.get(`${API}/${path}`)).json(),
+    ),
+  )) as [
+    { measuredOn: string }[],
+    { days: Parameters<typeof timelineLine>[0][] },
+    { currentTrendKg: number; startWeightKg: number },
+  ]
+  expect(readings.map((r) => r.measuredOn)).not.toContain(mistyped)
+  expect(readings).toHaveLength(20)
+
+  // The timeline and the goal hero re-read without a reload, onto the risen trend.
+  const emptied = days.find((day) => day.date === mistyped)!
+  expect(emptied.weightKg).toBeNull()
+  await expect(timeline.getByText(timelineLine(emptied, true))).toBeAttached()
+  expect(progressAfter.currentTrendKg).toBeGreaterThan(
+    progressBefore.currentTrendKg + 0.5,
+  )
+  await expect(now).toHaveText(`${progressAfter.currentTrendKg.toFixed(1)} kg`)
+
+  // What was recorded before the delete states the trend as it was then.
+  const [reviewAfter, goalAfter] = await Promise.all(
+    ['weekly-review', 'goal'].map(async (path) =>
+      (await request.get(`${API}/${path}`)).json(),
+    ),
+  )
+  expect(reviewAfter.id).toBe(reviewBefore.id)
+  expect(reviewAfter.trendWeightKg).toBe(reviewBefore.trendWeightKg)
+  expect(goalAfter.startWeightKg).toBe(goalBefore.startWeightKg)
+  expect(progressAfter.startWeightKg).toBe(goalBefore.startWeightKg)
+})
+
+test('user deletes the only reading under an active Goal, and the Goal asks for a weight rather than showing a trend', async ({
+  page,
+  goto,
+  request,
+}) => {
+  const today = todayIso()
+  await expectStatus(
+    request.put(`${API}/profile`, {
+      data: { sex: 'MALE', birthDate: '1990-06-15', heightCm: 180 },
+    }),
+    200,
+  )
+  await expectStatus(
+    request.post(`${API}/weight`, {
+      data: { date: today, weightKg: 84.6, clientToday: today },
+    }),
+    200,
+  )
+  await expectCreated(
+    request.post(`${API}/goal`, {
+      data: {
+        startedOn: today,
+        targetWeightKg: 78,
+        rateKgPerWeek: 0.5,
+        clientToday: today,
+      },
+    }),
+  )
+
+  await goto('/review', { waitUntil: 'hydration' })
+  const card = page.getByRole('region', { name: 'Weight history' })
+  await card
+    .getByRole('button', { name: `Delete weight on ${dayHeading(today)}` })
+    .click()
+  const confirm = page.getByRole('dialog', { name: 'Delete this weight?' })
+  await confirm.getByRole('button', { name: 'Delete' }).click()
+  await expect(confirm).toBeHidden()
+
+  await expect(
+    card.getByText(`No weight on ${dayHeading(today)}.`, { exact: true }),
+  ).toBeVisible()
+  await expect(
+    page.getByText('Log a weight to see where you stand on your Goal.'),
+  ).toBeVisible()
+  await expect(page.getByText('Now', { exact: true })).toHaveCount(0)
+  await expect(page.getByRole('progressbar')).toHaveCount(0)
+})

@@ -3315,6 +3315,15 @@
               "type": "integer",
               "format": "int64"
             }
+          },
+          {
+            "name": "clientToday",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
           }
         ],
         "responses": {
@@ -5179,10 +5188,6 @@
       },
       "GoalProgressResponse": {
         "required": [
-          "currentTrendKg",
-          "kgToGo",
-          "percentComplete",
-          "plannedFinishDate",
           "plannedRateKgPerWeek",
           "startWeightKg",
           "targetWeightKg"
@@ -5199,19 +5204,23 @@
           },
           "currentTrendKg": {
             "type": "number",
-            "format": "double"
+            "format": "double",
+            "nullable": true
           },
           "kgToGo": {
             "type": "number",
-            "format": "double"
+            "format": "double",
+            "nullable": true
           },
           "percentComplete": {
             "type": "number",
-            "format": "double"
+            "format": "double",
+            "nullable": true
           },
           "plannedFinishDate": {
             "type": "string",
-            "format": "date"
+            "format": "date",
+            "nullable": true
           },
           "plannedRateKgPerWeek": {
             "type": "number",

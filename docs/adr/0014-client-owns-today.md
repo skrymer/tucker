@@ -45,7 +45,8 @@ against today — takes the client's local date and acts on it:
   Check sent *no* day does not fall back to the server's: it gets the newest review
   whatever its date, which is what every client got before it sent one — the
   server's day would miss a User's own review for the whole of a morning east of
-  UTC.
+  UTC. Either way, with no Weight Measurement left no review stands, and the Check
+  is refused as before setup (`CONTEXT.md` › Weekly Review).
 
 The client date is carried as `clientToday` (request body for the POSTs, query param
 for the DELETE and for `GET /api/check/{barcode}` — and for `PUT /api/profile`, added by

@@ -23,10 +23,24 @@ class GoalProgressTest {
     )
 
     @Test
+    fun `with no readings there is no trend, so nothing is claimed against the plan`() {
+        val progress = GoalProgress.forGoal(goal(), WeightTrend.from(emptyList()), today)
+
+        assertNull(progress.currentTrendKg)
+        assertNull(progress.kgToGo)
+        assertNull(progress.percentComplete)
+        assertNull(progress.plannedFinishDate)
+        assertNull(progress.paceStatus)
+        assertEquals(90.0, progress.startWeightKg)
+        assertEquals(80.0, progress.targetWeightKg)
+        assertEquals(0.5, progress.plannedRateKgPerWeek)
+    }
+
+    @Test
     fun `kg to go is the trend weight above the target`() {
         val progress = GoalProgress.planned(goal(), currentTrendKg = 86.0, today = today)
 
-        assertEquals(6.0, progress.kgToGo, 1e-9)
+        assertEquals(6.0, checkNotNull(progress.kgToGo), 1e-9)
     }
 
     @Test
@@ -34,7 +48,7 @@ class GoalProgressTest {
         // 90 → 80 is 10 kg total; at 86 kg, 4 of those 10 kg are done.
         val progress = GoalProgress.planned(goal(), currentTrendKg = 86.0, today = today)
 
-        assertEquals(40.0, progress.percentComplete, 1e-9)
+        assertEquals(40.0, checkNotNull(progress.percentComplete), 1e-9)
     }
 
     @Test
@@ -157,14 +171,14 @@ class GoalProgressTest {
     fun `a trend at or below the target reads as done with nothing to go`() {
         // Reached the target exactly: 0 kg to go, 100% complete, finishing today.
         val reached = GoalProgress.planned(goal(), currentTrendKg = 80.0, today = today)
-        assertEquals(0.0, reached.kgToGo, 1e-9)
-        assertEquals(100.0, reached.percentComplete, 1e-9)
+        assertEquals(0.0, checkNotNull(reached.kgToGo), 1e-9)
+        assertEquals(100.0, checkNotNull(reached.percentComplete), 1e-9)
         assertEquals(today, reached.plannedFinishDate)
 
         // Overshooting past the target never reports negative to-go or over 100%.
         val overshot = GoalProgress.planned(goal(), currentTrendKg = 78.0, today = today)
-        assertEquals(0.0, overshot.kgToGo, 1e-9)
-        assertEquals(100.0, overshot.percentComplete, 1e-9)
+        assertEquals(0.0, checkNotNull(overshot.kgToGo), 1e-9)
+        assertEquals(100.0, checkNotNull(overshot.percentComplete), 1e-9)
         assertEquals(today, overshot.plannedFinishDate)
     }
 }

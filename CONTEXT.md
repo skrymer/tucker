@@ -683,14 +683,18 @@ Budget, and the Floor are (re)computed. A day's figures — on `/`, in a **Check
 in a **Budget Projection** — come from the review **standing on** that day: the
 latest dated on or before it, never a later one. Only the cadence (is a review
 due?) and a **Check** from a client that sends no day ask for the newest review
-whatever its date. Reviews fire by **lazy catch-up**: on the daily-summary
+whatever its date. With no **Weight Measurement** left, no review stands on any
+day: one held from before the last reading was removed stays stored, but none of
+those surfaces states a figure from it, and the first reading logged after none
+force-recomputes today's review rather than letting the held one stand again. Reviews fire by **lazy catch-up**: on the daily-summary
 read that opening Tucker performs — today `/` and a **Check**, not every screen — if
 the latest review is a week or more old, the engine runs one review snapping to
 today (it does not replay each missed week — the adaptive window already looks
 back two weeks). When the latest review is dated tomorrow — a device already on
 tomorrow stamped it — the age is judged from the review standing on today instead,
-and none standing counts as overdue. A manual "run now" trigger, a **Goal**-change recompute and a
-**Calorie Tracking**-change recompute also exist.
+and none standing counts as overdue. A manual "run now" trigger also exists, and a
+**Goal** change, a **Calorie Tracking** change and the first reading logged after
+none each force-recompute today's review.
 There is no scheduler. Every recompute is stamped on the user's _local_ today —
 the client supplies it, the server never substitutes its own wall-clock day (the
 "client owns today" boundary rule; see [ADR 0014](docs/adr/0014-client-owns-today.md)
@@ -730,7 +734,8 @@ added, corrected or removed. A correction changes the **Trend Weight** from that
 day on — the live trend, **Goal Progress** and the next **Weekly Review**'s
 **Maintenance** all read it — but never rewrites a review already held, nor a
 **Goal**'s stored start weight: those state what the trend was when they were
-taken.
+taken. The one exception is the first reading logged after every reading was
+removed, which force-recomputes today's review (see **Weekly Review**).
 _Avoid_: weigh-in
 
 **Trend Weight**:
@@ -771,6 +776,8 @@ single raw measurement:
   the Trend Weight over the trailing 28 days, expressed as an observed rate of
   loss (kg/week) and an *observed* finish date projected from it. The observed
   pace is withheld until at least 14 days of **Weight Measurements** exist.
+With no Weight Measurement left there is no Trend Weight, so neither reading
+exists: the Goal stands, with its target, and asks for a weight.
 _Avoid_: ETA, projection
 
 **Pace Status**:

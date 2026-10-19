@@ -1,5 +1,5 @@
 import { expect, test } from './support/test'
-import { reachedGoal } from '../test/mocks/handlers/goal'
+import { goalInProgress, reachedGoal } from '../test/mocks/handlers/goal'
 import { summaryOf } from '../test/mocks/handlers/summary'
 
 // F7 slice 2 (ADR 0008): when the Trend Weight first crosses the Goal's target,
@@ -7,6 +7,56 @@ import { summaryOf } from '../test/mocks/handlers/summary'
 // dismiss. "Switch to maintenance" deactivates the Goal (DELETE /api/goal); the
 // backend force-recomputes today's review so the Budget lifts to Maintenance,
 // and the page lands on the calm "Maintaining" card.
+
+test('a reached goal with every reading deleted claims no trend, and waits on a weight before offering maintenance', async ({
+  page,
+  goto,
+  network,
+}) => {
+  // The backend's Goal Progress with no reading: the plan figures are null,
+  // and the latch stays set. With no reading the summary presents no review.
+  network.use(
+    goalInProgress({
+      reachedOn: '2026-06-05',
+      currentTrendKg: null,
+      kgToGo: null,
+      percentComplete: null,
+      plannedFinishDate: null,
+    }),
+    summaryOf({
+      caloriesConsumed: 0,
+      proteinConsumed: 0,
+      estimatedCalorieShare: 0,
+      setupComplete: false,
+      calorieBudget: null,
+      proteinFloor: null,
+      caloriesRemaining: null,
+      dayStatus: null,
+      trendWeightKg: null,
+      entries: [],
+      budgetChange: null,
+    }),
+  )
+
+  await goto('/', { waitUntil: 'hydration' })
+
+  await expect(
+    page.getByRole('heading', { name: /you reached your goal/i }),
+  ).toBeVisible()
+  await expect(
+    page.getByText(
+      'You reached your target of 80.0 kg. Log a weight to see where you stand on your Goal.',
+      { exact: true },
+    ),
+  ).toBeVisible()
+  await expect(page.getByText(/your trend weight has reached/i)).toHaveCount(0)
+  await expect(
+    page.getByRole('button', { name: /switch to maintenance/i }),
+  ).toHaveCount(0)
+  await expect(
+    page.getByRole('link', { name: /set a lower goal/i }),
+  ).toHaveAttribute('href', '/profile')
+})
 
 test('reaching a goal shows the fork banner, and switching to maintenance lands on the Maintaining card', async ({
   page,

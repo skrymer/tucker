@@ -101,6 +101,17 @@ export function bodyAndPlan(seed: {
   let nextId = Math.max(0, ...readings.map((r) => r.id)) + 1
   const goals = (seed.goals ?? []).map((goal) => ({ ...goal }))
   let nextGoalId = Math.max(0, ...goals.map((g) => g.id)) + 1
+  /**
+   * After a reading is saved or deleted, as `GoalService.stampReachedIfCrossed`:
+   * reaching latches, so only an active Goal not yet reached is stamped.
+   */
+  const stampReachedIfCrossed = (clientToday: string | null | undefined) => {
+    const active = goals.find((g) => g.active && g.reachedOn === null)
+    const trend = trendOf(readings)
+    if (active && trend && trend.trendKg <= active.targetWeightKg) {
+      active.reachedOn = clientToday ?? seed.today ?? null
+    }
+  }
   const described = (goal: StoredGoal): Goal => ({
     ...goal,
     dailyDeficitKcal: (goal.rateKgPerWeek * KCAL_PER_KG_FAT) / 7,
@@ -208,13 +219,19 @@ export function bodyAndPlan(seed: {
       const saved = { id: sameDay?.id ?? nextId++, measuredOn: date, weightKg }
       if (sameDay) readings.splice(readings.indexOf(sameDay), 1, saved)
       else readings.push(saved)
-      // Reaching latches: only an active Goal not yet reached is stamped.
-      const active = goals.find((g) => g.active && g.reachedOn === null)
-      const trend = trendOf(readings)
-      if (active && trend && trend.trendKg <= active.targetWeightKg) {
-        active.reachedOn = clientToday ?? seed.today ?? null
-      }
+      stampReachedIfCrossed(clientToday)
       return response(200).json(saved)
+    }),
+    // An absent id deletes nothing and still answers 204, as the backend's
+    // owner-scoped delete does.
+    http.delete('/api/weight/{id}', ({ params, query, response }) => {
+      const clientToday = query.get('clientToday')
+      const notToday = wrongDay(clientToday, seed.today)
+      if (notToday) return response(400).json(notToday)
+      const gone = readings.findIndex((r) => r.id === Number(params.id))
+      if (gone !== -1) readings.splice(gone, 1)
+      stampReachedIfCrossed(clientToday)
+      return response(204).empty()
     }),
     http.get('/api/weight/trend', ({ response }) => {
       const trend = trendOf(readings)

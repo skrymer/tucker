@@ -30,9 +30,14 @@ const readings = useReadings()
 void readings.load()
 
 const emit = defineEmits<{
-  /** A reading was saved, so the figures derived from the readings moved. */
-  saved: []
+  /** A reading was saved or deleted, so the figures derived from them moved. */
+  changed: []
 }>()
+
+async function readingsChanged() {
+  emit('changed')
+  await readings.load()
+}
 
 /**
  * Adds or corrects the picked day's reading; the sheet locks its date to it,
@@ -42,13 +47,13 @@ function usePickedDayLogging() {
   return useWeightLogging({
     today: () => today.value,
     // No success toast: the day's dot and reading appear in the card itself.
-    onSaved: async () => {
-      emit('saved')
-      await readings.load()
-    },
+    onSaved: readingsChanged,
   })
 }
 const logging = usePickedDayLogging()
+
+/** The reading the confirm is asking about; null while it is shut. */
+const toDelete = ref<typeof readings.pickedReading.value>(null)
 </script>
 
 <template>
@@ -87,12 +92,18 @@ const logging = usePickedDayLogging()
         <p class="text-stat text-default">
           {{ readings.pickedReading.value.weightKg.toFixed(1) }} kg
         </p>
-        <UButton
-          variant="ghost"
-          icon="i-lucide-pencil"
-          :aria-label="`Edit weight on ${plain}`"
-          @click="logging.sheetOpen.value = true"
-        />
+        <div class="flex items-center gap-1">
+          <RowActionButton
+            action="edit"
+            :aria-label="`Edit weight on ${plain}`"
+            @click="logging.sheetOpen.value = true"
+          />
+          <RowActionButton
+            action="delete"
+            :aria-label="`Delete weight on ${plain}`"
+            @click="toDelete = readings.pickedReading.value"
+          />
+        </div>
       </div>
       <template v-else>
         <p class="text-sm text-muted">No weight on {{ plain }}.</p>
@@ -112,6 +123,11 @@ const logging = usePickedDayLogging()
       :initial-weight-kg="readings.pickedReading.value?.weightKg"
       :pending="logging.saving.value"
       @submit="logging.logWeight"
+    />
+    <DeleteWeightConfirm
+      :reading="toDelete"
+      @close="toDelete = null"
+      @deleted="readingsChanged"
     />
   </UCard>
 </template>

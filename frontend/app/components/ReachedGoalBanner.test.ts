@@ -6,6 +6,7 @@ import ReachedGoalBanner from './ReachedGoalBanner.vue'
 
 const props = {
   targetWeightKg: 80,
+  tracked: true,
 }
 
 describe('ReachedGoalBanner', () => {
@@ -16,6 +17,29 @@ describe('ReachedGoalBanner', () => {
       screen.getByRole('heading', { name: /you reached your goal/i }),
     ).toBeVisible()
     expect(screen.getByText(/80\.0 kg/)).toBeVisible()
+  })
+
+  it('with no reading, claims no trend and waits on a weight before offering maintenance', async () => {
+    await renderSuspended(ReachedGoalBanner, {
+      props: { ...props, tracked: false },
+    })
+
+    expect(
+      screen.getByRole('heading', { name: /you reached your goal/i }),
+    ).toBeVisible()
+    expect(
+      screen.getByText(
+        'You reached your target of 80.0 kg. Log a weight to see where you stand on your Goal.',
+        { exact: true },
+      ),
+    ).toBeVisible()
+    expect(screen.queryByText(/trend weight/i)).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /switch to maintenance/i }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('link', { name: /set a lower goal/i }),
+    ).toHaveAttribute('href', '/profile')
   })
 
   it('switches to maintenance when the user clicks Switch to maintenance', async () => {

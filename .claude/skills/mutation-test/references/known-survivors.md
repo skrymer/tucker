@@ -277,7 +277,11 @@ was flipped to `true`, and `ReviewLedgerItem.test.ts` now pins it.
 14/26 with 18 uncovered. **Pre-existing and untriaged** — neither page has been
 swept; #248 added `index.test.ts` (the page had none) but scoped it to the Calorie
 Tracking branches, so the fetch and mutation wiring around them is still unasserted
-at this layer. `components/GoalProgressHero.vue` is 18/25, likewise pre-existing.
+at this layer. `components/GoalProgressHero.vue` is 25/33 (#498), its 7 survivors
+the same pre-existing, untriaged ones: the strip's three labels (`'Start'`, `'Now'`,
+`'Target'` → `""`) and the `observedRate` computed (×4). #498's eighth, the
+`plannedFinishDate ?? ''` fallback (NoCoverage), is equivalent: `planned` is read only
+in the tracked branch, where the backend always sends a finish date.
 
 ### `app/app.vue` — 30 of 30, and the engine never ran a test
 
@@ -1567,6 +1571,49 @@ is still loading raises no error*). The six left are **equivalent**:
 - **`:134` the unresolved line's `[]`** — unreachable: an ingredient Food cannot be
   deleted while a Recipe references it, and `/api/foods` returns the whole catalog.
 - **`:149` `props.recipe?.name ?? ''`** — the title renders only while a Recipe is open.
+
+### Delete a weight (#498) — the delete confirms, `RowActionButton`, backend 7 of 7
+
+- **The late-Retry checks' `deleting?.id` / `deletedEntry?.id` — equivalent**
+  (`DeleteWeightConfirm`, `DeleteFoodConfirm`, `pages/index.vue`). The mutation function
+  sets them before `onSuccess` can run. Each partner (`props.reading?.id`,
+  `props.food?.id`, `selectedEntry.value?.id`) was a **real gap**: a failed delete,
+  retried after its confirm was cancelled, threw in `onSuccess`, raising a second error
+  and leaving the item on screen. All three are pinned now.
+- **`DeleteWeightConfirm.vue`, the `described` computed's `''` — equivalent.** `asked`
+  holds the last reading through the leave animation, so it is null only before the
+  confirm has first opened, when nothing renders. Before that hold existed the fallback
+  was *not* equivalent: a closing confirm read "will be removed…" with no reading named
+  (`e2e/weight-history.spec.ts` › *keeps naming the reading while its delete confirm
+  closes*). Food's and Entry's confirms did this on `main` too, and hold theirs the
+  same way now. `DeleteEntryConfirm.vue`'s `entryName` fallback: `last && ''` is
+  **killed by an out-of-scope layer** — it is `main`'s blank name on close, which
+  `e2e/today.spec.ts` › *keeps naming the Entry while its delete confirm closes* fails
+  on both projects; the bare `''` (NoCoverage) is **equivalent**, as `described`'s is.
+- `GoalSection.vue`'s `gated` (an active Goal shows with no reading) was a **real gap**
+  for the no-Goal case: `() => false` kept every test green while a disabled section
+  offered "Start a goal". Pinned by *with no goal and no reading, offers nothing to start
+  and waits on a weight*. Its other 8 survivors are the untriaged ones above.
+- `ReachedGoalBanner.vue`'s `tracked` branch is template-only, so Stryker makes no
+  mutant of it; three hand-mutants (the tracked `<p>` forced on, the `v-else` `<p>`
+  forced off, Switch to maintenance's `v-if` dropped) each fail its test. The page's
+  `:tracked="goalProgress.currentTrendKg != null"` is pinned by
+  `e2e/reached-goal.spec.ts` › *a reached goal with every reading deleted claims no
+  trend…*, red on a copy passing `true`.
+- The transient-failure `errorTitle` was a **real gap** in both `DeleteFoodConfirm.vue`
+  and `pages/index.vue`, older than #498 (only Food's permanent-refusal title was
+  asserted). Both are pinned now.
+- `pages/index.vue` keeps its other pre-existing, untriaged survivors above, including
+  `confirmDeleteEntry`'s `if (entry)` → `true`.
+- `RowActionButton.vue`'s `ICONS` map scores 4 of 4. Stryker makes no mutants of its
+  template, which is pinned by hand-mutants against `e2e/row-action.spec.ts`. Icon, `color`,
+  `variant`, `size-11`, `shrink-0`, `text-muted`, `hover:text-default` and
+  `justify-center` each turn it red. `shrink-0` is red only beside a 30-character
+  unbroken Tag at a 360px phone; at 412px nothing squeezes it. `square` turned nothing
+  red, so it was deleted.
+- `ManageTagsSheet.vue` and `FoodListItem.vue` keep their standing survivors above
+  (this change touched only their templates), and so does `WeightHistorySection.vue`,
+  whose script gained `readingsChanged` and `toDelete`, both killed.
 
 ### Noise removed at the source
 

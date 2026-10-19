@@ -10,6 +10,7 @@ import {
 import { weightMeasurements } from '../test/mocks/handlers/weight'
 import { expect, test } from './support/test'
 import { pinToLocalMorning } from './support/date'
+import { sampleDialogText } from './support/dialog'
 import { rings } from './support/ring'
 
 // The baseline was last weighed on a day long past and has no Goal, so
@@ -62,6 +63,35 @@ test('the Today page shows the daily summary from the API', async ({
   // Playwright keeps one baseline per project (Desktop / Mobile Chrome), and
   // with the FAB gone the two now read alike.
   await expect(page.getByRole('main')).toMatchAriaSnapshot()
+})
+
+test('keeps naming the Entry while its delete confirm closes', async ({
+  page,
+  goto,
+  network,
+}) => {
+  network.use(summaryOf(DAY_WITH_ENTRIES))
+
+  await goto('/', { waitUntil: 'hydration' })
+  await page
+    .getByRole('button', {
+      name: 'Delete Oats — 60 g · 240 kcal · 8 g protein',
+    })
+    .click()
+  const confirm = page.getByRole('dialog', { name: 'Delete this entry?' })
+  await expect(confirm).toBeVisible()
+  const seen = await sampleDialogText(page)
+  await confirm.getByRole('button', { name: 'Cancel' }).click()
+  await expect(confirm).toBeHidden()
+
+  const frames = await seen()
+  expect(frames.length).toBeGreaterThan(1)
+  expect(
+    frames.filter(
+      (text) =>
+        !text.includes('Oats — 60 g · 240 kcal · 8 g protein will be removed'),
+    ),
+  ).toEqual([])
 })
 
 test("tomorrow's Entries are listed below today's, under their own day", async ({
@@ -212,6 +242,50 @@ test("logging a weight from the tile shows it as today's weight", async ({
     page.getByRole('button', { name: /edit today's weight/i }),
   ).toBeVisible()
   await expect(page.getByRole('button', { name: 'Log weight' })).toHaveCount(0)
+})
+
+test('a first weight logged from the tile brings the Budget in without a reload', async ({
+  page,
+  goto,
+  network,
+}) => {
+  // No reading yet, so the summary presents no review; once one is saved, the
+  // catch-up that summary runs has a Budget to state.
+  let weighed = false
+  network.use(
+    http.post('/api/weight', () => {
+      weighed = true
+      return undefined
+    }),
+    ...weightMeasurements(null),
+    summaryOf(() => ({
+      caloriesConsumed: 0,
+      proteinConsumed: 0,
+      estimatedCalorieShare: 0,
+      setupComplete: weighed,
+      calorieBudget: weighed ? 2400 : null,
+      proteinFloor: weighed ? 168 : null,
+      caloriesRemaining: weighed ? 2400 : null,
+      dayStatus: weighed ? 'in-progress' : null,
+      trendWeightKg: weighed ? 84.2 : null,
+      entries: [],
+      budgetChange: null,
+    })),
+  )
+
+  await goto('/', { waitUntil: 'hydration' })
+  await expect(page.getByText(/no budget yet/i)).toBeVisible()
+
+  await page.getByRole('button', { name: 'Log weight' }).click()
+  await page.getByLabel(/weight \(kg\)/i).fill('84.2')
+  await page
+    .getByRole('dialog', { name: /log weight/i })
+    .getByRole('button', { name: /save weight/i })
+    .click()
+
+  await expect(page.getByText('0 / 2400 kcal')).toBeVisible()
+  await expect(page.getByText(/no budget yet/i)).toHaveCount(0)
+  await expect(page.getByText(/finish setup/i)).toHaveCount(0)
 })
 
 test('the weight sheet stays put, reporting busy, until the save lands', async ({

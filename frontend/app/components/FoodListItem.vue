@@ -97,37 +97,18 @@ const recipeSubline = computed(() => {
       </ul>
     </div>
 
-    <UButton
+    <RowActionButton
       v-if="isRecipe"
+      action="ingredients"
       :aria-label="`View ingredients in ${name}`"
-      icon="i-lucide-list"
-      color="neutral"
-      variant="ghost"
-      square
-      class="size-11 shrink-0 text-muted hover:text-default"
-      :ui="{ base: 'justify-center' }"
       @click="emit('view', props.food)"
     />
 
-    <UButton
-      :aria-label="`Edit ${name}`"
-      icon="i-lucide-pencil"
-      color="neutral"
-      variant="ghost"
-      square
-      class="size-11 shrink-0 text-muted hover:text-default"
-      :ui="{ base: 'justify-center' }"
-      @click="edit"
-    />
+    <RowActionButton action="edit" :aria-label="`Edit ${name}`" @click="edit" />
 
-    <UButton
+    <RowActionButton
+      action="delete"
       :aria-label="`Delete ${name}`"
-      icon="i-lucide-trash-2"
-      color="neutral"
-      variant="ghost"
-      square
-      class="size-11 shrink-0 text-muted hover:text-default"
-      :ui="{ base: 'justify-center' }"
       @click="emit('delete', props.food)"
     />
   </div>

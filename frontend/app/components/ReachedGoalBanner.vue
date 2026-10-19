@@ -1,6 +1,8 @@
 <script setup lang="ts">
 const props = defineProps<{
   targetWeightKg: number
+  /** Whether a Trend Weight stands — false once every reading is gone. */
+  tracked: boolean
 }>()
 
 const emit = defineEmits<{ 'switch-to-maintenance': [] }>()
@@ -19,13 +21,19 @@ const target = computed(() => `${props.targetWeightKg.toFixed(1)} kg`)
       <h2 class="text-h2">You reached your goal!</h2>
     </template>
     <template #description>
-      <p>
+      <p v-if="props.tracked">
         Your trend weight has reached your target of {{ target }}. Choose how to
         continue.
+      </p>
+      <!-- No reading, no trend: and switching recomputes a review that needs one. -->
+      <p v-else>
+        You reached your target of {{ target }}. Log a weight to see where you
+        stand on your Goal.
       </p>
     </template>
     <template #actions>
       <UButton
+        v-if="props.tracked"
         label="Switch to maintenance"
         color="success"
         variant="solid"

@@ -10,8 +10,10 @@ import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.delete
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
+import org.springframework.test.web.servlet.put
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
+import java.time.ZoneOffset
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -80,6 +82,44 @@ class WeightApiTest {
         mockMvc.delete("/api/weight/$id").andExpect { status { isNoContent() } }
 
         mockMvc.get("/api/weight/latest").andExpect { status { isNotFound() } }
+    }
+
+    @Test
+    fun `DELETE weight that brings the trend to the target stamps the active Goal reached on the client's day`() {
+        // The client a day ahead of the server, so the stamp shows whose day it took.
+        // The server's day is UTC's (`Clock.systemUTC()`), whatever the host's zone.
+        val clientToday = LocalDate.now(ZoneOffset.UTC).plusDays(1)
+        mockMvc.put("/api/profile") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"sex":"MALE","birthDate":"1986-05-22","heightCm":180.0}"""
+        }.andExpect { status { isOk() } }
+        mockMvc.post("/api/weight") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"date":"${clientToday.minusDays(2)}","weightKg":79.9,"clientToday":"$clientToday"}"""
+        }.andExpect { status { isOk() } }
+        // 95.0 typed for a reading near 79.9: the trend stands at 0.9·79.9 + 0.1·95.0 = 81.41.
+        val mistyped = mockMvc.post("/api/weight") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"date":"${clientToday.minusDays(1)}","weightKg":95.0,"clientToday":"$clientToday"}"""
+        }.andExpect { status { isOk() } }
+            .andReturn().response.contentAsString
+        val id = Regex("""\"id\":(\d+)""").find(mistyped)!!.groupValues[1]
+        mockMvc.post("/api/goal") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"startedOn":"$clientToday","targetWeightKg":80.0,"rateKgPerWeek":0.5,
+                          "clientToday":"$clientToday"}"""
+        }.andExpect {
+            status { isCreated() }
+            jsonPath("$.reachedOn") { value(null) }
+        }
+
+        // Without it the trend is the 79.9 alone, below the 80.0 target.
+        mockMvc.delete("/api/weight/$id?clientToday=$clientToday").andExpect { status { isNoContent() } }
+
+        mockMvc.get("/api/goal").andExpect {
+            status { isOk() }
+            jsonPath("$.reachedOn") { value("$clientToday") }
+        }
     }
 
     /**

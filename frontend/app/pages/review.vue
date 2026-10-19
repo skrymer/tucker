@@ -39,7 +39,7 @@ const {
 // and a section that waits on a read it does not need appears a round trip late.
 const openingReads = Promise.all([refreshGoalProgress(), refreshTimeline()])
 
-/** A saved reading moves the trend, so the timeline and the Goal's progress. */
+/** A reading saved or deleted moves the trend, so the timeline and the Goal's progress. */
 const refreshWeightFigures = () =>
   Promise.all([refreshTimeline(), refreshGoalProgress()])
 
@@ -175,9 +175,9 @@ const { pending, execute: runReview } = useApiMutation(
       />
     </LoadErrorState>
 
-    <!-- Ungated like the timeline above it: weight is the premise. A saved
-         reading moves the trend, the timeline and the Goal's progress. -->
-    <WeightHistorySection @saved="refreshWeightFigures" />
+    <!-- Ungated like the timeline above it: weight is the premise. A reading
+         saved or deleted moves the trend, the timeline and the Goal's progress. -->
+    <WeightHistorySection @changed="refreshWeightFigures" />
 
     <!-- One gate, in setup: with Calorie Tracking off nothing was fetched, so
          there is neither a breakdown to render nor an error to report. -->

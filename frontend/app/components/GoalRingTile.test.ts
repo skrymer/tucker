@@ -8,6 +8,27 @@ import GoalRingTile from './GoalRingTile.vue'
 const progress = goalProgress()
 
 describe('GoalRingTile', () => {
+  it('asks for a weight in place of any figure a trend would give, with no readings', async () => {
+    await renderSuspended(GoalRingTile, {
+      props: {
+        progress: goalProgress({
+          currentTrendKg: null,
+          kgToGo: null,
+          percentComplete: null,
+          plannedFinishDate: null,
+        }),
+      },
+    })
+
+    expect(
+      screen.getByText('Log a weight to see where you stand on your Goal.'),
+    ).toBeVisible()
+    expect(screen.getByText(/^Target/)).toHaveTextContent('Target 80.0 kg')
+    expect(screen.queryByText('kg to go')).toBeNull()
+    expect(screen.queryByText(/% complete$/)).toBeNull()
+    expect(screen.queryByText(/^Trend weight/)).toBeNull()
+  })
+
   it('puts the kilograms still to go at the centre of the ring', async () => {
     await renderSuspended(GoalRingTile, { props: { progress } })
 

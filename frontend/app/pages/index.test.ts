@@ -8,7 +8,7 @@ import { dailyLogs } from '~~/test/mocks/handlers/entries'
 import { weightMeasurements } from '~~/test/mocks/handlers/weight'
 import { goalInProgress } from '~~/test/mocks/handlers/goal'
 import { summaryOf, type SummaryDay } from '~~/test/mocks/handlers/summary'
-import { http, serverError } from '~~/test/mocks/http'
+import { failingWrite, held, http, serverError } from '~~/test/mocks/http'
 import { server } from '~~/test/mocks/node'
 import { ref, type Ref } from 'vue'
 import Today from './index.vue'
@@ -20,6 +20,12 @@ import Today from './index.vue'
 // jsdom reports the desktop breakpoint, so a phone-only branch needs saying.
 const viewport = vi.hoisted(() => ({ desktop: true }))
 mockNuxtImport('useIsDesktop', () => () => ref(viewport.desktop))
+
+const { toastAdd } = vi.hoisted(() => ({ toastAdd: vi.fn() }))
+mockNuxtImport('useToast', () => () => ({
+  add: toastAdd,
+  remove: vi.fn(),
+}))
 
 // The day Today shows, held here so a test can turn it over as the clock would.
 let localDay: Ref<string>
@@ -281,6 +287,143 @@ describe("/ with today's Entries", () => {
       expect(screen.queryByRole('region')).not.toBeInTheDocument(),
     )
     expect(screen.getByText('0 / 2000 kcal')).toBeVisible()
+  })
+
+  it('deletes an Entry whose failed delete is retried after its confirm was cancelled, raising no second error', async () => {
+    toastAdd.mockClear()
+    let down = true
+    let entries = [todaysSalmon]
+    server.use(
+      summaryOf(() => ({ ...DAY, entries })),
+      http.delete('/api/entries/{id}', ({ params, response }) => {
+        entries = entries.filter((e) => e.id !== Number(params.id))
+        return response(204).empty()
+      }),
+    )
+    server.use(failingWrite('delete', '/api/entries/{id}', () => down))
+    await renderToday()
+    const user = userEvent.setup()
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'Delete Salmon — 150 g · 312 kcal · 33 g protein',
+      }),
+    )
+    const confirm = await screen.findByRole('dialog', {
+      name: 'Delete this entry?',
+    })
+    await user.click(within(confirm).getByRole('button', { name: 'Delete' }))
+    await vi.waitFor(() => expect(toastAdd).toHaveBeenCalled())
+    await user.click(within(confirm).getByRole('button', { name: 'Cancel' }))
+    await vi.waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    const failures = toastAdd.mock.calls.length
+
+    down = false
+    await toastAdd.mock.calls.at(-1)![0].actions[0].onClick()
+
+    await vi.waitFor(() =>
+      expect(screen.queryByRole('region')).not.toBeInTheDocument(),
+    )
+    expect(toastAdd).toHaveBeenCalledTimes(failures)
+  })
+
+  it("leaves another Entry's confirm open when an earlier failed delete's Retry lands", async () => {
+    toastAdd.mockClear()
+    let down = true
+    const todaysOats = weighedEntry({
+      id: 2,
+      loggedOn: localToday(),
+      calories: 228,
+      protein: 8,
+      foodId: 3,
+      foodName: 'Rolled oats',
+      grams: 60,
+    })
+    server.use(
+      summaryOf({ ...DAY, entries: [todaysSalmon, todaysOats] }),
+      http.delete('/api/entries/{id}', ({ response }) => response(204).empty()),
+    )
+    server.use(failingWrite('delete', '/api/entries/{id}', () => down))
+    await renderToday()
+    const user = userEvent.setup()
+    const askToDelete = async (name: string) => {
+      await user.click(await screen.findByRole('button', { name }))
+      return screen.findByRole('dialog', { name: 'Delete this entry?' })
+    }
+
+    const salmon = await askToDelete(
+      'Delete Salmon — 150 g · 312 kcal · 33 g protein',
+    )
+    await user.click(within(salmon).getByRole('button', { name: 'Delete' }))
+    await vi.waitFor(() => expect(toastAdd).toHaveBeenCalled())
+    await user.click(within(salmon).getByRole('button', { name: 'Cancel' }))
+    await vi.waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+
+    const oats = await askToDelete(
+      'Delete Rolled oats — 60 g · 228 kcal · 8 g protein',
+    )
+    down = false
+    await toastAdd.mock.calls.at(-1)![0].actions[0].onClick()
+
+    expect(oats).toHaveTextContent('Rolled oats')
+    expect(
+      screen.getByRole('dialog', { name: 'Delete this entry?' }),
+    ).toBeVisible()
+  })
+
+  it('names a failed Entry delete in its own persistent error toast', async () => {
+    toastAdd.mockClear()
+    server.use(
+      summaryOf({ ...DAY, entries: [todaysSalmon] }),
+      failingWrite('delete', '/api/entries/{id}'),
+    )
+    await renderToday()
+    const user = userEvent.setup()
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'Delete Salmon — 150 g · 312 kcal · 33 g protein',
+      }),
+    )
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', {
+        name: 'Delete',
+      }),
+    )
+
+    await vi.waitFor(() =>
+      expect(toastAdd).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Could not delete entry',
+          duration: Infinity,
+          actions: [expect.objectContaining({ label: 'Retry' })],
+        }),
+      ),
+    )
+  })
+
+  it("reports an Entry's Delete busy until the delete lands", async () => {
+    const remove = held('delete', '/api/entries/{id}')
+    server.use(
+      summaryOf({ ...DAY, entries: [todaysSalmon] }),
+      http.delete('/api/entries/{id}', ({ response }) => response(204).empty()),
+    )
+    server.use(remove.handler)
+    await renderToday()
+    const user = userEvent.setup()
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'Delete Salmon — 150 g · 312 kcal · 33 g protein',
+      }),
+    )
+    const confirm = async () =>
+      within(await screen.findByRole('dialog')).getByRole('button', {
+        name: 'Delete',
+      })
+
+    await user.click(await confirm())
+
+    await remove.arrived
+    await vi.waitFor(async () => expect(await confirm()).toBeDisabled())
+    remove.release()
   })
 })
 

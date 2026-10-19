@@ -24,6 +24,9 @@ const emit = defineEmits<{
 const activeGoal = computed(() => props.goals.find((g) => g.active) ?? null)
 const pastGoals = computed(() => props.goals.filter((g) => !g.active))
 
+// With no reading, an active Goal still shows; only setting one waits on a weight.
+const gated = computed(() => props.disabled && !activeGoal.value)
+
 // The maintenance "since {date}" is the most recently reached Goal's reachedOn
 // (ADR 0008); null for a user who has never reached one, so the status shows
 // without a date. ISO date strings compare lexicographically.
@@ -53,8 +56,8 @@ watch(
   <section
     class="flex flex-col gap-3"
     aria-labelledby="goal-heading"
-    :aria-disabled="props.disabled || undefined"
-    :class="{ 'pointer-events-none opacity-50 select-none': props.disabled }"
+    :aria-disabled="gated || undefined"
+    :class="{ 'pointer-events-none opacity-50 select-none': gated }"
   >
     <header class="flex items-center justify-between">
       <h2 id="goal-heading" class="text-h2 text-highlighted">Goal</h2>
@@ -73,7 +76,7 @@ watch(
     </header>
 
     <!-- Gated: a weight reading must exist before a goal can be set. -->
-    <p v-if="props.disabled" class="text-sm text-muted">
+    <p v-if="gated" class="text-sm text-muted">
       Log your weight first, on <ULink to="/" class="underline">Today</ULink>,
       to set a goal.
     </p>
@@ -88,6 +91,11 @@ watch(
         @start-goal="formOpen = true"
       />
       <GoalCard v-else :goal="activeGoal" />
+
+      <p v-if="props.disabled" class="text-sm text-muted">
+        Log your weight first, on <ULink to="/" class="underline">Today</ULink>,
+        to set a new goal.
+      </p>
 
       <GoalForm
         v-if="formOpen && props.currentTrend"

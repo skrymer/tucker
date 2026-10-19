@@ -15,6 +15,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.delete
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
 import org.springframework.test.web.servlet.put
@@ -34,13 +35,22 @@ class SummaryApiTest {
     @Autowired lateinit var reminderState: ReminderStateRepository
     @Autowired lateinit var goals: GoalRepository
 
-    /** A review inserted directly, standing in for one the adaptive engine ran. */
+    /**
+     * A review inserted directly, standing in for one the adaptive engine ran — with
+     * the Profile and reading every real review stands on.
+     */
     private fun seedReview(
         on: LocalDate,
         budgetKcal: Double,
         floorG: Double,
-    ): WeeklyReview =
-        reviews.insert(
+    ): WeeklyReview {
+        savedProfile()
+        mockMvc.post("/api/weight") {
+            contentType = MediaType.APPLICATION_JSON
+            // A reading can't be dated ahead of today, as a device-ahead review can.
+            content = """{"date":"${minOf(on, LocalDate.now())}","weightKg":86.0}"""
+        }.andExpect { status { isOk() } }
+        return reviews.insert(
             WeeklyReview(
                 id = reviews.nextId(),
                 reviewedOn = on,
@@ -52,6 +62,7 @@ class SummaryApiTest {
                 ),
             ),
         )
+    }
 
     private fun completeSetup(on: LocalDate) {
         mockMvc.put("/api/profile") {
@@ -102,6 +113,110 @@ class SummaryApiTest {
             // Weight is the spine (CONTEXT.md — Calorie Tracking): with no reading
             // there is no Trend Weight, so no review can run whatever the User counts.
             jsonPath("$.setupComplete") { value(false) }
+        }
+    }
+
+    @Test
+    fun `with every reading deleted the summary presents nothing from the review still held`() {
+        val day = LocalDate.now()
+        completeSetup(day)
+        mockMvc.get("/api/summary") { param("date", "$day") }
+            .andExpect { jsonPath("$.calorieBudget") { isNumber() } }
+        val readingId = mockMvc.get("/api/weight").andReturn().response.contentAsString
+            .let { Regex(""""id":(\d+)""").find(it)!!.groupValues[1] }
+        mockMvc.delete("/api/weight/$readingId") { param("clientToday", "$day") }
+            .andExpect { status { isNoContent() } }
+
+        val body = mockMvc.get("/api/summary") {
+            param("date", "$day")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.setupComplete") { value(false) }
+        }.andReturn().response.contentAsString
+
+        // As before the first Weight Measurement: no Trend Weight, so no Maintenance, Budget or Floor.
+        listOf(
+            "calorieBudget", "proteinFloor", "caloriesRemaining", "proteinRemaining",
+            "dayStatus", "trendWeightKg", "budgetChange", "heldReason",
+        ).forEach { field ->
+            assertTrue(
+                body.contains(""""$field":null"""),
+                "expected $field to be an explicit null, body was $body",
+            )
+        }
+        // The review is history, not rewritten by the removal.
+        assertEquals(86.0, reviews.findByReviewedOn(day)?.trendWeightKg)
+    }
+
+    @Test
+    fun `the first reading after every reading was deleted recomputes today's review from it`() {
+        val today = LocalDate.now()
+        // A held review from two days ago, built on readings since deleted.
+        seedReview(today.minusDays(2), budgetKcal = 1000.0, floorG = 100.0)
+        mockMvc.get("/api/weight").andReturn().response.contentAsString
+            .let { Regex(""""id":(\d+)""").findAll(it).map { m -> m.groupValues[1] }.toList() }
+            .forEach { id -> mockMvc.delete("/api/weight/$id").andExpect { status { isNoContent() } } }
+
+        mockMvc.post("/api/weight") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"date":"$today","weightKg":90.0}"""
+        }.andExpect { status { isOk() } }
+
+        val review = reviews.findByReviewedOn(today)
+        assertEquals(90.0, review?.trendWeightKg)
+        mockMvc.get("/api/summary") { param("date", "$today") }.andExpect {
+            status { isOk() }
+            jsonPath("$.trendWeightKg") { value(90.0) }
+            jsonPath("$.calorieBudget", closeTo(review!!.intakeTargets!!.calorieBudgetKcal, 1e-6))
+        }
+    }
+
+    @Test
+    fun `Calorie Tracking turned on with no reading takes effect at the first reading after none`() {
+        val today = LocalDate.now()
+        maintenanceSetup(today, tracksCalories = false)
+        mockMvc.get("/api/summary") { param("date", "$today") }
+            .andExpect { jsonPath("$.calorieBudget") { value(null) } }
+        mockMvc.get("/api/weight").andReturn().response.contentAsString
+            .let { Regex(""""id":(\d+)""").findAll(it).map { m -> m.groupValues[1] }.toList() }
+            .forEach { id -> mockMvc.delete("/api/weight/$id").andExpect { status { isNoContent() } } }
+        savedProfile(tracksCalories = true)
+
+        mockMvc.post("/api/weight") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"date":"$today","weightKg":86.0}"""
+        }.andExpect { status { isOk() } }
+
+        mockMvc.get("/api/summary") { param("date", "$today") }.andExpect {
+            status { isOk() }
+            jsonPath("$.calorieBudget") { isNumber() }
+            jsonPath("$.proteinFloor") { value(172.0) }
+        }
+    }
+
+    @Test
+    fun `Calorie Tracking turned off with no reading takes effect at the first reading after none`() {
+        val today = LocalDate.now()
+        maintenanceSetup(today, tracksCalories = true)
+        mockMvc.get("/api/summary") { param("date", "$today") }
+            .andExpect { jsonPath("$.calorieBudget") { isNumber() } }
+        mockMvc.get("/api/weight").andReturn().response.contentAsString
+            .let { Regex(""""id":(\d+)""").findAll(it).map { m -> m.groupValues[1] }.toList() }
+            .forEach { id -> mockMvc.delete("/api/weight/$id").andExpect { status { isNoContent() } } }
+        savedProfile(tracksCalories = false)
+
+        mockMvc.post("/api/weight") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"date":"$today","weightKg":86.0}"""
+        }.andExpect { status { isOk() } }
+
+        val body = mockMvc.get("/api/summary") { param("date", "$today") }
+            .andExpect {
+                status { isOk() }
+                jsonPath("$.trendWeightKg") { value(86.0) }
+            }.andReturn().response.contentAsString
+        listOf("calorieBudget", "proteinFloor").forEach { field ->
+            assertTrue(body.contains(""""$field":null"""), "expected $field null, body was $body")
         }
     }
 
