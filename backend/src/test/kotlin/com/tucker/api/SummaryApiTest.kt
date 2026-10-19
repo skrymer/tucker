@@ -134,7 +134,7 @@ class SummaryApiTest {
             jsonPath("$.setupComplete") { value(false) }
         }.andReturn().response.contentAsString
 
-        // As before the first weigh-in: no Trend Weight, so no Maintenance, Budget or Floor.
+        // As before the first Weight Measurement: no Trend Weight, so no Maintenance, Budget or Floor.
         listOf(
             "calorieBudget", "proteinFloor", "caloriesRemaining", "proteinRemaining",
             "dayStatus", "trendWeightKg", "budgetChange", "heldReason",

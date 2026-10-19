@@ -67,12 +67,24 @@ class CheckApiTest {
             }
         }
 
-    /** A review inserted directly, standing in for one the adaptive engine ran. */
+    /**
+     * A review inserted directly, standing in for one the adaptive engine ran — with
+     * the Profile and reading every real review stands on.
+     */
     private fun seedTargets(
         budgetKcal: Double = 2492.0,
         floorG: Double = 170.0,
         on: LocalDate = LocalDate.now(),
     ) {
+        mockMvc.put("/api/profile") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"sex":"MALE","birthDate":"1986-05-22","heightCm":180.0}"""
+        }.andExpect { status { isOk() } }
+        mockMvc.post("/api/weight") {
+            contentType = MediaType.APPLICATION_JSON
+            // A reading can't be dated ahead of today, as a device-ahead review can.
+            content = """{"date":"${minOf(on, LocalDate.now())}","weightKg":86.0}"""
+        }.andExpect { status { isOk() } }
         reviews.insert(
             WeeklyReview(
                 id = reviews.nextId(),

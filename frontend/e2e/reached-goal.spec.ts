@@ -14,7 +14,7 @@ test('a reached goal with every reading deleted claims no trend, and waits on a 
   network,
 }) => {
   // The backend's Goal Progress with no reading: the plan figures are null,
-  // and the latch stays set. The summary still holds the last review's Budget.
+  // and the latch stays set. With no reading the summary presents no review.
   network.use(
     goalInProgress({
       reachedOn: '2026-06-05',
@@ -28,11 +28,11 @@ test('a reached goal with every reading deleted claims no trend, and waits on a 
       proteinConsumed: 0,
       estimatedCalorieShare: 0,
       setupComplete: false,
-      calorieBudget: 1983,
-      proteinFloor: 177,
-      caloriesRemaining: 1983,
-      dayStatus: 'in-progress',
-      trendWeightKg: 88.4,
+      calorieBudget: null,
+      proteinFloor: null,
+      caloriesRemaining: null,
+      dayStatus: null,
+      trendWeightKg: null,
       entries: [],
       budgetChange: null,
     }),

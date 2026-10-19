@@ -67,10 +67,7 @@ class DailySummaryService(
         // against a current Budget.
         val setupComplete = weeklyReview.catchUpIfDue(date)
         val log = DailyLog(date, entries.findByDate(date))
-        // With no reading there is no Trend Weight, so no Maintenance, Budget or Floor
-        // (CONTEXT.md, Calorie Tracking): a review held from before the last reading
-        // was deleted stays stored, but presents nothing.
-        val recent = if (setupComplete) weeklyReview.reviewsStandingOn(date) else emptyList()
+        val recent = weeklyReview.reviewsStandingOn(date)
         val goalActive = goals.hasActive()
         val summary = DailySummary(
             setupComplete = setupComplete,

@@ -64,9 +64,12 @@ class WeeklyReviewService(
 
     /**
      * The two reviews standing on [date], newest first: that day's targets and its
-     * budget-change diff.
+     * budget-change diff. None while setup is incomplete: with no reading there is no
+     * Trend Weight, so no Maintenance, Budget or Floor (CONTEXT.md, Calorie Tracking),
+     * and a review held from before the last reading was deleted presents nothing.
      */
-    fun reviewsStandingOn(date: LocalDate): List<WeeklyReview> = reviews.latestTwoOnOrBefore(date)
+    fun reviewsStandingOn(date: LocalDate): List<WeeklyReview> =
+        if (setupComplete()) reviews.latestTwoOnOrBefore(date) else emptyList()
 
     /**
      * The inputs a review needs; absent any of them, catch-up stays a no-op. A Goal
