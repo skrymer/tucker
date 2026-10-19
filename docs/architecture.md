@@ -197,9 +197,9 @@ flowchart TD
 ### Backend: the adaptive Weekly Review
 
 How the Calorie Budget and Protein Floor come to be. The engine is lazy — a
-review is run when something reads the summary and one is due — plus a forced
-recompute whenever a Goal or the Calorie Tracking setting changes, or the first
-reading arrives after every reading was deleted. There is no
+review is run when something reads the summary and one is due — and today's
+review is force-recomputed whenever a Goal or the Calorie Tracking setting
+changes, or the first reading arrives after every reading was deleted. There is no
 LLM anywhere in it: the math is deterministic.
 
 ```mermaid
@@ -209,7 +209,7 @@ flowchart LR
     manual["<b>WeeklyReviewController</b><br/>[Component: REST controller]<br/>POST /api/weekly-review: run now"]:::component
     goal["<b>GoalService</b><br/>[Component: Spring service]<br/>start, switch or replace a Goal: force recompute"]:::component
     profile["<b>ProfileService</b><br/>[Component: Spring service]<br/>Calorie Tracking toggled: force recompute"]:::component
-    weighin["<b>WeightMeasurementService</b><br/>[Component: Spring service]<br/>first reading after none: force recompute"]:::component
+    reading["<b>WeightMeasurementService</b><br/>[Component: Spring service]<br/>first reading after none: force recompute"]:::component
   end
 
   engine["<b>WeeklyReviewService</b><br/>[Component: Spring service]<br/>runs a review for a date"]:::component
@@ -231,7 +231,7 @@ flowchart LR
   manual --> engine
   goal --> engine
   profile --> engine
-  weighin --> engine
+  reading --> engine
   engine -- "is one due?" --> cadence
   engine -- "reads the week" --> reads
   engine --> trend
