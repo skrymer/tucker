@@ -11,7 +11,11 @@
 # that, OOM-kills inside this cgroup only; everything else in the session survives
 # and the failure reads as a killed worker rather than a vanished terminal.
 #
-# Usage:  scripts/bounded-run.sh [--cap 8G] -- <command> [args...]
+# Usage:  scripts/bounded-run.sh [--cap 8G] [--log <new-file>] -- <command> [args...]
+#
+# --log tees the run's output into a file that must not exist yet: a re-run is a new
+# log, never the old one overwritten (#498 lost two reds that way). The HEAD +
+# `git status --short` stamp below is its first lines.
 #
 # Linux + systemd only. Anywhere else it warns and runs the command unbounded, so
 # it is never the reason a command cannot run — but it is also not protecting
@@ -19,19 +23,32 @@
 set -euo pipefail
 
 CAP="${BOUNDED_RUN_CAP:-8G}"
+LOG=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --cap)
       [ $# -ge 2 ] || { echo "bounded-run: --cap needs a value (e.g. --cap 8G)" >&2; exit 2; }
       CAP="$2"; shift 2 ;;
+    --log)
+      [ $# -ge 2 ] || { echo "bounded-run: --log needs a path" >&2; exit 2; }
+      LOG="$2"; shift 2 ;;
     --) shift; break ;;
     *) break ;;
   esac
 done
 
 if [ $# -eq 0 ]; then
-  echo "usage: $0 [--cap 8G] -- <command> [args...]" >&2
+  echo "usage: $0 [--cap 8G] [--log <new-file>] -- <command> [args...]" >&2
   exit 2
+fi
+
+if [ -n "$LOG" ]; then
+  # noclobber makes the existence check and the create one step.
+  if ! (set -o noclobber; : > "$LOG") 2>/dev/null; then
+    echo "bounded-run: refusing --log $LOG — it exists or cannot be created; a re-run gets a new file" >&2
+    exit 2
+  fi
+  exec > >(tee -a "$LOG") 2>&1
 fi
 
 # Stamp the tree the sweep ran on, so a saved log names its commit and any
