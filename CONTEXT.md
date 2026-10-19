@@ -734,7 +734,8 @@ added, corrected or removed. A correction changes the **Trend Weight** from that
 day on — the live trend, **Goal Progress** and the next **Weekly Review**'s
 **Maintenance** all read it — but never rewrites a review already held, nor a
 **Goal**'s stored start weight: those state what the trend was when they were
-taken.
+taken. The one exception is the first reading logged after every reading was
+removed, which force-recomputes today's review (see **Weekly Review**).
 _Avoid_: weigh-in
 
 **Trend Weight**:

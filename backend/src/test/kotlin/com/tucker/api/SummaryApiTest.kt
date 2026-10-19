@@ -195,6 +195,32 @@ class SummaryApiTest {
     }
 
     @Test
+    fun `Calorie Tracking turned off with no reading takes effect at the first reading after none`() {
+        val today = LocalDate.now()
+        maintenanceSetup(today, tracksCalories = true)
+        mockMvc.get("/api/summary") { param("date", "$today") }
+            .andExpect { jsonPath("$.calorieBudget") { isNumber() } }
+        mockMvc.get("/api/weight").andReturn().response.contentAsString
+            .let { Regex(""""id":(\d+)""").findAll(it).map { m -> m.groupValues[1] }.toList() }
+            .forEach { id -> mockMvc.delete("/api/weight/$id").andExpect { status { isNoContent() } } }
+        savedProfile(tracksCalories = false)
+
+        mockMvc.post("/api/weight") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"date":"$today","weightKg":86.0}"""
+        }.andExpect { status { isOk() } }
+
+        val body = mockMvc.get("/api/summary") { param("date", "$today") }
+            .andExpect {
+                status { isOk() }
+                jsonPath("$.trendWeightKg") { value(86.0) }
+            }.andReturn().response.contentAsString
+        listOf("calorieBudget", "proteinFloor").forEach { field ->
+            assertTrue(body.contains(""""$field":null"""), "expected $field null, body was $body")
+        }
+    }
+
+    @Test
     fun `the summary reports setup complete once a Profile and a Weight Measurement exist`() {
         val day = LocalDate.now()
         maintenanceSetup(day)

@@ -14,9 +14,9 @@ import java.time.LocalDate
  * reached if it just crossed (ADR 0008). Both run in one transaction.
  *
  * The first reading after every reading was deleted force-recomputes today's review:
- * the one held was built on those readings, and perhaps under a Calorie Tracking
- * setting changed since, so it must not stand again. A User's first-ever reading
- * has no review held, and catch-up bootstraps theirs.
+ * the review held then stands on no reading at all, and a Calorie Tracking change
+ * made meanwhile could not recompute it, so it must not stand again. A User's
+ * first-ever reading has no review held, and catch-up bootstraps theirs.
  */
 @Service
 class WeightMeasurementService(
