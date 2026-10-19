@@ -32,7 +32,10 @@ explicitly in the verdict.
 ## Workflow
 
 1. **Bring the stack up.** `docker compose up -d backend` (repo root), then `pnpm dev`
-   in `frontend/`. Wait for both before navigating. **Drive the URL the dev log's
+   in `frontend/`. Wait for both before navigating. **If the branch touched `backend/`
+   since the image was built, `docker compose build backend` first** — compare the
+   `docker image inspect -f '{{.Created}}' tucker-backend:latest` with `git log -1 --format=%cI --
+   backend/`: #498's first crossing probe ran on a stale image and read `reachedOn` null. **Drive the URL the dev log's
    `➜ Local:` line names, not the port you asked for** — Nuxt silently moves to
    another port when yours is taken, so the one you asked for may still be answered
    by another worktree's server running other code. Confirm the listener is yours
@@ -97,7 +100,10 @@ written for** — `git log` the branch and drive each fix's own scenario: #435's
 commit fixed a stop landing on the next scan, and the first walk-through never drove it.
 **And every other caller of a shared path the diff changed** — #443 changed the
 entry-logging composable both sheets share, and only the audit sent the walk-through to
-the estimate form. **For a refactor or a class/style sweep, the input list comes from
+the estimate form. **And every page that reads data the diff makes reachable in a new
+state** — `git grep` the read, then drive each page in that state: #498 drove "last
+reading → none" on /review only, and Profile, Today, /log and /check in it were found
+by later gates, one filed "Noted, not this diff" though only this diff's delete reached it. **For a refactor or a class/style sweep, the input list comes from
 the files the diff rewrote, not the surfaces the issue names** — #454's criterion named
 six surfaces and the first audit came back "partly": the Budget gate, Manage Tags, every
 Check and camera failure branch and the plan line were rewritten and undriven. In a
@@ -188,7 +194,9 @@ Related, all cheap:
   screenshot timing out means the Chrome window is hidden (`document.visibilityState`
   reads `hidden` while DOM reads still work): ask the user to bring it forward in the
   same question as the resize check, at the start (#474 lost gate 6 to it across three
-  messages).
+  messages). A hidden window also pauses `requestAnimationFrame`, so a frame-sampling
+  probe hangs or counts nothing: check `document.visibilityState === 'visible'`
+  immediately before each one (#498's moved to a Playwright fallback over it).
 - **Batch with `browser_batch`** whenever you can predict two steps ahead: click,
   type, Tab, assert. Each standalone call is a round trip.
 - **Typing can stop landing too**, silently: the field has focus, the tool reports the

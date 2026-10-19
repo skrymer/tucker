@@ -24,9 +24,11 @@ Run them in this sequence — the order is deliberate. Address what each surface
 reachability pass first, the real walk-through last, on the code that ships
 ([why](references/rationale.md#why-verify-runs-twice)).
 
-**Record every agent's `output_file` path as you spawn it, and stamp each run log as you
-write it** (`git rev-parse HEAD` + `git status --short`, from a scratchpad script): gate 5
-reads both, and #455's and #497's unstamped logs could not be placed.
+**Record every agent's `output_file` path as you spawn it, and write every run log to a
+new file through `scripts/bounded-run.sh --log <path>`**, which refuses a path that exists
+and stamps HEAD + `git status --short` at its top. A re-run is a new log, never the old
+one overwritten: gate 5 reads both, #455's and #497's unstamped logs could not be placed,
+and #498 lost a pitest red and a "91 failed" e2e log to the re-runs written over them.
 
 0. **`/verify` (reachability) — does it run at all?** One viewport, the golden
    path, no probes. Two minutes. FAIL or BLOCKED stops the sign-off before an agent
@@ -69,12 +71,10 @@ reads both, and #455's and #497's unstamped logs could not be placed.
    per that skill, never SKIPped (#469). Its step 1 owns the base, command and STOP rule.
 
 3. **`/code-review medium` — hunt correctness bugs.** Review the (now-simplified)
-   diff for real bugs. **Run it at `medium` effort**, not the default high: at
-   medium, `/code-review` focuses on its correctness angles and drops the reuse /
-   simplification / efficiency / altitude angles — which `/simplify` just ran and
-   applied in gate 1. Running it high here would re-do that cleanup pass for no
-   gain. Medium gives cleanup-once (gate 1) + correctness-once (gate 3) with no
-   overlap. Triage every finding: fix the genuine ones, and for each you *don't*
+   diff for real bugs **at `medium`**, which drops the cleanup angles gate 1 already ran
+   ([why](references/rationale.md#the-design-notes)); run as an agent, it is sent the
+   [code-review brief](references/agent-briefs.md#brief-g--code-review-as-an-agent-gate-3),
+   never a hand-written one (#498's). Triage every finding: fix the genuine ones, and for each you *don't*
    fix, say why (by-design per an ADR, pre-existing, out of scope — never "a tool refused
    the fix", which gate 5 rejects). Don't let an unexplained finding through. **Every source a dismissal cites is quoted as it
    stands when the dismissal is written** — an ADR, another issue's scope
@@ -91,9 +91,13 @@ reads both, and #455's and #497's unstamped logs could not be placed.
    #358 dismissed a stale-bundle fallback as "by design: transient", and was wrong.
 
    **Judge each state by what the User sees in it**, not by whether a function's
-   return value is right on its own terms. When a fix narrows one read of some rows,
-   list every *other* reader of those rows and walk each through the states — none
-   standing, a stale one standing, a later one existing. #358's inline review wrote
+   return value is right on its own terms. When a fix — this gate's or any later one's —
+   narrows one read of some rows, list every *other* reader by `git grep` on the
+   underlying read, never from memory, and walk each through the states — none
+   standing, a stale one standing, a later one existing. #498 guarded one reader of
+   three (the summary, not the Budget Projection or the Check), and once the guard
+   moved down the ledger found a no-day Check branch reading `reviews.latest()`
+   unguarded. #358's inline review wrote
    "`isOverdue` with a future latest (negative days, not overdue)" as a check that
    passed; that branch was a regression ("No budget yet" on the device behind), one
    of three the narrowed read produced against the unbounded one, all found by later
@@ -109,11 +113,8 @@ reads both, and #455's and #497's unstamped logs could not be placed.
    same issue the adversary does and asks the one question the adversary's angles do
    not: not whether the change should exist, nor whether it is too much, but whether
    it is enough. It emits one row per acceptance criterion, then once, at the end,
-   behaviour in the diff that no criterion asked for — and nothing else. See
-   *Nothing else asks whether it is finished* in
-   [`references/rationale.md`](references/rationale.md) for why no other gate
-   asks this; Brief D in the reference for the rows it emits, what pins each, and
-   why it is not a fifth reviewer.
+   behaviour in the diff that no criterion asked for — and nothing else
+   ([why no other gate asks](references/rationale.md#the-design-notes); Brief D for its rows).
 
    Two of its outcomes need handling here. An **UNSOUND** row — the criterion cannot
    be satisfied, or the change answered a different one — **stops the sign-off and
@@ -131,12 +132,8 @@ reads both, and #455's and #497's unstamped logs could not be placed.
    fix-or-justify, and the fix ships **on the feature branch**, because the diagrams
    describe the code rather than the process.
 
-   **Check a diagram edit against its render, not its source.** Mermaid parses a
-   diagram that no longer reads, and the C4 renderer places elements by statement
-   order, so one new element can push a label through a box. For a C4 block read
-   GitHub's preview: headless Chrome reports `screen.availWidth` as 800px, so it
-   draws two per row whatever `UpdateLayoutConfig` says. A flowchart or ER block is
-   checked headless ([recipe](references/rationale.md#rendering-a-diagram)).
+   **Check a diagram edit against its render, not its source** — a C4 block on GitHub's
+   preview, a flowchart or ER block headless ([why and recipe](references/rationale.md#rendering-a-diagram)).
 
 4. **`/check-adrs` — honour the recorded decisions.** Verify the diff against the
    ADRs in `docs/adr/` and the ubiquitous language in `CONTEXT.md`. A FAIL, or an
@@ -161,7 +158,10 @@ reads both, and #455's and #497's unstamped logs could not be placed.
 
    When code-review's fixes land, re-check **only the files they touched** against
    the constraints `/check-adrs` cited, the rows the ledger and the diagram auditor
-   returned, and any gate-1 dismissal whose reason the fix changed (#433). A
+   returned, and any gate-1 dismissal whose reason the fix changed (#433). A fix that
+   adds a code path (a trigger, a caller, an endpoint) instead re-runs Brief F and
+   `/check-adrs` on its commit: a MISSING row is never a returned row, and #498's audit
+   said "no new trigger is missing" one commit before a fix added one. A
    ledger row is re-checked against **the criterion's own words**, not the ADRs: a
    fix that now answers a different criterion than the one filed is UNSOUND and goes
    to the user, exactly as the ledger's own UNSOUND would. #435's denied-camera fix
@@ -399,8 +399,11 @@ losing a finding:
   never by mutating the source in place, which the TDD hook refuses. `mutation-test`
   carries both recipes. "It passes on write" never leaves behaviour unpinned, nor
   justifies deleting the test: the red removes the line the justification names (#432's
-  `v-if`), and a "framework does it" claim owes the same red. **Save every red as it fails.** A fix that corrects a
-  claim first `git grep`s its wording: #411 fixed CLAUDE.md, missed the hook's comment.
+  `v-if`), and a "framework does it" claim owes the same red. **Save every red as it
+  fails, to its own `--log` file** — #498 left one "run in-session, not saved to a file".
+  A fix that corrects a claim, or makes an exception to one, first `git grep`s its wording
+  across `CONTEXT.md`, `docs/adr`, `docs/architecture.md` and KDoc, in the same commit:
+  #411 fixed CLAUDE.md and missed the hook's comment; #498's left the old rule six times.
 
   Every gate fix follows a large agent report, which is exactly when Probity loses
   the run's test history and refuses a genuine RED as circular. Re-run the target
@@ -416,16 +419,12 @@ justified):
    detekt build`, frontend `pnpm lint && pnpm typecheck && pnpm test`, also before
    each gate's own commit (gate 2 commits tests; #454's broke typecheck unseen).
 
-   **Between gates, run the touched spec, not the suite.** `pnpm test --run
-   <file>` and `pnpm test:e2e <spec>` after each gate's fixes; the **full**
-   frontend e2e and the smokes once, here, before the commit. The full mocked e2e
-   is ~2 minutes and CI re-runs all of it on the PR, so running it after every
-   gate spends ~6 minutes proving something twice.
+   **Between gates, run the touched spec, not the suite** (`pnpm test --run <file>`,
+   `pnpm test:e2e <spec>`); the **full** frontend e2e and the smokes once, here. CI
+   re-runs all of it, so a full run after every gate spends ~6 minutes proving it twice.
 
-   **`docker compose build backend` only when the diff touched the backend.**
-   `pnpm test:smoke` force-recreates the container from the existing image and
-   resets the DB per test (issue #70), so a frontend-only slice needs no rebuild —
-   and building one costs a minute to produce a byte-identical image.
+   **`docker compose build backend` only when the diff touched the backend** — the
+   smokes recreate from the existing image (#70), and a needless build is a minute spent.
 2. **Commit and push** on the feature branch (never straight to `main`; see
    `[[always-work-on-a-feature-branch]]` and `[[push-after-committing]]`). Group
    commits by concern; end messages with the `Co-Authored-By` trailer.

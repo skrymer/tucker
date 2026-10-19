@@ -57,6 +57,8 @@ Publish issues in dependency order (blockers first) so you can reference real is
 
 Before publishing, check every acceptance criterion that names a data state (a null, a missing figure, a zero) against the backend's types. A state the domain cannot produce is worded as a rule on the formatter or component that would show it, not as something a User sees — #471's "a Weighed Entry whose Food has no protein figure" was unreachable (`Nutrition.proteinPer100g` is non-null) and cost a ruling and an amendment at sign-off.
 
+The converse holds for a slice that adds a delete: it makes "the last one removed" reachable, which is not "never had one". For each new delete, list every reader of the rows (`git grep` on the read) and give each a criterion for "all removed, but something derived from them still stands" — a held review, an active or reached goal. #498 was filed "No backend change" against a PRD that covered only a fresh User with no readings, and what outlived the rows surfaced one gate at a time across seven surfaces.
+
 <issue-template>
 ## Parent
 

@@ -215,7 +215,9 @@ assertion with the dev token), and no browser-level layer can reach it.
   suite. Read a reveal's opacity **at insertion** (a `MutationObserver` in
   `addInitScript`), since by the time a locator resolves the delay is over. Poll it
   (`expect.poll`): a Nuxt UI control with `transition-colors` reads an in-between
-  colour right after a click. And mind the token names: `bg-inverted` is the
+  colour right after a click. Measure a size inside an opening modal with `offsetWidth`,
+  not `getBoundingClientRect`, which includes the zoom-in transform (#498 read 42.4px
+  for a 44px button mid-open). And mind the token names: `bg-inverted` is the
   *inverted background* (dark in light mode); the text on a solid primary fill is
   `--ui-text-inverted`, so a mark that must match it is `bg-(--ui-text-inverted)`.
 - **A fix that holds a control on another read creates a new stall.** Disabling Save
