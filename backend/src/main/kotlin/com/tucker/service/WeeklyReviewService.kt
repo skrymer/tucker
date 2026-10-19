@@ -67,9 +67,14 @@ class WeeklyReviewService(
      * budget-change diff. None while setup is incomplete: with no reading there is no
      * Trend Weight, so no Maintenance, Budget or Floor (CONTEXT.md, Calorie Tracking),
      * and a review held from before the last reading was deleted presents nothing.
+     * A caller already holding [catchUpIfDue]'s answer passes it, rather than
+     * re-reading it on the daily summary.
      */
-    fun reviewsStandingOn(date: LocalDate): List<WeeklyReview> =
-        if (setupComplete()) reviews.latestTwoOnOrBefore(date) else emptyList()
+    fun reviewsStandingOn(
+        date: LocalDate,
+        isSetupComplete: Boolean = setupComplete(),
+    ): List<WeeklyReview> =
+        if (isSetupComplete) reviews.latestTwoOnOrBefore(date) else emptyList()
 
     /**
      * The inputs a review needs; absent any of them, catch-up stays a no-op. A Goal

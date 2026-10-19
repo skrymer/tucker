@@ -1919,7 +1919,8 @@ null` now means two things that earn opposite messages — the same trap
     `WeeklyReviewService.reviewsStandingOn` returns no review while setup is
     incomplete, so the summary, the Budget Projection and a Check agree (the first fix
     guarded the summary alone, and the log sheet still warned against the held
-    Budget); the review stays stored. The `SummaryApiTest`, `EntryPreviewApiTest` and
+    Budget), and a Check sent with no client day applies the same rule to the
+    newest review; the review stays stored. The `SummaryApiTest`, `EntryPreviewApiTest` and
     `CheckApiTest` review seeds now write the Profile and reading every real review
     stands on.
   - **A delete confirm keeps naming its item while it closes** — the reading's did
