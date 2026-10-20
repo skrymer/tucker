@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { nextTick } from 'vue'
+import { nextTick, ref } from 'vue'
 import { useWindowedFetch } from './useWindowedFetch'
 
 describe('useWindowedFetch', () => {
@@ -25,6 +25,20 @@ describe('useWindowedFetch', () => {
     await load()
 
     selection.value = 90
+
+    await vi.waitFor(() => expect(data.value).toEqual({ days: 90 }))
+  })
+
+  it("re-asks when a caller's own selection ref changes", async () => {
+    const fetcher = vi.fn(async (days: number) => ({ days }))
+    const owned = ref(28)
+    const { data, load } = useWindowedFetch<number, { days: number }>(
+      owned,
+      fetcher,
+    )
+    await load()
+
+    owned.value = 90
 
     await vi.waitFor(() => expect(data.value).toEqual({ days: 90 }))
   })

@@ -10,9 +10,11 @@ import type { Ref } from 'vue'
  * now. And the mode is `latest`, not `useOptionalFetch`'s default `guard`: each
  * call asks a *different* question, so a load issued while one is in flight
  * supersedes it rather than being dropped as a repeat (ADR 0007).
+ *
+ * Given a ref, it binds that ref as the selection rather than copying it.
  */
 export function useWindowedFetch<S, T>(
-  initial: S,
+  initial: S | Ref<S>,
   fetcher: (selection: S, signal: AbortSignal) => Promise<T>,
 ) {
   const selection = ref(initial) as Ref<S>

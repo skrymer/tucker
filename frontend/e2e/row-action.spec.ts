@@ -67,7 +67,7 @@ async function expectHoveredAs(
     .toEqual(lit)
 }
 
-test("draws Today's weight edit and the Weight history's edit and delete alike, muted, at 44px", async ({
+test("draws Today's weight edit and the History card's weight edit and delete alike, muted, at 44px", async ({
   goto,
   network,
   page,
@@ -89,7 +89,7 @@ test("draws Today's weight edit and the Weight history's edit and delete alike, 
   )
 
   await goto('/review', { waitUntil: 'hydration' })
-  const card = page.getByRole('region', { name: 'Weight history' })
+  const card = page.getByRole('region', { name: 'History' })
   await expect(card.getByText('81.2 kg')).toBeVisible()
   const historyEdit = card.getByRole('button', { name: /^Edit/ })
   const historyDelete = card.getByRole('button', { name: /^Delete/ })

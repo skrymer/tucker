@@ -267,10 +267,11 @@ here.
 - **F19** — ✅ Correct a Food (PRD [#431](https://github.com/skrymer/tucker/issues/431),
   [ADR 0037](docs/adr/0037-editing-a-food-is-a-correction.md)).
 - **F20** — ✅ Weight history on `/review`: add, correct or remove a past Weight
-  Measurement (PRD [#495](https://github.com/skrymer/tucker/issues/495)), in three
+  Measurement (PRD [#495](https://github.com/skrymer/tucker/issues/495)), in four
   slices — the card ([#496](https://github.com/skrymer/tucker/issues/496)), Edit
-  ([#497](https://github.com/skrymer/tucker/issues/497)) and Delete
-  ([#498](https://github.com/skrymer/tucker/issues/498)). Open:
+  ([#497](https://github.com/skrymer/tucker/issues/497)), Delete
+  ([#498](https://github.com/skrymer/tucker/issues/498)) and one History card for
+  weight and Entries ([#511](https://github.com/skrymer/tucker/issues/511)). Open:
   [#505](https://github.com/skrymer/tucker/issues/505).
 
 ## Architecture

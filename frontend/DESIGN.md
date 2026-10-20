@@ -608,16 +608,22 @@ kcal`) sits beneath its own ring, so no arc is ever colour-alone. Calorie
   the browser locale. **‹ ›** page by month and there are **no « » year
   controls**: distance is covered by tapping the heading, which drills day →
   month → year, so a birth date decades back is a few taps. `min` / `max` bound
-  the range, and a day outside it is disabled and announced so. A **marked
-  day** — one that holds Entries — carries a small primary dot (`UChip`,
-  `2xs`) and nothing else — an **exception** to _colour is never the only
-  signal_ (Guardrails): it is visual only, so a screen reader hears nothing
-  about Entries. On the selected day the dot takes that day's text colour
-  (`--ui-text-inverted`), since a primary dot vanishes into the primary circle.
-  Re-picking the selected day keeps it. It speaks ISO `yyyy-mm-dd`, always
-  draws six Monday-start weeks, and reports the days it draws (`shown`,
-  `{ from, to }`) as it opens and on every page, so a caller can load the marks
-  for exactly those days. `/design` shows it bounded and marked.
+  the range, and a day outside it is disabled and announced so. It draws **two
+  marks**, side by side under the numeral: a **hollow ring** on a day holding a
+  Weight Measurement (`weighed`) and a **filled dot** on a day holding Entries
+  (`logged`), so a day with Entries and no ring reads as a missed weighing. Both
+  are primary, `size-1.5`, and nothing else — an **exception** to _colour is
+  never the only signal_ (Guardrails). On the selected day they take that day's
+  text colour (`--ui-text-inverted`), since a primary mark vanishes into the
+  primary circle, and on a disabled day they dim with the numeral
+  (`--ui-text-muted`). Under the month an `aria-hidden` **legend** names each
+  mark the calendar draws — **Entries**, then **Weight** — its swatches
+  drawn with the marks' own classes, so the two cannot drift; a calendar given
+  neither mark set has no legend. Re-picking the selected day keeps it. It
+  speaks ISO `yyyy-mm-dd`, always draws six Monday-start weeks, and reports the
+  days it draws (`shown`, `{ from, to }`) as it opens and on every page, so a
+  caller can load the marks for exactly those days. `/design` shows it bounded,
+  with both marks, and a disabled day carrying them.
 - **Sheet navigation** — a sheet that needs a second step (picking a Reference
   Food from a Food's Edit sheet) **steps inside itself**: its body becomes the
   step and its title names it, and it is never a second sheet stacked over the
@@ -763,12 +769,13 @@ error nested inside a card, below.
   stacks above an **empty** state that already answers the page: a User with no
   Foods can have no rotation, so a failed ranking read is not worth a panel over
   the dead end that is. A **nested** load error is not one of the page's: it
-  belongs to a card whose own control still works (the look-up's calendar picks
-  another day), so it stands on its own. Two nested errors in one card follow
-  the page's rule: when both the look-up's reads fail, one row ("Couldn't load
-  this card") stands in for the whole card, and its Retry replays both.
+  belongs to a card whose own control still works (History's calendar picks
+  another day), so it stands on its own. Two failed halves in one card follow
+  the page's rule: when History's weight half and its Entries half both fail,
+  one row ("Couldn't load this card") stands in for the whole card, and its
+  Retry replays every read.
 - **A load error inside a card is `nested`, and is one row.** Where the failed
-  region sits under a card's own `h2` — the picked day in "Look up a day" —
+  region sits under a card's own `h2` — the picked day's Entries in History —
   `LoadErrorState` takes `nested`: the same icon, copy and Retry, laid out as one
   compact row in the footprint of the content it stands in for — a `size-5`
   cloud-off, an `h3` heading in `text-label` with the hint under it, Retry at the
@@ -787,9 +794,10 @@ error nested inside a card, below.
   load — the full page body for a page's primary data (Today's summary, the
   Foods catalog, a Review), or just the one card for a secondary widget (e.g.
   Today's weight or goal-progress card). It never sits beside a misleading
-  empty state. When the look-up's logged days fail, the region that failed is
-  the calendar's dots, not the calendar: it stays up, every day still pickable,
-  with the error row under it saying the dots are missing.
+  empty state. When History's logged days fail, the region that failed is the
+  calendar's dots, not the calendar: it stays up, every day still pickable,
+  with the error row under it saying the dots are missing. The readings failing
+  take the rings and the weight row, never the calendar.
 - **Signed out is a single, page-level interstitial** — rendered once at the
   shell, not duplicated per-widget. If the session is gone, every fetch fails
   identically; one clear message beats six identical "Retry" cards that would
@@ -865,7 +873,11 @@ colour and spacing. Case is settled in [Case](#case); the rest is here.
 
 - **Colour is never the only signal** (ADR-aligned, issue #66 sibling): pair it
   with icon + text. The ring proves numbers beside every arc. One recorded
-  exception: the Calendar's marked-day dot (Component treatments → Calendar).
+  exception: the Calendar's two marks, the Weight Measurement ring and the Entries dot
+  (Component treatments → Calendar). Reka names each day button after its date
+  and nothing in the cell can join that name, so the marks' non-visual path is
+  the **picked day's panel** in History, which states both facts in words — the
+  reading or "No weight.", the Entry tally or "Nothing logged."
 - **Business logic stays in the backend** (ADR 0002): the ring renders
   backend-supplied figures (`caloriesConsumed` / `calorieBudget` /
   `caloriesRemaining`, and the protein pair); the day verdict comes from

@@ -1,6 +1,6 @@
-- region "Look up a day":
+- region "History":
     - /children: deep-equal
-    - heading "Look up a day" [level=2]
+    - heading "History" [level=2]
     - button "Previous month"
     - button "June 2026"
     - button "Next month" [disabled]
@@ -41,8 +41,8 @@
                     - button "Monday, June 15, 2026": '15'
                 - gridcell "Tuesday, June 16, 2026":
                     - button "Tuesday, June 16, 2026": '16'
-                - gridcell "Wednesday, June 17, 2026":
-                    - button "Wednesday, June 17, 2026": '17'
+                - gridcell "Wednesday, June 17, 2026" [disabled]:
+                    - button "Wednesday, June 17, 2026" [disabled]: '17'
                 - gridcell "Thursday, June 18, 2026" [disabled]:
                     - button "Thursday, June 18, 2026" [disabled]: '18'
                 - gridcell "Friday, June 19, 2026" [disabled]:
@@ -100,9 +100,5 @@
     - separator
     - region "Thu 11 Jun":
         - heading "Thu 11 Jun" [level=3]
-        - paragraph: 4 entries · 1,287 kcal
-        - list:
-            - listitem: Pub burger est. 650 kcal · 35 g protein
-            - listitem: Basmati rice 233 g · 305 kcal · 6 g protein
-            - listitem: Greek yoghurt 170 g · 99 kcal · 17 g protein
-        - button "Show all 4"
+        - paragraph: No weight.
+        - button "Add weight"

@@ -185,24 +185,42 @@ TypeError, so a hand copy without it leaves every assertion green.
 `AppCalendar.test.ts` pins it through Nuxt's `vue:error` hook ("raises no error when
 the User picks the selected day again").
 
-### `components/DayLookupSection.vue` — 3 of 55
+Since #511 it scores 20 of 24: the four survivors are the `MARK` class strings
+(`MARK_SHAPE` → `""`, `MARK` → `{}`, each mark's string → `` ` ` ``), **killed by
+an out-of-scope layer** — happy-dom computes no stylesheet. `e2e/history.spec.ts`'s
+"rings the days holding a reading and dots the days holding Entries…" reads each
+mark's size, fill and ring (an emptied `MARK_SHAPE` draws `0px × 0px`, hand-mutated
+red on both projects), and `e2e/calendar.spec.ts`'s selected-day test reads the
+ring and dot colours.
 
-| Where                                        | Mutant                                           | Verdict        |
-| -------------------------------------------- | ------------------------------------------------ | -------------- |
-| `tally`'s `day.value?.caloriesConsumed ?? 0` | `?.` → `.` (OptionalChaining)                    | **Equivalent** |
-| `useLoggedDays`' `if (!grid) return null`    | `!grid` → `false` (ConditionalExpression)        | **Equivalent** |
-| `useLoggedDays`' `data.value?.days ?? []`    | `[]` → `["Stryker was here"]` (ArrayDeclaration) | **Equivalent** |
+### `components/HistorySection.vue` — 8 of 83
 
-`tally` is a lazy computed read only under `v-if="entries.length"`, and `entries` is
-non-empty only when `day.value` is non-null, so the unguarded read is never reached
-with `day.value` null.
+It merged `WeightHistorySection.vue` and `DayLookupSection.vue` (#511), and their
+standing verdicts moved with their lines.
 
-The logged-days read runs only when `grid` changes (`useWindowedFetch`'s watch) or on a
-Retry, and a Retry shows only after a read that failed with a grid. `grid` starts null
-and is set only by `AppCalendar`'s `shown`, which always carries one. So nothing ever
-reads with `grid` null. The `days` fallback goes to `:marked`, and `AppCalendar` marks a
-day only if the set holds its ISO date. A non-date string marks nothing. All three
-survive `main` too (803e0ee, #501's sign-off).
+| Where                                              | Mutant                                           | Verdict        |
+| -------------------------------------------------- | ------------------------------------------------ | -------------- |
+| `useReadings`' `data.value ?? []`                  | `[]` → `["Stryker was here"]` (ArrayDeclaration) | **Equivalent** |
+| `useLoggedDays`' `if (!grid) return null`          | `!grid` → `false` (ConditionalExpression)        | **Equivalent** |
+| `useLoggedDays`' `data.value?.days ?? []`          | `[]` → `["Stryker was here"]` (ArrayDeclaration) | **Equivalent** |
+| `tally`'s `day.value?.caloriesConsumed ?? 0`       | `?.` → `.` (OptionalChaining)                    | **Equivalent** |
+| `retryCard`'s `if (dayEntries?.error.value)`       | → `true`; `?.` → `.`                             | **Equivalent** |
+| `retryCard`'s `if (loggedDays?.error.value)`       | → `true`; `?.` → `.`                             | **Equivalent** |
+
+The readings fallback yields a non-date mark and no match, which draws what an empty
+list draws. The logged-days read runs only when `grid` changes (`useWindowedFetch`'s
+watch) or on a Retry after a read that failed with a grid; `grid` starts null and is set
+only by `AppCalendar`'s `shown`, which always carries one. The `days` fallback goes to
+`:logged`, and a non-date string marks nothing. `tally` is read only under
+`v-if="entries.length"`, and `entries` is non-empty only with `day.value` non-null.
+
+`retryCard` renders only with the card error up, which needs an Entries error, which
+needs Calorie Tracking on — so neither `dayEntries` nor `loggedDays` is null there. A
+healthy picked day re-read under `→ true` asks the same question (`latest`) and draws
+the same answer; asserting the extra request is what the msw skill forbids. A healthy
+logged-days `load()` answers from its per-visit cache with no request. Its `→ false`,
+the tally fallback and the two `?.` in `entriesError` were real gaps, killed by tests
+#511's gate 2 added.
 
 ### `utils/date.ts` `isoToCalendarDate` — 1 of 7
 
@@ -368,16 +386,13 @@ on both Playwright projects.
 `reachedSince` reduce and the form-closing `watch`, none of which any change has
 swept.
 
-`components/WeightHistorySection.vue` scores 24/26 on its own tests; the two
-`?? []` fallbacks (`days`, `pickedReading`) are equivalent: before the read answers
-they yield a non-date mark and no match, which draws exactly what an empty list
-draws. `pages/profile/index.vue:135`'s `weights.value?.length` is equivalent too —
+`pages/profile/index.vue:135`'s `weights.value?.length` is equivalent too —
 `weights` is null only when the read failed, and then `LoadErrorState` does not
 render the slot that reads `goalEnabled`. `pages/review.vue` comes back entirely
 `NoCoverage` (36 mutants), the page-mounted-by-Nuxt class above; the card's wiring
-there (`refreshWeightFigures` on `saved`) is killed by
-`e2e/smoke/weight-history.smoke.spec.ts`, which asserts the Weight Timeline re-reads
-after a backfill.
+there (`refreshWeightFigures` on `changed`) is killed by
+`e2e/smoke/history.smoke.spec.ts`, which asserts the Weight Timeline re-reads after a
+backfill.
 
 `components/LogWeightSheet.vue`'s remaining survivors are all in the re-seed
 `watch(() => props.open)`. **Pre-existing and untriaged** — #241 only swapped its
@@ -1584,7 +1599,7 @@ is still loading raises no error*). The six left are **equivalent**:
   holds the last reading through the leave animation, so it is null only before the
   confirm has first opened, when nothing renders. Before that hold existed the fallback
   was *not* equivalent: a closing confirm read "will be removed…" with no reading named
-  (`e2e/weight-history.spec.ts` › *keeps naming the reading while its delete confirm
+  (`e2e/history.spec.ts` › *keeps naming the reading while its delete confirm
   closes*). Food's and Entry's confirms did this on `main` too, and hold theirs the
   same way now. `DeleteEntryConfirm.vue`'s `entryName` fallback: `last && ''` is
   **killed by an out-of-scope layer** — it is `main`'s blank name on close, which
