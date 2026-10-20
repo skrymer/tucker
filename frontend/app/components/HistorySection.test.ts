@@ -693,7 +693,13 @@ describe('HistorySection', () => {
     )
     await read.arrived
 
-    const entries = screen.getByRole('region', { name: 'Entries' })
+    // The heading already names Thursday, so the Entries still on screen name
+    // their own day.
+    expect(
+      screen.getByRole('heading', { name: 'Thu 8 Oct', level: 3 }),
+    ).toBeVisible()
+    const entries = screen.getByRole('region', { name: /^Entries/ })
+    expect(entries).toHaveAccessibleName('Entries · Mon 12 Oct')
     expect(entries).toHaveAttribute('aria-busy', 'true')
     expect(within(entries).getByText('1 entry · 233 kcal')).toBeVisible()
 
@@ -701,6 +707,7 @@ describe('HistorySection', () => {
     await vi.waitFor(() =>
       expect(entries).toHaveAttribute('aria-busy', 'false'),
     )
+    expect(entries).toHaveAccessibleName('Entries')
     expect(within(entries).getByText('Nothing logged.')).toBeVisible()
   })
 
@@ -965,7 +972,9 @@ describe('HistorySection', () => {
     )
     await read.arrived
 
-    const entries = screen.getByRole('region', { name: 'Entries' })
+    const entries = screen.getByRole('region', {
+      name: 'Entries · Thu 8 Oct',
+    })
     expect(within(entries).getAllByRole('listitem')).toHaveLength(4)
     expect(
       within(entries).getByRole('button', { name: 'Show less' }),
@@ -1057,6 +1066,54 @@ describe('HistorySection', () => {
     expect(within(entries).queryByText(/entr(y|ies) ·/)).toBeNull()
     read.release()
     await rendered
+  })
+
+  it("keeps the Entries' failure heading a level under the day's, with no heading between", async () => {
+    server.use(failingRead('/api/entries'))
+    await renderHistory()
+
+    await screen.findByRole('heading', { name: "Couldn't load Mon 12 Oct" })
+    expect(
+      screen
+        .getAllByRole('heading')
+        .map((heading) => `${heading.tagName} ${heading.textContent?.trim()}`),
+    ).toEqual([
+      'H2 History',
+      // The calendar's own, from Reka.
+      'DIV Event Date, October 2026',
+      'H3 Today · Mon 12 Oct',
+      "H3 Couldn't load Mon 12 Oct",
+    ])
+  })
+
+  it('keeps the confirm up, reporting busy, until the delete lands', async () => {
+    const remove = held('delete', '/api/weight/{id}')
+    server.use(...fridayReading())
+    server.use(remove.handler)
+    await renderHistory()
+    await screen.findByText('No weight.')
+    const user = userEvent.setup()
+    await user.click(
+      screen.getByRole('button', { name: 'Friday, October 9, 2026' }),
+    )
+    await user.click(
+      await screen.findByRole('button', { name: 'Delete weight on Fri 9 Oct' }),
+    )
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Delete this weight?',
+    })
+    const confirm = () => within(dialog).getByRole('button', { name: 'Delete' })
+    await user.click(confirm())
+
+    await remove.arrived
+    await vi.waitFor(() => expect(confirm()).toBeDisabled())
+
+    remove.release()
+    await vi.waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: 'Delete this weight?' }),
+      ).toBeNull(),
+    )
   })
 
   it('states no tally beside a day whose Entries failed to load', async () => {

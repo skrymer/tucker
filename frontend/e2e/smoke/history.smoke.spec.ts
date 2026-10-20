@@ -50,6 +50,11 @@ async function seedDailyWeighing(
   }
 }
 
+/** The picked day's panel in [card], named for [iso] ("Today · …" included). */
+function panelOf(card: Locator, iso: string) {
+  return card.getByRole('region', { name: new RegExp(`${dayHeading(iso)}$`) })
+}
+
 /** The ring [card]'s calendar draws on [iso]: present only on a day holding a reading. */
 function ringOn(card: Locator, iso: string) {
   return card
@@ -80,7 +85,9 @@ test('user backfills a missed day and sees it in the calendar and the Weight Tim
 
   await expect(ringOn(card, isoShiftDays(today, -1))).toBeVisible()
   await pickDay(card, missed)
-  await expect(card.getByText('No weight.', { exact: true })).toBeVisible()
+  await expect(
+    panelOf(card, missed).getByText('No weight.', { exact: true }),
+  ).toBeVisible()
   await expect(ringOn(card, missed)).toHaveCount(0)
 
   await card.getByRole('button', { name: 'Add weight' }).click()
@@ -270,7 +277,9 @@ test('user deletes a mistyped reading inside a reviewed week, and only the live 
   await expect(confirm).toBeHidden()
 
   // The day is empty again, on screen and in the store.
-  await expect(card.getByText('No weight.', { exact: true })).toBeVisible()
+  await expect(
+    panelOf(card, mistyped).getByText('No weight.', { exact: true }),
+  ).toBeVisible()
   await expect(card.getByRole('button', { name: 'Add weight' })).toBeVisible()
   await expect(ringOn(card, mistyped)).toHaveCount(0)
   await expect(ringOn(card, isoShiftDays(today, -1))).toBeVisible()
@@ -346,7 +355,9 @@ test('user deletes the only reading under an active Goal, and the Goal asks for 
   await confirm.getByRole('button', { name: 'Delete' }).click()
   await expect(confirm).toBeHidden()
 
-  await expect(card.getByText('No weight.', { exact: true })).toBeVisible()
+  await expect(
+    panelOf(card, today).getByText('No weight.', { exact: true }),
+  ).toBeVisible()
   await expect(
     page.getByText('Log a weight to see where you stand on your Goal.'),
   ).toBeVisible()

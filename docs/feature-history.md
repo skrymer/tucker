@@ -1944,11 +1944,12 @@ null` now means two things that earn opposite messages — the same trap
     failing collapse into one "Couldn't load this card". Any past day is pickable, up
     to tomorrow with Calorie Tracking on and today with it off; tomorrow's weight row
     says "Weigh in on the day itself." No backend change.
-  - **Ruled at sign-off:** the panel heading names the picked day at once, while the
-    last day's Entries stay up beneath it, dimmed, until the new day's arrive (kept
-    over labelling the stale half); and the ring's legend reads "Weight", since
-    CONTEXT.md avoids "weigh-in" as a noun. The accessibility criterion was struck
-    before the build.
+  - **Ruled at sign-off:** the panel heading names the picked day at once, and while
+    the last day's Entries stay up beneath it, dimmed, their label names the day they
+    show ("Entries · Mon 12 Oct"), so the panel never claims another day's Entries
+    (first kept as built, then fixed: regressions are always fixed). The ring's
+    legend reads "Weight", since CONTEXT.md avoids "weigh-in" as a noun. The
+    accessibility criterion was struck before the build.
   - **Marks dim on neighbouring-month cells too**, not only disabled ones: UCalendar
     mutes those numerals, and full-primary marks beside them read as the shown month.
   - **`useWindowedFetch` binds a caller's ref** as its selection, so the card's

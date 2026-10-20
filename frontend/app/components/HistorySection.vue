@@ -106,7 +106,13 @@ function usePickedDayEntries() {
   const answered = computed(() => day.value !== null)
   /** The day whose Entries are on screen: the last answered, while a newly picked one loads. */
   const shown = computed(() => day.value?.date ?? picked.value)
-  return { entries, tally, answered, shown, error, pending, load }
+  /** "Entries", naming the day shown while it lags behind the picked one. */
+  const label = computed(() =>
+    shown.value === picked.value
+      ? 'Entries'
+      : `Entries · ${formatDayHeadingFromISO(shown.value)}`,
+  )
+  return { entries, tally, answered, shown, label, error, pending, load }
 }
 const dayEntries = props.tracksCalories ? usePickedDayEntries() : null
 void dayEntries?.load()
@@ -212,7 +218,11 @@ async function readingsChanged() {
           <div
             class="flex flex-wrap items-center justify-between gap-x-3 gap-y-1"
           >
-            <h4 id="history-entries" class="text-label text-muted">Entries</h4>
+            <!-- A label, not a heading: the half's own failure heading sits
+                 a level under the day's, as LoadErrorState's nested row does. -->
+            <p id="history-entries" class="text-label text-muted">
+              {{ dayEntries.label.value }}
+            </p>
             <p
               v-if="dayEntries.entries.value.length"
               class="text-sm text-muted tabular-nums"

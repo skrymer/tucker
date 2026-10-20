@@ -193,7 +193,7 @@ mark's size, fill and ring (an emptied `MARK_SHAPE` draws `0px × 0px`, hand-mut
 red on both projects), and `e2e/calendar.spec.ts`'s selected-day test reads the
 ring and dot colours.
 
-### `components/HistorySection.vue` — 9 of 77
+### `components/HistorySection.vue` — 8 of 83
 
 It merged `WeightHistorySection.vue` and `DayLookupSection.vue` (#511), and their
 standing verdicts moved with their lines.
@@ -204,7 +204,6 @@ standing verdicts moved with their lines.
 | `useLoggedDays`' `if (!grid) return null`          | `!grid` → `false` (ConditionalExpression)        | **Equivalent** |
 | `useLoggedDays`' `data.value?.days ?? []`          | `[]` → `["Stryker was here"]` (ArrayDeclaration) | **Equivalent** |
 | `tally`'s `day.value?.caloriesConsumed ?? 0`       | `?.` → `.` (OptionalChaining)                    | **Equivalent** |
-| `shown`'s `day.value?.date`                        | `?.` → `.` (OptionalChaining)                    | **Equivalent** |
 | `retryCard`'s `if (dayEntries?.error.value)`       | → `true`; `?.` → `.`                             | **Equivalent** |
 | `retryCard`'s `if (loggedDays?.error.value)`       | → `true`; `?.` → `.`                             | **Equivalent** |
 
@@ -213,8 +212,7 @@ list draws. The logged-days read runs only when `grid` changes (`useWindowedFetc
 watch) or on a Retry after a read that failed with a grid; `grid` starts null and is set
 only by `AppCalendar`'s `shown`, which always carries one. The `days` fallback goes to
 `:logged`, and a non-date string marks nothing. `tally` is read only under
-`v-if="entries.length"`, and `shown` only by the list's `:key` under `v-else` of
-`!answered` — both only with `day.value` non-null.
+`v-if="entries.length"`, and `entries` is non-empty only with `day.value` non-null.
 
 `retryCard` renders only with the card error up, which needs an Entries error, which
 needs Calorie Tracking on — so neither `dayEntries` nor `loggedDays` is null there. A
@@ -1601,7 +1599,7 @@ is still loading raises no error*). The six left are **equivalent**:
   holds the last reading through the leave animation, so it is null only before the
   confirm has first opened, when nothing renders. Before that hold existed the fallback
   was *not* equivalent: a closing confirm read "will be removed…" with no reading named
-  (`e2e/weight-history.spec.ts` › *keeps naming the reading while its delete confirm
+  (`e2e/history.spec.ts` › *keeps naming the reading while its delete confirm
   closes*). Food's and Entry's confirms did this on `main` too, and hold theirs the
   same way now. `DeleteEntryConfirm.vue`'s `entryName` fallback: `last && ''` is
   **killed by an out-of-scope layer** — it is `main`'s blank name on close, which

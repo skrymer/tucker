@@ -223,7 +223,7 @@ test("lists a picked past day's reading and its last three Entries, then all of 
   await expect(entries).toMatchAriaSnapshot(`
     - region "Entries":
       - /children: deep-equal
-      - heading "Entries" [level=4]
+      - paragraph: Entries
       - paragraph: 4 entries · 1,287 kcal
       - list:
         - listitem: Rolled oats 60 g · 233 kcal · 8 g protein
@@ -261,7 +261,9 @@ test("holds the Entries' cold-load skeleton invisible for its first moment", asy
   await expect
     .poll(() => skeleton.evaluate((el) => getComputedStyle(el).opacity))
     .toBe('1')
-  // Nothing has been answered yet, so there is no last answer to dim.
+  // Nothing has been answered yet, so there is no last answer to dim. A dim
+  // would show by 400 ms: the 150 ms transition delay plus its default 150 ms
+  // duration, with room to spare.
   await page.waitForTimeout(400)
   expect(
     await skeleton
