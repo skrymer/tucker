@@ -20,7 +20,9 @@ const props = defineProps<{
   /** Latest selectable day, ISO `yyyy-mm-dd`. */
   max?: string
   /** Days that hold Entries, ISO `yyyy-mm-dd`. */
-  marked?: string[]
+  logged?: string[]
+  /** Days that hold a Weight Measurement, ISO `yyyy-mm-dd`. */
+  weighed?: string[]
 }>()
 
 const emit = defineEmits<{
@@ -58,37 +60,76 @@ function useShownMonth(opensOn?: DateValue) {
   return placeholder
 }
 
-function useMarkedDays() {
-  const markedDays = computed(() => new Set(props.marked))
+function useMarkedDays(days: () => string[] | undefined) {
+  const markedDays = computed(() => new Set(days()))
   return (day: DateValue) => markedDays.value.has(day.toString())
 }
 
 const { selected, minValue, maxValue } = useCalendarValues()
 const placeholder = useShownMonth(selected.value)
-const isMarked = useMarkedDays()
+const isLogged = useMarkedDays(() => props.logged)
+const isWeighed = useMarkedDays(() => props.weighed)
+
+/**
+ * Each mark's look, shared by the day cells and the legend's swatches. On the
+ * selected day a mark takes the day's own text colour, as a primary mark
+ * vanishes into the primary circle, and on a day that can't be picked or lies in
+ * a neighbouring month it dims with the numeral.
+ */
+const MARK_SHAPE = 'size-1.5 rounded-full'
+const MARK = {
+  weighIn: `${MARK_SHAPE} ring-1 ring-inset ring-primary in-data-selected:ring-(--ui-text-inverted) in-data-disabled:ring-(--ui-text-muted) in-data-outside-view:ring-(--ui-text-muted)`,
+  entries: `${MARK_SHAPE} bg-primary in-data-selected:bg-(--ui-text-inverted) in-data-disabled:bg-(--ui-text-muted) in-data-outside-view:bg-(--ui-text-muted)`,
+}
 </script>
 
 <template>
-  <!-- Always six weeks: the grid visibleGrid reports. -->
-  <UCalendar
-    v-model="selected"
-    v-model:placeholder="placeholder"
-    :min-value="minValue"
-    :max-value="maxValue"
-    :week-starts-on="WEEK_STARTS_ON"
-    fixed-weeks
-    :year-controls="false"
-    prevent-deselect
-  >
-    <template #day="{ day }">
-      <!-- On the selected day the dot takes the day's own text colour, as a
-           primary dot vanishes into the primary circle. -->
-      <UChip
-        :show="isMarked(day)"
-        size="2xs"
-        :ui="{ base: 'in-data-selected:bg-(--ui-text-inverted)' }"
-        >{{ day.day }}</UChip
-      >
-    </template>
-  </UCalendar>
+  <div>
+    <!-- Always six weeks: the grid visibleGrid reports. -->
+    <UCalendar
+      v-model="selected"
+      v-model:placeholder="placeholder"
+      :min-value="minValue"
+      :max-value="maxValue"
+      :week-starts-on="WEEK_STARTS_ON"
+      fixed-weeks
+      :year-controls="false"
+      prevent-deselect
+    >
+      <template #day="{ day }">
+        <span class="relative flex size-full items-center justify-center">
+          {{ day.day }}
+          <span
+            class="absolute inset-x-0 bottom-0.5 flex justify-center gap-0.5"
+          >
+            <span
+              v-if="isWeighed(day)"
+              data-mark="weigh-in"
+              :class="MARK.weighIn"
+            />
+            <span
+              v-if="isLogged(day)"
+              data-mark="entries"
+              :class="MARK.entries"
+            />
+          </span>
+        </span>
+      </template>
+    </UCalendar>
+    <!-- What the marks mean. A screen reader learns the same from the picked
+         day's panel, as nothing in a day cell can join its name. -->
+    <p
+      v-if="logged || weighed"
+      aria-hidden="true"
+      data-testid="calendar-legend"
+      class="mt-2 flex justify-center gap-4 text-sm text-muted"
+    >
+      <span v-if="logged" class="flex items-center gap-1.5">
+        <span :class="MARK.entries" />Entries
+      </span>
+      <span v-if="weighed" class="flex items-center gap-1.5">
+        <span :class="MARK.weighIn" />Weigh-in
+      </span>
+    </p>
+  </div>
 </template>

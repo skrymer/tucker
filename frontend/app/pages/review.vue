@@ -175,9 +175,13 @@ const { pending, execute: runReview } = useApiMutation(
       />
     </LoadErrorState>
 
-    <!-- Ungated like the timeline above it: weight is the premise. A reading
+    <!-- Ungated like the timeline above it: weight is the premise, and with
+         Calorie Tracking off the card is its weight half alone. A reading
          saved or deleted moves the trend, the timeline and the Goal's progress. -->
-    <WeightHistorySection @changed="refreshWeightFigures" />
+    <HistorySection
+      :tracks-calories="tracksCalories"
+      @changed="refreshWeightFigures"
+    />
 
     <!-- One gate, in setup: with Calorie Tracking off nothing was fetched, so
          there is neither a breakdown to render nor an error to report. -->
@@ -193,10 +197,6 @@ const { pending, execute: runReview } = useApiMutation(
         :pending="breakdownPending"
       />
     </LoadErrorState>
-
-    <!-- Gated by the breakdown's rule: it reads a log Tucker has agreed to stop
-         asking a weight-only User to keep. -->
-    <DayLookupSection v-if="tracksCalories" />
 
     <!-- Between the breakdown and the ledger, and gated in setup by the same
          rule: with Calorie Tracking off nothing was fetched, so there is neither

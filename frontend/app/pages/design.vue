@@ -492,8 +492,20 @@ const calendarDay = ref('2026-10-08')
           v-model="calendarDay"
           min="2026-10-03"
           max="2026-10-24"
-          :marked="['2026-10-05', '2026-10-06', '2026-10-07', '2026-10-09']"
+          :weighed="[
+            '2026-10-05',
+            '2026-10-06',
+            '2026-10-08',
+            '2026-10-09',
+            '2026-10-25',
+          ]"
+          :logged="['2026-10-05', '2026-10-07', '2026-10-09', '2026-10-25']"
         />
+        <p class="pt-3 text-sm text-muted">
+          A ring is a weigh-in and a dot is Entries; a day with both carries
+          both. On the selected day they take its text colour, and on a day that
+          can't be picked they dim with the numeral (25 Oct).
+        </p>
       </UCard>
     </div>
 
@@ -501,7 +513,7 @@ const calendarDay = ref('2026-10-08')
     <div class="flex flex-col gap-4">
       <h2 class="text-h2 text-highlighted">Feedback states</h2>
       <UCard class="max-w-md">
-        <p class="text-h2 text-highlighted">Look up a day</p>
+        <p class="text-h2 text-highlighted">History</p>
         <LoadErrorState :error="true" title="Couldn't load Thu 8 Oct" nested />
       </UCard>
     </div>

@@ -10,10 +10,10 @@ import {
 import { timelineLine } from '../support/weight-timeline'
 import { expectCreated, expectStatus } from './support/seeding'
 
-// "Weight history" against the real backend: a day missed inside the Weight
+// "History" against the real backend: a day missed inside the Weight
 // Timeline's window is backfilled from the card, and the same reading then
-// appears in the calendar and in the timeline above it. The per-test reset wipes
-// the seed.
+// appears in the calendar and in the timeline above it; Entries seeded on two
+// past days are read back a day at a time. The per-test reset wipes the seed.
 const API = 'http://localhost:8080/api'
 
 /** Picks [iso] in [card]'s calendar, paging back a month first when it lies in the last one. */
@@ -50,11 +50,18 @@ async function seedDailyWeighing(
   }
 }
 
-/** The dot [card]'s calendar draws on [iso]: present only on a day holding a reading. */
+/** The ring [card]'s calendar draws on [iso]: present only on a day holding a reading. */
+function ringOn(card: Locator, iso: string) {
+  return card
+    .getByRole('button', { name: calendarDayName(iso) })
+    .locator('[data-mark="weigh-in"]')
+}
+
+/** The dot [card]'s calendar draws on [iso]: present only on a day holding an Entry. */
 function dotOn(card: Locator, iso: string) {
   return card
     .getByRole('button', { name: calendarDayName(iso) })
-    .locator('[data-slot="base"]')
+    .locator('[data-mark="entries"]')
 }
 
 test('user backfills a missed day and sees it in the calendar and the Weight Timeline', async ({
@@ -68,15 +75,13 @@ test('user backfills a missed day and sees it in the calendar and the Weight Tim
   await seedDailyWeighing(request, today, missed)
 
   await goto('/review', { waitUntil: 'hydration' })
-  const card = page.getByRole('region', { name: 'Weight history' })
+  const card = page.getByRole('region', { name: 'History' })
   const timeline = page.getByRole('region', { name: 'Your weight' })
 
-  await expect(dotOn(card, isoShiftDays(today, -1))).toBeVisible()
+  await expect(ringOn(card, isoShiftDays(today, -1))).toBeVisible()
   await pickDay(card, missed)
-  await expect(
-    card.getByText(`No weight on ${dayHeading(missed)}.`, { exact: true }),
-  ).toBeVisible()
-  await expect(dotOn(card, missed)).toHaveCount(0)
+  await expect(card.getByText('No weight.', { exact: true })).toBeVisible()
+  await expect(ringOn(card, missed)).toHaveCount(0)
 
   await card.getByRole('button', { name: 'Add weight' }).click()
   const sheet = page.getByRole('dialog', { name: 'Log weight' })
@@ -86,7 +91,7 @@ test('user backfills a missed day and sees it in the calendar and the Weight Tim
   await expect(sheet).toBeHidden()
 
   await expect(card.getByText('81.5 kg')).toBeVisible()
-  await expect(dotOn(card, missed)).toBeVisible()
+  await expect(ringOn(card, missed)).toBeVisible()
 
   // The timeline above re-read without a reload: the backend's own figures for
   // the day, which now carries the reading.
@@ -145,7 +150,7 @@ test('user corrects a reading inside a reviewed week, and only the live trend fo
   )
 
   await goto('/review', { waitUntil: 'hydration' })
-  const card = page.getByRole('region', { name: 'Weight history' })
+  const card = page.getByRole('region', { name: 'History' })
   const timeline = page.getByRole('region', { name: 'Your weight' })
   const now = page
     .getByText('Now', { exact: true })
@@ -248,7 +253,7 @@ test('user deletes a mistyped reading inside a reviewed week, and only the live 
   )
 
   await goto('/review', { waitUntil: 'hydration' })
-  const card = page.getByRole('region', { name: 'Weight history' })
+  const card = page.getByRole('region', { name: 'History' })
   const timeline = page.getByRole('region', { name: 'Your weight' })
   const now = page
     .getByText('Now', { exact: true })
@@ -265,12 +270,10 @@ test('user deletes a mistyped reading inside a reviewed week, and only the live 
   await expect(confirm).toBeHidden()
 
   // The day is empty again, on screen and in the store.
-  await expect(
-    card.getByText(`No weight on ${dayHeading(mistyped)}.`, { exact: true }),
-  ).toBeVisible()
+  await expect(card.getByText('No weight.', { exact: true })).toBeVisible()
   await expect(card.getByRole('button', { name: 'Add weight' })).toBeVisible()
-  await expect(dotOn(card, mistyped)).toHaveCount(0)
-  await expect(dotOn(card, isoShiftDays(today, -1))).toBeVisible()
+  await expect(ringOn(card, mistyped)).toHaveCount(0)
+  await expect(ringOn(card, isoShiftDays(today, -1))).toBeVisible()
   const from = isoShiftDays(today, -27)
   const [readings, { days }, progressAfter] = (await Promise.all(
     ['weight', `weight-timeline?from=${from}&to=${today}`, 'goal/progress'].map(
@@ -335,7 +338,7 @@ test('user deletes the only reading under an active Goal, and the Goal asks for 
   )
 
   await goto('/review', { waitUntil: 'hydration' })
-  const card = page.getByRole('region', { name: 'Weight history' })
+  const card = page.getByRole('region', { name: 'History' })
   await card
     .getByRole('button', { name: `Delete weight on ${dayHeading(today)}` })
     .click()
@@ -343,12 +346,65 @@ test('user deletes the only reading under an active Goal, and the Goal asks for 
   await confirm.getByRole('button', { name: 'Delete' }).click()
   await expect(confirm).toBeHidden()
 
-  await expect(
-    card.getByText(`No weight on ${dayHeading(today)}.`, { exact: true }),
-  ).toBeVisible()
+  await expect(card.getByText('No weight.', { exact: true })).toBeVisible()
   await expect(
     page.getByText('Log a weight to see where you stand on your Goal.'),
   ).toBeVisible()
   await expect(page.getByText('Now', { exact: true })).toHaveCount(0)
   await expect(page.getByRole('progressbar')).toHaveCount(0)
+})
+
+test('user looks up a past day, sees its Entries and tally, then an unlogged day', async ({
+  page,
+  goto,
+  request,
+}) => {
+  const today = todayIso()
+  const older = isoShiftDays(today, -4)
+  const unlogged = isoShiftDays(today, -3)
+  const recent = isoShiftDays(today, -2)
+  const stamp = Date.now()
+
+  for (const [date, label, calories, protein] of [
+    [older, `Older ${stamp}`, 400, 20],
+    [recent, `Lunch ${stamp}`, 650, 35],
+    [recent, `Dinner ${stamp}`, 538, 41],
+  ] as const) {
+    await expectCreated(
+      request.post(`${API}/entries/estimated`, {
+        data: { date, label, calories, protein },
+      }),
+    )
+  }
+
+  await goto('/review', { waitUntil: 'hydration' })
+  const card = page.getByRole('region', { name: 'History' })
+
+  await pickDay(card, recent)
+  const day = card
+    .getByRole('region', { name: dayHeading(recent) })
+    .getByRole('region', { name: 'Entries' })
+  await expect(day.getByText('2 entries · 1,188 kcal')).toBeVisible()
+  const rows = day.getByRole('listitem')
+  await expect(rows).toHaveCount(2)
+  await expect(rows.nth(0)).toContainText(`Lunch ${stamp}`)
+  await expect(rows.nth(0)).toContainText('650 kcal · 35 g protein')
+  await expect(rows.nth(1)).toContainText(`Dinner ${stamp}`)
+  await expect(rows.nth(1)).toContainText('538 kcal · 41 g protein')
+  await expect(day.getByText(`Older ${stamp}`)).toBeHidden()
+  await expect(dotOn(card, recent)).toBeVisible()
+  await expect(ringOn(card, recent)).toHaveCount(0)
+
+  await pickDay(card, unlogged)
+  const empty = card
+    .getByRole('region', { name: dayHeading(unlogged) })
+    .getByRole('region', { name: 'Entries' })
+  await expect(
+    empty.getByText('Nothing logged.', { exact: true }),
+  ).toBeVisible()
+  await expect(empty.getByRole('listitem')).toHaveCount(0)
+  await expect(dotOn(card, unlogged)).toHaveCount(0)
+
+  await pickDay(card, older)
+  await expect(dotOn(card, older)).toBeVisible()
 })

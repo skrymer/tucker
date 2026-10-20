@@ -123,7 +123,7 @@ assertion with the dev token), and no browser-level layer can reach it.
 - **`USkeleton` is a `role="alert"` with `aria-live`** — hardcoded, like `USlider`'s
   "Thumb" below, so every skeleton row announces "loading" and a fast answer still
   alerts. Put the rows in an `aria-hidden` wrapper and let the region's `aria-busy`
-  say it is loading (`DayLookupSection`). Before adopting a Nuxt UI component the app
+  say it is loading (`HistorySection`). Before adopting a Nuxt UI component the app
   has not used, read its `node_modules/@nuxt/ui/dist/runtime/components/*.vue` for
   the roles and aria attributes it sets.
 - **`<Transition appear>` does not run for an element mounted with its component
@@ -209,7 +209,7 @@ assertion with the dev token), and no browser-level layer can reach it.
   string or a script constant walks past it (#468's arbitrary-radius guard).
 - **A colour, an opacity or a reveal delay is measured in the mocked e2e, not in
   Vitest** — happy-dom computes no stylesheet (`e2e/calendar.spec.ts`,
-  `e2e/type-scale.spec.ts`, `e2e/day-lookup.spec.ts`). That includes every visual
+  `e2e/type-scale.spec.ts`, `e2e/history.spec.ts`). That includes every visual
   clause of a ruling — "fades in after 150 ms", "not dimmed": #475 pinned its skeleton
   ruling in Vitest alone, and both its fade and its no-dim clause broke past every
   suite. Read a reveal's opacity **at insertion** (a `MutationObserver` in

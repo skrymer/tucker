@@ -209,7 +209,7 @@ async function failASaveFromASheet(
 
   await goto('/review', { waitUntil: 'hydration' })
 
-  const weight = page.getByRole('region', { name: 'Weight history' })
+  const weight = page.getByRole('region', { name: 'History' })
   await weight.getByRole('button', { name: /add weight/i }).click()
   const sheet = page.getByRole('dialog', { name: /log weight/i })
   await sheet.getByLabel(/weight \(kg\)/i).fill('84.2')

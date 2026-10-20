@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
+import { markedDays } from '~~/test/calendar-marks'
 import AppCalendar from './AppCalendar.vue'
 
 describe('AppCalendar', () => {
@@ -198,18 +199,65 @@ describe('AppCalendar', () => {
     expect(onShown).toHaveBeenCalledOnce()
   })
 
-  it('dots each marked day and no other', async () => {
+  it('dots each day with Entries and no other', async () => {
     await renderSuspended(AppCalendar, {
-      props: { modelValue: '2026-10-08', marked: ['2026-10-07', '2026-10-09'] },
+      props: { modelValue: '2026-10-08', logged: ['2026-10-07', '2026-10-09'] },
     })
 
-    // The dot is purely visual, so it has no accessible form to query by.
-    const dotted = screen
-      .getAllByRole('button', { name: /^\w+day, / })
-      .filter((day) => day.querySelector('[data-slot="base"]'))
-      .map((day) => day.getAttribute('aria-label'))
-    expect(dotted).toEqual([
+    expect(markedDays('entries')).toEqual([
       'Wednesday, October 7, 2026',
+      'Friday, October 9, 2026',
+    ])
+  })
+
+  it('keys both marks in a legend under the days', async () => {
+    await renderSuspended(AppCalendar, {
+      props: { modelValue: '2026-10-08', weighed: [], logged: [] },
+    })
+
+    // The legend repeats what the marks draw, so it is hidden from assistive
+    // tech and has no accessible form to query by.
+    const legend = screen.queryByTestId('calendar-legend')
+    expect(legend).toHaveAttribute('aria-hidden', 'true')
+    expect(legend).toHaveTextContent(/^Entries\s*Weigh-in$/)
+  })
+
+  it('keys only the weigh-in mark when it draws no Entries', async () => {
+    await renderSuspended(AppCalendar, {
+      props: { modelValue: '2026-10-08', weighed: [] },
+    })
+
+    expect(screen.queryByTestId('calendar-legend')).toHaveTextContent(
+      /^Weigh-in$/,
+    )
+  })
+
+  it('keys only the Entries mark when it draws no weigh-ins', async () => {
+    await renderSuspended(AppCalendar, {
+      props: { modelValue: '2026-10-08', logged: [] },
+    })
+
+    expect(screen.queryByTestId('calendar-legend')).toHaveTextContent(
+      /^Entries$/,
+    )
+  })
+
+  it('draws no legend when it marks nothing', async () => {
+    await renderSuspended(AppCalendar, { props: { modelValue: '2026-10-08' } })
+
+    expect(screen.queryByTestId('calendar-legend')).not.toBeInTheDocument()
+  })
+
+  it('rings each weighed day and no other', async () => {
+    await renderSuspended(AppCalendar, {
+      props: {
+        modelValue: '2026-10-08',
+        weighed: ['2026-10-06', '2026-10-09'],
+      },
+    })
+
+    expect(markedDays('weigh-in')).toEqual([
+      'Tuesday, October 6, 2026',
       'Friday, October 9, 2026',
     ])
   })

@@ -34,11 +34,11 @@ test('progressive disclosure unlocks Goal after a Profile and a weight logged on
   ).toBeVisible()
   await expect(goal.getByText(/log your weight first/i)).toBeVisible()
 
-  // Log a weight on Review's Weight history → back on Profile the Goal section
+  // Log a weight on Review's History card → back on Profile the Goal section
   // is unlocked. With no active Goal it lands in the F7 maintenance state, whose
   // "Start a goal" CTA opens the creation form.
   await goto('/review', { waitUntil: 'hydration' })
-  const history = page.getByRole('region', { name: 'Weight history' })
+  const history = page.getByRole('region', { name: 'History' })
   await history.getByRole('button', { name: /add weight/i }).click()
   const sheet = page.getByRole('dialog', { name: /log weight/i })
   await sheet.getByLabel(/weight \(kg\)/i).fill('70.7')

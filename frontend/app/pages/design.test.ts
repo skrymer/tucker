@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen, within } from '@testing-library/vue'
+import { markedDays } from '~~/test/calendar-marks'
 import Design from './design.vue'
 
 describe('/design', () => {
@@ -86,25 +87,29 @@ describe('/design', () => {
     ).toEqual(['Back', 'Close'])
   })
 
-  it('shows the one calendar with marked days and a bounded range', async () => {
+  it('shows the one calendar with both marks, their legend and a bounded range', async () => {
     await renderSuspended(Design)
 
     const calendar = screen
       .getByRole('heading', { name: 'Calendar' })
       .closest('div')!
     const day = (name: string) => within(calendar).getByRole('button', { name })
-    // The dot is purely visual, so it has no accessible form to query by.
-    expect(
-      within(calendar)
-        .getAllByRole('button', { name: /^\w+day, / })
-        .filter((cell) => cell.querySelector('[data-slot="base"]'))
-        .map((cell) => cell.getAttribute('aria-label')),
-    ).toEqual([
+    expect(markedDays('weigh-in', calendar)).toEqual([
       'Monday, October 5, 2026',
       'Tuesday, October 6, 2026',
+      'Thursday, October 8, 2026',
+      'Friday, October 9, 2026',
+      'Sunday, October 25, 2026',
+    ])
+    expect(markedDays('entries', calendar)).toEqual([
+      'Monday, October 5, 2026',
       'Wednesday, October 7, 2026',
       'Friday, October 9, 2026',
+      'Sunday, October 25, 2026',
     ])
+    expect(within(calendar).getByTestId('calendar-legend')).toHaveTextContent(
+      /^Entries\s*Weigh-in$/,
+    )
     expect(day('Sunday, October 25, 2026')).toHaveAttribute(
       'aria-disabled',
       'true',
