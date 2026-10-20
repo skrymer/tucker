@@ -315,6 +315,7 @@ test('rings the days holding a reading and dots the days holding Entries, side b
               .closest('[data-slot="cellTrigger"]')!
               .getAttribute('aria-label'),
             mark: mark.getAttribute('data-mark'),
+            size: `${getComputedStyle(mark).width} × ${getComputedStyle(mark).height}`,
             fill: getComputedStyle(mark).backgroundColor,
             ring: getComputedStyle(mark).boxShadow.includes('rgb(0, 193, 106)'),
           })),
@@ -324,24 +325,28 @@ test('rings the days holding a reading and dots the days holding Entries, side b
       {
         day: 'Wednesday, June 10, 2026',
         mark: 'weigh-in',
+        size: '6px × 6px',
         fill: 'rgba(0, 0, 0, 0)',
         ring: true,
       },
       {
         day: 'Thursday, June 11, 2026',
         mark: 'weigh-in',
+        size: '6px × 6px',
         fill: 'rgba(0, 0, 0, 0)',
         ring: true,
       },
       {
         day: 'Thursday, June 11, 2026',
         mark: 'entries',
+        size: '6px × 6px',
         fill: 'rgb(0, 193, 106)',
         ring: false,
       },
       {
         day: 'Friday, June 12, 2026',
         mark: 'entries',
+        size: '6px × 6px',
         fill: 'rgb(0, 193, 106)',
         ring: false,
       },

@@ -1045,6 +1045,75 @@ describe('HistorySection', () => {
     )
   })
 
+  it('states no tally while the first day is loading', async () => {
+    const read = held('get', '/api/entries')
+    server.use(read.handler)
+
+    const rendered = renderHistory()
+    await read.arrived
+    const entries = await screen.findByRole('region', { name: 'Entries' })
+
+    expect(entries).toHaveAttribute('aria-busy', 'true')
+    expect(within(entries).queryByText(/entr(y|ies) ·/)).toBeNull()
+    read.release()
+    await rendered
+  })
+
+  it('states no tally beside a day whose Entries failed to load', async () => {
+    server.use(failingRead('/api/entries'))
+    await renderHistory()
+
+    const entries = screen.getByRole('region', { name: 'Entries' })
+    expect(
+      await within(entries).findByRole('heading', {
+        name: "Couldn't load Mon 12 Oct",
+      }),
+    ).toBeVisible()
+    expect(within(entries).queryByText(/entr(y|ies) ·/)).toBeNull()
+  })
+
+  it('says the readings failed for a User without Calorie Tracking, raising no error', async () => {
+    const errors: unknown[] = []
+    useNuxtApp().hook('vue:error', (error) => {
+      errors.push(error)
+    })
+    server.use(failingRead('/api/weight'), ...fridayReading())
+    await renderHistory({ tracksCalories: false })
+
+    expect(
+      await screen.findByRole('heading', {
+        name: "Couldn't load your weight history",
+      }),
+    ).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeVisible()
+    expect(errors).toEqual([])
+  })
+
+  it('clears the readings and the logged days with the one Retry when both fail', async () => {
+    let failing = true
+    server.use(
+      failingRead('/api/weight', () => failing),
+      failingRead('/api/entries/days', () => failing),
+      ...fridayReading(),
+      ...dailyLogs({ '2026-10-12': [weighed(1, 'Oats', 60, 233, 8)] }),
+    )
+    await renderHistory()
+    const user = userEvent.setup()
+    await screen.findByRole('heading', { name: "Couldn't load this card" })
+
+    failing = false
+    await user.click(screen.getByRole('button', { name: 'Retry' }))
+
+    await vi.waitFor(() =>
+      expect(dottedDays()).toEqual(['Monday, October 12, 2026']),
+    )
+    expect(ringedDays()).toEqual(['Friday, October 9, 2026'])
+    expect(
+      screen.queryByRole('heading', { name: "Couldn't load logged days" }),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull()
+  })
+
   it('offers no delete and states no Budget or verdict for Entries, today included', async () => {
     server.use(...dailyLogs({ '2026-10-12': [weighed(1, 'Oats', 60, 233, 8)] }))
     await renderHistory()
