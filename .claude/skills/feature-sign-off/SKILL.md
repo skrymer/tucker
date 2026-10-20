@@ -166,11 +166,11 @@ and #498 lost a pitest red and a "91 failed" e2e log to the re-runs written over
    fix that now answers a different criterion than the one filed is UNSOUND and goes
    to the user, exactly as the ledger's own UNSOUND would. #435's denied-camera fix
    honoured every ADR and silently contradicted AC6 as written; gate 5 caught it.
-   Likewise any item an agent explicitly marks "the user's call" goes to the user —
-   the pack does not decide it. The adversary needs no re-check after a correctness
-   fix. A user ruling that adds behaviour, or settles how a criterion is met, is one
-   step: `gh issue edit` the criterion in the user's words, then re-run Briefs A and D
-   on that commit (#476, #433; #434 did neither, and gate 5 sent it back).
+   Likewise an item an agent marks "the user's call" goes to the user, never the pack;
+   for a harm against `main` it lists only fixes (#511). The adversary needs no re-check
+   after a correctness fix. A user ruling that adds behaviour, or settles how a
+   criterion is met, is one step: `gh issue edit` the criterion in the user's words,
+   then re-run Briefs A and D on that commit (#476, #433; #434 skipped both).
 
    **Gate 2's verdicts do need one, after every later fix** — gate 2's own triage's,
    gate 3's, a gate-5 re-resolution's, a gate-6 fix's: re-run the scoped mutation sweep over the files
@@ -206,8 +206,8 @@ and #498 lost a pitest red and a "91 failed" e2e log to the re-runs written over
    It answers three questions and nothing else:
 
    - **Does each fix address the finding it cites, without introducing something
-     new?** A plausible-but-wrong fix is the failure mode here, and it lands at
-     exactly the moment nobody is still looking.
+     new — and is it pinned?** A plausible-but-wrong fix lands when nobody is still
+     looking; FIXED with no test red on its removal is REJECTED (#511 passed two).
    - **Does each dismissal hold?** "By design per ADR 00xx", "pre-existing", "out
      of scope" are checkable claims; "no worse than `main`" is checked by driving the
      same User steps on `main`, never by `main` lacking the new state (#476), and "a
@@ -215,11 +215,12 @@ and #498 lost a pitest red and a "91 failed" e2e log to the re-runs written over
      a harm the diff makes worse than `main` recorded as accepted (a regression: fix
      it, never offer "accept and record"), and a tool's refusal as the reason
      something was left. A Remedy cell names one remedy (agent-briefs.md's rule).
-   - **Was an existing test edited to make the change pass?** A finding, not
-     housekeeping: ask what a User in the old test's state now sees, and what later
+   - **Was an existing test edited or deleted to make the change pass?** A finding,
+     not housekeeping: ask what a User in the old test's state now sees, and what later
      breakage the old test caught that the edit no longer does (#476 pinned a schema
      test to V13 and lost the only guard on a unique index). #358's test moved its
      day to `LocalDate.now()` — the device-behind regression, seen from the test side.
+     A deleted file's every `it(` is mapped in the pack to a successor or a row (#511).
    - **Is the pack faithful to the transcripts?** Both halves of every pair above
      are written by the author from memory of the agent output, so this gate would
      otherwise adjudicate the author's account of a finding against the author's

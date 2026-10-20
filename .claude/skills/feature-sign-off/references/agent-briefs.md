@@ -62,6 +62,9 @@ agent, and the seven below.
   kind of thing to look for, never an instance of it. A context pack is where to
   *start reading*, so it names only files the diff touches or the issue cites; a
   `/check-adrs` pack names no ADR, since choosing which ones apply is its job (#433).
+  Prose has not held this — #511 named an untouched composable in one pack and an
+  uncited ADR in another — so check each path before sending: it is in
+  `git diff --name-only <base> <sha>` or in the issue body, or it comes out.
 - The conclusion of another agent in the same run. Two briefs are exempt because that
   material *is* their subject: the arbiter's, which is given both positions, and the
   **resolutions agent's**, which is given every finding, every dismissal and the
@@ -85,7 +88,10 @@ adversary's failed attack, a ledger's scope tail): #455 PR 2's pack read one as 
 A re-run brief's report is diffed against the first run's, and each attack or row it adds
 is its own row — "fail as in run 1" hid two new attacks in #497. #443's pack recounted a hand-mutation run as "11/12" (the
 file said 10 of 11) and dropped a one-line nit; gate 5 had to correct both. A row says
-re-recorded, withdrawn or superseded only once that edit is in the file, and a
+re-recorded, withdrawn or superseded only once that edit is in the file. A figure that
+changes between runs is checked against its source (the issue, the log) before it
+enters the pack, and never explained: #511's ledger re-run printed "26/26", the pack
+added "the amended issue now has 26 rows", and the issue held 22. And a
 re-resolution marks the row it replaces in the same edit: #469 claimed two re-records
 that gate 5 found unmade. A row for a probe owed to gate 6 cites the figures the verdict
 file records (the width, the driven value), never the planned ones: #496's pack said
