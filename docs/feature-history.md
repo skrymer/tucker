@@ -1934,3 +1934,22 @@ null` now means two things that earn opposite messages — the same trap
   - **Trap:** the dev stack's backend image predated the branch's backend commit, so
     the first live crossing probe read `reachedOn: null`. Rebuild
     (`docker compose build backend`) before a walk-through of a backend change.
+  - **Slice 4 ([#511](https://github.com/skrymer/tucker/issues/511)) — one History
+    card.** `HistorySection` replaces Weight history and Look up a day: one calendar
+    under the Weight Timeline marks a Weight Measurement with a hollow ring and Entries
+    with a filled dot, side by side, keyed by an `aria-hidden` legend ("Entries",
+    "Weight") drawn from the marks' own classes. The picked day's panel holds the
+    weight half (`HistoryWeight`, owning the sheet and the confirm) and, with Calorie
+    Tracking on, the read-only Entries; each half loads and fails on its own, and both
+    failing collapse into one "Couldn't load this card". Any past day is pickable, up
+    to tomorrow with Calorie Tracking on and today with it off; tomorrow's weight row
+    says "Weigh in on the day itself." No backend change.
+  - **Ruled at sign-off:** the panel heading names the picked day at once, while the
+    last day's Entries stay up beneath it, dimmed, until the new day's arrive (kept
+    over labelling the stale half); and the ring's legend reads "Weight", since
+    CONTEXT.md avoids "weigh-in" as a noun. The accessibility criterion was struck
+    before the build.
+  - **Marks dim on neighbouring-month cells too**, not only disabled ones: UCalendar
+    mutes those numerals, and full-primary marks beside them read as the shown month.
+  - **`useWindowedFetch` binds a caller's ref** as its selection, so the card's
+    `picked` drives both halves and exists with Calorie Tracking off.
