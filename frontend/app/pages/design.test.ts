@@ -94,7 +94,7 @@ describe('/design', () => {
       .getByRole('heading', { name: 'Calendar' })
       .closest('div')!
     const day = (name: string) => within(calendar).getByRole('button', { name })
-    expect(markedDays('weigh-in', calendar)).toEqual([
+    expect(markedDays('weight', calendar)).toEqual([
       'Monday, October 5, 2026',
       'Tuesday, October 6, 2026',
       'Thursday, October 8, 2026',
@@ -108,7 +108,7 @@ describe('/design', () => {
       'Sunday, October 25, 2026',
     ])
     expect(within(calendar).getByTestId('calendar-legend')).toHaveTextContent(
-      /^Entries\s*Weigh-in$/,
+      /^Entries\s*Weight$/,
     )
     expect(day('Sunday, October 25, 2026')).toHaveAttribute(
       'aria-disabled',

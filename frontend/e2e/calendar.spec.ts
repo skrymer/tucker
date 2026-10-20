@@ -22,7 +22,7 @@ async function marksOn(day: Locator) {
     }
     const cellStyle = getComputedStyle(cell)
     return {
-      ring: style('weigh-in')?.boxShadow ?? null,
+      ring: style('weight')?.boxShadow ?? null,
       dot: style('entries')?.backgroundColor ?? null,
       cell: cellStyle.backgroundColor,
       text: cellStyle.color,
@@ -91,7 +91,7 @@ test("the legend's swatches are drawn as the marks are", async ({
         width: getComputedStyle(el).width,
       })),
     )
-  // The legend reads Entries then Weigh-in; the cell draws the ring first.
+  // The legend reads Entries then Weight; the cell draws the ring first.
   expect(swatches).toEqual([marks[1], marks[0]])
   expect(swatches.map((swatch) => ringColour(swatch.shadow))).toEqual([
     null,

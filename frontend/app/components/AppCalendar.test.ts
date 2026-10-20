@@ -219,20 +219,20 @@ describe('AppCalendar', () => {
     // tech and has no accessible form to query by.
     const legend = screen.queryByTestId('calendar-legend')
     expect(legend).toHaveAttribute('aria-hidden', 'true')
-    expect(legend).toHaveTextContent(/^Entries\s*Weigh-in$/)
+    expect(legend).toHaveTextContent(/^Entries\s*Weight$/)
   })
 
-  it('keys only the weigh-in mark when it draws no Entries', async () => {
+  it('keys only the Weight mark when it draws no Entries', async () => {
     await renderSuspended(AppCalendar, {
       props: { modelValue: '2026-10-08', weighed: [] },
     })
 
     expect(screen.queryByTestId('calendar-legend')).toHaveTextContent(
-      /^Weigh-in$/,
+      /^Weight$/,
     )
   })
 
-  it('keys only the Entries mark when it draws no weigh-ins', async () => {
+  it('keys only the Entries mark when it draws no Weight Measurements', async () => {
     await renderSuspended(AppCalendar, {
       props: { modelValue: '2026-10-08', logged: [] },
     })
@@ -256,7 +256,7 @@ describe('AppCalendar', () => {
       },
     })
 
-    expect(markedDays('weigh-in')).toEqual([
+    expect(markedDays('weight')).toEqual([
       'Tuesday, October 6, 2026',
       'Friday, October 9, 2026',
     ])

@@ -5,7 +5,7 @@ import { within } from '@testing-library/vue'
  * visual, so it has no accessible form to query by.
  */
 export function markedDays(
-  mark: 'weigh-in' | 'entries',
+  mark: 'weight' | 'entries',
   container: HTMLElement = document.body,
 ) {
   return within(container)

@@ -78,7 +78,7 @@ const isWeighed = useMarkedDays(() => props.weighed)
  */
 const MARK_SHAPE = 'size-1.5 rounded-full'
 const MARK = {
-  weighIn: `${MARK_SHAPE} ring-1 ring-inset ring-primary in-data-selected:ring-(--ui-text-inverted) in-data-disabled:ring-(--ui-text-muted) in-data-outside-view:ring-(--ui-text-muted)`,
+  weight: `${MARK_SHAPE} ring-1 ring-inset ring-primary in-data-selected:ring-(--ui-text-inverted) in-data-disabled:ring-(--ui-text-muted) in-data-outside-view:ring-(--ui-text-muted)`,
   entries: `${MARK_SHAPE} bg-primary in-data-selected:bg-(--ui-text-inverted) in-data-disabled:bg-(--ui-text-muted) in-data-outside-view:bg-(--ui-text-muted)`,
 }
 </script>
@@ -104,8 +104,8 @@ const MARK = {
           >
             <span
               v-if="isWeighed(day)"
-              data-mark="weigh-in"
-              :class="MARK.weighIn"
+              data-mark="weight"
+              :class="MARK.weight"
             />
             <span
               v-if="isLogged(day)"
@@ -128,7 +128,7 @@ const MARK = {
         <span :class="MARK.entries" />Entries
       </span>
       <span v-if="weighed" class="flex items-center gap-1.5">
-        <span :class="MARK.weighIn" />Weigh-in
+        <span :class="MARK.weight" />Weight
       </span>
     </p>
   </div>

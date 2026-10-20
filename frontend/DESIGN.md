@@ -611,13 +611,13 @@ kcal`) sits beneath its own ring, so no arc is ever colour-alone. Calorie
   the range, and a day outside it is disabled and announced so. It draws **two
   marks**, side by side under the numeral: a **hollow ring** on a day holding a
   Weight Measurement (`weighed`) and a **filled dot** on a day holding Entries
-  (`logged`), so a day with Entries and no ring reads as a weigh-in missed. Both
+  (`logged`), so a day with Entries and no ring reads as a missed weighing. Both
   are primary, `size-1.5`, and nothing else — an **exception** to _colour is
   never the only signal_ (Guardrails). On the selected day they take that day's
   text colour (`--ui-text-inverted`), since a primary mark vanishes into the
   primary circle, and on a disabled day they dim with the numeral
   (`--ui-text-muted`). Under the month an `aria-hidden` **legend** names each
-  mark the calendar draws — **Entries**, then **Weigh-in** — its swatches
+  mark the calendar draws — **Entries**, then **Weight** — its swatches
   drawn with the marks' own classes, so the two cannot drift; a calendar given
   neither mark set has no legend. Re-picking the selected day keeps it. It
   speaks ISO `yyyy-mm-dd`, always draws six Monday-start weeks, and reports the
@@ -873,7 +873,7 @@ colour and spacing. Case is settled in [Case](#case); the rest is here.
 
 - **Colour is never the only signal** (ADR-aligned, issue #66 sibling): pair it
   with icon + text. The ring proves numbers beside every arc. One recorded
-  exception: the Calendar's two marks, the weigh-in ring and the Entries dot
+  exception: the Calendar's two marks, the Weight Measurement ring and the Entries dot
   (Component treatments → Calendar). Reka names each day button after its date
   and nothing in the cell can join that name, so the marks' non-visual path is
   the **picked day's panel** in History, which states both facts in words — the

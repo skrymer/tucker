@@ -36,7 +36,7 @@ function weighed(
   })
 }
 
-const ringedDays = () => markedDays('weigh-in')
+const ringedDays = () => markedDays('weight')
 const dottedDays = () => markedDays('entries')
 
 /** A User whose one reading, 80.9 kg, is on Fri 9 Oct. */
@@ -605,7 +605,7 @@ describe('HistorySection', () => {
     )
   })
 
-  it('marks and keys only weigh-ins with Calorie Tracking off', async () => {
+  it('marks and keys only Weight Measurements with Calorie Tracking off', async () => {
     server.use(
       ...fridayReading(),
       ...dailyLogs({ '2026-10-08': [weighed(1, 'Oats', 60, 233, 8)] }),
@@ -617,7 +617,7 @@ describe('HistorySection', () => {
     )
     expect(dottedDays()).toEqual([])
     expect(screen.queryByTestId('calendar-legend')).toHaveTextContent(
-      /^Weigh-in$/,
+      /^Weight$/,
     )
   })
 
@@ -1112,6 +1112,50 @@ describe('HistorySection', () => {
       screen.queryByRole('heading', { name: "Couldn't load logged days" }),
     ).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull()
+  })
+
+  it("keeps showing the picked day's Entries while the readings fail", async () => {
+    server.use(
+      failingRead('/api/weight'),
+      ...dailyLogs({ '2026-10-12': [weighed(1, 'Oats', 60, 233, 8)] }),
+    )
+    await renderHistory()
+
+    await screen.findByRole('heading', {
+      name: "Couldn't load your weight history",
+    })
+    const entries = screen.getByRole('region', { name: 'Entries' })
+    expect(await within(entries).findByText('1 entry · 233 kcal')).toBeVisible()
+    expect(within(entries).getByRole('listitem')).toHaveTextContent('Oats')
+  })
+
+  it('leaves the Entries as they stand when a reading is deleted', async () => {
+    server.use(
+      ...bodyAndPlan({
+        profile: null,
+        today: TODAY,
+        readings: [{ id: 1, measuredOn: TODAY, weightKg: 80.9 }],
+      }),
+      ...dailyLogs({ '2026-10-12': [weighed(1, 'Oats', 60, 233, 8)] }),
+    )
+    await renderHistory()
+    const entries = screen.getByRole('region', { name: 'Entries' })
+    await within(entries).findByText('1 entry · 233 kcal')
+    // Any re-read of the Entries now hangs, holding the half busy.
+    server.use(held('get', '/api/entries').handler)
+    const user = userEvent.setup()
+
+    await user.click(
+      screen.getByRole('button', { name: 'Delete weight on Mon 12 Oct' }),
+    )
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Delete this weight?',
+    })
+    await user.click(within(dialog).getByRole('button', { name: 'Delete' }))
+
+    expect(await screen.findByText('No weight.')).toBeVisible()
+    expect(entries).toHaveAttribute('aria-busy', 'false')
+    expect(within(entries).getByText('1 entry · 233 kcal')).toBeVisible()
   })
 
   it('offers no delete and states no Budget or verdict for Entries, today included', async () => {

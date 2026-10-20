@@ -324,14 +324,14 @@ test('rings the days holding a reading and dots the days holding Entries, side b
     .toEqual([
       {
         day: 'Wednesday, June 10, 2026',
-        mark: 'weigh-in',
+        mark: 'weight',
         size: '6px × 6px',
         fill: 'rgba(0, 0, 0, 0)',
         ring: true,
       },
       {
         day: 'Thursday, June 11, 2026',
-        mark: 'weigh-in',
+        mark: 'weight',
         size: '6px × 6px',
         fill: 'rgba(0, 0, 0, 0)',
         ring: true,
@@ -392,7 +392,7 @@ test("a neighbouring month's day dims its marks with its numeral", async ({
     .poll(() =>
       spillover.evaluate((cell) => {
         const text = getComputedStyle(cell).color
-        const [ring, dot] = ['weigh-in', 'entries'].map((mark) =>
+        const [ring, dot] = ['weight', 'entries'].map((mark) =>
           getComputedStyle(cell.querySelector(`[data-mark="${mark}"]`)!),
         )
         return {
@@ -428,5 +428,5 @@ test('is the weight half alone with Calorie Tracking off', async ({
   await expect(
     card.getByRole('button', { name: 'Wednesday, June 17, 2026' }),
   ).toBeDisabled()
-  await expect(card.getByTestId('calendar-legend')).toHaveText('Weigh-in')
+  await expect(card.getByTestId('calendar-legend')).toHaveText('Weight')
 })

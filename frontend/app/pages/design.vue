@@ -502,9 +502,9 @@ const calendarDay = ref('2026-10-08')
           :logged="['2026-10-05', '2026-10-07', '2026-10-09', '2026-10-25']"
         />
         <p class="pt-3 text-sm text-muted">
-          A ring is a weigh-in and a dot is Entries; a day with both carries
-          both. On the selected day they take its text colour, and on a day that
-          can't be picked they dim with the numeral (25 Oct).
+          A ring is a Weight Measurement and a dot is Entries; a day with both
+          carries both. On the selected day they take its text colour, and on a
+          day that can't be picked they dim with the numeral (25 Oct).
         </p>
       </UCard>
     </div>

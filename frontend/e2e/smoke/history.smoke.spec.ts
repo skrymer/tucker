@@ -54,7 +54,7 @@ async function seedDailyWeighing(
 function ringOn(card: Locator, iso: string) {
   return card
     .getByRole('button', { name: calendarDayName(iso) })
-    .locator('[data-mark="weigh-in"]')
+    .locator('[data-mark="weight"]')
 }
 
 /** The dot [card]'s calendar draws on [iso]: present only on a day holding an Entry. */
