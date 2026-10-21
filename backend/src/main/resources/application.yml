@@ -51,6 +51,10 @@ tucker:
   git-sha: ${GIT_SHA:unknown}
   built-at: ${BUILT_AT:unknown}
 
+  # Who an operator has made an Admin (ADR 0039), comma-separated. Unset is nobody.
+  admin:
+    emails: ${TUCKER_ADMIN_EMAILS:}
+
   # Nutrition Providers are operator config, not code (ADR 0006). The default is
   # the live Open Food Facts host, so production is unchanged; the smoke stack
   # points it at a local stub so CI never depends on OFF's health (issue #163).

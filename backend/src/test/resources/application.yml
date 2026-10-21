@@ -33,6 +33,11 @@ tucker:
     audience: tucker-dev
     jwk-set-uri: classpath:access/jwks.json
 
+  # One Admin, never the suite's default identity, so every other test runs as a
+  # plain User (ADR 0039).
+  admin:
+    emails: admin@tucker.invalid
+
 # Main declares every response JSON for the spec; this file shadows main entirely,
 # so the spec OpenApiSnapshotTest compares against would otherwise say `*/*`.
 springdoc:

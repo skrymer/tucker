@@ -54,4 +54,25 @@ class MeApiTest {
             jsonPath("$.email") { value("bob@tucker.invalid") }
         }
     }
+
+    /** `admin@tucker.invalid` is listed in the suite's `tucker.admin.emails` (ADR 0039). */
+    @Test
+    fun `tells a caller listed as an Admin that they are one`() {
+        mockMvc.get("/api/me") {
+            header(ACCESS_ASSERTION_HEADER, AccessTokens.mint(email = "admin@tucker.invalid"))
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.admin") { value(true) }
+        }
+    }
+
+    @Test
+    fun `tells a caller not listed as an Admin that they are not one`() {
+        mockMvc.get("/api/me") {
+            header(ACCESS_ASSERTION_HEADER, AccessTokens.mint(email = "alice@tucker.invalid"))
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.admin") { value(false) }
+        }
+    }
 }

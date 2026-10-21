@@ -27,6 +27,7 @@ import org.springframework.stereotype.Component
 @Component
 class AccessPrincipalConverter(
     private val users: UserRepository,
+    private val admins: AdminProperties,
 ) : Converter<Jwt, AbstractAuthenticationToken> {
 
     override fun convert(source: Jwt): AbstractAuthenticationToken {
@@ -53,7 +54,7 @@ class AccessPrincipalConverter(
         // would go on resolving the stale pairing until someone restarted the app —
         // turning a one-line recovery into a puzzling one.
         val user = users.findByEmail(email) ?: users.provision(email)
-        return TuckerPrincipal.of(user).asAuthentication(credentials = source)
+        return TuckerPrincipal.of(user, admin = admins.isAdmin(email)).asAuthentication(credentials = source)
     }
 
 }

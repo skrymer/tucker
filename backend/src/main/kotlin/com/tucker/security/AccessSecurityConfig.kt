@@ -28,7 +28,7 @@ import org.springframework.security.web.util.matcher.DispatcherTypeRequestMatche
  */
 @Configuration
 @EnableWebSecurity
-@EnableConfigurationProperties(AccessProperties::class)
+@EnableConfigurationProperties(AccessProperties::class, AdminProperties::class)
 class AccessSecurityConfig {
 
     @Bean

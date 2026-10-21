@@ -133,6 +133,18 @@ script is what you run. This brings up `backend`, `frontend`, `cloudflared`, and
    before Flyway substitutes it, and the `?` parameter above needs no quoting of
    its own — which is exactly why this is written as a bound parameter rather than
    pasted into the SQL.
+
+   One more key is **optional**, and answers who may open the Metrics page
+   ([ADR 0039](../docs/adr/0039-an-admin-sees-how-tucker-performs-and-nothing-of-any-user.md)):
+
+   | `.env` key | Where to find it | Looks like |
+   | --- | --- | --- |
+   | `TUCKER_ADMIN_EMAILS` | addresses already in your Access **policy**, comma-separated | `you@example.com` |
+
+   Matched case-insensitively. Unset or empty means nobody is an Admin, and Tucker
+   works the same without the page. Making someone an Admin, or no longer one, is
+   editing this line and recreating the backend (`docker compose ... up -d backend`):
+   the list is read when the backend starts and is never stored.
 7. **Set the timezone** if the box isn't already in your zone — the engine works
    in the user's local day, so export `TZ` before composing (e.g.
    `TZ=Australia/Brisbane`); see the note in `docker-compose.yml`.

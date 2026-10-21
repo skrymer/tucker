@@ -5108,12 +5108,16 @@
       },
       "MeResponse": {
         "required": [
+          "admin",
           "email"
         ],
         "type": "object",
         "properties": {
           "email": {
             "type": "string"
+          },
+          "admin": {
+            "type": "boolean"
           }
         }
       },
