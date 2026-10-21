@@ -4,7 +4,6 @@ import { screen, within } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import { server } from '~~/test/mocks/node'
 import { forgetAppState } from '~~/test/app-state'
-import { settle } from '~~/test/async-gate'
 import { held } from '~~/test/mocks/http'
 import { signedInAsAdmin } from '~~/test/mocks/handlers/identity'
 import { profileOf, weightOnlyProfile } from '~~/test/mocks/handlers/profile'
@@ -102,7 +101,11 @@ describe('AppNav', () => {
 
     const rendered = renderSuspended(AppNav).then(() => 'drawn')
     await me.arrived
-    const first = await Promise.race([rendered, settle().then(() => 'held')])
+    // A second's head start: only a render held on the read loses to it.
+    const first = await Promise.race([
+      rendered,
+      new Promise((resolve) => setTimeout(resolve, 1000)).then(() => 'held'),
+    ])
     me.release()
     await rendered
 

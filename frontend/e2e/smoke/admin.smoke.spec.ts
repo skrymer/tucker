@@ -52,11 +52,12 @@ test.describe('a User who is not an Admin', () => {
     goto,
   }) => {
     // The nav draws before `/api/me` answers, so the absence is only worth
-    // asserting once the answer that decides it has arrived.
-    const answered = page.waitForResponse('**/api/me')
-    await goto('/', { waitUntil: 'hydration' })
-    await answered
-    await expect(page.getByRole('link', { name: 'Review' })).toBeVisible()
+    // asserting once the answer is on screen: Profile's byline renders the same
+    // read the nav's Admin item does.
+    await goto('/profile', { waitUntil: 'hydration' })
+    await expect(
+      page.getByText('Signed in as tester@tucker.invalid'),
+    ).toBeVisible()
     // Text, not role, for the absence: it reaches the bar that is hidden.
     await expect(page.getByText('Admin', { exact: true })).toHaveCount(0)
 

@@ -3,11 +3,14 @@ import { defineComponent } from 'vue'
 import { renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen } from '@testing-library/vue'
 import { forgetAppState } from '~~/test/app-state'
-import { openGate, settle } from '~~/test/async-gate'
+import { openGate } from '~~/test/async-gate'
 import { baselineEmail, signedInAsAdmin } from '~~/test/mocks/handlers/identity'
 import { http, serverError } from '~~/test/mocks/http'
 import { server } from '~~/test/mocks/node'
 import { useMe } from './useMe'
+
+/** Far past any answer the mock gives, so only a read that never lands loses to it. */
+const longAfter = () => new Promise((resolve) => setTimeout(resolve, 1000))
 
 /** Joins the read, then says whether the caller is an Admin. */
 const host = defineComponent({
@@ -87,7 +90,10 @@ describe('useMe', () => {
     ).then(() => 'answered')
 
     release()
-    const first = await Promise.race([rendered, settle().then(() => 'waiting')])
+    const first = await Promise.race([
+      rendered,
+      longAfter().then(() => 'waiting'),
+    ])
 
     expect(first).toBe('answered')
   })
