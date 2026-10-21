@@ -1995,7 +1995,7 @@ null` now means two things that earn opposite messages — the same trap
     (`metricSource`), and queues it (`metricQueue`): flushed at 20 or on hide, sent
     through `$api` with `keepalive` and `retry: 0`, a failure swallowed. `POST
     /api/metrics` takes a batch of 1–50 `route-change` events (`@JsonValue` enums, a
-    null time refused rather than read as 0) into `metric_event` (V24: no `user_id`,
+    null time or installed flag refused rather than read as a default) into `metric_event` (V24: no `user_id`,
     no user agent) in one transaction; `GET /api/admin/metrics` answers an Admin a
     `PerformanceReport` — n and nearest-rank p50/p75/p95 per route × layout, every
     layout listed, none under five samples, slowest p75 first — and anyone else as
