@@ -156,28 +156,27 @@ and #498 lost a pitest red and a "91 failed" e2e log to the re-runs written over
    the four still read; in #435 `/check-adrs` reported the composable changing under
    it, and the ledger judged a semantics that no longer shipped.
 
-   When code-review's fixes land, re-check **only the files they touched** against
-   the constraints `/check-adrs` cited, the rows the ledger and the diagram auditor
-   returned, and any gate-1 dismissal whose reason the fix changed (#433). A fix that
-   adds a code path (a trigger, a caller, an endpoint) instead re-runs Brief F and
-   `/check-adrs` on its commit: a MISSING row is never a returned row, and #498's audit
-   said "no new trigger is missing" one commit before a fix added one. A
-   ledger row is re-checked against **the criterion's own words**, not the ADRs: a
-   fix that now answers a different criterion than the one filed is UNSOUND and goes
-   to the user, exactly as the ledger's own UNSOUND would. #435's denied-camera fix
-   honoured every ADR and silently contradicted AC6 as written; gate 5 caught it.
+   When any gate's fixes land, re-check **only the files they touched** against the
+   constraints `/check-adrs` cited, the rows the ledger and diagram auditor returned, and
+   every earlier resolution — dismissal or remedy taken in part — whose ground the fix
+   changed (#433; #518's "no in-flight join: every caller waits on the nav's read" fell to
+   a fix that dropped that await). A fix that adds a code path (trigger, caller, endpoint)
+   re-runs Brief F and `/check-adrs` on its commit (#498's audit missed one a commit
+   later); one that changes ordering (drops an `await`, moves a check out of a
+   middleware) re-runs Brief G on its commit — #518's double read surfaced at gate 5. A
+   ledger row is re-checked against **the criterion's own words**, not the ADRs: a fix
+   answering a different criterion than the one filed is UNSOUND and goes to the user
+   (#435's denied-camera fix honoured every ADR and contradicted AC6 as written).
    Likewise an item an agent marks "the user's call" goes to the user, never the pack;
-   for a harm against `main` it lists only fixes (#511). The adversary needs no re-check
-   after a correctness fix. A user ruling that adds behaviour, or settles how a
-   criterion is met, is one step: `gh issue edit` the criterion in the user's words,
-   then re-run Briefs A and D on that commit (#476, #433; #434 skipped both).
+   for a harm against `main` it lists only fixes (#511). The adversary needs no
+   re-check after a correctness fix. A user ruling that adds behaviour, or settles how
+   a criterion is met: `gh issue edit` it in the user's words, re-run Briefs A and D (#476).
 
    **Gate 2's verdicts do need one, after every later fix** — gate 2's own triage's,
    gate 3's, a gate-5 re-resolution's, a gate-6 fix's: re-run the scoped mutation sweep over the files
-   the fix touched, because a verdict on a changed line no longer stands. Measured in
-   F18 slice 5: an "equivalent, guard mode never aborts" survivor became a real gap
-   the moment a gate-3 fix switched that read to `latest`. Measured in #435: two
-   fixes written after gate 5 each left a new real gap only the re-sweep found.
+   the fix touched, because a verdict on a changed line no longer stands: F18 slice 5's
+   "equivalent, guard mode never aborts" became a real gap once a gate-3 fix made that
+   read `latest`, and #435's two post-gate-5 fixes each left one only the re-sweep found.
    Stryker mutates a `.vue` file's `<script>` only, so the template lines of any fix
    are pinned by hand-mutated copies, one per changed attribute — say so in the pack (#433).
 
@@ -408,8 +407,9 @@ losing a finding:
 
   Every gate fix follows a large agent report, which is exactly when Probity loses
   the run's test history and refuses a genuine RED as circular. Re-run the target
-  test class unfiltered immediately before writing each fix's RED; never route
-  round a refusal by writing gated files through Bash.
+  test class unfiltered immediately before writing each fix's RED; still refused, run
+  it on a throwaway copy holding the pre-fix code, save that red, and write the
+  identical test (#518). Never route round a refusal by writing gated files via Bash.
 
 ## After the gates
 

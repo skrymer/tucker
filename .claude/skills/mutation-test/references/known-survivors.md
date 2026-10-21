@@ -18,7 +18,7 @@ and [#237](https://github.com/skrymer/tucker/issues/237) (frontend).
 - Where the score stands
 - Frontend — StrykerJS
   - Vue compiler macros break the run before it starts
-  - Presentation tokens (8) — accepted, deliberately unasserted
+  - Presentation tokens (13) — accepted, deliberately unasserted
   - `components/DateField.vue` — 1 of 20
   - `utils/date.ts` `isoToCalendarDate` — 1 of 7
   - `components/ProfileForm.vue` — 2 of 58
@@ -37,6 +37,7 @@ and [#237](https://github.com/skrymer/tucker/issues/237) (frontend).
   - `plugins/pwa-install.client.ts` — 2 of 2, and both are false survivors
   - `composables/useOptionalFetch.ts` — 2 of 33
   - `composables/useCalorieTracking.ts` — 4 of 37
+  - `composables/useMe.ts` — 3 of 30
   - `utils/intakeBreakdown.ts` + `utils/entry.ts` — 1 of 48
   - `utils/catalog.ts` — 0 of 21, and the score was a lie
   - `pages/log.vue` — 14 of 57
@@ -148,20 +149,23 @@ rejects the unused variable.
 Upstream is [stryker-js#3305](https://github.com/stryker-mutator/stryker-js/issues/3305),
 closed stale and still unfixed on Stryker 10.
 
-### Presentation tokens (8) — accepted, deliberately unasserted
+### Presentation tokens (13) — accepted, deliberately unasserted
 
-| Where                                                         | Mutants |
-| ------------------------------------------------------------- | ------- |
-| `navigation.ts` — every `navDestinations` `icon` → `""`       | 5       |
-| `reviewLedger.ts` — every `REVIEW_BASIS_BADGE` `color` → `""` | 3       |
+| Where                                                                          | Mutants |
+| ------------------------------------------------------------------------------ | ------- |
+| `navigation.ts` — every destination's `icon` → `""` (six, and `adminDestination`'s after #518) | 7       |
+| `reviewLedger.ts` — every `REVIEW_BASIS_BADGE` `color` → `""`                  | 3       |
+| `AppNav.vue` — the three anchor class strings (`railLink`, `railPrimaryLink`, `tab`) → `""` | 3       |
 
 **Verdict: real gap, accepted by decision.** They are killable, and a test that
-kills one pins the token (`i-lucide-house`, `primary`) rather than a rule — so it
-would fail whenever a designer deliberately changed an icon, which is not a
-regression. What actually matters is structural and already enforced: the
+kills one pins the token (`i-lucide-house`, `primary`, a class list) rather than a
+rule — so it would fail whenever a designer deliberately changed an icon, which is not
+a regression. What actually matters is structural and already enforced: the
 `NavDestination` type requires an icon, and `REVIEW_BASIS_BADGE`'s `Record<ReviewBasis, …>`
 key type requires an entry for every basis, so no basis can go unlabelled. The
-notes live at the top of `navigation.test.ts` and `reviewLedger.test.ts`.
+notes live at the top of `navigation.test.ts` and `reviewLedger.test.ts`. The AppNav
+strings survive on `main` as well (#518 ran them there: 3 of 3); happy-dom computes no
+stylesheet, so a class is pinned in the mocked e2e or not at all.
 
 Everything else in `app/utils/` is at 100%: `exits.ts` and `numberField.ts` outright,
 `navigation.ts` and `reviewLedger.ts` apart from the tokens above. `date.ts` is at
@@ -610,6 +614,16 @@ short-circuit each have a test that goes red when it is forced to `false`. What 
   test asserts the warning happened, which is the load-bearing part (ADR 0007 — the app
   quietly keeping its shape must not be the only trace). Pinning the wording would pin a
   string nothing reads.
+
+### `composables/useMe.ts` — 3 of 30
+
+#518's shared `/api/me` read, built like `useCalorieTracking`'s: a settled flag and an
+in-flight join, both killed. What remains is the three `useState` defaults — `me`
+(`() => null`), `settled` (`() => false`) and the in-flight promise (`() => null`) —
+each replaced with `() => undefined`. **Equivalent mutants**, for the reason given for
+`useCalorieTracking` above: `me` is read only through `?.` and `??`, which treat
+`undefined` as `null`, and the other two only through truthiness (`if (settled.value)`,
+`??=`).
 
 ### `utils/intakeBreakdown.ts` + `utils/entry.ts` — 1 of 48
 

@@ -226,6 +226,20 @@ assertion with the dev token), and no browser-level layer can reach it.
   ADR 0007's 8 s `timeoutMs` (`useOptionalFetch` takes one) and treat `timedOut` as a
   failed read that releases the control, red-first, before the user is asked how the
   wait should look (#433's gate 5 rejected the first fix for exactly this).
+- **An absence is asserted after something the same read draws.** `toHaveCount(0)`
+  passes the instant it is true, so before asserting a read left something out, wait
+  for an element that read renders — not the page being up, and not `waitForResponse`,
+  which does not wait for Vue to re-render. #518's non-Admin smoke was weak twice
+  (Review visible, then the `/api/me` response) until it waited for Profile's "Signed in
+  as …", drawn from the same `useMe` read as the Admin item. The mocked-layer form of
+  this is in the `msw` skill's REFERENCE.md (an absence-only test).
+- **A not-found from a route middleware keeps the previous address.** `abortNavigation`
+  on an in-app navigation (Back, a link) leaves the URL of the page you came from,
+  while an unknown path's not-found completes the navigation first. Gate a page in its
+  own setup (`await ready()`, then throw a fatal 404), and every e2e of a not-found
+  page asserts `toHaveURL` beside the body — #518's Back test checked the body only,
+  and the walk-through found "Page not found: /admin" under "/". `showError` from the
+  middleware is no way out: the navigation clears it (7 of 8 red).
 - **Stale Playwright build** — the mocked e2e rebuilds `.nuxt/e2e` from scratch every run, so it cannot
   serve a stale build; the smokes still build through `@nuxt/test-utils`, so if a UI change doesn't show
   in a smoke run, `rm -rf frontend/.nuxt/test`.
