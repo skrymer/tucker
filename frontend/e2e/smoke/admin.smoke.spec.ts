@@ -51,10 +51,13 @@ test.describe('a User who is not an Admin', () => {
     page,
     goto,
   }) => {
+    // The nav draws before `/api/me` answers, so the absence is only worth
+    // asserting once the answer that decides it has arrived.
+    const answered = page.waitForResponse('**/api/me')
     await goto('/', { waitUntil: 'hydration' })
-    // The nav has drawn once Review is on screen, in whichever bar this viewport
-    // shows. Text, not role, for the absence: it reaches the bar that is hidden.
+    await answered
     await expect(page.getByRole('link', { name: 'Review' })).toBeVisible()
+    // Text, not role, for the absence: it reaches the bar that is hidden.
     await expect(page.getByText('Admin', { exact: true })).toHaveCount(0)
 
     await goto('/admin', { waitUntil: 'hydration' })

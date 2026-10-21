@@ -3,6 +3,7 @@ import { defineComponent } from 'vue'
 import { renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen } from '@testing-library/vue'
 import { forgetAppState } from '~~/test/app-state'
+import { openGate, settle } from '~~/test/async-gate'
 import { baselineEmail, signedInAsAdmin } from '~~/test/mocks/handlers/identity'
 import { http, serverError } from '~~/test/mocks/http'
 import { server } from '~~/test/mocks/node'
@@ -59,6 +60,36 @@ describe('useMe', () => {
     await renderSuspended(host)
 
     expect(screen.getByText('admin: true')).toBeVisible()
+  })
+
+  it('joins a read already in flight rather than asking again', async () => {
+    // A second request is never answered, so a caller that asks again instead
+    // of joining is still waiting when the first read has long landed.
+    const { gate, release } = openGate()
+    let asked = false
+    server.use(
+      http.get('/api/me', async ({ response }) => {
+        if (asked) return new Promise<never>(() => {})
+        asked = true
+        await gate
+        return response(200).json({ email: baselineEmail, admin: true })
+      }),
+    )
+    const rendered = renderSuspended(
+      defineComponent({
+        async setup() {
+          const { ready } = useMe()
+          await Promise.all([ready(), ready()])
+          return {}
+        },
+        template: `<span>both answered</span>`,
+      }),
+    ).then(() => 'answered')
+
+    release()
+    const first = await Promise.race([rendered, settle().then(() => 'waiting')])
+
+    expect(first).toBe('answered')
   })
 
   it('logs a failed read, draws no Admin, and lets the next caller ask again', async () => {
