@@ -1,13 +1,25 @@
 <script setup lang="ts">
-import { isDestinationActive, visibleDestinations } from '~/utils/navigation'
+import {
+  adminDestination,
+  isDestinationActive,
+  visibleDestinations,
+} from '~/utils/navigation'
+
+/** Whether the caller is an Admin; a failed read draws no Admin item. */
+function useAdminItem() {
+  const { $api } = useNuxtApp()
+  const { data: me, load } = useOptionalFetch(() => $api('/api/me'))
+  return { isAdmin: computed(() => me.value?.admin === true), load }
+}
+const { isAdmin, load: loadAdmin } = useAdminItem()
 
 // Awaited here rather than in the layout: the nav and the page are siblings in
-// one Suspense boundary, so this read overlaps the page's own fetches instead of
+// one Suspense boundary, so these reads overlap the page's own fetches instead of
 // being serialized ahead of them, and the tab bar still paints in its final
 // shape. It follows that `tracksCalories` is settled for any *template*, but a
 // page reading it in `setup` would race.
 const { tracksCalories, load } = useCalorieTracking()
-await load()
+await Promise.all([load(), loadAdmin()])
 
 const destinations = computed(() => visibleDestinations(tracksCalories.value))
 
@@ -70,6 +82,12 @@ const { open: moreOpen, holdsCurrentPage: moreHoldsCurrentPage } =
         v-for="destination in destinations.overflow"
         :key="destination.to"
         :destination="destination"
+        :anchor-class="railLink"
+        icon-class="size-5 shrink-0"
+      />
+      <NavLink
+        v-if="isAdmin"
+        :destination="adminDestination"
         :anchor-class="railLink"
         icon-class="size-5 shrink-0"
       />

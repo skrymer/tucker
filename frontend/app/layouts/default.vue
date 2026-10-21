@@ -38,6 +38,12 @@ function useSignedOutInterstitial() {
 }
 
 const { showsSignedOut } = useSignedOutInterstitial()
+
+/** The shared column, or a wider one for a page whose meta asks (`wideColumn`). */
+const route = useRoute()
+const columnWidth = computed(() =>
+  route.meta.wideColumn ? 'max-w-6xl' : 'max-w-2xl',
+)
 </script>
 
 <template>
@@ -46,7 +52,10 @@ const { showsSignedOut } = useSignedOutInterstitial()
     <template v-else>
       <AppNav />
       <div class="lg:pl-60">
-        <main class="mx-auto w-full max-w-2xl p-4 pb-24 lg:p-6 lg:pb-10">
+        <main
+          :class="columnWidth"
+          class="mx-auto w-full p-4 pb-24 lg:p-6 lg:pb-10"
+        >
           <slot />
         </main>
       </div>

@@ -53,6 +53,16 @@ const overflow: NavDestination[] = [
 ]
 
 /**
+ * The Metrics page, at the end of the side nav's More for an Admin only
+ * (ADR 0039). Never on the phone bar: the page is built for a larger screen.
+ */
+export const adminDestination: NavDestination = {
+  label: 'Admin',
+  to: '/admin',
+  icon: 'i-lucide-gauge',
+}
+
+/**
  * Whether a nav destination should read as the active route for the current
  * path.
  */

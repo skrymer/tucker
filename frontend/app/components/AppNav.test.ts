@@ -3,6 +3,7 @@ import { renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen, within } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import { server } from '~~/test/mocks/node'
+import { signedInAsAdmin } from '~~/test/mocks/handlers/identity'
 import { profileOf, weightOnlyProfile } from '~~/test/mocks/handlers/profile'
 import AppNav from './AppNav.vue'
 
@@ -61,6 +62,32 @@ describe('AppNav', () => {
     await renderSuspended(AppNav)
 
     expect(linkedRoutes(screen.getByRole('group', { name: 'More' }))).toEqual([
+      '/foods',
+      '/check',
+      '/profile',
+    ])
+  })
+
+  it('ends More in the side navigation with Admin for an Admin', async () => {
+    server.use(signedInAsAdmin)
+    await renderSuspended(AppNav)
+
+    expect(linkedRoutes(screen.getByRole('group', { name: 'More' }))).toEqual([
+      '/foods',
+      '/check',
+      '/profile',
+      '/admin',
+    ])
+  })
+
+  it('keeps Admin off the tab bar and its sheet, even for an Admin', async () => {
+    server.use(signedInAsAdmin)
+    const user = userEvent.setup()
+    await renderSuspended(AppNav)
+
+    const bar = screen.getByTestId('bottom-nav')
+    expect(linkedRoutes(bar)).toEqual(['/', '/log', '/review'])
+    expect(linkedRoutes(await openMoreSheet(user))).toEqual([
       '/foods',
       '/check',
       '/profile',
