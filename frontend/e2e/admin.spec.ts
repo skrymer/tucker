@@ -83,4 +83,22 @@ test.describe('as a User who is not an Admin', () => {
         - /url: /
     `)
   })
+
+  test('meets it again on coming Back to /admin from the app', async ({
+    page,
+    goto,
+  }) => {
+    await goto('/admin', { waitUntil: 'hydration' })
+    await page.getByRole('link', { name: 'Go back home' }).click()
+    await expect(
+      page.getByRole('heading', { level: 1, name: 'Today' }),
+    ).toBeVisible()
+
+    // Back is a navigation inside the app, not a fresh load.
+    await page.goBack()
+
+    await expect(
+      page.getByRole('heading', { name: 'Page not found: /admin' }),
+    ).toBeVisible()
+  })
 })

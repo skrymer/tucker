@@ -84,6 +84,17 @@ describe('AppNav', () => {
     ])
   })
 
+  it('names the Admin item Admin', async () => {
+    server.use(signedInAsAdmin)
+    await renderSuspended(AppNav)
+
+    expect(
+      within(screen.getByRole('group', { name: 'More' })).getByRole('link', {
+        name: 'Admin',
+      }),
+    ).toHaveAttribute('href', '/admin')
+  })
+
   it('keeps Admin off the tab bar and its sheet, even for an Admin', async () => {
     server.use(signedInAsAdmin)
     const user = userEvent.setup()
