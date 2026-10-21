@@ -273,6 +273,12 @@ here.
   ([#498](https://github.com/skrymer/tucker/issues/498)) and one History card for
   weight and Entries ([#511](https://github.com/skrymer/tucker/issues/511)). Open:
   [#505](https://github.com/skrymer/tucker/issues/505).
+- **F21** — Performance metrics and an Admin page: Tucker measures its own route
+  changes, LCP and INP in every engine, splits each navigation into server, network
+  and render time, and shows an Admin the result beside Actuator's server figures
+  ([ADR 0038](docs/adr/0038-performance-is-measured-by-tucker-itself-and-no-metric-names-a-user.md),
+  [ADR 0039](docs/adr/0039-an-admin-sees-how-tucker-performs-and-nothing-of-any-user.md)).
+  PRD [#517](https://github.com/skrymer/tucker/issues/517); not sliced yet.
 
 ## Architecture
 
