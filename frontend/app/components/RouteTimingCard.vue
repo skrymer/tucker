@@ -9,12 +9,6 @@ type RouteFigures = components['schemas']['RouteFiguresResponse']
 
 const props = defineProps<{ routes: RouteFigures[] }>()
 
-/** Each layout's identity, in the categorical palette's fixed order (DESIGN.md). */
-const LAYOUTS = [
-  { layout: 'phone', color: 'var(--tucker-cat-1)' },
-  { layout: 'desktop', color: 'var(--tucker-cat-2)' },
-] as const
-
 const { rows, x, y, color, tick, triggers } = useRouteTimingSeries(
   () => props.routes,
 )
@@ -25,6 +19,8 @@ function useRouteTimingSeries(routes: () => RouteFigures[]) {
   const rows = computed(() => [...routes()].reverse())
   const figuresOf = (r: RouteFigures, layout: string) =>
     r.layouts.find((l) => l.layout === layout)
+  // A bar's index runs across every group, so its layout is its place within one.
+  const layoutAt = (i: number) => LAYOUTS[i % LAYOUTS.length]!
   return {
     rows,
     x: (_: RouteFigures, i: number) => i,
@@ -33,19 +29,17 @@ function useRouteTimingSeries(routes: () => RouteFigures[]) {
         (r: RouteFigures) =>
           figuresOf(r, layout)?.p75 ?? undefined,
     ),
-    color: (_: RouteFigures, i: number) => LAYOUTS[i % LAYOUTS.length]!.color,
+    color: (_: RouteFigures, i: number) => layoutAt(i).color,
     tick: (i: number) => {
       const r = rows.value[i]
       return r ? routeLabel(r) : ''
     },
-    // The bar's index runs across every group, so its layout is its place
-    // within one.
     triggers: {
       [GroupedBar.selectors.bar]: (r: RouteFigures, i: number) => {
-        const { layout } = LAYOUTS[i % LAYOUTS.length]!
+        const { layout, name: layoutName } = layoutAt(i)
         const figures = figuresOf(r, layout)
         return figures
-          ? `<strong>${r.route} · ${LAYOUT_NAMES[layout]}</strong><br>${figuresLine(figures)}`
+          ? `<strong>${r.route} · ${layoutName}</strong><br>${figuresLine(figures)}`
           : ''
       },
     },
@@ -63,7 +57,7 @@ function useRouteTimingSeries(routes: () => RouteFigures[]) {
         </div>
         <ul aria-label="Layouts" class="flex gap-4 text-sm text-muted">
           <li
-            v-for="{ layout, color: swatch } in LAYOUTS"
+            v-for="{ layout, name: layoutName, color: swatch } in LAYOUTS"
             :key="layout"
             class="flex items-center gap-1.5"
           >
@@ -72,7 +66,7 @@ function useRouteTimingSeries(routes: () => RouteFigures[]) {
               :style="{ background: swatch }"
               aria-hidden="true"
             />
-            {{ LAYOUT_NAMES[layout] }}
+            {{ layoutName }}
           </li>
         </ul>
       </div>

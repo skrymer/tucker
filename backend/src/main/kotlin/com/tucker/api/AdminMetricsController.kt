@@ -1,6 +1,7 @@
 package com.tucker.api
 
 import com.tucker.domain.LayoutFigures
+import com.tucker.domain.MetricLayout
 import com.tucker.domain.PerformanceReport
 import com.tucker.domain.RouteFigures
 import com.tucker.persistence.MetricEventRepository
@@ -13,9 +14,15 @@ import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.servlet.resource.NoResourceFoundException
 
 /** One route in one layout: [n] always, the percentiles (ms) only once there are enough samples. */
-data class LayoutFiguresResponse(val layout: String, val n: Int, val p50: Int?, val p75: Int?, val p95: Int?) {
+data class LayoutFiguresResponse(
+    val layout: MetricLayout,
+    val n: Int,
+    val p50: Int?,
+    val p75: Int?,
+    val p95: Int?,
+) {
     constructor(figures: LayoutFigures) : this(
-        figures.layout.wire,
+        figures.layout,
         figures.n,
         figures.percentiles?.p50,
         figures.percentiles?.p75,

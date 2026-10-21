@@ -41,7 +41,8 @@ export function resetPwaInstallCapture() {
   installedThisSession.value = false
 }
 
-function detectInstalled(): boolean {
+/** Whether Tucker is running as the installed app rather than in a browser tab. */
+export function detectInstalled(): boolean {
   // Chromium/Android/desktop report the installed app via display-mode;
   // iOS Safari exposes it as the legacy navigator.standalone flag.
   const standalone = window.matchMedia?.('(display-mode: standalone)').matches

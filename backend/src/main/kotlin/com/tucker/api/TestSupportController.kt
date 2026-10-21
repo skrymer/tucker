@@ -1,23 +1,14 @@
 package com.tucker.api
 
-import com.tucker.jooq.Tables.ENTRY
-import com.tucker.jooq.Tables.FOOD
-import com.tucker.jooq.Tables.GOAL
-import com.tucker.jooq.Tables.METRIC_EVENT
-import com.tucker.jooq.Tables.PROFILE
+import com.tucker.jooq.DefaultSchema.DEFAULT_SCHEMA
 import com.tucker.jooq.Tables.PUSH_SUBSCRIPTION
-import com.tucker.jooq.Tables.RECIPE_INGREDIENT
-import com.tucker.jooq.Tables.REMINDER_STATE
-import com.tucker.jooq.Tables.TAG
-import com.tucker.jooq.Tables.USER
-import com.tucker.jooq.Tables.WEEKLY_REVIEW
-import com.tucker.jooq.Tables.WEIGHT_MEASUREMENT
 import com.tucker.persistence.RecordingWebPushSender
 import com.tucker.service.ReminderScheduler
 import com.tucker.service.TickResult
 import org.jooq.DSLContext
 import org.springframework.context.annotation.Profile
 import org.springframework.http.HttpStatus
+import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
@@ -47,34 +38,23 @@ class TestSupportController(
 ) {
 
     /**
-     * Empty every table and the push recorder, restoring the blank-slate state — the
-     * recorder included because it is a singleton bean, so it outlives the database it
-     * describes and one smoke would otherwise read what an earlier one sent.
+     * Empty every table but the [INSTALLATION_WIDE] ones, and the push recorder,
+     * restoring the blank-slate state — the recorder included because it is a singleton
+     * bean, so it outlives the database it describes and one smoke would otherwise read
+     * what an earlier one sent. Taken from the schema, so a new table is reset unless it
+     * is named as kept.
      */
     @PostMapping("/reset")
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Transactional
     fun reset() {
-        // Delete FK children (entry, recipe_ingredient reference food) before
-        // food; the rest are independent. app_config is left intact so the
-        // self-bootstrapped VAPID key stays stable across resets (ADR 0012).
-        dsl.deleteFrom(RECIPE_INGREDIENT).execute()
-        dsl.deleteFrom(ENTRY).execute()
-        dsl.deleteFrom(WEEKLY_REVIEW).execute()
-        dsl.deleteFrom(GOAL).execute()
-        dsl.deleteFrom(WEIGHT_MEASUREMENT).execute()
-        dsl.deleteFrom(FOOD).execute()
-        // After food, whose delete cascades food_tag away, so no Food carries a Tag.
-        dsl.deleteFrom(TAG).execute()
-        dsl.deleteFrom(PUSH_SUBSCRIPTION).execute()
-        dsl.deleteFrom(REMINDER_STATE).execute()
-        dsl.deleteFrom(PROFILE).execute()
-        // Users last: every table above references one, so clearing them first
-        // would be refused. This includes whoever is making *this* request — they
-        // are simply provisioned again by their next one, which is the point: a
-        // smoke about a brand-new User needs a database that has never seen them.
-        dsl.deleteFrom(USER).execute()
-        // Owned by no User (ADR 0038), so clearing Users leaves them behind.
-        dsl.deleteFrom(METRIC_EVENT).execute()
+        // Foreign keys are checked at the commit, by when every referencing row is
+        // gone too, so the tables can be emptied in any order. Users go with the
+        // rest — whoever is making *this* request included: they are provisioned
+        // again by their next one, which is the point, since a smoke about a
+        // brand-new User needs a database that has never seen them.
+        dsl.execute("PRAGMA defer_foreign_keys = ON")
+        DEFAULT_SCHEMA.tables.filterNot { it.name in INSTALLATION_WIDE }.forEach { dsl.deleteFrom(it).execute() }
         pushSender.forget()
     }
 
@@ -110,4 +90,19 @@ class TestSupportController(
      */
     @GetMapping("/push-payloads")
     fun pushPayloads(): List<String> = pushSender.sentPayloads()
+
+    private companion object {
+        /**
+         * Seeded by migrations or bootstrapped by the app, and the same for everybody:
+         * `app_config` holds the self-bootstrapped VAPID key, which must stay stable
+         * across resets (ADR 0012).
+         */
+        val INSTALLATION_WIDE = setOf(
+            "app_config",
+            "id_sequence",
+            "nutrient_reference_value",
+            "reference_food",
+            "reference_food_synonym",
+        )
+    }
 }

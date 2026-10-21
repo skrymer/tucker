@@ -77,9 +77,13 @@ test.describe('as an Admin', () => {
       .click()
 
     // A long axis label wraps onto a second line, which reads as no space.
-    await expect(page.getByRole('figure')).toContainText(
+    const chart = page.getByRole('figure')
+    await expect(chart).toContainText(
       /\/foods \(Phone too few: 0,\s*Desktop too few: 1\)/,
     )
+    // Opening Tucker on Today (and its redirect to /) is a page load, LCP's to
+    // measure, not a move — asserted after the label the same read draws.
+    await expect(chart).not.toContainText('/ (')
   })
 
   test('counts a move made on a phone as a phone', async ({
@@ -143,35 +147,31 @@ test.describe('as an Admin', () => {
     ).toBeVisible()
   })
 
-  // Opening Tucker is a page load, LCP's to measure, not a move between pages.
-  test('does not count the page a visit opened on as a move', async ({
+  // A phone is shown the notice alone, so it has no use for the chart's code or SVG.
+  test('builds no chart on a phone, even with figures to chart', async ({
     page,
     goto,
     network,
     isMobile,
   }) => {
-    test.skip(isMobile, 'a phone shows the notice instead')
-    network.use(...metricsRecorded())
-    await goto('/today', { waitUntil: 'hydration' })
-    await page
-      .getByTestId('side-nav')
-      .getByRole('link', { name: 'Foods' })
-      .click()
-    await expect(
-      page.getByRole('heading', { level: 1, name: 'Foods' }),
-    ).toBeVisible()
-    const sent = page.waitForResponse('**/api/metrics')
-    await hidePage(page)
-    await sent
-    await page
-      .getByTestId('side-nav')
-      .getByRole('link', { name: 'Admin' })
-      .click()
+    test.skip(!isMobile, 'a desktop shows the chart')
+    network.use(
+      metricsReport([
+        {
+          route: '/review',
+          layouts: [
+            { layout: 'phone', n: 48, p50: 640, p75: 910, p95: 1820 },
+            { layout: 'desktop', n: 63, p50: 180, p75: 260, p95: 540 },
+          ],
+        },
+      ]),
+    )
+    await goto('/admin', { waitUntil: 'hydration' })
 
-    // After the label the same read draws, so the absence is not just early.
-    const chart = page.getByRole('figure')
-    await expect(chart).toContainText('/foods')
-    await expect(chart).not.toContainText('/ (')
+    await expect(
+      page.getByText('Metrics are built for a larger screen.'),
+    ).toBeVisible()
+    await expect(page.locator('.route-timing')).toHaveCount(0)
   })
 
   test('shows a phone only the notice that Metrics need a larger screen', async ({

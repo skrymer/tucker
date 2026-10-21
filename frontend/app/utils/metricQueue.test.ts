@@ -1,6 +1,11 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { CSRF_COOKIE, CSRF_HEADER } from './csrf'
-import { createMetricQueue, sendMetrics, type MetricEvent } from './metricQueue'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { resetPageStubs, setVisibility } from '~~/test/page-visibility-helpers'
+import {
+  createMetricQueue,
+  sendMetrics,
+  type ApiClient,
+  type MetricEvent,
+} from './metricQueue'
 
 const event: MetricEvent = {
   kind: 'route-change',
@@ -10,6 +15,8 @@ const event: MetricEvent = {
   installed: false,
   appVersion: '1.4.0',
 }
+
+afterEach(() => resetPageStubs())
 
 describe('the metric queue', () => {
   it('sends once 20 events are waiting, and not before', () => {
@@ -60,46 +67,33 @@ describe('the metric queue', () => {
 })
 
 describe('sending metrics', () => {
-  beforeEach(() => {
-    document.cookie = `${CSRF_COOKIE}=; expires=Thu, 01 Jan 1970 00:00:00 GMT`
+  // Through Tucker's API client, whose plugins prove the page sent it (ADR 0025) as
+  // they do every mutation. A stand-in client, since a fetch option never reaches a
+  // mock server: a batch is mostly sent as the page is hidden, often for good, and
+  // without keepalive the browser cancels it with the page.
+  it('posts the batch through the API client, kept alive past the page and never retried', async () => {
+    const api = vi.fn().mockResolvedValue(undefined)
+
+    await sendMetrics(api as unknown as ApiClient, [event])
+
+    expect(api).toHaveBeenCalledExactlyOnceWith('/api/metrics', {
+      method: 'POST',
+      body: { events: [event] },
+      keepalive: true,
+      retry: 0,
+    })
   })
 
-  // Proving the request came from Tucker's own page is what every mutation owes
-  // (ADR 0025), a metric included. The Vitest MSW shim carries no request headers,
-  // so the transport is a stand-in that answers as the backend does.
-  it('delivers a batch carrying the CSRF token Tucker handed out', async () => {
-    document.cookie = `${CSRF_COOKIE}=token-abc`
+  // Lossy on purpose (ADR 0038): nothing about it is the User's to see.
+  it('drops a send that failed, without throwing', async () => {
+    const api = vi.fn().mockRejectedValue(new TypeError('Failed to fetch'))
 
-    expect(await sendMetrics([event], backend)).toBe(true)
-  })
-
-  // A batch is mostly sent as the page is hidden, often for good. Without
-  // keepalive the browser cancels the request with the page.
-  it('sends a batch that outlives the page sending it', async () => {
-    document.cookie = `${CSRF_COOKIE}=token-abc`
-    const pageClosing: typeof fetch = async (input, init) =>
-      init?.keepalive
-        ? backend(input, init)
-        : Promise.reject(new DOMException('cancelled', 'AbortError'))
-
-    expect(await sendMetrics([event], pageClosing)).toBe(true)
-  })
-
-  it('says a send that never reached the server was not taken, without throwing', async () => {
-    const offline: typeof fetch = () =>
-      Promise.reject(new TypeError('Failed to fetch'))
-
-    expect(await sendMetrics([event], offline)).toBe(false)
+    await expect(
+      sendMetrics(api as unknown as ApiClient, [event]),
+    ).resolves.toBeUndefined()
   })
 })
 
-/** Takes a send only as Spring does: proven by the token Tucker handed out. */
-const backend: typeof fetch = async (_input, init) => {
-  const proven = new Headers(init?.headers).get(CSRF_HEADER) === 'token-abc'
-  return new Response(null, { status: proven ? 204 : 403 })
-}
-
 function hidePage() {
-  vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden')
-  document.dispatchEvent(new Event('visibilitychange'))
+  setVisibility('hidden')
 }

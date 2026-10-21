@@ -57,8 +57,29 @@ class MetricApiTest {
         }
     }
 
-    private fun routeChange(route: String = "/review", layout: String = "phone", valueMs: Int = 420) =
-        """{"kind":"route-change","route":"$route","valueMs":$valueMs,"layout":"$layout",""" +
+    @Test
+    fun `refuses a batch naming a kind Tucker does not measure`() {
+        mockMvc.post("/api/metrics") {
+            contentType = MediaType.APPLICATION_JSON
+            content = batchOf(routeChange(kind = "cls"))
+        }.andExpect { status { isBadRequest() } }
+    }
+
+    @Test
+    fun `refuses a batch naming a layout the app does not have`() {
+        mockMvc.post("/api/metrics") {
+            contentType = MediaType.APPLICATION_JSON
+            content = batchOf(routeChange(layout = "tablet"))
+        }.andExpect { status { isBadRequest() } }
+    }
+
+    private fun routeChange(
+        route: String = "/review",
+        layout: String = "phone",
+        valueMs: Int = 420,
+        kind: String = "route-change",
+    ) =
+        """{"kind":"$kind","route":"$route","valueMs":$valueMs,"layout":"$layout",""" +
             """"installed":false,"appVersion":"1.4.0"}"""
 
     private fun batchOf(vararg events: String) = """{"events":[${events.joinToString(",")}]}"""

@@ -6,7 +6,9 @@ import { figuresLine, routeLabel } from './routeTiming'
 
 type LayoutFigures = components['schemas']['LayoutFiguresResponse']
 
-const measured = (layout: string, n: number): LayoutFigures => ({
+type Layout = LayoutFigures['layout']
+
+const measured = (layout: Layout, n: number): LayoutFigures => ({
   layout,
   n,
   p50: 300,
@@ -71,6 +73,6 @@ describe("the Admin chart's theme", () => {
   })
 })
 
-function tooFew(layout: string, n: number): LayoutFigures {
+function tooFew(layout: Layout, n: number): LayoutFigures {
   return { layout, n, p50: null, p75: null, p95: null }
 }

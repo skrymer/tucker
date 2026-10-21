@@ -40,7 +40,7 @@ class ProfileRepository(
             .from(PROFILE)
             .where(PROFILE.USER_ID.eq(currentUser.ownerId))
             .fetchOne(PROFILE.TRACKS_CALORIES)
-            ?.let { it != 0 }
+            ?.isFlagSet()
 
     /**
      * Replace the caller's own Profile, or write their first one.
@@ -73,9 +73,7 @@ class ProfileRepository(
         heightCm = heightCm,
         timezone = timezone,
         reminderHour = reminderHour,
-        remindersEnabled = remindersEnabled != 0,
-        tracksCalories = tracksCalories != 0,
+        remindersEnabled = remindersEnabled.isFlagSet(),
+        tracksCalories = tracksCalories.isFlagSet(),
     )
-
-    private fun Boolean.toFlag(): Int = if (this) 1 else 0
 }

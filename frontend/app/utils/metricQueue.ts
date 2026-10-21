@@ -1,30 +1,28 @@
 import type { components } from '#open-fetch-schemas/api'
-import { CSRF_HEADER, readCsrfToken } from './csrf'
+import type { NuxtApp } from '#app'
 
 export type MetricEvent = components['schemas']['MetricEventRequest']
 
+export type ApiClient = NuxtApp['$api']
+
 /**
- * Send [events] to Tucker's own backend, proving the page sent them (ADR 0025), and
- * say whether they were taken.
+ * Send [events] to Tucker's own backend through its API client, whose plugins prove
+ * the page sent them (ADR 0025). Kept alive, since a batch is mostly sent as the page
+ * is hidden, and never retried.
  */
 export async function sendMetrics(
+  api: ApiClient,
   events: MetricEvent[],
-  transport: typeof fetch = fetch,
-): Promise<boolean> {
+): Promise<void> {
   try {
-    const response = await transport(new URL('/api/metrics', location.origin), {
+    await api('/api/metrics', {
       method: 'POST',
+      body: { events },
       keepalive: true,
-      headers: {
-        'Content-Type': 'application/json',
-        [CSRF_HEADER]: readCsrfToken(document.cookie) ?? '',
-      },
-      body: JSON.stringify({ events }),
+      retry: 0,
     })
-    return response.ok
   } catch {
     // Lossy and silent (ADR 0038): the User did not send this, so it is not theirs to see.
-    return false
   }
 }
 

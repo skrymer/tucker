@@ -1,7 +1,9 @@
 package com.tucker.domain
 
+import com.fasterxml.jackson.annotation.JsonValue
+
 /** What a [MetricEvent] measured, under the name it has on the wire. */
-enum class MetricKind(val wire: String) {
+enum class MetricKind(@JsonValue val wire: String) {
     ROUTE_CHANGE("route-change");
 
     companion object {
@@ -12,7 +14,7 @@ enum class MetricKind(val wire: String) {
 }
 
 /** Which of the app's two layouts the page was in, by its own breakpoint. */
-enum class MetricLayout(val wire: String) {
+enum class MetricLayout(@JsonValue val wire: String) {
     PHONE("phone"),
     DESKTOP("desktop");
 

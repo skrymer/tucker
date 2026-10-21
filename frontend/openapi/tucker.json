@@ -5806,7 +5806,11 @@
         "type": "object",
         "properties": {
           "layout": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "phone",
+              "desktop"
+            ]
           },
           "n": {
             "type": "integer",
@@ -5855,7 +5859,10 @@
         "type": "object",
         "properties": {
           "kind": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "route-change"
+            ]
           },
           "route": {
             "type": "string"
@@ -5865,7 +5872,11 @@
             "format": "int32"
           },
           "layout": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "phone",
+              "desktop"
+            ]
           },
           "installed": {
             "type": "boolean"

@@ -5,7 +5,8 @@ import { routeTemplate } from '~/utils/routeTemplate'
 
 // Times each move between pages and queues it for Tucker's own backend (ADR 0038).
 export default defineNuxtPlugin((nuxtApp) => {
-  const queue = createMetricQueue(sendMetrics)
+  const { $api } = useNuxtApp()
+  const queue = createMetricQueue((events) => sendMetrics($api, events))
   const router = useRouter()
   const { appVersion } = useRuntimeConfig().public
 

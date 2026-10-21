@@ -44,7 +44,7 @@ export function metricsRecorded() {
       return response(200).json({
         routes: routes.map((route) => ({
           route,
-          layouts: ['phone', 'desktop'].map((layout) => ({
+          layouts: (['phone', 'desktop'] as const).map((layout) => ({
             layout,
             n: sent.filter((e) => e.route === route && e.layout === layout)
               .length,

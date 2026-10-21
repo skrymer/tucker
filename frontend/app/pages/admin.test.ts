@@ -59,8 +59,12 @@ describe('/admin', () => {
     )
     await renderSuspended(AdminPage)
 
+    // Lazy, so it lands after the page has rendered.
     expect(
-      screen.getByRole('heading', { level: 2, name: 'Moving between pages' }),
+      await screen.findByRole('heading', {
+        level: 2,
+        name: 'Moving between pages',
+      }),
     ).toBeVisible()
     expect(screen.getByText('p75 per page, slowest first')).toBeVisible()
     const legend = screen.getByRole('list', { name: 'Layouts' })

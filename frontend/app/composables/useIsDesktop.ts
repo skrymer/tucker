@@ -5,7 +5,7 @@
 //
 // SSR-safe: defaults to phone (false) until mounted; Tucker is SPA-only so
 // the initial render only flashes if the user is actually on desktop.
-export function useIsDesktop(breakpointPx = 1024) {
+export function useIsDesktop(breakpointPx = DESKTOP_MIN_PX) {
   const isDesktop = ref(false)
 
   onMounted(() => {

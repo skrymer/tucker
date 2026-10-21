@@ -30,7 +30,7 @@ class MetricEventRepository(private val dsl: DSLContext) {
         it.route = route
         it.valueMs = valueMs
         it.layout = source.layout.wire
-        it.installed = if (source.installed) 1 else 0
+        it.installed = source.installed.toFlag()
         it.appVersion = source.appVersion
         it.recordedAt = recordedAt.toString()
     }
@@ -39,6 +39,6 @@ class MetricEventRepository(private val dsl: DSLContext) {
         kind = MetricKind.of(kind),
         route = route,
         valueMs = valueMs,
-        source = MetricSource(MetricLayout.of(layout), installed == 1, appVersion),
+        source = MetricSource(MetricLayout.of(layout), installed.isFlagSet(), appVersion),
     )
 }

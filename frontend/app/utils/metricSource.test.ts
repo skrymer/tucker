@@ -28,4 +28,12 @@ describe('where a metric was measured', () => {
 
     expect(metricSource('1.4.0').installed).toBe(true)
   })
+
+  // iOS answers no display-mode query: the installed app shows as navigator.standalone.
+  it('is the installed app on an iPhone home screen', () => {
+    browserMatching()
+    vi.stubGlobal('navigator', { ...navigator, standalone: true })
+
+    expect(metricSource('1.4.0').installed).toBe(true)
+  })
 })
