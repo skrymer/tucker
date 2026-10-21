@@ -1,11 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { resetPageStubs, setVisibility } from '~~/test/page-visibility-helpers'
-import {
-  createMetricQueue,
-  sendMetrics,
-  type ApiClient,
-  type MetricEvent,
-} from './metricQueue'
+import { http, serverError } from '~~/test/mocks/http'
+import { metricsRecorded } from '~~/test/mocks/handlers/metrics'
+import { server } from '~~/test/mocks/node'
+import { createMetricQueue, sendMetrics, type MetricEvent } from './metricQueue'
 
 const event: MetricEvent = {
   kind: 'route-change',
@@ -78,29 +76,42 @@ describe('the metric queue', () => {
 
 describe('sending metrics', () => {
   // Through Tucker's API client, whose plugins prove the page sent it (ADR 0025) as
-  // they do every mutation. A stand-in client, since a fetch option never reaches a
-  // mock server: a batch is mostly sent as the page is hidden, often for good, and
-  // without keepalive the browser cancels it with the page.
-  it('posts the batch through the API client, kept alive past the page and never retried', async () => {
-    const api = vi.fn().mockResolvedValue(undefined)
+  // they do every mutation; what was taken is read back as the Admin reads it.
+  it('stores the batch it sends, counted on the Admin report', async () => {
+    server.use(...metricsRecorded())
+    const { $api } = useNuxtApp()
 
-    await sendMetrics(api as unknown as ApiClient, [event])
+    await sendMetrics($api, [event])
 
-    expect(api).toHaveBeenCalledExactlyOnceWith('/api/metrics', {
-      method: 'POST',
-      body: { events: [event] },
-      keepalive: true,
-      retry: 0,
-    })
+    const { routes } = await $api('/api/admin/metrics')
+    expect(routes).toEqual([
+      {
+        route: '/review',
+        layouts: [
+          { layout: 'phone', n: 1, p50: null, p75: null, p95: null },
+          { layout: 'desktop', n: 0, p50: null, p75: null, p95: null },
+        ],
+      },
+    ])
   })
 
-  // Lossy on purpose (ADR 0038): nothing about it is the User's to see.
-  it('drops a send that failed, without throwing', async () => {
-    const api = vi.fn().mockRejectedValue(new TypeError('Failed to fetch'))
+  // Lossy on purpose (ADR 0038): a failed send is neither thrown to the page nor
+  // tried again, so a backend that would take it the second time never sees it.
+  it('drops a send that failed, without throwing or trying again', async () => {
+    // The failing answer first: within one use(), the first handler matches.
+    server.use(
+      http.post(
+        '/api/metrics',
+        ({ response }) => response.untyped(serverError()),
+        { once: true },
+      ),
+      ...metricsRecorded(),
+    )
+    const { $api } = useNuxtApp()
 
-    await expect(
-      sendMetrics(api as unknown as ApiClient, [event]),
-    ).resolves.toBeUndefined()
+    await expect(sendMetrics($api, [event])).resolves.toBeUndefined()
+
+    expect((await $api('/api/admin/metrics')).routes).toEqual([])
   })
 })
 

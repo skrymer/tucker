@@ -1,6 +1,7 @@
 package com.tucker.domain
 
 import org.junit.jupiter.api.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
 /** What one send may carry (ADR 0038): refused whole, never in part. */
@@ -9,6 +10,11 @@ class MetricBatchTest {
     @Test
     fun `refuses an empty batch`() {
         assertFailsWith<IllegalArgumentException> { MetricBatch(emptyList()) }
+    }
+
+    @Test
+    fun `accepts exactly 50 events`() {
+        assertEquals(50, MetricBatch(List(50) { event }).events.size)
     }
 
     @Test

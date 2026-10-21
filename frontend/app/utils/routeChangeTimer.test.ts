@@ -1,5 +1,8 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { resetPageStubs, setVisibility } from '~~/test/page-visibility-helpers'
 import { createRouteChangeTimer } from './routeChangeTimer'
+
+afterEach(() => resetPageStubs())
 
 describe('timing a move between pages', () => {
   // ADR 0038: to the first paint after the new page mounts, not to the mount.
@@ -25,6 +28,60 @@ describe('timing a move between pages', () => {
     clock = 1316
     paint()
     expect(record).toHaveBeenCalledExactlyOnceWith('/foods', 316)
+  })
+
+  // A hidden page paints nothing until it is shown again, so its clock would run on
+  // through however long the User was away: that is not how long the page took.
+  it('drops a move whose page was hidden before it painted', () => {
+    let paint = () => {}
+    const record = vi.fn()
+    const timer = createRouteChangeTimer({
+      now: () => 0,
+      afterPaint: (fn) => {
+        paint = fn
+      },
+      record,
+    })
+    timer.finished('/today')
+    timer.started()
+    timer.finished('/foods')
+
+    setVisibility('hidden')
+    paint()
+
+    expect(record).not.toHaveBeenCalled()
+  })
+
+  it('keeps timing a move while the page is shown again', () => {
+    const record = vi.fn()
+    const timer = createRouteChangeTimer({
+      now: () => 0,
+      afterPaint: (fn) => fn(),
+      record,
+    })
+    timer.finished('/today')
+    timer.started()
+
+    setVisibility('visible')
+    timer.finished('/foods')
+
+    expect(record).toHaveBeenCalledExactlyOnceWith('/foods', 0)
+  })
+
+  it('drops a move whose page was hidden before it mounted', () => {
+    const record = vi.fn()
+    const timer = createRouteChangeTimer({
+      now: () => 0,
+      afterPaint: (fn) => fn(),
+      record,
+    })
+    timer.finished('/today')
+    timer.started()
+
+    setVisibility('hidden')
+    timer.finished('/foods')
+
+    expect(record).not.toHaveBeenCalled()
   })
 
   // A redirect while the visit opens is a second navigation before any page has

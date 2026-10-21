@@ -14,6 +14,16 @@ type Timing = {
 export function createRouteChangeTimer({ now, afterPaint, record }: Timing) {
   let startedAt: number | null = null
   let opened = false
+  // Counts the page's hides, so a paint can tell it was hidden on the way.
+  let hides = 0
+
+  // A hidden page paints nothing until it is shown again, so a move still in
+  // flight would be timed through the User's absence: it is dropped instead.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'hidden') return
+    startedAt = null
+    hides++
+  })
 
   return {
     started() {
@@ -25,7 +35,12 @@ export function createRouteChangeTimer({ now, afterPaint, record }: Timing) {
       startedAt = null
       opened = true
       if (start === null || !matchedPath) return
-      afterPaint(() => record(matchedPath, Math.round(now() - start)))
+      const hidesAtMount = hides
+      afterPaint(() => {
+        if (hides === hidesAtMount) {
+          record(matchedPath, Math.round(now() - start))
+        }
+      })
     },
   }
 }
