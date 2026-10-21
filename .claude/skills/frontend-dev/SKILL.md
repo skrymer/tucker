@@ -162,6 +162,13 @@ assertion with the dev token), and no browser-level layer can reach it.
   and `.left` are the mouse buttons, and the handler silently never fires. In an
   async handler, read `event.currentTarget` before the first `await`: it is `null`
   once the event has finished dispatching (#443's day choice hit both).
+- **unovis charts** (#519's `RouteTimingCard`): `VisTooltip` throws on unmount under
+  happy-dom, so a page test `vi.mock`s it out of `@unovis/vue`, and the bars, labels and
+  tooltips are read in Playwright. Its chunk puts an `<svg>` into `<body>` as it loads —
+  load a chart lazily (`Lazy…`), or a deep-equal aria snapshot elsewhere changes. A
+  grouped bar's tooltip index runs across all bars (`i % layouts` is the series); a long
+  axis label wraps into `<tspan>`s (assert with `\s*`); an axis node can be replaced
+  between locating and `boundingBox()`, so read positions in one `evaluate`.
 - **Keyboard bugs in a Reka component need Playwright.** Some Reka handlers `await nextTick()`
   and then check `event.defaultPrevented` (Reka's `TagsInputInput` on Enter is one). A browser
   runs a microtask checkpoint between listeners, so that check happens *before* an ancestor's

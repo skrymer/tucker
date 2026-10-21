@@ -46,6 +46,12 @@ becomes absolute and reaches the interceptor. It restores both in `afterAll`. Th
 harmlessly. `useNuxtApp().$api` reads `globalThis.$fetch` per call, so it follows the
 rebind.
 
+**No request header reaches a Vitest handler** — not a CSRF header, not `Content-Type`,
+by `fetch` or `$fetch` (#519 measured `request.headers` empty in a handler). A rule that
+turns on a header (CSRF) is judged by the real-stack smoke, never a handler here. And
+within one `server.use(a, b)` the first handler listed matches first: an error override
+meant to beat a stateful factory goes before it, not after.
+
 The unwrap cannot hand on the `Request`'s `signal` — Node's `fetch` refuses happy-dom's
 `AbortSignal` by brand check, failing every request — so the shim races the response
 against it instead. An aborted read rejects as it would in a browser, which

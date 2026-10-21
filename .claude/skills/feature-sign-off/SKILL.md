@@ -315,12 +315,12 @@ and #498 lost a pitest red and a "91 failed" e2e log to the re-runs written over
    returned is a criterion this diff delivers that nothing automated pins, with the
    value to drive already named — so each one is a probe this pass owes, on top of
    the ones the change's own inputs ask for. Those are the only rows to take: a
-   `MET (unpinned: …)` row is one nothing *can* drive, which is what puts it in
-   that row rather than this one. Re-read the rows against the code that
-   ships before driving them: the ledger judged the pre-fix diff, and gate 3's fixes
-   move values. Carry the list in yourself too, because nothing downstream catches a
+   `MET (unpinned: …)` row is one nothing *can* drive. Re-read the rows against the
+   code that ships before driving them: the ledger judged the pre-fix diff, and
+   gate 3's fixes move values. Carry the list in yourself too, because nothing downstream catches a
    criterion-probe you drop — the verdict auditor enumerates from the diff alone,
-   and gate 5 has already run.
+   and gate 5 has already run. Drive every value a row names, viewport included, or
+   record it NOT DRIVEN — never ✅ with a note (#519's gate 5 rejected one).
 
    The walk-through pass ends with an agent **auditing the verdict against the
    diff**; that step belongs to `/verify` and is defined there, because a verdict

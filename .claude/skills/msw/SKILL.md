@@ -54,7 +54,10 @@ handlers free of app auto-imports (`localToday()` etc.) — pass such values in.
 
 ## Rules
 
-1. **No request assertions.** Never capture a URL, query or body to assert on it. A query
+1. **No request assertions.** Never capture a URL, query or body to assert on it — nor
+   stub the `$api` client and assert what it was called with, which is the same
+   assertion one seam in (#519's gate 4 failed it). A fetch option no server observes
+   (`keepalive`) gets a known-survivors verdict instead (`metricQueue.ts`). A query
    the page must send is answered only when it is right — a 400/409 otherwise, which the
    User meets as the error state. A mutation's handler keeps what it was sent and the test
    asserts the page after the re-read — or, where the page shows the response itself (a
@@ -141,7 +144,11 @@ handlers free of app auto-imports (`localToday()` etc.) — pass such values in.
   endpoint it answers — the status for an absent or foreign id, every refusal and the
   order they are checked in, and the `ORDER BY` — per query, not per table (SQLite's
   `lower()` folds ASCII alone; a bare `ORDER BY` compares bytes). The page's own
-  validation is never a reason to leave a backend refusal unmodelled.
+  validation is never a reason to leave a backend refusal unmodelled. Reading misses what
+  Jackson does before any of that — a decimal read into an `Int`, a `null` primitive read
+  as 0 — so probe the live endpoint for those too: #519's handler refused a decimal the
+  backend took. A refusal clause no client path can send is pinned only by a test of the
+  mock itself (`test/mocks/metrics.test.ts`), red when the clause is reverted.
 - Before deleting a request count, name the client regression it caught (a retry, a
   missing re-ask, a second read) and check the replacement shows that one on
   screen: a handler break cannot, since it changes the server, not the client. The

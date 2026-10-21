@@ -205,6 +205,12 @@ Related, all cheap:
   messages). A hidden window also pauses `requestAnimationFrame`, so a frame-sampling
   probe hangs or counts nothing: check `document.visibilityState === 'visible'`
   immediately before each one (#498's moved to a Playwright fallback over it).
+- **The extension cannot hide a tab.** `tabs_create_mcp` opens the new tab behind the
+  current one, so `visibilityState` never changes — and a background tab of yours runs
+  no `requestAnimationFrame` either. To drive a hide, dispatch it in the page
+  (`visibilitychange` with `visibilityState` defined `hidden`) and label the probe
+  synthetic (`camera-surfaces.md` says the same for the scanner). #519 spent fourteen
+  turns on a "hide" that never happened.
 - **Batch with `browser_batch`** whenever you can predict two steps ahead: click,
   type, Tab, assert. Each standalone call is a round trip.
 - **Typing can stop landing too**, silently: the field has focus, the tool reports the
