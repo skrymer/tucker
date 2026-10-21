@@ -27,11 +27,22 @@ data class MetricEventRequest(
     val kind: MetricKind,
     val route: String,
     @param:JsonSetter(nulls = Nulls.FAIL) val valueMs: Int,
+    val apiMs: Int?,
+    val serverMs: Int?,
+    val firstVisit: Boolean?,
     val layout: MetricLayout,
     @param:JsonSetter(nulls = Nulls.FAIL) val installed: Boolean,
     val appVersion: String,
 ) {
-    fun toDomain() = MetricEvent(kind, route, valueMs, MetricSource(layout, installed, appVersion))
+    fun toDomain() = MetricEvent(
+        kind,
+        route,
+        valueMs,
+        apiMs,
+        serverMs,
+        firstVisit,
+        MetricSource(layout, installed, appVersion),
+    )
 }
 
 data class MetricBatchRequest(val events: List<MetricEventRequest>) {

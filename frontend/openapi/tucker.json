@@ -5830,6 +5830,31 @@
             "type": "integer",
             "format": "int32",
             "nullable": true
+          },
+          "apiP75": {
+            "format": "int32",
+            "nullable": true,
+            "type": "integer"
+          },
+          "coldP75": {
+            "format": "int32",
+            "nullable": true,
+            "type": "integer"
+          },
+          "serverMs": {
+            "format": "int32",
+            "nullable": true,
+            "type": "integer"
+          },
+          "networkMs": {
+            "format": "int32",
+            "nullable": true,
+            "type": "integer"
+          },
+          "renderMs": {
+            "format": "int32",
+            "nullable": true,
+            "type": "integer"
           }
         }
       },
@@ -5883,6 +5908,20 @@
           },
           "appVersion": {
             "type": "string"
+          },
+          "apiMs": {
+            "format": "int32",
+            "nullable": true,
+            "type": "integer"
+          },
+          "serverMs": {
+            "format": "int32",
+            "nullable": true,
+            "type": "integer"
+          },
+          "firstVisit": {
+            "nullable": true,
+            "type": "boolean"
           }
         }
       },

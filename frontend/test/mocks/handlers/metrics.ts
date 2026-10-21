@@ -8,9 +8,10 @@ type Sent = components['schemas']['MetricEventRequest']
  * Why the backend refuses a batch whole, or null when it takes it: no events or
  * more than 50, a route that is not a template, or a time outside 0–60 000 ms or
  * absent (a NaN the page sent arrives as null; a decimal the backend takes, as
- * Jackson reads it into an Int), or no installed flag. Its CSRF proof is the
- * backend's to check, as for every mutation mocked here: a mocked page is handed
- * no token.
+ * Jackson reads it into an Int), or no installed flag. A route change must also
+ * carry its api wait, server time and first-visit flag, with 0 ≤ server ≤ api ≤
+ * the move. Its CSRF proof is the backend's to check, as for every mutation
+ * mocked here: a mocked page is handed no token.
  */
 function refusal(events: Sent[]): string | null {
   if (events.length < 1 || events.length > 50) {
@@ -22,9 +23,21 @@ function refusal(events: Sent[]): string | null {
       typeof e.valueMs !== 'number' ||
       typeof e.installed !== 'boolean' ||
       e.valueMs < 0 ||
-      e.valueMs > 60_000,
+      e.valueMs > 60_000 ||
+      !isSplit(e),
   )
   return bad ? `a malformed metric: ${JSON.stringify(bad)}` : null
+}
+
+function isSplit({ valueMs, apiMs, serverMs, firstVisit }: Sent): boolean {
+  return (
+    typeof apiMs === 'number' &&
+    typeof serverMs === 'number' &&
+    typeof firstVisit === 'boolean' &&
+    serverMs >= 0 &&
+    serverMs <= apiMs &&
+    apiMs <= valueMs
+  )
 }
 
 /** What Tucker measured of itself (ADR 0038): nothing yet. */
@@ -66,6 +79,11 @@ export function metricsRecorded() {
             p50: null,
             p75: null,
             p95: null,
+            apiP75: null,
+            coldP75: null,
+            serverMs: null,
+            networkMs: null,
+            renderMs: null,
           })),
         })),
       })

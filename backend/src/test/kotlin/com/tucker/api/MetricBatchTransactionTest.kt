@@ -36,7 +36,8 @@ class MetricBatchTransactionTest {
 
     @Test
     fun `a batch is inserted inside one transaction`() {
-        val event = """{"kind":"route-change","route":"$ROUTE","valueMs":420,"layout":"phone",""" +
+        val event = """{"kind":"route-change","route":"$ROUTE","valueMs":420,"apiMs":0,"serverMs":0,""" +
+            """"firstVisit":false,"layout":"phone",""" +
             """"installed":false,"appVersion":"1.4.0"}"""
         try {
             recorder.inTransaction.clear()

@@ -2,8 +2,11 @@ type Timing = {
   now: () => number
   /** Run [fn] once the browser has painted the frame being built. */
   afterPaint: (fn: () => void) => void
-  record: (matchedPath: string, valueMs: number) => void
+  /** [start] and [end] on the `performance.now()` clock, [valueMs] the whole ms between. */
+  record: (matchedPath: string, move: TimedMove) => void
 }
+
+export type TimedMove = { valueMs: number; start: number; end: number }
 
 /**
  * Times each move between pages, from the router starting it to the first paint
@@ -40,7 +43,8 @@ export function createRouteChangeTimer({ now, afterPaint, record }: Timing) {
       const hidesAtMount = hides
       afterPaint(() => {
         if (hides === hidesAtMount) {
-          record(matchedPath, Math.round(now() - start))
+          const end = now()
+          record(matchedPath, { valueMs: Math.round(end - start), start, end })
         }
       })
     },

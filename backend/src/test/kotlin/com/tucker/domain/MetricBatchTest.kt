@@ -26,6 +26,9 @@ class MetricBatchTest {
         kind = MetricKind.ROUTE_CHANGE,
         route = "/review",
         valueMs = 420,
+        apiMs = 300,
+        serverMs = 120,
+        firstVisit = false,
         source = MetricSource(layout = MetricLayout.PHONE, installed = false, appVersion = "1.4.0"),
     )
 }

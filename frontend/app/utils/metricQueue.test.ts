@@ -9,9 +9,24 @@ const event: MetricEvent = {
   kind: 'route-change',
   route: '/review',
   valueMs: 420,
+  apiMs: 300,
+  serverMs: 120,
+  firstVisit: false,
   layout: 'phone',
   installed: false,
   appVersion: '1.4.0',
+}
+
+/** What a layout with too few samples carries besides its count. */
+const noFigures = {
+  p50: null,
+  p75: null,
+  p95: null,
+  apiP75: null,
+  coldP75: null,
+  serverMs: null,
+  networkMs: null,
+  renderMs: null,
 }
 
 afterEach(() => resetPageStubs())
@@ -88,8 +103,8 @@ describe('sending metrics', () => {
       {
         route: '/review',
         layouts: [
-          { layout: 'phone', n: 1, p50: null, p75: null, p95: null },
-          { layout: 'desktop', n: 0, p50: null, p75: null, p95: null },
+          { layout: 'phone', n: 1, ...noFigures },
+          { layout: 'desktop', n: 0, ...noFigures },
         ],
       },
     ])

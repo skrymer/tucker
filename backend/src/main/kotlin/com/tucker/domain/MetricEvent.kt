@@ -46,12 +46,29 @@ data class MetricEvent(
     val kind: MetricKind,
     val route: String,
     val valueMs: Int,
+    val apiMs: Int?,
+    val serverMs: Int?,
+    val firstVisit: Boolean?,
     val source: MetricSource,
 ) {
     init {
         require(ROUTE_TEMPLATE.matches(route)) { "\"$route\" is not a route template" }
         require(valueMs in 0..MAX_MS) { "a metric's time must be 0–$MAX_MS ms, not $valueMs" }
+        requireNotNull(apiMs) { "a route change must say how long it waited on the api" }
+        requireNotNull(serverMs) { "a route change must say how long the server worked" }
+        requireNotNull(firstVisit) { "a route change must say whether it was the route's first visit" }
+        require(serverMs >= 0) { "a server time cannot be negative, not $serverMs" }
+        require(serverMs <= apiMs) { "a server time of $serverMs ms cannot exceed the api wait of $apiMs ms" }
+        require(apiMs <= valueMs) { "an api wait of $apiMs ms cannot exceed the move's $valueMs ms" }
     }
+
+    /** Where a route change's time went; null for a kind that is not split. */
+    val split: TimeSplit?
+        get() = if (apiMs != null && serverMs != null) {
+            TimeSplit(serverMs = serverMs, networkMs = apiMs - serverMs, renderMs = valueMs - apiMs)
+        } else {
+            null
+        }
 
     companion object {
         /** A minute: anything longer is a tab left in the background, not a page being slow. */

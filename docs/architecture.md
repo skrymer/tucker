@@ -163,6 +163,7 @@ flowchart TD
 
   subgraph api["Backend API — Spring Boot"]
     direction TB
+    timing["<b>ServerTimingFilter</b><br/>[Component: servlet filter, first of all]<br/>Server-Timing: app;dur on every response"]:::component
     subgraph sec["Security — com.tucker.security"]
       jwt["<b>AccessJwtDecoder</b><br/>[Component: Nimbus, Cloudflare JWKS]<br/>verifies the assertion"]:::component
       principal["<b>AccessPrincipalConverter</b><br/>[Component: Spring Security]<br/>assertion → User, provisioned just-in-time"]:::component
@@ -176,7 +177,8 @@ flowchart TD
   end
   db[("<b>Database</b><br/>[Container: SQLite, Flyway]")]:::ext
 
-  web -- "JSON/HTTP + Cf-Access-Jwt-Assertion" --> jwt
+  web -- "JSON/HTTP + Cf-Access-Jwt-Assertion" --> timing
+  timing --> jwt
   jwt --> principal
   principal --> csrf
   csrf --> controllers
@@ -344,7 +346,7 @@ flowchart TD
     composables["<b>Composables</b><br/>[Component: Vue composables]<br/>useApiMutation, useEntryLogging, …: reactive state, toasts, retry"]:::component
     scanner["<b>useBarcodeScanner</b><br/>[Component: zxing-wasm]<br/>decodes on-device"]:::component
     pwa["<b>usePwaInstall · useWebPush</b><br/>[Component: PushManager]<br/>install and reminders"]:::component
-    plugins["<b>Plugins</b><br/>[Component: Nuxt plugins]<br/>auth-gate, csrf, route-metrics<br/>signed-out state, CSRF header, route-change timing"]:::component
+    plugins["<b>Plugins</b><br/>[Component: Nuxt plugins]<br/>auth-gate, csrf, route-metrics<br/>signed-out state, CSRF header, route-change timing and its split"]:::component
     client["<b>API client</b><br/>[Component: nuxt-open-fetch]<br/>typed from openapi/tucker.json"]:::component
   end
   sw["<b>Service worker</b><br/>[Container: Workbox + push-sw.js]"]:::container
@@ -551,7 +553,7 @@ measurements, which say nothing of who made them
 | `reference_food_synonym` | Query rewrites for Reference Food search (`term` → `replacement`) | Flyway (V17) |
 | `nutrient_reference_value` | NHMRC Nutrient Reference Values by nutrient, sex and the age a band opens at | Flyway (V18) |
 | `app_config` | Installation-wide key/value settings, such as the VAPID key pair | The app, on first boot |
-| `metric_event` | One route change per row: route template, time, layout, installed, app version, when recorded. No `user_id`, no user agent | `POST /api/metrics` (V24) |
+| `metric_event` | One route change per row: route template, time, its wait on `/api` and the server's part of that, whether it was the route's first visit, layout, installed, app version, when recorded. No `user_id`, no user agent | `POST /api/metrics` (V24, V25) |
 | `id_sequence` | The last id handed out per aggregate table, so an aggregate has its id before it is stored ([ADR 0036](adr/0036-an-aggregate-has-its-identity-from-creation.md)) | Flyway (V21), then the app on every create |
 
 ## Keeping this current

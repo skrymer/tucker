@@ -2,7 +2,13 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import type { components } from '#open-fetch-schemas/api'
-import { figuresLine, LAYOUTS, routeLabel } from './routeTiming'
+import {
+  figuresLine,
+  PARTS,
+  rowLabel,
+  timingRows,
+  waitsLine,
+} from './routeTiming'
 
 type LayoutFigures = components['schemas']['LayoutFiguresResponse']
 
@@ -14,25 +20,51 @@ const measured = (layout: Layout, n: number): LayoutFigures => ({
   p50: 300,
   p75: 450,
   p95: 700,
+  apiP75: 250,
+  coldP75: 900,
+  serverMs: 80,
+  networkMs: 160,
+  renderMs: 200,
 })
-describe('a route on the Admin chart', () => {
-  it('is named by its route alone when both layouts have a figure', () => {
-    expect(
-      routeLabel({
+
+describe("the Admin chart's rows", () => {
+  it("lists each route's phone above its desktop, the routes in the backend's order", () => {
+    const rows = timingRows([
+      {
         route: '/review',
         layouts: [measured('phone', 48), measured('desktop', 63)],
-      }),
-    ).toBe('/review')
+      },
+      {
+        route: '/foods',
+        layouts: [measured('phone', 20), measured('desktop', 9)],
+      },
+    ])
+
+    expect(rows.map((r) => [r.route, r.layout.name, r.figures.n])).toEqual([
+      ['/review', 'Phone', 48],
+      ['/review', 'Desktop', 63],
+      ['/foods', 'Phone', 20],
+      ['/foods', 'Desktop', 9],
+    ])
+  })
+})
+
+describe("a row's label on the Admin chart", () => {
+  it('names its route and its layout', () => {
+    const [row] = timingRows([
+      { route: '/review', layouts: [measured('phone', 48)] },
+    ])
+
+    expect(rowLabel(row!)).toBe('/review · Phone')
   })
 
   // A missing bar says nothing on its own: the label is what says why it is missing.
-  it('names each layout with too few samples for a figure, and its count', () => {
-    expect(
-      routeLabel({
-        route: '/profile',
-        layouts: [tooFew('phone', 3), tooFew('desktop', 2)],
-      }),
-    ).toBe('/profile (Phone too few: 3, Desktop too few: 2)')
+  it('says when there are too few samples for a bar, and how many', () => {
+    const [row] = timingRows([
+      { route: '/profile', layouts: [tooFew('desktop', 3)] },
+    ])
+
+    expect(rowLabel(row!)).toBe('/profile · Desktop · too few (n 3)')
   })
 })
 
@@ -42,14 +74,28 @@ describe('a bar on the Admin chart', () => {
       figuresLine({ layout: 'phone', n: 48, p50: 640, p75: 910, p95: 1820 }),
     ).toBe('n 48 · p50 640 · p75 910 · p95 1820 ms')
   })
+
+  it('states the p75 of its wait on the api and of its first visits', () => {
+    expect(
+      waitsLine({ ...measured('phone', 48), apiP75: 420, coldP75: 1310 }),
+    ).toBe('api p75 420 · cold p75 1310 ms')
+  })
+
+  // First visits are a few of a group's moves, so they are often too few on their own.
+  it('says when there are too few first visits for a cold figure', () => {
+    expect(
+      waitsLine({ ...measured('phone', 48), apiP75: 420, coldP75: null }),
+    ).toBe('api p75 420 ms · cold p75 too few')
+  })
 })
 
-describe("the Admin chart's layouts", () => {
-  // Identity by colour, in the categorical palette's fixed order (DESIGN.md).
-  it('draws phone and desktop in the first two categorical slots', () => {
-    expect(LAYOUTS).toEqual([
-      { layout: 'phone', name: 'Phone', color: 'var(--tucker-cat-1)' },
-      { layout: 'desktop', name: 'Desktop', color: 'var(--tucker-cat-2)' },
+describe("the Admin chart's parts", () => {
+  // Stacked from the server outwards, each in the categorical palette's fixed order.
+  it('stacks the server, then network and proxy, then render and JS', () => {
+    expect(PARTS.map(({ name, color }) => ({ name, color }))).toEqual([
+      { name: 'Server', color: 'var(--tucker-cat-1)' },
+      { name: 'Network + proxy', color: 'var(--tucker-cat-2)' },
+      { name: 'Render / JS', color: 'var(--tucker-cat-3)' },
     ])
   })
 })
@@ -84,5 +130,16 @@ describe("the Admin chart's theme", () => {
 })
 
 function tooFew(layout: Layout, n: number): LayoutFigures {
-  return { layout, n, p50: null, p75: null, p95: null }
+  return {
+    layout,
+    n,
+    p50: null,
+    p75: null,
+    p95: null,
+    apiP75: null,
+    coldP75: null,
+    serverMs: null,
+    networkMs: null,
+    renderMs: null,
+  }
 }

@@ -27,7 +27,11 @@ describe('timing a move between pages', () => {
 
     clock = 1316
     paint()
-    expect(record).toHaveBeenCalledExactlyOnceWith('/foods', 316)
+    expect(record).toHaveBeenCalledExactlyOnceWith('/foods', {
+      valueMs: 316,
+      start: 1000,
+      end: 1316,
+    })
   })
 
   // A hidden page paints nothing until it is shown again, so its clock would run on
@@ -65,7 +69,11 @@ describe('timing a move between pages', () => {
     setVisibility('visible')
     timer.finished('/foods')
 
-    expect(record).toHaveBeenCalledExactlyOnceWith('/foods', 0)
+    expect(record).toHaveBeenCalledExactlyOnceWith('/foods', {
+      valueMs: 0,
+      start: 0,
+      end: 0,
+    })
   })
 
   it('drops a move that starts while the page is hidden', () => {

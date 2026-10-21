@@ -97,8 +97,8 @@ class MetricApiTest {
         valueMs: Int = 420,
         kind: String = "route-change",
     ) =
-        """{"kind":"$kind","route":"$route","valueMs":$valueMs,"layout":"$layout",""" +
-            """"installed":false,"appVersion":"1.4.0"}"""
+        """{"kind":"$kind","route":"$route","valueMs":$valueMs,"apiMs":0,"serverMs":0,""" +
+            """"firstVisit":false,"layout":"$layout","installed":false,"appVersion":"1.4.0"}"""
 
     private fun batchOf(vararg events: String) = """{"events":[${events.joinToString(",")}]}"""
 }
