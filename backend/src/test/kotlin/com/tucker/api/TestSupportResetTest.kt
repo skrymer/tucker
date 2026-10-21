@@ -1,5 +1,8 @@
 package com.tucker.api
 
+import com.tucker.jooq.DefaultSchema
+import com.tucker.jooq.Tables.METRIC_EVENT
+import com.tucker.jooq.Tables.REFERENCE_FOOD
 import com.tucker.jooq.Tables.TAG
 import com.tucker.jooq.Tables.USER
 import com.tucker.security.ACCESS_ASSERTION_HEADER
@@ -64,5 +67,49 @@ class TestSupportResetTest {
 
         assertEquals(0, dsl.fetchCount(TAG), "a reset database holds no Tags")
         assertEquals(0, dsl.fetchCount(USER), "a reset database holds no Users at all")
+    }
+
+    /**
+     * Closed-world: every table jOOQ knows is either installation-wide, and kept, or
+     * emptied — so a table added later is reset unless it is named here as kept.
+     */
+    @Test
+    fun `resetting empties every table but the installation-wide ones, which it keeps`() {
+        mockMvc.get("/api/foods") {
+            header(ACCESS_ASSERTION_HEADER, AccessTokens.mint(email = "closed-world@tucker.invalid"))
+        }.andExpect { status { isOk() } }
+
+        mockMvc.post("/api/test/reset").andExpect { status { isNoContent() } }
+
+        val (kept, emptied) = DefaultSchema.DEFAULT_SCHEMA.tables.partition { it.name in INSTALLATION_WIDE }
+        assertEquals(INSTALLATION_WIDE, kept.map { it.name }.toSet(), "every kept table exists")
+        assertEquals(emptyMap(), emptied.associate { it.name to dsl.fetchCount(it) }.filterValues { it > 0 })
+        assertTrue(dsl.fetchCount(REFERENCE_FOOD) > 0, "the seeded Reference Foods survive a reset")
+    }
+
+    /** Owned by no User, so nothing about clearing Users takes them with it (ADR 0038). */
+    @Test
+    fun `resetting clears what Tucker measured of itself`() {
+        mockMvc.post("/api/metrics") {
+            header(ACCESS_ASSERTION_HEADER, AccessTokens.mint(email = "mover@tucker.invalid"))
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"events":[{"kind":"route-change","route":"/review","valueMs":420,""" +
+                """"layout":"phone","installed":false,"appVersion":"1.4.0"}]}"""
+        }.andExpect { status { isNoContent() } }
+
+        mockMvc.post("/api/test/reset").andExpect { status { isNoContent() } }
+
+        assertEquals(0, dsl.fetchCount(METRIC_EVENT), "a reset database holds no metrics")
+    }
+
+    private companion object {
+        /** Seeded by migrations or bootstrapped by the app, and the same for everybody. */
+        val INSTALLATION_WIDE = setOf(
+            "app_config",
+            "id_sequence",
+            "nutrient_reference_value",
+            "reference_food",
+            "reference_food_synonym",
+        )
     }
 }

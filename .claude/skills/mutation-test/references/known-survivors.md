@@ -1644,6 +1644,39 @@ is still loading raises no error*). The six left are **equivalent**:
   (this change touched only their templates), and so does `WeightHistorySection.vue`,
   whose script gained `readingsChanged` and `toDelete`, both killed.
 
+### Route-change metrics (#519) — frontend 118 of 143, backend 75 of 79
+
+- **Request DTO getters — equivalent** (`MetricEventRequest`'s five, `MetricBatchRequest
+  .getEvents`). `toDomain()` reads the backing fields, and nothing serialises a request.
+- **`MetricKind.getWire` → `""` — false survivor**, the `@JsonValue` caching wall above:
+  blanking the wire value on a copy fails 4 tests (`MetricApiTest`, `AdminMetricsApiTest`).
+- **`TestSupportController`'s `INSTALLATION_WIDE` → `emptySet` — false survivor** (a
+  companion initialised once, at context start): emptied on a copy, *resetting empties
+  every table but the installation-wide ones* fails. Its `forget()` removal and
+  `pushPayloads` → `emptyList` survive on `main` too; the reminder smokes read
+  `/api/test/push-payloads` (`e2e/smoke/support/reminder-tick.ts`).
+- **`metricQueue.ts` `keepalive: true` → `false` — unpinned by ruling.** A fetch option
+  never reaches a mock server, and ADR 0034 rules out asserting the request; the user
+  chose MSW over a stand-in client knowing this line goes unpinned. `retry: 0` deleted
+  survives too and is **equivalent**: ofetch never retries a payload method by default.
+  `retry: 0` → `1` is killed (*drops a send that failed, without throwing or trying
+  again*, red on a hand-mutant).
+- **`routeChangeTimer.ts` `hides++` → `hides--` — equivalent**: a paint only asks
+  whether the count moved.
+- **`routeTiming.ts` `?.name` → `.name` — equivalent**: a layout is typed to the two
+  `LAYOUTS` holds, so `find` never misses.
+- **`admin.vue`'s `report.value?.routes ?? []` — equivalent**: read only inside
+  `LoadErrorState`'s content, which renders only after a successful read. The not-found
+  guard's mutants (L13–17) are **killed by an out-of-scope layer**: `e2e/admin.spec.ts`'s
+  not-found tests and `e2e/smoke/admin.smoke.spec.ts`.
+- **`RouteTimingCard.vue` and `route-metrics.client.ts` — killed by an out-of-scope layer**,
+  per mutant in the triage: `e2e/admin.spec.ts` (*counts a move…*, *puts the slowest page
+  at the top*, *colours each bar…*, *states the exact figures…*) and
+  `e2e/smoke/metrics.smoke.spec.ts`. Equivalent: the card's `?.p75` and both `''`
+  fallbacks (the backend lists every layout for every route, `PerformanceReport.of`).
+  `route-metrics.client.ts:28`'s `?.path` is equivalent in practice: `page:finish` fires
+  only for a matched page.
+
 ### Noise removed at the source
 
 Four `getLog()` companion accessors (`MartijndwarsWebPushSender`, `RecordingWebPushSender`,

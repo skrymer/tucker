@@ -53,7 +53,7 @@ class GoalRepository(
         rec.startWeightKg = goal.startWeightKg
         rec.targetWeightKg = goal.targetWeightKg
         rec.rateKgPerWeek = goal.rateKgPerWeek
-        rec.active = if (goal.active) 1 else 0
+        rec.active = goal.active.toFlag()
         rec.reachedOn = goal.reachedOn?.toString()
         rec.store()
         return goal
@@ -83,7 +83,7 @@ class GoalRepository(
         startWeightKg = startWeightKg,
         targetWeightKg = targetWeightKg,
         rateKgPerWeek = rateKgPerWeek,
-        active = active != 0,
+        active = active.isFlagSet(),
         reachedOn = reachedOn?.let(LocalDate::parse),
     )
 }

@@ -4,6 +4,7 @@ import { foodHandlers } from './foods'
 import { goalHandlers } from './goal'
 import { identityHandlers } from './identity'
 import { intakeBreakdownHandlers } from './intake-breakdown'
+import { metricHandlers } from './metrics'
 import { micronutrientHandlers } from './micronutrients'
 import { profileHandlers } from './profile'
 import { pushHandlers } from './push'
@@ -19,7 +20,8 @@ import { weightTimelineHandlers } from './weight-timeline'
  * set up, counting calories, reminders off, weighed in once, no Goal, an
  * empty catalog and no Tags, nothing logged today, tomorrow or this week, one Weekly
  * Review (the first, which set the Budget), too few readings for a Weight
- * Timeline, and no Reference Food matching anything. A test `use()`s only the
+ * Timeline, no Reference Food matching anything, and nothing of Tucker
+ * itself measured. A test `use()`s only the
  * variation it is about (ADR 0034).
  */
 export const handlers = [
@@ -38,4 +40,5 @@ export const handlers = [
   ...intakeBreakdownHandlers,
   ...micronutrientHandlers,
   ...weightTimelineHandlers,
+  ...metricHandlers,
 ]

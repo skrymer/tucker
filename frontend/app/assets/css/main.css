@@ -185,6 +185,18 @@ body {
   --vis-crosshair-line-stroke-color: var(--ui-text-dimmed);
 }
 
+/* The Admin's route chart, on a class for the reason `.weight-timeline` is. Its
+   tooltip is unovis' own box, drawn here in the card's elevated surface. */
+.route-timing {
+  --vis-axis-grid-color: var(--ui-border);
+  --vis-axis-tick-label-color: var(--ui-text-muted);
+  --vis-axis-tick-label-font-size: 12px;
+  --vis-axis-font-family: inherit;
+  --vis-tooltip-background-color: var(--ui-bg-elevated);
+  --vis-tooltip-border-color: var(--ui-border);
+  --vis-tooltip-text-color: var(--ui-text);
+}
+
 /* A placeholder held back by ADR 0007's 150 ms, so a fast answer never flashes
    it. An animation rather than a Vue <Transition appear>, which does not run for
    an element mounted with its component inside a Suspense boundary. */

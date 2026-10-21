@@ -19,7 +19,9 @@ for it says which User it came from.
 - **A route change is timed by Tucker's router**, from the navigation starting to the
   first paint after the new page mounts. It is its own measure, never relabelled as
   INP: it covers the page becoming ready, which can run past the interaction's next
-  paint.
+  paint. A move the page is hidden for at any point is dropped rather than timed: a
+  hidden page paints nothing until it is shown again, so its time would be the
+  User's absence, not the page's speed.
 - **Each route change is split three ways for that navigation.** `apiMs` is the wall
   time spent waiting on `/api` (Resource Timing). `serverMs` is the part of that wait
   the server spent working, which every `/api` response states in a `Server-Timing`
