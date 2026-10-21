@@ -1,6 +1,6 @@
 # Feature history
 
-The slice-by-slice record of every frontend increment (F1–F19): what each slice
+The slice-by-slice record of every frontend increment (F1–F21): what each slice
 shipped, and the non-obvious findings, traps and deviations its sign-off turned
 up. Moved out of `CLAUDE.md`, which keeps only the roster, to keep the start-up
 context small. The decisions themselves live in the ADRs (`docs/adr/`) and the
@@ -1954,3 +1954,36 @@ null` now means two things that earn opposite messages — the same trap
     mutes those numerals, and full-primary marks beside them read as the shown month.
   - **`useWindowedFetch` binds a caller's ref** as its selection, so the card's
     `picked` drives both halves and exists with Calorie Tracking off.
+- **F21** — **Performance metrics and an Admin page** (PRD
+  [#517](https://github.com/skrymer/tucker/issues/517), ADRs 0038, 0039), in slices
+  #518–#525.
+  - **Slice 1 ([#518](https://github.com/skrymer/tucker/issues/518)) — the Admin
+    role and an empty Metrics page.** `TUCKER_ADMIN_EMAILS` (comma-separated, matched
+    case-insensitively, empty or unset = nobody) binds to `AdminProperties`;
+    `AccessPrincipalConverter` marks the principal and `asAuthentication` grants
+    `ROLE_ADMIN`; `GET /api/me` gains `admin`. The frontend reads `/api/me` once per
+    page load through `useMe` (`retry: 0`, a caller mid-read joins it, a failure
+    settles nothing), shared by AppNav, the Profile byline and `/admin`. An Admin sees
+    "Admin" last in the desktop side nav's More; never on the phone bar or its sheet.
+    `/admin` (eyebrow "Admin", title "Metrics", an empty state) asks the layout for a
+    wider column through a `wideColumn` page meta; below `lg` it shows only "Metrics are
+    built for a larger screen." A non-Admin, or a failed `/api/me`, meets the ordinary
+    not-found page; an expired session meets the signed-out state. Prod compose passes
+    the variable through as optional; deploy/README.md names it as an operator step.
+  - **The nav does not wait on `/api/me`**: it would have held every User's first
+    paint for a desktop-only, Admin-only item (the adversary's attack at sign-off), so
+    the item appears when the answer lands — which is what made a mid-read join in
+    `useMe` necessary, and the non-Admin smoke wait for the byline before asserting
+    the absence.
+  - **The gate runs in the page's setup, not a route middleware**: a middleware's
+    `abortNavigation` left a non-Admin coming Back to /admin on a 404 under the address
+    "/", where an unknown path's not-found keeps its path. `showError` from the
+    middleware was tried and the navigation cleared it.
+  - **ADR 0007 lists `/api/me`** as a fourth `retry: 0` read, and ADR 0020 names
+    `admin` on the principal (both on the user's ruling at sign-off).
+  - **Traps:** the smoke signs the browser in as the smoke stack's Admin through a
+    `browserEmail` fixture that routes its `/api` calls with that User's assertion
+    (the proxy defers to one already present); the mocked e2e fixture gained the smokes'
+    `allowedErrors` because Nuxt logs every not-found page it shows. A `docker compose`
+    run from `.claude/worktrees/` (one `cd ..` too far) walks up to the main checkout's
+    compose file and builds `main`'s backend — pass `--project-directory`.
