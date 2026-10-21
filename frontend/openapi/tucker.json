@@ -3944,6 +3944,149 @@
           }
         }
       }
+    },
+    "/api/admin/metrics": {
+      "get": {
+        "tags": [
+          "admin-metrics-controller"
+        ],
+        "operationId": "report",
+        "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PerformanceReportResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/metrics": {
+      "post": {
+        "tags": [
+          "metric-controller"
+        ],
+        "operationId": "record",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MetricBatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -5651,6 +5794,115 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/CompositionLineResponse"
+            }
+          }
+        }
+      },
+      "LayoutFiguresResponse": {
+        "required": [
+          "layout",
+          "n"
+        ],
+        "type": "object",
+        "properties": {
+          "layout": {
+            "type": "string"
+          },
+          "n": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "p50": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "p75": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "p95": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          }
+        }
+      },
+      "MetricBatchRequest": {
+        "required": [
+          "events"
+        ],
+        "type": "object",
+        "properties": {
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MetricEventRequest"
+            }
+          }
+        }
+      },
+      "MetricEventRequest": {
+        "required": [
+          "appVersion",
+          "installed",
+          "kind",
+          "layout",
+          "route",
+          "valueMs"
+        ],
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string"
+          },
+          "route": {
+            "type": "string"
+          },
+          "valueMs": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "layout": {
+            "type": "string"
+          },
+          "installed": {
+            "type": "boolean"
+          },
+          "appVersion": {
+            "type": "string"
+          }
+        }
+      },
+      "PerformanceReportResponse": {
+        "required": [
+          "routes"
+        ],
+        "type": "object",
+        "properties": {
+          "routes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RouteFiguresResponse"
+            }
+          }
+        }
+      },
+      "RouteFiguresResponse": {
+        "required": [
+          "layouts",
+          "route"
+        ],
+        "type": "object",
+        "properties": {
+          "route": {
+            "type": "string"
+          },
+          "layouts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LayoutFiguresResponse"
             }
           }
         }

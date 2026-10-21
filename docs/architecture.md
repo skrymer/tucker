@@ -172,7 +172,7 @@ flowchart TD
     controllers["<b>Controllers</b><br/>[Component: com.tucker.api, springdoc]<br/>REST endpoints + OpenAPI spec"]:::component
     services["<b>Services</b><br/>[Component: com.tucker.service]<br/>orchestrate a use case"]:::component
     domain["<b>Domain model</b><br/>[Component: com.tucker.domain]<br/>entities, value objects, rules"]:::component
-    repos["<b>Repositories</b><br/>[Component: com.tucker.persistence, jOOQ]<br/>SQL scoped to the current User"]:::component
+    repos["<b>Repositories</b><br/>[Component: com.tucker.persistence, jOOQ]<br/>SQL scoped to the current User; metrics belong to none"]:::component
   end
   db[("<b>Database</b><br/>[Container: SQLite, Flyway]")]:::ext
 
@@ -186,6 +186,7 @@ flowchart TD
   services --> domain
   services --> repos
   repos -- "reads owner from" --> current
+  controllers -- "is this an Admin?" --> current
   repos -- "JDBC" --> db
 
   classDef component fill:#85bbf0,color:#000,stroke:#5d82a8
@@ -343,7 +344,7 @@ flowchart TD
     composables["<b>Composables</b><br/>[Component: Vue composables]<br/>useApiMutation, useEntryLogging, …: reactive state, toasts, retry"]:::component
     scanner["<b>useBarcodeScanner</b><br/>[Component: zxing-wasm]<br/>decodes on-device"]:::component
     pwa["<b>usePwaInstall · useWebPush</b><br/>[Component: PushManager]<br/>install and reminders"]:::component
-    plugins["<b>Plugins</b><br/>[Component: Nuxt plugins]<br/>auth-gate, csrf<br/>signed-out state, CSRF header"]:::component
+    plugins["<b>Plugins</b><br/>[Component: Nuxt plugins]<br/>auth-gate, csrf, route-metrics<br/>signed-out state, CSRF header, route-change timing"]:::component
     client["<b>API client</b><br/>[Component: nuxt-open-fetch]<br/>typed from openapi/tucker.json"]:::component
   end
   sw["<b>Service worker</b><br/>[Container: Workbox + push-sw.js]"]:::container
@@ -360,6 +361,7 @@ flowchart TD
   composables --> client
   plugins -- "hooks into" --> client
   client -- "JSON/HTTPS, same origin" --> proxy
+  plugins -- "metric batches, fetch keepalive" --> proxy
   proxy -- "JSON/HTTP" --> api
   pwa -- "subscribes" --> sw
 
@@ -539,8 +541,10 @@ erDiagram
 
 ### Installation-wide tables
 
-Five tables belong to no User. They are seeded by migrations or bootstrapped by
-the app, and the same for everybody.
+Six tables belong to no User. They are seeded by migrations or bootstrapped by
+the app, and the same for everybody — or, for `metric_event`, Tucker's own
+measurements, which say nothing of who made them
+([ADR 0038](adr/0038-performance-is-measured-by-tucker-itself-and-no-metric-names-a-user.md)).
 
 | Table | Holds | Filled by |
 | --- | --- | --- |
@@ -548,6 +552,7 @@ the app, and the same for everybody.
 | `reference_food_synonym` | Query rewrites for Reference Food search (`term` → `replacement`) | Flyway (V17) |
 | `nutrient_reference_value` | NHMRC Nutrient Reference Values by nutrient, sex and the age a band opens at | Flyway (V18) |
 | `app_config` | Installation-wide key/value settings, such as the VAPID key pair | The app, on first boot |
+| `metric_event` | One route change per row: route template, time, layout, installed, app version, when recorded. No `user_id`, no user agent | `POST /api/metrics` (V24) |
 | `id_sequence` | The last id handed out per aggregate table, so an aggregate has its id before it is stored ([ADR 0036](adr/0036-an-aggregate-has-its-identity-from-creation.md)) | Flyway (V21), then the app on every create |
 
 ## Keeping this current

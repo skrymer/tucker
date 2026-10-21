@@ -1,5 +1,6 @@
 package com.tucker.api
 
+import com.tucker.jooq.Tables.METRIC_EVENT
 import com.tucker.jooq.Tables.TAG
 import com.tucker.jooq.Tables.USER
 import com.tucker.security.ACCESS_ASSERTION_HEADER
@@ -64,5 +65,20 @@ class TestSupportResetTest {
 
         assertEquals(0, dsl.fetchCount(TAG), "a reset database holds no Tags")
         assertEquals(0, dsl.fetchCount(USER), "a reset database holds no Users at all")
+    }
+
+    /** Owned by no User, so nothing about clearing Users takes them with it (ADR 0038). */
+    @Test
+    fun `resetting clears what Tucker measured of itself`() {
+        mockMvc.post("/api/metrics") {
+            header(ACCESS_ASSERTION_HEADER, AccessTokens.mint(email = "mover@tucker.invalid"))
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"events":[{"kind":"route-change","route":"/review","valueMs":420,""" +
+                """"layout":"phone","installed":false,"appVersion":"1.4.0"}]}"""
+        }.andExpect { status { isNoContent() } }
+
+        mockMvc.post("/api/test/reset").andExpect { status { isNoContent() } }
+
+        assertEquals(0, dsl.fetchCount(METRIC_EVENT), "a reset database holds no metrics")
     }
 }

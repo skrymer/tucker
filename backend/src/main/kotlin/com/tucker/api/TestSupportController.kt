@@ -3,6 +3,7 @@ package com.tucker.api
 import com.tucker.jooq.Tables.ENTRY
 import com.tucker.jooq.Tables.FOOD
 import com.tucker.jooq.Tables.GOAL
+import com.tucker.jooq.Tables.METRIC_EVENT
 import com.tucker.jooq.Tables.PROFILE
 import com.tucker.jooq.Tables.PUSH_SUBSCRIPTION
 import com.tucker.jooq.Tables.RECIPE_INGREDIENT
@@ -72,6 +73,8 @@ class TestSupportController(
         // are simply provisioned again by their next one, which is the point: a
         // smoke about a brand-new User needs a database that has never seen them.
         dsl.deleteFrom(USER).execute()
+        // Owned by no User (ADR 0038), so clearing Users leaves them behind.
+        dsl.deleteFrom(METRIC_EVENT).execute()
         pushSender.forget()
     }
 

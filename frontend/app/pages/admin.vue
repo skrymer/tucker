@@ -17,6 +17,9 @@ if (!isAdmin.value && !useAuthGate().isSignedOut.value) {
     fatal: true,
   })
 }
+
+const { data: report } = await useApi('/api/admin/metrics')
+const routes = computed(() => report.value?.routes ?? [])
 </script>
 
 <template>
@@ -30,7 +33,10 @@ if (!isAdmin.value && !useAuthGate().isSignedOut.value) {
         <p class="text-eyebrow text-muted">Admin</p>
         <h1 class="text-h1 text-default">Metrics</h1>
       </header>
-      <div class="flex flex-col items-center gap-3 py-12 text-center">
+      <!-- Lazy: unovis puts an <svg> of its own into <body> as its chunk loads,
+           and a page with nothing to chart has no reason to load it. -->
+      <LazyRouteTimingCard v-if="routes.length" :routes="routes" />
+      <div v-else class="flex flex-col items-center gap-3 py-12 text-center">
         <UIcon name="i-lucide-gauge" class="size-10 text-muted" aria-hidden />
         <h2 class="text-h2 text-highlighted">Nothing measured yet</h2>
         <p class="max-w-xs text-sm text-muted">

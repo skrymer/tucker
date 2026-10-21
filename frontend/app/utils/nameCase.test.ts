@@ -113,6 +113,10 @@ const ALLOWED: Record<string, Record<string, string>> = {
     'tag.value.name':
       'a Tag keeps the spelling its User gave it, so it is never recased (ADR 0033)',
   },
+  'components/RouteTimingCard.vue': {
+    'LAYOUT_NAMES[layout]':
+      'a layout Tucker names itself (Phone, Desktop), not a name a User typed',
+  },
   'pages/design.vue': {
     's.name': 'a colour token in the style guide, not a name a User typed',
   },
