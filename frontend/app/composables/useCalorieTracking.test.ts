@@ -3,6 +3,7 @@ import { defineComponent } from 'vue'
 import { renderSuspended } from '@nuxt/test-utils/runtime'
 import userEvent from '@testing-library/user-event'
 import { screen } from '@testing-library/vue'
+import { forgetAppState } from '~~/test/app-state'
 import { failingRead } from '~~/test/mocks/http'
 import { server } from '~~/test/mocks/node'
 import {
@@ -48,23 +49,10 @@ async function loadTracking(start: boolean) {
   await userEvent.click(screen.getByRole('button', { name: 'load' }))
 }
 
-/**
- * Wipes the app-wide state between tests. Without it the setting, the in-flight
- * read and the settled flag all survive into the next test, so a pass could be a
- * previous test's leftover and the order of the file would be load-bearing.
- */
-const resetHost = defineComponent({
-  setup: () => {
-    clearNuxtState()
-    return {}
-  },
-  template: `<span>reset</span>`,
-})
-
 const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
 beforeEach(async () => {
   warn.mockClear()
-  await renderSuspended(resetHost)
+  await forgetAppState()
 })
 afterAll(() => warn.mockRestore())
 

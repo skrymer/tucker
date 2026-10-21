@@ -33,6 +33,9 @@ services:
       # for the same reason. A dev or smoke database starts empty, so V9 adopts nothing
       # and this is never actually written — the prod overlay supplies the real one.
       TUCKER_OWNER_EMAIL: owner@tucker.invalid
+      # Who is an Admin (ADR 0039). Passed through so a dev stack can name one, unset
+      # by default; the smoke override lists its own.
+      TUCKER_ADMIN_EMAILS: ${TUCKER_ADMIN_EMAILS:-}
     volumes:
       - tucker-data:/data
     ports:

@@ -1,6 +1,7 @@
 package com.tucker.security
 
 import com.tucker.domain.User
+import org.springframework.security.core.authority.SimpleGrantedAuthority
 import org.springframework.security.web.authentication.preauth.PreAuthenticatedAuthenticationToken
 
 /**
@@ -10,16 +11,21 @@ import org.springframework.security.web.authentication.preauth.PreAuthenticatedA
  * [userId] is what everything hangs off — from the scoping slices on, it is the
  * owner every repository reads and writes against. [email] rides along for
  * display ("Signed in as…") and diagnostics only: it is a mutable attribute, so
- * nothing may key off it.
+ * nothing may key off it. [admin] is what `TUCKER_ADMIN_EMAILS` said when the
+ * assertion was read (ADR 0039).
  */
 data class TuckerPrincipal(
     val userId: Long,
     val email: String,
+    val admin: Boolean = false,
 ) {
     companion object {
-        fun of(user: User): TuckerPrincipal = TuckerPrincipal(userId = user.id, email = user.email)
+        fun of(user: User, admin: Boolean = false): TuckerPrincipal =
+            TuckerPrincipal(userId = user.id, email = user.email, admin = admin)
     }
 }
+
+const val ROLE_ADMIN = "ROLE_ADMIN"
 
 /**
  * The single definition of what an authenticated Tucker caller *is*.
@@ -36,4 +42,8 @@ data class TuckerPrincipal(
  * that work and decides who it refers to.
  */
 fun TuckerPrincipal.asAuthentication(credentials: Any? = null): PreAuthenticatedAuthenticationToken =
-    PreAuthenticatedAuthenticationToken(this, credentials, emptyList())
+    PreAuthenticatedAuthenticationToken(
+        this,
+        credentials,
+        if (admin) listOf(SimpleGrantedAuthority(ROLE_ADMIN)) else emptyList(),
+    )

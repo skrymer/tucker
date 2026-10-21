@@ -42,6 +42,9 @@ services:
       # a PR that touches nothing related. Only the far side of the network
       # boundary is stubbed; Tucker's whole pipeline stays under test.
       TUCKER_OFF_BASE_URL: http://off-stub
+      # The one Admin the admin smokes sign the browser in as (ADR 0039). Never the
+      # suite's default identity, so every other smoke runs as a plain User.
+      TUCKER_ADMIN_EMAILS: admin@tucker.invalid
     depends_on:
       - off-stub
     # The base stack restarts unless-stopped (it's a long-lived deployment). For

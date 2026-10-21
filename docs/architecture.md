@@ -339,7 +339,7 @@ back to the origin it was served from.
 ```mermaid
 flowchart TD
   subgraph spa["Single-page app — Nuxt 4 in the browser"]
-    pages["<b>Pages</b><br/>[Component: Vue, Nuxt UI]<br/>Today · Log · Foods · Check · Review · Profile"]:::component
+    pages["<b>Pages</b><br/>[Component: Vue, Nuxt UI]<br/>Today · Log · Foods · Check · Review · Profile · Admin"]:::component
     composables["<b>Composables</b><br/>[Component: Vue composables]<br/>useApiMutation, useEntryLogging, …: reactive state, toasts, retry"]:::component
     scanner["<b>useBarcodeScanner</b><br/>[Component: zxing-wasm]<br/>decodes on-device"]:::component
     pwa["<b>usePwaInstall · useWebPush</b><br/>[Component: PushManager]<br/>install and reminders"]:::component

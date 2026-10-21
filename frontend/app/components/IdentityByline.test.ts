@@ -1,11 +1,15 @@
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import { renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen } from '@testing-library/vue'
+import { forgetAppState } from '~~/test/app-state'
 import { settle } from '~~/test/async-gate'
 import { baselineEmail } from '~~/test/mocks/handlers/identity'
 import { failingRead, held } from '~~/test/mocks/http'
 import { server } from '~~/test/mocks/node'
 import IdentityByline from './IdentityByline.vue'
+
+// Who is signed in is read once per page load, so each test starts a fresh one.
+beforeEach(() => forgetAppState())
 
 describe('IdentityByline', () => {
   it('names the person whose data is on screen', async () => {

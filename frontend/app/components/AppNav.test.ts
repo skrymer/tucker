@@ -1,14 +1,20 @@
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import { renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen, within } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import { server } from '~~/test/mocks/node'
+import { forgetAppState } from '~~/test/app-state'
+import { held } from '~~/test/mocks/http'
+import { signedInAsAdmin } from '~~/test/mocks/handlers/identity'
 import { profileOf, weightOnlyProfile } from '~~/test/mocks/handlers/profile'
 import AppNav from './AppNav.vue'
 
 // The network, not the composable: `AppNav` loads Calorie Tracking itself, so
 // the Profile it reads drives the real one (ADR 0013 — mock only the true
-// external boundary). The baseline User counts calories.
+// external boundary). The baseline User counts calories, and is no Admin.
+
+// Who is signed in is read once per page load, so each test starts a fresh one.
+beforeEach(() => forgetAppState())
 
 const TODAY = { label: 'Today', href: '/' }
 const LOG = { label: 'Log', href: '/log' }
@@ -32,6 +38,17 @@ async function renderBars() {
         href: link.getAttribute('href'),
       }))
   })
+}
+
+/**
+ * Render for an Admin, and wait for the item the answer draws: the nav does not
+ * hold its first paint on `/api/me`, so anything asserted sooner reads the
+ * unanswered state.
+ */
+async function renderForAnAdmin() {
+  server.use(signedInAsAdmin)
+  await renderSuspended(AppNav)
+  await screen.findByRole('link', { name: 'Admin' })
 }
 
 /** Open the phone bar's overflow sheet and hand it back. */
@@ -61,6 +78,57 @@ describe('AppNav', () => {
     await renderSuspended(AppNav)
 
     expect(linkedRoutes(screen.getByRole('group', { name: 'More' }))).toEqual([
+      '/foods',
+      '/check',
+      '/profile',
+    ])
+  })
+
+  it('ends More in the side navigation with Admin for an Admin', async () => {
+    await renderForAnAdmin()
+
+    expect(linkedRoutes(screen.getByRole('group', { name: 'More' }))).toEqual([
+      '/foods',
+      '/check',
+      '/profile',
+      '/admin',
+    ])
+  })
+
+  it('draws the navigation without waiting to learn whether the caller is an Admin', async () => {
+    const me = held('get', '/api/me')
+    server.use(me.handler)
+
+    const rendered = renderSuspended(AppNav).then(() => 'drawn')
+    await me.arrived
+    // A second's head start: only a render held on the read loses to it.
+    const first = await Promise.race([
+      rendered,
+      new Promise((resolve) => setTimeout(resolve, 1000)).then(() => 'held'),
+    ])
+    me.release()
+    await rendered
+
+    expect(first).toBe('drawn')
+  })
+
+  it('names the Admin item Admin', async () => {
+    await renderForAnAdmin()
+
+    expect(
+      within(screen.getByRole('group', { name: 'More' })).getByRole('link', {
+        name: 'Admin',
+      }),
+    ).toHaveAttribute('href', '/admin')
+  })
+
+  it('keeps Admin off the tab bar and its sheet, even for an Admin', async () => {
+    const user = userEvent.setup()
+    await renderForAnAdmin()
+
+    const bar = screen.getByTestId('bottom-nav')
+    expect(linkedRoutes(bar)).toEqual(['/', '/log', '/review'])
+    expect(linkedRoutes(await openMoreSheet(user))).toEqual([
       '/foods',
       '/check',
       '/profile',

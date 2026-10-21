@@ -1,5 +1,14 @@
 <script setup lang="ts">
-import { isDestinationActive, visibleDestinations } from '~/utils/navigation'
+import {
+  adminDestination,
+  isDestinationActive,
+  visibleDestinations,
+} from '~/utils/navigation'
+
+// Started, not awaited: the Admin item is desktop-only and last in More, so it
+// may appear once the answer lands rather than hold every User's first paint.
+const { isAdmin, ready: whoIsSignedIn } = useMe()
+void whoIsSignedIn()
 
 // Awaited here rather than in the layout: the nav and the page are siblings in
 // one Suspense boundary, so this read overlaps the page's own fetches instead of
@@ -70,6 +79,12 @@ const { open: moreOpen, holdsCurrentPage: moreHoldsCurrentPage } =
         v-for="destination in destinations.overflow"
         :key="destination.to"
         :destination="destination"
+        :anchor-class="railLink"
+        icon-class="size-5 shrink-0"
+      />
+      <NavLink
+        v-if="isAdmin"
+        :destination="adminDestination"
         :anchor-class="railLink"
         icon-class="size-5 shrink-0"
       />

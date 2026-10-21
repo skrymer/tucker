@@ -36,6 +36,14 @@ class CurrentUserTest {
         assertEquals("owner@tucker.invalid", CurrentUser().email)
     }
 
+    @Test
+    fun `supplies whether the authenticated User is an Admin`() {
+        SecurityContextHolder.getContext().authentication =
+            TuckerPrincipal(userId = 42, email = "admin@tucker.invalid", admin = true).asAuthentication()
+
+        assertTrue(CurrentUser().admin)
+    }
+
     /** Why this type rather than [IllegalStateException]: see [NoCurrentUserException]. */
     @Test
     fun `refuses to guess an owner when nobody is authenticated`() {
@@ -45,6 +53,11 @@ class CurrentUserTest {
             "no authenticated User" in thrown.message.orEmpty(),
             "the message should name the problem, was: ${thrown.message}",
         )
+    }
+
+    @Test
+    fun `refuses to guess whether the caller is an Admin when nobody is authenticated`() {
+        assertFailsWith<NoCurrentUserException> { CurrentUser().admin }
     }
 
     private fun signIn(principal: TuckerPrincipal) {

@@ -20,12 +20,19 @@ export const test = base.extend<
     // eslint-disable-next-line @typescript-eslint/no-invalid-void-type
     noPageErrors: void
     expiredAccessOrigin: ExpiredAccessOrigin
+    /**
+     * Page-error patterns one file tolerates on top of [MOCKED_E2E_NOISE], for a
+     * test that shows an error page on purpose. Keep each scoped and commented.
+     */
+    allowedErrors: RegExp[]
   }
 >({
   ...networkFixtures,
 
+  allowedErrors: [[], { option: true }],
   noPageErrors: [
-    ({ page }, use) => assertNoPageErrors(page, use, MOCKED_E2E_NOISE),
+    ({ page, allowedErrors }, use) =>
+      assertNoPageErrors(page, use, [...MOCKED_E2E_NOISE, ...allowedErrors]),
     { auto: true },
   ],
 

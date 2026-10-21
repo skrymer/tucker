@@ -45,9 +45,15 @@ test('answers each caller with their own address', async ({
 
   const mine = await request.get(`${origin}/api/me`)
   expect(mine.ok()).toBe(true)
-  expect(await mine.json()).toEqual({ email: 'tester@tucker.invalid' })
+  expect(await mine.json()).toEqual({
+    email: 'tester@tucker.invalid',
+    admin: false,
+  })
 
   const theirs = await otherUser.get(`${origin}/api/me`)
   expect(theirs.ok()).toBe(true)
-  expect(await theirs.json()).toEqual({ email: 'someone.else@tucker.invalid' })
+  expect(await theirs.json()).toEqual({
+    email: 'someone.else@tucker.invalid',
+    admin: false,
+  })
 })

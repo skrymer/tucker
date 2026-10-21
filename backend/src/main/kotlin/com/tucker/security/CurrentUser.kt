@@ -23,7 +23,7 @@ class NoCurrentUserException(message: String) : RuntimeException(message)
  * owner instead of the *right* one — the choice is removed rather than policed.
  * It stays visible in each constructor, which is what keeps the hidden input
  * honest. Nine repositories take it for [id]; [MeController] is the one
- * non-repository injector, and takes it for [email] alone.
+ * non-repository injector, and takes it for [email] and [admin].
  *
  * Read from [SecurityContextHolder] on every access rather than captured once:
  * this is a singleton serving every request, and the context is thread-bound to
@@ -55,6 +55,10 @@ class CurrentUser {
      */
     val email: String
         get() = principal().email
+
+    /** Whether the caller is an Admin, which [asAuthentication] grants as `ROLE_ADMIN` (ADR 0039). */
+    val admin: Boolean
+        get() = principal().admin
 
     private fun principal(): TuckerPrincipal =
         SecurityContextHolder.getContext().authentication?.principal as? TuckerPrincipal

@@ -59,6 +59,9 @@ services:
       # asserts. Wrong, and the next sign-in provisions a second User while every
       # Entry, Weight Measurement, Goal and Weekly Review stays owned by the first.
       TUCKER_OWNER_EMAIL: ${TUCKER_OWNER_EMAIL:?set in .env — see deploy/README.md}
+      # Who may open the Metrics page (ADR 0039), comma-separated. Optional: unset
+      # means no Admins, and the app works without them.
+      TUCKER_ADMIN_EMAILS: ${TUCKER_ADMIN_EMAILS:-}
     # In prod nothing binds 8080 on the host: only the frontend and the tunnel
     # reach the backend over the internal network. `!reset` clears the dev base's
     # 127.0.0.1:8080 publish (a plain list would merge/append, not replace).

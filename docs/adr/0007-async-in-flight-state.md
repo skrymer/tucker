@@ -300,7 +300,9 @@ until it settles, and a retry would double the blank screen a failure costs to
 re-ask a question whose answer already falls back to a default. Retry belongs to
 work a user is waiting on and can see; this is work they are waiting on and
 cannot. Extend the rule to a further call site only on one of those two grounds,
-and say which. Counting requests is fine where the *count itself*
+and say which. The fourth is `GET /api/me` (`useMe`, F21 #518), on the second:
+the `/admin` page waits on it before it draws, and a failure already answers
+itself — no Admin, and the ordinary not-found page. Counting requests is fine where the *count itself*
 is the behaviour under test rather than a proxy for an outcome. Both look-ups'
 smokes now do it: each pins its own first ask at exactly one, and the Check's
 additionally compares counts before and after a tap to prove "Try again" re-asks.
