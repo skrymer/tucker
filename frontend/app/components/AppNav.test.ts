@@ -4,6 +4,8 @@ import { screen, within } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import { server } from '~~/test/mocks/node'
 import { forgetAppState } from '~~/test/app-state'
+import { settle } from '~~/test/async-gate'
+import { held } from '~~/test/mocks/http'
 import { signedInAsAdmin } from '~~/test/mocks/handlers/identity'
 import { profileOf, weightOnlyProfile } from '~~/test/mocks/handlers/profile'
 import AppNav from './AppNav.vue'
@@ -37,6 +39,17 @@ async function renderBars() {
         href: link.getAttribute('href'),
       }))
   })
+}
+
+/**
+ * Render for an Admin, and wait for the item the answer draws: the nav does not
+ * hold its first paint on `/api/me`, so anything asserted sooner reads the
+ * unanswered state.
+ */
+async function renderForAnAdmin() {
+  server.use(signedInAsAdmin)
+  await renderSuspended(AppNav)
+  await screen.findByRole('link', { name: 'Admin' })
 }
 
 /** Open the phone bar's overflow sheet and hand it back. */
@@ -73,8 +86,7 @@ describe('AppNav', () => {
   })
 
   it('ends More in the side navigation with Admin for an Admin', async () => {
-    server.use(signedInAsAdmin)
-    await renderSuspended(AppNav)
+    await renderForAnAdmin()
 
     expect(linkedRoutes(screen.getByRole('group', { name: 'More' }))).toEqual([
       '/foods',
@@ -84,9 +96,21 @@ describe('AppNav', () => {
     ])
   })
 
+  it('draws the navigation without waiting to learn whether the caller is an Admin', async () => {
+    const me = held('get', '/api/me')
+    server.use(me.handler)
+
+    const rendered = renderSuspended(AppNav).then(() => 'drawn')
+    await me.arrived
+    const first = await Promise.race([rendered, settle().then(() => 'held')])
+    me.release()
+    await rendered
+
+    expect(first).toBe('drawn')
+  })
+
   it('names the Admin item Admin', async () => {
-    server.use(signedInAsAdmin)
-    await renderSuspended(AppNav)
+    await renderForAnAdmin()
 
     expect(
       within(screen.getByRole('group', { name: 'More' })).getByRole('link', {
@@ -96,9 +120,8 @@ describe('AppNav', () => {
   })
 
   it('keeps Admin off the tab bar and its sheet, even for an Admin', async () => {
-    server.use(signedInAsAdmin)
     const user = userEvent.setup()
-    await renderSuspended(AppNav)
+    await renderForAnAdmin()
 
     const bar = screen.getByTestId('bottom-nav')
     expect(linkedRoutes(bar)).toEqual(['/', '/log', '/review'])

@@ -5,15 +5,18 @@ import {
   visibleDestinations,
 } from '~/utils/navigation'
 
+// Started, not awaited: the Admin item is desktop-only and last in More, so it
+// may appear once the answer lands rather than hold every User's first paint.
 const { isAdmin, ready: whoIsSignedIn } = useMe()
+void whoIsSignedIn()
 
 // Awaited here rather than in the layout: the nav and the page are siblings in
-// one Suspense boundary, so these reads overlap the page's own fetches instead of
+// one Suspense boundary, so this read overlaps the page's own fetches instead of
 // being serialized ahead of them, and the tab bar still paints in its final
 // shape. It follows that `tracksCalories` is settled for any *template*, but a
 // page reading it in `setup` would race.
 const { tracksCalories, load } = useCalorieTracking()
-await Promise.all([load(), whoIsSignedIn()])
+await load()
 
 const destinations = computed(() => visibleDestinations(tracksCalories.value))
 

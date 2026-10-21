@@ -4,8 +4,8 @@ type Me = components['schemas']['MeResponse']
 
 /**
  * Who is signed in (`/api/me`), read once per page load and shared app-wide: the
- * nav's read answers the Admin gate and the byline too. `retry: 0` because the
- * shell holds first paint on it (ADR 0007).
+ * nav starts it, and the Admin gate and the byline join it. `retry: 0` because
+ * `/admin` holds its navigation on it and a failure answers itself (ADR 0007).
  *
  * A failed read is logged, names nobody and makes nobody an Admin, and settles
  * nothing, so the next caller asks again. Not `useOptionalFetch`, which folds a

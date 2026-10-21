@@ -43,6 +43,8 @@ describe('useMe', () => {
     expect(screen.getByText(baselineEmail)).toBeVisible()
   })
 
+  // The number of reads is the behaviour here (ADR 0007's exception), so the
+  // answer changes after the first.
   it('answers every later caller from the first read', async () => {
     let answered = false
     server.use(
@@ -61,6 +63,8 @@ describe('useMe', () => {
 
   it('logs a failed read, draws no Admin, and lets the next caller ask again', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    // Only the first call fails, and that is the point (ADR 0007's exception): a
+    // retry of the failed read would reach the answer and show an Admin.
     let failed = false
     server.use(
       http.get('/api/me', ({ response }) => {

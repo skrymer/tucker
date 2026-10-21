@@ -32,7 +32,8 @@ login screen.
   its trustworthiness does not depend on Cloudflare stripping client-supplied headers,
   nor on the backend never being reachable directly.
 - **A `JwtAuthenticationConverter` maps the verified JWT to a `TuckerPrincipal(userId,
-  email)`** and is the single home of **just-in-time provisioning**: a verified email
+  email, admin)`** ([ADR 0039](0039-an-admin-sees-how-tucker-performs-and-nothing-of-any-user.md)
+  for `admin`) and is the single home of **just-in-time provisioning**: a verified email
   matching no `user` row inserts one and proceeds. New users land on the existing
   first-run empty state (`SetupBanner`).
 - **`user(id, email UNIQUE)` — a surrogate key.** Every owned table references `user.id`;
@@ -45,8 +46,9 @@ login screen.
   or a second issuer keyed on the *same* row, not re-keying the database.
 - **One verification path in every environment.** Non-production points the same decoder
   at a static local JWK set. **No application code can mint a token**: Kotlin tests mint
-  in-process, Playwright smokes mint with `jose` and set `extraHTTPHeaders` (so switching
-  identity is one line and cross-user isolation is genuinely testable), and `pnpm dev`
+  in-process, Playwright smokes mint with `jose` and send the assertion on each API context, or on
+  one page's `/api` calls through the `browserEmail` fixture (so switching identity is one
+  line and cross-user isolation is genuinely testable), and `pnpm dev`
   attaches a pre-minted `TUCKER_DEV_ACCESS_TOKEN` produced by a committed script — a
   static string, not a signing capability.
 - **Two paths stay unauthenticated**: `/v3/api-docs/**`, or `./gradlew generateOpenApiDocs`

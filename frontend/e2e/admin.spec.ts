@@ -64,6 +64,21 @@ test.describe('as an Admin', () => {
   })
 })
 
+test('tells a User whose session has expired to sign back in at /admin, not that it is missing', async ({
+  page,
+  goto,
+  expiredAccessOrigin,
+}) => {
+  await goto(`${expiredAccessOrigin.url}/admin`, { waitUntil: 'hydration' })
+
+  await expect(
+    page.getByRole('heading', { name: "You've been signed out" }),
+  ).toBeVisible()
+  await expect(
+    page.getByRole('heading', { name: 'Page not found: /admin' }),
+  ).toHaveCount(0)
+})
+
 test.describe('as a User who is not an Admin', () => {
   // Nuxt logs every not-found page it shows, an unknown path's included.
   test.use({ allowedErrors: [/Page not found: \/admin/] })
