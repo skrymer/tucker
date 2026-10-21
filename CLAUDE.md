@@ -278,7 +278,7 @@ here.
   and render time, and shows an Admin the result beside Actuator's server figures
   ([ADR 0038](docs/adr/0038-performance-is-measured-by-tucker-itself-and-no-metric-names-a-user.md),
   [ADR 0039](docs/adr/0039-an-admin-sees-how-tucker-performs-and-nothing-of-any-user.md)).
-  Designed, not sliced.
+  PRD [#517](https://github.com/skrymer/tucker/issues/517); not sliced yet.
 
 ## Architecture
 
