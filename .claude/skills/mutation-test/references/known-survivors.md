@@ -1655,6 +1655,14 @@ is still loading raises no error*). The six left are **equivalent**:
   every table but the installation-wide ones* fails. Its `forget()` removal and
   `pushPayloads` → `emptyList` survive on `main` too; the reminder smokes read
   `/api/test/push-payloads` (`e2e/smoke/support/reminder-tick.ts`).
+- **`metricQueue.ts` `keepalive: true` → `false` — unpinned by ruling.** A fetch option
+  never reaches a mock server, and ADR 0034 rules out asserting the request; the user
+  chose MSW over a stand-in client knowing this line goes unpinned. `retry: 0` deleted
+  survives too and is **equivalent**: ofetch never retries a payload method by default.
+  `retry: 0` → `1` is killed (*drops a send that failed, without throwing or trying
+  again*, red on a hand-mutant).
+- **`routeChangeTimer.ts` `hides++` → `hides--` — equivalent**: a paint only asks
+  whether the count moved.
 - **`routeTiming.ts` `?.name` → `.name` — equivalent**: a layout is typed to the two
   `LAYOUTS` holds, so `find` never misses.
 - **`admin.vue`'s `report.value?.routes ?? []` — equivalent**: read only inside

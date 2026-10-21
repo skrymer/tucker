@@ -9,7 +9,8 @@ type Timing = {
  * Times each move between pages, from the router starting it to the first paint
  * after the new page mounts (ADR 0038). The page a visit opens on is a page
  * load, not a move, redirects on the way to it included, so nothing is timed
- * until that first page has finished.
+ * until that first page has finished. A move the page is hidden for at any point
+ * is dropped, since its clock would run on through the User's absence.
  */
 export function createRouteChangeTimer({ now, afterPaint, record }: Timing) {
   let startedAt: number | null = null
@@ -27,7 +28,8 @@ export function createRouteChangeTimer({ now, afterPaint, record }: Timing) {
 
   return {
     started() {
-      startedAt = opened ? now() : null
+      const visible = document.visibilityState !== 'hidden'
+      startedAt = opened && visible ? now() : null
     },
     /** The new page has mounted, at [matchedPath] in the router's spelling. */
     finished(matchedPath?: string) {

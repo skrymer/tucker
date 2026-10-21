@@ -68,6 +68,22 @@ describe('timing a move between pages', () => {
     expect(record).toHaveBeenCalledExactlyOnceWith('/foods', 0)
   })
 
+  it('drops a move that starts while the page is hidden', () => {
+    const record = vi.fn()
+    const timer = createRouteChangeTimer({
+      now: () => 0,
+      afterPaint: (fn) => fn(),
+      record,
+    })
+    timer.finished('/today')
+    setVisibility('hidden')
+
+    timer.started()
+    timer.finished('/foods')
+
+    expect(record).not.toHaveBeenCalled()
+  })
+
   it('drops a move whose page was hidden before it mounted', () => {
     const record = vi.fn()
     const timer = createRouteChangeTimer({

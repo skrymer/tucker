@@ -33,7 +33,7 @@ Cloudflare Access is the only sign-in, and its policy is the invitation list
 C4Context
   title System context — Tucker
 
-  Person(user, "User", "Logs food and weight; admitted by invitation. Owns every row they create — nothing is shared.")
+  Person(user, "User", "Logs food and weight; admitted by invitation. Owns every row of their own — nothing is shared; their browser also reports Tucker's timings, which name no one.")
   System_Ext(cloudflare, "Cloudflare", "Access (sign-in, signed assertion) and Tunnel (the only way in).")
   Person(operator, "Operator", "Admits Users in the Access policy; deploys and restores Tucker.")
 
