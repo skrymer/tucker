@@ -76,9 +76,9 @@ agent, and the seven below.
 or widened for a change they do not fit — a docs-only diff has no UI to be reachable
 through — but gate 5 checks a brief against its template and cannot see which
 *direction* an edit went, so a cut and a justified swap read identically. Note the
-change and why, in the pack, whenever a brief departs from its template. Pointing a
-template's `HEAD` at the committed sha the gate judges is **not** an adaptation — the
-skill's gate 4 requires it — so it needs no note.
+change and why, in the pack, whenever a brief departs from its template. A `<sha>` slot
+takes the commit the gate judges (the skill's gate 4), never `HEAD`: #519's first gate-3
+briefs read `HEAD` while uncommitted fixes sat in the tree, and one agent judged them.
 
 **The pack copies, it does not recount.** A figure in it is the saved output's own
 summary line copied whole, never fields picked from it (#468 quoted a Vitest file's
@@ -197,7 +197,7 @@ which touches nothing but remote refs.
 
 Repo: <path> (<a git worktree | the main checkout> — stay in it).
 The change: cd <worktree path> && git fetch -q origin &&
-  git diff $(git merge-base origin/main HEAD) HEAD
+  git diff $(git merge-base origin/main <sha>) <sha>
 The issue it claims to fix: read it yourself with `gh issue view <n> --comments`
 — rulings are often comments — and do not take anyone's summary of it. Its parent
 PRD, where it has one: <`gh issue view <prd> --comments`, or "none">.
@@ -338,7 +338,7 @@ edit, create, delete or move any file. Read-only shell commands only, apart from
 
 Repo: <path> (<a git worktree | the main checkout> — stay in it).
 The change: cd <worktree path> && git fetch -q origin &&
-  git diff $(git merge-base origin/main HEAD) HEAD
+  git diff $(git merge-base origin/main <sha>) <sha>
 The issue it claims to deliver: read it yourself with `gh issue view <n>` — do not
 take anyone's summary of it. Where the slot names several, there is an issue for
 each: ledger them in turn, under their own headings. Where it reads "none" there is
@@ -510,7 +510,7 @@ from `git fetch`, which touches nothing but remote refs.
 
 Repo: <path> (<a git worktree | the main checkout> — stay in it).
 The change: cd <worktree path> && git fetch -q origin &&
-  git diff $(git merge-base origin/main HEAD) HEAD
+  git diff $(git merge-base origin/main <sha>) <sha>
 The diagrams: docs/architecture.md — every ```mermaid block in it, as it stands on
 this branch.
 Already read by other agents, so start here: <context-pack files>

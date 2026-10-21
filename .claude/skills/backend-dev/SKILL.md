@@ -91,7 +91,16 @@ not restate them.
   passes with the code deleted. #385: a conflict test needs a *third* insert between the
   colliding pair, or the collided row is the last insert. #455: a "stored under the id it
   was built with" test must take one `nextId()` it never uses first, or AUTOINCREMENT
-  hands out the same id — seven such tests passed with `rec.id = …` removed.
+  hands out the same id — seven such tests passed with `rec.id = …` removed. Likewise a
+  test that a reset or sweep *empties* tables passes on an empty fast-suite database:
+  record what it deletes, or seed every table it claims (#519's emptiness check stayed
+  green on a hand-kept list that skipped `metric_event`).
+
+- **A non-null `Int`, `Double`, `Long` or `Boolean` in a request DTO reads JSON `null` as
+  0 or `false`** — Jackson's primitive default, no 400. #519 stored a null time as 0 ms,
+  fixed one field with `@param:JsonSetter(nulls = Nulls.FAIL)`, and the walk-through found
+  the `Boolean` beside it four gates later. On finding one, check every primitive field
+  of every request DTO the change adds, with a `null` probe each.
 
 - **The fast suite's database outlives the run** (`build/test-tucker.db`), and the
   signed-in `tester` is provisioned by whichever request reaches it first. An assertion on
