@@ -280,7 +280,8 @@ here.
   [ADR 0039](docs/adr/0039-an-admin-sees-how-tucker-performs-and-nothing-of-any-user.md)).
   PRD [#517](https://github.com/skrymer/tucker/issues/517), in slices #518–#525; slice 1,
   the Admin role and an empty Metrics page ([#518](https://github.com/skrymer/tucker/issues/518)),
-  is done.
+  and slice 2, route changes timed and charted for an Admin
+  ([#519](https://github.com/skrymer/tucker/issues/519)), are done.
 
 ## Architecture
 

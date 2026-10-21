@@ -1987,3 +1987,38 @@ null` now means two things that earn opposite messages — the same trap
     `allowedErrors` because Nuxt logs every not-found page it shows. A `docker compose`
     run from `.claude/worktrees/` (one `cd ..` too far) walks up to the main checkout's
     compose file and builds `main`'s backend — pass `--project-directory`.
+  - **Slice 2 ([#519](https://github.com/skrymer/tucker/issues/519)) — a move between
+    pages reaches the Admin (the tracer).** A client plugin times each route change
+    with `routeChangeTimer` — from the router's `beforeEach` to a frame after
+    `page:finish` — names it by its matched path's template (`routeTemplate`), its
+    layout by the shared `lg` breakpoint and installed by `detectInstalled`
+    (`metricSource`), and queues it (`metricQueue`): flushed at 20 or on hide, sent
+    through `$api` with `keepalive` and `retry: 0`, a failure swallowed. `POST
+    /api/metrics` takes a batch of 1–50 `route-change` events (`@JsonValue` enums, a
+    null time refused rather than read as 0) into `metric_event` (V24: no `user_id`,
+    no user agent) in one transaction; `GET /api/admin/metrics` answers an Admin a
+    `PerformanceReport` — n and nearest-rank p50/p75/p95 per route × layout, every
+    layout listed, none under five samples, slowest p75 first — and anyone else as
+    an unknown path. `/admin` draws it at desktop width only, lazily (unovis puts an
+    `<svg>` into `<body>` as its chunk loads): `RouteTimingCard`'s horizontal grouped
+    bars, legend, a tooltip per bar, "too few" in the axis label, a load-error state.
+  - **unovis over plain HTML bars**, chosen by the user from a live two-variant
+    prototype (deleted). Screen readers are not a concern on Admin screens (user).
+  - **A move the page is hidden for is dropped** (ADR 0038, on the user's ruling): a
+    hidden page paints nothing, so its clock ran on through the absence — found at
+    the reachability pass, where a background tab's moves came back as 10 s+.
+  - **The smoke reset empties every table but five installation-wide ones**, read
+    from the jOOQ schema with foreign keys deferred, and pinned by recording what it
+    deletes: the hand-kept list had silently skipped `metric_event`, which the
+    real-stack smoke caught as a count leaking between projects.
+  - **`sendMetrics` is tested through MSW** (ADR 0034, user ruling), so `keepalive` is
+    unpinned; `retry: 0` is pinned by a send failing once then never landing.
+  - **Traps:** Vitest's MSW shim carries no request headers, so a header can be
+    judged only by the real stack; within one `server.use()` the first handler
+    listed matches first; unovis's tooltip index runs across all bars (`i % 2` is the
+    layout) and its `VisTooltip` throws on unmount under happy-dom (mock it); a long
+    axis label wraps into `tspan`s (assert with `\s*`); `boundingBox` on an unovis
+    node can return null as the axis redraws (read positions in one `evaluate`); a
+    test that hides the page must wait for the destination's h1, not the URL, or the
+    hide beats the paint. claude-in-chrome's new tab opens in the background, so it
+    never hides the first; an occluded Chrome window runs no `requestAnimationFrame`.

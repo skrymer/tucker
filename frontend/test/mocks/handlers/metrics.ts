@@ -6,8 +6,9 @@ type Sent = components['schemas']['MetricEventRequest']
 
 /**
  * Why the backend refuses a batch whole, or null when it takes it: no events or
- * more than 50, a route that is not a template, or a time that is not a whole
- * 0–60 000 ms (a NaN the page sent arrives as null). Its CSRF proof is the
+ * more than 50, a route that is not a template, or a time outside 0–60 000 ms or
+ * absent (a NaN the page sent arrives as null; a decimal the backend takes, as
+ * Jackson reads it into an Int), or no installed flag. Its CSRF proof is the
  * backend's to check, as for every mutation mocked here: a mocked page is handed
  * no token.
  */
@@ -18,7 +19,8 @@ function refusal(events: Sent[]): string | null {
   const bad = events.find(
     (e) =>
       !/^\/[a-z0-9/_\-[\]]{0,63}$/.test(e.route) ||
-      !Number.isInteger(e.valueMs) ||
+      typeof e.valueMs !== 'number' ||
+      typeof e.installed !== 'boolean' ||
       e.valueMs < 0 ||
       e.valueMs > 60_000,
   )

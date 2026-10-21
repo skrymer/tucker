@@ -66,6 +66,15 @@ class MetricApiTest {
         }.andExpect { status { isBadRequest() } }
     }
 
+    /** Not read as a browser tab, which is what a primitive would default to. */
+    @Test
+    fun `refuses an event that does not say whether the app is installed`() {
+        mockMvc.post("/api/metrics") {
+            contentType = MediaType.APPLICATION_JSON
+            content = batchOf(routeChange().replace("\"installed\":false", "\"installed\":null"))
+        }.andExpect { status { isBadRequest() } }
+    }
+
     @Test
     fun `refuses a batch naming a kind Tucker does not measure`() {
         mockMvc.post("/api/metrics") {
