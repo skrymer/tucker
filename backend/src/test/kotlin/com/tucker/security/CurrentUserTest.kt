@@ -55,6 +55,11 @@ class CurrentUserTest {
         )
     }
 
+    @Test
+    fun `refuses to guess whether the caller is an Admin when nobody is authenticated`() {
+        assertFailsWith<NoCurrentUserException> { CurrentUser().admin }
+    }
+
     private fun signIn(principal: TuckerPrincipal) {
         SecurityContextHolder.getContext().authentication =
             PreAuthenticatedAuthenticationToken(principal, null, emptyList())

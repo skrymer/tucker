@@ -56,10 +56,9 @@ class CurrentUser {
     val email: String
         get() = principal().email
 
-    /** Whether the caller holds `ROLE_ADMIN` (ADR 0039). */
+    /** Whether the caller is an Admin, which [asAuthentication] grants as `ROLE_ADMIN` (ADR 0039). */
     val admin: Boolean
-        get() = SecurityContextHolder.getContext().authentication?.authorities.orEmpty()
-            .any { it.authority == ROLE_ADMIN }
+        get() = principal().admin
 
     private fun principal(): TuckerPrincipal =
         SecurityContextHolder.getContext().authentication?.principal as? TuckerPrincipal

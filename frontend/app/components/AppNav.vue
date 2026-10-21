@@ -5,13 +5,7 @@ import {
   visibleDestinations,
 } from '~/utils/navigation'
 
-/** Whether the caller is an Admin; a failed read draws no Admin item. */
-function useAdminItem() {
-  const { $api } = useNuxtApp()
-  const { data: me, load } = useOptionalFetch(() => $api('/api/me'))
-  return { isAdmin: computed(() => me.value?.admin === true), load }
-}
-const { isAdmin, load: loadAdmin } = useAdminItem()
+const { isAdmin, ready: whoIsSignedIn } = useMe()
 
 // Awaited here rather than in the layout: the nav and the page are siblings in
 // one Suspense boundary, so these reads overlap the page's own fetches instead of
@@ -19,7 +13,7 @@ const { isAdmin, load: loadAdmin } = useAdminItem()
 // shape. It follows that `tracksCalories` is settled for any *template*, but a
 // page reading it in `setup` would race.
 const { tracksCalories, load } = useCalorieTracking()
-await Promise.all([load(), loadAdmin()])
+await Promise.all([load(), whoIsSignedIn()])
 
 const destinations = computed(() => visibleDestinations(tracksCalories.value))
 

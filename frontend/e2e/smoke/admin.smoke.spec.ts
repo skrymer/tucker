@@ -1,34 +1,12 @@
-import type { Page } from '@playwright/test'
 import { test, expect } from './support/smoke-test'
-import {
-  ACCESS_ASSERTION_HEADER,
-  mintAccessToken,
-} from '../../scripts/access-token.mjs'
 
 // The Admin role end to end (ADR 0039): `TUCKER_ADMIN_EMAILS` in the smoke stack
 // lists admin@tucker.invalid, the backend grants the role from a real assertion,
 // and `/api/me` decides what the page draws. The mocked suite answers `/api/me`
 // itself, so it would go on passing if the backend never granted the role.
 
-/**
- * Sign the browser's `/api` calls in as [email]. The proxy defers to an assertion
- * the request already carries, so this replaces the run's default identity for
- * this page alone; same-origin, so nothing is preflighted.
- */
-async function signBrowserInAs(page: Page, email: string) {
-  const assertion = await mintAccessToken({ email })
-  await page.route('**/api/**', (route) =>
-    route.continue({
-      headers: {
-        ...route.request().headers(),
-        [ACCESS_ASSERTION_HEADER]: assertion,
-      },
-    }),
-  )
-}
-
 test.describe('an Admin', () => {
-  test.beforeEach(({ page }) => signBrowserInAs(page, 'admin@tucker.invalid'))
+  test.use({ browserEmail: 'admin@tucker.invalid' })
 
   test('reaches the Metrics page from the side nav', async ({
     page,

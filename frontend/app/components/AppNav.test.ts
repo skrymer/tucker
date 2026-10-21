@@ -1,15 +1,19 @@
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import { renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen, within } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import { server } from '~~/test/mocks/node'
+import { forgetAppState } from '~~/test/app-state'
 import { signedInAsAdmin } from '~~/test/mocks/handlers/identity'
 import { profileOf, weightOnlyProfile } from '~~/test/mocks/handlers/profile'
 import AppNav from './AppNav.vue'
 
 // The network, not the composable: `AppNav` loads Calorie Tracking itself, so
 // the Profile it reads drives the real one (ADR 0013 — mock only the true
-// external boundary). The baseline User counts calories.
+// external boundary). The baseline User counts calories, and is no Admin.
+
+// Who is signed in is read once per page load, so each test starts a fresh one.
+beforeEach(() => forgetAppState())
 
 const TODAY = { label: 'Today', href: '/' }
 const LOG = { label: 'Log', href: '/log' }

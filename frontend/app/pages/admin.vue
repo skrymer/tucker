@@ -1,14 +1,13 @@
 <script setup lang="ts">
-// The first page to leave the shared width: its charts need the room. A User who
-// is not an Admin, or whose `/api/me` fails, meets the same 404 an unknown path
-// does, so the page's existence tells them nothing (ADR 0039).
+// Wide because its charts need the room. A User who is not an Admin, or whose
+// `/api/me` fails, meets the same 404 an unknown path does, so the page's
+// existence tells them nothing (ADR 0039).
 definePageMeta({
   wideColumn: true,
   middleware: async (to) => {
-    const me = await useNuxtApp()
-      .$api('/api/me')
-      .catch(() => null)
-    if (me?.admin) return
+    const { isAdmin, ready } = useMe()
+    await ready()
+    if (isAdmin.value) return
     return abortNavigation(
       createError({
         statusCode: 404,

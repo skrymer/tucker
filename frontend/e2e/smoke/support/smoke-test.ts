@@ -41,8 +41,32 @@ export const test = base.extend<{
    * lazy), so no other smoke pays to mint a second assertion.
    */
   otherUser: APIRequestContext
+  /**
+   * Who the browser's own `/api` calls are signed in as, when not the run's
+   * default identity. Set per file with `test.use({ browserEmail: '…' })`.
+   */
+  browserEmail: string | undefined
 }>({
   allowedErrors: [[], { option: true }],
+  browserEmail: [undefined, { option: true }],
+  // The /api proxy defers to an assertion the request already carries, so adding
+  // one here replaces the run's default identity for this page alone. Routed, not
+  // `extraHTTPHeaders`, for the reason `request` gives below; same-origin, so
+  // nothing is preflighted.
+  page: async ({ page, browserEmail }, use) => {
+    if (browserEmail) {
+      const assertion = await mintAccessToken({ email: browserEmail })
+      await page.route('**/api/**', (route) =>
+        route.continue({
+          headers: {
+            ...route.request().headers(),
+            [ACCESS_ASSERTION_HEADER]: assertion,
+          },
+        }),
+      )
+    }
+    await use(page)
+  },
   // The API the smokes seed and clean up through is gated now (ADR 0020), so this
   // context carries a real assertion minted with the committed non-production key —
   // every seeding call goes through the backend's real decoder. Minting per test

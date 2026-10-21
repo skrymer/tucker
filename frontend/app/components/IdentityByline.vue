@@ -3,31 +3,11 @@
 // browser: the SPA never holds the Access assertion (the /api proxy attaches it
 // server-side), so there is nothing here to read an address out of.
 //
-// Deliberately not useOptionalFetch, which is otherwise the right shape: it
-// folds a 404 into "absent, and that's expected". Here a 404 means the backend
-// predates /api/me — a partial deploy, the exact fault BuildTag exists to make
-// visible — and swallowing it would lose the one failure worth hearing about.
-function useSignedInAs() {
-  const { $api } = useNuxtApp()
-  const email = ref<string | null>(null)
-
-  onMounted(async () => {
-    try {
-      email.value = (await $api('/api/me')).email
-    } catch (error) {
-      // Leave it null: the byline drops the name and keeps Sign out, which
-      // needs no backend. No error state on screen — a session that has really
-      // ended is caught upstream by the auth-gate plugin, which replaces the
-      // whole shell. Logged rather than swallowed, because the only other
-      // symptom is a name quietly missing, which reads as a design choice.
-      console.warn('Could not read the signed-in address', error)
-    }
-  })
-
-  return email
-}
-
-const email = useSignedInAs()
+// A failed read leaves the name off and keeps Sign out, which needs no backend.
+// No error state on screen — a session that has really ended is caught upstream
+// by the auth-gate plugin, which replaces the whole shell.
+const { email, ready } = useMe()
+onMounted(ready)
 </script>
 
 <template>
