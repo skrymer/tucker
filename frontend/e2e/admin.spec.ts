@@ -115,5 +115,7 @@ test.describe('as a User who is not an Admin', () => {
     await expect(
       page.getByRole('heading', { name: 'Page not found: /admin' }),
     ).toBeVisible()
+    // As an unknown path's not-found does: the address says where you are.
+    await expect(page).toHaveURL(/\/admin$/)
   })
 })

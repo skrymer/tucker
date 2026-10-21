@@ -1,24 +1,22 @@
 <script setup lang="ts">
 // Wide because its charts need the room. A User who is not an Admin, or whose
 // `/api/me` fails, meets the same 404 an unknown path does, so the page's
-// existence tells them nothing (ADR 0039). An expired session goes through to
-// the layout, which shows the signed-out state in place of the page.
+// existence tells them nothing (ADR 0039). Raised from the page once the route has
+// changed, so the address reads /admin as an unknown path's does. An expired
+// session goes through to the layout, which shows the signed-out state instead.
 // Stryker disable next-line all: a compiler macro must stay a top-level statement
-definePageMeta({
-  wideColumn: true,
-  middleware: async (to) => {
-    const { isAdmin, ready } = useMe()
-    await ready()
-    if (isAdmin.value || useAuthGate().isSignedOut.value) return
-    return abortNavigation(
-      createError({
-        statusCode: 404,
-        statusMessage: `Page not found: ${to.fullPath}`,
-        fatal: true,
-      }),
-    )
-  },
-})
+definePageMeta({ wideColumn: true })
+
+const route = useRoute()
+const { isAdmin, ready } = useMe()
+await ready()
+if (!isAdmin.value && !useAuthGate().isSignedOut.value) {
+  throw createError({
+    statusCode: 404,
+    statusMessage: `Page not found: ${route.fullPath}`,
+    fatal: true,
+  })
+}
 </script>
 
 <template>

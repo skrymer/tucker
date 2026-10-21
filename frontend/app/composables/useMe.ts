@@ -18,8 +18,8 @@ function useJoinedRead(read: () => Promise<void>) {
 
 /**
  * Who is signed in (`/api/me`), read once per page load and shared app-wide: the
- * nav starts it, and the Admin gate and the byline join it. `retry: 0` because
- * `/admin` holds its navigation on it and a failure answers itself (ADR 0007).
+ * first caller starts it and the rest join it. `retry: 0` because `/admin` holds
+ * its page on it and a failure answers itself (ADR 0007).
  *
  * A failed read is logged, names nobody and makes nobody an Admin, and settles
  * nothing, so the next caller asks again. Not `useOptionalFetch`, which folds a
