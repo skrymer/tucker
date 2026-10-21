@@ -1,5 +1,7 @@
 package com.tucker.api
 
+import com.fasterxml.jackson.annotation.JsonSetter
+import com.fasterxml.jackson.annotation.Nulls
 import com.tucker.domain.MetricBatch
 import com.tucker.domain.MetricEvent
 import com.tucker.domain.MetricKind
@@ -15,11 +17,15 @@ import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 import java.time.Clock
 
-/** One measurement as a browser sends it. */
+/**
+ * One measurement as a browser sends it. A null time is refused rather than read as
+ * 0 ms, which is what a primitive would otherwise default to: a time the browser
+ * failed to take (NaN serialises as null) is no measurement at all.
+ */
 data class MetricEventRequest(
     val kind: MetricKind,
     val route: String,
-    val valueMs: Int,
+    @param:JsonSetter(nulls = Nulls.FAIL) val valueMs: Int,
     val layout: MetricLayout,
     val installed: Boolean,
     val appVersion: String,

@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import type { components } from '#open-fetch-schemas/api'
-import { figuresLine, routeLabel } from './routeTiming'
+import { figuresLine, LAYOUTS, routeLabel } from './routeTiming'
 
 type LayoutFigures = components['schemas']['LayoutFiguresResponse']
 
@@ -41,6 +41,16 @@ describe('a bar on the Admin chart', () => {
     expect(
       figuresLine({ layout: 'phone', n: 48, p50: 640, p75: 910, p95: 1820 }),
     ).toBe('n 48 · p50 640 · p75 910 · p95 1820 ms')
+  })
+})
+
+describe("the Admin chart's layouts", () => {
+  // Identity by colour, in the categorical palette's fixed order (DESIGN.md).
+  it('draws phone and desktop in the first two categorical slots', () => {
+    expect(LAYOUTS).toEqual([
+      { layout: 'phone', name: 'Phone', color: 'var(--tucker-cat-1)' },
+      { layout: 'desktop', name: 'Desktop', color: 'var(--tucker-cat-2)' },
+    ])
   })
 })
 

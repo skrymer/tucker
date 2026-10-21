@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen, within } from '@testing-library/vue'
+import { http, serverError } from '~~/test/mocks/http'
 import { server } from '~~/test/mocks/node'
 import { signedInAsAdmin } from '~~/test/mocks/handlers/identity'
 import { metricsReport } from '~~/test/mocks/handlers/metrics'
@@ -40,6 +41,20 @@ describe('/admin', () => {
         'Page timings appear here once Tucker starts recording them.',
       ),
     ).toBeVisible()
+  })
+
+  // Not "nothing measured yet", which a failed read would state falsely.
+  it('says the metrics could not be loaded when the read fails', async () => {
+    server.use(
+      signedInAsAdmin,
+      http.get('/api/admin/metrics', ({ response }) =>
+        response.untyped(serverError()),
+      ),
+    )
+    await renderSuspended(AdminPage)
+
+    expect(await screen.findByText("Couldn't load the metrics")).toBeVisible()
+    expect(screen.queryByText('Nothing measured yet')).not.toBeInTheDocument()
   })
 
   // The bars themselves are drawn by unovis, which happy-dom cannot lay out;

@@ -41,6 +41,16 @@ describe('the metric queue', () => {
     expect(send).toHaveBeenCalledExactlyOnceWith([event, event])
   })
 
+  it('holds what is waiting when the page is shown again', () => {
+    const send = vi.fn().mockResolvedValue(undefined)
+    const queue = createMetricQueue(send)
+    queue.record(event)
+
+    setVisibility('visible')
+
+    expect(send).not.toHaveBeenCalled()
+  })
+
   // The backend refuses an empty batch, and a request carrying nothing is waste.
   it('sends nothing when the page is hidden with nothing waiting', () => {
     const send = vi.fn().mockResolvedValue(undefined)

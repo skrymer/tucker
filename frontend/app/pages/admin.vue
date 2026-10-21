@@ -18,7 +18,11 @@ if (!isAdmin.value && !useAuthGate().isSignedOut.value) {
   })
 }
 
-const { data: report } = await useApi('/api/admin/metrics')
+const {
+  data: report,
+  error: reportError,
+  refresh,
+} = await useApi('/api/admin/metrics')
 const routes = computed(() => report.value?.routes ?? [])
 const isDesktop = useIsDesktop()
 </script>
@@ -37,7 +41,12 @@ const isDesktop = useIsDesktop()
       <!-- Mounted only where it shows, and lazy: unovis puts an <svg> of its own
            into <body> as its chunk loads, and a phone or a page with nothing to
            chart has no reason to load it. -->
-      <template v-if="isDesktop">
+      <LoadErrorState
+        v-if="isDesktop"
+        :error="reportError"
+        title="Couldn't load the metrics"
+        @retry="refresh"
+      >
         <LazyRouteTimingCard v-if="routes.length" :routes="routes" />
         <div v-else class="flex flex-col items-center gap-3 py-12 text-center">
           <UIcon name="i-lucide-gauge" class="size-10 text-muted" aria-hidden />
@@ -46,7 +55,7 @@ const isDesktop = useIsDesktop()
             Page timings appear here once Tucker starts recording them.
           </p>
         </div>
-      </template>
+      </LoadErrorState>
     </section>
   </div>
 </template>

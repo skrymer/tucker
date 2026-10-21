@@ -4,6 +4,15 @@ import { signedInAsAdmin } from '../test/mocks/handlers/identity'
 import { metricsRecorded, metricsReport } from '../test/mocks/handlers/metrics'
 import { hidePage } from './support/visibility'
 
+/** One layout's figures, enough samples for a figure, with [p75] the number that orders it. */
+const figures = (layout: 'phone' | 'desktop', p75: number) => ({
+  layout,
+  n: 20,
+  p50: p75 - 100,
+  p75,
+  p95: p75 + 400,
+})
+
 // The Metrics page's layout (ADR 0039): a column wider than the shared one on a
 // desktop, a one-line notice on a phone, and the ordinary not-found page for a
 // User who is not an Admin.
@@ -110,6 +119,83 @@ test.describe('as an Admin', () => {
     await expect(page.getByRole('figure')).toContainText(
       /\/review \(Phone too few: 1,\s*Desktop too few: 0\)/,
     )
+  })
+
+  test('puts the slowest page at the top', async ({
+    page,
+    goto,
+    network,
+    isMobile,
+  }) => {
+    test.skip(isMobile, 'a phone shows the notice instead')
+    // The backend sends the slowest first.
+    network.use(
+      metricsReport([
+        {
+          route: '/review',
+          layouts: [figures('phone', 910), figures('desktop', 260)],
+        },
+        {
+          route: '/foods',
+          layouts: [figures('phone', 540), figures('desktop', 210)],
+        },
+      ]),
+    )
+    await goto('/admin', { waitUntil: 'hydration' })
+    const chart = page.getByRole('figure')
+    const review = chart.getByText('/review', { exact: true })
+    const foods = chart.getByText('/foods', { exact: true })
+    await expect(review).toBeVisible()
+    await expect(foods).toBeVisible()
+
+    // Read in one pass: unovis redraws its axis, replacing the nodes under a locator.
+    const topToBottom = await chart.evaluate((figure) =>
+      [...figure.querySelectorAll('text')]
+        .filter((t) => t.textContent?.startsWith('/'))
+        .sort(
+          (a, b) => a.getBoundingClientRect().y - b.getBoundingClientRect().y,
+        )
+        .map((t) => t.textContent),
+    )
+    expect(topToBottom).toEqual(['/review', '/foods'])
+  })
+
+  test('colours each bar as the legend colours its layout', async ({
+    page,
+    goto,
+    network,
+    isMobile,
+  }) => {
+    test.skip(isMobile, 'a phone shows the notice instead')
+    network.use(
+      metricsReport([
+        {
+          route: '/review',
+          layouts: [figures('phone', 910), figures('desktop', 260)],
+        },
+      ]),
+    )
+    await goto('/admin', { waitUntil: 'hydration' })
+    await expect(page.getByRole('figure')).toContainText('/review')
+
+    const colours = await page.evaluate(() => {
+      const swatch = (name: string) =>
+        [...document.querySelectorAll('[aria-label="Layouts"] li')]
+          .find((li) => li.textContent?.trim() === name)!
+          .querySelector('span')!
+      const bars = [
+        ...document.querySelectorAll('.route-timing path[class*="-bar"]'),
+      ]
+      return {
+        legend: ['Phone', 'Desktop'].map(
+          (n) => getComputedStyle(swatch(n)).backgroundColor,
+        ),
+        bars: bars.map((b) => getComputedStyle(b).fill),
+      }
+    })
+    expect(colours.bars).toEqual(colours.legend)
+    // Two layouts told apart, not one colour twice.
+    expect(new Set(colours.legend).size).toBe(2)
   })
 
   test('states the exact figures of whichever bar is pointed at', async ({

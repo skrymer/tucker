@@ -57,6 +57,15 @@ class MetricApiTest {
         }
     }
 
+    /** A time the browser failed to take (NaN serialises as null) is no time at all, not 0 ms. */
+    @Test
+    fun `refuses an event carrying no time`() {
+        mockMvc.post("/api/metrics") {
+            contentType = MediaType.APPLICATION_JSON
+            content = batchOf(routeChange().replace("\"valueMs\":420", "\"valueMs\":null"))
+        }.andExpect { status { isBadRequest() } }
+    }
+
     @Test
     fun `refuses a batch naming a kind Tucker does not measure`() {
         mockMvc.post("/api/metrics") {
