@@ -25,6 +25,17 @@ than the address, so the address can change without touching their history —
 today that change is an operator step, not something a User can do themselves.
 _Avoid_: account, member, profile (a **Profile** is a User's settings, not the User)
 
+**Admin**:
+A **User** who may also see how Tucker itself is performing — how long its pages
+take, and how the server behind them is doing — and nothing else beyond what any
+User sees. Being an Admin grants no view of another User's data: what an Admin
+sees is about Tucker, aggregated, with no User identity in it, because nothing
+recorded for it says which User it came from. A User becomes an Admin the way
+they became a User, by an operator step — an operator lists their email address —
+never from inside Tucker.
+_Avoid_: superuser, operator (the operator acts on Tucker's configuration from
+outside it; an Admin is a User inside it)
+
 ### Logging
 
 **Calorie Tracking**:
