@@ -13,6 +13,8 @@ export function openGate() {
 
 /**
  * One macrotask: long enough for a response the test released, or one it says
- * was never sent, to have reached the screen.
+ * was never sent, to have reached the screen. Not the losing side of a race that
+ * proves something does not wait: a render can need longer under load, so give
+ * that side a real bound (a second) or correct code flakes red.
  */
 export const settle = () => new Promise((resolve) => setTimeout(resolve))

@@ -35,7 +35,12 @@ explicitly in the verdict.
    in `frontend/`. Wait for both before navigating. **If the branch touched `backend/`
    since the image was built, `docker compose build backend` first** — compare the
    `docker image inspect -f '{{.Created}}' tucker-backend:latest` with `git log -1 --format=%cI --
-   backend/`: #498's first crossing probe ran on a stale image and read `reachedOn` null. **Drive the URL the dev log's
+   backend/`: #498's first crossing probe ran on a stale image and read `reachedOn` null.
+   **In a worktree, name it to compose** — `docker compose --project-directory <worktree>
+   -f <worktree>/docker-compose.yml …` — and check `docker inspect -f '{{index
+   .Config.Labels "com.docker.compose.project.working_dir"}}' tucker-backend` names it:
+   one `cd ..` too far, `.claude/worktrees/` has no compose file, so compose walks up to
+   the main checkout's and builds `main`'s backend (#518's gate 6). **Drive the URL the dev log's
    `➜ Local:` line names, not the port you asked for** — Nuxt silently moves to
    another port when yours is taken, so the one you asked for may still be answered
    by another worktree's server running other code. Confirm the listener is yours
@@ -89,6 +94,8 @@ shapes a real user's data comes in, and drive at least one of each:
 | A cell's states at once | a repeated cell that can hold several flags (marked, selected, disabled, today) gets each pair on one cell — including in the `/design` specimen, whose fixture otherwise keeps them apart. #474's specimen selected an unmarked day, and the primary dot on the primary selected circle surfaced only in the verdict audit |
 | A sheet seeded per opening | a sheet shared by several modes and seeded from a prop on each opening (a prefill) is driven across the switch in one session: Edit, then Add on an empty day (the field must be blank), and Add, then Edit the same day without a reload (prefilled from the re-read, one row stored). #497's audit sent the walk-through back for both |
 | A server-side rule the UI can't reach | a domain bound or a ±N plausibility check: both edges of the window, one past each, and the field omitted — over the dev proxy, on every endpoint that runs it. A bound **anchored to the client's day** is only told apart from one on the server's day with the client off by one: `clientToday` +1 with `date` client+2 (accepted) and client+3 (refused), `clientToday` −1 with `date` server+1 (refused). #443's audit sent the walk-through back for `clientToday` ±1/+2/absent and `date = today + 2`; #444's for −2 and the client offset. A value the **client** refuses never reaches the server's refusal or its routing: move the state behind the page over the API (lower the trend after /profile loaded) so the client accepts what the server refuses — #454's 89.1 and 1.6 were Zod's |
+| A route the diff adds | its address at `?query`, `#hash`, a trailing `/` and in upper case, as both the User it admits and the one it refuses, beside an unknown path's not-found at the same suffix — a page that prints `route.fullPath` prints each one. #518's audit found only the bare `/admin` driven |
+| A membership or match rule | both directions: a caller that contains a listed entry *and* one contained in one (a substring bug passes the first alone), a match on the last entry, a single entry, a trailing separator, the caller's case. #518's audit called the one-way probe WEAK |
 | A new request-body field | read the saved record back through the API after the save, since a form can look right and send nothing (`GET /api/foods` showing the new `tags`, not the chips on screen) |
 | A threshold the code *reads* | a breakpoint, a timer, a grace period, a debounce — value−1 and value, both sides. #435's 1024px breakpoint and 250 ms grace were first walked at 555/2133px and 80/680 ms, which bracket them and prove neither edge. A **reveal delay** (a skeleton, a dim) is one too: hold the one endpoint for the slow side, and on the fast side read the element's opacity at insertion rather than concluding it never appeared — "the local read is too fast to show it" is not NOT DRIVEN. #475's first verdict wrote both off; the fast side was a 16.6 ms full-opacity flash |
 | A read a newer selection supersedes | a `latest`-mode read (a picked day, a window): hold the endpoint, pick A, then B before A answers, and confirm A's data never shows — one switch under a hold is not this probe. #511's audit sent the walk-through back for it |
