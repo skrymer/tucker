@@ -118,6 +118,18 @@ describe('the report handler', () => {
     expect((await response.json()).routes).toHaveLength(1)
   })
 
+  it('narrows nothing by an app version of spaces alone, as the backend does', async () => {
+    server.use(
+      metricsBy(({ version }) =>
+        version === null ? [{ route: '/review', layouts: [] }] : [],
+      ),
+    )
+
+    const response = await reportOf('version=%20%20')
+
+    expect((await response.json()).routes).toHaveLength(1)
+  })
+
   it('takes an installed flag in any spelling Spring binds a Boolean from', async () => {
     expect((await reportOf('installed=%20Yes%20')).status).toBe(200)
   })

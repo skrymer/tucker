@@ -109,7 +109,8 @@ const FLAGS: Record<string, boolean> = {
  * or engine it does not offer, or an installed flag Spring cannot read as one.
  */
 function readFilters(query: QueryParams): MetricQuery | string {
-  // Blank reads as absent, as Spring converts an empty value to null.
+  // Spring binds an empty range or engine as absent, and the controller ignores
+  // a version of spaces alone.
   const range = query.get('range') || '30d'
   const engine = query.get('engine') || null
   const installed = query.get('installed')
@@ -130,7 +131,7 @@ function readFilters(query: QueryParams): MetricQuery | string {
   return {
     range,
     engine,
-    version: query.get('version') || null,
+    version: query.get('version')?.trim() ? query.get('version') : null,
     installed: flag,
   }
 }
