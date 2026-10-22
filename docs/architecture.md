@@ -168,6 +168,7 @@ flowchart TD
       jwt["<b>AccessJwtDecoder</b><br/>[Component: Nimbus, Cloudflare JWKS]<br/>verifies the assertion"]:::component
       principal["<b>AccessPrincipalConverter</b><br/>[Component: Spring Security]<br/>assertion → User, provisioned just-in-time"]:::component
       csrf["<b>SpaCsrf</b><br/>[Component: Spring Security]<br/>XSRF-TOKEN on every mutation"]:::component
+      authz["<b>AccessSecurityConfig</b><br/>[Component: Spring Security]<br/>/api/admin/** for an Admin alone, anyone else 404"]:::component
     end
     current["<b>CurrentUser</b><br/>[Component: com.tucker.security]<br/>whose request this is, from the SecurityContext"]:::component
     controllers["<b>Controllers</b><br/>[Component: com.tucker.api, springdoc]<br/>REST endpoints + OpenAPI spec"]:::component
@@ -181,7 +182,8 @@ flowchart TD
   timing --> jwt
   jwt --> principal
   principal --> csrf
-  csrf --> controllers
+  csrf --> authz
+  authz --> controllers
   controllers --> services
   controllers -- "reads and simple writes" --> repos
   controllers -- "simple use cases" --> domain
