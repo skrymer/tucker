@@ -1663,19 +1663,22 @@ is still loading raises no error*). The six left are **equivalent**:
   again*, red on a hand-mutant).
 - **`routeChangeTimer.ts` `hides++` → `hides--` — equivalent**: a paint only asks
   whether the count moved.
-- **`routeTiming.ts` `?.name` → `.name` — equivalent**: a layout is typed to the two
-  `LAYOUTS` holds, so `find` never misses.
 - **`admin.vue`'s `report.value?.routes ?? []` — equivalent**: read only inside
   `LoadErrorState`'s content, which renders only after a successful read. The not-found
   guard's mutants (L13–17) are **killed by an out-of-scope layer**: `e2e/admin.spec.ts`'s
   not-found tests and `e2e/smoke/admin.smoke.spec.ts`.
-- **`RouteTimingCard.vue` and `route-metrics.client.ts` — killed by an out-of-scope layer**,
-  per mutant in the triage: `e2e/admin.spec.ts` (*counts a move…*, *puts the slowest page
-  at the top*, *colours each bar…*, *states the exact figures…*) and
-  `e2e/smoke/metrics.smoke.spec.ts`. Equivalent: the card's `?.p75` and both `''`
-  fallbacks (the backend lists every layout for every route, `PerformanceReport.of`).
-  `route-metrics.client.ts:28`'s `?.path` is equivalent in practice: `page:finish` fires
+- **`RouteTimingCard.vue` and `route-metrics.client.ts` — killed by an out-of-scope layer**
+  (#520's stacked chart and split, re-triaged): `e2e/admin.spec.ts` (*counts a move…*,
+  *puts the slowest page at the top*, *draws phone and desktop on one scale*, *colours
+  each part…*, *states the exact figures…*) and `e2e/smoke/metrics.smoke.spec.ts` (the
+  api-call log, its clearing, and `moveTiming`'s wiring). The card's `?? undefined` →
+  `&& undefined` is killed by *colours each part…* (no bar is drawn). The tick's `''`
+  fallback is equivalent: `tick-values` names only indices `rows` holds.
+  `route-metrics.client.ts`'s `?.path` is equivalent in practice: `page:finish` fires
   only for a matched page.
+- **`MetricEventRequest`'s `getApiMs`, `getServerMs`, `getFirstVisit` (#520) — NO_COVERAGE,
+  as its other getters**: `toDomain()` reads the backing fields, and nothing serialises a
+  request.
 
 ### Noise removed at the source
 

@@ -46,6 +46,13 @@ describe('splitting a move between pages', () => {
     expect(split.apiMs).toBe(250)
   })
 
+  // The browser lists a call when it ends, so a long call made first comes last.
+  it('counts calls in the order the browser lists them, by when each ended', () => {
+    const split = navigationSplit([call(150, 200), call(100, 500)], window)
+
+    expect(split.apiMs).toBe(400)
+  })
+
   it('adds up calls made one after another', () => {
     const split = navigationSplit([call(100, 300), call(400, 450)], window)
 
@@ -93,6 +100,25 @@ describe('splitting a move between pages', () => {
     )
 
     expect(split).toEqual({ apiMs: 250, serverMs: 30 })
+  })
+
+  // Cloudflare states timings of its own beside Tucker's.
+  it("counts the server's own app duration, not another timing beside it", () => {
+    const entry = call(100, 300, { responseStart: 290 })
+    const split = navigationSplit(
+      [
+        {
+          ...entry,
+          serverTiming: [
+            { name: 'cfEdge', duration: 150, description: '' },
+            { name: 'app', duration: 40, description: '' },
+          ] as PerformanceServerTiming[],
+        },
+      ],
+      window,
+    )
+
+    expect(split.serverMs).toBe(40)
   })
 
   // The backend refuses a server time longer than the wait, and the batch with it.

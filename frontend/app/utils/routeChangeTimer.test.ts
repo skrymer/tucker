@@ -132,6 +132,22 @@ describe('timing a move between pages', () => {
     ])
   })
 
+  // No route template can be read without a matched page, so there is nothing to name.
+  it('records nothing for a move to a page no route matched', () => {
+    const record = vi.fn()
+    const timer = createRouteChangeTimer({
+      now: () => 0,
+      afterPaint: (fn) => fn(),
+      record,
+    })
+    timer.finished('/today')
+    timer.started()
+
+    timer.finished(undefined)
+
+    expect(record).not.toHaveBeenCalled()
+  })
+
   // A redirect while the visit opens is a second navigation before any page has
   // finished: still the page load, not a move.
   it('times nothing until the page a visit opened on has finished', () => {

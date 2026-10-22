@@ -102,10 +102,14 @@ describe('a bar on the Admin chart', () => {
 describe("the Admin chart's parts", () => {
   // Stacked from the server outwards, each in the categorical palette's fixed order.
   it('stacks the server, then network and proxy, then render and JS', () => {
-    expect(PARTS.map(({ name, color }) => ({ name, color }))).toEqual([
-      { name: 'Server', color: 'var(--tucker-cat-1)' },
-      { name: 'Network + proxy', color: 'var(--tucker-cat-2)' },
-      { name: 'Render / JS', color: 'var(--tucker-cat-3)' },
+    expect(PARTS).toEqual([
+      { name: 'Server', figure: 'serverMs', color: 'var(--tucker-cat-1)' },
+      {
+        name: 'Network + proxy',
+        figure: 'networkMs',
+        color: 'var(--tucker-cat-2)',
+      },
+      { name: 'Render / JS', figure: 'renderMs', color: 'var(--tucker-cat-3)' },
     ])
   })
 })
