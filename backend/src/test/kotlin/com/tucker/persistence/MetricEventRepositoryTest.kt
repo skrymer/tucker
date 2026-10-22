@@ -54,4 +54,30 @@ class MetricEventRepositoryTest {
 
         assertEquals(setOf(installed, inBrowser), metrics.find(MetricFilter(Instant.EPOCH, null, null, null)).toSet())
     }
+
+    // An Instant's own text drops trailing zero groups, so ".123456Z" sorts before ".123Z".
+    @Test
+    fun `finds an event recorded a fraction of a millisecond after the range begins`() {
+        val event = MetricEvent(
+            kind = MetricKind.ROUTE_CHANGE,
+            route = "/review",
+            valueMs = 480,
+            apiMs = 310,
+            serverMs = 95,
+            firstVisit = false,
+            source = MetricSource(
+                MetricLayout.DESKTOP,
+                installed = false,
+                appVersion = "0.1.42",
+                platform = Platform(BrowserEngine.BLINK, OperatingSystem.WINDOWS),
+            ),
+        )
+
+        metrics.insert(MetricBatch(listOf(event)), recordedAt = Instant.parse("2026-10-22T09:30:00.123456Z"))
+
+        assertEquals(
+            listOf(event),
+            metrics.find(MetricFilter(Instant.parse("2026-10-22T09:30:00.123Z"), null, null, null)),
+        )
+    }
 }

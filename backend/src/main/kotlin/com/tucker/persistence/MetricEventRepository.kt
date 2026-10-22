@@ -16,6 +16,8 @@ import org.jooq.impl.DSL.max
 import org.jooq.impl.DSL.noCondition
 import org.springframework.stereotype.Repository
 import java.time.Instant
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 
 /**
  * Persistence for [MetricEvent]s — Tucker's own, so unscoped: the one repository with no
@@ -46,7 +48,7 @@ class MetricEventRepository(private val dsl: DSLContext) {
             .orderBy(max(METRIC_EVENT.RECORDED_AT).desc())
             .fetch(METRIC_EVENT.APP_VERSION)
 
-    private fun recordedSince(since: Instant) = METRIC_EVENT.RECORDED_AT.ge(since.toString())
+    private fun recordedSince(since: Instant) = METRIC_EVENT.RECORDED_AT.ge(since.stamp())
 
     private fun MetricEvent.toRecord(recordedAt: Instant) = MetricEventRecord().also {
         it.kind = kind.wire
@@ -60,7 +62,7 @@ class MetricEventRepository(private val dsl: DSLContext) {
         it.appVersion = source.appVersion
         it.engine = source.platform.engine.wire
         it.os = source.platform.os.wire
-        it.recordedAt = recordedAt.toString()
+        it.recordedAt = recordedAt.stamp()
     }
 
     private fun MetricEventRecord.toDomain() = MetricEvent(
@@ -78,3 +80,8 @@ class MetricEventRepository(private val dsl: DSLContext) {
         ),
     )
 }
+
+/** Every digit of the fraction written out, so stamps sort as text in time order. */
+private val STAMP = DateTimeFormatter.ofPattern("uuuu-MM-dd'T'HH:mm:ss.SSSSSSSSS'Z'").withZone(ZoneOffset.UTC)
+
+private fun Instant.stamp(): String = STAMP.format(this)

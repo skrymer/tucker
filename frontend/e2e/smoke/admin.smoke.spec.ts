@@ -25,7 +25,9 @@ test.describe('an Admin', () => {
       page.getByRole('heading', { level: 1, name: 'Metrics' }),
     ).toBeVisible()
     await expect(
-      page.getByRole('heading', { name: 'Nothing measured yet' }),
+      page.getByRole('heading', {
+        name: 'Nothing measured in the last 30 days',
+      }),
     ).toBeVisible()
   })
 

@@ -19,6 +19,7 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.delete
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
 import org.springframework.transaction.annotation.Transactional
@@ -201,6 +202,16 @@ class AdminMetricsApiTest {
     fun `answers a User who is not an Admin as a path that does not exist, whatever the filters say`() {
         val unknown = mockMvc.get("/api/admin/nothing-here") { signedInAs(USER) }.andReturn().response
         val refused = mockMvc.get("/api/admin/metrics?range=1y") { signedInAs(USER) }.andReturn().response
+
+        assertEquals(404, refused.status)
+        assertEquals(unknown.contentAsString, refused.contentAsString)
+    }
+
+    /** A method the page does not take must not be refused as such, which would say the page is here. */
+    @Test
+    fun `answers a User who is not an Admin as a path that does not exist, whatever the method`() {
+        val unknown = mockMvc.delete("/api/admin/nothing-here") { signedInAs(USER) }.andReturn().response
+        val refused = mockMvc.delete("/api/admin/metrics") { signedInAs(USER) }.andReturn().response
 
         assertEquals(404, refused.status)
         assertEquals(unknown.contentAsString, refused.contentAsString)

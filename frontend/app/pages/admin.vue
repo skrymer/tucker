@@ -60,6 +60,7 @@ const { chosen, query, narrowed, reset } = useMetricFilters()
 const {
   data: report,
   error: reportError,
+  pending,
   refresh,
 } = await useApi('/api/admin/metrics', { query })
 const routes = computed(() => report.value?.routes ?? [])
@@ -105,10 +106,14 @@ const filters = computed(() => [
     <p class="text-body text-muted lg:hidden">
       Metrics are built for a larger screen.
     </p>
-    <section class="hidden flex-col gap-4 lg:flex">
+    <section
+      aria-labelledby="admin-heading"
+      :aria-busy="pending"
+      class="hidden flex-col gap-4 lg:flex"
+    >
       <header class="flex flex-col gap-1">
         <p class="text-eyebrow text-muted">Admin</p>
-        <h1 class="text-h1 text-default">Metrics</h1>
+        <h1 id="admin-heading" class="text-h1 text-default">Metrics</h1>
       </header>
       <div
         v-if="isDesktop"
@@ -129,27 +134,44 @@ const filters = computed(() => [
         title="Couldn't load the metrics"
         @retry="refresh"
       >
-        <LazyRouteTimingCard v-if="routes.length" :routes="routes" />
+        <!-- A refetch keeps the last answer up, dimmed (ADR 0007); the delay
+             means an answer faster than 150 ms never dims. -->
         <div
-          v-else-if="narrowed"
-          class="flex flex-col items-center gap-3 py-12 text-center"
+          class="transition-opacity delay-150"
+          :class="pending && 'opacity-50'"
         >
-          <UIcon
-            name="i-lucide-filter-x"
-            class="size-10 text-muted"
-            aria-hidden
-          />
-          <h2 class="text-h2 text-highlighted">
-            Nothing matches these filters
-          </h2>
-          <UButton label="Reset filters" variant="outline" @click="reset" />
-        </div>
-        <div v-else class="flex flex-col items-center gap-3 py-12 text-center">
-          <UIcon name="i-lucide-gauge" class="size-10 text-muted" aria-hidden />
-          <h2 class="text-h2 text-highlighted">Nothing measured yet</h2>
-          <p class="max-w-xs text-sm text-muted">
-            Page timings appear here once Tucker starts recording them.
-          </p>
+          <LazyRouteTimingCard v-if="routes.length" :routes="routes" />
+          <div
+            v-else-if="narrowed"
+            class="flex flex-col items-center gap-3 py-12 text-center"
+          >
+            <UIcon
+              name="i-lucide-filter-x"
+              class="size-10 text-muted"
+              aria-hidden
+            />
+            <h2 class="text-h2 text-highlighted">
+              Nothing matches these filters
+            </h2>
+            <UButton label="Reset filters" variant="outline" @click="reset" />
+          </div>
+          <div
+            v-else
+            class="flex flex-col items-center gap-3 py-12 text-center"
+          >
+            <UIcon
+              name="i-lucide-gauge"
+              class="size-10 text-muted"
+              aria-hidden
+            />
+            <h2 class="text-h2 text-highlighted">
+              Nothing measured in the last 30 days
+            </h2>
+            <p class="max-w-xs text-sm text-muted">
+              Page timings appear here once Tucker records them. A wider range
+              looks further back.
+            </p>
+          </div>
         </div>
       </LoadErrorState>
     </section>

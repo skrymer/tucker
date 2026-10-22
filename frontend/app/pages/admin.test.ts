@@ -155,6 +155,35 @@ describe('/admin', () => {
     ).toEqual(['All versions', '0.1.43', '0.1.42'])
   })
 
+  // Otherwise the select reads as unset while the read still narrows by it.
+  it('keeps showing the chosen app version when a narrower range no longer holds it', async () => {
+    const user = userEvent.setup()
+    server.use(
+      signedInAsAdmin,
+      metricsBy(
+        () => [],
+        ({ range }) => (range === '24h' ? ['0.1.43'] : ['0.1.43', '0.1.42']),
+      ),
+    )
+    await renderSuspended(AdminPage)
+    await user.click(screen.getByRole('combobox', { name: 'App version' }))
+    await user.click(await screen.findByRole('option', { name: '0.1.42' }))
+
+    await user.click(screen.getByRole('combobox', { name: 'Range' }))
+    await user.click(
+      await screen.findByRole('option', { name: 'Last 24 hours' }),
+    )
+
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Nothing matches these filters',
+      }),
+    ).toBeVisible()
+    expect(
+      screen.getByRole('combobox', { name: 'App version' }),
+    ).toHaveTextContent('0.1.42')
+  })
+
   // Measured only while no version is sent: a chosen one must reach the read.
   it('narrows the chart to the chosen app version', async () => {
     const user = userEvent.setup()
@@ -264,7 +293,9 @@ describe('/admin', () => {
         name: 'Nothing matches these filters',
       }),
     ).toBeVisible()
-    expect(screen.queryByText('Nothing measured yet')).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('Nothing measured in the last 30 days'),
+    ).not.toBeInTheDocument()
     expect(
       screen.queryByRole('heading', { name: 'Moving between pages' }),
     ).not.toBeInTheDocument()
@@ -275,8 +306,11 @@ describe('/admin', () => {
     server.use(
       signedInAsAdmin,
       metricsBy(
-        ({ range, version }) =>
-          range === '24h' || version === '0.1.42'
+        ({ range, engine, version, installed }) =>
+          range === '24h' ||
+          engine === 'gecko' ||
+          version === '0.1.42' ||
+          installed === true
             ? []
             : [
                 {
@@ -292,8 +326,12 @@ describe('/admin', () => {
     await user.click(
       await screen.findByRole('option', { name: 'Last 24 hours' }),
     )
+    await user.click(screen.getByRole('combobox', { name: 'Engine' }))
+    await user.click(await screen.findByRole('option', { name: 'Gecko' }))
     await user.click(screen.getByRole('combobox', { name: 'App version' }))
     await user.click(await screen.findByRole('option', { name: '0.1.42' }))
+    await user.click(screen.getByRole('combobox', { name: 'Opened in' }))
+    await user.click(await screen.findByRole('option', { name: 'Installed' }))
 
     await user.click(
       await screen.findByRole('button', { name: 'Reset filters' }),
@@ -308,25 +346,61 @@ describe('/admin', () => {
     expect(screen.getByRole('combobox', { name: 'Range' })).toHaveTextContent(
       'Last 30 days',
     )
+    expect(screen.getByRole('combobox', { name: 'Engine' })).toHaveTextContent(
+      'All engines',
+    )
     expect(
       screen.getByRole('combobox', { name: 'App version' }),
     ).toHaveTextContent('All versions')
+    expect(
+      screen.getByRole('combobox', { name: 'Opened in' }),
+    ).toHaveTextContent('Installed or browser')
     expect(
       screen.queryByText('Nothing matches these filters'),
     ).not.toBeInTheDocument()
   })
 
-  it('says nothing has been measured yet', async () => {
+  // Not "nothing measured yet": older timings may sit outside the default range.
+  it('says nothing has been measured in the default range, and that a wider one looks further back', async () => {
     server.use(signedInAsAdmin)
     await renderSuspended(AdminPage)
 
     expect(
-      screen.getByRole('heading', { level: 2, name: 'Nothing measured yet' }),
+      screen.getByRole('heading', {
+        level: 2,
+        name: 'Nothing measured in the last 30 days',
+      }),
     ).toBeVisible()
     expect(
       screen.getByText(
-        'Page timings appear here once Tucker starts recording them.',
+        'Page timings appear here once Tucker records them. A wider range looks further back.',
       ),
+    ).toBeVisible()
+  })
+
+  it('keeps the last chart up and says the metrics are loading while new filters are read', async () => {
+    const user = userEvent.setup()
+    server.use(
+      signedInAsAdmin,
+      http.get('/api/admin/metrics', ({ query }) =>
+        query.get('engine') === 'gecko'
+          ? new Promise<never>(() => {})
+          : undefined,
+      ),
+      metricsReport([
+        { route: '/review', layouts: [measured('phone'), measured('desktop')] },
+      ]),
+    )
+    await renderSuspended(AdminPage)
+    const metrics = screen.getByRole('region', { name: 'Metrics' })
+    expect(metrics).toHaveAttribute('aria-busy', 'false')
+
+    await user.click(screen.getByRole('combobox', { name: 'Engine' }))
+    await user.click(await screen.findByRole('option', { name: 'Gecko' }))
+
+    await vi.waitFor(() => expect(metrics).toHaveAttribute('aria-busy', 'true'))
+    expect(
+      screen.getByRole('heading', { name: 'Moving between pages' }),
     ).toBeVisible()
   })
 
@@ -341,7 +415,9 @@ describe('/admin', () => {
     await renderSuspended(AdminPage)
 
     expect(await screen.findByText("Couldn't load the metrics")).toBeVisible()
-    expect(screen.queryByText('Nothing measured yet')).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('Nothing measured in the last 30 days'),
+    ).not.toBeInTheDocument()
   })
 
   // The bars themselves are drawn by unovis, which happy-dom cannot lay out;
@@ -379,6 +455,8 @@ describe('/admin', () => {
         .getAllByRole('listitem')
         .map((i) => i.textContent?.trim()),
     ).toEqual(['Server', 'Network + proxy', 'Render / JS'])
-    expect(screen.queryByText('Nothing measured yet')).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('Nothing measured in the last 30 days'),
+    ).not.toBeInTheDocument()
   })
 })

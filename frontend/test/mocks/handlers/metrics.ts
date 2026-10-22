@@ -202,17 +202,22 @@ export function metricsRecorded() {
 
 /**
  * The Admin's report, measured as [answer] says for each set of filters, the
- * range holding [versions] whichever one is chosen.
+ * range holding [versions] — the same whichever filters are chosen, or as a
+ * function says for each.
  */
 export function metricsBy(
   answer: (query: MetricQuery) => RouteFigures[],
-  versions: string[] = [],
+  versions: string[] | ((query: MetricQuery) => string[]) = [],
 ) {
   return http.get('/api/admin/metrics', ({ query, response }) => {
     const filters = readFilters(query)
     return typeof filters === 'string'
       ? response(400).json({ message: filters })
-      : response(200).json({ routes: answer(filters), versions })
+      : response(200).json({
+          routes: answer(filters),
+          versions:
+            typeof versions === 'function' ? versions(filters) : versions,
+        })
   })
 }
 

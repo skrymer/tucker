@@ -60,7 +60,10 @@ data class PerformanceReportResponse(val routes: List<RouteFiguresResponse>, val
         this(report.routes.map(::RouteFiguresResponse), versions)
 }
 
-/** How Tucker performs, for an Admin (ADR 0039), whom [AdminGate] lets through alone. */
+/**
+ * How Tucker performs, for an Admin (ADR 0039), whom
+ * [com.tucker.security.AccessSecurityConfig] lets through alone.
+ */
 @RestController
 @RequestMapping("/api/admin/metrics")
 class AdminMetricsController(private val metrics: MetricEventRepository, private val clock: Clock) {
