@@ -64,7 +64,10 @@ agent, and the seven below.
   `/check-adrs` pack names no ADR, since choosing which ones apply is its job (#433).
   Prose has not held this — #511 named an untouched composable in one pack and an
   uncited ADR in another — so check each path before sending: it is in
-  `git diff --name-only <base> <sha>` or in the issue body, or it comes out.
+  `git diff --name-only <base> <sha>` or in the issue body, or it comes out. That check
+  passes an ADR the diff edits, so a `/check-adrs` pack also drops every `docs/adr/`
+  path whatever the diff touches (#520's re-run brief named the ADR its fix amended), and
+  any pack drops the skills and CLAUDE.md unless the diff changes them.
 - The conclusion of another agent in the same run. Two briefs are exempt because that
   material *is* their subject: the arbiter's, which is given both positions, and the
   **resolutions agent's**, which is given every finding, every dismissal and the

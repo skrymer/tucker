@@ -121,8 +121,13 @@ not restate them.
 - **A test reading a repo file through `java.io.File` is invisible to Gradle.** Without an
   `inputs.file` on the task, editing only that file leaves `:test` UP-TO-DATE and the guard
   silently never runs — precisely the case it exists for.
-- **Flyway migrations: no `;` inside a comment**, and no `CHECK` in an `ADD COLUMN`.
-  `prepareJooqDatabase` splits the SQL naively on `;`, and codegen dies naming neither.
+- **Flyway migrations: no `;` inside a comment.** `prepareJooqDatabase` splits the SQL
+  naively on `;`, and codegen dies without naming it. A `CHECK` in an `ADD COLUMN` is
+  fine — SQLite and codegen take it, and #520's V25 guards its three columns that way.
+- **A header or filter behaviour on an error response needs an `e2eTest` case.** A
+  refusal Spring sends with `sendError` commits the response there and then, and a real
+  socket drops any header set after it — MockMvc's response keeps it, so the fast suite
+  stays green (#520's `Server-Timing` on a 404/403/400, found at code review).
 - **Never edit an applied migration** — the checksum changes and the next `docker compose up`
   refuses to start against your dev volume. Repair the stored checksum rather than wiping data.
 - **An owner-first composite index retires the single-column one.** Every read is

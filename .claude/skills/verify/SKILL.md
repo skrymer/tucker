@@ -36,6 +36,10 @@ explicitly in the verdict.
    since the image was built, `docker compose build backend` first** — compare the
    `docker image inspect -f '{{.Created}}' tucker-backend:latest` with `git log -1 --format=%cI --
    backend/`: #498's first crossing probe ran on a stale image and read `reachedOn` null.
+   **When the diff adds a migration, layer `-f docker-compose.smoke.yml`** (a disposable
+   database; its Admin is `admin@tucker.invalid`): the gates after gate 0 routinely edit
+   that migration, and one applied to the shared `tucker-data` volume then fails Flyway's
+   checksum on every checkout. #520's gate 0 left V25 there, and the rollback was refused.
    **In a worktree, name it to compose** — `docker compose --project-directory <worktree>
    -f <worktree>/docker-compose.yml …` — and check `docker inspect -f '{{index
    .Config.Labels "com.docker.compose.project.working_dir"}}' tucker-backend` names it:
@@ -100,7 +104,7 @@ shapes a real user's data comes in, and drive at least one of each:
 | A threshold the code *reads* | a breakpoint, a timer, a grace period, a debounce — value−1 and value, both sides. #435's 1024px breakpoint and 250 ms grace were first walked at 555/2133px and 80/680 ms, which bracket them and prove neither edge. A **reveal delay** (a skeleton, a dim) is one too: hold the one endpoint for the slow side, and on the fast side read the element's opacity at insertion rather than concluding it never appeared — "the local read is too fast to show it" is not NOT DRIVEN. #475's first verdict wrote both off; the fast side was a 16.6 ms full-opacity flash |
 | A read a newer selection supersedes | a `latest`-mode read (a picked day, a window): hold the endpoint, pick A, then B before A answers, and confirm A's data never shows — one switch under a hold is not this probe. #511's audit sent the walk-through back for it |
 | A size or type change | the widest figure the data allows in each fixed box (a ring's hole, a tile's row), and the same at `html` font-size 20px — #445's 36px Check share "123%" drew 99px of ink in a 94px hole, and at 20px a px-sized SVG left it 124px in 106 |
-| A migration | the upgraded database, not only a fresh one: seed and delete top rows on `main`'s published image (`ghcr.io/skrymer/tucker-backend:latest`) on a disposable volume, then start the branch image on the same volume and read the result. Stop the main stack first — `docker-compose.yml` fixes `container_name`, so a second `-p` project cannot run beside it — and read the applied migration by `installed_rank`, never `max(version)`: `version` is text, so `'9' > '21'`. #455's first run read it that way and could not show its migration had run at all |
+| A migration | the upgraded database, not only a fresh one, **in the first walk-through pass**: seed and delete top rows on `main`'s image on a disposable volume, then start the branch image on the same volume and read the result. `docker pull ghcr.io/skrymer/tucker-backend:latest` first and check it holds the base's latest migration; otherwise build the base from source — `git archive --format=tar -o /tmp/<x>.tar <base> backend` from the repo root, extract, `docker build` the extracted `backend/` (#520's `<base>:backend` form wrote an empty tar). Run both containers with `docker run --env-file` copied from `tucker-backend`'s env and a `TUCKER_DB_PATH` on the volume, and seed or read through `python:3-slim`. Stop the main stack first — `docker-compose.yml` fixes `container_name`, so a second `-p` project cannot run beside it — and read the applied migration by `installed_rank`, never `max(version)`: `version` is text, so `'9' > '21'`. #455's first run read it that way and could not show its migration had run at all |
 
 Then the states: empty/zero, the error path, the reset. Two of those, chosen by what the
 change could plausibly have broken. **And the case each fix commit since gate 0 was
