@@ -26,7 +26,12 @@ enum class MetricLayout(@JsonValue val wire: String) {
 }
 
 /** Where a [MetricEvent] was measured: nothing in it names the User who measured it. */
-data class MetricSource(val layout: MetricLayout, val installed: Boolean, val appVersion: String) {
+data class MetricSource(
+    val layout: MetricLayout,
+    val installed: Boolean,
+    val appVersion: String,
+    val platform: Platform,
+) {
     init {
         require(appVersion.length <= MAX_VERSION_LENGTH) {
             "an app version must be at most $MAX_VERSION_LENGTH characters"

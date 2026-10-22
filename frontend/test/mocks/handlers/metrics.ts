@@ -80,22 +80,77 @@ function isSplit({ valueMs, apiMs, serverMs, firstVisit }: Sent): boolean {
   )
 }
 
+/** An Admin's filters as a handler reads them off the query. */
+type Filters = {
+  get(name: 'range' | 'engine' | 'version' | 'installed'): string | null
+}
+
+/** Why the backend refuses an Admin's filters, or null when it reads them. */
+function filterRefusal(query: Filters): string | null {
+  const range = query.get('range') ?? '30d'
+  const engine = query.get('engine')
+  const installed = query.get('installed')
+  if (!['24h', '7d', '30d', '90d'].includes(range)) {
+    return `"${range}" is not a range`
+  }
+  if (
+    engine != null &&
+    !['webkit', 'blink', 'gecko', 'other'].includes(engine)
+  ) {
+    return `"${engine}" is not a browser engine`
+  }
+  if (installed != null && !['true', 'false'].includes(installed)) {
+    return `installed must be true or false, not "${installed}"`
+  }
+  return null
+}
+
 /** What Tucker measured of itself (ADR 0038): nothing yet. */
 export const metricHandlers = [
   http.post('/api/metrics', async ({ request, response }) => {
     const message = refusal((await request.json()).events)
     return message ? response(400).json({ message }) : response(204).empty()
   }),
-  http.get('/api/admin/metrics', ({ response }) =>
-    response(200).json({ routes: [] }),
-  ),
+  http.get('/api/admin/metrics', ({ query, response }) => {
+    const message = filterRefusal(query)
+    return message
+      ? response(400).json({ message })
+      : response(200).json({ routes: [], versions: [] })
+  }),
 ]
+
+/** The moves [sent] holds that an Admin's version and installed filters let through. */
+function matching(sent: Sent[], query: Filters): Sent[] {
+  const version = query.get('version')
+  const installed = query.get('installed')
+  return sent.filter(
+    (e) =>
+      (version == null || e.appVersion === version) &&
+      (installed == null || String(e.installed) === installed),
+  )
+}
+
+/** Each route sent, with how many moves to it each layout made. */
+function countedRoutes(sent: Sent[]): RouteFigures[] {
+  return [...new Set(sent.map((e) => e.route))].map((route) => ({
+    route,
+    layouts: (['phone', 'desktop'] as const).map((layout) =>
+      tooFew(
+        layout,
+        sent.filter((e) => e.route === route && e.layout === layout).length,
+      ),
+    ),
+  }))
+}
 
 /**
  * Tucker measuring itself: what a send carries becomes what the Admin's report
  * counts. A few moves between pages is all a test makes, so every group stays
  * under the backend's five samples and carries its count and no figure; a test
  * past that reads a fixed `metricsReport` instead of re-deriving percentiles here.
+ * Every move was sent just now, so each range holds them all. The engine is the
+ * backend's to read from a user agent, so an engine filter falls through here,
+ * failing a test that sends one.
  */
 export function metricsRecorded() {
   const sent: Sent[] = []
@@ -107,27 +162,48 @@ export function metricsRecorded() {
       sent.push(...events)
       return response(204).empty()
     }),
-    http.get('/api/admin/metrics', ({ response }) => {
-      const routes = [...new Set(sent.map((e) => e.route))]
+    http.get('/api/admin/metrics', ({ query, response }) => {
+      const message = filterRefusal(query)
+      if (message) return response(400).json({ message })
+      if (query.get('engine') != null) return undefined
       return response(200).json({
-        routes: routes.map((route) => ({
-          route,
-          layouts: (['phone', 'desktop'] as const).map((layout) =>
-            tooFew(
-              layout,
-              sent.filter((e) => e.route === route && e.layout === layout)
-                .length,
-            ),
-          ),
-        })),
+        routes: countedRoutes(matching(sent, query)),
+        versions: [...new Set(sent.map((e) => e.appVersion).reverse())],
       })
     }),
   ]
 }
 
-/** The Admin's report, measured as [routes] say. */
-export function metricsReport(routes: RouteFigures[]) {
-  return http.get('/api/admin/metrics', ({ response }) =>
-    response(200).json({ routes }),
-  )
+/** An Admin's filters as the page sends them, absent where it sends none. */
+export type MetricQuery = {
+  range: string
+  engine: string | null
+  version: string | null
+  installed: string | null
+}
+
+/**
+ * The Admin's report, measured as [answer] says for each set of filters, the
+ * range holding [versions] whichever one is chosen.
+ */
+export function metricsBy(
+  answer: (query: MetricQuery) => RouteFigures[],
+  versions: string[] = [],
+) {
+  return http.get('/api/admin/metrics', ({ query, response }) => {
+    const message = filterRefusal(query)
+    if (message) return response(400).json({ message })
+    const routes = answer({
+      range: query.get('range') ?? '30d',
+      engine: query.get('engine'),
+      version: query.get('version'),
+      installed: query.get('installed'),
+    })
+    return response(200).json({ routes, versions })
+  })
+}
+
+/** The Admin's report, measured as [routes] say whatever the filters. */
+export function metricsReport(routes: RouteFigures[], versions: string[] = []) {
+  return metricsBy(() => routes, versions)
 }

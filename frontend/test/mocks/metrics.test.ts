@@ -64,3 +64,36 @@ describe('the metric handlers', () => {
     )
   })
 })
+
+async function reportOf(query: string): Promise<Response> {
+  return fetch(new URL(`/api/admin/metrics?${query}`, location.origin))
+}
+
+// GET /api/admin/metrics refuses an Admin's filter the backend cannot read, and
+// says why in the backend's own words.
+describe('the report handler', () => {
+  it('refuses a range the backend does not offer', async () => {
+    const response = await reportOf('range=1y')
+
+    expect(response.status).toBe(400)
+    expect(await response.json()).toEqual({ message: '"1y" is not a range' })
+  })
+
+  it('refuses a browser engine the backend does not tell apart', async () => {
+    const response = await reportOf('engine=safari')
+
+    expect(response.status).toBe(400)
+    expect(await response.json()).toEqual({
+      message: '"safari" is not a browser engine',
+    })
+  })
+
+  it('refuses an installed filter that is neither true nor false', async () => {
+    const response = await reportOf('installed=maybe')
+
+    expect(response.status).toBe(400)
+    expect(await response.json()).toEqual({
+      message: 'installed must be true or false, not "maybe"',
+    })
+  })
+})

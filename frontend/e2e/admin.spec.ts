@@ -2,6 +2,7 @@ import type { Page } from '@playwright/test'
 import { expect, test } from './support/test'
 import { signedInAsAdmin } from '../test/mocks/handlers/identity'
 import {
+  metricsBy,
   metricsRecorded,
   metricsReport,
   tooFew,
@@ -52,6 +53,14 @@ async function barPart(page: Page, row: 'top' | 'bottom', part: number) {
   return page.locator(selector).nth(index)
 }
 
+/** The fill of each part of the one bar drawn, from the axis out. */
+const partColours = (page: Page) =>
+  page.evaluate(() =>
+    [...document.querySelectorAll('.route-timing path[class*="-bar"]')]
+      .sort((a, b) => a.getBoundingClientRect().x - b.getBoundingClientRect().x)
+      .map((b) => getComputedStyle(b).fill),
+  )
+
 const columnWidth = async (page: Page) =>
   (await page.getByRole('main').boundingBox())!.width
 
@@ -89,6 +98,15 @@ test.describe('as an Admin', () => {
         - /children: deep-equal
         - paragraph: Admin
         - heading "Metrics" [level=1]
+        - group "Filters":
+          - text: Range
+          - combobox "Range": Last 30 days
+          - text: Engine
+          - combobox "Engine": All engines
+          - text: App version
+          - combobox "App version": All versions
+          - text: Opened in
+          - combobox "Opened in": Installed or browser
         - heading "Nothing measured yet" [level=2]
         - paragraph: Page timings appear here once Tucker starts recording them.
     `)
@@ -280,6 +298,60 @@ test.describe('as an Admin', () => {
     )
     // Three parts told apart, not one colour twice.
     expect(new Set(colours.legend).size).toBe(3)
+  })
+
+  test('sets the four filters in one row above the chart', async ({
+    page,
+    goto,
+    network,
+    isMobile,
+  }) => {
+    test.skip(isMobile, 'a phone shows the notice instead')
+    network.use(
+      metricsReport([{ route: '/review', layouts: [figures('phone', 400)] }]),
+    )
+    await goto('/admin', { waitUntil: 'hydration' })
+    await expect(page.getByRole('figure')).toContainText('/review · Phone')
+
+    const filters = page.getByRole('group', { name: 'Filters' })
+    const tops = await Promise.all(
+      (await filters.getByRole('combobox').all()).map(
+        async (c) => (await c.boundingBox())!.y,
+      ),
+    )
+    expect(tops).toHaveLength(4)
+    expect(new Set(tops).size).toBe(1)
+    const row = (await filters.boundingBox())!
+    const chart = (await page.getByRole('figure').boundingBox())!
+    expect(row.y + row.height).toBeLessThanOrEqual(chart.y)
+  })
+
+  test('redraws the chart for a chosen engine, each part keeping its colour', async ({
+    page,
+    goto,
+    network,
+    isMobile,
+  }) => {
+    test.skip(isMobile, 'a phone shows the notice instead')
+    network.use(
+      metricsBy(({ engine }) => [
+        engine === 'webkit'
+          ? { route: '/foods', layouts: [figures('phone', 1200)] }
+          : { route: '/review', layouts: [figures('phone', 400)] },
+      ]),
+    )
+    await goto('/admin', { waitUntil: 'hydration' })
+    const chart = page.getByRole('figure')
+    await expect(chart).toContainText('/review · Phone')
+    const before = await partColours(page)
+
+    await page.getByRole('combobox', { name: 'Engine' }).click()
+    await page.getByRole('option', { name: 'WebKit' }).click()
+
+    await expect(chart).toContainText('/foods · Phone')
+    await expect(chart).not.toContainText('/review')
+    expect(await partColours(page)).toEqual(before)
+    expect(new Set(before).size).toBe(3)
   })
 
   test('states the exact figures of whichever bar is pointed at', async ({

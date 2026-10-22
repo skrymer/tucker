@@ -1,17 +1,24 @@
 package com.tucker.api
 
+import com.tucker.domain.BrowserEngine
 import com.tucker.domain.LayoutFigures
+import com.tucker.domain.MetricFilter
 import com.tucker.domain.MetricLayout
+import com.tucker.domain.MetricRange
 import com.tucker.domain.PerformanceReport
 import com.tucker.domain.RouteFigures
 import com.tucker.persistence.MetricEventRepository
 import com.tucker.security.CurrentUser
+import io.swagger.v3.oas.annotations.Parameter
+import io.swagger.v3.oas.annotations.media.Schema
 import org.springframework.http.HttpMethod
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.servlet.resource.NoResourceFoundException
+import java.time.Clock
 
 /**
  * One route in one layout: [n] always, every figure (ms) only once there are enough
@@ -48,8 +55,10 @@ data class RouteFiguresResponse(val route: String, val layouts: List<LayoutFigur
     constructor(figures: RouteFigures) : this(figures.route, figures.layouts.map(::LayoutFiguresResponse))
 }
 
-data class PerformanceReportResponse(val routes: List<RouteFiguresResponse>) {
-    constructor(report: PerformanceReport) : this(report.routes.map(::RouteFiguresResponse))
+/** [versions] are those the range holds, whichever one the report is narrowed to. */
+data class PerformanceReportResponse(val routes: List<RouteFiguresResponse>, val versions: List<String>) {
+    constructor(report: PerformanceReport, versions: List<String>) :
+        this(report.routes.map(::RouteFiguresResponse), versions)
 }
 
 /**
@@ -62,12 +71,30 @@ data class PerformanceReportResponse(val routes: List<RouteFiguresResponse>) {
 class AdminMetricsController(
     private val metrics: MetricEventRepository,
     private val currentUser: CurrentUser,
+    private val clock: Clock,
 ) {
 
+    /**
+     * The filters arrive as text and are read only once the caller is known to be an Admin:
+     * one Spring refused while binding would answer a User 400, saying the page is here.
+     */
     @GetMapping
     @Transactional(readOnly = true)
-    fun report(): PerformanceReportResponse {
+    fun report(
+        @Parameter(schema = Schema(implementation = MetricRange::class))
+        @RequestParam(defaultValue = "30d") range: String,
+        @Parameter(schema = Schema(implementation = BrowserEngine::class))
+        @RequestParam(required = false) engine: String?,
+        @RequestParam(required = false) version: String?,
+        @Parameter(schema = Schema(implementation = Boolean::class))
+        @RequestParam(required = false) installed: String?,
+    ): PerformanceReportResponse {
         if (!currentUser.admin) throw NoResourceFoundException(HttpMethod.GET, "api/admin/metrics")
-        return PerformanceReportResponse(PerformanceReport.of(metrics.findAll()))
+        val since = MetricRange.of(range).since(clock.instant())
+        val filter = MetricFilter(since, engine?.let(BrowserEngine::of), version, installed?.let(::installedFlag))
+        return PerformanceReportResponse(PerformanceReport.of(metrics.find(filter)), metrics.versionsSince(since))
     }
+
+    private fun installedFlag(text: String) =
+        requireNotNull(text.toBooleanStrictOrNull()) { "installed must be true or false, not \"$text\"" }
 }
