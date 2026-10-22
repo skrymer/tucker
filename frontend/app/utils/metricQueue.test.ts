@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { resetPageStubs, setVisibility } from '~~/test/page-visibility-helpers'
 import { http, serverError } from '~~/test/mocks/http'
-import { metricsRecorded } from '~~/test/mocks/handlers/metrics'
+import { metricsRecorded, tooFew } from '~~/test/mocks/handlers/metrics'
 import { server } from '~~/test/mocks/node'
 import { createMetricQueue, sendMetrics, type MetricEvent } from './metricQueue'
 
@@ -9,6 +9,9 @@ const event: MetricEvent = {
   kind: 'route-change',
   route: '/review',
   valueMs: 420,
+  apiMs: 300,
+  serverMs: 120,
+  firstVisit: false,
   layout: 'phone',
   installed: false,
   appVersion: '1.4.0',
@@ -87,10 +90,7 @@ describe('sending metrics', () => {
     expect(routes).toEqual([
       {
         route: '/review',
-        layouts: [
-          { layout: 'phone', n: 1, p50: null, p75: null, p95: null },
-          { layout: 'desktop', n: 0, p50: null, p75: null, p95: null },
-        ],
+        layouts: [tooFew('phone', 1), tooFew('desktop', 0)],
       },
     ])
   })

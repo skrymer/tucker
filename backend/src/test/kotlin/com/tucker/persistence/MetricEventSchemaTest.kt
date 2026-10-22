@@ -21,7 +21,10 @@ class MetricEventSchemaTest {
             .map { it.get(0, String::class.java) }
 
         assertEquals(
-            setOf("id", "kind", "route", "value_ms", "layout", "installed", "app_version", "recorded_at"),
+            setOf(
+                "id", "kind", "route", "value_ms", "api_ms", "server_ms", "first_visit",
+                "layout", "installed", "app_version", "recorded_at",
+            ),
             columns.toSet(),
         )
     }

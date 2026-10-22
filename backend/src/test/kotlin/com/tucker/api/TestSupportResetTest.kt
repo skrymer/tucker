@@ -94,6 +94,7 @@ class TestSupportResetTest {
             header(ACCESS_ASSERTION_HEADER, AccessTokens.mint(email = "mover@tucker.invalid"))
             contentType = MediaType.APPLICATION_JSON
             content = """{"events":[{"kind":"route-change","route":"/review","valueMs":420,""" +
+                """"apiMs":0,"serverMs":0,"firstVisit":false,""" +
                 """"layout":"phone","installed":false,"appVersion":"1.4.0"}]}"""
         }.andExpect { status { isNoContent() } }
 

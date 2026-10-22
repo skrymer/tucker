@@ -27,7 +27,11 @@ describe('timing a move between pages', () => {
 
     clock = 1316
     paint()
-    expect(record).toHaveBeenCalledExactlyOnceWith('/foods', 316)
+    expect(record).toHaveBeenCalledExactlyOnceWith('/foods', {
+      start: 1000,
+      end: 1316,
+      firstVisit: true,
+    })
   })
 
   // A hidden page paints nothing until it is shown again, so its clock would run on
@@ -65,7 +69,11 @@ describe('timing a move between pages', () => {
     setVisibility('visible')
     timer.finished('/foods')
 
-    expect(record).toHaveBeenCalledExactlyOnceWith('/foods', 0)
+    expect(record).toHaveBeenCalledExactlyOnceWith('/foods', {
+      start: 0,
+      end: 0,
+      firstVisit: true,
+    })
   })
 
   it('drops a move that starts while the page is hidden', () => {
@@ -96,6 +104,46 @@ describe('timing a move between pages', () => {
 
     setVisibility('hidden')
     timer.finished('/foods')
+
+    expect(record).not.toHaveBeenCalled()
+  })
+
+  // The page a visit opens on has fetched its code already, though it is never timed.
+  it('marks a move to a page its first visit unless the visit has been there, the page it opened on included', () => {
+    const record = vi.fn()
+    const timer = createRouteChangeTimer({
+      now: () => 0,
+      afterPaint: (fn) => fn(),
+      record,
+    })
+    timer.finished('/today')
+
+    for (const page of ['/foods', '/today', '/foods']) {
+      timer.started()
+      timer.finished(page)
+    }
+
+    expect(
+      record.mock.calls.map(([page, move]) => [page, move.firstVisit]),
+    ).toEqual([
+      ['/foods', true],
+      ['/today', false],
+      ['/foods', false],
+    ])
+  })
+
+  // No route template can be read without a matched page, so there is nothing to name.
+  it('records nothing for a move to a page no route matched', () => {
+    const record = vi.fn()
+    const timer = createRouteChangeTimer({
+      now: () => 0,
+      afterPaint: (fn) => fn(),
+      record,
+    })
+    timer.finished('/today')
+    timer.started()
+
+    timer.finished(undefined)
 
     expect(record).not.toHaveBeenCalled()
   })

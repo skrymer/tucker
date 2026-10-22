@@ -13,13 +13,22 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.servlet.resource.NoResourceFoundException
 
-/** One route in one layout: [n] always, the percentiles (ms) only once there are enough samples. */
+/**
+ * One route in one layout: [n] always, every figure (ms) only once there are enough
+ * samples. [coldP75] needs enough first visits of its own. [serverMs], [networkMs] and
+ * [renderMs] are where a move around the p75 spent its time.
+ */
 data class LayoutFiguresResponse(
     val layout: MetricLayout,
     val n: Int,
     val p50: Int?,
     val p75: Int?,
     val p95: Int?,
+    val apiP75: Int?,
+    val coldP75: Int?,
+    val serverMs: Int?,
+    val networkMs: Int?,
+    val renderMs: Int?,
 ) {
     constructor(figures: LayoutFigures) : this(
         figures.layout,
@@ -27,6 +36,11 @@ data class LayoutFiguresResponse(
         figures.percentiles?.p50,
         figures.percentiles?.p75,
         figures.percentiles?.p95,
+        figures.apiP75,
+        figures.coldP75,
+        figures.split?.serverMs,
+        figures.split?.networkMs,
+        figures.split?.renderMs,
     )
 }
 

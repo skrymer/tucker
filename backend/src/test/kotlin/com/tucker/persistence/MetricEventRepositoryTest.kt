@@ -25,10 +25,14 @@ class MetricEventRepositoryTest {
             kind = MetricKind.ROUTE_CHANGE,
             route = "/review",
             valueMs = 480,
+            apiMs = 310,
+            serverMs = 95,
+            firstVisit = true,
             source = MetricSource(MetricLayout.DESKTOP, installed = true, appVersion = "0.1.42"),
         )
         val inBrowser = installed.copy(
             route = "/foods",
+            firstVisit = false,
             source = MetricSource(MetricLayout.PHONE, installed = false, appVersion = "0.1.43"),
         )
 

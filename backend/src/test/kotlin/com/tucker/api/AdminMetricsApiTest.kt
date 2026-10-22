@@ -26,7 +26,7 @@ class AdminMetricsApiTest {
 
     @Test
     fun `an Admin sees a route a User moved to, counted`() {
-        send(routeChange(route = "/review"), sender = "alice@tucker.invalid")
+        send(routeChange(), sender = "alice@tucker.invalid")
 
         mockMvc.get("/api/admin/metrics") { signedInAs(ADMIN) }.andExpect {
             status { isOk() }
@@ -52,6 +52,25 @@ class AdminMetricsApiTest {
         }
     }
 
+    @Test
+    fun `an Admin reads where a layout's time went, and its api and first-visit p75`() {
+        send(
+            *Array(5) {
+                routeChange(valueMs = 900, apiMs = 500, serverMs = 120)
+                    .replace("\"firstVisit\":false", "\"firstVisit\":true")
+            },
+            sender = USER,
+        )
+
+        mockMvc.get("/api/admin/metrics") { signedInAs(ADMIN) }.andExpect {
+            jsonPath("$.routes[0].layouts[0].apiP75") { value(500) }
+            jsonPath("$.routes[0].layouts[0].coldP75") { value(900) }
+            jsonPath("$.routes[0].layouts[0].serverMs") { value(120) }
+            jsonPath("$.routes[0].layouts[0].networkMs") { value(380) }
+            jsonPath("$.routes[0].layouts[0].renderMs") { value(400) }
+        }
+    }
+
     /** Not 403: the page must not tell a User that there is something here they may not see. */
     @Test
     fun `answers a User who is not an Admin exactly as a path that does not exist`() {
@@ -70,9 +89,10 @@ class AdminMetricsApiTest {
         }.andExpect { status { isNoContent() } }
     }
 
-    private fun routeChange(route: String = "/review", layout: String = "phone", valueMs: Int = 420) =
-        """{"kind":"route-change","route":"$route","valueMs":$valueMs,"layout":"$layout",""" +
-            """"installed":false,"appVersion":"1.4.0"}"""
+    /** A warm move to `/review`. */
+    private fun routeChange(layout: String = "phone", valueMs: Int = 420, apiMs: Int = 0, serverMs: Int = 0) =
+        """{"kind":"route-change","route":"/review","valueMs":$valueMs,"apiMs":$apiMs,"serverMs":$serverMs,""" +
+            """"firstVisit":false,"layout":"$layout","installed":false,"appVersion":"1.4.0"}"""
 
     private fun org.springframework.test.web.servlet.MockHttpServletRequestDsl.signedInAs(email: String) {
         header(ACCESS_ASSERTION_HEADER, AccessTokens.mint(email = email))

@@ -2,15 +2,56 @@ import type { components } from '#open-fetch-schemas/api'
 import { http } from '../http'
 
 type RouteFigures = components['schemas']['RouteFiguresResponse']
+type LayoutFigures = components['schemas']['LayoutFiguresResponse']
+
+/** A layout with enough samples for every figure, its numbers any a test does not read. */
+export function measured(
+  layout: LayoutFigures['layout'],
+  figures: Partial<Omit<LayoutFigures, 'layout'>> = {},
+): LayoutFigures {
+  return {
+    layout,
+    n: 20,
+    p50: 300,
+    p75: 450,
+    p95: 700,
+    apiP75: 250,
+    coldP75: 900,
+    serverMs: 80,
+    networkMs: 160,
+    renderMs: 200,
+    ...figures,
+  }
+}
+
+/** A layout with [n] samples, too few for the backend to state any figure. */
+export function tooFew(
+  layout: LayoutFigures['layout'],
+  n: number,
+): LayoutFigures {
+  return {
+    layout,
+    n,
+    p50: null,
+    p75: null,
+    p95: null,
+    apiP75: null,
+    coldP75: null,
+    serverMs: null,
+    networkMs: null,
+    renderMs: null,
+  }
+}
 type Sent = components['schemas']['MetricEventRequest']
 
 /**
  * Why the backend refuses a batch whole, or null when it takes it: no events or
  * more than 50, a route that is not a template, or a time outside 0–60 000 ms or
  * absent (a NaN the page sent arrives as null; a decimal the backend takes, as
- * Jackson reads it into an Int), or no installed flag. Its CSRF proof is the
- * backend's to check, as for every mutation mocked here: a mocked page is handed
- * no token.
+ * Jackson reads it into an Int), or no installed flag. A route change must also
+ * carry its api wait, server time and first-visit flag, with 0 ≤ server ≤ api ≤
+ * the move. Its CSRF proof is the backend's to check, as for every mutation
+ * mocked here: a mocked page is handed no token.
  */
 function refusal(events: Sent[]): string | null {
   if (events.length < 1 || events.length > 50) {
@@ -22,9 +63,21 @@ function refusal(events: Sent[]): string | null {
       typeof e.valueMs !== 'number' ||
       typeof e.installed !== 'boolean' ||
       e.valueMs < 0 ||
-      e.valueMs > 60_000,
+      e.valueMs > 60_000 ||
+      !isSplit(e),
   )
   return bad ? `a malformed metric: ${JSON.stringify(bad)}` : null
+}
+
+function isSplit({ valueMs, apiMs, serverMs, firstVisit }: Sent): boolean {
+  return (
+    typeof apiMs === 'number' &&
+    typeof serverMs === 'number' &&
+    typeof firstVisit === 'boolean' &&
+    serverMs >= 0 &&
+    serverMs <= apiMs &&
+    apiMs <= valueMs
+  )
 }
 
 /** What Tucker measured of itself (ADR 0038): nothing yet. */
@@ -59,14 +112,13 @@ export function metricsRecorded() {
       return response(200).json({
         routes: routes.map((route) => ({
           route,
-          layouts: (['phone', 'desktop'] as const).map((layout) => ({
-            layout,
-            n: sent.filter((e) => e.route === route && e.layout === layout)
-              .length,
-            p50: null,
-            p75: null,
-            p95: null,
-          })),
+          layouts: (['phone', 'desktop'] as const).map((layout) =>
+            tooFew(
+              layout,
+              sent.filter((e) => e.route === route && e.layout === layout)
+                .length,
+            ),
+          ),
         })),
       })
     }),

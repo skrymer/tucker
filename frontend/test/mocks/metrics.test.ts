@@ -8,6 +8,9 @@ const event = {
   kind: 'route-change',
   route: '/review',
   valueMs: 420,
+  apiMs: 300,
+  serverMs: 120,
+  firstVisit: false,
   layout: 'phone',
   installed: false,
   appVersion: '1.4.0',
@@ -29,5 +32,35 @@ describe('the metric handlers', () => {
 
   it('refuse an event that does not say whether the app is installed', async () => {
     expect(await statusOf({ installed: null })).toBe(400)
+  })
+
+  it('refuse a route change that does not say how long it waited on the api', async () => {
+    expect(await statusOf({ apiMs: undefined })).toBe(400)
+  })
+
+  it('refuse a route change that does not say how long the server worked', async () => {
+    expect(await statusOf({ serverMs: null })).toBe(400)
+  })
+
+  it("refuse a route change that does not say whether it was the route's first visit", async () => {
+    expect(await statusOf({ firstVisit: undefined })).toBe(400)
+  })
+
+  it('refuse a negative server time', async () => {
+    expect(await statusOf({ apiMs: 0, serverMs: -1 })).toBe(400)
+  })
+
+  it('refuse a server time longer than the api wait', async () => {
+    expect(await statusOf({ apiMs: 300, serverMs: 301 })).toBe(400)
+  })
+
+  it('refuse an api wait longer than the move', async () => {
+    expect(await statusOf({ valueMs: 420, apiMs: 421 })).toBe(400)
+  })
+
+  it('take a server time equal to the api wait, and an api wait equal to the move', async () => {
+    expect(await statusOf({ valueMs: 300, apiMs: 300, serverMs: 300 })).toBe(
+      204,
+    )
   })
 })

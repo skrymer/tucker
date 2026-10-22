@@ -1,21 +1,56 @@
 import type { Page } from '@playwright/test'
 import { expect, test } from './support/test'
 import { signedInAsAdmin } from '../test/mocks/handlers/identity'
-import { metricsRecorded, metricsReport } from '../test/mocks/handlers/metrics'
+import {
+  metricsRecorded,
+  metricsReport,
+  tooFew,
+} from '../test/mocks/handlers/metrics'
 import { hidePage } from './support/visibility'
 
-/** One layout's figures, enough samples for a figure, with [p75] the number that orders it. */
+/**
+ * One layout's figures, enough samples for a figure, with [p75] the number that
+ * orders it, split a fifth server, a fifth network and the rest render.
+ */
 const figures = (layout: 'phone' | 'desktop', p75: number) => ({
   layout,
   n: 20,
   p50: p75 - 100,
   p75,
   p95: p75 + 400,
+  apiP75: (p75 * 2) / 5,
+  coldP75: p75 + 600,
+  serverMs: p75 / 5,
+  networkMs: p75 / 5,
+  renderMs: (p75 * 3) / 5,
 })
 
 // The Metrics page's layout (ADR 0039): a column wider than the shared one on a
 // desktop, a one-line notice on a phone, and the ordinary not-found page for a
 // User who is not an Admin.
+
+/**
+ * The [part]-th part from the axis (0 server, 2 render) of the top or bottom bar.
+ * unovis draws the bars as bare paths, with no role or name to find them by, so
+ * they are told apart by where they sit, read in one pass for the axis' sake.
+ */
+async function barPart(page: Page, row: 'top' | 'bottom', part: number) {
+  const selector = '.route-timing path[class*="-bar"]'
+  const index = await page.evaluate(
+    ([selector, row, part]) => {
+      const paths = [...document.querySelectorAll(selector as string)].map(
+        (p, i) => ({ i, box: p.getBoundingClientRect() }),
+      )
+      const ys = paths.map(({ box }) => Math.round(box.y))
+      const y = row === 'top' ? Math.min(...ys) : Math.max(...ys)
+      return paths
+        .filter(({ box }) => Math.round(box.y) === y)
+        .sort((a, b) => a.box.x - b.box.x)[part as number]!.i
+    },
+    [selector, row, part] as const,
+  )
+  return page.locator(selector).nth(index)
+}
 
 const columnWidth = async (page: Page) =>
   (await page.getByRole('main').boundingBox())!.width
@@ -87,12 +122,11 @@ test.describe('as an Admin', () => {
 
     // A long axis label wraps onto a second line, which reads as no space.
     const chart = page.getByRole('figure')
-    await expect(chart).toContainText(
-      /\/foods \(Phone too few: 0,\s*Desktop too few: 1\)/,
-    )
+    await expect(chart).toContainText(/\/foods · Desktop · too few\s*\(n\s*1\)/)
+    await expect(chart).toContainText(/\/foods · Phone · too few\s*\(n\s*0\)/)
     // Opening Tucker on Today (and its redirect to /) is a page load, LCP's to
     // measure, not a move — asserted after the label the same read draws.
-    await expect(chart).not.toContainText('/ (')
+    await expect(chart).not.toContainText('/ ·')
   })
 
   test('counts a move made on a phone as a phone', async ({
@@ -117,7 +151,7 @@ test.describe('as an Admin', () => {
     await page.goto('/admin')
 
     await expect(page.getByRole('figure')).toContainText(
-      /\/review \(Phone too few: 1,\s*Desktop too few: 0\)/,
+      /\/review · Phone · too few\s*\(n\s*1\)/,
     )
   })
 
@@ -143,10 +177,12 @@ test.describe('as an Admin', () => {
     )
     await goto('/admin', { waitUntil: 'hydration' })
     const chart = page.getByRole('figure')
-    const review = chart.getByText('/review', { exact: true })
-    const foods = chart.getByText('/foods', { exact: true })
-    await expect(review).toBeVisible()
-    await expect(foods).toBeVisible()
+    await expect(
+      chart.getByText('/review · Phone', { exact: true }),
+    ).toBeVisible()
+    await expect(
+      chart.getByText('/foods · Desktop', { exact: true }),
+    ).toBeVisible()
 
     // Read in one pass: unovis redraws its axis, replacing the nodes under a locator.
     const topToBottom = await chart.evaluate((figure) =>
@@ -157,10 +193,16 @@ test.describe('as an Admin', () => {
         )
         .map((t) => t.textContent),
     )
-    expect(topToBottom).toEqual(['/review', '/foods'])
+    expect(topToBottom).toEqual([
+      '/review · Phone',
+      '/review · Desktop',
+      '/foods · Phone',
+      '/foods · Desktop',
+    ])
   })
 
-  test('colours each bar as the legend colours its layout', async ({
+  // One scale, so a phone twice as slow draws a bar twice as long.
+  test('draws phone and desktop on one scale', async ({
     page,
     goto,
     network,
@@ -171,7 +213,41 @@ test.describe('as an Admin', () => {
       metricsReport([
         {
           route: '/review',
-          layouts: [figures('phone', 910), figures('desktop', 260)],
+          layouts: [figures('phone', 1000), figures('desktop', 500)],
+        },
+      ]),
+    )
+    await goto('/admin', { waitUntil: 'hydration' })
+    await expect(page.getByRole('figure')).toContainText('/review · Desktop')
+
+    // Each bar's length is its parts' total, read in one pass for the axis' sake.
+    const lengths = await page.evaluate(() => {
+      const rows = new Map<number, number>()
+      for (const path of document.querySelectorAll(
+        '.route-timing path[class*="-bar"]',
+      )) {
+        const box = path.getBoundingClientRect()
+        const y = Math.round(box.y)
+        rows.set(y, (rows.get(y) ?? 0) + box.width)
+      }
+      return [...rows.entries()].sort(([a], [b]) => a - b).map(([, w]) => w)
+    })
+    expect(lengths).toHaveLength(2)
+    expect(lengths[0]! / lengths[1]!).toBeCloseTo(2, 1)
+  })
+
+  test('colours each part as the legend colours it, and draws no bar where there are too few samples', async ({
+    page,
+    goto,
+    network,
+    isMobile,
+  }) => {
+    test.skip(isMobile, 'a phone shows the notice instead')
+    network.use(
+      metricsReport([
+        {
+          route: '/review',
+          layouts: [figures('phone', 910), tooFew('desktop', 3)],
         },
       ]),
     )
@@ -180,22 +256,30 @@ test.describe('as an Admin', () => {
 
     const colours = await page.evaluate(() => {
       const swatch = (name: string) =>
-        [...document.querySelectorAll('[aria-label="Layouts"] li')]
+        [...document.querySelectorAll('[aria-label="Parts"] li')]
           .find((li) => li.textContent?.trim() === name)!
           .querySelector('span')!
+      // Left to right along the phone's bar, the one bar drawn.
       const bars = [
         ...document.querySelectorAll('.route-timing path[class*="-bar"]'),
-      ]
+      ].sort(
+        (a, b) => a.getBoundingClientRect().x - b.getBoundingClientRect().x,
+      )
       return {
-        legend: ['Phone', 'Desktop'].map(
+        legend: ['Server', 'Network + proxy', 'Render / JS'].map(
           (n) => getComputedStyle(swatch(n)).backgroundColor,
         ),
         bars: bars.map((b) => getComputedStyle(b).fill),
       }
     })
+    // Stacked server, then network, then render, from the axis out, on the
+    // phone's bar alone: the desktop's three samples draw none.
     expect(colours.bars).toEqual(colours.legend)
-    // Two layouts told apart, not one colour twice.
-    expect(new Set(colours.legend).size).toBe(2)
+    await expect(page.getByRole('figure')).toContainText(
+      /\/review · Desktop · too few\s*\(n\s*3\)/,
+    )
+    // Three parts told apart, not one colour twice.
+    expect(new Set(colours.legend).size).toBe(3)
   })
 
   test('states the exact figures of whichever bar is pointed at', async ({
@@ -210,26 +294,46 @@ test.describe('as an Admin', () => {
         {
           route: '/review',
           layouts: [
-            { layout: 'phone', n: 48, p50: 640, p75: 910, p95: 1820 },
-            { layout: 'desktop', n: 63, p50: 180, p75: 260, p95: 540 },
+            {
+              ...figures('phone', 910),
+              n: 48,
+              p50: 640,
+              p95: 1820,
+              apiP75: 420,
+              coldP75: 1310,
+            },
+            {
+              ...figures('desktop', 260),
+              n: 63,
+              p50: 180,
+              p95: 540,
+              apiP75: 90,
+              coldP75: null,
+            },
           ],
         },
       ]),
     )
     await goto('/admin', { waitUntil: 'hydration' })
-    // unovis draws the bars as bare paths, with no role or name to find them by.
-    const bars = page.locator('.route-timing path[class*="-bar"]')
+    await expect(page.getByRole('figure')).toContainText('/review · Desktop')
+    // Its heading is the one in bold: the axis names the same row in plain text.
+    const heading = (row: string) => page.locator('strong', { hasText: row })
 
-    await bars.nth(0).hover()
-    await expect(page.getByText('/review · Phone')).toBeVisible()
+    // Any part of a bar states the whole bar's figures.
+    await (await barPart(page, 'top', 2)).hover()
+    await expect(heading('/review · Phone')).toBeVisible()
     await expect(
       page.getByText('n 48 · p50 640 · p75 910 · p95 1820 ms'),
     ).toBeVisible()
+    await expect(page.getByText('api p75 420 · cold p75 1310 ms')).toBeVisible()
 
-    await bars.nth(1).hover()
-    await expect(page.getByText('/review · Desktop')).toBeVisible()
+    await (await barPart(page, 'bottom', 0)).hover()
+    await expect(heading('/review · Desktop')).toBeVisible()
     await expect(
       page.getByText('n 63 · p50 180 · p75 260 · p95 540 ms'),
+    ).toBeVisible()
+    await expect(
+      page.getByText('api p75 90 ms · cold p75 too few'),
     ).toBeVisible()
   })
 
@@ -245,10 +349,7 @@ test.describe('as an Admin', () => {
       metricsReport([
         {
           route: '/review',
-          layouts: [
-            { layout: 'phone', n: 48, p50: 640, p75: 910, p95: 1820 },
-            { layout: 'desktop', n: 63, p50: 180, p75: 260, p95: 540 },
-          ],
+          layouts: [figures('phone', 910), figures('desktop', 260)],
         },
       ]),
     )

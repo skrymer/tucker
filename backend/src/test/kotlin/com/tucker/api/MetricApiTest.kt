@@ -75,6 +75,43 @@ class MetricApiTest {
         }.andExpect { status { isBadRequest() } }
     }
 
+    /** Null or left out, never read as 0 ms, which is what a primitive would default to. */
+    @Test
+    fun `refuses a route change that does not say how long it waited on the api`() {
+        assertRefusedWithout("\"apiMs\":0", "\"apiMs\":null")
+    }
+
+    @Test
+    fun `refuses a route change that does not say how long the server worked`() {
+        assertRefusedWithout("\"serverMs\":0", "\"serverMs\":null")
+    }
+
+    /** Null or left out, never read as a warm visit, which is what a primitive would default to. */
+    @Test
+    fun `refuses a route change that does not say whether it was the route's first visit`() {
+        assertRefusedWithout("\"firstVisit\":false", "\"firstVisit\":null")
+    }
+
+    @Test
+    fun `refuses an event that leaves out its time altogether`() {
+        assertRefusedWithout("\"valueMs\":420", "\"valueMs\":null")
+    }
+
+    @Test
+    fun `refuses an event that leaves out whether the app is installed altogether`() {
+        assertRefusedWithout("\"installed\":false", "\"installed\":null")
+    }
+
+    /** [field] sent as [asNull], and then left out altogether: both refused. */
+    private fun assertRefusedWithout(field: String, asNull: String) {
+        for (event in listOf(routeChange().replace(field, asNull), routeChange().replace("$field,", ""))) {
+            mockMvc.post("/api/metrics") {
+                contentType = MediaType.APPLICATION_JSON
+                content = batchOf(event)
+            }.andExpect { status { isBadRequest() } }
+        }
+    }
+
     @Test
     fun `refuses a batch naming a kind Tucker does not measure`() {
         mockMvc.post("/api/metrics") {
@@ -97,8 +134,8 @@ class MetricApiTest {
         valueMs: Int = 420,
         kind: String = "route-change",
     ) =
-        """{"kind":"$kind","route":"$route","valueMs":$valueMs,"layout":"$layout",""" +
-            """"installed":false,"appVersion":"1.4.0"}"""
+        """{"kind":"$kind","route":"$route","valueMs":$valueMs,"apiMs":0,"serverMs":0,""" +
+            """"firstVisit":false,"layout":"$layout","installed":false,"appVersion":"1.4.0"}"""
 
     private fun batchOf(vararg events: String) = """{"events":[${events.joinToString(",")}]}"""
 }
