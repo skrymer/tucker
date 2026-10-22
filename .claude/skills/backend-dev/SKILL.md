@@ -14,7 +14,10 @@ not restate them.
 - **Rich domain model.** Invariants live in the domain type — an `init` block or a factory —
   and behaviour lives with the data it acts on. Services orchestrate across aggregates; they
   are never the home of the rule. The domain layer stays free of jOOQ and Spring; repositories
-  map records to domain objects at the boundary. (ADR 0001.)
+  map records to domain objects at the boundary. (ADR 0001.) The same holds at an
+  external API: a provider's JSON stops at its adapter, which answers in domain terms
+  (`OpenFoodFactsProvider` → `ProviderLookup` / `FoodCandidate`) — never a provider DTO
+  in `domain/`. (ADR 0006.)
 - **Every derived number is computed here.** Domain verdicts and derived state ship as plain
   API fields; the frontend presents them and re-derives nothing. A new rule is a backend
   change first. (ADR 0002.)
@@ -151,7 +154,13 @@ not restate them.
   over the parser's extremes and over every shape a client could ever have sent. #522's
   V27 passed two gates and kept `2147483648.0.0`, which `AppVersion` then threw on
   (`\d+` matched, `String::toInt` overflowed) — so parse digits as text, or `toBigInteger`.
-- **An owner-first composite index retires the single-column one.** Every read is
+- **A new column is nullable or has a constant `DEFAULT`.** SQLite refuses `ADD COLUMN …
+  NOT NULL` without one outright (V3, V14 show the shape). A rename or drop is **expand →
+  backfill → contract** over two deploys, not one migration: a rollback
+  (`deploy/update.sh --tag`) boots the previous image against the new schema — Flyway
+  ignores the future migration — and that image's jOOQ still selects the old column.
+- **Index what a new query filters on, owner first** — and an owner-first composite index
+  retires the single-column one. Every read is
   owner-scoped (ADR 0021), so once `(user_id, x)` exists an index on `(x)` alone is write
   cost no query reads: drop it in a new migration in the same change, and confirm with
   `EXPLAIN QUERY PLAN` (#476's V22 added `entry (user_id, logged_on)`; V23 dropped
@@ -166,6 +175,22 @@ not restate them.
   every other test passes whichever day the code resolved. Extending a rule to a sibling
   endpoint means porting each of the sibling's tests: #444 copied all but this one, and only
   pitest (`getClientToday → null` alive) noticed.
+- **`@Transactional` works through the proxy only.** A call on `this` skips it, and so does a
+  `private fun` (`plugin.spring` opens the class, not private members). The self-calls in
+  `WeeklyReviewService` (`catchUpIfDue` / `recomputeFor` → `runReview`) are safe only because
+  the caller is itself `@Transactional`; a non-transactional method calling a transactional
+  sibling runs without one, green on every test that doesn't check.
+- **Side effects — a push, a network call — stay outside the transaction.** A rollback can't
+  unsend them, and a slow peer holds SQLite's single write lock. `UserReminder.nudgeIfDue` is
+  deliberately not `@Transactional`: push, then stamp only on delivery. If a send must follow
+  a write, fire it from `@TransactionalEventListener(phase = AFTER_COMMIT)` — best-effort, a
+  crash after commit loses it.
+- **`ApiExceptionHandler` never sees the security filter chain.** A 401 (bad or missing
+  assertion) or a CSRF 403 is answered by the resource server's entry point / access-denied
+  handler before any controller runs, so its body is not an `ApiError` — test it as such in
+  `.../security/`, never by adding advice. A 500 never carries an exception's message: there
+  is deliberately no catch-all `@ExceptionHandler(Exception::class)`, and Boot's error page
+  omits the message by default — keep both that way.
 - **Direct-bean tests need `@WithTuckerUser`.** MockMvc requests are signed in for you by a
   `MockMvcBuilderCustomizer`; a test that touches a scoped repository directly is not, and
   fails naming the repository rather than the missing identity.
