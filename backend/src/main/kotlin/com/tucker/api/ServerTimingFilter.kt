@@ -41,6 +41,11 @@ class ServerTimingFilter : OncePerRequestFilter() {
             setHeader("Server-Timing", String.format(Locale.ROOT, "app;dur=%.1f", ms))
         }
 
+        override fun sendError(sc: Int) {
+            stamp()
+            super.sendError(sc)
+        }
+
         override fun sendError(sc: Int, msg: String) {
             stamp()
             super.sendError(sc, msg)

@@ -183,6 +183,18 @@ class ApiEndToEndTest {
         )
     }
 
+    /** A body Spring cannot read is refused as an error with no reason beside it. */
+    @Test
+    fun `a request refused for a body that is not json still states the server's own time`() {
+        val unreadable = post("/api/metrics", "not json")
+
+        assertEquals(400, unreadable.statusCode())
+        assertTrue(
+            unreadable.headers().firstValue("Server-Timing").orElse("").startsWith("app;dur="),
+            "expected an app duration on the refusal, got ${unreadable.headers().map()}",
+        )
+    }
+
     /** Spring Security refuses a missing CSRF proof the same way, with a reason beside it. */
     @Test
     fun `a request refused for want of its CSRF proof still states the server's own time`() {
