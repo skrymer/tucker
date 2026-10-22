@@ -24,8 +24,10 @@ Run them in this sequence — the order is deliberate. Address what each surface
 reachability pass first, the real walk-through last, on the code that ships
 ([why](references/rationale.md#why-verify-runs-twice)).
 
-**Record every agent's `output_file` path as you spawn it, and write every run log to a
-new file through `scripts/bounded-run.sh --log <path>`**, which refuses a path that exists
+**Record `readlink -f` of every agent's `output_file` (its `~/.claude/projects` target) as
+you spawn it, write any handoff into the pack directory — never `/tmp`, which a reboot
+wipes: #521 lost its handoff and every recorded path to a power loss — and write every run
+log to a new file through `scripts/bounded-run.sh --log <path>`**, which refuses a path that exists
 and stamps HEAD + `git status --short` at its top. A re-run is a new log, never the old
 one overwritten: gate 5 reads both, #455's and #497's unstamped logs could not be placed,
 and #498 lost a pitest red and a "91 failed" e2e log to the re-runs written over them.
@@ -62,8 +64,7 @@ and #498 lost a pitest red and a "91 failed" e2e log to the re-runs written over
    it by hand-mutating). It runs here, not later, for two reasons: the code is final
    after gate 1 — so take the scope from gate 1's commit, never the first diff, whose
    fixes reach other files (#432 left two unswept) — and it *adds tests* that gate 3
-   must then review. The browser and
-   container layers are out of scope in both, so keep checking those by hand (an
+   must then review. The browser and container layers are out of scope in both, so keep checking those by hand (an
    unanchored aria-snapshot regex and a substring `getByText` both pass a change they
    should have caught). Budget roughly a minute for a frontend scope and a few for a
    backend one. SKIP a stack, with a note, only if the diff touches no mutable source
@@ -97,8 +98,7 @@ and #498 lost a pitest red and a "91 failed" e2e log to the re-runs written over
    standing, a stale one standing, a later one existing. #498 guarded one reader of
    three (the summary, not the Budget Projection or the Check), and once the guard
    moved down the ledger found a no-day Check branch reading `reviews.latest()`
-   unguarded. #358's inline review wrote
-   "`isOverdue` with a future latest (negative days, not overdue)" as a check that
+   unguarded. #358's inline review wrote "`isOverdue` with a future latest (negative days, not overdue)" as a check that
    passed; that branch was a regression ("No budget yet" on the device behind), one
    of three the narrowed read produced against the unbounded one, all found by later
    gates. (Bump to high only if the diff is large or security-sensitive and you want
@@ -201,8 +201,7 @@ and #498 lost a pitest red and a "91 failed" e2e log to the re-runs written over
    stamp it with `git rev-parse HEAD:<file>` (#408), and every run log as the top says.
    That copy runs Vitest only with `node_modules` hard-linked (`cp -al`, then `nuxt
    prepare`) — a symlinked one cannot resolve modules (#402) — and the pack carries
-   saved output anyway.
-   It answers three questions and nothing else:
+   saved output anyway. It answers three questions and nothing else:
 
    - **Does each fix address the finding it cites, without introducing something
      new — and is it pinned?** A plausible-but-wrong fix lands when nobody is still
@@ -290,8 +289,7 @@ and #498 lost a pitest red and a "91 failed" e2e log to the re-runs written over
    3's and costs accordingly. **If any gate spawned an agent, this gate runs** —
    the old condition was "if gates 1–4 produced no findings", which the interested
    party decided, about their own run. A run with no findings still has briefs to
-   check against the contract, which is work this gate owes whatever the ledger
-   says.
+   check against the contract, which is work this gate owes whatever the ledger says.
 
 6. **`/verify` (the walk-through) — does the shipping code actually work?** Both
    viewports, the golden path, and the **input probes** the skill now names — the
@@ -334,8 +332,7 @@ things hold — none of them automatic.
 **1. Briefs are neutral, by contract.** The author writes every agent's prompt, so a
 brief is where the author's conclusion leaks into the review. The contract — what a
 brief carries, what it never carries, and how to present a justification that has to
-be *tested* rather than confirmed — is in
-[`references/agent-briefs.md`](references/agent-briefs.md). The line it draws is
+be *tested* rather than confirmed — is in [`references/agent-briefs.md`](references/agent-briefs.md). The line it draws is
 **description against defence**, with the pair of real briefs that fell either side
 of it.
 
@@ -423,6 +420,9 @@ justified):
    **Between gates, run the touched spec, not the suite** (`pnpm test --run <file>`,
    `pnpm test:e2e <spec>`); the **full** frontend e2e and the smokes once, here. CI
    re-runs all of it, so a full run after every gate spends ~6 minutes proving it twice.
+   Check `ss -ltnp | grep :8080` when gate 6 starts: a port held by something else blocks
+   these smokes, and freeing it is the user's call, asked then — never a reason to skip
+   them (#521 opened its PR with the smokes last run at gate 3).
 
    **`docker compose build backend` only when the diff touched the backend** — the
    smokes recreate from the existing image (#70), and a needless build is a minute spent.

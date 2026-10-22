@@ -31,7 +31,9 @@ agent, and the seven below.
 
 **A brief carries:**
 
-- What the change does, in the code's own terms. Description, not assessment.
+- What the change does, in the code's own terms. Description, not assessment. The
+  `/simplify` three are sent one identical description: #521's altitude brief alone
+  described the `VisXYContainer` stub, and that became its finding.
 - The diff, or the one command that gets it. The **arbiter** is the one exception:
   it is given the competing positions and told the working tree is not evidence, so
   handing it the diff would hand it the answer.
@@ -62,9 +64,9 @@ agent, and the seven below.
   kind of thing to look for, never an instance of it. A context pack is where to
   *start reading*, so it names only files the diff touches or the issue cites; a
   `/check-adrs` pack names no ADR, since choosing which ones apply is its job (#433).
-  Prose has not held this — #511 named an untouched composable in one pack and an
-  uncited ADR in another — so check each path before sending: it is in
-  `git diff --name-only <base> <sha>` or in the issue body, or it comes out. That check
+  Prose has not held this — #511 named an untouched composable and an uncited ADR, and
+  #520 and #521 breached it again — so filter every pack's paths by command before sending:
+  `for p in <paths>; do git diff --name-only <base> <sha> | grep -qxF "$p" || gh issue view <n> --json body -q .body | grep -qF "$p" || echo "drop $p"; done`. That check
   passes an ADR the diff edits, so a `/check-adrs` pack also drops every `docs/adr/`
   path whatever the diff touches (#520's re-run brief named the ADR its fix amended), and
   any pack drops the skills and CLAUDE.md unless the diff changes them.
@@ -113,7 +115,10 @@ other. Prose alone did not hold this: #445 and #476 each recorded a half-adopted
 as FIXED, and #469 broke it three ways in one run (a dismissal answering one of two
 remedies, a FIXED row with half a remedy taken, a row holding "merge or fold"). A row
 citing the user's ruling quotes the question as asked; an item the question did not
-name is asked again, so write the ruling question from every clause of the finding.
+name is asked again, so write the ruling question from every clause of the finding. A
+ruling never answers a later gate's alternative either — that is asked again too — and a
+ruling question's premise is checked before it is asked: #521's "never deployed" was
+confirmed only afterwards, from the prod image tag.
 
 **Where a justification has to be tested, it is presented as a claim, attributed to
 nobody**: "It is claimed that `startedOn` is the only way to create a backdated Goal.
