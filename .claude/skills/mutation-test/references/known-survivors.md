@@ -1685,6 +1685,16 @@ is still loading raises no error*). The six left are **equivalent**:
   as its other getters**: `toDomain()` reads the backing fields, and nothing serialises a
   request.
 
+### Metric filters (#521) — frontend 95 of 103, backend 66 of 80 (then 5 of 5 on `OperatingSystem`)
+
+- **`WireValueConverters.addFormatters`, either `addConverter` removed — false survivor**, the
+  configuration being applied once at context start: removed on an uncached copy, the range
+  one fails *reads only the moves recorded within the chosen range* and *refuses an Admin a
+  range it does not offer*; the engine one, *reads only the moves made in the chosen browser
+  engine* and *refuses an Admin a browser engine Tucker does not tell apart*.
+- **`admin.vue`'s not-found guard (L15–19) and `report.value?.routes ?? []` (L65)** keep #519's
+  verdicts above; the script only moved down two lines.
+
 ### Noise removed at the source
 
 Four `getLog()` companion accessors (`MartijndwarsWebPushSender`, `RecordingWebPushSender`,

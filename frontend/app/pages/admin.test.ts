@@ -77,6 +77,61 @@ describe('/admin', () => {
     ).toHaveTextContent('Installed or browser')
   })
 
+  it('offers the last day, week, month and quarter as ranges', async () => {
+    const user = userEvent.setup()
+    server.use(signedInAsAdmin)
+    await renderSuspended(AdminPage)
+
+    await user.click(screen.getByRole('combobox', { name: 'Range' }))
+
+    expect(
+      (await screen.findAllByRole('option')).map((o) => o.textContent?.trim()),
+    ).toEqual(['Last 24 hours', 'Last 7 days', 'Last 30 days', 'Last 90 days'])
+  })
+
+  it('offers WebKit, Blink and Gecko as engines', async () => {
+    const user = userEvent.setup()
+    server.use(signedInAsAdmin)
+    await renderSuspended(AdminPage)
+
+    await user.click(screen.getByRole('combobox', { name: 'Engine' }))
+
+    expect(
+      (await screen.findAllByRole('option')).map((o) => o.textContent?.trim()),
+    ).toEqual(['All engines', 'WebKit', 'Blink', 'Gecko'])
+  })
+
+  it('offers the installed app and a browser tab as ways of opening Tucker', async () => {
+    const user = userEvent.setup()
+    server.use(signedInAsAdmin)
+    await renderSuspended(AdminPage)
+
+    await user.click(screen.getByRole('combobox', { name: 'Opened in' }))
+
+    expect(
+      (await screen.findAllByRole('option')).map((o) => o.textContent?.trim()),
+    ).toEqual(['Installed or browser', 'Installed', 'Browser'])
+  })
+
+  // The row stays above a failed read, so its versions are those of no report at all.
+  it('offers no app version but all of them when the metrics could not be loaded', async () => {
+    const user = userEvent.setup()
+    server.use(
+      signedInAsAdmin,
+      http.get('/api/admin/metrics', ({ response }) =>
+        response.untyped(serverError()),
+      ),
+    )
+    await renderSuspended(AdminPage)
+    expect(await screen.findByText("Couldn't load the metrics")).toBeVisible()
+
+    await user.click(screen.getByRole('combobox', { name: 'App version' }))
+
+    expect(
+      (await screen.findAllByRole('option')).map((o) => o.textContent?.trim()),
+    ).toEqual(['All versions'])
+  })
+
   it('offers each app version the range holds, the latest recorded first', async () => {
     const user = userEvent.setup()
     server.use(
@@ -98,6 +153,88 @@ describe('/admin', () => {
     expect(
       (await screen.findAllByRole('option')).map((o) => o.textContent?.trim()),
     ).toEqual(['All versions', '0.1.43', '0.1.42'])
+  })
+
+  // Measured only while no version is sent: a chosen one must reach the read.
+  it('narrows the chart to the chosen app version', async () => {
+    const user = userEvent.setup()
+    server.use(
+      signedInAsAdmin,
+      metricsBy(
+        ({ version }) =>
+          version === null
+            ? [{ route: '/review', layouts: [measured('phone')] }]
+            : [],
+        ['0.1.43', '0.1.42'],
+      ),
+    )
+    await renderSuspended(AdminPage)
+    expect(
+      await screen.findByRole('heading', { name: 'Moving between pages' }),
+    ).toBeVisible()
+
+    await user.click(screen.getByRole('combobox', { name: 'App version' }))
+    await user.click(await screen.findByRole('option', { name: '0.1.42' }))
+
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Nothing matches these filters',
+      }),
+    ).toBeVisible()
+  })
+
+  // Measured everywhere but the installed app, so Installed must reach the read as such.
+  it('narrows the chart to moves made in the installed app', async () => {
+    const user = userEvent.setup()
+    server.use(
+      signedInAsAdmin,
+      metricsBy(({ installed }) =>
+        installed === true
+          ? []
+          : [{ route: '/review', layouts: [measured('phone')] }],
+      ),
+    )
+    await renderSuspended(AdminPage)
+    expect(
+      await screen.findByRole('heading', { name: 'Moving between pages' }),
+    ).toBeVisible()
+
+    await user.click(screen.getByRole('combobox', { name: 'Opened in' }))
+    await user.click(await screen.findByRole('option', { name: 'Installed' }))
+
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Nothing matches these filters',
+      }),
+    ).toBeVisible()
+  })
+
+  // Measured only where no flag is sent, so Browser must reach the read as not installed.
+  it('narrows the chart to moves made in a browser tab', async () => {
+    const user = userEvent.setup()
+    server.use(
+      signedInAsAdmin,
+      metricsBy(({ installed }) =>
+        installed === null
+          ? [{ route: '/review', layouts: [measured('phone')] }]
+          : installed
+            ? [{ route: '/foods', layouts: [measured('phone')] }]
+            : [],
+      ),
+    )
+    await renderSuspended(AdminPage)
+    expect(
+      await screen.findByRole('heading', { name: 'Moving between pages' }),
+    ).toBeVisible()
+
+    await user.click(screen.getByRole('combobox', { name: 'Opened in' }))
+    await user.click(await screen.findByRole('option', { name: 'Browser' }))
+
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Nothing matches these filters',
+      }),
+    ).toBeVisible()
   })
 
   // Not "nothing measured yet": something was, only none of it in these filters.

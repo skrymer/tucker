@@ -9,11 +9,13 @@ import com.tucker.domain.OperatingSystem.IOS
 import com.tucker.domain.OperatingSystem.LINUX
 import com.tucker.domain.OperatingSystem.MACOS
 import com.tucker.domain.OperatingSystem.WINDOWS
+import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments
 import org.junit.jupiter.params.provider.Arguments.arguments
 import org.junit.jupiter.params.provider.MethodSource
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 
 /** Real user agents, as the browsers Tucker's Users open it in send them. */
 class PlatformTest {
@@ -26,6 +28,13 @@ class PlatformTest {
         expected: Platform,
     ) {
         assertEquals(expected, Platform.of(userAgent), browser)
+    }
+
+    @Test
+    fun `refuses to read an OS it does not tell apart`() {
+        val refusal = assertFailsWith<IllegalArgumentException> { OperatingSystem.of("beos") }
+
+        assertEquals("\"beos\" is not an operating system", refusal.message)
     }
 
     companion object {
