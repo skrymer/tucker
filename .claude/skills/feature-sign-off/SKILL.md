@@ -493,7 +493,7 @@ Why the gates sit in this order, why two overlap, and why a briefed agent is not
   that is an `it.fails` test, since a hook error counts as its expected failure (#400).
   A test named for a combination first shows its input meets each condition — a RED
   proves the assertion, not the fixture (#469 took an agent's prompt that missed one).
-  A fix of several parts is ablated **part by part**, on a fresh copy without `build/`;
-  a part whose removal changes nothing is deleted ([why](references/rationale.md#ablation)).
+  A fix of several parts is ablated **part by part**, on a fresh copy without `build/`; a part whose
+  removal changes nothing is dead or unreached — test what reaches it ([why](references/rationale.md#ablation)).
 - This skill assumes the work is built and tested. It is the *exit* gate, not a
   substitute for red-green TDD during development.

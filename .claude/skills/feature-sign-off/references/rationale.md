@@ -116,6 +116,12 @@ without the two `nowrap`s nothing changed down to 320px. The test now also asser
 the tally's right edge sits inside the card, and the dead classes are gone. A layout
 test asserts containment, not only line count.
 
+A silent ablation is not proof a part is dead, only that no test sends what reaches it.
+#520's `Server-Timing` fix overrode both `sendError` forms; removing the one-arg override
+turned no e2e test red, so it was deleted — and the next `/check-adrs` run found Spring's
+malformed-body 400 calling exactly that form, unstamped. A not-JSON e2e test went red,
+and the override came back.
+
 ## What the fan-out costs
 
 | Addition | Agents | Wall-clock |
