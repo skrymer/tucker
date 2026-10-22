@@ -137,11 +137,12 @@ const filters = computed(() => [
         title="Couldn't load the metrics"
         @retry="refresh"
       >
-        <!-- A refetch keeps the last answer up, dimmed (ADR 0007); the delay
-             means an answer faster than 150 ms never dims. -->
+        <!-- A refetch keeps the last answer up, dimmed (ADR 0007); only the dim
+             waits 150 ms, so a faster answer never dims and a slower one shows at
+             once. -->
         <div
-          class="transition-opacity delay-150"
-          :class="pending && 'opacity-50'"
+          class="transition-opacity"
+          :class="pending && 'opacity-50 delay-150'"
         >
           <LazyRouteTimingCard v-if="routes.length" :routes="routes" />
           <div

@@ -393,6 +393,44 @@ test.describe('as an Admin', () => {
     await expect.poll(() => shownOpacity(chart)).toBe(1)
   })
 
+  // ADR 0007 holds the dim back 150 ms; the answer, once in, is not held back.
+  test('lifts the dim the moment the answer lands, where only the dim waits', async ({
+    page,
+    goto,
+    network,
+    isMobile,
+  }) => {
+    test.skip(isMobile, 'a phone shows the notice instead')
+    network.use(
+      metricsReport([{ route: '/review', layouts: [figures('phone', 400)] }]),
+    )
+    const read = held(
+      'get',
+      '/api/admin/metrics',
+      (request) => new URL(request.url).searchParams.get('engine') === 'webkit',
+    )
+    network.use(read.handler)
+    await goto('/admin', { waitUntil: 'hydration' })
+    const chart = page.getByRole('figure')
+    await expect(chart).toContainText('/review · Phone')
+
+    await page.getByRole('combobox', { name: 'Engine' }).click()
+    await page.getByRole('option', { name: 'WebKit' }).click()
+    await expect.poll(() => shownOpacity(chart)).toBe(0.5)
+    const dimmed = await chart.evaluateHandle((el) => {
+      let at: Element | null = el
+      while (at && getComputedStyle(at).opacity !== '0.5') at = at.parentElement
+      return at!
+    })
+    const delay = () =>
+      dimmed.evaluate((el) => getComputedStyle(el).transitionDelay)
+    expect(await delay()).toBe('0.15s')
+
+    read.release()
+
+    await expect.poll(delay).toBe('0s')
+  })
+
   // Else the last filters' empty state reads as the answer for the new ones.
   test('dims the last empty state while the chosen filters are read, then says what they found', async ({
     page,

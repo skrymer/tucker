@@ -16,8 +16,10 @@ import org.springframework.security.config.http.SessionCreationPolicy
 import org.springframework.security.oauth2.jwt.JwtDecoder
 import org.springframework.security.oauth2.server.resource.web.HeaderBearerTokenResolver
 import org.springframework.security.web.SecurityFilterChain
+import org.springframework.security.web.access.AccessDeniedHandlerImpl
 import org.springframework.security.web.authentication.session.NullAuthenticatedSessionStrategy
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository
+import org.springframework.security.web.csrf.CsrfException
 import org.springframework.security.web.csrf.CsrfFilter
 import org.springframework.security.web.csrf.CsrfTokenRepository
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher
@@ -122,8 +124,16 @@ class AccessSecurityConfig {
      * so the status never says a page is here that the caller may not see (ADR 0039).
      */
     private fun ExceptionHandlingDsl.refuseAdminPathsAsMissing() {
+        val refusedAsEverywhere = AccessDeniedHandlerImpl()
         defaultAccessDeniedHandlerFor(
-            { _, response, _ -> response.sendError(HttpServletResponse.SC_NOT_FOUND) },
+            { request, response, denied ->
+                // A missing CSRF token is refused before anyone is known, on every path alike.
+                if (denied is CsrfException) {
+                    refusedAsEverywhere.handle(request, response, denied)
+                } else {
+                    response.sendError(HttpServletResponse.SC_NOT_FOUND)
+                }
+            },
             AntPathRequestMatcher(ADMIN_PATHS),
         )
     }

@@ -29,7 +29,8 @@ enum class OperatingSystem(@JsonValue override val wire: String) : WireValue {
 
 /**
  * What a [MetricEvent] keeps of the user agent that sent it (ADR 0038): its engine and OS,
- * never the string itself.
+ * never the string itself. An iPad asking for desktop sites, as iPadOS Safari does by
+ * default, sends a Mac's user agent and is read as macOS; its engine is still WebKit.
  */
 data class Platform(val engine: BrowserEngine, val os: OperatingSystem) {
     companion object {

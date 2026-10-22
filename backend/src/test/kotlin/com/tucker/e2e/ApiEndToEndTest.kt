@@ -1,5 +1,7 @@
 package com.tucker.e2e
 
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.kotlin.readValue
 import com.tucker.security.ACCESS_ASSERTION_HEADER
 import com.tucker.security.AccessTokens
 import org.junit.jupiter.api.Tag
@@ -182,6 +184,24 @@ class ApiEndToEndTest {
             "expected an app duration on the refusal, got ${notAnAdmin.headers().map()}",
         )
     }
+
+    /**
+     * MockMvc never runs the container's error dispatch, so only the running image shows
+     * the refusal's body to be the one a path with nothing behind it gets (ADR 0039).
+     */
+    @Test
+    fun `a User who is not an Admin is answered at the Admin paths as at a path that does not exist`() {
+        val missing = get("/api/nothing-here")
+        val refused = get("/api/admin/metrics?engine=nonsense")
+
+        assertEquals(404, refused.statusCode())
+        assertEquals(missing.statusCode(), refused.statusCode())
+        assertEquals(missing.body().withoutWhereAndWhen(), refused.body().withoutWhereAndWhen())
+    }
+
+    /** An error body without the two fields that differ by request: the path and the moment. */
+    private fun String.withoutWhereAndWhen(): Map<String, Any?> =
+        ObjectMapper().readValue<Map<String, Any?>>(this) - setOf("path", "timestamp")
 
     /** A body Spring cannot read is refused as an error with no reason beside it. */
     @Test

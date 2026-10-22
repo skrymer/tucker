@@ -61,14 +61,18 @@ client supplies nothing, it falls back to the server's date.
 **The server clock is a narrow, injected seam, not a default.** The domain services
 no longer default their `today` parameter to `LocalDate.now()`; the date is always
 passed in, so a missing one is a *compile error*, not a silent server-clock stamp.
-The server's own "now" is read only through `UserToday`, which wraps a single
-injectable `java.time.Clock` bean (`Clock.systemUTC()`), and is used for two
-read-only purposes — **never to stamp a persisted domain date**:
+The server's own *today* — a domain date — is read only through `UserToday`, which
+wraps a single injectable `java.time.Clock` bean (`Clock.systemUTC()`), and is used
+for two read-only purposes — **never to stamp a persisted domain date**:
 
 1. validating a client-supplied date is plausible (the ±1-day guard), and
 2. supplying "today" to a read-only projection that has no client date to honour —
    `GET /api/goal/progress`, whose observed-pace figures are computed as of today
    but persist nothing (via `UserToday.serverToday()`).
+
+An instant that is not a domain date — a rolling metrics window, a cache entry's
+age, a scheduler's tick — reads the same `Clock` bean directly; there is still one
+seam, and nothing read that way becomes a User's day.
 
 The future Weekly-Review reminder cron (#82) is the one *other* legitimate reader
 of a server clock — a server-initiated tick with no client, which applies the
