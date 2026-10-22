@@ -92,6 +92,16 @@ class MetricApiTest {
         assertRefusedWithout("\"firstVisit\":false", "\"firstVisit\":null")
     }
 
+    @Test
+    fun `refuses an event that leaves out its time altogether`() {
+        assertRefusedWithout("\"valueMs\":420", "\"valueMs\":null")
+    }
+
+    @Test
+    fun `refuses an event that leaves out whether the app is installed altogether`() {
+        assertRefusedWithout("\"installed\":false", "\"installed\":null")
+    }
+
     /** [field] sent as [asNull], and then left out altogether: both refused. */
     private fun assertRefusedWithout(field: String, asNull: String) {
         for (event in listOf(routeChange().replace(field, asNull), routeChange().replace("$field,", ""))) {

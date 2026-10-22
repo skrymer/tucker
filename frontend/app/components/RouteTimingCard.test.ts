@@ -13,12 +13,16 @@ vi.mock('@unovis/vue', async (actual) => ({
 describe('RouteTimingCard', () => {
   // A service worker hands every api call on, and starting one again on a phone
   // that put it to sleep lands in the same wait as the trip itself.
-  it('counts the browser sending the requests out as part of network and proxy', async () => {
+  it('explains the three parts in plain words, the browser sending the requests out counted in network and proxy', async () => {
     await renderSuspended(RouteTimingCard, { props: { routes: [] } })
 
     expect(
       screen.getByText(
-        /Network \+ proxy is the rest of the wait for them: the browser and its service worker sending them out, and their trip through Cloudflare, the tunnel and the proxy\./,
+        "Server is Tucker working on the page's requests. Network + proxy is the rest of " +
+          'the wait for them: the browser and its service worker sending them out, and ' +
+          'their trip through Cloudflare, the tunnel and the proxy. ' +
+          "Render / JS is everything else: the phone or computer running the page's code " +
+          'and drawing it.',
       ),
     ).toBeVisible()
   })

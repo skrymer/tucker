@@ -1,8 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import type { components } from '#open-fetch-schemas/api'
-import { tooFew } from '~~/test/mocks/handlers/metrics'
+import { measured, tooFew } from '~~/test/mocks/handlers/metrics'
 import {
   figuresLine,
   PARTS,
@@ -12,33 +11,16 @@ import {
   waitsLine,
 } from './routeTiming'
 
-type LayoutFigures = components['schemas']['LayoutFiguresResponse']
-
-type Layout = LayoutFigures['layout']
-
-const measured = (layout: Layout, n: number): LayoutFigures => ({
-  layout,
-  n,
-  p50: 300,
-  p75: 450,
-  p95: 700,
-  apiP75: 250,
-  coldP75: 900,
-  serverMs: 80,
-  networkMs: 160,
-  renderMs: 200,
-})
-
 describe("the Admin chart's rows", () => {
   it("lists each route's phone above its desktop, the routes in the backend's order", () => {
     const rows = timingRows([
       {
         route: '/review',
-        layouts: [measured('phone', 48), measured('desktop', 63)],
+        layouts: [measured('phone', { n: 48 }), measured('desktop', { n: 63 })],
       },
       {
         route: '/foods',
-        layouts: [measured('phone', 20), measured('desktop', 9)],
+        layouts: [measured('phone', { n: 20 }), measured('desktop', { n: 9 })],
       },
     ])
 
@@ -52,7 +34,7 @@ describe("the Admin chart's rows", () => {
 
   it('is named by its route and its layout', () => {
     const [row] = timingRows([
-      { route: '/foods/[id]', layouts: [measured('desktop', 12)] },
+      { route: '/foods/[id]', layouts: [measured('desktop', { n: 12 })] },
     ])
 
     expect(rowName(row!)).toBe('/foods/[id] · Desktop')
@@ -62,7 +44,7 @@ describe("the Admin chart's rows", () => {
 describe("a row's label on the Admin chart", () => {
   it('is the row name alone when the row has a bar', () => {
     const [row] = timingRows([
-      { route: '/review', layouts: [measured('phone', 48)] },
+      { route: '/review', layouts: [measured('phone', { n: 48 })] },
     ])
 
     expect(rowLabel(row!)).toBe('/review · Phone')
@@ -87,14 +69,22 @@ describe('a bar on the Admin chart', () => {
 
   it('states the p75 of its wait on the api and of its first visits', () => {
     expect(
-      waitsLine({ ...measured('phone', 48), apiP75: 420, coldP75: 1310 }),
+      waitsLine({
+        ...measured('phone', { n: 48 }),
+        apiP75: 420,
+        coldP75: 1310,
+      }),
     ).toBe('api p75 420 · cold p75 1310 ms')
   })
 
   // First visits are a few of a group's moves, so they are often too few on their own.
   it('says when there are too few first visits for a cold figure', () => {
     expect(
-      waitsLine({ ...measured('phone', 48), apiP75: 420, coldP75: null }),
+      waitsLine({
+        ...measured('phone', { n: 48 }),
+        apiP75: 420,
+        coldP75: null,
+      }),
     ).toBe('api p75 420 ms · cold p75 too few')
   })
 })

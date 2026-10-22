@@ -4,6 +4,26 @@ import { http } from '../http'
 type RouteFigures = components['schemas']['RouteFiguresResponse']
 type LayoutFigures = components['schemas']['LayoutFiguresResponse']
 
+/** A layout with enough samples for every figure, its numbers any a test does not read. */
+export function measured(
+  layout: LayoutFigures['layout'],
+  figures: Partial<Omit<LayoutFigures, 'layout'>> = {},
+): LayoutFigures {
+  return {
+    layout,
+    n: 20,
+    p50: 300,
+    p75: 450,
+    p95: 700,
+    apiP75: 250,
+    coldP75: 900,
+    serverMs: 80,
+    networkMs: 160,
+    renderMs: 200,
+    ...figures,
+  }
+}
+
 /** A layout with [n] samples, too few for the backend to state any figure. */
 export function tooFew(
   layout: LayoutFigures['layout'],

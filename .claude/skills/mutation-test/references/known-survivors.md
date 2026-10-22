@@ -1676,6 +1676,11 @@ is still loading raises no error*). The six left are **equivalent**:
   fallback is equivalent: `tick-values` names only indices `rows` holds.
   `route-metrics.client.ts`'s `?.path` is equivalent in practice: `page:finish` fires
   only for a matched page.
+- **`ServerTimingFilter$TimedResponse.sendError` "removed call to stamp" (#520) — killed by an
+  out-of-scope layer**: `ApiEndToEndTest`'s three refusal tests (the 404, the 403, the
+  not-JSON 400). MockMvc's response keeps a header set after `sendError` commits it, so no
+  fast test can see the stamp go; ablated on scratch images, each override's removal
+  turns its e2e test red.
 - **`MetricEventRequest`'s `getApiMs`, `getServerMs`, `getFirstVisit` (#520) — NO_COVERAGE,
   as its other getters**: `toDomain()` reads the backing fields, and nothing serialises a
   request.
