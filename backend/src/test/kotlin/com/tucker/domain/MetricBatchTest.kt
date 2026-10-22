@@ -29,6 +29,11 @@ class MetricBatchTest {
         apiMs = 300,
         serverMs = 120,
         firstVisit = false,
-        source = MetricSource(layout = MetricLayout.PHONE, installed = false, appVersion = "1.4.0"),
+        source = MetricSource(
+            layout = MetricLayout.PHONE,
+            installed = false,
+            appVersion = "1.4.0",
+            platform = Platform(BrowserEngine.WEBKIT, OperatingSystem.IOS),
+        ),
     )
 }

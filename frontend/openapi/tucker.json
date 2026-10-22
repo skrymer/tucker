@@ -4012,7 +4012,53 @@
               }
             }
           }
-        }
+        },
+        "parameters": [
+          {
+            "name": "range",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "24h",
+                "7d",
+                "30d",
+                "90d"
+              ]
+            }
+          },
+          {
+            "name": "engine",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "webkit",
+                "blink",
+                "gecko",
+                "other"
+              ]
+            }
+          },
+          {
+            "name": "version",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "installed",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ]
       }
     },
     "/api/metrics": {
@@ -5927,7 +5973,8 @@
       },
       "PerformanceReportResponse": {
         "required": [
-          "routes"
+          "routes",
+          "versions"
         ],
         "type": "object",
         "properties": {
@@ -5935,6 +5982,12 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/RouteFiguresResponse"
+            }
+          },
+          "versions": {
+            "type": "array",
+            "items": {
+              "type": "string"
             }
           }
         }

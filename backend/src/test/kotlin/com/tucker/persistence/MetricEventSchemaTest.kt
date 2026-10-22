@@ -23,7 +23,7 @@ class MetricEventSchemaTest {
         assertEquals(
             setOf(
                 "id", "kind", "route", "value_ms", "api_ms", "server_ms", "first_visit",
-                "layout", "installed", "app_version", "recorded_at",
+                "layout", "installed", "engine", "os", "app_version", "recorded_at",
             ),
             columns.toSet(),
         )

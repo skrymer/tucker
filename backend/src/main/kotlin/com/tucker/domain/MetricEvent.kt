@@ -3,30 +3,31 @@ package com.tucker.domain
 import com.fasterxml.jackson.annotation.JsonValue
 
 /** What a [MetricEvent] measured, under the name it has on the wire. */
-enum class MetricKind(@JsonValue val wire: String) {
+enum class MetricKind(@JsonValue override val wire: String) : WireValue {
     ROUTE_CHANGE("route-change");
 
     companion object {
-        fun of(wire: String): MetricKind =
-            entries.firstOrNull { it.wire == wire }
-                ?: throw IllegalArgumentException("\"$wire\" is not a metric kind")
+        fun of(wire: String): MetricKind = wireValueOf(wire, "a metric kind")
     }
 }
 
 /** Which of the app's two layouts the page was in, by its own breakpoint. */
-enum class MetricLayout(@JsonValue val wire: String) {
+enum class MetricLayout(@JsonValue override val wire: String) : WireValue {
     PHONE("phone"),
     DESKTOP("desktop");
 
     companion object {
-        fun of(wire: String): MetricLayout =
-            entries.firstOrNull { it.wire == wire }
-                ?: throw IllegalArgumentException("\"$wire\" is not a layout")
+        fun of(wire: String): MetricLayout = wireValueOf(wire, "a layout")
     }
 }
 
 /** Where a [MetricEvent] was measured: nothing in it names the User who measured it. */
-data class MetricSource(val layout: MetricLayout, val installed: Boolean, val appVersion: String) {
+data class MetricSource(
+    val layout: MetricLayout,
+    val installed: Boolean,
+    val appVersion: String,
+    val platform: Platform,
+) {
     init {
         require(appVersion.length <= MAX_VERSION_LENGTH) {
             "an app version must be at most $MAX_VERSION_LENGTH characters"

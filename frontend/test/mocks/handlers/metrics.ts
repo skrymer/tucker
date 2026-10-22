@@ -80,22 +80,101 @@ function isSplit({ valueMs, apiMs, serverMs, firstVisit }: Sent): boolean {
   )
 }
 
+/** An Admin's filters as the backend reads them, absent where the page sends none. */
+export type MetricQuery = {
+  range: string
+  engine: string | null
+  version: string | null
+  installed: boolean | null
+}
+
+type QueryParams = {
+  get(name: 'range' | 'engine' | 'version' | 'installed'): string | null
+}
+
+/** The spellings Spring binds a Boolean from, trimmed and in any case; blank is absent. */
+const FLAGS: Record<string, boolean> = {
+  true: true,
+  on: true,
+  yes: true,
+  '1': true,
+  false: false,
+  off: false,
+  no: false,
+  '0': false,
+}
+
+/**
+ * An Admin's filters as the backend reads them, or why it refuses them: a range
+ * or engine it does not offer, or an installed flag Spring cannot read as one.
+ */
+function readFilters(query: QueryParams): MetricQuery | string {
+  // Spring binds an empty range or engine as absent, and the controller ignores
+  // a version of spaces alone.
+  const range = query.get('range') || '30d'
+  const engine = query.get('engine') || null
+  const installed = query.get('installed')
+  if (!['24h', '7d', '30d', '90d'].includes(range)) {
+    return `"${range}" is not a range`
+  }
+  if (
+    engine != null &&
+    !['webkit', 'blink', 'gecko', 'other'].includes(engine)
+  ) {
+    return `"${engine}" is not a browser engine`
+  }
+  const spelled = installed?.trim().toLowerCase()
+  const flag = !spelled ? null : FLAGS[spelled]
+  if (flag === undefined) {
+    return `installed must be true or false, not "${installed}"`
+  }
+  return {
+    range,
+    engine,
+    version: query.get('version')?.trim() ? query.get('version') : null,
+    installed: flag,
+  }
+}
+
 /** What Tucker measured of itself (ADR 0038): nothing yet. */
 export const metricHandlers = [
   http.post('/api/metrics', async ({ request, response }) => {
     const message = refusal((await request.json()).events)
     return message ? response(400).json({ message }) : response(204).empty()
   }),
-  http.get('/api/admin/metrics', ({ response }) =>
-    response(200).json({ routes: [] }),
-  ),
+  metricsReport([]),
 ]
+
+/** The moves [sent] holds that an Admin's version and installed filters let through. */
+function matching(sent: Sent[], { version, installed }: MetricQuery): Sent[] {
+  return sent.filter(
+    (e) =>
+      (version == null || e.appVersion === version) &&
+      (installed == null || e.installed === installed),
+  )
+}
+
+/** Each route sent, with how many moves to it each layout made. */
+function countedRoutes(sent: Sent[]): RouteFigures[] {
+  return [...new Set(sent.map((e) => e.route))].map((route) => ({
+    route,
+    layouts: (['phone', 'desktop'] as const).map((layout) =>
+      tooFew(
+        layout,
+        sent.filter((e) => e.route === route && e.layout === layout).length,
+      ),
+    ),
+  }))
+}
 
 /**
  * Tucker measuring itself: what a send carries becomes what the Admin's report
  * counts. A few moves between pages is all a test makes, so every group stays
  * under the backend's five samples and carries its count and no figure; a test
  * past that reads a fixed `metricsReport` instead of re-deriving percentiles here.
+ * Every move was sent just now, so each range holds them all. The engine is the
+ * backend's to read from a user agent, so a test that filters by one is answered
+ * a 501 saying to use `metricsBy`.
  */
 export function metricsRecorded() {
   const sent: Sent[] = []
@@ -107,27 +186,49 @@ export function metricsRecorded() {
       sent.push(...events)
       return response(204).empty()
     }),
-    http.get('/api/admin/metrics', ({ response }) => {
-      const routes = [...new Set(sent.map((e) => e.route))]
-      return response(200).json({
-        routes: routes.map((route) => ({
-          route,
-          layouts: (['phone', 'desktop'] as const).map((layout) =>
-            tooFew(
-              layout,
-              sent.filter((e) => e.route === route && e.layout === layout)
-                .length,
-            ),
+    http.get('/api/admin/metrics', ({ query, response }) => {
+      const filters = readFilters(query)
+      if (typeof filters === 'string') {
+        return response(400).json({ message: filters })
+      }
+      if (filters.engine != null) {
+        return response.untyped(
+          Response.json(
+            { message: 'metricsRecorded reads no engine; use metricsBy' },
+            { status: 501 },
           ),
-        })),
+        )
+      }
+      return response(200).json({
+        routes: countedRoutes(matching(sent, filters)),
+        versions: [...new Set(sent.map((e) => e.appVersion).reverse())],
       })
     }),
   ]
 }
 
-/** The Admin's report, measured as [routes] say. */
-export function metricsReport(routes: RouteFigures[]) {
-  return http.get('/api/admin/metrics', ({ response }) =>
-    response(200).json({ routes }),
-  )
+/**
+ * The Admin's report, measured as [answer] says for each set of filters, the
+ * range holding [versions] — the same whichever filters are chosen, or as a
+ * function says for each.
+ */
+export function metricsBy(
+  answer: (query: MetricQuery) => RouteFigures[],
+  versions: string[] | ((query: MetricQuery) => string[]) = [],
+) {
+  return http.get('/api/admin/metrics', ({ query, response }) => {
+    const filters = readFilters(query)
+    return typeof filters === 'string'
+      ? response(400).json({ message: filters })
+      : response(200).json({
+          routes: answer(filters),
+          versions:
+            typeof versions === 'function' ? versions(filters) : versions,
+        })
+  })
+}
+
+/** The Admin's report, measured as [routes] say whatever the filters. */
+export function metricsReport(routes: RouteFigures[], versions: string[] = []) {
+  return metricsBy(() => routes, versions)
 }

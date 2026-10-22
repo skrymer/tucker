@@ -61,20 +61,25 @@ client supplies nothing, it falls back to the server's date.
 **The server clock is a narrow, injected seam, not a default.** The domain services
 no longer default their `today` parameter to `LocalDate.now()`; the date is always
 passed in, so a missing one is a *compile error*, not a silent server-clock stamp.
-The server's own "now" is read only through `UserToday`, which wraps a single
-injectable `java.time.Clock` bean (`Clock.systemUTC()`), and is used for two
-read-only purposes — **never to stamp a persisted domain date**:
+The server's own *today* — a domain date — is read only through `UserToday`, which
+wraps a single injectable `java.time.Clock` bean (`Clock.systemUTC()`), and is used
+for two read-only purposes — **never to stamp a persisted domain date**:
 
 1. validating a client-supplied date is plausible (the ±1-day guard), and
 2. supplying "today" to a read-only projection that has no client date to honour —
    `GET /api/goal/progress`, whose observed-pace figures are computed as of today
    but persist nothing (via `UserToday.serverToday()`).
 
-The future Weekly-Review reminder cron (#82) is the one *other* legitimate reader
-of a server clock — a server-initiated tick with no client, which applies the
-user's `Profile` timezone to the clock's instant itself. It reuses this same
-`Clock` bean (no duplicate seam), and freezing the bean lets tests and the `smoke`
-profile control time.
+An instant that is not a date at all — a rolling metrics window, a cache entry's
+age, when an event was recorded — reads the same `Clock` bean directly; there is
+still one seam, and nothing read that way becomes a day.
+
+The Weekly-Review reminder cron (#82) reads the clock's instant too, and is the one
+reader that turns it into a day in the User's own zone — a server-initiated tick
+with no client, which applies the user's `Profile` timezone to the instant itself.
+(`UserToday`'s day is the server's UTC date, for the uses listed above.) It reuses
+this same `Clock` bean (no duplicate seam). Its tests, JVM and smoke alike, hand
+`runTick` the instant to judge; `UserToday`'s tests run on a fixed `Clock` instead.
 
 *Amended (issue #96):* that cron now also **writes** a local day —
 `reminder_state.last_reminder_sent_on`, the day its last nudge went out on. This is

@@ -84,5 +84,10 @@ class MetricEventTest {
     )
 
     private fun source(appVersion: String = "1.4.0") =
-        MetricSource(layout = MetricLayout.PHONE, installed = false, appVersion = appVersion)
+        MetricSource(
+            layout = MetricLayout.PHONE,
+            installed = false,
+            appVersion = appVersion,
+            platform = Platform(BrowserEngine.WEBKIT, OperatingSystem.IOS),
+        )
 }

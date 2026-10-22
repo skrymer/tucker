@@ -132,6 +132,11 @@ class PerformanceReportTest {
         apiMs = apiMs,
         serverMs = serverMs,
         firstVisit = false,
-        source = MetricSource(layout = layout, installed = false, appVersion = "1.4.0"),
+        source = MetricSource(
+            layout = layout,
+            installed = false,
+            appVersion = "1.4.0",
+            platform = Platform(BrowserEngine.WEBKIT, OperatingSystem.IOS),
+        ),
     )
 }

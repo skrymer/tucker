@@ -1,6 +1,7 @@
 package com.tucker.security
 
 import jakarta.servlet.DispatcherType
+import jakarta.servlet.http.HttpServletResponse
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -8,16 +9,24 @@ import org.springframework.core.io.ResourceLoader
 import org.springframework.security.config.ObjectPostProcessor
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
+import org.springframework.security.config.annotation.web.AuthorizeHttpRequestsDsl
+import org.springframework.security.config.annotation.web.ExceptionHandlingDsl
 import org.springframework.security.config.annotation.web.invoke
 import org.springframework.security.config.http.SessionCreationPolicy
 import org.springframework.security.oauth2.jwt.JwtDecoder
 import org.springframework.security.oauth2.server.resource.web.HeaderBearerTokenResolver
 import org.springframework.security.web.SecurityFilterChain
+import org.springframework.security.web.access.AccessDeniedHandlerImpl
 import org.springframework.security.web.authentication.session.NullAuthenticatedSessionStrategy
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository
+import org.springframework.security.web.csrf.CsrfException
 import org.springframework.security.web.csrf.CsrfFilter
 import org.springframework.security.web.csrf.CsrfTokenRepository
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher
 import org.springframework.security.web.util.matcher.DispatcherTypeRequestMatcher
+
+/** Where only an Admin is let in (ADR 0039). */
+private const val ADMIN_PATHS = "/api/admin/**"
 
 /**
  * Cloudflare Access authenticates; this is where Tucker checks its work (ADR 0020).
@@ -71,26 +80,8 @@ class AccessSecurityConfig {
         configureCsrf(http, csrfTokenRepository)
         http {
             sessionManagement { sessionCreationPolicy = SessionCreationPolicy.STATELESS }
-            authorizeHttpRequests {
-                // Two doors stay open, and only two. `/api/version` so an operator can tell
-                // "the app is down" from "the app is rejecting me", and the spec because
-                // `generateOpenApiDocs` boots the app to regenerate the frontend's client.
-                // Notably *not* `/api/test/**`: it is `smoke`-profile-only and its callers
-                // carry an assertion like everything else, so production's policy need not
-                // say a database-wipe prefix is public.
-                authorize("/api/version", permitAll)
-                authorize("/v3/api-docs/**", permitAll)
-                // Spring Security filters the ERROR dispatch too, so without this an error
-                // *on an open door* is re-authorized as `/error` and comes back 401 —
-                // turning "the app is up and you sent a bad request" into "the app is
-                // rejecting you", which is precisely the distinction /api/version exists to
-                // make. Matched on the dispatcher type rather than the `/error` path, so it
-                // stays exactly what it claims to be: a container-internal forward, not a
-                // third door anyone can knock on. An unauthenticated request to a gated
-                // path is refused by the entry point without ever dispatching here.
-                authorize(DispatcherTypeRequestMatcher(DispatcherType.ERROR), permitAll)
-                authorize(anyRequest, authenticated)
-            }
+            authorizeHttpRequests { authorizeDoors() }
+            exceptionHandling { refuseAdminPathsAsMissing() }
             oauth2ResourceServer {
                 bearerTokenResolver = HeaderBearerTokenResolver(ACCESS_ASSERTION_HEADER)
                 jwt {
@@ -104,6 +95,47 @@ class AccessSecurityConfig {
             }
         }
         return http.build()
+    }
+
+    private fun AuthorizeHttpRequestsDsl.authorizeDoors() {
+        // Two doors stay open, and only two. `/api/version` so an operator can tell
+        // "the app is down" from "the app is rejecting me", and the spec because
+        // `generateOpenApiDocs` boots the app to regenerate the frontend's client.
+        // Notably *not* `/api/test/**`: it is `smoke`-profile-only and its callers
+        // carry an assertion like everything else, so production's policy need not
+        // say a database-wipe prefix is public.
+        authorize("/api/version", permitAll)
+        authorize("/v3/api-docs/**", permitAll)
+        // Spring Security filters the ERROR dispatch too, so without this an error
+        // *on an open door* is re-authorized as `/error` and comes back 401 —
+        // turning "the app is up and you sent a bad request" into "the app is
+        // rejecting you", which is precisely the distinction /api/version exists to
+        // make. Matched on the dispatcher type rather than the `/error` path, so it
+        // stays exactly what it claims to be: a container-internal forward, not a
+        // third door anyone can knock on. An unauthenticated request to a gated
+        // path is refused by the entry point without ever dispatching here.
+        authorize(DispatcherTypeRequestMatcher(DispatcherType.ERROR), permitAll)
+        authorize(ADMIN_PATHS, hasAuthority(ROLE_ADMIN))
+        authorize(anyRequest, authenticated)
+    }
+
+    /**
+     * Refuses anyone but an Admin as a path with nothing behind it, whatever the method,
+     * so the status never says a page is here that the caller may not see (ADR 0039).
+     */
+    private fun ExceptionHandlingDsl.refuseAdminPathsAsMissing() {
+        val refusedAsEverywhere = AccessDeniedHandlerImpl()
+        defaultAccessDeniedHandlerFor(
+            { request, response, denied ->
+                // A missing CSRF token is refused before anyone is known, on every path alike.
+                if (denied is CsrfException) {
+                    refusedAsEverywhere.handle(request, response, denied)
+                } else {
+                    response.sendError(HttpServletResponse.SC_NOT_FOUND)
+                }
+            },
+            AntPathRequestMatcher(ADMIN_PATHS),
+        )
     }
 
     /**

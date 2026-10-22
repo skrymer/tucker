@@ -168,6 +168,7 @@ flowchart TD
       jwt["<b>AccessJwtDecoder</b><br/>[Component: Nimbus, Cloudflare JWKS]<br/>verifies the assertion"]:::component
       principal["<b>AccessPrincipalConverter</b><br/>[Component: Spring Security]<br/>assertion → User, provisioned just-in-time"]:::component
       csrf["<b>SpaCsrf</b><br/>[Component: Spring Security]<br/>XSRF-TOKEN on every mutation"]:::component
+      authz["<b>AccessSecurityConfig</b><br/>[Component: Spring Security]<br/>/api/admin/** for an Admin alone, anyone else 404"]:::component
     end
     current["<b>CurrentUser</b><br/>[Component: com.tucker.security]<br/>whose request this is, from the SecurityContext"]:::component
     controllers["<b>Controllers</b><br/>[Component: com.tucker.api, springdoc]<br/>REST endpoints + OpenAPI spec"]:::component
@@ -178,10 +179,11 @@ flowchart TD
   db[("<b>Database</b><br/>[Container: SQLite, Flyway]")]:::ext
 
   web -- "JSON/HTTP + Cf-Access-Jwt-Assertion" --> timing
-  timing --> jwt
+  timing --> csrf
+  csrf --> jwt
   jwt --> principal
-  principal --> csrf
-  csrf --> controllers
+  principal --> authz
+  authz --> controllers
   controllers --> services
   controllers -- "reads and simple writes" --> repos
   controllers -- "simple use cases" --> domain
@@ -553,7 +555,7 @@ measurements, which say nothing of who made them
 | `reference_food_synonym` | Query rewrites for Reference Food search (`term` → `replacement`) | Flyway (V17) |
 | `nutrient_reference_value` | NHMRC Nutrient Reference Values by nutrient, sex and the age a band opens at | Flyway (V18) |
 | `app_config` | Installation-wide key/value settings, such as the VAPID key pair | The app, on first boot |
-| `metric_event` | One route change per row: route template, time, its wait on `/api` and the server's part of that, whether it was the route's first visit, layout, installed, app version, when recorded. No `user_id`, no user agent | `POST /api/metrics` (V24, V25) |
+| `metric_event` | One route change per row: route template, time, its wait on `/api` and the server's part of that, whether it was the route's first visit, layout, installed, the browser engine and OS read off the request's user agent, app version, when recorded. No `user_id`, no user agent | `POST /api/metrics` (V24–V26) |
 | `id_sequence` | The last id handed out per aggregate table, so an aggregate has its id before it is stored ([ADR 0036](adr/0036-an-aggregate-has-its-identity-from-creation.md)) | Flyway (V21), then the app on every create |
 
 ## Keeping this current

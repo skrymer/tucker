@@ -1,12 +1,14 @@
-import type { Page } from '@playwright/test'
+import type { Locator, Page } from '@playwright/test'
 import { expect, test } from './support/test'
 import { signedInAsAdmin } from '../test/mocks/handlers/identity'
 import {
+  metricsBy,
   metricsRecorded,
   metricsReport,
   tooFew,
 } from '../test/mocks/handlers/metrics'
 import { hidePage } from './support/visibility'
+import { held } from '../test/mocks/http'
 
 /**
  * One layout's figures, enough samples for a figure, with [p75] the number that
@@ -52,6 +54,24 @@ async function barPart(page: Page, row: 'top' | 'bottom', part: number) {
   return page.locator(selector).nth(index)
 }
 
+/** The fill of each part of the one bar drawn, from the axis out. */
+const partColours = (page: Page) =>
+  page.evaluate(() =>
+    [...document.querySelectorAll('.route-timing path[class*="-bar"]')]
+      .sort((a, b) => a.getBoundingClientRect().x - b.getBoundingClientRect().x)
+      .map((b) => getComputedStyle(b).fill),
+  )
+
+/** How opaque [locator] is drawn: its own opacity times every ancestor's. */
+const shownOpacity = (locator: Locator) =>
+  locator.evaluate((el) => {
+    let opacity = 1
+    for (let at: Element | null = el; at; at = at.parentElement) {
+      opacity *= Number(getComputedStyle(at).opacity)
+    }
+    return opacity
+  })
+
 const columnWidth = async (page: Page) =>
   (await page.getByRole('main').boundingBox())!.width
 
@@ -87,10 +107,20 @@ test.describe('as an Admin', () => {
     await expect(page.getByRole('main')).toMatchAriaSnapshot(`
       - main:
         - /children: deep-equal
-        - paragraph: Admin
-        - heading "Metrics" [level=1]
-        - heading "Nothing measured yet" [level=2]
-        - paragraph: Page timings appear here once Tucker starts recording them.
+        - region "Metrics":
+          - paragraph: Admin
+          - heading "Metrics" [level=1]
+          - group "Filters":
+            - text: Range
+            - combobox "Range": Last 30 days
+            - text: Engine
+            - combobox "Engine": All engines
+            - text: App version
+            - combobox "App version": All versions
+            - text: Opened in
+            - combobox "Opened in": Installed or browser
+          - heading "Nothing measured in the last 30 days" [level=2]
+          - paragraph: Page timings appear here once Tucker records them. A wider range looks further back.
     `)
   })
 
@@ -254,24 +284,20 @@ test.describe('as an Admin', () => {
     await goto('/admin', { waitUntil: 'hydration' })
     await expect(page.getByRole('figure')).toContainText('/review')
 
-    const colours = await page.evaluate(() => {
-      const swatch = (name: string) =>
-        [...document.querySelectorAll('[aria-label="Parts"] li')]
-          .find((li) => li.textContent?.trim() === name)!
-          .querySelector('span')!
-      // Left to right along the phone's bar, the one bar drawn.
-      const bars = [
-        ...document.querySelectorAll('.route-timing path[class*="-bar"]'),
-      ].sort(
-        (a, b) => a.getBoundingClientRect().x - b.getBoundingClientRect().x,
-      )
-      return {
-        legend: ['Server', 'Network + proxy', 'Render / JS'].map(
-          (n) => getComputedStyle(swatch(n)).backgroundColor,
+    const colours = {
+      legend: await page.evaluate(() =>
+        ['Server', 'Network + proxy', 'Render / JS'].map(
+          (name) =>
+            getComputedStyle(
+              [...document.querySelectorAll('[aria-label="Parts"] li')]
+                .find((li) => li.textContent?.trim() === name)!
+                .querySelector('span')!,
+            ).backgroundColor,
         ),
-        bars: bars.map((b) => getComputedStyle(b).fill),
-      }
-    })
+      ),
+      // Left to right along the phone's bar, the one bar drawn.
+      bars: await partColours(page),
+    }
     // Stacked server, then network, then render, from the axis out, on the
     // phone's bar alone: the desktop's three samples draw none.
     expect(colours.bars).toEqual(colours.legend)
@@ -280,6 +306,162 @@ test.describe('as an Admin', () => {
     )
     // Three parts told apart, not one colour twice.
     expect(new Set(colours.legend).size).toBe(3)
+  })
+
+  test('sets the four filters in one row above the chart', async ({
+    page,
+    goto,
+    network,
+    isMobile,
+  }) => {
+    test.skip(isMobile, 'a phone shows the notice instead')
+    network.use(
+      metricsReport([{ route: '/review', layouts: [figures('phone', 400)] }]),
+    )
+    await goto('/admin', { waitUntil: 'hydration' })
+    await expect(page.getByRole('figure')).toContainText('/review · Phone')
+
+    const filters = page.getByRole('group', { name: 'Filters' })
+    const tops = await Promise.all(
+      (await filters.getByRole('combobox').all()).map(
+        async (c) => (await c.boundingBox())!.y,
+      ),
+    )
+    expect(tops).toHaveLength(4)
+    expect(new Set(tops).size).toBe(1)
+    const row = (await filters.boundingBox())!
+    const chart = (await page.getByRole('figure').boundingBox())!
+    expect(row.y + row.height).toBeLessThanOrEqual(chart.y)
+  })
+
+  test('redraws the chart for a chosen engine, each part keeping its colour', async ({
+    page,
+    goto,
+    network,
+    isMobile,
+  }) => {
+    test.skip(isMobile, 'a phone shows the notice instead')
+    network.use(
+      metricsBy(({ engine }) => [
+        engine === 'webkit'
+          ? { route: '/foods', layouts: [figures('phone', 1200)] }
+          : { route: '/review', layouts: [figures('phone', 400)] },
+      ]),
+    )
+    await goto('/admin', { waitUntil: 'hydration' })
+    const chart = page.getByRole('figure')
+    await expect(chart).toContainText('/review · Phone')
+    const before = await partColours(page)
+
+    await page.getByRole('combobox', { name: 'Engine' }).click()
+    await page.getByRole('option', { name: 'WebKit' }).click()
+
+    await expect(chart).toContainText('/foods · Phone')
+    await expect(chart).not.toContainText('/review')
+    expect(await partColours(page)).toEqual(before)
+    expect(new Set(before).size).toBe(3)
+  })
+
+  // ADR 0007: a refetch keeps the last answer up, dimmed, until the next lands.
+  test('dims the last chart while the chosen filters are read, and lifts the dim once they answer', async ({
+    page,
+    goto,
+    network,
+    isMobile,
+  }) => {
+    test.skip(isMobile, 'a phone shows the notice instead')
+    network.use(
+      metricsReport([{ route: '/review', layouts: [figures('phone', 400)] }]),
+    )
+    const read = held(
+      'get',
+      '/api/admin/metrics',
+      (request) => new URL(request.url).searchParams.get('engine') === 'webkit',
+    )
+    network.use(read.handler)
+    await goto('/admin', { waitUntil: 'hydration' })
+    const chart = page.getByRole('figure')
+    await expect(chart).toContainText('/review · Phone')
+    expect(await shownOpacity(chart)).toBe(1)
+
+    await page.getByRole('combobox', { name: 'Engine' }).click()
+    await page.getByRole('option', { name: 'WebKit' }).click()
+
+    await expect.poll(() => shownOpacity(chart)).toBe(0.5)
+    await expect(chart).toContainText('/review · Phone')
+    read.release()
+    await expect.poll(() => shownOpacity(chart)).toBe(1)
+  })
+
+  // ADR 0007 holds the dim back 150 ms; the answer, once in, is not held back.
+  test('lifts the dim the moment the answer lands, where only the dim waits', async ({
+    page,
+    goto,
+    network,
+    isMobile,
+  }) => {
+    test.skip(isMobile, 'a phone shows the notice instead')
+    network.use(
+      metricsReport([{ route: '/review', layouts: [figures('phone', 400)] }]),
+    )
+    const read = held(
+      'get',
+      '/api/admin/metrics',
+      (request) => new URL(request.url).searchParams.get('engine') === 'webkit',
+    )
+    network.use(read.handler)
+    await goto('/admin', { waitUntil: 'hydration' })
+    const chart = page.getByRole('figure')
+    await expect(chart).toContainText('/review · Phone')
+
+    await page.getByRole('combobox', { name: 'Engine' }).click()
+    await page.getByRole('option', { name: 'WebKit' }).click()
+    await expect.poll(() => shownOpacity(chart)).toBe(0.5)
+    const dimmed = await chart.evaluateHandle((el) => {
+      let at: Element | null = el
+      while (at && getComputedStyle(at).opacity !== '0.5') at = at.parentElement
+      return at!
+    })
+    const delay = () =>
+      dimmed.evaluate((el) => getComputedStyle(el).transitionDelay)
+    expect(await delay()).toBe('0.15s')
+
+    read.release()
+
+    await expect.poll(delay).toBe('0s')
+  })
+
+  // Else the last filters' empty state reads as the answer for the new ones.
+  test('dims the last empty state while the chosen filters are read, then says what they found', async ({
+    page,
+    goto,
+    network,
+    isMobile,
+  }) => {
+    test.skip(isMobile, 'a phone shows the notice instead')
+    network.use(metricsReport([]))
+    const read = held(
+      'get',
+      '/api/admin/metrics',
+      (request) => new URL(request.url).searchParams.get('engine') === 'webkit',
+    )
+    network.use(read.handler)
+    await goto('/admin', { waitUntil: 'hydration' })
+    const empty = page.getByRole('heading', {
+      name: 'Nothing measured in the last 30 days',
+    })
+    await expect(empty).toBeVisible()
+
+    await page.getByRole('combobox', { name: 'Engine' }).click()
+    await page.getByRole('option', { name: 'WebKit' }).click()
+
+    await expect.poll(() => shownOpacity(empty)).toBe(0.5)
+    read.release()
+    const unmatched = page.getByRole('heading', {
+      name: 'Nothing matches these filters',
+    })
+    await expect.poll(() => shownOpacity(unmatched)).toBe(1)
+    await expect(empty).toHaveCount(0)
   })
 
   test('states the exact figures of whichever bar is pointed at', async ({

@@ -81,6 +81,14 @@ class CsrfGateTest {
         assertTrue(reviews.findAll().isEmpty(), "the review ran despite being refused")
     }
 
+    /** The Admin-only paths answer anyone else 404, which must not swallow this refusal for an Admin. */
+    @Test
+    fun `an Admin's request carrying no CSRF token is refused under the Admin paths too`() {
+        mockMvc.post("/api/admin/metrics") {
+            header(ACCESS_ASSERTION_HEADER, AccessTokens.mint(email = "admin@tucker.invalid"))
+        }.andExpect { status { isForbidden() } }
+    }
+
     @Test
     fun `every state-changing endpoint refuses a request carrying no CSRF token`() {
         val mutations = handlerMappings.handlerMethods.keys.flatMap { mapping ->
