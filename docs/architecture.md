@@ -179,10 +179,10 @@ flowchart TD
   db[("<b>Database</b><br/>[Container: SQLite, Flyway]")]:::ext
 
   web -- "JSON/HTTP + Cf-Access-Jwt-Assertion" --> timing
-  timing --> jwt
+  timing --> csrf
+  csrf --> jwt
   jwt --> principal
-  principal --> csrf
-  csrf --> authz
+  principal --> authz
   authz --> controllers
   controllers --> services
   controllers -- "reads and simple writes" --> repos
