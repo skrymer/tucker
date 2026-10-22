@@ -35,7 +35,7 @@ function useRouteTimingSeries(routes: () => RouteFigures[]) {
     // A stacked bar's part is bound to a record of its own, the row its `datum`.
     triggers: {
       [StackedBar.selectors.bar]: ({ datum: r }: { datum: TimingRow }) =>
-        `<strong>${r.route} · ${r.layout.name}</strong><br>` +
+        `<strong>${rowName(r)}</strong><br>` +
         `${figuresLine(r.figures)}<br>${waitsLine(r.figures)}`,
     },
   }

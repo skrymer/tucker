@@ -2,6 +2,26 @@ import type { components } from '#open-fetch-schemas/api'
 import { http } from '../http'
 
 type RouteFigures = components['schemas']['RouteFiguresResponse']
+type LayoutFigures = components['schemas']['LayoutFiguresResponse']
+
+/** A layout with [n] samples, too few for the backend to state any figure. */
+export function tooFew(
+  layout: LayoutFigures['layout'],
+  n: number,
+): LayoutFigures {
+  return {
+    layout,
+    n,
+    p50: null,
+    p75: null,
+    p95: null,
+    apiP75: null,
+    coldP75: null,
+    serverMs: null,
+    networkMs: null,
+    renderMs: null,
+  }
+}
 type Sent = components['schemas']['MetricEventRequest']
 
 /**
@@ -72,19 +92,13 @@ export function metricsRecorded() {
       return response(200).json({
         routes: routes.map((route) => ({
           route,
-          layouts: (['phone', 'desktop'] as const).map((layout) => ({
-            layout,
-            n: sent.filter((e) => e.route === route && e.layout === layout)
-              .length,
-            p50: null,
-            p75: null,
-            p95: null,
-            apiP75: null,
-            coldP75: null,
-            serverMs: null,
-            networkMs: null,
-            renderMs: null,
-          })),
+          layouts: (['phone', 'desktop'] as const).map((layout) =>
+            tooFew(
+              layout,
+              sent.filter((e) => e.route === route && e.layout === layout)
+                .length,
+            ),
+          ),
         })),
       })
     }),

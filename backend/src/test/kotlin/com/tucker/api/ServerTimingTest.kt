@@ -11,6 +11,7 @@ import org.springframework.test.web.servlet.get
 import org.springframework.transaction.annotation.Transactional
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -41,6 +42,15 @@ class ServerTimingTest {
 
         assertEquals(401, response.status)
         assertTrue(SERVER_TIMING.matches(response.getHeader("Server-Timing").orEmpty()))
+    }
+
+    /** The browser reads `/api` alone, so nothing else is held to be timed. */
+    @Test
+    fun `a response outside the api carries none`() {
+        val response = mockMvc.get("/v3/api-docs").andReturn().response
+
+        assertEquals(200, response.status)
+        assertNull(response.getHeader("Server-Timing"))
     }
 
     private companion object {

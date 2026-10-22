@@ -28,9 +28,9 @@ describe('timing a move between pages', () => {
     clock = 1316
     paint()
     expect(record).toHaveBeenCalledExactlyOnceWith('/foods', {
-      valueMs: 316,
       start: 1000,
       end: 1316,
+      firstVisit: true,
     })
   })
 
@@ -70,9 +70,9 @@ describe('timing a move between pages', () => {
     timer.finished('/foods')
 
     expect(record).toHaveBeenCalledExactlyOnceWith('/foods', {
-      valueMs: 0,
       start: 0,
       end: 0,
+      firstVisit: true,
     })
   })
 
@@ -106,6 +106,30 @@ describe('timing a move between pages', () => {
     timer.finished('/foods')
 
     expect(record).not.toHaveBeenCalled()
+  })
+
+  // The page a visit opens on has fetched its code already, though it is never timed.
+  it('marks a move to a page its first visit unless the visit has been there, the page it opened on included', () => {
+    const record = vi.fn()
+    const timer = createRouteChangeTimer({
+      now: () => 0,
+      afterPaint: (fn) => fn(),
+      record,
+    })
+    timer.finished('/today')
+
+    for (const page of ['/foods', '/today', '/foods']) {
+      timer.started()
+      timer.finished(page)
+    }
+
+    expect(
+      record.mock.calls.map(([page, move]) => [page, move.firstVisit]),
+    ).toEqual([
+      ['/foods', true],
+      ['/today', false],
+      ['/foods', false],
+    ])
   })
 
   // A redirect while the visit opens is a second navigation before any page has

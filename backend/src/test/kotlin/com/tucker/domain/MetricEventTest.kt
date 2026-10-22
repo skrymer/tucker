@@ -56,21 +56,6 @@ class MetricEventTest {
         assertFailsWith<IllegalArgumentException> { source(appVersion = "1.4.".padEnd(41, '0')) }
     }
 
-    @Test
-    fun `refuses a route change that does not say how long it waited on the api`() {
-        assertFailsWith<IllegalArgumentException> { event.copy(apiMs = null) }
-    }
-
-    @Test
-    fun `refuses a route change that does not say how long the server worked`() {
-        assertFailsWith<IllegalArgumentException> { event.copy(serverMs = null) }
-    }
-
-    @Test
-    fun `refuses a route change that does not say whether it was the route's first visit`() {
-        assertFailsWith<IllegalArgumentException> { event.copy(firstVisit = null) }
-    }
-
     /** The server's work is part of the wait for it, never more than the wait. */
     @Test
     fun `refuses a server time longer than the api wait`() {

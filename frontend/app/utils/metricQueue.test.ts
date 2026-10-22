@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { resetPageStubs, setVisibility } from '~~/test/page-visibility-helpers'
 import { http, serverError } from '~~/test/mocks/http'
-import { metricsRecorded } from '~~/test/mocks/handlers/metrics'
+import { metricsRecorded, tooFew } from '~~/test/mocks/handlers/metrics'
 import { server } from '~~/test/mocks/node'
 import { createMetricQueue, sendMetrics, type MetricEvent } from './metricQueue'
 
@@ -15,18 +15,6 @@ const event: MetricEvent = {
   layout: 'phone',
   installed: false,
   appVersion: '1.4.0',
-}
-
-/** What a layout with too few samples carries besides its count. */
-const noFigures = {
-  p50: null,
-  p75: null,
-  p95: null,
-  apiP75: null,
-  coldP75: null,
-  serverMs: null,
-  networkMs: null,
-  renderMs: null,
 }
 
 afterEach(() => resetPageStubs())
@@ -102,10 +90,7 @@ describe('sending metrics', () => {
     expect(routes).toEqual([
       {
         route: '/review',
-        layouts: [
-          { layout: 'phone', n: 1, ...noFigures },
-          { layout: 'desktop', n: 0, ...noFigures },
-        ],
+        layouts: [tooFew('phone', 1), tooFew('desktop', 0)],
       },
     ])
   })

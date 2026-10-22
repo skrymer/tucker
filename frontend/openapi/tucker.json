@@ -5874,11 +5874,14 @@
       },
       "MetricEventRequest": {
         "required": [
+          "apiMs",
           "appVersion",
+          "firstVisit",
           "installed",
           "kind",
           "layout",
           "route",
+          "serverMs",
           "valueMs"
         ],
         "type": "object",
@@ -5911,16 +5914,13 @@
           },
           "apiMs": {
             "format": "int32",
-            "nullable": true,
             "type": "integer"
           },
           "serverMs": {
             "format": "int32",
-            "nullable": true,
             "type": "integer"
           },
           "firstVisit": {
-            "nullable": true,
             "type": "boolean"
           }
         }

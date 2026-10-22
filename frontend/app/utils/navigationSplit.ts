@@ -1,3 +1,5 @@
+import { METRICS_PATH } from './metricQueue'
+
 /** What a navigation split reads of one Resource Timing entry. */
 export type ResourceTiming = Pick<
   PerformanceResourceTiming,
@@ -15,6 +17,15 @@ function unionLength(spans: Span[]): number {
     reached = Math.max(reached, to)
   }
   return covered
+}
+
+/**
+ * Whether a page waits on [entry]: a call to the api, but never a send of metrics,
+ * which is kept alive in the background.
+ */
+export function isApiCall(entry: Pick<ResourceTiming, 'name'>): boolean {
+  const path = new URL(entry.name).pathname
+  return path.startsWith('/api/') && path !== METRICS_PATH
 }
 
 /**
@@ -42,12 +53,26 @@ export function navigationSplit(
     Math.max(from, window.start),
     Math.min(to, window.end),
   ]
-  const calls = entries.filter((e) => {
-    const path = new URL(e.name).pathname
-    return path.startsWith('/api/') && path !== '/api/metrics'
-  })
+  const calls = entries.filter(isApiCall)
   return {
     apiMs: unionLength(calls.map((e) => within([e.startTime, e.responseEnd]))),
     serverMs: unionLength(calls.map((e) => within(serverSpan(e)))),
+  }
+}
+
+/**
+ * A move in the whole ms an event carries. All three are rounded from the one
+ * window, and rounding keeps their order, so server ≤ api ≤ the move holds as the
+ * backend requires.
+ */
+export function moveTiming(
+  entries: readonly ResourceTiming[],
+  window: { start: number; end: number },
+): { valueMs: number; apiMs: number; serverMs: number } {
+  const { apiMs, serverMs } = navigationSplit(entries, window)
+  return {
+    valueMs: Math.round(window.end - window.start),
+    apiMs: Math.round(apiMs),
+    serverMs: Math.round(serverMs),
   }
 }

@@ -75,6 +75,33 @@ class MetricApiTest {
         }.andExpect { status { isBadRequest() } }
     }
 
+    /** Null or left out, never read as 0 ms, which is what a primitive would default to. */
+    @Test
+    fun `refuses a route change that does not say how long it waited on the api`() {
+        assertRefusedWithout("\"apiMs\":0", "\"apiMs\":null")
+    }
+
+    @Test
+    fun `refuses a route change that does not say how long the server worked`() {
+        assertRefusedWithout("\"serverMs\":0", "\"serverMs\":null")
+    }
+
+    /** Null or left out, never read as a warm visit, which is what a primitive would default to. */
+    @Test
+    fun `refuses a route change that does not say whether it was the route's first visit`() {
+        assertRefusedWithout("\"firstVisit\":false", "\"firstVisit\":null")
+    }
+
+    /** [field] sent as [asNull], and then left out altogether: both refused. */
+    private fun assertRefusedWithout(field: String, asNull: String) {
+        for (event in listOf(routeChange().replace(field, asNull), routeChange().replace("$field,", ""))) {
+            mockMvc.post("/api/metrics") {
+                contentType = MediaType.APPLICATION_JSON
+                content = batchOf(event)
+            }.andExpect { status { isBadRequest() } }
+        }
+    }
+
     @Test
     fun `refuses a batch naming a kind Tucker does not measure`() {
         mockMvc.post("/api/metrics") {

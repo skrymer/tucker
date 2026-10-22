@@ -5,6 +5,9 @@ export type MetricEvent = components['schemas']['MetricEventRequest']
 
 export type ApiClient = NuxtApp['$api']
 
+/** Where metrics are sent, which a move's split leaves out of its wait. */
+export const METRICS_PATH = '/api/metrics'
+
 /**
  * Send [events] to Tucker's own backend through its API client, whose plugins prove
  * the page sent them (ADR 0025). Kept alive, since a batch is mostly sent as the page
@@ -15,7 +18,7 @@ export async function sendMetrics(
   events: MetricEvent[],
 ): Promise<void> {
   try {
-    await api('/api/metrics', {
+    await api(METRICS_PATH, {
       method: 'POST',
       body: { events },
       keepalive: true,

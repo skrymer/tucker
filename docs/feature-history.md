@@ -2022,3 +2022,28 @@ null` now means two things that earn opposite messages — the same trap
     test that hides the page must wait for the destination's h1, not the URL, or the
     hide beats the paint. claude-in-chrome's new tab opens in the background, so it
     never hides the first; an occluded Chrome window runs no `requestAnimationFrame`.
+  - **Slice 3 ([#520](https://github.com/skrymer/tucker/issues/520)) — where a move
+    between pages spends its time.** `ServerTimingFilter`, first of all filters, puts
+    `Server-Timing: app;dur=<ms>` on every response (a refused sign-in included),
+    holding the body in a `ContentCachingResponseWrapper` until the time is known.
+    `navigationSplit` turns a move's window and its Resource Timing entries into
+    `apiMs` (the union of its `/api` calls, clipped to the window; `/api/metrics` and
+    code downloads left out) and `serverMs`, and `moveTiming` rounds all three figures
+    from the one window; the plugin feeds it from a `PerformanceObserver` log of api
+    calls, cleared as each move starts. The timer marks a route's first visit since the
+    page loaded, counting every page that mounts, the one the visit opened on included
+    (gate 1 found it missing). A route change must carry all three, with
+    `0 ≤ serverMs ≤ apiMs ≤ valueMs`; V25 adds the columns and deletes the rows stored
+    before them. `PerformanceReport` adds an api p75, a cold p75 (five first visits at
+    least) and `TimeSplit`, the median of each part across the moves from p70 to p80.
+    `RouteTimingCard` became a `VisStackedBar`: a row per route and layout, phone above
+    desktop, a Parts legend, a caption, and "too few (n N)" in place of a bar.
+  - **Rulings (user):** `serverMs` is the union of each call's server span, placed just
+    before its first byte, not the issue's plain sum, which double-counts parallel calls
+    past `apiMs` and has the batch refused; a first visit counts from the page load, in
+    memory; V25 deletes the old rows; two rows per route rather than two panels.
+  - **Traps:** a browser keeps 250 Resource Timing entries and drops the rest, so
+    `getEntriesByType` goes blind mid-session — the smoke shuts the buffer at 0 to prove
+    the observer; a `VisStackedBar` tooltip trigger is handed the part's record, the row
+    under its `datum`; two charted renders in one Vitest file throw `_idleNext` on
+    teardown; a wrapped axis label loses the space in "(n 3)".

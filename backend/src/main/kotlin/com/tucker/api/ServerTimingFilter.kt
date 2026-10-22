@@ -20,6 +20,8 @@ import java.util.Locale
 @Order(Ordered.HIGHEST_PRECEDENCE)
 class ServerTimingFilter : OncePerRequestFilter() {
 
+    override fun shouldNotFilter(request: HttpServletRequest) = !request.requestURI.startsWith("/api/")
+
     override fun doFilterInternal(request: HttpServletRequest, response: HttpServletResponse, chain: FilterChain) {
         val held = ContentCachingResponseWrapper(response)
         val started = System.nanoTime()

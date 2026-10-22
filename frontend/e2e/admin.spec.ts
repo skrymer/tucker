@@ -1,7 +1,11 @@
 import type { Page } from '@playwright/test'
 import { expect, test } from './support/test'
 import { signedInAsAdmin } from '../test/mocks/handlers/identity'
-import { metricsRecorded, metricsReport } from '../test/mocks/handlers/metrics'
+import {
+  metricsRecorded,
+  metricsReport,
+  tooFew,
+} from '../test/mocks/handlers/metrics'
 import { hidePage } from './support/visibility'
 
 /**
@@ -19,20 +23,6 @@ const figures = (layout: 'phone' | 'desktop', p75: number) => ({
   serverMs: p75 / 5,
   networkMs: p75 / 5,
   renderMs: (p75 * 3) / 5,
-})
-
-/** A layout with [n] samples, too few for any figure. */
-const tooFew = (layout: 'phone' | 'desktop', n: number) => ({
-  layout,
-  n,
-  p50: null,
-  p75: null,
-  p95: null,
-  apiP75: null,
-  coldP75: null,
-  serverMs: null,
-  networkMs: null,
-  renderMs: null,
 })
 
 // The Metrics page's layout (ADR 0039): a column wider than the shared one on a
@@ -246,7 +236,7 @@ test.describe('as an Admin', () => {
     expect(lengths[0]! / lengths[1]!).toBeCloseTo(2, 1)
   })
 
-  test('colours each part as the legend colours it', async ({
+  test('colours each part as the legend colours it, and draws no bar where there are too few samples', async ({
     page,
     goto,
     network,
@@ -282,8 +272,12 @@ test.describe('as an Admin', () => {
         bars: bars.map((b) => getComputedStyle(b).fill),
       }
     })
-    // Stacked server, then network, then render, from the axis out.
+    // Stacked server, then network, then render, from the axis out, on the
+    // phone's bar alone: the desktop's three samples draw none.
     expect(colours.bars).toEqual(colours.legend)
+    await expect(page.getByRole('figure')).toContainText(
+      /\/review · Desktop · too few\s*\(n\s*3\)/,
+    )
     // Three parts told apart, not one colour twice.
     expect(new Set(colours.legend).size).toBe(3)
   })
@@ -341,33 +335,6 @@ test.describe('as an Admin', () => {
     await expect(
       page.getByText('api p75 90 ms · cold p75 too few'),
     ).toBeVisible()
-  })
-
-  test('draws no bar for a layout with too few samples', async ({
-    page,
-    goto,
-    network,
-    isMobile,
-  }) => {
-    test.skip(isMobile, 'a phone shows the notice instead')
-    network.use(
-      metricsReport([
-        {
-          route: '/review',
-          layouts: [figures('phone', 910), tooFew('desktop', 3)],
-        },
-      ]),
-    )
-    await goto('/admin', { waitUntil: 'hydration' })
-    const chart = page.getByRole('figure')
-
-    await expect(chart).toContainText(
-      /\/review · Desktop · too few\s*\(n\s*3\)/,
-    )
-    // The phone's three parts, and nothing for the desktop.
-    await expect(page.locator('.route-timing path[class*="-bar"]')).toHaveCount(
-      3,
-    )
   })
 
   // A phone is shown the notice alone, so it has no use for the chart's code or SVG.

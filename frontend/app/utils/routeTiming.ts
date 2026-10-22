@@ -3,14 +3,11 @@ import type { components } from '#open-fetch-schemas/api'
 type RouteFigures = components['schemas']['RouteFiguresResponse']
 type LayoutFigures = components['schemas']['LayoutFiguresResponse']
 
-/** The app's two layouts as the Admin chart names them, phone first. */
-const LAYOUTS: readonly {
-  layout: LayoutFigures['layout']
-  name: string
-}[] = [
-  { layout: 'phone', name: 'Phone' },
-  { layout: 'desktop', name: 'Desktop' },
-]
+/** The app's two layouts as the Admin chart names them. */
+const LAYOUT_NAMES: Record<LayoutFigures['layout'], string> = {
+  phone: 'Phone',
+  desktop: 'Desktop',
+}
 
 /**
  * The three parts a move's time is split into (ADR 0038), in the order they stack
@@ -30,26 +27,27 @@ export const PARTS: readonly {
   { name: 'Render / JS', figure: 'renderMs', color: 'var(--tucker-cat-3)' },
 ]
 
-export type TimingRow = {
-  route: string
-  layout: (typeof LAYOUTS)[number]
-  figures: LayoutFigures
-}
+export type TimingRow = { route: string; figures: LayoutFigures }
 
-/** One row per route and layout, top first: the routes in the backend's order, phone above desktop. */
+/**
+ * One row per route and layout, top first, in the backend's order: the slowest
+ * route first, each with every layout, phone above desktop.
+ */
 export function timingRows(routes: RouteFigures[]): TimingRow[] {
   return routes.flatMap(({ route, layouts }) =>
-    LAYOUTS.flatMap((layout) => {
-      const figures = layouts.find((l) => l.layout === layout.layout)
-      return figures ? [{ route, layout, figures }] : []
-    }),
+    layouts.map((figures) => ({ route, figures })),
   )
 }
 
+/** The route and layout a row stands for. */
+export function rowName({ route, figures }: TimingRow): string {
+  return `${route} · ${LAYOUT_NAMES[figures.layout]}`
+}
+
 /** A row as the chart's axis names it, saying why its bar is missing when it is. */
-export function rowLabel({ route, layout, figures }: TimingRow): string {
-  const label = `${route} · ${layout.name}`
-  return figures.p75 == null ? `${label} · too few (n ${figures.n})` : label
+export function rowLabel(row: TimingRow): string {
+  const { n, p75 } = row.figures
+  return p75 == null ? `${rowName(row)} · too few (n ${n})` : rowName(row)
 }
 
 /** A bar's exact figures: percentiles only, never an average (ADR 0038). */

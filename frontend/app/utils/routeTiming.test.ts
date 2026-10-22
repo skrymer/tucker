@@ -2,10 +2,12 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import type { components } from '#open-fetch-schemas/api'
+import { tooFew } from '~~/test/mocks/handlers/metrics'
 import {
   figuresLine,
   PARTS,
   rowLabel,
+  rowName,
   timingRows,
   waitsLine,
 } from './routeTiming'
@@ -40,17 +42,25 @@ describe("the Admin chart's rows", () => {
       },
     ])
 
-    expect(rows.map((r) => [r.route, r.layout.name, r.figures.n])).toEqual([
-      ['/review', 'Phone', 48],
-      ['/review', 'Desktop', 63],
-      ['/foods', 'Phone', 20],
-      ['/foods', 'Desktop', 9],
+    expect(rows.map((r) => [rowName(r), r.figures.n])).toEqual([
+      ['/review · Phone', 48],
+      ['/review · Desktop', 63],
+      ['/foods · Phone', 20],
+      ['/foods · Desktop', 9],
     ])
+  })
+
+  it('is named by its route and its layout', () => {
+    const [row] = timingRows([
+      { route: '/foods/[id]', layouts: [measured('desktop', 12)] },
+    ])
+
+    expect(rowName(row!)).toBe('/foods/[id] · Desktop')
   })
 })
 
 describe("a row's label on the Admin chart", () => {
-  it('names its route and its layout', () => {
+  it('is the row name alone when the row has a bar', () => {
     const [row] = timingRows([
       { route: '/review', layouts: [measured('phone', 48)] },
     ])
@@ -128,18 +138,3 @@ describe("the Admin chart's theme", () => {
     ).toContain('class="route-timing"')
   })
 })
-
-function tooFew(layout: Layout, n: number): LayoutFigures {
-  return {
-    layout,
-    n,
-    p50: null,
-    p75: null,
-    p95: null,
-    apiP75: null,
-    coldP75: null,
-    serverMs: null,
-    networkMs: null,
-    renderMs: null,
-  }
-}

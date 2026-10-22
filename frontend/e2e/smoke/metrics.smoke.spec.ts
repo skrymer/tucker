@@ -10,58 +10,15 @@ import {
 // read back through the chart (ADR 0039). The mocked suite answers both ends
 // itself, so it would go on passing if a send were refused.
 
-test("a User's move between two pages is counted on the Admin's Metrics page", async ({
-  page,
-  goto,
-  browser,
-  isMobile,
-}) => {
-  await goto('/', { waitUntil: 'hydration' })
-  await page.getByRole('link', { name: 'Review' }).click()
-  await expect(
-    page.getByRole('heading', { level: 1, name: 'Review' }),
-  ).toBeVisible()
-  const sent = page.waitForResponse(
-    (r) => r.url().endsWith('/api/metrics') && r.request().method() === 'POST',
-  )
-  await hidePage(page)
-  // Taken, not refused: the send proved it came from Tucker's own page (ADR 0025).
-  expect((await sent).status()).toBe(204)
-
-  // The Admin reads Metrics in a browser of their own, at a desktop's width.
-  const admin = await browser.newContext({
-    viewport: { width: 1280, height: 800 },
-  })
-  try {
-    const assertion = await mintAccessToken({ email: 'admin@tucker.invalid' })
-    const adminPage = await admin.newPage()
-    await adminPage.route('**/api/**', (route) =>
-      route.continue({
-        headers: {
-          ...route.request().headers(),
-          [ACCESS_ASSERTION_HEADER]: assertion,
-        },
-      }),
-    )
-    await adminPage.goto(new URL('/admin', page.url()).href)
-
-    await expect(adminPage.getByRole('figure')).toContainText(
-      isMobile
-        ? /\/review · Phone · too few\s*\(n\s*1\)/
-        : /\/review · Desktop · too few\s*\(n\s*1\)/,
-    )
-  } finally {
-    await admin.close()
-  }
-})
-
 // Resource Timing exposes Server-Timing only for a same-origin response, which `/api`
 // is through the proxy: this is the proxy passing the header on, and the browser
 // reading it, neither of which the mocked suite has.
 test("an api response states the server's own time to the page", async ({
   page,
   goto,
+  isMobile,
 }) => {
+  test.skip(isMobile, 'the proxy and the header are the same at any width')
   await goto('/', { waitUntil: 'hydration' })
   await expect(
     page.getByRole('heading', { level: 1, name: 'Today' }),
@@ -77,10 +34,11 @@ test("an api response states the server's own time to the page", async ({
   for (const ms of serverTimes) expect(ms).toBeGreaterThan(0)
 })
 
-// A browser keeps 250 Resource Timing entries and then drops the rest, so a session
-// past its 250th request would wait on nothing: the buffer is shut from the start
-// here, and a move still measures its wait.
-test("a move's wait on the api reaches the Admin however many requests came before", async ({
+// A User's moves, counted in their own layout, reach the Admin. A browser keeps 250
+// Resource Timing entries and then drops the rest, so a session past its 250th
+// request would wait on nothing: the buffer is shut from the start here, and a move
+// still measures its wait.
+test("a User's moves reach the Admin with their wait on the api, however many requests came before", async ({
   page,
   goto,
   browser,
@@ -103,8 +61,10 @@ test("a move's wait on the api reaches the Admin however many requests came befo
     (r) => r.url().endsWith('/api/metrics') && r.request().method() === 'POST',
   )
   await hidePage(page)
+  // Taken, not refused: the send proved it came from Tucker's own page (ADR 0025).
   expect((await sent).status()).toBe(204)
 
+  // The Admin reads Metrics in a browser of their own, at a desktop's width.
   const admin = await browser.newContext({
     viewport: { width: 1280, height: 800 },
   })

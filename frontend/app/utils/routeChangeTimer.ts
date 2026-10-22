@@ -2,11 +2,34 @@ type Timing = {
   now: () => number
   /** Run [fn] once the browser has painted the frame being built. */
   afterPaint: (fn: () => void) => void
-  /** [start] and [end] on the `performance.now()` clock, [valueMs] the whole ms between. */
   record: (matchedPath: string, move: TimedMove) => void
 }
 
-export type TimedMove = { valueMs: number; start: number; end: number }
+/**
+ * [start] and [end] on the `performance.now()` clock; [firstVisit] when no page at
+ * this path has mounted since the page loaded.
+ */
+export type TimedMove = {
+  start: number
+  end: number
+  firstVisit: boolean
+}
+
+function onHidden(fn: () => void) {
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') fn()
+  })
+}
+
+/** Whether each path is reached for the first time; every call after the first is not. */
+function createFirstVisits() {
+  const visited = new Set<string>()
+  return (path: string) => {
+    const first = !visited.has(path)
+    visited.add(path)
+    return first
+  }
+}
 
 /**
  * Times each move between pages, from the router starting it to the first paint
@@ -20,11 +43,11 @@ export function createRouteChangeTimer({ now, afterPaint, record }: Timing) {
   let opened = false
   // Counts the page's hides, so a paint can tell it was hidden on the way.
   let hides = 0
+  const isFirstVisit = createFirstVisits()
 
   // A hidden page paints nothing until it is shown again, so a move still in
   // flight would be timed through the User's absence: it is dropped instead.
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState !== 'hidden') return
+  onHidden(() => {
     startedAt = null
     hides++
   })
@@ -39,12 +62,14 @@ export function createRouteChangeTimer({ now, afterPaint, record }: Timing) {
       const start = startedAt
       startedAt = null
       opened = true
-      if (start === null || !matchedPath) return
+      if (!matchedPath) return
+      // Counted on every page that mounts, timed or not: its code is fetched now.
+      const firstVisit = isFirstVisit(matchedPath)
+      if (start === null) return
       const hidesAtMount = hides
       afterPaint(() => {
         if (hides === hidesAtMount) {
-          const end = now()
-          record(matchedPath, { valueMs: Math.round(end - start), start, end })
+          record(matchedPath, { start, end: now(), firstVisit })
         }
       })
     },

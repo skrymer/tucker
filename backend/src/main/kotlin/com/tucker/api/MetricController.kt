@@ -18,8 +18,8 @@ import org.springframework.web.bind.annotation.RestController
 import java.time.Clock
 
 /**
- * One measurement as a browser sends it. A null time or installed flag is refused
- * rather than read as 0 ms or a browser tab, which is what a primitive would
+ * One measurement as a browser sends it. A null time, first-visit or installed flag is
+ * refused rather than read as 0 ms or `false`, which is what a primitive would
  * otherwise default to: a time the browser failed to take (NaN serialises as null)
  * is no measurement at all.
  */
@@ -27,9 +27,9 @@ data class MetricEventRequest(
     val kind: MetricKind,
     val route: String,
     @param:JsonSetter(nulls = Nulls.FAIL) val valueMs: Int,
-    val apiMs: Int?,
-    val serverMs: Int?,
-    val firstVisit: Boolean?,
+    @param:JsonSetter(nulls = Nulls.FAIL) val apiMs: Int,
+    @param:JsonSetter(nulls = Nulls.FAIL) val serverMs: Int,
+    @param:JsonSetter(nulls = Nulls.FAIL) val firstVisit: Boolean,
     val layout: MetricLayout,
     @param:JsonSetter(nulls = Nulls.FAIL) val installed: Boolean,
     val appVersion: String,

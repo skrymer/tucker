@@ -7,9 +7,13 @@ data class Percentiles(val p50: Int, val p75: Int, val p95: Int) {
     companion object {
         fun of(times: List<Int>): Percentiles {
             val sorted = times.sorted()
-            fun at(p: Double) = sorted[rankIndex(p, sorted.size)]
-            return Percentiles(p50 = at(P50), p75 = at(P75), p95 = at(P95))
+            return Percentiles(p50 = at(P50, sorted), p75 = at(P75, sorted), p95 = at(P95, sorted))
         }
+
+        fun p75Of(times: List<Int>): Int = at(P75, times.sorted())
+
+        /** The nearest-rank [p]-th percentile of [sorted]. */
+        internal fun at(p: Double, sorted: List<Int>) = sorted[rankIndex(p, sorted.size)]
 
         internal const val P50 = 0.50
         private const val P75 = 0.75
@@ -29,8 +33,8 @@ data class TimeSplit(val serverMs: Int, val networkMs: Int, val renderMs: Int) {
          */
         fun of(moves: List<MetricEvent>): TimeSplit {
             val sorted = moves.sortedBy { it.valueMs }
-            val around = sorted.slice(rankIndex(P70, sorted.size)..rankIndex(P80, sorted.size)).mapNotNull { it.split }
-            fun median(part: (TimeSplit) -> Int) = around.map(part).sorted()[rankIndex(Percentiles.P50, around.size)]
+            val around = sorted.slice(rankIndex(P70, sorted.size)..rankIndex(P80, sorted.size)).map { it.split }
+            fun median(part: (TimeSplit) -> Int) = Percentiles.at(Percentiles.P50, around.map(part).sorted())
             return TimeSplit(median { it.serverMs }, median { it.networkMs }, median { it.renderMs })
         }
 
@@ -40,8 +44,9 @@ data class TimeSplit(val serverMs: Int, val networkMs: Int, val renderMs: Int) {
 }
 
 /**
- * How one route performed in one layout: its [n], and its [percentiles] once there are
- * enough samples for one to mean anything.
+ * How one route performed in one layout: its [n] always, and every figure only once
+ * there are enough samples for one to mean anything. [coldP75] needs enough first
+ * visits of its own.
  */
 data class LayoutFigures(
     val layout: MetricLayout,
@@ -58,17 +63,16 @@ data class LayoutFigures(
                 layout,
                 moves.size,
                 Percentiles.of(moves.map { it.valueMs }),
-                Percentiles.of(moves.mapNotNull { it.apiMs }).p75,
+                Percentiles.p75Of(moves.map { it.apiMs }),
                 coldP75(moves),
                 TimeSplit.of(moves),
             )
         }
 
-        /** First visits need enough samples of their own. */
         private fun coldP75(moves: List<MetricEvent>): Int? =
-            moves.filter { it.firstVisit == true }.map { it.valueMs }
+            moves.filter { it.firstVisit }.map { it.valueMs }
                 .takeIf { it.size >= MIN_SAMPLES }
-                ?.let { Percentiles.of(it).p75 }
+                ?.let { Percentiles.p75Of(it) }
 
         /** Fewer, and a percentile is one navigation's luck rather than a route's speed (ADR 0038). */
         const val MIN_SAMPLES = 5

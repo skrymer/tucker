@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { navigationSplit, type ResourceTiming } from './navigationSplit'
+import {
+  moveTiming,
+  navigationSplit,
+  type ResourceTiming,
+} from './navigationSplit'
 
 /** An `/api` call from [startTime] to [responseEnd], its first byte at [responseStart]. */
 function call(
@@ -119,5 +123,16 @@ describe('splitting a move between pages', () => {
     )
 
     expect(split).toEqual({ apiMs: 50, serverMs: 0 })
+  })
+})
+
+describe('timing a move in whole ms', () => {
+  it('states the move, its wait on the api and the server part of that', () => {
+    const timing = moveTiming(
+      [call(100.2, 300.7, { responseStart: 290.4, server: 120.6 })],
+      { start: 0.4, end: 420.6 },
+    )
+
+    expect(timing).toEqual({ valueMs: 420, apiMs: 201, serverMs: 121 })
   })
 })
