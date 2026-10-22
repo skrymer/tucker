@@ -104,9 +104,10 @@ function useRouteTimingSeries(routes: () => RouteFigures[]) {
       </div>
       <p class="text-sm text-muted">
         Server is Tucker working on the page's requests. Network + proxy is the
-        rest of the wait for them: the trip through Cloudflare, the tunnel and
-        the proxy. Render / JS is everything else: the phone or computer running
-        the page's code and drawing it.
+        rest of the wait for them: the browser and its service worker sending
+        them out, and their trip through Cloudflare, the tunnel and the proxy.
+        Render / JS is everything else: the phone or computer running the page's
+        code and drawing it.
       </p>
     </div>
   </UCard>

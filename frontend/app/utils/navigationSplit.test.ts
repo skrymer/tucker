@@ -102,6 +102,17 @@ describe('splitting a move between pages', () => {
     expect(split).toEqual({ apiMs: 250, serverMs: 30 })
   })
 
+  // A browser older than Server-Timing support has no list to read at all.
+  it('counts a call from a browser that exposes no server timings as a wait alone', () => {
+    const { serverTiming: _, ...withoutServerTiming } = call(100, 300)
+    const split = navigationSplit(
+      [withoutServerTiming as ResourceTiming],
+      window,
+    )
+
+    expect(split).toEqual({ apiMs: 200, serverMs: 0 })
+  })
+
   // Cloudflare states timings of its own beside Tucker's.
   it("counts the server's own app duration, not another timing beside it", () => {
     const entry = call(100, 300, { responseStart: 290 })

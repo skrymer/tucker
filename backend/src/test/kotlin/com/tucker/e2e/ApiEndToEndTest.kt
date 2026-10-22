@@ -168,6 +168,41 @@ class ApiEndToEndTest {
     }
 
     /**
+     * A refusal Spring answers with `sendError` commits the response there and then, and a
+     * header set after that is dropped on a real socket — MockMvc keeps it, so only the
+     * running image can show the server's time reaching the browser on one (ADR 0038).
+     */
+    @Test
+    fun `an api refusal sent as an error still states the server's own time`() {
+        val notAnAdmin = get("/api/admin/metrics")
+
+        assertEquals(404, notAnAdmin.statusCode())
+        assertTrue(
+            notAnAdmin.headers().firstValue("Server-Timing").orElse("").startsWith("app;dur="),
+            "expected an app duration on the refusal, got ${notAnAdmin.headers().map()}",
+        )
+    }
+
+    /** Spring Security refuses a missing CSRF proof the same way, with a reason beside it. */
+    @Test
+    fun `a request refused for want of its CSRF proof still states the server's own time`() {
+        val unproven = http.send(
+            HttpRequest.newBuilder(URI.create(baseUrl() + "/api/metrics"))
+                .header("Content-Type", "application/json")
+                .signedIn()
+                .POST(HttpRequest.BodyPublishers.ofString("""{"events":[]}"""))
+                .build(),
+            HttpResponse.BodyHandlers.ofString(),
+        )
+
+        assertEquals(403, unproven.statusCode())
+        assertTrue(
+            unproven.headers().firstValue("Server-Timing").orElse("").startsWith("app;dur="),
+            "expected an app duration on the refusal, got ${unproven.headers().map()}",
+        )
+    }
+
+    /**
      * Behind the tunnel the backend is reached over plain HTTP, so `Secure` can only come
      * from the forwarded scheme (ADR 0025). Read off the raw `set-cookie` header rather than
      * the cookie store, because that is the wire contract a browser actually applies — and

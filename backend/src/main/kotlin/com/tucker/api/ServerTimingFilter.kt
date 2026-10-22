@@ -13,7 +13,8 @@ import java.util.Locale
 /**
  * States on every `/api` response how long the server spent on it, as
  * `Server-Timing: app;dur=<ms>` (ADR 0038). The body is held until the time is known,
- * since a header cannot follow a body that has started. First of all filters, so
+ * since a header cannot follow a body that has started; a refusal sent as an error
+ * commits there and then, so it is stamped just before. First of all filters, so
  * checking the sign-in counts as the server's work, and a refusal carries a time too.
  */
 @Component
@@ -23,14 +24,26 @@ class ServerTimingFilter : OncePerRequestFilter() {
     override fun shouldNotFilter(request: HttpServletRequest) = !request.requestURI.startsWith("/api/")
 
     override fun doFilterInternal(request: HttpServletRequest, response: HttpServletResponse, chain: FilterChain) {
-        val held = ContentCachingResponseWrapper(response)
-        val started = System.nanoTime()
+        val held = TimedResponse(response, started = System.nanoTime())
         try {
             chain.doFilter(request, held)
         } finally {
-            val ms = (System.nanoTime() - started) / NANOS_PER_MS
-            held.setHeader("Server-Timing", String.format(Locale.ROOT, "app;dur=%.1f", ms))
+            held.stamp()
             held.copyBodyToResponse()
+        }
+    }
+
+    private class TimedResponse(response: HttpServletResponse, private val started: Long) :
+        ContentCachingResponseWrapper(response) {
+
+        fun stamp() {
+            val ms = (System.nanoTime() - started) / NANOS_PER_MS
+            setHeader("Server-Timing", String.format(Locale.ROOT, "app;dur=%.1f", ms))
+        }
+
+        override fun sendError(sc: Int, msg: String) {
+            stamp()
+            super.sendError(sc, msg)
         }
     }
 

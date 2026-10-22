@@ -1,10 +1,14 @@
 import { METRICS_PATH } from './metricQueue'
 
-/** What a navigation split reads of one Resource Timing entry. */
+/**
+ * What a navigation split reads of one Resource Timing entry. `serverTiming` is
+ * missing in a browser older than its support (Safari before 16.4).
+ */
 export type ResourceTiming = Pick<
   PerformanceResourceTiming,
-  'name' | 'startTime' | 'responseStart' | 'responseEnd' | 'serverTiming'
->
+  'name' | 'startTime' | 'responseStart' | 'responseEnd'
+> &
+  Partial<Pick<PerformanceResourceTiming, 'serverTiming'>>
 
 type Span = [from: number, to: number]
 
@@ -33,7 +37,7 @@ export function isApiCall(entry: Pick<ResourceTiming, 'name'>): boolean {
  * leaves, since the server answers once it is done.
  */
 function serverSpan(entry: ResourceTiming): Span {
-  const app = entry.serverTiming.find((t) => t.name === 'app')?.duration ?? 0
+  const app = entry.serverTiming?.find((t) => t.name === 'app')?.duration ?? 0
   return [
     Math.max(entry.startTime, entry.responseStart - app),
     entry.responseStart,

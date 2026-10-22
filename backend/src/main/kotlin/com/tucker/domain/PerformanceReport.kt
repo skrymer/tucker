@@ -28,8 +28,8 @@ private fun rankIndex(p: Double, n: Int) = ceil(p * n).toInt() - 1
 data class TimeSplit(val serverMs: Int, val networkMs: Int, val renderMs: Int) {
     companion object {
         /**
-         * The median of each part across the moves from p70 to p80 (ADR 0038): one p75
-         * move is noisy, and the medians of its neighbours still add up to roughly the p75.
+         * The median of each part across the moves from p70 to p80: one p75 move is noisy,
+         * and the medians of its neighbours still add up to roughly the p75.
          */
         fun of(moves: List<MetricEvent>): TimeSplit {
             val sorted = moves.sortedBy { it.valueMs }
