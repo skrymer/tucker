@@ -1,5 +1,5 @@
-import { describe, expect, it, vi } from 'vitest'
-import { renderSuspended } from '@nuxt/test-utils/runtime'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { mockNuxtImport, renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen, within } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import { http, serverError } from '~~/test/mocks/http'
@@ -22,11 +22,31 @@ vi.mock('@unovis/vue', async (actual) => ({
   VisXYContainer: { render: () => null },
 }))
 
+// Desktop by default, as jsdom resolves it; a phone opts in.
+const viewport = vi.hoisted(() => ({ desktop: true }))
+mockNuxtImport('useIsDesktop', () => () => ref(viewport.desktop))
+
 // The phone notice and the wide column are layout, which happy-dom cannot
 // compute; e2e/admin.spec.ts measures them, and the not-found page a non-Admin
 // meets.
 
 describe('/admin', () => {
+  beforeEach(() => {
+    viewport.desktop = true
+  })
+
+  // Hidden there by CSS either way; built, it would be four selects for nothing.
+  it('builds no filters on a phone', async () => {
+    viewport.desktop = false
+    server.use(signedInAsAdmin)
+    await renderSuspended(AdminPage)
+
+    expect(screen.queryAllByRole('combobox', { hidden: true })).toHaveLength(0)
+    expect(
+      screen.queryByRole('group', { name: 'Filters', hidden: true }),
+    ).not.toBeInTheDocument()
+  })
+
   it('is the Metrics page under an Admin eyebrow', async () => {
     server.use(signedInAsAdmin)
     await renderSuspended(AdminPage)

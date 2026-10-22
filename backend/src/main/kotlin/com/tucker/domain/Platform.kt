@@ -2,22 +2,19 @@ package com.tucker.domain
 
 import com.fasterxml.jackson.annotation.JsonValue
 
-/** The browser engine a page ran in. */
-enum class BrowserEngine(@JsonValue val wire: String) {
+/** Every browser on iOS is WebKit, whatever it is called, and says so in its user agent. */
+enum class BrowserEngine(@JsonValue override val wire: String) : WireValue {
     WEBKIT("webkit"),
     BLINK("blink"),
     GECKO("gecko"),
     OTHER("other");
 
     companion object {
-        fun of(wire: String): BrowserEngine =
-            entries.firstOrNull { it.wire == wire }
-                ?: throw IllegalArgumentException("\"$wire\" is not a browser engine")
+        fun of(wire: String): BrowserEngine = wireValueOf(wire, "a browser engine")
     }
 }
 
-/** The operating system a page ran on. */
-enum class OperatingSystem(@JsonValue val wire: String) {
+enum class OperatingSystem(@JsonValue override val wire: String) : WireValue {
     IOS("ios"),
     ANDROID("android"),
     MACOS("macos"),
@@ -26,9 +23,7 @@ enum class OperatingSystem(@JsonValue val wire: String) {
     OTHER("other");
 
     companion object {
-        fun of(wire: String): OperatingSystem =
-            entries.firstOrNull { it.wire == wire }
-                ?: throw IllegalArgumentException("\"$wire\" is not an operating system")
+        fun of(wire: String): OperatingSystem = wireValueOf(wire, "an operating system")
     }
 }
 

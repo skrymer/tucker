@@ -136,6 +136,20 @@ class AdminMetricsApiTest {
         }
     }
 
+    /** Spring's own reading of a Boolean, which the frontend's mock of this endpoint follows. */
+    @Test
+    fun `reads an installed filter in any spelling Spring takes for true`() {
+        store(move(installed = true))
+        store(move(installed = false))
+
+        mockMvc.get("/api/admin/metrics") {
+            signedInAs(ADMIN)
+            param("installed", " Yes ")
+        }.andExpect {
+            jsonPath("$.routes[0].layouts[0].n") { value(1) }
+        }
+    }
+
     @Test
     fun `refuses an Admin a range it does not offer`() {
         mockMvc.get("/api/admin/metrics?range=1y") { signedInAs(ADMIN) }.andExpect {

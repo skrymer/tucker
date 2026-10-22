@@ -272,24 +272,20 @@ test.describe('as an Admin', () => {
     await goto('/admin', { waitUntil: 'hydration' })
     await expect(page.getByRole('figure')).toContainText('/review')
 
-    const colours = await page.evaluate(() => {
-      const swatch = (name: string) =>
-        [...document.querySelectorAll('[aria-label="Parts"] li')]
-          .find((li) => li.textContent?.trim() === name)!
-          .querySelector('span')!
-      // Left to right along the phone's bar, the one bar drawn.
-      const bars = [
-        ...document.querySelectorAll('.route-timing path[class*="-bar"]'),
-      ].sort(
-        (a, b) => a.getBoundingClientRect().x - b.getBoundingClientRect().x,
-      )
-      return {
-        legend: ['Server', 'Network + proxy', 'Render / JS'].map(
-          (n) => getComputedStyle(swatch(n)).backgroundColor,
+    const colours = {
+      legend: await page.evaluate(() =>
+        ['Server', 'Network + proxy', 'Render / JS'].map(
+          (name) =>
+            getComputedStyle(
+              [...document.querySelectorAll('[aria-label="Parts"] li')]
+                .find((li) => li.textContent?.trim() === name)!
+                .querySelector('span')!,
+            ).backgroundColor,
         ),
-        bars: bars.map((b) => getComputedStyle(b).fill),
-      }
-    })
+      ),
+      // Left to right along the phone's bar, the one bar drawn.
+      bars: await partColours(page),
+    }
     // Stacked server, then network, then render, from the axis out, on the
     // phone's bar alone: the desktop's three samples draw none.
     expect(colours.bars).toEqual(colours.legend)

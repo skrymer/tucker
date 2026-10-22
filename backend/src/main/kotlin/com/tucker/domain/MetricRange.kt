@@ -5,7 +5,7 @@ import java.time.Duration
 import java.time.Instant
 
 /** How far back an Admin looks at what Tucker measured, ending now. */
-enum class MetricRange(@JsonValue val wire: String, private val days: Long) {
+enum class MetricRange(@JsonValue override val wire: String, private val days: Long) : WireValue {
     DAY("24h", days = 1),
     WEEK("7d", days = 7),
     MONTH("30d", days = 30),
@@ -15,8 +15,6 @@ enum class MetricRange(@JsonValue val wire: String, private val days: Long) {
     fun since(now: Instant): Instant = now.minus(Duration.ofDays(days))
 
     companion object {
-        fun of(wire: String): MetricRange =
-            entries.firstOrNull { it.wire == wire }
-                ?: throw IllegalArgumentException("\"$wire\" is not a range")
+        fun of(wire: String): MetricRange = wireValueOf(wire, "a range")
     }
 }

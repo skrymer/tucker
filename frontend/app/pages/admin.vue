@@ -70,18 +70,18 @@ const RANGES = [
   { label: 'Last 7 days', value: '7d' },
   { label: 'Last 30 days', value: '30d' },
   { label: 'Last 90 days', value: '90d' },
-]
+] satisfies { label: string; value: Filters['range'] }[]
 const ENGINES = [
   { label: 'All engines', value: 'all' },
   { label: 'WebKit', value: 'webkit' },
   { label: 'Blink', value: 'blink' },
   { label: 'Gecko', value: 'gecko' },
-]
+] satisfies { label: string; value: Filters['engine'] }[]
 const OPENED_IN = [
   { label: 'Installed or browser', value: 'all' },
   { label: 'Installed', value: 'installed' },
   { label: 'Browser', value: 'browser' },
-]
+] satisfies { label: string; value: Filters['openedIn'] }[]
 
 /** The filter row: each filter's label and choices, the versions the range holds. */
 const filters = computed(() => [
@@ -111,6 +111,7 @@ const filters = computed(() => [
         <h1 class="text-h1 text-default">Metrics</h1>
       </header>
       <div
+        v-if="isDesktop"
         role="group"
         aria-label="Filters"
         class="flex flex-wrap items-end gap-4"

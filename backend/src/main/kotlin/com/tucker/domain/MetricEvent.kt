@@ -3,25 +3,21 @@ package com.tucker.domain
 import com.fasterxml.jackson.annotation.JsonValue
 
 /** What a [MetricEvent] measured, under the name it has on the wire. */
-enum class MetricKind(@JsonValue val wire: String) {
+enum class MetricKind(@JsonValue override val wire: String) : WireValue {
     ROUTE_CHANGE("route-change");
 
     companion object {
-        fun of(wire: String): MetricKind =
-            entries.firstOrNull { it.wire == wire }
-                ?: throw IllegalArgumentException("\"$wire\" is not a metric kind")
+        fun of(wire: String): MetricKind = wireValueOf(wire, "a metric kind")
     }
 }
 
 /** Which of the app's two layouts the page was in, by its own breakpoint. */
-enum class MetricLayout(@JsonValue val wire: String) {
+enum class MetricLayout(@JsonValue override val wire: String) : WireValue {
     PHONE("phone"),
     DESKTOP("desktop");
 
     companion object {
-        fun of(wire: String): MetricLayout =
-            entries.firstOrNull { it.wire == wire }
-                ?: throw IllegalArgumentException("\"$wire\" is not a layout")
+        fun of(wire: String): MetricLayout = wireValueOf(wire, "a layout")
     }
 }
 

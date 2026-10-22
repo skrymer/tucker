@@ -80,13 +80,35 @@ function isSplit({ valueMs, apiMs, serverMs, firstVisit }: Sent): boolean {
   )
 }
 
-/** An Admin's filters as a handler reads them off the query. */
-type Filters = {
+/** An Admin's filters as the backend reads them, absent where the page sends none. */
+export type MetricQuery = {
+  range: string
+  engine: string | null
+  version: string | null
+  installed: boolean | null
+}
+
+type QueryParams = {
   get(name: 'range' | 'engine' | 'version' | 'installed'): string | null
 }
 
-/** Why the backend refuses an Admin's filters, or null when it reads them. */
-function filterRefusal(query: Filters): string | null {
+/** The spellings Spring binds a Boolean from, trimmed and in any case; blank is absent. */
+const FLAGS: Record<string, boolean> = {
+  true: true,
+  on: true,
+  yes: true,
+  '1': true,
+  false: false,
+  off: false,
+  no: false,
+  '0': false,
+}
+
+/**
+ * An Admin's filters as the backend reads them, or why it refuses them: a range
+ * or engine it does not offer, or an installed flag Spring cannot read as one.
+ */
+function readFilters(query: QueryParams): MetricQuery | string {
   const range = query.get('range') ?? '30d'
   const engine = query.get('engine')
   const installed = query.get('installed')
@@ -99,10 +121,12 @@ function filterRefusal(query: Filters): string | null {
   ) {
     return `"${engine}" is not a browser engine`
   }
-  if (installed != null && !['true', 'false'].includes(installed)) {
+  const spelled = installed?.trim().toLowerCase()
+  const flag = !spelled ? null : FLAGS[spelled]
+  if (flag === undefined) {
     return `installed must be true or false, not "${installed}"`
   }
-  return null
+  return { range, engine, version: query.get('version'), installed: flag }
 }
 
 /** What Tucker measured of itself (ADR 0038): nothing yet. */
@@ -111,22 +135,15 @@ export const metricHandlers = [
     const message = refusal((await request.json()).events)
     return message ? response(400).json({ message }) : response(204).empty()
   }),
-  http.get('/api/admin/metrics', ({ query, response }) => {
-    const message = filterRefusal(query)
-    return message
-      ? response(400).json({ message })
-      : response(200).json({ routes: [], versions: [] })
-  }),
+  metricsReport([]),
 ]
 
 /** The moves [sent] holds that an Admin's version and installed filters let through. */
-function matching(sent: Sent[], query: Filters): Sent[] {
-  const version = query.get('version')
-  const installed = query.get('installed')
+function matching(sent: Sent[], { version, installed }: MetricQuery): Sent[] {
   return sent.filter(
     (e) =>
       (version == null || e.appVersion === version) &&
-      (installed == null || String(e.installed) === installed),
+      (installed == null || e.installed === installed),
   )
 }
 
@@ -149,8 +166,8 @@ function countedRoutes(sent: Sent[]): RouteFigures[] {
  * under the backend's five samples and carries its count and no figure; a test
  * past that reads a fixed `metricsReport` instead of re-deriving percentiles here.
  * Every move was sent just now, so each range holds them all. The engine is the
- * backend's to read from a user agent, so an engine filter falls through here,
- * failing a test that sends one.
+ * backend's to read from a user agent, so a test that filters by one is answered
+ * a 501 saying to use `metricsBy`.
  */
 export function metricsRecorded() {
   const sent: Sent[] = []
@@ -163,23 +180,24 @@ export function metricsRecorded() {
       return response(204).empty()
     }),
     http.get('/api/admin/metrics', ({ query, response }) => {
-      const message = filterRefusal(query)
-      if (message) return response(400).json({ message })
-      if (query.get('engine') != null) return undefined
+      const filters = readFilters(query)
+      if (typeof filters === 'string') {
+        return response(400).json({ message: filters })
+      }
+      if (filters.engine != null) {
+        return response.untyped(
+          Response.json(
+            { message: 'metricsRecorded reads no engine; use metricsBy' },
+            { status: 501 },
+          ),
+        )
+      }
       return response(200).json({
-        routes: countedRoutes(matching(sent, query)),
+        routes: countedRoutes(matching(sent, filters)),
         versions: [...new Set(sent.map((e) => e.appVersion).reverse())],
       })
     }),
   ]
-}
-
-/** An Admin's filters as the page sends them, absent where it sends none. */
-export type MetricQuery = {
-  range: string
-  engine: string | null
-  version: string | null
-  installed: string | null
 }
 
 /**
@@ -191,15 +209,10 @@ export function metricsBy(
   versions: string[] = [],
 ) {
   return http.get('/api/admin/metrics', ({ query, response }) => {
-    const message = filterRefusal(query)
-    if (message) return response(400).json({ message })
-    const routes = answer({
-      range: query.get('range') ?? '30d',
-      engine: query.get('engine'),
-      version: query.get('version'),
-      installed: query.get('installed'),
-    })
-    return response(200).json({ routes, versions })
+    const filters = readFilters(query)
+    return typeof filters === 'string'
+      ? response(400).json({ message: filters })
+      : response(200).json({ routes: answer(filters), versions })
   })
 }
 

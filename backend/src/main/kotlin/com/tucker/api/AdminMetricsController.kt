@@ -8,16 +8,15 @@ import com.tucker.domain.MetricRange
 import com.tucker.domain.PerformanceReport
 import com.tucker.domain.RouteFigures
 import com.tucker.persistence.MetricEventRepository
-import com.tucker.security.CurrentUser
-import io.swagger.v3.oas.annotations.Parameter
-import io.swagger.v3.oas.annotations.media.Schema
-import org.springframework.http.HttpMethod
+import org.springframework.http.HttpStatus
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
+import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
-import org.springframework.web.servlet.resource.NoResourceFoundException
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException
 import java.time.Clock
 
 /**
@@ -61,40 +60,32 @@ data class PerformanceReportResponse(val routes: List<RouteFiguresResponse>, val
         this(report.routes.map(::RouteFiguresResponse), versions)
 }
 
-/**
- * How Tucker performs, for an Admin (ADR 0039). Anyone else is answered as Spring answers
- * a path with nothing behind it, by throwing what Spring throws for one, so the status
- * says nothing about there being a page here they may not see.
- */
+/** How Tucker performs, for an Admin (ADR 0039), whom [AdminGate] lets through alone. */
 @RestController
 @RequestMapping("/api/admin/metrics")
-class AdminMetricsController(
-    private val metrics: MetricEventRepository,
-    private val currentUser: CurrentUser,
-    private val clock: Clock,
-) {
+class AdminMetricsController(private val metrics: MetricEventRepository, private val clock: Clock) {
 
-    /**
-     * The filters arrive as text and are read only once the caller is known to be an Admin:
-     * one Spring refused while binding would answer a User 400, saying the page is here.
-     */
     @GetMapping
     @Transactional(readOnly = true)
     fun report(
-        @Parameter(schema = Schema(implementation = MetricRange::class))
-        @RequestParam(defaultValue = "30d") range: String,
-        @Parameter(schema = Schema(implementation = BrowserEngine::class))
-        @RequestParam(required = false) engine: String?,
+        @RequestParam(required = false) range: MetricRange?,
+        @RequestParam(required = false) engine: BrowserEngine?,
         @RequestParam(required = false) version: String?,
-        @Parameter(schema = Schema(implementation = Boolean::class))
-        @RequestParam(required = false) installed: String?,
+        @RequestParam(required = false) installed: Boolean?,
     ): PerformanceReportResponse {
-        if (!currentUser.admin) throw NoResourceFoundException(HttpMethod.GET, "api/admin/metrics")
-        val since = MetricRange.of(range).since(clock.instant())
-        val filter = MetricFilter(since, engine?.let(BrowserEngine::of), version, installed?.let(::installedFlag))
+        val since = (range ?: MetricRange.MONTH).since(clock.instant())
+        val filter = MetricFilter(since, engine, version, installed)
         return PerformanceReportResponse(PerformanceReport.of(metrics.find(filter)), metrics.versionsSince(since))
     }
 
-    private fun installedFlag(text: String) =
-        requireNotNull(text.toBooleanStrictOrNull()) { "installed must be true or false, not \"$text\"" }
+    /** A filter it cannot read, in the words the filter's own type refuses it with. */
+    @ExceptionHandler(MethodArgumentTypeMismatchException::class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    fun unreadableFilter(e: MethodArgumentTypeMismatchException) = ApiError(
+        if (e.requiredType == Boolean::class.javaObjectType) {
+            "${e.name} must be true or false, not \"${e.value}\""
+        } else {
+            e.mostSpecificCause.message ?: "${e.name} cannot be \"${e.value}\""
+        },
+    )
 }

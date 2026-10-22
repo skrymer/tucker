@@ -30,7 +30,7 @@ class MetricEventRepository(private val dsl: DSLContext) {
 
     fun find(filter: MetricFilter): List<MetricEvent> =
         dsl.selectFrom(METRIC_EVENT)
-            .where(METRIC_EVENT.RECORDED_AT.ge(filter.since.toString()))
+            .where(recordedSince(filter.since))
             .and(filter.engine?.let { METRIC_EVENT.ENGINE.eq(it.wire) } ?: noCondition())
             .and(filter.appVersion?.let { METRIC_EVENT.APP_VERSION.eq(it) } ?: noCondition())
             .and(filter.installed?.let { METRIC_EVENT.INSTALLED.eq(it.toFlag()) } ?: noCondition())
@@ -41,10 +41,12 @@ class MetricEventRepository(private val dsl: DSLContext) {
     fun versionsSince(since: Instant): List<String> =
         dsl.select(METRIC_EVENT.APP_VERSION)
             .from(METRIC_EVENT)
-            .where(METRIC_EVENT.RECORDED_AT.ge(since.toString()))
+            .where(recordedSince(since))
             .groupBy(METRIC_EVENT.APP_VERSION)
             .orderBy(max(METRIC_EVENT.RECORDED_AT).desc())
             .fetch(METRIC_EVENT.APP_VERSION)
+
+    private fun recordedSince(since: Instant) = METRIC_EVENT.RECORDED_AT.ge(since.toString())
 
     private fun MetricEvent.toRecord(recordedAt: Instant) = MetricEventRecord().also {
         it.kind = kind.wire

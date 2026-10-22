@@ -52,6 +52,6 @@ class MetricEventRepositoryTest {
 
         metrics.insert(MetricBatch(listOf(installed, inBrowser)), recordedAt = Instant.parse("2026-10-21T08:00:00Z"))
 
-        assertEquals(setOf(installed, inBrowser), metrics.find(MetricFilter(since = Instant.EPOCH)).toSet())
+        assertEquals(setOf(installed, inBrowser), metrics.find(MetricFilter(Instant.EPOCH, null, null, null)).toSet())
     }
 }

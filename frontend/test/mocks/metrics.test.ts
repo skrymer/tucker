@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest'
+import { server } from './node'
+import { metricsRecorded } from './handlers/metrics'
 
 // The metric handlers stand for POST /api/metrics, so they take what the backend
 // takes and refuse what it refuses: a mock stricter than the backend would fail a
@@ -86,6 +88,21 @@ describe('the report handler', () => {
     expect(await response.json()).toEqual({
       message: '"safari" is not a browser engine',
     })
+  })
+
+  it('says, when moves were recorded, that it cannot filter them by engine', async () => {
+    server.use(...metricsRecorded())
+
+    const response = await reportOf('engine=webkit')
+
+    expect(response.status).toBe(501)
+    expect(await response.json()).toEqual({
+      message: 'metricsRecorded reads no engine; use metricsBy',
+    })
+  })
+
+  it('takes an installed flag in any spelling Spring binds a Boolean from', async () => {
+    expect((await reportOf('installed=%20Yes%20')).status).toBe(200)
   })
 
   it('refuses an installed filter that is neither true nor false', async () => {

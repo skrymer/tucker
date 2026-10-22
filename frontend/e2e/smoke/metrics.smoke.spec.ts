@@ -1,4 +1,4 @@
-import type { BrowserContext } from '@playwright/test'
+import type { Browser, Page } from '@playwright/test'
 import { test, expect } from './support/smoke-test'
 import { hidePage } from '../support/visibility'
 import {
@@ -6,23 +6,44 @@ import {
   mintAccessToken,
 } from '../../scripts/access-token.mjs'
 
-/**
- * Metrics, as the Admin opens them in [admin], a browser context of their own at
- * a desktop's width, on the app [appUrl] is part of.
- */
-async function openMetrics(admin: BrowserContext, appUrl: string) {
-  const assertion = await mintAccessToken({ email: 'admin@tucker.invalid' })
-  const adminPage = await admin.newPage()
-  await adminPage.route('**/api/**', (route) =>
-    route.continue({
-      headers: {
-        ...route.request().headers(),
-        [ACCESS_ASSERTION_HEADER]: assertion,
-      },
-    }),
+/** Sends what [page] measured, as hiding it does, and checks it was taken. */
+async function flushMetrics(page: Page) {
+  const sent = page.waitForResponse(
+    (r) => r.url().endsWith('/api/metrics') && r.request().method() === 'POST',
   )
-  await adminPage.goto(new URL('/admin', appUrl).href)
-  return adminPage
+  await hidePage(page)
+  // Taken, not refused: the send proved it came from Tucker's own page (ADR 0025).
+  expect((await sent).status()).toBe(204)
+}
+
+/**
+ * Runs [read] on Metrics as the Admin opens them, in a browser of their own at a
+ * desktop's width, on the app [appUrl] is part of.
+ */
+async function withMetrics(
+  browser: Browser,
+  appUrl: string,
+  read: (adminPage: Page) => Promise<void>,
+) {
+  const admin = await browser.newContext({
+    viewport: { width: 1280, height: 800 },
+  })
+  try {
+    const assertion = await mintAccessToken({ email: 'admin@tucker.invalid' })
+    const adminPage = await admin.newPage()
+    await adminPage.route('**/api/**', (route) =>
+      route.continue({
+        headers: {
+          ...route.request().headers(),
+          [ACCESS_ASSERTION_HEADER]: assertion,
+        },
+      }),
+    )
+    await adminPage.goto(new URL('/admin', appUrl).href)
+    await read(adminPage)
+  } finally {
+    await admin.close()
+  }
 }
 
 // Tucker measuring itself end to end (ADR 0038): the browser's queue, the CSRF
@@ -77,18 +98,9 @@ test("a User's moves reach the Admin with their wait on the api, however many re
       page.getByRole('heading', { level: 1, name: 'Today' }),
     ).toBeVisible()
   }
-  const sent = page.waitForResponse(
-    (r) => r.url().endsWith('/api/metrics') && r.request().method() === 'POST',
-  )
-  await hidePage(page)
-  // Taken, not refused: the send proved it came from Tucker's own page (ADR 0025).
-  expect((await sent).status()).toBe(204)
+  await flushMetrics(page)
 
-  const admin = await browser.newContext({
-    viewport: { width: 1280, height: 800 },
-  })
-  try {
-    const adminPage = await openMetrics(admin, page.url())
+  await withMetrics(browser, page.url(), async (adminPage) => {
     const layout = isMobile ? 'Phone' : 'Desktop'
     await expect(adminPage.getByRole('figure')).toContainText(
       `/review · ${layout}`,
@@ -115,9 +127,7 @@ test("a User's moves reach the Admin with their wait on the api, however many re
       adminPage.locator('strong', { hasText: `/review · ${layout}` }),
     ).toBeVisible()
     await expect(adminPage.getByText(/api p75 [1-9]\d* ms/)).toBeVisible()
-  } finally {
-    await admin.close()
-  }
+  })
 })
 
 // The engine is read off the user agent on the server: this browser is Chromium,
@@ -128,23 +138,15 @@ test('files a move under the engine of the browser that made it', async ({
   browser,
   isMobile,
 }) => {
+  test.skip(isMobile, 'both projects are Chromium, so the engine is the same')
   await goto('/', { waitUntil: 'hydration' })
   await page.getByRole('link', { name: 'Review' }).click()
   await expect(
     page.getByRole('heading', { level: 1, name: 'Review' }),
   ).toBeVisible()
-  const sent = page.waitForResponse(
-    (r) => r.url().endsWith('/api/metrics') && r.request().method() === 'POST',
-  )
-  await hidePage(page)
-  expect((await sent).status()).toBe(204)
+  await flushMetrics(page)
 
-  const admin = await browser.newContext({
-    viewport: { width: 1280, height: 800 },
-  })
-  try {
-    const adminPage = await openMetrics(admin, page.url())
-    const layout = isMobile ? 'Phone' : 'Desktop'
+  await withMetrics(browser, page.url(), async (adminPage) => {
     const engine = adminPage.getByRole('combobox', { name: 'Engine' })
 
     await engine.click()
@@ -156,9 +158,7 @@ test('files a move under the engine of the browser that made it', async ({
     await engine.click()
     await adminPage.getByRole('option', { name: 'Blink' }).click()
     await expect(adminPage.getByRole('figure')).toContainText(
-      `/review · ${layout}`,
+      '/review · Desktop',
     )
-  } finally {
-    await admin.close()
-  }
+  })
 })
