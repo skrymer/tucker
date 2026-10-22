@@ -127,6 +127,17 @@ class AdminMetricsApiTest {
         }
     }
 
+    /** As a blank range, engine or installed is: a version no release can carry. */
+    @Test
+    fun `an Admin's blank app version narrows nothing`() {
+        store(move(appVersion = "1.4.0"))
+        store(move(appVersion = "1.5.0"))
+
+        mockMvc.get("/api/admin/metrics?version=") { signedInAs(ADMIN) }.andExpect {
+            jsonPath("$.routes[0].layouts[0].n") { value(2) }
+        }
+    }
+
     @Test
     fun `an Admin reads only the moves made in the installed app`() {
         store(move(installed = true))

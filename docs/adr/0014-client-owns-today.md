@@ -77,9 +77,9 @@ still one seam, and nothing read that way becomes a day.
 The Weekly-Review reminder cron (#82) reads the clock's instant too, and is the one
 reader that turns it into a day in the User's own zone — a server-initiated tick
 with no client, which applies the user's `Profile` timezone to the instant itself.
-(`UserToday`'s day is the server's UTC date, a guard and a fallback.) It reuses
-this same `Clock` bean (no duplicate seam), and freezing the bean lets the JVM
-tests control time; the smokes drive the cron through a test-only tick instead.
+(`UserToday`'s day is the server's UTC date, for the uses listed above.) It reuses
+this same `Clock` bean (no duplicate seam). Its tests, JVM and smoke alike, hand
+`runTick` the instant to judge; `UserToday`'s tests run on a fixed `Clock` instead.
 
 *Amended (issue #96):* that cron now also **writes** a local day —
 `reminder_state.last_reminder_sent_on`, the day its last nudge went out on. This is

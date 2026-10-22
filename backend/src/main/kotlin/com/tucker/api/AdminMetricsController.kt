@@ -77,7 +77,7 @@ class AdminMetricsController(private val metrics: MetricEventRepository, private
         @RequestParam(required = false) installed: Boolean?,
     ): PerformanceReportResponse {
         val since = (range ?: MetricRange.MONTH).since(clock.instant())
-        val filter = MetricFilter(since, engine, version, installed)
+        val filter = MetricFilter(since, engine, version?.takeIf { it.isNotBlank() }, installed)
         return PerformanceReportResponse(PerformanceReport.of(metrics.find(filter)), metrics.versionsSince(since))
     }
 

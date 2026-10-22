@@ -16,8 +16,9 @@ import java.time.Clock
  * reads it directly. Defaulting to UTC keeps that behaviour deterministic and
  * matches the smoke-stack UTC pin (#84).
  *
- * JVM tests replace this bean with a fixed clock to freeze time — the one seam both
- * this work and #82 share rather than each inventing one.
+ * The one seam both this work and #82 share rather than each inventing one.
+ * [com.tucker.api.UserToday]'s tests run on a fixed clock; the cron's hand its tick
+ * the instant to judge.
  */
 @Configuration
 class ClockConfig {

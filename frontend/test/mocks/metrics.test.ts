@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { server } from './node'
-import { metricsRecorded } from './handlers/metrics'
+import { metricsBy, metricsRecorded } from './handlers/metrics'
 
 // The metric handlers stand for POST /api/metrics, so they take what the backend
 // takes and refuse what it refuses: a mock stricter than the backend would fail a
@@ -99,6 +99,23 @@ describe('the report handler', () => {
     expect(await response.json()).toEqual({
       message: 'metricsRecorded reads no engine; use metricsBy',
     })
+  })
+
+  it('takes a blank range or engine as no filter, as the backend does', async () => {
+    expect((await reportOf('range=')).status).toBe(200)
+    expect((await reportOf('engine=')).status).toBe(200)
+  })
+
+  it('narrows nothing by a blank app version, as the backend does', async () => {
+    server.use(
+      metricsBy(({ version }) =>
+        version === null ? [{ route: '/review', layouts: [] }] : [],
+      ),
+    )
+
+    const response = await reportOf('version=')
+
+    expect((await response.json()).routes).toHaveLength(1)
   })
 
   it('takes an installed flag in any spelling Spring binds a Boolean from', async () => {

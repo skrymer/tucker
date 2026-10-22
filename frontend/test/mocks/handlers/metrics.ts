@@ -109,8 +109,9 @@ const FLAGS: Record<string, boolean> = {
  * or engine it does not offer, or an installed flag Spring cannot read as one.
  */
 function readFilters(query: QueryParams): MetricQuery | string {
-  const range = query.get('range') ?? '30d'
-  const engine = query.get('engine')
+  // Blank reads as absent, as Spring converts an empty value to null.
+  const range = query.get('range') || '30d'
+  const engine = query.get('engine') || null
   const installed = query.get('installed')
   if (!['24h', '7d', '30d', '90d'].includes(range)) {
     return `"${range}" is not a range`
@@ -126,7 +127,12 @@ function readFilters(query: QueryParams): MetricQuery | string {
   if (flag === undefined) {
     return `installed must be true or false, not "${installed}"`
   }
-  return { range, engine, version: query.get('version'), installed: flag }
+  return {
+    range,
+    engine,
+    version: query.get('version') || null,
+    installed: flag,
+  }
 }
 
 /** What Tucker measured of itself (ADR 0038): nothing yet. */
