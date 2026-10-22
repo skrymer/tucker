@@ -74,8 +74,8 @@ An instant that is not a domain date — a rolling metrics window, a cache entry
 age, a scheduler's tick — reads the same `Clock` bean directly; there is still one
 seam, and nothing read that way becomes a User's day.
 
-The future Weekly-Review reminder cron (#82) is the one *other* legitimate reader
-of a server clock — a server-initiated tick with no client, which applies the
+The Weekly-Review reminder cron (#82) is the one reader that turns the server clock
+into a User's day — a server-initiated tick with no client, which applies the
 user's `Profile` timezone to the clock's instant itself. It reuses this same
 `Clock` bean (no duplicate seam), and freezing the bean lets tests and the `smoke`
 profile control time.
