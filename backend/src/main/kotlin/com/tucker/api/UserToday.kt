@@ -34,7 +34,7 @@ class UserToday(private val clock: Clock) {
     /**
      * The server's own date — used only by read-only "as of today" projections
      * that have no client date to honour (e.g. GET /api/goal/progress), never to
-     * stamp a persisted domain date (ADR 0014). The single server-clock read site.
+     * stamp a persisted domain date (ADR 0014). The one place the server's own day is read.
      */
     fun serverToday(): LocalDate = LocalDate.now(clock)
 }

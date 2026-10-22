@@ -70,15 +70,16 @@ for two read-only purposes — **never to stamp a persisted domain date**:
    `GET /api/goal/progress`, whose observed-pace figures are computed as of today
    but persist nothing (via `UserToday.serverToday()`).
 
-An instant that is not a domain date — a rolling metrics window, a cache entry's
-age, a scheduler's tick — reads the same `Clock` bean directly; there is still one
-seam, and nothing read that way becomes a User's day.
+An instant that is not a date at all — a rolling metrics window, a cache entry's
+age, when an event was recorded — reads the same `Clock` bean directly; there is
+still one seam, and nothing read that way becomes a day.
 
-The Weekly-Review reminder cron (#82) is the one reader that turns the server clock
-into a User's day — a server-initiated tick with no client, which applies the
-user's `Profile` timezone to the clock's instant itself. It reuses this same
-`Clock` bean (no duplicate seam), and freezing the bean lets tests and the `smoke`
-profile control time.
+The Weekly-Review reminder cron (#82) reads the clock's instant too, and is the one
+reader that turns it into a day in the User's own zone — a server-initiated tick
+with no client, which applies the user's `Profile` timezone to the instant itself.
+(`UserToday`'s day is the server's UTC date, a guard and a fallback.) It reuses
+this same `Clock` bean (no duplicate seam), and freezing the bean lets the JVM
+tests control time; the smokes drive the cron through a test-only tick instead.
 
 *Amended (issue #96):* that cron now also **writes** a local day —
 `reminder_state.last_reminder_sent_on`, the day its last nudge went out on. This is
