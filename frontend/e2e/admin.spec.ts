@@ -394,7 +394,7 @@ test.describe('as an Admin', () => {
   })
 
   // Else the last filters' empty state reads as the answer for the new ones.
-  test('dims an empty state too while the chosen filters are read', async ({
+  test('dims the last empty state while the chosen filters are read, then says what they found', async ({
     page,
     goto,
     network,
@@ -417,12 +417,13 @@ test.describe('as an Admin', () => {
     await page.getByRole('combobox', { name: 'Engine' }).click()
     await page.getByRole('option', { name: 'WebKit' }).click()
 
+    await expect.poll(() => shownOpacity(empty)).toBe(0.5)
+    read.release()
     const unmatched = page.getByRole('heading', {
       name: 'Nothing matches these filters',
     })
-    await expect.poll(() => shownOpacity(unmatched)).toBe(0.5)
-    read.release()
     await expect.poll(() => shownOpacity(unmatched)).toBe(1)
+    await expect(empty).toHaveCount(0)
   })
 
   test('states the exact figures of whichever bar is pointed at', async ({

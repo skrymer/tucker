@@ -64,6 +64,9 @@ const {
   refresh,
 } = await useApi('/api/admin/metrics', { query })
 const routes = computed(() => report.value?.routes ?? [])
+// Whether the report on screen was read narrowed; a read under way leaves it be.
+const reportNarrowed = ref(narrowed.value)
+watch(report, () => (reportNarrowed.value = narrowed.value))
 const isDesktop = useIsDesktop()
 
 const RANGES = [
@@ -142,7 +145,7 @@ const filters = computed(() => [
         >
           <LazyRouteTimingCard v-if="routes.length" :routes="routes" />
           <div
-            v-else-if="narrowed"
+            v-else-if="reportNarrowed"
             class="flex flex-col items-center gap-3 py-12 text-center"
           >
             <UIcon

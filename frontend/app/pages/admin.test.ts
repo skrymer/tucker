@@ -404,6 +404,73 @@ describe('/admin', () => {
     ).toBeVisible()
   })
 
+  // The new filters have no answer yet, so nothing may say they match nothing.
+  it('keeps the last empty state up while new filters are read', async () => {
+    const user = userEvent.setup()
+    server.use(
+      signedInAsAdmin,
+      http.get('/api/admin/metrics', ({ query }) =>
+        query.get('engine') === 'gecko'
+          ? new Promise<never>(() => {})
+          : undefined,
+      ),
+      metricsReport([]),
+    )
+    await renderSuspended(AdminPage)
+
+    await user.click(screen.getByRole('combobox', { name: 'Engine' }))
+    await user.click(await screen.findByRole('option', { name: 'Gecko' }))
+
+    await vi.waitFor(() =>
+      expect(screen.getByRole('region', { name: 'Metrics' })).toHaveAttribute(
+        'aria-busy',
+        'true',
+      ),
+    )
+    expect(
+      screen.getByRole('heading', {
+        name: 'Nothing measured in the last 30 days',
+      }),
+    ).toBeVisible()
+    expect(
+      screen.queryByText('Nothing matches these filters'),
+    ).not.toBeInTheDocument()
+  })
+
+  // Else the default range is said to hold nothing before it has been read.
+  it('keeps saying nothing matches while the default filters are read back after a reset', async () => {
+    const user = userEvent.setup()
+    let unfilteredReads = 0
+    server.use(
+      signedInAsAdmin,
+      http.get('/api/admin/metrics', ({ query }) =>
+        query.get('engine') === null && ++unfilteredReads > 1
+          ? new Promise<never>(() => {})
+          : undefined,
+      ),
+      metricsReport([]),
+    )
+    await renderSuspended(AdminPage)
+    await user.click(screen.getByRole('combobox', { name: 'Engine' }))
+    await user.click(await screen.findByRole('option', { name: 'Gecko' }))
+    await user.click(
+      await screen.findByRole('button', { name: 'Reset filters' }),
+    )
+
+    await vi.waitFor(() =>
+      expect(screen.getByRole('region', { name: 'Metrics' })).toHaveAttribute(
+        'aria-busy',
+        'true',
+      ),
+    )
+    expect(
+      screen.getByRole('heading', { name: 'Nothing matches these filters' }),
+    ).toBeVisible()
+    expect(
+      screen.queryByText('Nothing measured in the last 30 days'),
+    ).not.toBeInTheDocument()
+  })
+
   // Not "nothing measured yet", which a failed read would state falsely.
   it('says the metrics could not be loaded when the read fails', async () => {
     server.use(

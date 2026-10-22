@@ -190,7 +190,7 @@ class AdminMetricsApiTest {
     /** Not 403: the page must not tell a User that there is something here they may not see. */
     @Test
     fun `answers a User who is not an Admin exactly as a path that does not exist`() {
-        val unknown = mockMvc.get("/api/admin/nothing-here") { signedInAs(USER) }.andReturn().response
+        val unknown = mockMvc.get("/api/nothing-here") { signedInAs(USER) }.andReturn().response
         val refused = mockMvc.get("/api/admin/metrics") { signedInAs(USER) }.andReturn().response
 
         assertEquals(404, refused.status)
@@ -200,7 +200,7 @@ class AdminMetricsApiTest {
     /** A filter it cannot read must not be refused first, which would say the page is here. */
     @Test
     fun `answers a User who is not an Admin as a path that does not exist, whatever the filters say`() {
-        val unknown = mockMvc.get("/api/admin/nothing-here") { signedInAs(USER) }.andReturn().response
+        val unknown = mockMvc.get("/api/nothing-here") { signedInAs(USER) }.andReturn().response
         val refused = mockMvc.get("/api/admin/metrics?range=1y") { signedInAs(USER) }.andReturn().response
 
         assertEquals(404, refused.status)
@@ -210,7 +210,7 @@ class AdminMetricsApiTest {
     /** A method the page does not take must not be refused as such, which would say the page is here. */
     @Test
     fun `answers a User who is not an Admin as a path that does not exist, whatever the method`() {
-        val unknown = mockMvc.delete("/api/admin/nothing-here") { signedInAs(USER) }.andReturn().response
+        val unknown = mockMvc.delete("/api/nothing-here") { signedInAs(USER) }.andReturn().response
         val refused = mockMvc.delete("/api/admin/metrics") { signedInAs(USER) }.andReturn().response
 
         assertEquals(404, refused.status)
