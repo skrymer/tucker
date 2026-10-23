@@ -1699,17 +1699,21 @@ is still loading raises no error*). The six left are **equivalent**:
 
 - **`ReleaseTrendChart.vue` — killed by an out-of-scope layer**, nearly all of it: happy-dom
   never lays out a unovis chart, so its accessors, tick formats, domain and tooltip are read
-  only in the browser. `e2e/admin.spec.ts` kills each, every one red on a mutated copy
+  only in the browser, where `e2e/admin.spec.ts` kills it. **Red on a mutated copy**
   (`red-proof.sh` in the sign-off pack): the x accessor (*joins one release to the next with a
   straight line*), the tick format, tick values and `?? ''` (*labels each chart's releases, and
   puts every chart on one scale in ms*), the x-domain (*keeps the first and last release in
   from the ends of their chart*), `tick-text-hide-overlapping` (*never draws two releases'
-  names over each other*), the tooltip's `<br>` (*puts the release and each layout's figure on
-  a line of its own*), the y accessors and shapes (*draws no point for a release with too few
-  moves in a layout*). Its `tick`'s `?.` and `''` fallback are **equivalent**: `tick-values`
+  names over each other*), the tick-text trim (*names each release it labels on one line*),
+  the tooltip's `<br>` (*puts the release and each layout's figure on a line of its own*), the
+  phone point's shape (*draws no point for a release with too few moves in a layout*). **Read,
+  not run**: the y accessors, the desktop shape, the tooltip trigger and its text, and the
+  composable's return — each removes what a named test reads (the drawn-point count, the
+  tooltip's heading). Its `tick`'s `?.` and `''` fallback are **equivalent**: `tick-values`
   names only indices the data holds.
-- **`ReleaseTrendCard.vue`'s `SERIES` colours and dash — out-of-scope kill**: *draws each line
-  as its legend entry shows it, the desktop one dashed*.
+- **`ReleaseTrendCard.vue`'s `SERIES` — out-of-scope kill**: *draws each line as its legend
+  entry shows it, the desktop one dashed*, red on a copy for the phone colour and the dash; the
+  desktop colour goes through the same `lines`-equal-`legend` assertion, not run.
 - **`releaseTrend.ts`'s `layoutIn(…)?.p75` (×2) — equivalent**: the backend gives every
   release every layout (`ReleaseTrend.figuresOf` maps `MetricLayout.entries`).
 - **`admin.vue`'s `report.value?.byRelease ?? []`** — equivalent, as `routes ?? []` above.
