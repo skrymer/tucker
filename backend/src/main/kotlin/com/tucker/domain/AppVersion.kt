@@ -26,6 +26,9 @@ class AppVersion(val value: String) : Comparable<AppVersion> {
     }
 }
 
+/** Versions as releases follow one another; two builds of one release by their text. */
+val RELEASE_ORDER: Comparator<String> = compareBy<String> { AppVersion(it) }.thenBy { it }
+
 /** A release after its prereleases, and prereleases identifier by identifier (semver.org §11.3–4). */
 private fun comparePrereleases(a: List<String>?, b: List<String>?): Int {
     if (a == null || b == null) return compareValues(a == null, b == null)

@@ -132,7 +132,8 @@ describe('/admin', () => {
     ).toEqual(['All versions'])
   })
 
-  it('offers each app version the range holds, the latest recorded first', async () => {
+  // The backend orders them, newest release first; the page keeps its order.
+  it('offers each app version the range holds, in the order the report lists them', async () => {
     const user = userEvent.setup()
     server.use(
       signedInAsAdmin,

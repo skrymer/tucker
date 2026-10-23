@@ -6,6 +6,7 @@ import com.tucker.domain.MetricFilter
 import com.tucker.domain.MetricLayout
 import com.tucker.domain.MetricRange
 import com.tucker.domain.PerformanceReport
+import com.tucker.domain.RELEASE_ORDER
 import com.tucker.domain.ReleaseFigures
 import com.tucker.domain.ReleaseLayoutFigures
 import com.tucker.domain.ReleaseTrend
@@ -108,7 +109,7 @@ class AdminMetricsController(private val metrics: MetricEventRepository, private
         val chosen = if (filter.appVersion == null) everyVersion else metrics.find(filter)
         return PerformanceReportResponse(
             PerformanceReport.of(chosen),
-            metrics.versionsSince(since),
+            metrics.versionsSince(since).sortedWith(RELEASE_ORDER.reversed()),
             ReleaseTrend.of(everyVersion),
         )
     }

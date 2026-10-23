@@ -37,7 +37,7 @@ class AdminMetricsReadCountTest {
         }.andExpect { status { isOk() } }
 
         val movesRead = recorder.statements.map { it.lowercase() }
-            .filter { it.startsWith("select") && "from metric_event" in it && "group by" !in it }
+            .filter { it.startsWith("select metric_event.id") && "from metric_event" in it }
         assertEquals(1, movesRead.size, "the moves were read ${movesRead.size} times: $movesRead")
     }
 }

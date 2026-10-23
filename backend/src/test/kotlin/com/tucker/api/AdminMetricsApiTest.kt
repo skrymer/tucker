@@ -188,13 +188,13 @@ class AdminMetricsApiTest {
 
     /** Every version stays listed while one is chosen, so the Admin can switch to another. */
     @Test
-    fun `an Admin reads which app versions the range holds, the latest recorded first`() {
+    fun `an Admin reads which app versions the range holds, newest release first`() {
         store(move(appVersion = "1.3.0"), daysAgo = 40)
-        store(move(appVersion = "1.4.0"), daysAgo = 2)
-        store(move(appVersion = "1.5.0"), daysAgo = 1)
+        store(move(appVersion = "1.10.0"), daysAgo = 2)
+        store(move(appVersion = "1.9.0"), daysAgo = 1)
 
-        mockMvc.get("/api/admin/metrics?version=1.4.0") { signedInAs(ADMIN) }.andExpect {
-            jsonPath("$.versions", contains("1.5.0", "1.4.0"))
+        mockMvc.get("/api/admin/metrics?version=1.9.0") { signedInAs(ADMIN) }.andExpect {
+            jsonPath("$.versions", contains("1.10.0", "1.9.0"))
         }
     }
 

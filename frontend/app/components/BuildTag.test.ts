@@ -12,7 +12,7 @@ describe('BuildTag', () => {
     server.use(
       http.get('/api/version', ({ response }) =>
         response(200).json({
-          version: 'dev',
+          version: '0.0.0-dev',
           gitSha: '9f8e7d6',
           builtAt: '2026-06-12T00:00:00Z',
         }),

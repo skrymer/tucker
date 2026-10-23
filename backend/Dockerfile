@@ -27,8 +27,8 @@ COPY --from=build --chown=tucker:tucker /build/build/libs/*.jar app.jar
 # Build stamp (issue #117): baked from build args so GET /api/version can report
 # the running build. Declared here, after the jar copy, so a changing GIT_SHA /
 # BUILT_AT never busts the expensive Gradle build layers. Graceful defaults keep
-# local/CI builds that pass no args from failing — they read as dev/unknown.
-ARG APP_VERSION=dev
+# local/CI builds that pass no args from failing — they read as 0.0.0-dev/unknown.
+ARG APP_VERSION=0.0.0-dev
 ARG GIT_SHA=unknown
 ARG BUILT_AT=unknown
 ENV APP_VERSION=$APP_VERSION \

@@ -24,8 +24,7 @@ data class RouteReleases(val route: String, val releases: List<ReleaseFigures>)
 data class ReleaseTrend(val routes: List<RouteReleases>) {
     companion object {
         fun of(events: List<MetricEvent>): ReleaseTrend {
-            val releases = events.map { it.source.appVersion }.distinct()
-                .sortedWith(compareBy<String> { AppVersion(it) }.thenBy { it })
+            val releases = events.map { it.source.appVersion }.distinct().sortedWith(RELEASE_ORDER)
             return ReleaseTrend(
                 events.groupBy { it.route }.toSortedMap().map { (route, ofRoute) ->
                     val byRelease = ofRoute.groupBy { it.source.appVersion }

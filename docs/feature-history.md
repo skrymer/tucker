@@ -2070,7 +2070,10 @@ null` now means two things that earn opposite messages — the same trap
   - **Rulings (user):** release order is **semver precedence**, and an app version is
     always semver, made true in source rather than by convention: `AppVersion`
     refuses anything else, so `POST /api/metrics` answers 400, and the frontend's
-    unstamped fallback became `0.0.0-dev` (ADR 0038). V27 deletes the rows stored
+    unstamped fallback became `0.0.0-dev` (ADR 0038). At sign-off the user extended
+    both: the backend's own unstamped version is `0.0.0-dev` too, and the App version
+    filter lists releases in semver order, newest first, replacing #521's
+    latest-recorded-first. V27 deletes the rows stored
     under any other version (a dev volume's `dev`), which could no longer be read.
   - **Traps:** every unovis container is a `role="figure"`, so a second chart breaks a
     bare `getByRole('figure')` — the small charts are `aria-hidden` behind their

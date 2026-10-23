@@ -38,7 +38,9 @@ for it says which User it came from.
 - **The app version is a semantic version**, and an event carrying anything else is
   refused: releases are ordered by semver precedence (a prerelease before its
   release, `+build` ignored), and an order needs every version to have a place in it.
-  A build with no version stamped sends `0.0.0-dev`, which sorts before every release.
+  A build with no version stamped, frontend or backend, reports `0.0.0-dev`, which
+  sorts before every release. The Admin's version filter lists releases in the same
+  order, newest first.
 - **Read as percentiles, never averages**, and a group with fewer than five samples
   shows no figure.
 - **Kept 90 days**, pruned nightly, in the same SQLite database as everything else.

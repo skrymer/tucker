@@ -228,6 +228,8 @@ export function metricsRecorded() {
       }
       return response(200).json({
         routes: countedRoutes(matching(sent, filters)),
+        // Latest sent first, where the backend lists the newest release first:
+        // a test sends from one release, the app's own.
         versions: [...new Set(sent.map((e) => e.appVersion).reverse())],
         byRelease: countedReleases(
           matching(sent, { ...filters, version: null }),
