@@ -9,7 +9,7 @@ import org.springframework.test.web.servlet.get
 
 /**
  * With nothing baked, the endpoint must still load its context and report the
- * graceful dev/unknown defaults. This is the regression guard for the inline
+ * graceful 0.0.0-dev/unknown defaults. This is the regression guard for the inline
  * @Value defaults: the test `application.yml` shadows the main one and defines
  * no `tucker.*` keys, so without the defaults every @SpringBootTest context
  * would fail to resolve the placeholders (not just this one).
@@ -21,10 +21,11 @@ class VersionDefaultsApiTest {
     @Autowired lateinit var mockMvc: MockMvc
 
     @Test
-    fun `GET version reports dev and unknown when no build values are baked`() {
+    fun `GET version reports the 0_0_0-dev version and unknown when no build values are baked`() {
         mockMvc.get("/api/version").andExpect {
             status { isOk() }
-            jsonPath("$.version") { value("dev") }
+            // An unstamped build is still a semantic version, as the frontend's is (ADR 0038).
+            jsonPath("$.version") { value("0.0.0-dev") }
             jsonPath("$.gitSha") { value("unknown") }
             jsonPath("$.builtAt") { value("unknown") }
         }

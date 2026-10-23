@@ -12,7 +12,6 @@ import com.tucker.domain.Platform
 import com.tucker.jooq.Tables.METRIC_EVENT
 import com.tucker.jooq.tables.records.MetricEventRecord
 import org.jooq.DSLContext
-import org.jooq.impl.DSL.max
 import org.jooq.impl.DSL.noCondition
 import org.springframework.stereotype.Repository
 import java.time.Instant
@@ -39,13 +38,11 @@ class MetricEventRepository(private val dsl: DSLContext) {
             .fetch()
             .map { it.toDomain() }
 
-    /** The app versions recorded since [since], the one recorded most recently first. */
+    /** The app versions recorded since [since], in no particular order. */
     fun versionsSince(since: Instant): List<String> =
-        dsl.select(METRIC_EVENT.APP_VERSION)
+        dsl.selectDistinct(METRIC_EVENT.APP_VERSION)
             .from(METRIC_EVENT)
             .where(recordedSince(since))
-            .groupBy(METRIC_EVENT.APP_VERSION)
-            .orderBy(max(METRIC_EVENT.RECORDED_AT).desc())
             .fetch(METRIC_EVENT.APP_VERSION)
 
     private fun recordedSince(since: Instant) = METRIC_EVENT.RECORDED_AT.ge(since.stamp())

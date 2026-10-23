@@ -6,7 +6,12 @@ import com.tucker.domain.MetricFilter
 import com.tucker.domain.MetricLayout
 import com.tucker.domain.MetricRange
 import com.tucker.domain.PerformanceReport
+import com.tucker.domain.RELEASE_ORDER
+import com.tucker.domain.ReleaseFigures
+import com.tucker.domain.ReleaseLayoutFigures
+import com.tucker.domain.ReleaseTrend
 import com.tucker.domain.RouteFigures
+import com.tucker.domain.RouteReleases
 import com.tucker.persistence.MetricEventRepository
 import org.springframework.http.HttpStatus
 import org.springframework.transaction.annotation.Transactional
@@ -54,10 +59,31 @@ data class RouteFiguresResponse(val route: String, val layouts: List<LayoutFigur
     constructor(figures: RouteFigures) : this(figures.route, figures.layouts.map(::LayoutFiguresResponse))
 }
 
-/** [versions] are those the range holds, whichever one the report is narrowed to. */
-data class PerformanceReportResponse(val routes: List<RouteFiguresResponse>, val versions: List<String>) {
-    constructor(report: PerformanceReport, versions: List<String>) :
-        this(report.routes.map(::RouteFiguresResponse), versions)
+/** One layout's p75 in one release (ms), only once there are enough samples. */
+data class ReleaseLayoutResponse(val layout: MetricLayout, val n: Int, val p75: Int?) {
+    constructor(figures: ReleaseLayoutFigures) : this(figures.layout, figures.n, figures.p75)
+}
+
+data class ReleaseFiguresResponse(val version: String, val layouts: List<ReleaseLayoutResponse>) {
+    constructor(figures: ReleaseFigures) : this(figures.version, figures.layouts.map(::ReleaseLayoutResponse))
+}
+
+/** One route across every release the range holds, in release order. */
+data class RouteReleasesResponse(val route: String, val releases: List<ReleaseFiguresResponse>) {
+    constructor(figures: RouteReleases) : this(figures.route, figures.releases.map(::ReleaseFiguresResponse))
+}
+
+/**
+ * [versions] are those the range holds, whichever one the report is narrowed to, and
+ * [byRelease] is never narrowed to one: releases are its axis.
+ */
+data class PerformanceReportResponse(
+    val routes: List<RouteFiguresResponse>,
+    val versions: List<String>,
+    val byRelease: List<RouteReleasesResponse>,
+) {
+    constructor(report: PerformanceReport, versions: List<String>, trend: ReleaseTrend) :
+        this(report.routes.map(::RouteFiguresResponse), versions, trend.routes.map(::RouteReleasesResponse))
 }
 
 /**
@@ -78,7 +104,14 @@ class AdminMetricsController(private val metrics: MetricEventRepository, private
     ): PerformanceReportResponse {
         val since = (range ?: MetricRange.MONTH).since(clock.instant())
         val filter = MetricFilter(since, engine, version?.takeIf { it.isNotBlank() }, installed)
-        return PerformanceReportResponse(PerformanceReport.of(metrics.find(filter)), metrics.versionsSince(since))
+        // Releases are the trend's axis, so it reads every version whichever is chosen.
+        val everyVersion = metrics.find(filter.copy(appVersion = null))
+        val chosen = if (filter.appVersion == null) everyVersion else metrics.find(filter)
+        return PerformanceReportResponse(
+            PerformanceReport.of(chosen),
+            metrics.versionsSince(since).sortedWith(RELEASE_ORDER.reversed()),
+            ReleaseTrend.of(everyVersion),
+        )
     }
 
     /** A filter it cannot read, in the words the filter's own type refuses it with. */

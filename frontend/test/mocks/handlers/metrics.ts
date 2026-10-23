@@ -2,6 +2,7 @@ import type { components } from '#open-fetch-schemas/api'
 import { http } from '../http'
 
 type RouteFigures = components['schemas']['RouteFiguresResponse']
+type RouteReleases = components['schemas']['RouteReleasesResponse']
 type LayoutFigures = components['schemas']['LayoutFiguresResponse']
 
 /** A layout with enough samples for every figure, its numbers any a test does not read. */
@@ -44,11 +45,16 @@ export function tooFew(
 }
 type Sent = components['schemas']['MetricEventRequest']
 
+/** semver.org's own pattern, the backend's `AppVersion` rule. */
+const SEMVER =
+  /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/
+
 /**
  * Why the backend refuses a batch whole, or null when it takes it: no events or
  * more than 50, a route that is not a template, or a time outside 0–60 000 ms or
  * absent (a NaN the page sent arrives as null; a decimal the backend takes, as
- * Jackson reads it into an Int), or no installed flag. A route change must also
+ * Jackson reads it into an Int), no installed flag, or an app version that is
+ * not a semantic version. A route change must also
  * carry its api wait, server time and first-visit flag, with 0 ≤ server ≤ api ≤
  * the move. Its CSRF proof is the backend's to check, as for every mutation
  * mocked here: a mocked page is handed no token.
@@ -62,6 +68,7 @@ function refusal(events: Sent[]): string | null {
       !/^\/[a-z0-9/_\-[\]]{0,63}$/.test(e.route) ||
       typeof e.valueMs !== 'number' ||
       typeof e.installed !== 'boolean' ||
+      !SEMVER.test(e.appVersion) ||
       e.valueMs < 0 ||
       e.valueMs > 60_000 ||
       !isSplit(e),
@@ -158,12 +165,32 @@ function matching(sent: Sent[], { version, installed }: MetricQuery): Sent[] {
 function countedRoutes(sent: Sent[]): RouteFigures[] {
   return [...new Set(sent.map((e) => e.route))].map((route) => ({
     route,
-    layouts: (['phone', 'desktop'] as const).map((layout) =>
-      tooFew(
-        layout,
-        sent.filter((e) => e.route === route && e.layout === layout).length,
-      ),
-    ),
+    layouts: countedLayouts(sent.filter((e) => e.route === route)),
+  }))
+}
+
+/** How many of [moves] each layout made, with no figure. */
+function countedLayouts(moves: Sent[]): LayoutFigures[] {
+  return (['phone', 'desktop'] as const).map((layout) =>
+    tooFew(layout, moves.filter((e) => e.layout === layout).length),
+  )
+}
+
+/**
+ * Each route sent, with how many moves to it each layout made in each release —
+ * in the order first sent, where the backend orders them by semver: a test sends
+ * from one release, the app's own.
+ */
+function countedReleases(sent: Sent[]): RouteReleases[] {
+  const versions = [...new Set(sent.map((e) => e.appVersion))]
+  return [...new Set(sent.map((e) => e.route))].sort().map((route) => ({
+    route,
+    releases: versions.map((version) => ({
+      version,
+      layouts: countedLayouts(
+        sent.filter((e) => e.route === route && e.appVersion === version),
+      ).map(({ layout, n }) => ({ layout, n, p75: null })),
+    })),
   }))
 }
 
@@ -201,7 +228,12 @@ export function metricsRecorded() {
       }
       return response(200).json({
         routes: countedRoutes(matching(sent, filters)),
+        // Latest sent first, where the backend lists the newest release first:
+        // a test sends from one release, the app's own.
         versions: [...new Set(sent.map((e) => e.appVersion).reverse())],
+        byRelease: countedReleases(
+          matching(sent, { ...filters, version: null }),
+        ),
       })
     }),
   ]
@@ -210,11 +242,13 @@ export function metricsRecorded() {
 /**
  * The Admin's report, measured as [answer] says for each set of filters, the
  * range holding [versions] — the same whichever filters are chosen, or as a
- * function says for each.
+ * function says for each — and each release's p75 as [byRelease] says, which no
+ * version filter narrows.
  */
 export function metricsBy(
   answer: (query: MetricQuery) => RouteFigures[],
   versions: string[] | ((query: MetricQuery) => string[]) = [],
+  byRelease: RouteReleases[] = [],
 ) {
   return http.get('/api/admin/metrics', ({ query, response }) => {
     const filters = readFilters(query)
@@ -224,11 +258,16 @@ export function metricsBy(
           routes: answer(filters),
           versions:
             typeof versions === 'function' ? versions(filters) : versions,
+          byRelease,
         })
   })
 }
 
-/** The Admin's report, measured as [routes] say whatever the filters. */
-export function metricsReport(routes: RouteFigures[], versions: string[] = []) {
-  return metricsBy(() => routes, versions)
+/** The Admin's report, measured as [routes] and [byRelease] say whatever the filters. */
+export function metricsReport(
+  routes: RouteFigures[],
+  versions: string[] = [],
+  byRelease: RouteReleases[] = [],
+) {
+  return metricsBy(() => routes, versions, byRelease)
 }

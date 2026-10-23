@@ -188,13 +188,42 @@ class AdminMetricsApiTest {
 
     /** Every version stays listed while one is chosen, so the Admin can switch to another. */
     @Test
-    fun `an Admin reads which app versions the range holds, the latest recorded first`() {
+    fun `an Admin reads which app versions the range holds, newest release first`() {
         store(move(appVersion = "1.3.0"), daysAgo = 40)
-        store(move(appVersion = "1.4.0"), daysAgo = 2)
-        store(move(appVersion = "1.5.0"), daysAgo = 1)
+        store(move(appVersion = "1.10.0"), daysAgo = 2)
+        store(move(appVersion = "1.9.0"), daysAgo = 1)
 
-        mockMvc.get("/api/admin/metrics?version=1.4.0") { signedInAs(ADMIN) }.andExpect {
-            jsonPath("$.versions", contains("1.5.0", "1.4.0"))
+        mockMvc.get("/api/admin/metrics?version=1.9.0") { signedInAs(ADMIN) }.andExpect {
+            jsonPath("$.versions", contains("1.10.0", "1.9.0"))
+        }
+    }
+
+    /** Releases are this section's axis, so a chosen version narrows the rest of the report only. */
+    @Test
+    fun `an Admin reads each release's p75 per route and layout, whichever version is chosen`() {
+        repeat(5) { store(move(appVersion = "1.5.0", valueMs = 250)) }
+        repeat(5) { store(move(appVersion = "1.4.0", valueMs = 400)) }
+
+        mockMvc.get("/api/admin/metrics?version=1.5.0") { signedInAs(ADMIN) }.andExpect {
+            jsonPath("$.byRelease[0].route") { value("/review") }
+            jsonPath("$.byRelease[0].releases[*].version", contains("1.4.0", "1.5.0"))
+            jsonPath("$.byRelease[0].releases[0].layouts[0].layout") { value("phone") }
+            jsonPath("$.byRelease[0].releases[0].layouts[0].n") { value(5) }
+            jsonPath("$.byRelease[0].releases[0].layouts[0].p75") { value(400) }
+            jsonPath("$.byRelease[0].releases[1].layouts[0].p75") { value(250) }
+            jsonPath("$.byRelease[0].releases[1].layouts[1].layout") { value("desktop") }
+            jsonPath("$.byRelease[0].releases[1].layouts[1].n") { value(0) }
+            jsonPath("$.byRelease[0].releases[1].layouts[1].p75") { value(null) }
+        }
+    }
+
+    @Test
+    fun `an Admin's chosen browser engine narrows each release's figures`() {
+        send(routeChange(), sender = USER, userAgent = CHROME_ON_IPHONE)
+        send(routeChange(), sender = USER, userAgent = CHROME_ON_ANDROID)
+
+        mockMvc.get("/api/admin/metrics?engine=webkit") { signedInAs(ADMIN) }.andExpect {
+            jsonPath("$.byRelease[0].releases[0].layouts[0].n") { value(1) }
         }
     }
 
@@ -253,10 +282,10 @@ class AdminMetricsApiTest {
     }
 
     /** A warm move to `/review` on a phone in WebKit. */
-    private fun move(appVersion: String = "1.4.0", installed: Boolean = false) = MetricEvent(
+    private fun move(appVersion: String = "1.4.0", installed: Boolean = false, valueMs: Int = 400) = MetricEvent(
         kind = MetricKind.ROUTE_CHANGE,
         route = "/review",
-        valueMs = 400,
+        valueMs = valueMs,
         apiMs = 0,
         serverMs = 0,
         firstVisit = false,

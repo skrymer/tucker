@@ -132,7 +132,8 @@ describe('/admin', () => {
     ).toEqual(['All versions'])
   })
 
-  it('offers each app version the range holds, the latest recorded first', async () => {
+  // The backend orders them, newest release first; the page keeps its order.
+  it('offers each app version the range holds, in the order the report lists them', async () => {
     const user = userEvent.setup()
     server.use(
       signedInAsAdmin,
@@ -210,6 +211,50 @@ describe('/admin', () => {
         name: 'Nothing matches these filters',
       }),
     ).toBeVisible()
+  })
+
+  // Releases are its axis: a chosen version narrows the rest of the page, not it.
+  it("keeps each page's p75 per release up whichever app version is chosen", async () => {
+    const user = userEvent.setup()
+    server.use(
+      signedInAsAdmin,
+      metricsBy(
+        ({ version }) =>
+          version === null
+            ? [{ route: '/review', layouts: [measured('phone')] }]
+            : [],
+        ['0.1.43', '0.1.42'],
+        [
+          {
+            route: '/review',
+            releases: ['0.1.42', '0.1.43'].map((version) => ({
+              version,
+              layouts: [
+                { layout: 'phone' as const, n: 20, p75: 450 },
+                { layout: 'desktop' as const, n: 2, p75: null },
+              ],
+            })),
+          },
+        ],
+      ),
+    )
+    await renderSuspended(AdminPage)
+    expect(
+      await screen.findByRole('heading', { level: 2, name: 'p75 per release' }),
+    ).toBeVisible()
+
+    await user.click(screen.getByRole('combobox', { name: 'App version' }))
+    await user.click(await screen.findByRole('option', { name: '0.1.42' }))
+
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Nothing matches these filters',
+      }),
+    ).toBeVisible()
+    expect(
+      screen.getByRole('heading', { level: 2, name: 'p75 per release' }),
+    ).toBeVisible()
+    expect(screen.getByRole('table', { name: '/review' })).toBeInTheDocument()
   })
 
   // Measured everywhere but the installed app, so Installed must reach the read as such.

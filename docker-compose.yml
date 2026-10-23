@@ -6,9 +6,9 @@ services:
       context: ./backend
       # Build stamp (issue #117). deploy/update.sh exports these from the root
       # VERSION file + git; local/CI builds that don't set them fall back to the
-      # dev/unknown defaults so a bare `docker compose build` never fails.
+      # 0.0.0-dev/unknown defaults so a bare `docker compose build` never fails.
       args:
-        APP_VERSION: ${APP_VERSION:-dev}
+        APP_VERSION: ${APP_VERSION:-0.0.0-dev}
         GIT_SHA: ${GIT_SHA:-unknown}
         BUILT_AT: ${BUILT_AT:-unknown}
     image: tucker-backend:latest

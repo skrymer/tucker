@@ -3,7 +3,7 @@ import { test, expect } from './support/smoke-test'
 // Slice 4 smoke (issue #117): the build stamp against the real stack. Proves the
 // Profile footer renders the running build (a semver + git SHA baked into the
 // bundle) and that GET /api/version answers through the SPA's same-origin /api
-// proxy. The exact values aren't asserted — they degrade to dev/unknown for a
+// proxy. The exact values aren't asserted — they degrade to 0.0.0-dev/unknown for a
 // build that passes no args (local) and carry a real backend SHA in CI — so the
 // test checks the stable shape. The precise match/split rendering is unit-tested
 // in buildTag.test.ts and BuildTag.test.ts.

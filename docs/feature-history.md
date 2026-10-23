@@ -2047,3 +2047,36 @@ null` now means two things that earn opposite messages — the same trap
     the observer; a `VisStackedBar` tooltip trigger is handed the part's record, the row
     under its `datum`; two charted renders in one Vitest file throw `_idleNext` on
     teardown; a wrapped axis label loses the space in "(n 3)".
+  - **Slice 4 ([#521](https://github.com/skrymer/tucker/issues/521)) — filter the
+    metrics.** The backend reads each event's engine and OS off the user agent
+    (`Platform.of`) and stores those, never the string (V26, which deletes the rows
+    stored before it). `GET /api/admin/metrics` takes `range` (24h/7d/30d/90d, default
+    30d), `engine`, `version` and `installed`, and lists the versions the range holds,
+    the latest recorded first. `/admin` sets the four in one row above the chart, dims
+    the last answer while new filters are read (ADR 0007), and says when nothing
+    matches with a way back to the defaults. The Admin check moved into Spring Security
+    (`hasAuthority ROLE_ADMIN` on `/api/admin/**`, a 404 access-denied handler), so a
+    non-Admin's filter or method is never refused before they are found missing.
+    `recorded_at` is a fixed-width stamp, so text order is time order.
+  - **Slice 5 ([#522](https://github.com/skrymer/tucker/issues/522)) — p75 per
+    release.** `ReleaseTrend` gives every route every release the range holds, in
+    release order, with each layout's n and p75 (none under five moves); the report
+    carries it as `byRelease`, built from the same filters less the version, since
+    releases are its axis. `/admin` draws it as `ReleaseTrendCard`: one small chart
+    per route (`ReleaseTrendChart`, routes by name), a solid indigo phone line with
+    round points and a dashed amber desktop one with square points, on one y-scale,
+    a release with no figure a gap, a tooltip per point stating the whole release,
+    and a screen-reader table per route.
+  - **Rulings (user):** release order is **semver precedence**, and an app version is
+    always semver, made true in source rather than by convention: `AppVersion`
+    refuses anything else, so `POST /api/metrics` answers 400, and the frontend's
+    unstamped fallback became `0.0.0-dev` (ADR 0038). At sign-off the user extended
+    both: the backend's own unstamped version is `0.0.0-dev` too, and the App version
+    filter lists releases in semver order, newest first, replacing #521's
+    latest-recorded-first. V27 deletes the rows stored
+    under any other version (a dev volume's `dev`), which could no longer be read.
+  - **Traps:** every unovis container is a `role="figure"`, so a second chart breaks a
+    bare `getByRole('figure')` — the small charts are `aria-hidden` behind their
+    tables; unovis's Scatter wraps each point in a `point-group` and still emits an
+    element for a missing value (select `[class$="-point"]`, skip zero-size boxes);
+    the name-casing guard reads any `.name` in a template as a name a User typed.

@@ -1695,6 +1695,42 @@ is still loading raises no error*). The six left are **equivalent**:
 - **`admin.vue`'s not-found guard (L15–19) and `report.value?.routes ?? []` (L65)** keep #519's
   verdicts above; the script only moved down two lines.
 
+### p75 per release (#522) — frontend 167 of 207, backend 120 of 122
+
+- **`ReleaseTrendChart.vue` — killed by an out-of-scope layer**, nearly all of it: happy-dom
+  never lays out a unovis chart, so its accessors, tick formats, domain and tooltip are read
+  only in the browser, where `e2e/admin.spec.ts` kills it. **Red on a mutated copy**
+  (`red-proof.sh` in the sign-off pack): the x accessor (*joins one release to the next with a
+  straight line*), the tick format, tick values and `?? ''` (*labels each chart's releases, and
+  puts every chart on one scale in ms*), the x-domain (*keeps the first and last release in
+  from the ends of their chart*), `tick-text-hide-overlapping` (*never draws two releases'
+  names over each other*), the tick-text width and the cancelled label fade (*names each
+  release it labels on one line*),
+  the tooltip's `<br>` (*puts the release and each layout's figure on a line of its own*), the
+  phone point's shape (*draws no point for a release with too few moves in a layout*). **Read,
+  not run**: the y accessors, the desktop shape, the tooltip trigger and its text, and the
+  composable's return — each removes what a named test reads (the drawn-point count, the
+  tooltip's heading). Its `tick`'s `?.` and `''` fallback are **equivalent**: `tick-values`
+  names only indices the data holds.
+- **`ReleaseTrendCard.vue`'s `SERIES` — out-of-scope kill**: *draws each line as its legend
+  entry shows it, the desktop one dashed*, red on a copy for the phone colour and the dash; the
+  desktop colour goes through the same `lines`-equal-`legend` assertion, not run.
+- **`releaseTrend.ts`'s `layoutIn(…)?.p75` (×2) — equivalent**: the backend gives every
+  release every layout (`ReleaseTrend.figuresOf` maps `MetricLayout.entries`).
+- **`admin.vue`'s `report.value?.byRelease ?? []`** — equivalent, as `routes ?? []` above.
+- **`MetricKind.getWire`** keeps #519's verdict; `AppVersion.toString` was deleted (nothing
+  called it).
+- **`AppVersionKt` `isNumber`'s upper bound (`c < 58` → `c <= 58`) — equivalent**: `in
+  '0'..'9'` compiles to `48 <= c && c < 58`, and the shifted bound admits only `:`, which
+  `SEMVER` refuses before any comparison runs. The lower bound dies to *ignores build metadata
+  when ordering* (`rc.0` against `rc.1`) and to *orders a number of any digit before a word,
+  even one that sorts before digits*.
+- **`ReleaseTrendCard.vue`'s `scaleMax` → `() => undefined` — out-of-scope kill**: only the
+  chart reads it, and happy-dom draws no chart. *labels each chart's releases, and puts every
+  chart on one scale in ms* goes red on a copy (each chart falls back to its own scale).
+- A chart's `margin` scored as a real gap and moved nothing a screenshot could see; it was
+  deleted rather than pinned.
+
 ### Noise removed at the source
 
 Four `getLog()` companion accessors (`MartijndwarsWebPushSender`, `RecordingWebPushSender`,

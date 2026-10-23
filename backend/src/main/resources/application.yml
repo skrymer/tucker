@@ -45,9 +45,9 @@ springdoc:
 
 # Build stamp (issue #117): baked into the image as env at build time
 # (Dockerfile ARG -> ENV) and surfaced by GET /api/version. Defaults keep local
-# `bootRun` and CI builds that set nothing reading as dev/unknown.
+# `bootRun` and CI builds that set nothing reading as 0.0.0-dev/unknown.
 tucker:
-  version: ${APP_VERSION:dev}
+  version: ${APP_VERSION:0.0.0-dev}
   git-sha: ${GIT_SHA:unknown}
   built-at: ${BUILT_AT:unknown}
 

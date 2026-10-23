@@ -185,9 +185,10 @@ body {
   --vis-crosshair-line-stroke-color: var(--ui-text-dimmed);
 }
 
-/* The Admin's route chart, on a class for the reason `.weight-timeline` is. Its
+/* The Admin's charts, on a class for the reason `.weight-timeline` is. Their
    tooltip is unovis' own box, drawn here in the card's elevated surface. */
-.route-timing {
+.route-timing,
+.release-trend {
   --vis-axis-grid-color: var(--ui-border);
   --vis-axis-tick-label-color: var(--ui-text-muted);
   --vis-axis-tick-label-font-size: 12px;
@@ -195,6 +196,9 @@ body {
   --vis-tooltip-background-color: var(--ui-bg-elevated);
   --vis-tooltip-border-color: var(--ui-border);
   --vis-tooltip-text-color: var(--ui-text);
+  /* No fade for a label shown or hidden for room, for `duration: 0`'s reason: a
+     transition freezes part-way whenever the tab is not the focused window. */
+  --vis-axis-tick-label-hide-transition: none;
 }
 
 /* A placeholder held back by ADR 0007's 150 ms, so a fast answer never flashes

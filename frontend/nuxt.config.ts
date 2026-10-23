@@ -77,7 +77,7 @@ export default defineNuxtConfig({
   // them. Defaults degrade gracefully for local dev.
   runtimeConfig: {
     public: {
-      appVersion: process.env.APP_VERSION || 'dev',
+      appVersion: process.env.APP_VERSION || '0.0.0-dev',
       gitSha: process.env.GIT_SHA || 'unknown',
     },
   },

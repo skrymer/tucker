@@ -32,6 +32,8 @@ data class MetricSource(
         require(appVersion.length <= MAX_VERSION_LENGTH) {
             "an app version must be at most $MAX_VERSION_LENGTH characters"
         }
+        // Refuses a version release order has no place for (ADR 0038).
+        AppVersion(appVersion)
     }
 
     private companion object {

@@ -4,7 +4,7 @@ type RouteFigures = components['schemas']['RouteFiguresResponse']
 type LayoutFigures = components['schemas']['LayoutFiguresResponse']
 
 /** The app's two layouts as the Admin chart names them. */
-const LAYOUT_NAMES: Record<LayoutFigures['layout'], string> = {
+export const LAYOUT_NAMES: Record<LayoutFigures['layout'], string> = {
   phone: 'Phone',
   desktop: 'Desktop',
 }
@@ -44,10 +44,15 @@ export function rowName({ route, figures }: TimingRow): string {
   return `${route} · ${LAYOUT_NAMES[figures.layout]}`
 }
 
+/** In place of a figure withheld for having too few samples. */
+export function tooFewLabel(n: number): string {
+  return `too few (n ${n})`
+}
+
 /** A row as the chart's axis names it, saying why its bar is missing when it is. */
 export function rowLabel(row: TimingRow): string {
   const { n, p75 } = row.figures
-  return p75 == null ? `${rowName(row)} · too few (n ${n})` : rowName(row)
+  return p75 == null ? `${rowName(row)} · ${tooFewLabel(n)}` : rowName(row)
 }
 
 /** A bar's exact figures: percentiles only, never an average (ADR 0038). */

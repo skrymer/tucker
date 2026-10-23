@@ -8,6 +8,7 @@ import {
   rowLabel,
   rowName,
   timingRows,
+  tooFewLabel,
   waitsLine,
 } from './routeTiming'
 
@@ -38,6 +39,12 @@ describe("the Admin chart's rows", () => {
     ])
 
     expect(rowName(row!)).toBe('/foods/[id] · Desktop')
+  })
+})
+
+describe('a figure withheld for too few samples', () => {
+  it('says so, with the count it had', () => {
+    expect(tooFewLabel(3)).toBe('too few (n 3)')
   })
 })
 
@@ -107,13 +114,15 @@ describe("the Admin chart's parts", () => {
 // Read off disk: under the Nuxt test environment a `?raw` import is the empty
 // string, which would pass by finding nothing. Why a class and not `:root`:
 // DESIGN.md → The Weight Timeline, and weightTimeline.test.ts guards that rule.
-describe("the Admin chart's theme", () => {
+describe("the Admin charts' theme", () => {
   it('draws axes and tooltips in tokens that follow light and dark', () => {
     const css = readFileSync(
       resolve(import.meta.dirname, '../assets/css/main.css'),
       'utf8',
     )
-    const themed = css.match(/\.route-timing\s*\{[^}]*\}/)?.[0] ?? ''
+    // One rule themes both charts: the route chart and each release's.
+    const themed =
+      css.match(/\.route-timing,\s*\.release-trend\s*\{[^}]*\}/)?.[0] ?? ''
 
     for (const [property, token] of [
       ['--vis-axis-grid-color', '--ui-border'],
@@ -130,5 +139,11 @@ describe("the Admin chart's theme", () => {
         'utf8',
       ),
     ).toContain('class="route-timing"')
+    expect(
+      readFileSync(
+        resolve(import.meta.dirname, '../components/ReleaseTrendChart.vue'),
+        'utf8',
+      ),
+    ).toContain('class="release-trend"')
   })
 })
