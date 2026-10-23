@@ -32,6 +32,15 @@ describe('the metric handlers', () => {
     expect(await statusOf({ valueMs: 420.5 })).toBe(204)
   })
 
+  it('refuse an app version that is not a semantic version', async () => {
+    expect(await statusOf({ appVersion: 'dev' })).toBe(400)
+  })
+
+  it('take a prerelease app version with build metadata', async () => {
+    expect(await statusOf({ appVersion: '0.0.0-dev' })).toBe(204)
+    expect(await statusOf({ appVersion: '0.2.0-rc.1+b5' })).toBe(204)
+  })
+
   it('refuse an event that does not say whether the app is installed', async () => {
     expect(await statusOf({ installed: null })).toBe(400)
   })

@@ -54,6 +54,24 @@ async function barPart(page: Page, row: 'top' | 'bottom', part: number) {
   return page.locator(selector).nth(index)
 }
 
+/**
+ * The [n]th point drawn on the per-release charts, left to right. A release with
+ * no figure in a layout still gets an element, with nothing drawn: skipped.
+ */
+async function releasePoint(page: Page, n: number) {
+  const selector = '.release-trend [class$="-point"]'
+  await expect(page.locator(selector).first()).toBeAttached()
+  const index = await page.evaluate(
+    ([selector, n]) =>
+      [...document.querySelectorAll(selector as string)]
+        .map((p, i) => ({ i, box: p.getBoundingClientRect() }))
+        .filter(({ box }) => box.width > 0)
+        .sort((a, b) => a.box.x - b.box.x)[n as number]!.i,
+    [selector, n] as const,
+  )
+  return page.locator(selector).nth(index)
+}
+
 /** The fill of each part of the one bar drawn, from the axis out. */
 const partColours = (page: Page) =>
   page.evaluate(() =>
@@ -517,6 +535,207 @@ test.describe('as an Admin', () => {
     await expect(
       page.getByText('api p75 90 ms · cold p75 too few'),
     ).toBeVisible()
+  })
+
+  test("states a release's p75 in each layout when its point is pointed at", async ({
+    page,
+    goto,
+    network,
+    isMobile,
+  }) => {
+    test.skip(isMobile, 'a phone shows the notice instead')
+    network.use(
+      metricsReport(
+        [{ route: '/foods', layouts: [figures('phone', 450)] }],
+        [],
+        [
+          {
+            route: '/foods',
+            releases: [
+              {
+                version: '0.1.9',
+                layouts: [
+                  { layout: 'phone', n: 20, p75: 450 },
+                  { layout: 'desktop', n: 3, p75: null },
+                ],
+              },
+              {
+                version: '0.1.10',
+                layouts: [
+                  { layout: 'phone', n: 14, p75: 380 },
+                  { layout: 'desktop', n: 9, p75: 210 },
+                ],
+              },
+            ],
+          },
+        ],
+      ),
+    )
+    await goto('/admin', { waitUntil: 'hydration' })
+    const heading = (text: string) => page.locator('strong', { hasText: text })
+
+    // Desktop had too few moves in 0.1.9, so that release has one point, phone's.
+    await (await releasePoint(page, 0)).hover()
+    await expect(heading('/foods · 0.1.9')).toBeVisible()
+    await expect(page.getByText('Phone 450 ms')).toBeVisible()
+    await expect(page.getByText('Desktop too few (n 3)')).toBeVisible()
+
+    await (await releasePoint(page, 2)).hover()
+    await expect(heading('/foods · 0.1.10')).toBeVisible()
+    await expect(page.getByText('Phone 380 ms')).toBeVisible()
+    await expect(page.getByText('Desktop 210 ms')).toBeVisible()
+  })
+
+  // unovis themes off its own attribute, which Tucker's `html.dark` does not set.
+  test.describe('in dark mode', () => {
+    test.use({ colorScheme: 'dark' })
+
+    test("draws its grid and tooltip in the card's tokens, as the route chart does", async ({
+      page,
+      goto,
+      network,
+      isMobile,
+    }) => {
+      test.skip(isMobile, 'a phone shows the notice instead')
+      network.use(
+        metricsReport(
+          [
+            {
+              route: '/foods',
+              layouts: [figures('phone', 450), figures('desktop', 300)],
+            },
+          ],
+          [],
+          [
+            {
+              route: '/foods',
+              releases: [
+                {
+                  version: '0.1.9',
+                  layouts: [
+                    { layout: 'phone', n: 20, p75: 450 },
+                    { layout: 'desktop', n: 20, p75: 300 },
+                  ],
+                },
+              ],
+            },
+          ],
+        ),
+      )
+      await goto('/admin', { waitUntil: 'hydration' })
+      await expect(page.locator('html')).toHaveClass(/dark/)
+      const style = (chart: string, part: string, property: string) =>
+        page
+          .locator(`${chart} ${part}`)
+          .first()
+          .evaluate(
+            (el, p) => getComputedStyle(el).getPropertyValue(p),
+            property,
+          )
+
+      await (await barPart(page, 'top', 0)).hover()
+      const route = {
+        grid: await style('.route-timing', '[class$="-grid"] line', 'stroke'),
+        tooltip: await style(
+          '.route-timing',
+          '[class*="-tooltip"]',
+          'background-color',
+        ),
+      }
+      await (await releasePoint(page, 0)).hover()
+      const release = {
+        grid: await style('.release-trend', '[class$="-grid"] line', 'stroke'),
+        tooltip: await style(
+          '.release-trend',
+          '[class*="-tooltip"]',
+          'background-color',
+        ),
+      }
+
+      expect(release).toEqual(route)
+    })
+  })
+
+  // A curve between two releases would draw p75s nobody measured, above and below both.
+  test('joins one release to the next with a straight line', async ({
+    page,
+    goto,
+    network,
+    isMobile,
+  }) => {
+    test.skip(isMobile, 'a phone shows the notice instead')
+    network.use(
+      metricsReport(
+        [{ route: '/foods', layouts: [figures('phone', 450)] }],
+        [],
+        [
+          {
+            route: '/foods',
+            releases: [
+              ['0.1.8', 900],
+              ['0.1.9', 700],
+              ['0.1.10', 1100],
+            ].map(([version, p75]) => ({
+              version: version as string,
+              layouts: [
+                { layout: 'phone' as const, n: 20, p75: p75 as number },
+                { layout: 'desktop' as const, n: 20, p75: 300 },
+              ],
+            })),
+          },
+        ],
+      ),
+    )
+    await goto('/admin', { waitUntil: 'hydration' })
+    const lines = page.locator('.release-trend path[class$="-linePath"]')
+    await expect(lines.first()).toBeAttached()
+
+    const commands = await lines.evaluateAll((paths) =>
+      paths.flatMap((p) => p.getAttribute('d')?.match(/[A-Za-z]/g) ?? []),
+    )
+    expect(new Set(commands)).toEqual(new Set(['M', 'L']))
+  })
+
+  // Too few moves is a gap in the line, never a zero it would dip to.
+  test('draws no point for a release with too few moves in a layout', async ({
+    page,
+    goto,
+    network,
+    isMobile,
+  }) => {
+    test.skip(isMobile, 'a phone shows the notice instead')
+    network.use(
+      metricsReport(
+        [{ route: '/foods', layouts: [figures('phone', 450)] }],
+        [],
+        [
+          {
+            route: '/foods',
+            releases: ['0.1.8', '0.1.9', '0.1.10'].map((version) => ({
+              version,
+              layouts: [
+                { layout: 'phone', n: 20, p75: 450 },
+                version === '0.1.9'
+                  ? { layout: 'desktop', n: 2, p75: null }
+                  : { layout: 'desktop', n: 20, p75: 300 },
+              ],
+            })),
+          },
+        ],
+      ),
+    )
+    await goto('/admin', { waitUntil: 'hydration' })
+    await expect(
+      page.locator('.release-trend [class$="-point"]').first(),
+    ).toBeAttached()
+
+    const drawn = await page.evaluate(
+      () =>
+        [...document.querySelectorAll('.release-trend [class$="-point"]')]
+          .map((p) => p.getBoundingClientRect())
+          .filter((box) => box.width > 0).length,
+    )
+    expect(drawn).toBe(5)
   })
 
   // A phone is shown the notice alone, so it has no use for the chart's code or SVG.

@@ -19,8 +19,10 @@ RUN pnpm install --frozen-lockfile
 # runtimeConfig.public (nuxt.config reads these from process.env), so the
 # Profile footer can show the running build. Placed after install so a changing
 # GIT_SHA only re-runs the build, not the dependency layer. Defaults degrade
-# gracefully for local/CI builds that pass no args.
-ARG APP_VERSION=dev
+# gracefully for local/CI builds that pass no args. The version is a semantic one,
+# as nuxt.config's fallback is: it is what the app's metrics are filed under, and
+# the backend refuses any other (ADR 0038).
+ARG APP_VERSION=0.0.0-dev
 ARG GIT_SHA=unknown
 ENV APP_VERSION=$APP_VERSION \
     GIT_SHA=$GIT_SHA

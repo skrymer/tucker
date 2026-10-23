@@ -35,6 +35,10 @@ for it says which User it came from.
   whether this is the route's first visit since the page loaded, and an engine and OS derived
   on the server from the user agent. The raw user agent, the IP address and the exact
   screen size are never stored.
+- **The app version is a semantic version**, and an event carrying anything else is
+  refused: releases are ordered by semver precedence (a prerelease before its
+  release, `+build` ignored), and an order needs every version to have a place in it.
+  A build with no version stamped sends `0.0.0-dev`, which sorts before every release.
 - **Read as percentiles, never averages**, and a group with fewer than five samples
   shows no figure.
 - **Kept 90 days**, pruned nightly, in the same SQLite database as everything else.

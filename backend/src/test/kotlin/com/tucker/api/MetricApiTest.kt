@@ -128,6 +128,17 @@ class MetricApiTest {
         }.andExpect { status { isBadRequest() } }
     }
 
+    @Test
+    fun `refuses a batch from an app version that is not a semantic version`() {
+        mockMvc.post("/api/metrics") {
+            contentType = MediaType.APPLICATION_JSON
+            content = batchOf(routeChange().replace("\"appVersion\":\"1.4.0\"", "\"appVersion\":\"dev\""))
+        }.andExpect {
+            status { isBadRequest() }
+            jsonPath("$.message") { value("\"dev\" is not a semantic version") }
+        }
+    }
+
     private fun routeChange(
         route: String = "/review",
         layout: String = "phone",

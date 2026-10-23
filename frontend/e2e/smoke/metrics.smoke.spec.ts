@@ -130,6 +130,41 @@ test("a User's moves reach the Admin with their wait on the api, however many re
   })
 })
 
+// The release a move is filed under is the build's own version, which the real
+// backend takes only as a semantic version: an unstamped build sends 0.0.0-dev.
+test("a User's moves reach the Admin's p75 per release, under the release that made them", async ({
+  page,
+  goto,
+  browser,
+  isMobile,
+}) => {
+  test.skip(isMobile, 'the release is the same at any width')
+  await goto('/', { waitUntil: 'hydration' })
+  // Five moves to Review, enough for a figure.
+  for (let i = 0; i < 5; i++) {
+    await page.getByRole('link', { name: 'Review' }).click()
+    await expect(
+      page.getByRole('heading', { level: 1, name: 'Review' }),
+    ).toBeVisible()
+    await page.getByRole('link', { name: 'Today' }).click()
+    await expect(
+      page.getByRole('heading', { level: 1, name: 'Today' }),
+    ).toBeVisible()
+  }
+  await flushMetrics(page)
+
+  await withMetrics(browser, page.url(), async (adminPage) => {
+    const review = adminPage.getByRole('table', { name: '/review' })
+    // The moves were made at a desktop's width: Phone, Desktop.
+    await expect(review.getByRole('row')).toHaveCount(2)
+    await expect(
+      review.getByRole('row', {
+        name: /^0\.0\.0-dev too few \(n 0\) [1-9]\d* ms$/,
+      }),
+    ).toBeVisible()
+  })
+})
+
 // The engine is read off the user agent on the server: this browser is Chromium,
 // so its move counts under Blink and not under WebKit.
 test('files a move under the engine of the browser that made it', async ({

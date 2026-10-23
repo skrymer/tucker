@@ -46,14 +46,22 @@ class MetricEventTest {
 
     @Test
     fun `accepts an app version of exactly 40 characters`() {
-        val version = "1.4.".padEnd(40, '0')
+        val version = "1.4.0-".padEnd(40, 'a')
 
         assertEquals(version, source(appVersion = version).appVersion)
     }
 
     @Test
     fun `refuses an app version longer than 40 characters`() {
-        assertFailsWith<IllegalArgumentException> { source(appVersion = "1.4.".padEnd(41, '0')) }
+        assertFailsWith<IllegalArgumentException> { source(appVersion = "1.4.0-".padEnd(41, 'a')) }
+    }
+
+    /** Releases are ordered by semver precedence, so a version that has none is refused at the door. */
+    @Test
+    fun `refuses an app version that is not a semantic version`() {
+        val refused = assertFailsWith<IllegalArgumentException> { source(appVersion = "dev") }
+
+        assertEquals("\"dev\" is not a semantic version", refused.message)
     }
 
     /** The server's work is part of the wait for it, never more than the wait. */

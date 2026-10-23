@@ -5973,6 +5973,7 @@
       },
       "PerformanceReportResponse": {
         "required": [
+          "byRelease",
           "routes",
           "versions"
         ],
@@ -5988,6 +5989,12 @@
             "type": "array",
             "items": {
               "type": "string"
+            }
+          },
+          "byRelease": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RouteReleasesResponse"
             }
           }
         }
@@ -6006,6 +6013,67 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/LayoutFiguresResponse"
+            }
+          }
+        }
+      },
+      "ReleaseFiguresResponse": {
+        "required": [
+          "layouts",
+          "version"
+        ],
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "string"
+          },
+          "layouts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReleaseLayoutResponse"
+            }
+          }
+        }
+      },
+      "ReleaseLayoutResponse": {
+        "required": [
+          "layout",
+          "n"
+        ],
+        "type": "object",
+        "properties": {
+          "layout": {
+            "type": "string",
+            "enum": [
+              "phone",
+              "desktop"
+            ]
+          },
+          "n": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "p75": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          }
+        }
+      },
+      "RouteReleasesResponse": {
+        "required": [
+          "releases",
+          "route"
+        ],
+        "type": "object",
+        "properties": {
+          "route": {
+            "type": "string"
+          },
+          "releases": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReleaseFiguresResponse"
             }
           }
         }

@@ -34,6 +34,9 @@ data class MetricSource(
         }
     }
 
+    /** [appVersion] as the release it names, which is what puts it in release order. */
+    val release: AppVersion = AppVersion.of(appVersion)
+
     private companion object {
         const val MAX_VERSION_LENGTH = 40
     }

@@ -64,6 +64,7 @@ const {
   refresh,
 } = await useApi('/api/admin/metrics', { query })
 const routes = computed(() => report.value?.routes ?? [])
+const byRelease = computed(() => report.value?.byRelease ?? [])
 // Whether the report on screen was read narrowed; a read under way leaves it be.
 const reportNarrowed = ref(narrowed.value)
 watch(report, () => (reportNarrowed.value = narrowed.value))
@@ -176,6 +177,12 @@ const filters = computed(() => [
               looks further back.
             </p>
           </div>
+          <!-- Never narrowed to a version, so it can stand beside an empty state. -->
+          <LazyReleaseTrendCard
+            v-if="byRelease.length"
+            :routes="byRelease"
+            class="mt-4"
+          />
         </div>
       </LoadErrorState>
     </section>
