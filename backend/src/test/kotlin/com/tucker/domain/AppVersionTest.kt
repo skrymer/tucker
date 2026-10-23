@@ -54,6 +54,14 @@ class AppVersionTest {
         )
     }
 
+    /** A hyphen sorts before every digit as text, so only a number read as one goes first. */
+    @Test
+    fun `orders a number of any digit before a word, even one that sorts before digits`() {
+        val versions = listOf("1.0.0--a", "1.0.0-10", "1.0.0-9")
+
+        assertEquals(listOf("1.0.0-9", "1.0.0-10", "1.0.0--a"), sorted(versions))
+    }
+
     @Test
     fun `refuses a version that is not a semantic version`() {
         val refused = assertFailsWith<IllegalArgumentException> { AppVersion("dev") }
