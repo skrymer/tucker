@@ -41,6 +41,19 @@ class AppVersionTest {
         assertEquals(listOf("0.1.9+b-2", "0.2.0-rc.0+b9", "0.2.0-rc.1+b5", "0.2.0+b1"), sorted(versions))
     }
 
+    /** semver.org puts no bound on a number, so neither does the order. */
+    @Test
+    fun `orders numbers past any integer type's range by their value`() {
+        val nines = "9".repeat(20)
+        val tenToThe20 = "1" + "0".repeat(20)
+        val versions = listOf("$tenToThe20.0.0", "1.0.0-$tenToThe20", "$nines.0.0", "1.0.0-alpha", "1.0.0-$nines")
+
+        assertEquals(
+            listOf("1.0.0-$nines", "1.0.0-$tenToThe20", "1.0.0-alpha", "$nines.0.0", "$tenToThe20.0.0"),
+            sorted(versions),
+        )
+    }
+
     @Test
     fun `refuses a version that is not a semantic version`() {
         val refused = assertFailsWith<IllegalArgumentException> { AppVersion("dev") }

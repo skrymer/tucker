@@ -10,6 +10,12 @@ type RouteReleases = components['schemas']['RouteReleasesResponse']
 const props = defineProps<{ routes: RouteReleases[] }>()
 
 const scaleMax = computed(() => sharedScaleMax(props.routes))
+const layoutsOf = (route: RouteReleases) =>
+  route.releases.flatMap((release) => release.layouts)
+// A p75 of 0 ms is still a figure.
+const hasFigure = computed(() =>
+  props.routes.some((r) => layoutsOf(r).some((l) => l.p75 != null)),
+)
 
 /**
  * Each layout's line. Desktop is dashed, with square points, so the two never
@@ -64,14 +70,19 @@ const SERIES: ReleaseSeries[] = [
           </li>
         </ul>
       </div>
-      <p v-if="!scaleMax" class="text-body text-muted">
+      <p v-if="!hasFigure" class="text-body text-muted">
         No release has a p75 yet: a layout needs five moves in a release for
         one.
       </p>
-      <div v-else class="grid grid-cols-2 gap-6 xl:grid-cols-3">
+      <!-- With nothing to chart, the counts are still read out. -->
+      <div
+        class="grid grid-cols-2 gap-6 xl:grid-cols-3"
+        :class="!hasFigure && 'sr-only'"
+      >
         <section v-for="r in routes" :key="r.route">
           <h3 class="text-label text-default">{{ r.route }}</h3>
           <ReleaseTrendChart
+            v-if="hasFigure"
             :route="r"
             :scale-max="scaleMax"
             :series="SERIES"

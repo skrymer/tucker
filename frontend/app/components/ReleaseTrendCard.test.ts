@@ -82,6 +82,32 @@ describe('ReleaseTrendCard', () => {
     ])
   })
 
+  // The sentence replaces the empty charts, not the counts a screen reader is read.
+  it("still states each release's count when no release has a p75 yet", async () => {
+    await renderSuspended(ReleaseTrendCard, {
+      props: {
+        routes: [
+          {
+            route: '/check',
+            releases: [
+              release('0.1.9', { n: 4, p75: null }, { n: 1, p75: null }),
+            ],
+          },
+        ],
+      },
+    })
+
+    expect(
+      screen.getByText(
+        'No release has a p75 yet: a layout needs five moves in a release for one.',
+      ),
+    ).toBeVisible()
+    expect(rowsOf(screen.getByRole('table', { name: '/check' }))).toEqual([
+      ['Release', 'Phone', 'Desktop'],
+      ['0.1.9', 'too few (n 4)', 'too few (n 1)'],
+    ])
+  })
+
   // Releases are this chart's axis, so choosing one would leave a single point.
   it("says the app version filter doesn't apply to it", async () => {
     await renderSuspended(ReleaseTrendCard, { props: { routes: [] } })

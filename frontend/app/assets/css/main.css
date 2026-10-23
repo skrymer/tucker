@@ -196,6 +196,9 @@ body {
   --vis-tooltip-background-color: var(--ui-bg-elevated);
   --vis-tooltip-border-color: var(--ui-border);
   --vis-tooltip-text-color: var(--ui-text);
+  /* No fade for a label shown or hidden for room, for `duration: 0`'s reason: a
+     transition freezes part-way whenever the tab is not the focused window. */
+  --vis-axis-tick-label-hide-transition: none;
 }
 
 /* A placeholder held back by ADR 0007's 150 ms, so a fast answer never flashes

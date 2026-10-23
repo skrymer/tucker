@@ -711,6 +711,55 @@ test.describe('as an Admin', () => {
     expect(new Set(commands)).toEqual(new Set(['M', 'L']))
   })
 
+  // The slowest release sits on the top of the shared scale, the fastest near its
+  // floor: a point clipped there would read as a smaller figure.
+  test('draws each point whole, the slowest release on the top of the scale included', async ({
+    page,
+    goto,
+    network,
+    isMobile,
+  }) => {
+    test.skip(isMobile, 'a phone shows the notice instead')
+    network.use(
+      metricsReport(
+        [{ route: '/foods', layouts: [figures('phone', 450)] }],
+        [],
+        [
+          releasesOf('/foods', [
+            ['0.1.8', 1200, 0],
+            ['0.1.9', 700, 250],
+          ]),
+        ],
+      ),
+    )
+    await goto('/admin', { waitUntil: 'hydration' })
+    await expect(page.locator(POINTS).first()).toBeAttached()
+    await page.locator('.release-trend').first().scrollIntoViewIfNeeded()
+
+    // A clip does not change a bounding box, so each edge is hit-tested instead.
+    const clipped = await page.evaluate((points) => {
+      const drawn = [...document.querySelectorAll(points)].filter(
+        (p) => p.getBoundingClientRect().width > 0,
+      )
+      return drawn.filter((p) => {
+        const b = p.getBoundingClientRect()
+        const [cx, cy] = [b.left + b.width / 2, b.top + b.height / 2]
+        const edges: [number, number][] = [
+          [cx, b.top + 1],
+          [cx, b.bottom - 1],
+          [b.left + 1, cy],
+          [b.right - 1, cy],
+        ]
+        return edges.some(([x, y]) => {
+          const hit = document.elementFromPoint(x, y)
+          return !hit || !(hit === p || p.contains(hit))
+        })
+      }).length
+    }, POINTS)
+
+    expect(clipped).toBe(0)
+  })
+
   // On the plot's edge, the first release's point would sit on the time axis.
   test('keeps the first and last release in from the ends of their chart', async ({
     page,
@@ -948,6 +997,45 @@ test.describe('as an Admin', () => {
     })
 
     expect(overlaps).toBe(0)
+  })
+
+  // Wrapped onto lines of its own, each name would take the plot's height for itself.
+  test('names each release it labels on one line, whatever the range holds', async ({
+    page,
+    goto,
+    network,
+    isMobile,
+  }) => {
+    test.skip(isMobile, 'a phone shows the notice instead')
+    network.use(
+      metricsReport(
+        [{ route: '/foods', layouts: [figures('phone', 450)] }],
+        [],
+        [
+          releasesOf(
+            '/foods',
+            Array.from({ length: 24 }, (_, i) => [`0.1.${190 + i}`, 400, 300]),
+          ),
+        ],
+      ),
+    )
+    await goto('/admin', { waitUntil: 'hydration' })
+    await expect(page.locator(POINTS).first()).toBeAttached()
+
+    // Measured against a times label, which is always one line.
+    const { names, line } = await page.evaluate(() => {
+      const [x, y] = document
+        .querySelector('.release-trend')!
+        .querySelectorAll('[class$="-axis-component"]')
+      const heights = (axis: Element) =>
+        [...axis.querySelectorAll('.tick text')]
+          .filter((t) => t.textContent && getComputedStyle(t).opacity !== '0')
+          .map((t) => t.getBoundingClientRect().height)
+      return { names: heights(x!), line: Math.max(...heights(y!)) }
+    })
+
+    expect(names.length).toBeGreaterThan(1)
+    for (const height of names) expect(height).toBeLessThanOrEqual(line)
   })
 
   // Nor a bridge drawn across it, which would claim a trend nobody measured.

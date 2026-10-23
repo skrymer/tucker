@@ -89,6 +89,8 @@ function useReleaseSeries(
         type="x"
         :tick-format="tick"
         :tick-values="ticks"
+        tick-text-fit-mode="trim"
+        :tick-text-width="72"
         :tick-text-hide-overlapping="true"
         :tick-line="false"
         :grid-line="false"

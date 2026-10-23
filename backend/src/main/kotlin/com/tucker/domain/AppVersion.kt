@@ -7,11 +7,11 @@ class AppVersion(val value: String) : Comparable<AppVersion> {
     }
 
     private val precedence = value.substringBefore('+')
-    private val core: List<Int> = precedence.substringBefore('-').split('.').map(String::toInt)
+    private val core: List<String> = precedence.substringBefore('-').split('.')
     private val prerelease: List<String>? = precedence.substringAfter('-', "").ifEmpty { null }?.split('.')
 
     override fun compareTo(other: AppVersion): Int =
-        core.zip(other.core).map { (a, b) -> a.compareTo(b) }.firstOrNull { it != 0 }
+        core.zip(other.core).map { (a, b) -> NUMBER_ORDER.compare(a, b) }.firstOrNull { it != 0 }
             ?: comparePrereleases(prerelease, other.prerelease)
 
     private companion object {
@@ -34,6 +34,14 @@ private fun comparePrereleases(a: List<String>?, b: List<String>?): Int {
         ?: a.size.compareTo(b.size)
 }
 
+/**
+ * Numbers by value, at any size: semver allows no leading zero, so a longer number is
+ * the larger, and two of one length compare digit by digit.
+ */
+private val NUMBER_ORDER: Comparator<String> = compareBy<String> { it.length }.thenBy { it }
+
+private fun String.isNumber() = all { it in '0'..'9' }
+
 /** Numbers by value and before words; words by ASCII. */
 private val IDENTIFIER_ORDER: Comparator<String> =
-    compareBy<String> { it.toIntOrNull() == null }.thenBy { it.toIntOrNull() }.thenBy { it }
+    compareBy<String> { !it.isNumber() }.thenBy { if (it.isNumber()) it.length else 0 }.thenBy { it }
