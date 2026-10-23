@@ -9,7 +9,6 @@ DELETE FROM metric_event WHERE NOT (
     app_version GLOB '[0-9]*.[0-9]*.[0-9]*'
     AND app_version NOT GLOB '*[^0-9.]*'
     AND app_version NOT GLOB '*.*.*.*'
-    AND app_version NOT GLOB '*..*'
     AND app_version NOT GLOB '0[0-9]*'
     AND app_version NOT GLOB '*.0[0-9]*'
 );
