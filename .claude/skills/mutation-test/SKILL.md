@@ -159,13 +159,12 @@ Identical for both stacks; only step 1 and 2's commands differ.
      build"). Run the real test file green, unfiltered, then retry the identical
      write **once** — in F18 slice 6 that was accepted every time; a second refusal
      is a real objection, not noise.
-   - **Killed by an out-of-scope layer** — the module is *thin glue*, whose red
-     lives in a Playwright e2e, a real-stack smoke, or the Testcontainers e2e by
-     ADR 0013 ("thin glue gets no separate test"). The engine can't see those
-     layers, so these survive by construction. **Name the spec that kills it** and
-     move on — writing a standalone unit test for glue would break the coverage
-     policy, not honour it. If no spec kills it, it is a Real gap in that layer,
-     not in this one.
+   - **Killed by an out-of-scope layer** — *thin glue*, whose red lives in a
+     Playwright e2e, a smoke or the Testcontainers e2e (ADR 0013), so it survives by
+     construction. **Name the spec, then run it on a mutated copy**
+     ([`red-proof-e2e.sh`](references/red-proof-e2e.sh): a control, `nuxt prepare`,
+     red only when a named test fails); one not run is recorded *read, not run*. #522's
+     named kills came back GREEN three times. No spec kills it → a gap in that layer.
    - **Equivalent mutant** — semantically identical, so no test can kill it
      (`x >= 0` → `x > -1`, a re-ordering with no observable effect, a default that
      is never reached). Record it in one line with the reason. **A branch the code
@@ -229,7 +228,11 @@ Identical for both stacks; only step 1 and 2's commands differ.
    **Check which test kills a mutant you wrote a test for** (`killedBy` in
    `reports/mutation/mutation.json`). A kill by some other test can come from state
    leaked between tests and depend on test order: in #435 a listener-teardown mutant
-   stayed "killed" by an unrelated test after its own test had gone vacuous.
+   stayed "killed" by an unrelated test after its own test had gone vacuous. Both
+   engines name only the *first* killer, so credit a new test with a fix only if the
+   sweep before it listed that mutant SURVIVED (#522's "fixed" pitest bound was killed
+   already). A kill failing on something unrelated ("Unable to find … table") is
+   incidental: record the real killer in known-survivors, or a refactor revives it.
 
    Never raise a threshold or narrow the scope to make a survivor go away.
 
@@ -485,12 +488,9 @@ domain code and **~1.6s for anything a controller test covers**.
 
 ## Delegating triage
 
-With more than ~3 survivors without a standing `known-survivors` entry on unmoved code
-(#498 triaged 9, 11 and 6 inline, nearly all standing, and gate 5 upheld every verdict),
-spawn a read-only general-purpose `Agent` to classify them and return only the verdicts,
-briefed from `feature-sign-off/references/agent-briefs.md` (*The survivor triage*): the
-report is bulky, the conclusion small, and the classification judgement work.
-Write the tests yourself afterwards — don't let the agent edit the tree.
+Past ~3 survivors with no standing entry on unmoved code, a read-only `Agent` briefed
+from agent-briefs.md (*The survivor triage*) returns the verdicts (#498's standing ones
+were triaged inline, all upheld); you write the tests. Take its rows, not its summary.
 
 ## Related
 
