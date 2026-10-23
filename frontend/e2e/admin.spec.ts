@@ -72,6 +72,21 @@ async function releasePoint(page: Page, n: number) {
   return page.locator(selector).nth(index)
 }
 
+/** The points drawn on the per-release charts. */
+const POINTS = '.release-trend [class$="-point"]'
+
+/** A route's releases, each `[version, phone p75, desktop p75]`, 20 moves apiece. */
+const releasesOf = (route: string, releases: [string, number, number][]) => ({
+  route,
+  releases: releases.map(([version, phone, desktop]) => ({
+    version,
+    layouts: [
+      { layout: 'phone' as const, n: 20, p75: phone },
+      { layout: 'desktop' as const, n: 20, p75: desktop },
+    ],
+  })),
+})
+
 /** The fill of each part of the one bar drawn, from the axis out. */
 const partColours = (page: Page) =>
   page.evaluate(() =>
@@ -694,6 +709,183 @@ test.describe('as an Admin', () => {
       paths.flatMap((p) => p.getAttribute('d')?.match(/[A-Za-z]/g) ?? []),
     )
     expect(new Set(commands)).toEqual(new Set(['M', 'L']))
+  })
+
+  // The slowest release sits on the top of the shared scale, and the first and last
+  // on the ends of the axis: each point is still drawn whole.
+  test('draws every point whole and inside its chart', async ({
+    page,
+    goto,
+    network,
+    isMobile,
+  }) => {
+    test.skip(isMobile, 'a phone shows the notice instead')
+    network.use(
+      metricsReport(
+        [{ route: '/foods', layouts: [figures('phone', 450)] }],
+        [],
+        [
+          releasesOf('/foods', [
+            ['0.1.8', 1200, 300],
+            ['0.1.9', 700, 250],
+          ]),
+        ],
+      ),
+    )
+    await goto('/admin', { waitUntil: 'hydration' })
+    await expect(page.locator(POINTS).first()).toBeAttached()
+
+    const outside = await page.evaluate((points) => {
+      const chart = document.querySelector('.release-trend')!
+      const svg = chart.querySelector('svg')!.getBoundingClientRect()
+      // unovis clips each component in a style, not an attribute.
+      const plot = chart.querySelector(
+        '[class$="-scatter-component"]',
+      ) as SVGGraphicsElement
+      const clip = chart.querySelector('clipPath rect') as SVGRectElement
+      const at = plot.getScreenCTM()!
+      const [x, y] = [clip.x.baseVal.value, clip.y.baseVal.value]
+      const box = {
+        left: at.e + x,
+        top: at.f + y,
+        right: at.e + x + clip.width.baseVal.value,
+        bottom: at.f + y + clip.height.baseVal.value,
+      }
+      // The plot proper, inside the clip's overhang on every side.
+      const plotLeft = at.e
+      const plotRight = box.right + x
+      return [...chart.querySelectorAll(points)]
+        .map((p) => p.getBoundingClientRect())
+        .filter((p) => p.width > 0)
+        .filter(
+          (p) =>
+            p.top < Math.max(svg.top, box.top) ||
+            p.bottom > Math.min(svg.bottom, box.bottom) ||
+            p.left < box.left ||
+            p.right > box.right ||
+            p.left < plotLeft ||
+            p.right > plotRight,
+        ).length
+    }, POINTS)
+
+    expect(outside).toBe(0)
+  })
+
+  // One scale across the set, so a taller line is a slower page, not a zoomed one.
+  test("labels each chart's releases, and puts every chart on one scale in ms", async ({
+    page,
+    goto,
+    network,
+    isMobile,
+  }) => {
+    test.skip(isMobile, 'a phone shows the notice instead')
+    network.use(
+      metricsReport(
+        [{ route: '/foods', layouts: [figures('phone', 450)] }],
+        [],
+        [
+          releasesOf('/foods', [
+            ['0.1.9', 1200, 900],
+            ['0.1.10', 1100, 800],
+          ]),
+          releasesOf('/review', [
+            ['0.1.9', 300, 200],
+            ['0.1.10', 250, 150],
+          ]),
+        ],
+      ),
+    )
+    await goto('/admin', { waitUntil: 'hydration' })
+    await expect(page.locator(POINTS).first()).toBeAttached()
+
+    // Each chart draws two axes, the releases' then the times'. The times' axis
+    // also draws its grid as blank ticks, which are left out; the releases' has
+    // no grid, so a blank tick there is a release left unlabelled.
+    const [foodsX, foodsY, reviewX, reviewY] = await page.evaluate(() =>
+      [
+        ...document.querySelectorAll(
+          '.release-trend [class$="-axis-component"]',
+        ),
+      ].map((axis) =>
+        [...axis.querySelectorAll('.tick text')].map((t) => t.textContent),
+      ),
+    )
+    const labelled = (ticks: (string | null)[] | undefined) =>
+      (ticks ?? []).filter(Boolean)
+
+    expect(foodsX).toEqual(['0.1.9', '0.1.10'])
+    expect(reviewX).toEqual(['0.1.9', '0.1.10'])
+    expect(labelled(foodsY).length).toBeGreaterThan(1)
+    for (const tick of labelled(foodsY)) expect(tick).toMatch(/^\d+ ms$/)
+    expect(labelled(reviewY)).toEqual(labelled(foodsY))
+  })
+
+  // Colour is never the only signal, and the key draws what the lines do.
+  test('draws each line as its legend entry shows it, the desktop one dashed', async ({
+    page,
+    goto,
+    network,
+    isMobile,
+  }) => {
+    test.skip(isMobile, 'a phone shows the notice instead')
+    network.use(
+      metricsReport(
+        [{ route: '/foods', layouts: [figures('phone', 450)] }],
+        [],
+        [
+          releasesOf('/foods', [
+            ['0.1.9', 700, 300],
+            ['0.1.10', 600, 250],
+          ]),
+        ],
+      ),
+    )
+    await goto('/admin', { waitUntil: 'hydration' })
+    await expect(page.locator(POINTS).first()).toBeAttached()
+
+    const strokes = (selector: string) =>
+      page.evaluate(
+        (s) =>
+          [...document.querySelectorAll(s)].map((el) => {
+            const style = getComputedStyle(el)
+            return { stroke: style.stroke, dash: style.strokeDasharray }
+          }),
+        selector,
+      )
+    const legend = await strokes('[aria-label="Layouts"] line')
+    const lines = await strokes('.release-trend path[class$="-linePath"]')
+
+    expect(lines).toEqual(legend)
+    expect(legend[0]!.dash).toBe('none')
+    expect(legend[1]!.dash).not.toBe('none')
+    expect(legend[0]!.stroke).not.toBe(legend[1]!.stroke)
+  })
+
+  test("puts the release and each layout's figure on a line of its own in the tooltip", async ({
+    page,
+    goto,
+    network,
+    isMobile,
+  }) => {
+    test.skip(isMobile, 'a phone shows the notice instead')
+    network.use(
+      metricsReport(
+        [{ route: '/foods', layouts: [figures('phone', 450)] }],
+        [],
+        [releasesOf('/foods', [['0.1.9', 700, 300]])],
+      ),
+    )
+    await goto('/admin', { waitUntil: 'hydration' })
+
+    await (await releasePoint(page, 0)).hover()
+    const tooltip = page.locator('.release-trend [class*="-tooltip"]')
+    await expect(tooltip).toContainText('/foods · 0.1.9')
+
+    expect((await tooltip.innerText()).split('\n')).toEqual([
+      '/foods · 0.1.9',
+      'Phone 700 ms',
+      'Desktop 300 ms',
+    ])
   })
 
   // Too few moves is a gap in the line, never a zero it would dip to.
