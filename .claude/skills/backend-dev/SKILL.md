@@ -130,6 +130,13 @@ not restate them.
   stays green (#520's `Server-Timing` on a 404/403/400, found at code review).
 - **Never edit an applied migration** — the checksum changes and the next `docker compose up`
   refuses to start against your dev volume. Repair the stored checksum rather than wiping data.
+  An unmerged one you edit still fails every fast-suite context on `build/test-tucker.db`
+  ("Validate failed"): delete that file, never the migration's checksum test.
+- **A migration that keeps "the rows the domain type accepts" is run, not reasoned about.**
+  SQLite has no regex, so the predicate only approximates the type: run it in `sqlite3`
+  over the parser's extremes and over every shape a client could ever have sent. #522's
+  V27 passed two gates and kept `2147483648.0.0`, which `AppVersion` then threw on
+  (`\d+` matched, `String::toInt` overflowed) — so parse digits as text, or `toBigInteger`.
 - **An owner-first composite index retires the single-column one.** Every read is
   owner-scoped (ADR 0021), so once `(user_id, x)` exists an index on `(x)` alone is write
   cost no query reads: drop it in a new migration in the same change, and confirm with

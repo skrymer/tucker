@@ -98,7 +98,12 @@ added "the amended issue now has 26 rows", and the issue held 22. And a
 re-resolution marks the row it replaces in the same edit: #469 claimed two re-records
 that gate 5 found unmade. A row for a probe owed to gate 6 cites the figures the verdict
 file records (the width, the driven value), never the planned ones: #496's pack said
-"x 429" and "save 81.4", and the verdict held neither.
+"x 429" and "save 81.4", and the verdict held neither. A red proof is cited only after
+its log's verdict line is read as RED, and a revised fix cites the proof that went red on
+the final code: #522's pack twice cited a GREEN run as the red proof, and it took three
+resolutions passes to make faithful. Where an agent's summary line disagrees with its
+own rows, the pack takes the rows and gives the mismatch its own row — copying #522's
+triage summary ("15 … 12 … 5", rows 13 / 13 / 6) whole was still rejected.
 
 **One row per remedy, and a ruling covers only what its question named.** Every pack
 row is `| id | agent | finding | remedy (one) | resolution |`, and a finding that

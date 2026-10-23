@@ -168,7 +168,13 @@ assertion with the dev token), and no browser-level layer can reach it.
   load a chart lazily (`Lazy…`), or a deep-equal aria snapshot elsewhere changes. A
   grouped bar's tooltip index runs across all bars (`i % layouts` is the series); a long
   axis label wraps into `<tspan>`s (assert with `\s*`); an axis node can be replaced
-  between locating and `boundingBox()`, so read positions in one `evaluate`.
+  between locating and `boundingBox()`, so read positions in one `evaluate`. Four more
+  (#522's `ReleaseTrendChart`): a crowded axis wraps a label at every `.`, so `0.1.196`
+  stacks three lines high and eats the plot (a fixed `tick-text-width`); a label shown or
+  hidden for room fades over 400 ms (`--vis-axis-tick-label-hide-transition`, set `none`
+  in the chart's class), reading pale or invisible and freezing in an unfocused tab; a
+  point on the plot's edge is nudged inside it, so measure an inset against the step
+  between points; and a point outside the y-domain is not drawn at all — count points.
 - **Keyboard bugs in a Reka component need Playwright.** Some Reka handlers `await nextTick()`
   and then check `event.defaultPrevented` (Reka's `TagsInputInput` on Enter is one). A browser
   runs a microtask checkpoint between listeners, so that check happens *before* an ancestor's
