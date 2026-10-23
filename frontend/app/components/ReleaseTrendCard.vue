@@ -64,7 +64,11 @@ const SERIES: ReleaseSeries[] = [
           </li>
         </ul>
       </div>
-      <div class="grid grid-cols-2 gap-6 xl:grid-cols-3">
+      <p v-if="!scaleMax" class="text-body text-muted">
+        No release has a p75 yet: a layout needs five moves in a release for
+        one.
+      </p>
+      <div v-else class="grid grid-cols-2 gap-6 xl:grid-cols-3">
         <section v-for="r in routes" :key="r.route">
           <h3 class="text-label text-default">{{ r.route }}</h3>
           <ReleaseTrendChart

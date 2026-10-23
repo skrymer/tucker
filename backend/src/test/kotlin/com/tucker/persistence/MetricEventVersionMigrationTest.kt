@@ -13,8 +13,9 @@ class MetricEventVersionMigrationTest {
 
     @TempDir lateinit var tempDir: Path
 
+    /** A prerelease is a semantic version no deployed build has stamped, and goes with `dev`. */
     @Test
-    fun `removes a metric stored under a version that is not a semantic version, and keeps the rest`() {
+    fun `removes a metric stored under dev or a prerelease, and keeps a release's`() {
         val db = tempDir.resolve("pre-semver.db").toString()
 
         migrate(db, upTo = "26")
@@ -25,8 +26,29 @@ class MetricEventVersionMigrationTest {
         migrate(db, upTo = null)
 
         connect(db).use { connection ->
+            assertEquals(listOf("0.1.42"), connection.rows("SELECT app_version FROM metric_event ORDER BY id"))
+        }
+    }
+
+    /**
+     * SQLite has no regular expression, so a version shaped like a release but not a
+     * semantic one must still go: kept, it would make every report read fail.
+     */
+    @Test
+    fun `removes a metric stored under a version shaped like a release but not a semantic version`() {
+        val db = tempDir.resolve("near-semver.db").toString()
+        val stored = listOf(
+            "0.1.42", "10.0.7", "01.2.3", "1.02.3", "1.2.03", "1.2.3x", "1.2.3.4", "1.2", "1..3", "1.2.", ".1.2",
+        )
+
+        migrate(db, upTo = "26")
+        connect(db).use { connection -> stored.forEach { connection.execute(insert(it)) } }
+
+        migrate(db, upTo = null)
+
+        connect(db).use { connection ->
             assertEquals(
-                listOf("0.1.42", "0.2.0-rc.1+b5"),
+                listOf("0.1.42", "10.0.7"),
                 connection.rows("SELECT app_version FROM metric_event ORDER BY id"),
             )
         }

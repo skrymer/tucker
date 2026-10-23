@@ -711,9 +711,8 @@ test.describe('as an Admin', () => {
     expect(new Set(commands)).toEqual(new Set(['M', 'L']))
   })
 
-  // The slowest release sits on the top of the shared scale, and the first and last
-  // on the ends of the axis: each point is still drawn whole.
-  test('draws every point whole and inside its chart', async ({
+  // On the plot's edge, the first release's point would sit on the time axis.
+  test('keeps the first and last release in from the ends of their chart', async ({
     page,
     goto,
     network,
@@ -735,40 +734,21 @@ test.describe('as an Admin', () => {
     await goto('/admin', { waitUntil: 'hydration' })
     await expect(page.locator(POINTS).first()).toBeAttached()
 
-    const outside = await page.evaluate((points) => {
+    // The time axis' grid lines span the plot, so they mark its two ends.
+    const onAnEnd = await page.evaluate((points) => {
       const chart = document.querySelector('.release-trend')!
-      const svg = chart.querySelector('svg')!.getBoundingClientRect()
-      // unovis clips each component in a style, not an attribute.
-      const plot = chart.querySelector(
-        '[class$="-scatter-component"]',
-      ) as SVGGraphicsElement
-      const clip = chart.querySelector('clipPath rect') as SVGRectElement
-      const at = plot.getScreenCTM()!
-      const [x, y] = [clip.x.baseVal.value, clip.y.baseVal.value]
-      const box = {
-        left: at.e + x,
-        top: at.f + y,
-        right: at.e + x + clip.width.baseVal.value,
-        bottom: at.f + y + clip.height.baseVal.value,
-      }
-      // The plot proper, inside the clip's overhang on every side.
-      const plotLeft = at.e
-      const plotRight = box.right + x
+      const grid = [...chart.querySelectorAll('[class$="-grid"] line')].map(
+        (l) => l.getBoundingClientRect(),
+      )
+      const left = Math.min(...grid.map((g) => g.left))
+      const right = Math.max(...grid.map((g) => g.right))
       return [...chart.querySelectorAll(points)]
         .map((p) => p.getBoundingClientRect())
         .filter((p) => p.width > 0)
-        .filter(
-          (p) =>
-            p.top < Math.max(svg.top, box.top) ||
-            p.bottom > Math.min(svg.bottom, box.bottom) ||
-            p.left < box.left ||
-            p.right > box.right ||
-            p.left < plotLeft ||
-            p.right > plotRight,
-        ).length
+        .filter((p) => p.left <= left || p.right >= right).length
     }, POINTS)
 
-    expect(outside).toBe(0)
+    expect(onAnEnd).toBe(0)
   })
 
   // One scale across the set, so a taller line is a slower page, not a zoomed one.
@@ -886,6 +866,123 @@ test.describe('as an Admin', () => {
       'Phone 700 ms',
       'Desktop 300 ms',
     ])
+  })
+
+  // A chart with nothing to plot would still draw a scale, of 0 to 1 ms, over nothing.
+  test('says no release has a p75 yet, rather than drawing empty charts', async ({
+    page,
+    goto,
+    network,
+    isMobile,
+  }) => {
+    test.skip(isMobile, 'a phone shows the notice instead')
+    const route = releasesOf('/foods', [['0.1.9', 0, 0]])
+    route.releases[0]!.layouts = [
+      { layout: 'phone', n: 4, p75: null },
+      { layout: 'desktop', n: 1, p75: null },
+    ]
+    network.use(
+      metricsReport(
+        [{ route: '/foods', layouts: [figures('phone', 450)] }],
+        [],
+        [route],
+      ),
+    )
+    await goto('/admin', { waitUntil: 'hydration' })
+
+    await expect(
+      page.getByText(
+        'No release has a p75 yet: a layout needs five moves in a release for one.',
+      ),
+    ).toBeVisible()
+    await expect(page.locator('.release-trend')).toHaveCount(0)
+  })
+
+  // Every deploy is a release, so a range can hold more than one chart has room to name.
+  test("never draws two releases' names over each other", async ({
+    page,
+    goto,
+    network,
+    isMobile,
+  }) => {
+    test.skip(isMobile, 'a phone shows the notice instead')
+    network.use(
+      metricsReport(
+        [{ route: '/foods', layouts: [figures('phone', 450)] }],
+        [],
+        [
+          releasesOf(
+            '/foods',
+            Array.from({ length: 24 }, (_, i) => [`0.1.${190 + i}`, 400, 300]),
+          ),
+        ],
+      ),
+    )
+    await goto('/admin', { waitUntil: 'hydration' })
+    await expect(page.locator(POINTS).first()).toBeAttached()
+
+    const overlaps = await page.evaluate(() => {
+      const xAxis = document.querySelector(
+        '.release-trend [class$="-axis-component"]',
+      )!
+      const shown = [...xAxis.querySelectorAll('.tick text')]
+        .filter((t) => {
+          const style = getComputedStyle(t)
+          return (
+            t.textContent && style.opacity !== '0' && style.display !== 'none'
+          )
+        })
+        .map((t) => t.getBoundingClientRect())
+        .sort((a, b) => a.left - b.left)
+      return shown.filter((box, i) => i > 0 && box.left < shown[i - 1]!.right)
+        .length
+    })
+
+    expect(overlaps).toBe(0)
+  })
+
+  // Nor a bridge drawn across it, which would claim a trend nobody measured.
+  test('breaks a line at a release with too few moves, rather than joining across it', async ({
+    page,
+    goto,
+    network,
+    isMobile,
+  }) => {
+    test.skip(isMobile, 'a phone shows the notice instead')
+    const route = releasesOf('/foods', [
+      ['0.1.8', 700, 300],
+      ['0.1.9', 650, 0],
+      ['0.1.10', 600, 250],
+    ])
+    route.releases[1]!.layouts[1] = { layout: 'desktop', n: 2, p75: null }
+    network.use(
+      metricsReport(
+        [{ route: '/foods', layouts: [figures('phone', 450)] }],
+        [],
+        [route],
+      ),
+    )
+    await goto('/admin', { waitUntil: 'hydration' })
+    await expect(page.locator(POINTS).first()).toBeAttached()
+
+    const drawn = await page.evaluate(() => ({
+      // Each line's runs: a new run starts at every M.
+      runs: [
+        ...document.querySelectorAll('.release-trend path[class$="-linePath"]'),
+      ].map((p) => (p.getAttribute('d') ?? '').match(/M/g)?.length ?? 0),
+      // unovis always draws a bridge across a gap, and shows it only on request.
+      bridges: [
+        ...document.querySelectorAll(
+          '.release-trend path[class$="-interpolated-path"]',
+        ),
+      ].filter((p) => {
+        const style = getComputedStyle(p)
+        return style.opacity !== '0' && style.stroke !== 'none'
+      }).length,
+    }))
+
+    // Phone's line runs unbroken; desktop's breaks at 0.1.9 into two runs.
+    expect(drawn).toEqual({ runs: [1, 2], bridges: 0 })
   })
 
   // Too few moves is a gap in the line, never a zero it would dip to.

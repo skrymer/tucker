@@ -555,7 +555,7 @@ measurements, which say nothing of who made them
 | `reference_food_synonym` | Query rewrites for Reference Food search (`term` → `replacement`) | Flyway (V17) |
 | `nutrient_reference_value` | NHMRC Nutrient Reference Values by nutrient, sex and the age a band opens at | Flyway (V18) |
 | `app_config` | Installation-wide key/value settings, such as the VAPID key pair | The app, on first boot |
-| `metric_event` | One route change per row: route template, time, its wait on `/api` and the server's part of that, whether it was the route's first visit, layout, installed, the browser engine and OS read off the request's user agent, app version, when recorded. No `user_id`, no user agent | `POST /api/metrics` (V24–V26) |
+| `metric_event` | One route change per row: route template, time, its wait on `/api` and the server's part of that, whether it was the route's first visit, layout, installed, the browser engine and OS read off the request's user agent, app version, when recorded. No `user_id`, no user agent | `POST /api/metrics` (V24–V27) |
 | `id_sequence` | The last id handed out per aggregate table, so an aggregate has its id before it is stored ([ADR 0036](adr/0036-an-aggregate-has-its-identity-from-creation.md)) | Flyway (V21), then the app on every create |
 
 ## Keeping this current

@@ -22,7 +22,6 @@ const props = defineProps<{
   series: ReleaseSeries[]
 }>()
 
-const MARGIN = { top: 8, right: 8 }
 const x = (_: ReleasePoint, i: number) => i
 const yOf = {
   phone: (d: ReleasePoint) => d.phone,
@@ -69,7 +68,6 @@ function useReleaseSeries(
       :duration="0"
       :y-domain="[0, scaleMax]"
       :x-domain="xDomain"
-      :margin="MARGIN"
     >
       <template v-for="s in series" :key="s.layout">
         <VisLine
@@ -91,6 +89,7 @@ function useReleaseSeries(
         type="x"
         :tick-format="tick"
         :tick-values="ticks"
+        :tick-text-hide-overlapping="true"
         :tick-line="false"
         :grid-line="false"
       />
