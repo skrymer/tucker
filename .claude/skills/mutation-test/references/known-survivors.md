@@ -1722,9 +1722,12 @@ is still loading raises no error*). The six left are **equivalent**:
   called it).
 - **`AppVersionKt` `isNumber`'s upper bound (`c < 58` → `c <= 58`) — equivalent**: `in
   '0'..'9'` compiles to `48 <= c && c < 58`, and the shifted bound admits only `:`, which
-  `SEMVER` refuses before any comparison runs. The lower bound is killed by *orders a number
-  of any digit before a word, even one that sorts before digits* (a `-` word sorts before
-  every digit as text).
+  `SEMVER` refuses before any comparison runs. The lower bound dies to *ignores build metadata
+  when ordering* (`rc.0` against `rc.1`) and to *orders a number of any digit before a word,
+  even one that sorts before digits*.
+- **`ReleaseTrendCard.vue`'s `scaleMax` → `() => undefined` — out-of-scope kill**: only the
+  chart reads it, and happy-dom draws no chart. *labels each chart's releases, and puts every
+  chart on one scale in ms* goes red on a copy (each chart falls back to its own scale).
 - A chart's `margin` scored as a real gap and moved nothing a screenshot could see; it was
   deleted rather than pinned.
 
