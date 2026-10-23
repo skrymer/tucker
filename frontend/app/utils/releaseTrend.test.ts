@@ -1,10 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  figureIn,
-  layoutFigure,
-  releasePoints,
-  sharedScaleMax,
-} from './releaseTrend'
+import { figureIn, releasePoints, sharedScaleMax } from './releaseTrend'
 
 const release = (
   version: string,
@@ -21,17 +16,14 @@ const release = (
 describe('releasePoints', () => {
   // A release with too few moves is a gap in its line, never a zero it would dip to.
   it("gives each release its layouts' p75, and none where a layout had too few moves", () => {
-    const points = releasePoints({
-      route: '/foods',
-      releases: [
-        release('0.1.9', { n: 20, p75: 450 }, { n: 3, p75: null }),
-        release('0.1.10', { n: 0, p75: null }, { n: 12, p75: 180 }),
-      ],
-    })
+    const older = release('0.1.9', { n: 20, p75: 450 }, { n: 3, p75: null })
+    const newer = release('0.1.10', { n: 0, p75: null }, { n: 12, p75: 180 })
+
+    const points = releasePoints({ route: '/foods', releases: [older, newer] })
 
     expect(points).toEqual([
-      { version: '0.1.9', phone: 450, desktop: undefined },
-      { version: '0.1.10', phone: undefined, desktop: 180 },
+      { release: older, phone: 450, desktop: undefined },
+      { release: newer, phone: undefined, desktop: 180 },
     ])
   })
 })
@@ -67,14 +59,5 @@ describe('figureIn', () => {
 
     expect(figureIn(rel, 'phone')).toBe('450 ms')
     expect(figureIn(rel, 'desktop')).toBe('too few (n 3)')
-  })
-})
-
-describe('layoutFigure', () => {
-  it("states a layout's p75, or why it has none", () => {
-    expect(layoutFigure({ layout: 'phone', n: 20, p75: 450 })).toBe('450 ms')
-    expect(layoutFigure({ layout: 'desktop', n: 3, p75: null })).toBe(
-      'too few (n 3)',
-    )
   })
 })

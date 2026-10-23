@@ -165,13 +165,15 @@ function matching(sent: Sent[], { version, installed }: MetricQuery): Sent[] {
 function countedRoutes(sent: Sent[]): RouteFigures[] {
   return [...new Set(sent.map((e) => e.route))].map((route) => ({
     route,
-    layouts: (['phone', 'desktop'] as const).map((layout) =>
-      tooFew(
-        layout,
-        sent.filter((e) => e.route === route && e.layout === layout).length,
-      ),
-    ),
+    layouts: countedLayouts(sent.filter((e) => e.route === route)),
   }))
+}
+
+/** How many of [moves] each layout made, with no figure. */
+function countedLayouts(moves: Sent[]): LayoutFigures[] {
+  return (['phone', 'desktop'] as const).map((layout) =>
+    tooFew(layout, moves.filter((e) => e.layout === layout).length),
+  )
 }
 
 /**
@@ -185,16 +187,9 @@ function countedReleases(sent: Sent[]): RouteReleases[] {
     route,
     releases: versions.map((version) => ({
       version,
-      layouts: (['phone', 'desktop'] as const).map((layout) => ({
-        layout,
-        n: sent.filter(
-          (e) =>
-            e.route === route &&
-            e.appVersion === version &&
-            e.layout === layout,
-        ).length,
-        p75: null,
-      })),
+      layouts: countedLayouts(
+        sent.filter((e) => e.route === route && e.appVersion === version),
+      ).map(({ layout, n }) => ({ layout, n, p75: null })),
     })),
   }))
 }

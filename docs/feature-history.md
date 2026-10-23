@@ -2070,7 +2070,8 @@ null` now means two things that earn opposite messages — the same trap
   - **Rulings (user):** release order is **semver precedence**, and an app version is
     always semver, made true in source rather than by convention: `AppVersion`
     refuses anything else, so `POST /api/metrics` answers 400, and the frontend's
-    unstamped fallback became `0.0.0-dev` (ADR 0038).
+    unstamped fallback became `0.0.0-dev` (ADR 0038). V27 deletes the rows stored
+    under any other version (a dev volume's `dev`), which could no longer be read.
   - **Traps:** every unovis container is a `role="figure"`, so a second chart breaks a
     bare `getByRole('figure')` — the small charts are `aria-hidden` behind their
     tables; unovis's Scatter wraps each point in a `point-group` and still emits an

@@ -30,6 +30,17 @@ class ReleaseTrendTest {
         )
     }
 
+    /** Two builds of one release share its precedence, so their order falls back to the text. */
+    @Test
+    fun `lists two builds of one release by their text, whatever order their moves arrived in`() {
+        val trend = ReleaseTrend.of(listOf("0.2.0+b2", "0.2.0+b10", "0.1.0").map { routeChange(it) })
+
+        assertEquals(
+            listOf("0.1.0", "0.2.0+b10", "0.2.0+b2"),
+            trend.routes.single().releases.map { it.version },
+        )
+    }
+
     /** The charts share one x-axis, so a release a route was never visited in is a gap, not a missing tick. */
     @Test
     fun `gives every route every release, with no figure where the route had no moves`() {
@@ -62,7 +73,7 @@ class ReleaseTrendTest {
     private fun ReleaseTrend.figuresFor(route: String, layout: MetricLayout) =
         routes.single { it.route == route }.releases.map { release ->
             val figures = release.layouts.single { it.layout == layout }
-            release.version to Figure(figures.n, figures.percentiles?.p75)
+            release.version to Figure(figures.n, figures.p75)
         }
 
     private fun routeChange(

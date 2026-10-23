@@ -1,7 +1,7 @@
 package com.tucker.domain
 
 /** The version of the app a [MetricEvent] was measured in, a semantic version. */
-class AppVersion private constructor(val value: String) : Comparable<AppVersion> {
+class AppVersion(val value: String) : Comparable<AppVersion> {
     init {
         require(SEMVER.matches(value)) { "\"$value\" is not a semantic version" }
     }
@@ -16,9 +16,7 @@ class AppVersion private constructor(val value: String) : Comparable<AppVersion>
 
     override fun toString() = value
 
-    companion object {
-        fun of(value: String): AppVersion = AppVersion(value)
-
+    private companion object {
         /** semver.org's own pattern, which also refuses a leading zero. */
         private val SEMVER = Regex(
             "(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)" +

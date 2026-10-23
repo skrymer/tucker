@@ -43,10 +43,10 @@ class AppVersionTest {
 
     @Test
     fun `refuses a version that is not a semantic version`() {
-        val refused = assertFailsWith<IllegalArgumentException> { AppVersion.of("dev") }
+        val refused = assertFailsWith<IllegalArgumentException> { AppVersion("dev") }
 
         assertEquals("\"dev\" is not a semantic version", refused.message)
     }
 
-    private fun sorted(versions: List<String>) = versions.map(AppVersion::of).sorted().map { it.value }
+    private fun sorted(versions: List<String>) = versions.map(::AppVersion).sorted().map { it.value }
 }

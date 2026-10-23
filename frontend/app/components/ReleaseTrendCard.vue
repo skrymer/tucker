@@ -18,14 +18,14 @@ const scaleMax = computed(() => sharedScaleMax(props.routes))
 const SERIES: ReleaseSeries[] = [
   {
     layout: 'phone',
-    label: 'Phone',
+    label: LAYOUT_NAMES.phone,
     color: 'var(--tucker-cat-7)',
     dash: undefined,
     shape: 'circle',
   },
   {
     layout: 'desktop',
-    label: 'Desktop',
+    label: LAYOUT_NAMES.desktop,
     color: 'var(--tucker-cat-4)',
     dash: [4, 3],
     shape: 'square',

@@ -1,7 +1,18 @@
 package com.tucker.domain
 
+/** One layout's moves in one release: their [n] always, their [p75] only once there are enough. */
+data class ReleaseLayoutFigures(val layout: MetricLayout, val n: Int, val p75: Int?) {
+    companion object {
+        fun of(layout: MetricLayout, moves: List<MetricEvent>) = ReleaseLayoutFigures(
+            layout,
+            moves.size,
+            moves.takeIf { it.size >= LayoutFigures.MIN_SAMPLES }?.let { Percentiles.p75Of(it.map { m -> m.valueMs }) },
+        )
+    }
+}
+
 /** How one route performed in one release, in every layout. */
-data class ReleaseFigures(val version: String, val layouts: List<LayoutFigures>)
+data class ReleaseFigures(val version: String, val layouts: List<ReleaseLayoutFigures>)
 
 /** One route across every release, in release order. */
 data class RouteReleases(val route: String, val releases: List<ReleaseFigures>)
@@ -13,8 +24,8 @@ data class RouteReleases(val route: String, val releases: List<ReleaseFigures>)
 data class ReleaseTrend(val routes: List<RouteReleases>) {
     companion object {
         fun of(events: List<MetricEvent>): ReleaseTrend {
-            val releases = events.map { it.source }.distinctBy { it.appVersion }.sortedBy { it.release }
-                .map { it.appVersion }
+            val releases = events.map { it.source.appVersion }.distinct()
+                .sortedWith(compareBy<String> { AppVersion(it) }.thenBy { it })
             return ReleaseTrend(
                 events.groupBy { it.route }.toSortedMap().map { (route, ofRoute) ->
                     val byRelease = ofRoute.groupBy { it.source.appVersion }
@@ -25,7 +36,10 @@ data class ReleaseTrend(val routes: List<RouteReleases>) {
 
         private fun figuresOf(version: String, moves: List<MetricEvent>): ReleaseFigures {
             val byLayout = moves.groupBy { it.source.layout }
-            return ReleaseFigures(version, MetricLayout.entries.map { LayoutFigures.of(it, byLayout[it].orEmpty()) })
+            return ReleaseFigures(
+                version,
+                MetricLayout.entries.map { ReleaseLayoutFigures.of(it, byLayout[it].orEmpty()) },
+            )
         }
     }
 }

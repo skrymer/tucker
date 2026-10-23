@@ -7,6 +7,7 @@ import com.tucker.domain.MetricLayout
 import com.tucker.domain.MetricRange
 import com.tucker.domain.PerformanceReport
 import com.tucker.domain.ReleaseFigures
+import com.tucker.domain.ReleaseLayoutFigures
 import com.tucker.domain.ReleaseTrend
 import com.tucker.domain.RouteFigures
 import com.tucker.domain.RouteReleases
@@ -59,7 +60,7 @@ data class RouteFiguresResponse(val route: String, val layouts: List<LayoutFigur
 
 /** One layout's p75 in one release (ms), only once there are enough samples. */
 data class ReleaseLayoutResponse(val layout: MetricLayout, val n: Int, val p75: Int?) {
-    constructor(figures: LayoutFigures) : this(figures.layout, figures.n, figures.percentiles?.p75)
+    constructor(figures: ReleaseLayoutFigures) : this(figures.layout, figures.n, figures.p75)
 }
 
 data class ReleaseFiguresResponse(val version: String, val layouts: List<ReleaseLayoutResponse>) {
@@ -102,10 +103,13 @@ class AdminMetricsController(private val metrics: MetricEventRepository, private
     ): PerformanceReportResponse {
         val since = (range ?: MetricRange.MONTH).since(clock.instant())
         val filter = MetricFilter(since, engine, version?.takeIf { it.isNotBlank() }, installed)
+        // Releases are the trend's axis, so it reads every version whichever is chosen.
+        val everyVersion = metrics.find(filter.copy(appVersion = null))
+        val chosen = if (filter.appVersion == null) everyVersion else metrics.find(filter)
         return PerformanceReportResponse(
-            PerformanceReport.of(metrics.find(filter)),
+            PerformanceReport.of(chosen),
             metrics.versionsSince(since),
-            ReleaseTrend.of(metrics.find(filter.copy(appVersion = null))),
+            ReleaseTrend.of(everyVersion),
         )
     }
 

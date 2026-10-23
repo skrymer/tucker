@@ -15,8 +15,6 @@ import type { components } from '#open-fetch-schemas/api'
 import type { ReleasePoint, ReleaseSeries } from '~/utils/releaseTrend'
 
 type RouteReleases = components['schemas']['RouteReleasesResponse']
-type Release = RouteReleases['releases'][number]
-type Datum = ReleasePoint & { release: Release }
 
 const props = defineProps<{
   route: RouteReleases
@@ -24,7 +22,15 @@ const props = defineProps<{
   series: ReleaseSeries[]
 }>()
 
-const { data, x, tick, triggers } = useReleaseSeries(
+const MARGIN = { top: 8, right: 8 }
+const x = (_: ReleasePoint, i: number) => i
+const yOf = {
+  phone: (d: ReleasePoint) => d.phone,
+  desktop: (d: ReleasePoint) => d.desktop,
+}
+const msTick = (ms: number) => `${ms} ms`
+
+const { data, ticks, xDomain, tick, triggers } = useReleaseSeries(
   () => props.route,
   () => props.series,
 )
@@ -33,21 +39,19 @@ function useReleaseSeries(
   route: () => RouteReleases,
   series: () => ReleaseSeries[],
 ) {
-  const data = computed<Datum[]>(() =>
-    releasePoints(route()).map((point, i) => ({
-      ...point,
-      release: route().releases[i]!,
-    })),
-  )
+  const data = computed(() => releasePoints(route()))
   // Either layout's point states the whole release, both layouts' figures.
-  const pointLine = ({ release }: Datum) =>
+  const pointLine = ({ release }: ReleasePoint) =>
     `<strong>${route().route} · ${release.version}</strong><br>` +
     series()
       .map(({ layout, label }) => `${label} ${figureIn(release, layout)}`)
       .join('<br>')
   return {
     data,
-    x: (_: Datum, i: number) => i,
+    ticks: computed(() => data.value.map((_, i) => i)),
+    xDomain: computed(
+      () => [-0.5, Math.max(data.value.length - 0.5, 0.5)] as [number, number],
+    ),
     tick: (i: number) => data.value[i]?.release.version ?? '',
     triggers: { [Scatter.selectors.point]: pointLine },
   }
@@ -64,20 +68,20 @@ function useReleaseSeries(
       :height="140"
       :duration="0"
       :y-domain="[0, scaleMax]"
-      :x-domain="[-0.5, Math.max(data.length - 0.5, 0.5)]"
-      :margin="{ top: 8, right: 8 }"
+      :x-domain="xDomain"
+      :margin="MARGIN"
     >
       <template v-for="s in series" :key="s.layout">
         <VisLine
           :x="x"
-          :y="(d: Datum) => d[s.layout]"
+          :y="yOf[s.layout]"
           :color="s.color"
           :line-dash-array="s.dash"
           :curve-type="CurveType.Linear"
         />
         <VisScatter
           :x="x"
-          :y="(d: Datum) => d[s.layout]"
+          :y="yOf[s.layout]"
           :color="s.color"
           :shape="s.shape"
           :size="8"
@@ -86,13 +90,13 @@ function useReleaseSeries(
       <VisAxis
         type="x"
         :tick-format="tick"
-        :tick-values="data.map((_, i) => i)"
+        :tick-values="ticks"
         :tick-line="false"
         :grid-line="false"
       />
       <VisAxis
         type="y"
-        :tick-format="(ms: number) => `${ms} ms`"
+        :tick-format="msTick"
         :num-ticks="3"
         :tick-line="false"
         :domain-line="false"
