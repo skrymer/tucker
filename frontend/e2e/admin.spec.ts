@@ -736,12 +736,13 @@ test.describe('as an Admin', () => {
     await expect(page.locator(POINTS).first()).toBeAttached()
     await page.locator('.release-trend').first().scrollIntoViewIfNeeded()
 
-    // A clip does not change a bounding box, so each edge is hit-tested instead.
-    const clipped = await page.evaluate((points) => {
-      const drawn = [...document.querySelectorAll(points)].filter(
+    // A point off the scale is not drawn at all; one cut by the plot's clip keeps
+    // its bounding box, so each edge is hit-tested instead.
+    const { drawn, clipped } = await page.evaluate((points) => {
+      const shown = [...document.querySelectorAll(points)].filter(
         (p) => p.getBoundingClientRect().width > 0,
       )
-      return drawn.filter((p) => {
+      const cut = shown.filter((p) => {
         const b = p.getBoundingClientRect()
         const [cx, cy] = [b.left + b.width / 2, b.top + b.height / 2]
         const edges: [number, number][] = [
@@ -754,9 +755,12 @@ test.describe('as an Admin', () => {
           const hit = document.elementFromPoint(x, y)
           return !hit || !(hit === p || p.contains(hit))
         })
-      }).length
+      })
+      return { drawn: shown.length, clipped: cut.length }
     }, POINTS)
 
+    // Two releases, each with a phone and a desktop figure.
+    expect(drawn).toBe(4)
     expect(clipped).toBe(0)
   })
 

@@ -113,6 +113,30 @@ describe('ReleaseTrendCard', () => {
     ).toEqual(['/check', '/foods'])
   })
 
+  // Moves of 0 ms are measured moves: a p75 of 0 is a figure, not its absence.
+  it('charts a release whose p75 is 0 ms', async () => {
+    await renderSuspended(ReleaseTrendCard, {
+      props: {
+        routes: [
+          {
+            route: '/foods',
+            releases: [release('0.1.9', { n: 5, p75: 0 }, { n: 0, p75: null })],
+          },
+        ],
+      },
+    })
+
+    expect(
+      screen.queryByText(
+        'No release has a p75 yet: a layout needs five moves in a release for one.',
+      ),
+    ).not.toBeInTheDocument()
+    expect(rowsOf(screen.getByRole('table', { name: '/foods' }))).toEqual([
+      ['Release', 'Phone', 'Desktop'],
+      ['0.1.9', '0 ms', 'too few (n 0)'],
+    ])
+  })
+
   // The sentence replaces the empty charts, not the counts a screen reader is read.
   it("still states each release's count when no release has a p75 yet", async () => {
     await renderSuspended(ReleaseTrendCard, {
