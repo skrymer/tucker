@@ -14,8 +14,6 @@ class AppVersion(val value: String) : Comparable<AppVersion> {
         core.zip(other.core).map { (a, b) -> a.compareTo(b) }.firstOrNull { it != 0 }
             ?: comparePrereleases(prerelease, other.prerelease)
 
-    override fun toString() = value
-
     private companion object {
         /** semver.org's own pattern, which also refuses a leading zero. */
         private val SEMVER = Regex(
