@@ -1704,7 +1704,8 @@ is still loading raises no error*). The six left are **equivalent**:
   straight line*), the tick format, tick values and `?? ''` (*labels each chart's releases, and
   puts every chart on one scale in ms*), the x-domain (*keeps the first and last release in
   from the ends of their chart*), `tick-text-hide-overlapping` (*never draws two releases'
-  names over each other*), the tick-text trim (*names each release it labels on one line*),
+  names over each other*), the tick-text width and the cancelled label fade (*names each
+  release it labels on one line*),
   the tooltip's `<br>` (*puts the release and each layout's figure on a line of its own*), the
   phone point's shape (*draws no point for a release with too few moves in a layout*). **Read,
   not run**: the y accessors, the desktop shape, the tooltip trigger and its text, and the
