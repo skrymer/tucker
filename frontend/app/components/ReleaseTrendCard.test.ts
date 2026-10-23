@@ -82,6 +82,37 @@ describe('ReleaseTrendCard', () => {
     ])
   })
 
+  // One route with a figure is enough to chart them all, its gaps and its neighbour's included.
+  it('charts every route once any release has a p75, beside a route that has none', async () => {
+    await renderSuspended(ReleaseTrendCard, {
+      props: {
+        routes: [
+          {
+            route: '/check',
+            releases: [
+              release('0.1.9', { n: 4, p75: null }, { n: 0, p75: null }),
+            ],
+          },
+          {
+            route: '/foods',
+            releases: [
+              release('0.1.9', { n: 20, p75: 450 }, { n: 3, p75: null }),
+            ],
+          },
+        ],
+      },
+    })
+
+    expect(
+      screen.queryByText(
+        'No release has a p75 yet: a layout needs five moves in a release for one.',
+      ),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent),
+    ).toEqual(['/check', '/foods'])
+  })
+
   // The sentence replaces the empty charts, not the counts a screen reader is read.
   it("still states each release's count when no release has a p75 yet", async () => {
     await renderSuspended(ReleaseTrendCard, {
