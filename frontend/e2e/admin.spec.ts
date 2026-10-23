@@ -734,21 +734,30 @@ test.describe('as an Admin', () => {
     await goto('/admin', { waitUntil: 'hydration' })
     await expect(page.locator(POINTS).first()).toBeAttached()
 
-    // The time axis' grid lines span the plot, so they mark its two ends.
-    const onAnEnd = await page.evaluate((points) => {
+    // The time axis' grid lines span the plot, so they mark its two ends. Each
+    // release sits half a step in from them, a step being the gap between two.
+    const inset = await page.evaluate((points) => {
       const chart = document.querySelector('.release-trend')!
       const grid = [...chart.querySelectorAll('[class$="-grid"] line')].map(
         (l) => l.getBoundingClientRect(),
       )
-      const left = Math.min(...grid.map((g) => g.left))
-      const right = Math.max(...grid.map((g) => g.right))
-      return [...chart.querySelectorAll(points)]
-        .map((p) => p.getBoundingClientRect())
-        .filter((p) => p.width > 0)
-        .filter((p) => p.left <= left || p.right >= right).length
+      const centres = [
+        ...new Set(
+          [...chart.querySelectorAll(points)]
+            .map((p) => p.getBoundingClientRect())
+            .filter((p) => p.width > 0)
+            .map((p) => Math.round(p.left + p.width / 2)),
+        ),
+      ].sort((a, b) => a - b)
+      const step = centres[1]! - centres[0]!
+      return {
+        left: (centres[0]! - Math.min(...grid.map((g) => g.left))) / step,
+        right: (Math.max(...grid.map((g) => g.right)) - centres.at(-1)!) / step,
+      }
     }, POINTS)
 
-    expect(onAnEnd).toBe(0)
+    expect(inset.left).toBeGreaterThan(0.4)
+    expect(inset.right).toBeGreaterThan(0.4)
   })
 
   // One scale across the set, so a taller line is a slower page, not a zoomed one.
