@@ -96,6 +96,15 @@ class MetricEventTest {
         assertEquals(MetricKind.INP, tap.kind)
     }
 
+    @Test
+    fun `refuses a web vital on a route that is not a route template`() {
+        val refused = assertFailsWith<IllegalArgumentException> {
+            WebVital(VitalKind.LCP, route = "/foods/42?tab=all", valueMs = 1_840, source = source())
+        }
+
+        assertEquals("\"/foods/42?tab=all\" is not a route template", refused.message)
+    }
+
     private val event = RouteChange(
         route = "/review",
         valueMs = 420,

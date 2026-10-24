@@ -36,6 +36,26 @@ describe('a web vital put on the route it happened on', () => {
     expect(recorded).toEqual([{ kind: 'inp', route: '/', valueMs: 240 }])
   })
 
+  it('records nothing for a tap whose moment is unknown', async () => {
+    const { router, recorded, take } = visiting()
+    await router.push('/')
+
+    take({ name: 'INP', value: 240, entries: [] })
+
+    expect(recorded).toEqual([])
+  })
+
+  it('lets a move to a path no page matches land, and puts nothing on it', async () => {
+    const { router, clock, recorded, take } = visiting()
+    await router.push('/')
+    clock.now = 1_000
+
+    await expect(router.push('/nowhere')).resolves.toBeUndefined()
+    take({ name: 'INP', value: 240, entries: [{ startTime: 1_500 }] })
+
+    expect(recorded).toEqual([{ kind: 'inp', route: '/', valueMs: 240 }])
+  })
+
   it('keeps a tap on the page still showing when a move to another was refused', async () => {
     const { router, clock, recorded, take } = visiting()
     router.beforeEach((to) => to.path !== '/foods')
