@@ -12,6 +12,9 @@ data class Percentiles(val p50: Int, val p75: Int, val p95: Int) {
 
         fun p75Of(times: List<Int>): Int = at(P75, times.sorted())
 
+        /** Fewer, and a percentile is one navigation's luck rather than a route's speed (ADR 0038). */
+        const val MIN_SAMPLES = 5
+
         /** The nearest-rank [p]-th percentile of [sorted]. */
         internal fun at(p: Double, sorted: List<Int>) = sorted[rankIndex(p, sorted.size)]
 
@@ -58,7 +61,7 @@ data class LayoutFigures(
 ) {
     companion object {
         fun of(layout: MetricLayout, moves: List<RouteChange>): LayoutFigures {
-            if (moves.size < MIN_SAMPLES) return LayoutFigures(layout, moves.size, null, null, null, null)
+            if (moves.size < Percentiles.MIN_SAMPLES) return LayoutFigures(layout, moves.size, null, null, null, null)
             return LayoutFigures(
                 layout,
                 moves.size,
@@ -71,11 +74,8 @@ data class LayoutFigures(
 
         private fun coldP75(moves: List<RouteChange>): Int? =
             moves.filter { it.firstVisit }.map { it.valueMs }
-                .takeIf { it.size >= MIN_SAMPLES }
+                .takeIf { it.size >= Percentiles.MIN_SAMPLES }
                 ?.let { Percentiles.p75Of(it) }
-
-        /** Fewer, and a percentile is one navigation's luck rather than a route's speed (ADR 0038). */
-        const val MIN_SAMPLES = 5
     }
 }
 

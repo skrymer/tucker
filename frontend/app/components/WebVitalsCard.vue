@@ -42,12 +42,9 @@ const tiles = computed(() =>
               {{ LAYOUT_NAMES[l.layout] }}
             </th>
             <td class="py-0.5 text-right text-body text-default tabular-nums">
-              <UTooltip
-                :text="`n ${l.n} · p50 ${l.p50} ms · p75 ${l.p75} ms · p95 ${l.p95} ms`"
-                :disabled="l.p75 == null"
-              >
+              <UTooltip :text="figuresLine(l)" :disabled="l.p75 == null">
                 <span tabindex="0">
-                  {{ l.p75 == null ? tooFewLabel(l.n) : `${l.p75} ms` }}
+                  {{ p75Label(l) }}
                 </span>
               </UTooltip>
             </td>

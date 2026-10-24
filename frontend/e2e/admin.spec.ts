@@ -1011,7 +1011,7 @@ test.describe('as an Admin', () => {
     await figure.hover()
 
     // The tooltip's role="tooltip" node is Reka's aria-hidden twin of what shows.
-    const every = 'n 20 · p50 1800 ms · p75 2140 ms · p95 3900 ms'
+    const every = 'n 20 · p50 1800 · p75 2140 · p95 3900 ms'
     await expect(
       page
         .getByText(every, { exact: true })

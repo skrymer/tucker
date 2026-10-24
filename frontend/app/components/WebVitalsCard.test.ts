@@ -1,25 +1,15 @@
 import { describe, expect, it, vi } from 'vitest'
-import { renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen, within } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import type { components } from '#open-fetch-schemas/api'
-import { UApp } from '#components'
 import { noWebVitals, vitalIn } from '~~/test/mocks/handlers/metrics'
+import { renderInApp } from '~~/test/render-in-app'
 import WebVitalsCard from './WebVitalsCard.vue'
 
 type WebVitals = components['schemas']['WebVitalsResponse']
 
-/** Inside the app's root, as on the page, which provides what its tooltips need. */
-function renderCard(webVitals: Partial<WebVitals>) {
-  return renderSuspended(
-    defineComponent({
-      render: () =>
-        h(UApp, () =>
-          h(WebVitalsCard, { webVitals: { ...noWebVitals(), ...webVitals } }),
-        ),
-    }),
-  )
-}
+const renderCard = (webVitals: Partial<WebVitals>) =>
+  renderInApp(WebVitalsCard, { webVitals: { ...noWebVitals(), ...webVitals } })
 
 describe('WebVitalsCard', () => {
   it('is headed as page load and interaction, over every page', async () => {
@@ -85,7 +75,7 @@ describe('WebVitalsCard', () => {
 
     await vi.waitFor(() =>
       expect(figure).toHaveAccessibleDescription(
-        'n 9 · p50 120 ms · p75 180 ms · p95 260 ms',
+        'n 9 · p50 120 · p75 180 · p95 260 ms',
       ),
     )
   })

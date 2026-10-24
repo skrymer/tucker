@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { measured, tooFew } from '~~/test/mocks/handlers/metrics'
 import {
   figuresLine,
+  p75Label,
   PARTS,
   rowLabel,
   rowName,
@@ -93,6 +94,13 @@ describe('a bar on the Admin chart', () => {
         coldP75: null,
       }),
     ).toBe('api p75 420 ms · cold p75 too few')
+  })
+})
+
+describe("a layout's p75 as the Admin page states it", () => {
+  it('states the p75 in ms, or says there are too few samples and how many', () => {
+    expect(p75Label({ n: 12, p75: 920 })).toBe('920 ms')
+    expect(p75Label({ n: 3, p75: null })).toBe('too few (n 3)')
   })
 })
 

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { mockNuxtImport, renderSuspended } from '@nuxt/test-utils/runtime'
+import { mockNuxtImport } from '@nuxt/test-utils/runtime'
 import { screen, within } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import { http, serverError } from '~~/test/mocks/http'
@@ -12,15 +12,8 @@ import {
   noWebVitals,
   vitalIn,
 } from '~~/test/mocks/handlers/metrics'
-import { UApp } from '#components'
+import { renderInApp } from '~~/test/render-in-app'
 import AdminPage from './admin.vue'
-
-/** Inside the app's root, as in the app, which provides what tooltips need. */
-function renderInApp(page: Component) {
-  return renderSuspended(
-    defineComponent({ render: () => h(UApp, () => h(page)) }),
-  )
-}
 
 // unovis' chart, stubbed: its tooltip's `MutationObserver.disconnect` throws on
 // unmount under happy-dom, and the chart itself raises an `_idleNext` teardown

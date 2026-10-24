@@ -9,6 +9,7 @@ import com.tucker.domain.MetricLayout
 import com.tucker.domain.MetricSource
 import com.tucker.domain.Platform
 import com.tucker.domain.RouteChange
+import com.tucker.domain.VitalKind
 import com.tucker.domain.WebVital
 import com.tucker.persistence.MetricEventRepository
 import io.swagger.v3.oas.annotations.Parameter
@@ -43,20 +44,27 @@ data class MetricEventRequest(
 ) {
     fun toDomain(platform: Platform): MetricEvent {
         val source = MetricSource(layout, installed, appVersion, platform)
-        if (kind != MetricKind.ROUTE_CHANGE) {
-            require(apiMs == null) { "an ${kind.wire} event carries no apiMs" }
-            require(serverMs == null) { "an ${kind.wire} event carries no serverMs" }
-            require(firstVisit == null) { "an ${kind.wire} event carries no firstVisit" }
-            return WebVital(kind, route, valueMs, source)
+        return when (kind) {
+            MetricKind.ROUTE_CHANGE -> routeChange(source)
+            MetricKind.LCP -> webVital(VitalKind.LCP, source)
+            MetricKind.INP -> webVital(VitalKind.INP, source)
         }
-        return RouteChange(
-            route,
-            valueMs,
-            requireNotNull(apiMs) { "a route change must say how long it waited on the api" },
-            requireNotNull(serverMs) { "a route change must say how long the server worked" },
-            requireNotNull(firstVisit) { "a route change must say whether it was the route's first visit" },
-            source,
-        )
+    }
+
+    private fun routeChange(source: MetricSource) = RouteChange(
+        route,
+        valueMs,
+        requireNotNull(apiMs) { "a route change must say how long it waited on the api" },
+        requireNotNull(serverMs) { "a route change must say how long the server worked" },
+        requireNotNull(firstVisit) { "a route change must say whether it was the route's first visit" },
+        source,
+    )
+
+    private fun webVital(vitalKind: VitalKind, source: MetricSource): WebVital {
+        require(apiMs == null) { "an ${kind.wire} event carries no apiMs" }
+        require(serverMs == null) { "an ${kind.wire} event carries no serverMs" }
+        require(firstVisit == null) { "an ${kind.wire} event carries no firstVisit" }
+        return WebVital(vitalKind, route, valueMs, source)
     }
 }
 

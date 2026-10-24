@@ -8,7 +8,7 @@ class WebVitalReportTest {
 
     @Test
     fun `states the 50th, 75th and 95th percentile of the page loads in a layout`() {
-        val report = WebVitalReport.of((1..20).shuffled().map { vital(MetricKind.LCP, valueMs = it * 100) })
+        val report = WebVitalReport.of((1..20).shuffled().map { vital(VitalKind.LCP, valueMs = it * 100) })
 
         val phone = report.lcp.figuresFor(MetricLayout.PHONE)
         assertEquals(Percentiles(p50 = 1_000, p75 = 1_500, p95 = 1_900), phone.percentiles)
@@ -16,8 +16,8 @@ class WebVitalReportTest {
 
     @Test
     fun `four page loads are too few for a figure and carry only their count, and five are enough`() {
-        val four = WebVitalReport.of(List(4) { vital(MetricKind.LCP) }).lcp.figuresFor(MetricLayout.PHONE)
-        val five = WebVitalReport.of(List(5) { vital(MetricKind.LCP) }).lcp.figuresFor(MetricLayout.PHONE)
+        val four = WebVitalReport.of(List(4) { vital(VitalKind.LCP) }).lcp.figuresFor(MetricLayout.PHONE)
+        val five = WebVitalReport.of(List(5) { vital(VitalKind.LCP) }).lcp.figuresFor(MetricLayout.PHONE)
 
         assertEquals(VitalLayoutFigures(MetricLayout.PHONE, n = 4, percentiles = null), four)
         assertEquals(Percentiles(1_000, 1_000, 1_000), five.percentiles)
@@ -26,7 +26,7 @@ class WebVitalReportTest {
     @Test
     fun `reads interactions apart from page loads`() {
         val report = WebVitalReport.of(
-            List(5) { vital(MetricKind.INP, valueMs = 160) } + List(3) { vital(MetricKind.LCP, valueMs = 2_000) },
+            List(5) { vital(VitalKind.INP, valueMs = 160) } + List(3) { vital(VitalKind.LCP, valueMs = 2_000) },
         )
 
         assertEquals(
@@ -39,7 +39,7 @@ class WebVitalReportTest {
     private fun List<VitalLayoutFigures>.figuresFor(layout: MetricLayout) = single { it.layout == layout }
 
     private fun vital(
-        kind: MetricKind,
+        kind: VitalKind,
         layout: MetricLayout = MetricLayout.PHONE,
         valueMs: Int = 1_000,
         route: String = "/review",

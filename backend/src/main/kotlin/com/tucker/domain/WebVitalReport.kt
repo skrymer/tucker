@@ -10,10 +10,10 @@ data class VitalLayoutFigures(val layout: MetricLayout, val n: Int, val percenti
 data class WebVitalReport(val lcp: List<VitalLayoutFigures>, val inp: List<VitalLayoutFigures>) {
     companion object {
         fun of(vitals: List<WebVital>): WebVitalReport {
-            val byKind = vitals.groupBy { it.kind }
+            val byKind = vitals.groupBy { it.vitalKind }
             return WebVitalReport(
-                figuresOf(byKind[MetricKind.LCP].orEmpty()),
-                figuresOf(byKind[MetricKind.INP].orEmpty()),
+                figuresOf(byKind[VitalKind.LCP].orEmpty()),
+                figuresOf(byKind[VitalKind.INP].orEmpty()),
             )
         }
 
@@ -21,8 +21,8 @@ data class WebVitalReport(val lcp: List<VitalLayoutFigures>, val inp: List<Vital
             val byLayout = vitals.groupBy { it.source.layout }
             return MetricLayout.entries.map { layout ->
                 val times = byLayout[layout].orEmpty().map { it.valueMs }
-                val enough = times.size >= LayoutFigures.MIN_SAMPLES
-                VitalLayoutFigures(layout, times.size, if (enough) Percentiles.of(times) else null)
+                val percentiles = times.takeIf { it.size >= Percentiles.MIN_SAMPLES }?.let(Percentiles::of)
+                VitalLayoutFigures(layout, times.size, percentiles)
             }
         }
     }
