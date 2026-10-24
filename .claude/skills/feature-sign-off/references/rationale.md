@@ -149,7 +149,9 @@ is `{"executablePath": "<~/.cache/ms-playwright/chromium-*/chrome-linux64/chrome
 "args": ["--no-sandbox"]}` — without it mmdc exits 2 here. Extract the block with
 `awk` from the heading to its closing fence. Don't spend screenshots on GitHub's
 preview of a non-C4 block: its mermaid frame froze `Page.captureScreenshot` in two
-tabs (#444).
+tabs (#444). An edit to a drawn chain is checked against the framework's own order
+(Spring Security's `FilterOrderRegistration`), not only its render: #521 drew on top
+of a CSRF-after-JWT order that was never true.
 
 ## Transcribing a ruling
 
@@ -163,6 +165,9 @@ accepted, and lands in the doc it named (an ADR, DESIGN.md, an issue) as named �
 wrote instead that it was none, and gate 5 rejected it. Give the pinning test one assertion per clause,
 each red-proofed with a mutant that implements the alternative the user rejected —
 main's own behaviour — not a proxy, which can come back equivalent in the scenario.
+An ADR edit that narrows a claim can contradict text the diff never shows: before
+committing it, read the whole ADR, `git grep` the narrowed terms across the code's
+KDoc too, and check each factual claim the rewrite adds against the code.
 
 Measured: #411 added a clause to an amended ADR. #454 did it twice more — an
 amendment that contradicted a sheet in the same diff ("closes itself once it lands"
@@ -170,7 +175,10 @@ against ManageTagsSheet), and one generalising "the Food catalog is one keyed re
 into "data more than one surface shows" — and its pinning test asserted only "not
 selected" of a ruling that said "created and listed"; gate 5 rejected all three. Its
 first mutant (`v-if step !== 'grams'`) came back equivalent, and its "row edit
-untouched" assertion was never told apart by any mutant: a guard, not a pin.
+untouched" assertion was never told apart by any mutant: a guard, not a pin. #521's
+ADR 0014 edit contradicted text outside the diff and took four commits and three
+re-checks: the ADR's next paragraph, then `ClockConfig`'s KDoc, then a test claim no
+test made.
 
 ## Transcripts across sessions
 

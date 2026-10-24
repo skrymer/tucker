@@ -145,9 +145,11 @@ handlers free of app auto-imports (`localToday()` etc.) — pass such values in.
   order they are checked in, and the `ORDER BY` — per query, not per table (SQLite's
   `lower()` folds ASCII alone; a bare `ORDER BY` compares bytes). The page's own
   validation is never a reason to leave a backend refusal unmodelled. Reading misses what
-  Jackson does before any of that — a decimal read into an `Int`, a `null` primitive read
-  as 0 — so probe the live endpoint for those too: #519's handler refused a decimal the
-  backend took. A refusal clause no client path can send is pinned only by a test of the
+  Jackson and Spring's parameter binding do before any of that — a decimal read into an
+  `Int`, a `null` primitive read as 0, a blank or spaces-only query value, a `Boolean`
+  spelled ` Yes ` — so probe the live endpoint for each: #519's handler refused a decimal
+  the backend took, and #521's got binding wrong three times (blank `range` and `engine`
+  refused; blank `version`, then spaces-only `version`, split from the backend). A refusal clause no client path can send is pinned only by a test of the
   mock itself (`test/mocks/metrics.test.ts`), red when the clause is reverted.
 - Before deleting a request count, name the client regression it caught (a retry, a
   missing re-ask, a second read) and check the replacement shows that one on

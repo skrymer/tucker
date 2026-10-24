@@ -462,9 +462,9 @@ domain code and **~1.6s for anything a controller test covers**.
   costs a longer sweep, since no mutant stops at its first kill.
 - **Excluding a class is a last resort, and only when nothing in it is visible.**
   `--excludedClasses` currently drops three (`AccessSecurityConfig`, `AccessProperties`,
-  `TuckerApplicationKt`), each verified by hand-mutation and each 100% unkilled before
-  exclusion. A class where *some* mutants die stays in: hiding its 3 survivors would
-  hide its 11 working ones too.
+  `TuckerApplicationKt`), each 100% unkilled by hand-mutation first; a class where *some*
+  die stays in. Named in `-PmutationTargets`, an excluded class is dropped silently (#521's
+  "15/15" was another class's alone) and alone fails "No mutations found": read per-class rows.
 - **pitest never mutates a constant.** Its default mutator set has no
   `INLINE_CONSTS`, so `SMOOTHING`, `OBSERVED_WINDOW_DAYS` and the Atwater factors
   are invisible to it: 100% on `Nutrition` says nothing about whether a test would

@@ -101,6 +101,17 @@ not restate them.
   fixed one field with `@param:JsonSetter(nulls = Nulls.FAIL)`, and the walk-through found
   the `Boolean` beside it four gates later. On finding one, check every primitive field
   of every request DTO the change adds, with a `null` probe each.
+- **A blank query parameter binds by its type.** A typed `@RequestParam` — an enum through a
+  converter, a `Boolean` — reads `?x=` as absent, but a `String` keeps `""`. Probe every
+  query parameter blank and spaces-only in the API test: #521's blank `version=` narrowed
+  the report to nothing while a blank `range`, `engine` or `installed` was ignored.
+- **Spring binds an enum `@RequestParam` by constant name, and springdoc publishes its
+  `defaultValue` the same way** — #521's spec said `"default": "MONTH"`, a value the API
+  refuses. Register a `Converter<String, E>` on the enum's wire `of` (`WireValueConverters`)
+  and apply the default in code, not in the annotation.
+- **In MockMvc's Kotlin DSL a percent-encoded or whitespace value goes through
+  `param(...)`**, not the URL string: `get("/x?installed=%20Yes%20")` sends `%20`
+  literally (#521).
 
 - **The fast suite's database outlives the run** (`build/test-tucker.db`), and the
   signed-in `tester` is provisioned by whichever request reaches it first. An assertion on
@@ -124,6 +135,9 @@ not restate them.
 - **Flyway migrations: no `;` inside a comment.** `prepareJooqDatabase` splits the SQL
   naively on `;`, and codegen dies without naming it. A `CHECK` in an `ADD COLUMN` is
   fine — SQLite and codegen take it, and #520's V25 guards its three columns that way.
+- **A migration that deletes rows because "nothing is deployed" names the prod image tag it
+  checked** (`ssh tucker docker ps` → `tucker-backend:0.1.204`, #521) — the premise is a
+  fact about production, not about the branch.
 - **A header or filter behaviour on an error response needs an `e2eTest` case.** A
   refusal Spring sends with `sendError` commits the response there and then, and a real
   socket drops any header set after it — MockMvc's response keeps it, so the fast suite
@@ -168,11 +182,22 @@ not restate them.
   206" answered a missing Tag, and only the walk-through's audit noticed.
 - **Detekt's `ReturnCount` allows 2.** A guard plus a match flattens to one elvis
   `?: return null` and a `return when (val x = …)`, not a nested `?.let`.
+- **A refusal that must look like "not found" belongs in the security chain.** An
+  interceptor runs after method matching, so #521's first version answered a non-Admin's
+  `DELETE` 405, telling them the path exists. And a matcher-scoped
+  `defaultAccessDeniedHandlerFor` there also catches `CsrfFilter`'s refusal: hand a
+  `CsrfException` to the stock `AccessDeniedHandlerImpl` (403), as
+  `AccessSecurityConfig.refuseAdminPathsAsMissing` does — without it an Admin's tokenless
+  POST answered 404 where every other path answers 403 (#521).
 - **An `ORDER BY` on a name a User typed sorts by `lower(name)`**, as the catalog
   does. A bare `ORDER BY name` is byte order in SQLite, so "apple crumble" lists after
   "Zucchini loaf" — and the MSW mock, which mirrors the backend faithfully, cannot
   notice. A test of "alphabetical" seeds a lowercase-initial name (#433's Recipe list
   shipped capitals-first past its own order test, whose names were all capitalised).
+- **An `Instant` stored in `TEXT` and compared or ordered is a fixed-width stamp.**
+  `Instant.toString()` drops trailing zero fraction groups, so `.123456Z` sorts before
+  `.123Z`; format it with a fixed nine-digit pattern, as `MetricEventRepository`'s
+  `stamp()` does (#521).
 - **The SEVERE "Unknown function: datetime('now')" during jOOQ codegen is benign noise.**
 
 ## Refactor step — Detekt names the smell
