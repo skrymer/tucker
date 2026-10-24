@@ -119,6 +119,10 @@ const ALLOWED: Record<string, Record<string, string>> = {
     partName:
       'a part of a move Tucker names itself (Server, Network + proxy, Render / JS), not a name a User typed',
   },
+  'components/WebVitalsCard.vue': {
+    'LAYOUT_NAMES[l.layout]':
+      'a layout Tucker names itself (Phone, Desktop), not a name a User typed',
+  },
   'pages/design.vue': {
     's.name': 'a colour token in the style guide, not a name a User typed',
   },

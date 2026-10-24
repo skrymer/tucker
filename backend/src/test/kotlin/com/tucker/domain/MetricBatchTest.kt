@@ -22,8 +22,7 @@ class MetricBatchTest {
         assertFailsWith<IllegalArgumentException> { MetricBatch(List(51) { event }) }
     }
 
-    private val event = MetricEvent(
-        kind = MetricKind.ROUTE_CHANGE,
+    private val event = RouteChange(
         route = "/review",
         valueMs = 420,
         apiMs = 300,

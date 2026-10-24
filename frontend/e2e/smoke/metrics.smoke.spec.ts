@@ -165,6 +165,40 @@ test("a User's moves reach the Admin's p75 per release, under the release that m
   })
 })
 
+// The page load and a tap reach the Admin through the same queue as the moves. A
+// tap counts toward INP only once it takes 40 ms or more, so the CPU is slowed
+// for it: an idle test machine would answer it too fast to be measured at all.
+test("a User's page load and tap reach the Admin, counted in their layout", async ({
+  page,
+  goto,
+  browser,
+  isMobile,
+}) => {
+  await goto('/', { waitUntil: 'hydration' })
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Today' }),
+  ).toBeVisible()
+  const cdp = await page.context().newCDPSession(page)
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 20 })
+  await page.getByRole('link', { name: 'Review' }).click()
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Review' }),
+  ).toBeVisible()
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 })
+  await flushMetrics(page)
+
+  await withMetrics(browser, page.url(), async (adminPage) => {
+    const layout = isMobile ? 'Phone' : 'Desktop'
+    for (const vital of ['Page load (LCP)', 'Interaction (INP)']) {
+      await expect(
+        adminPage
+          .getByRole('region', { name: vital })
+          .getByRole('row', { name: `${layout} too few (n 1)` }),
+      ).toBeVisible()
+    }
+  })
+})
+
 // The engine is read off the user agent on the server: this browser is Chromium,
 // so its move counts under Blink and not under WebKit.
 test('files a move under the engine of the browser that made it', async ({

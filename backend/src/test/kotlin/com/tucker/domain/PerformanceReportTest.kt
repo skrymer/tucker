@@ -125,8 +125,7 @@ class PerformanceReportTest {
         valueMs: Int = 420,
         apiMs: Int = 0,
         serverMs: Int = 0,
-    ) = MetricEvent(
-        kind = MetricKind.ROUTE_CHANGE,
+    ) = RouteChange(
         route = "/review",
         valueMs = valueMs,
         apiMs = apiMs,

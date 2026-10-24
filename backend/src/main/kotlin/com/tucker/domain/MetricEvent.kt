@@ -4,7 +4,9 @@ import com.fasterxml.jackson.annotation.JsonValue
 
 /** What a [MetricEvent] measured, under the name it has on the wire. */
 enum class MetricKind(@JsonValue override val wire: String) : WireValue {
-    ROUTE_CHANGE("route-change");
+    ROUTE_CHANGE("route-change"),
+    LCP("lcp"),
+    INP("inp");
 
     companion object {
         fun of(wire: String): MetricKind = wireValueOf(wire, "a metric kind")
@@ -45,29 +47,11 @@ data class MetricSource(
  * One measurement a browser sent (ADR 0038). Tucker's, not a User's: nothing in it
  * says who it came from.
  */
-data class MetricEvent(
-    val kind: MetricKind,
-    val route: String,
-    val valueMs: Int,
-    /** How long the move waited on `/api`, ms. */
-    val apiMs: Int,
-    /** The part of [apiMs] the server spent working, ms. */
-    val serverMs: Int,
-    /** The route's first visit since the page loaded, when its code is fetched too. */
-    val firstVisit: Boolean,
-    val source: MetricSource,
-) {
-    init {
-        require(ROUTE_TEMPLATE.matches(route)) { "\"$route\" is not a route template" }
-        require(valueMs in 0..MAX_MS) { "a metric's time must be 0–$MAX_MS ms, not $valueMs" }
-        require(serverMs >= 0) { "a server time cannot be negative, not $serverMs" }
-        require(serverMs <= apiMs) { "a server time of $serverMs ms cannot exceed the api wait of $apiMs ms" }
-        require(apiMs <= valueMs) { "an api wait of $apiMs ms cannot exceed the move's $valueMs ms" }
-    }
-
-    /** Where the move's time went. */
-    val split: TimeSplit
-        get() = TimeSplit(serverMs = serverMs, networkMs = apiMs - serverMs, renderMs = valueMs - apiMs)
+sealed interface MetricEvent {
+    val kind: MetricKind
+    val route: String
+    val valueMs: Int
+    val source: MetricSource
 
     companion object {
         /** A minute: anything longer is a tab left in the background, not a page being slow. */
@@ -75,5 +59,49 @@ data class MetricEvent(
 
         /** A page's template (`/foods/[id]`), which has no room for an id or a query string. */
         val ROUTE_TEMPLATE = Regex("/[a-z0-9/_\\-\\[\\]]{0,63}")
+
+        internal fun requireMeasurement(route: String, valueMs: Int) {
+            require(ROUTE_TEMPLATE.matches(route)) { "\"$route\" is not a route template" }
+            require(valueMs in 0..MAX_MS) { "a metric's time must be 0–$MAX_MS ms, not $valueMs" }
+        }
     }
+}
+
+/** A page load (LCP) or a tap's response (INP), on the route it happened on. */
+data class WebVital(
+    override val kind: MetricKind,
+    override val route: String,
+    override val valueMs: Int,
+    override val source: MetricSource,
+) : MetricEvent {
+    init {
+        require(kind != MetricKind.ROUTE_CHANGE) { "a web vital is lcp or inp, not ${kind.wire}" }
+        MetricEvent.requireMeasurement(route, valueMs)
+    }
+}
+
+/** A move between pages, and where its time went. */
+data class RouteChange(
+    override val route: String,
+    override val valueMs: Int,
+    /** How long the move waited on `/api`, ms. */
+    val apiMs: Int,
+    /** The part of [apiMs] the server spent working, ms. */
+    val serverMs: Int,
+    /** The route's first visit since the page loaded, when its code is fetched too. */
+    val firstVisit: Boolean,
+    override val source: MetricSource,
+) : MetricEvent {
+    init {
+        MetricEvent.requireMeasurement(route, valueMs)
+        require(serverMs >= 0) { "a server time cannot be negative, not $serverMs" }
+        require(serverMs <= apiMs) { "a server time of $serverMs ms cannot exceed the api wait of $apiMs ms" }
+        require(apiMs <= valueMs) { "an api wait of $apiMs ms cannot exceed the move's $valueMs ms" }
+    }
+
+    override val kind get() = MetricKind.ROUTE_CHANGE
+
+    /** Where the move's time went. */
+    val split: TimeSplit
+        get() = TimeSplit(serverMs = serverMs, networkMs = apiMs - serverMs, renderMs = valueMs - apiMs)
 }
