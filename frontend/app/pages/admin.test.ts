@@ -630,6 +630,25 @@ describe('/admin', () => {
     )
   })
 
+  it('states interaction once it alone is measured', async () => {
+    server.use(
+      signedInAsAdmin,
+      metricsReport([], [], [], {
+        ...noWebVitals(),
+        inp: [
+          vitalIn('phone', 9, { p50: 120, p75: 180, p95: 260 }),
+          vitalIn('desktop', 0),
+        ],
+      }),
+    )
+    await renderInApp(AdminPage)
+
+    const interaction = within(
+      await screen.findByRole('region', { name: 'Interaction (INP)' }),
+    )
+    expect(interaction.getByRole('row', { name: 'Phone 180 ms' })).toBeVisible()
+  })
+
   it('states page load and interaction per layout once either is measured', async () => {
     server.use(
       signedInAsAdmin,
