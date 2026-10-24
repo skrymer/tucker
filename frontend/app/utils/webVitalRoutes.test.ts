@@ -36,6 +36,17 @@ describe('a web vital put on the route it happened on', () => {
     expect(recorded).toEqual([{ kind: 'inp', route: '/', valueMs: 240 }])
   })
 
+  // web-vitals reports INP again on each hide where it grew; a visit is one sample.
+  it('records one interaction per visit, the first reported', async () => {
+    const { router, recorded, take } = visiting()
+    await router.push('/')
+
+    take({ name: 'INP', value: 120, entries: [{ startTime: 500 }] })
+    take({ name: 'INP', value: 400, entries: [{ startTime: 900 }] })
+
+    expect(recorded).toEqual([{ kind: 'inp', route: '/', valueMs: 120 }])
+  })
+
   it('records nothing for a tap whose moment is unknown', async () => {
     const { router, recorded, take } = visiting()
     await router.push('/')

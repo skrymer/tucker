@@ -154,7 +154,7 @@ const filters = computed(() => [
         >
           <LazyRouteTimingCard v-if="routes.length" :routes="routes" />
           <div
-            v-else-if="reportNarrowed"
+            v-else-if="reportNarrowed && !vitalsMeasured"
             class="flex flex-col items-center gap-3 py-12 text-center"
           >
             <UIcon
@@ -168,7 +168,7 @@ const filters = computed(() => [
             <UButton label="Reset filters" variant="outline" @click="reset" />
           </div>
           <div
-            v-else
+            v-else-if="!vitalsMeasured"
             class="flex flex-col items-center gap-3 py-12 text-center"
           >
             <UIcon
