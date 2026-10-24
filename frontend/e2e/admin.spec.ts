@@ -6,6 +6,7 @@ import {
   metricsRecorded,
   metricsReport,
   tooFew,
+  vitalIn,
 } from '../test/mocks/handlers/metrics'
 import { hidePage } from './support/visibility'
 import { held } from '../test/mocks/http'
@@ -928,6 +929,95 @@ test.describe('as an Admin', () => {
       'Phone 700 ms',
       'Desktop 300 ms',
     ])
+  })
+
+  test('states page load and interaction below the release charts, each figure named by its layout', async ({
+    page,
+    goto,
+    network,
+    isMobile,
+  }) => {
+    test.skip(isMobile, 'a phone shows the notice instead')
+    network.use(
+      metricsReport(
+        [{ route: '/foods', layouts: [figures('phone', 450)] }],
+        [],
+        [releasesOf('/foods', [['0.1.9', 700, 300]])],
+        {
+          lcp: [
+            vitalIn('phone', 20, { p50: 1_800, p75: 2_140, p95: 3_900 }),
+            vitalIn('desktop', 3),
+          ],
+          inp: [
+            vitalIn('phone', 9, { p50: 120, p75: 180, p95: 260 }),
+            vitalIn('desktop', 30, { p50: 40, p75: 64, p95: 96 }),
+          ],
+        },
+      ),
+    )
+    await goto('/admin', { waitUntil: 'hydration' })
+
+    const card = page
+      .getByRole('heading', { name: 'Page load and interaction' })
+      .locator('xpath=ancestor::*[@data-slot="root"][1]')
+    await expect(card).toMatchAriaSnapshot(`
+      - /children: deep-equal
+      - heading "Page load and interaction" [level=2]
+      - paragraph: Each layout's p75, whichever page it happened on
+      - region "Page load (LCP)":
+        - heading "Page load (LCP)" [level=3]
+        - table:
+          - row "Phone 2140 ms":
+            - rowheader "Phone"
+            - cell "2140 ms"
+          - row "Desktop too few (n 3)":
+            - rowheader "Desktop"
+            - cell "too few (n 3)"
+      - region "Interaction (INP)":
+        - heading "Interaction (INP)" [level=3]
+        - table:
+          - row "Phone 180 ms":
+            - rowheader "Phone"
+            - cell "180 ms"
+          - row "Desktop 64 ms":
+            - rowheader "Desktop"
+            - cell "64 ms"
+    `)
+    const releases = await page
+      .getByRole('heading', { name: 'p75 per release' })
+      .boundingBox()
+    expect((await card.boundingBox())!.y).toBeGreaterThan(releases!.y)
+  })
+
+  test("states a layout's every percentile when its figure is pointed at", async ({
+    page,
+    goto,
+    network,
+    isMobile,
+  }) => {
+    test.skip(isMobile, 'a phone shows the notice instead')
+    network.use(
+      metricsReport([], [], [], {
+        lcp: [
+          vitalIn('phone', 20, { p50: 1_800, p75: 2_140, p95: 3_900 }),
+          vitalIn('desktop', 0),
+        ],
+        inp: [vitalIn('phone', 0), vitalIn('desktop', 0)],
+      }),
+    )
+    await goto('/admin', { waitUntil: 'hydration' })
+
+    const figure = page.getByText('2140 ms', { exact: true })
+    await figure.hover()
+
+    // The tooltip's role="tooltip" node is Reka's aria-hidden twin of what shows.
+    const every = 'n 20 · p50 1800 ms · p75 2140 ms · p95 3900 ms'
+    await expect(
+      page
+        .getByText(every, { exact: true })
+        .and(page.locator(':not([aria-hidden="true"])')),
+    ).toBeVisible()
+    await expect(figure).toHaveAccessibleDescription(every)
   })
 
   // A chart with nothing to plot would still draw a scale, of 0 to 1 ms, over nothing.

@@ -9,6 +9,8 @@ import com.tucker.domain.MetricLayout
 import com.tucker.domain.MetricSource
 import com.tucker.domain.OperatingSystem
 import com.tucker.domain.Platform
+import com.tucker.domain.RouteChange
+import com.tucker.domain.WebVital
 import com.tucker.jooq.Tables.METRIC_EVENT
 import com.tucker.jooq.tables.records.MetricEventRecord
 import org.jooq.DSLContext
@@ -51,9 +53,14 @@ class MetricEventRepository(private val dsl: DSLContext) {
         it.kind = kind.wire
         it.route = route
         it.valueMs = valueMs
-        it.apiMs = apiMs
-        it.serverMs = serverMs
-        it.firstVisit = firstVisit.toFlag()
+        when (this) {
+            is RouteChange -> {
+                it.apiMs = apiMs
+                it.serverMs = serverMs
+                it.firstVisit = firstVisit.toFlag()
+            }
+            is WebVital -> Unit
+        }
         it.layout = source.layout.wire
         it.installed = source.installed.toFlag()
         it.appVersion = source.appVersion
@@ -62,20 +69,18 @@ class MetricEventRepository(private val dsl: DSLContext) {
         it.recordedAt = recordedAt.stamp()
     }
 
-    private fun MetricEventRecord.toDomain() = MetricEvent(
-        kind = MetricKind.of(kind),
-        route = route,
-        valueMs = valueMs,
-        apiMs = apiMs,
-        serverMs = serverMs,
-        firstVisit = firstVisit.isFlagSet(),
-        source = MetricSource(
+    private fun MetricEventRecord.toDomain(): MetricEvent {
+        val source = MetricSource(
             MetricLayout.of(layout),
             installed.isFlagSet(),
             appVersion,
             Platform(BrowserEngine.of(engine), OperatingSystem.of(os)),
-        ),
-    )
+        )
+        return when (val kind = MetricKind.of(kind)) {
+            MetricKind.ROUTE_CHANGE -> RouteChange(route, valueMs, apiMs, serverMs, firstVisit.isFlagSet(), source)
+            else -> WebVital(kind, route, valueMs, source)
+        }
+    }
 }
 
 /** Every digit of the fraction written out, so stamps sort as text in time order. */

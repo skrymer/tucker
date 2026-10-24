@@ -81,8 +81,7 @@ class ReleaseTrendTest {
         route: String = "/review",
         layout: MetricLayout = MetricLayout.PHONE,
         valueMs: Int = 420,
-    ) = MetricEvent(
-        kind = MetricKind.ROUTE_CHANGE,
+    ) = RouteChange(
         route = route,
         valueMs = valueMs,
         apiMs = 0,

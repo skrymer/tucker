@@ -5920,14 +5920,11 @@
       },
       "MetricEventRequest": {
         "required": [
-          "apiMs",
           "appVersion",
-          "firstVisit",
           "installed",
           "kind",
           "layout",
           "route",
-          "serverMs",
           "valueMs"
         ],
         "type": "object",
@@ -5935,7 +5932,9 @@
           "kind": {
             "type": "string",
             "enum": [
-              "route-change"
+              "route-change",
+              "lcp",
+              "inp"
             ]
           },
           "route": {
@@ -5944,6 +5943,20 @@
           "valueMs": {
             "type": "integer",
             "format": "int32"
+          },
+          "apiMs": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "serverMs": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "firstVisit": {
+            "type": "boolean",
+            "nullable": true
           },
           "layout": {
             "type": "string",
@@ -5957,17 +5970,6 @@
           },
           "appVersion": {
             "type": "string"
-          },
-          "apiMs": {
-            "format": "int32",
-            "type": "integer"
-          },
-          "serverMs": {
-            "format": "int32",
-            "type": "integer"
-          },
-          "firstVisit": {
-            "type": "boolean"
           }
         }
       },
@@ -5975,7 +5977,8 @@
         "required": [
           "byRelease",
           "routes",
-          "versions"
+          "versions",
+          "webVitals"
         ],
         "type": "object",
         "properties": {
@@ -5996,6 +5999,9 @@
             "items": {
               "$ref": "#/components/schemas/RouteReleasesResponse"
             }
+          },
+          "webVitals": {
+            "$ref": "#/components/schemas/WebVitalsResponse"
           }
         }
       },
@@ -6074,6 +6080,62 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/ReleaseFiguresResponse"
+            }
+          }
+        }
+      },
+      "VitalLayoutResponse": {
+        "required": [
+          "layout",
+          "n"
+        ],
+        "type": "object",
+        "properties": {
+          "layout": {
+            "type": "string",
+            "enum": [
+              "phone",
+              "desktop"
+            ]
+          },
+          "n": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "p50": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "p75": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "p95": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          }
+        }
+      },
+      "WebVitalsResponse": {
+        "required": [
+          "inp",
+          "lcp"
+        ],
+        "type": "object",
+        "properties": {
+          "lcp": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VitalLayoutResponse"
+            }
+          },
+          "inp": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VitalLayoutResponse"
             }
           }
         }

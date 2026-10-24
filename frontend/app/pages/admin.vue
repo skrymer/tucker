@@ -65,6 +65,13 @@ const {
 } = await useApi('/api/admin/metrics', { query })
 const routes = computed(() => report.value?.routes ?? [])
 const byRelease = computed(() => report.value?.byRelease ?? [])
+const webVitals = computed(() => report.value?.webVitals)
+// Four "too few (n 0)" would say nothing the rest of the page does not.
+const vitalsMeasured = computed(() =>
+  [...(webVitals.value?.lcp ?? []), ...(webVitals.value?.inp ?? [])].some(
+    (l) => l.n > 0,
+  ),
+)
 // Whether the report on screen was read narrowed; a read under way leaves it be.
 const reportNarrowed = ref(narrowed.value)
 watch(report, () => (reportNarrowed.value = narrowed.value))
@@ -181,6 +188,11 @@ const filters = computed(() => [
           <LazyReleaseTrendCard
             v-if="byRelease.length"
             :routes="byRelease"
+            class="mt-4"
+          />
+          <LazyWebVitalsCard
+            v-if="webVitals && vitalsMeasured"
+            :web-vitals="webVitals"
             class="mt-4"
           />
         </div>

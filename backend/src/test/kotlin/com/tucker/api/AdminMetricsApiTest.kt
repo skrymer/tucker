@@ -3,11 +3,11 @@ package com.tucker.api
 import com.tucker.domain.BrowserEngine
 import com.tucker.domain.MetricBatch
 import com.tucker.domain.MetricEvent
-import com.tucker.domain.MetricKind
 import com.tucker.domain.MetricLayout
 import com.tucker.domain.MetricSource
 import com.tucker.domain.OperatingSystem
 import com.tucker.domain.Platform
+import com.tucker.domain.RouteChange
 import com.tucker.persistence.MetricEventRepository
 import com.tucker.security.ACCESS_ASSERTION_HEADER
 import com.tucker.security.AccessTokens
@@ -227,6 +227,39 @@ class AdminMetricsApiTest {
         }
     }
 
+    /** A page load or a tap is no move between pages, so it is never listed as a route. */
+    @Test
+    fun `an Admin reads page load and interaction per layout, and none where there are too few`() {
+        send(*Array(5) { webVital("lcp", layout = "phone", valueMs = 1_840) }, sender = USER)
+        send(*Array(4) { webVital("inp", layout = "desktop", valueMs = 120) }, sender = USER)
+
+        mockMvc.get("/api/admin/metrics") { signedInAs(ADMIN) }.andExpect {
+            jsonPath("$.routes.length()") { value(0) }
+            jsonPath("$.webVitals.lcp[0].layout") { value("phone") }
+            jsonPath("$.webVitals.lcp[0].n") { value(5) }
+            jsonPath("$.webVitals.lcp[0].p50") { value(1_840) }
+            jsonPath("$.webVitals.lcp[0].p75") { value(1_840) }
+            jsonPath("$.webVitals.lcp[0].p95") { value(1_840) }
+            jsonPath("$.webVitals.lcp[1].layout") { value("desktop") }
+            jsonPath("$.webVitals.lcp[1].n") { value(0) }
+            jsonPath("$.webVitals.inp[1].layout") { value("desktop") }
+            jsonPath("$.webVitals.inp[1].n") { value(4) }
+            jsonPath("$.webVitals.inp[1].p75") { value(null) }
+        }
+    }
+
+    /** Unlike the release trend, whose axis releases are, page load is narrowed to the chosen one. */
+    @Test
+    fun `an Admin's chosen app version narrows page load and interaction`() {
+        send(webVital("lcp").replace("\"appVersion\":\"1.4.0\"", "\"appVersion\":\"1.5.0\""), sender = USER)
+        send(webVital("lcp"), webVital("inp"), sender = USER)
+
+        mockMvc.get("/api/admin/metrics?version=1.5.0") { signedInAs(ADMIN) }.andExpect {
+            jsonPath("$.webVitals.lcp[0].n") { value(1) }
+            jsonPath("$.webVitals.inp[0].n") { value(0) }
+        }
+    }
+
     /** Not 403: the page must not tell a User that there is something here they may not see. */
     @Test
     fun `answers a User who is not an Admin exactly as a path that does not exist`() {
@@ -276,14 +309,17 @@ class AdminMetricsApiTest {
         """{"kind":"route-change","route":"/review","valueMs":$valueMs,"apiMs":$apiMs,"serverMs":$serverMs,""" +
             """"firstVisit":false,"layout":"$layout","installed":false,"appVersion":"1.4.0"}"""
 
+    private fun webVital(kind: String, layout: String = "phone", valueMs: Int = 1_000) =
+        """{"kind":"$kind","route":"/review","valueMs":$valueMs,""" +
+            """"layout":"$layout","installed":false,"appVersion":"1.4.0"}"""
+
     /** Stores [event] as though it had been sent [daysAgo] days ago, which a send cannot. */
     private fun store(event: MetricEvent, daysAgo: Long = 0) {
         metrics.insert(MetricBatch(listOf(event)), recordedAt = Instant.now().minus(Duration.ofDays(daysAgo)))
     }
 
     /** A warm move to `/review` on a phone in WebKit. */
-    private fun move(appVersion: String = "1.4.0", installed: Boolean = false, valueMs: Int = 400) = MetricEvent(
-        kind = MetricKind.ROUTE_CHANGE,
+    private fun move(appVersion: String = "1.4.0", installed: Boolean = false, valueMs: Int = 400) = RouteChange(
         route = "/review",
         valueMs = valueMs,
         apiMs = 0,

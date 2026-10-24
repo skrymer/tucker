@@ -81,8 +81,32 @@ class MetricEventTest {
         assertFailsWith<IllegalArgumentException> { event.copy(apiMs = 0, serverMs = -1) }
     }
 
-    private val event = MetricEvent(
-        kind = MetricKind.ROUTE_CHANGE,
+    @Test
+    fun `accepts a page load, which carries no split of its own`() {
+        val pageLoad = WebVital(MetricKind.of("lcp"), route = "/review", valueMs = 1_840, source = source())
+
+        assertEquals(MetricKind.LCP, pageLoad.kind)
+        assertEquals(1_840, pageLoad.valueMs)
+    }
+
+    @Test
+    fun `accepts an interaction, which carries no split of its own`() {
+        val tap = WebVital(MetricKind.of("inp"), route = "/foods", valueMs = 160, source = source())
+
+        assertEquals(MetricKind.INP, tap.kind)
+    }
+
+    /** A move between pages has a split, so it is never stored as a web vital without one. */
+    @Test
+    fun `refuses a route change as a web vital`() {
+        val refused = assertFailsWith<IllegalArgumentException> {
+            WebVital(MetricKind.ROUTE_CHANGE, route = "/review", valueMs = 420, source = source())
+        }
+
+        assertEquals("a web vital is lcp or inp, not route-change", refused.message)
+    }
+
+    private val event = RouteChange(
         route = "/review",
         valueMs = 420,
         apiMs = 300,

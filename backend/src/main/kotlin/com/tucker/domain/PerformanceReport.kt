@@ -31,7 +31,7 @@ data class TimeSplit(val serverMs: Int, val networkMs: Int, val renderMs: Int) {
          * The median of each part across the moves from p70 to p80: one p75 move is noisy,
          * and the medians of its neighbours still add up to roughly the p75.
          */
-        fun of(moves: List<MetricEvent>): TimeSplit {
+        fun of(moves: List<RouteChange>): TimeSplit {
             val sorted = moves.sortedBy { it.valueMs }
             val around = sorted.slice(rankIndex(P70, sorted.size)..rankIndex(P80, sorted.size)).map { it.split }
             fun median(part: (TimeSplit) -> Int) = Percentiles.at(Percentiles.P50, around.map(part).sorted())
@@ -57,7 +57,7 @@ data class LayoutFigures(
     val split: TimeSplit?,
 ) {
     companion object {
-        fun of(layout: MetricLayout, moves: List<MetricEvent>): LayoutFigures {
+        fun of(layout: MetricLayout, moves: List<RouteChange>): LayoutFigures {
             if (moves.size < MIN_SAMPLES) return LayoutFigures(layout, moves.size, null, null, null, null)
             return LayoutFigures(
                 layout,
@@ -69,7 +69,7 @@ data class LayoutFigures(
             )
         }
 
-        private fun coldP75(moves: List<MetricEvent>): Int? =
+        private fun coldP75(moves: List<RouteChange>): Int? =
             moves.filter { it.firstVisit }.map { it.valueMs }
                 .takeIf { it.size >= MIN_SAMPLES }
                 ?.let { Percentiles.p75Of(it) }
@@ -91,7 +91,7 @@ data class RouteFigures(val route: String, val layouts: List<LayoutFigures>) {
  */
 data class PerformanceReport(val routes: List<RouteFigures>) {
     companion object {
-        fun of(events: List<MetricEvent>) = PerformanceReport(
+        fun of(events: List<RouteChange>) = PerformanceReport(
             events.groupBy { it.route }.map { (route, ofRoute) ->
                 val byLayout = ofRoute.groupBy { it.source.layout }
                 RouteFigures(
