@@ -5,6 +5,7 @@ import {
   metricsBy,
   metricsRecorded,
   metricsReport,
+  noWebVitals,
   tooFew,
   vitalIn,
 } from '../test/mocks/handlers/metrics'
@@ -987,6 +988,35 @@ test.describe('as an Admin', () => {
       .getByRole('heading', { name: 'p75 per release' })
       .boundingBox()
     expect((await card.boundingBox())!.y).toBeGreaterThan(releases!.y)
+  })
+
+  // DESIGN.md → Typography → Scale: a tile's figures are `text-stat`.
+  test('states a page-load tile figure on the stat type token', async ({
+    page,
+    goto,
+    network,
+    isMobile,
+  }) => {
+    test.skip(isMobile, 'a phone shows the notice instead')
+    network.use(
+      metricsReport([], [], [], {
+        ...noWebVitals(),
+        lcp: [
+          vitalIn('phone', 20, { p50: 1_800, p75: 2_140, p95: 3_900 }),
+          vitalIn('desktop', 0),
+        ],
+      }),
+    )
+    await goto('/admin', { waitUntil: 'hydration' })
+
+    const figure = page.getByText('2140 ms', { exact: true })
+    await expect(figure).toBeVisible()
+    expect(
+      await figure.evaluate((el) => {
+        const style = getComputedStyle(el)
+        return { size: style.fontSize, weight: style.fontWeight }
+      }),
+    ).toEqual({ size: '22px', weight: '800' })
   })
 
   test("states a layout's every percentile when its figure is pointed at", async ({

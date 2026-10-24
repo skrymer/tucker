@@ -41,7 +41,7 @@ const tiles = computed(() =>
             <th scope="row" class="py-0.5 text-left text-body text-muted">
               {{ LAYOUT_NAMES[l.layout] }}
             </th>
-            <td class="py-0.5 text-right text-body text-default tabular-nums">
+            <td class="py-0.5 text-right text-stat text-default tabular-nums">
               <UTooltip :text="figuresLine(l)" :disabled="l.p75 == null">
                 <span tabindex="0">
                   {{ p75Label(l) }}

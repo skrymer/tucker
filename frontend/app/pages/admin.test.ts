@@ -630,6 +630,67 @@ describe('/admin', () => {
     )
   })
 
+  // A single-page visit records a page load and no move between pages.
+  it('says nothing is measured only while page load and interaction are not either', async () => {
+    server.use(
+      signedInAsAdmin,
+      metricsReport([], [], [], {
+        ...noWebVitals(),
+        lcp: [
+          vitalIn('phone', 20, { p50: 1_800, p75: 2_140, p95: 3_900 }),
+          vitalIn('desktop', 0),
+        ],
+      }),
+    )
+    await renderInApp(AdminPage)
+
+    expect(
+      await screen.findByRole('region', { name: 'Page load (LCP)' }),
+    ).toBeVisible()
+    expect(
+      screen.queryByRole('heading', {
+        name: 'Nothing measured in the last 30 days',
+      }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('says nothing matches the filters only while page load and interaction do not either', async () => {
+    const user = userEvent.setup()
+    server.use(
+      signedInAsAdmin,
+      metricsBy(
+        ({ version }) =>
+          version ? [] : [{ route: '/review', layouts: [measured('phone')] }],
+        ['0.1.43'],
+        [],
+        () => ({
+          ...noWebVitals(),
+          lcp: [
+            vitalIn('phone', 20, { p50: 1_800, p75: 2_140, p95: 3_900 }),
+            vitalIn('desktop', 0),
+          ],
+        }),
+      ),
+    )
+    await renderInApp(AdminPage)
+    await screen.findByRole('heading', { name: 'Moving between pages' })
+
+    await user.click(screen.getByRole('combobox', { name: 'App version' }))
+    await user.click(await screen.findByRole('option', { name: '0.1.43' }))
+
+    await vi.waitFor(() =>
+      expect(
+        screen.queryByRole('heading', { name: 'Moving between pages' }),
+      ).not.toBeInTheDocument(),
+    )
+    expect(
+      screen.getByRole('region', { name: 'Page load (LCP)' }),
+    ).toBeVisible()
+    expect(
+      screen.queryByRole('heading', { name: 'Nothing matches these filters' }),
+    ).not.toBeInTheDocument()
+  })
+
   it('states interaction once it alone is measured', async () => {
     server.use(
       signedInAsAdmin,

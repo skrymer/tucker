@@ -22,8 +22,13 @@ export function attributeWebVitals(
     if (matchedPath && !failure)
       routes.entered(routeTemplate(matchedPath), now())
   })
+  // One INP per visit: web-vitals reports it again on each hide where it grew.
+  let interactionTaken = false
   return (vital: WebVital) => {
+    if (vital.name === 'INP' && interactionTaken) return
     const event = webVitalEvent(vital, routes.routeAt)
-    if (event) record(event)
+    if (!event) return
+    if (event.kind === 'inp') interactionTaken = true
+    record(event)
   }
 }
