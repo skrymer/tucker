@@ -49,6 +49,10 @@ export function tooFewLabel(n: number): string {
   return `too few (n ${n})`
 }
 
+export function p75Label({ n, p75 }: { n: number; p75?: number | null }) {
+  return p75 == null ? tooFewLabel(n) : `${p75} ms`
+}
+
 /** A row as the chart's axis names it, saying why its bar is missing when it is. */
 export function rowLabel(row: TimingRow): string {
   const { n, p75 } = row.figures
@@ -56,7 +60,9 @@ export function rowLabel(row: TimingRow): string {
 }
 
 /** A bar's exact figures: percentiles only, never an average (ADR 0038). */
-export function figuresLine(figures: LayoutFigures): string {
+export function figuresLine(
+  figures: Pick<LayoutFigures, 'layout' | 'n' | 'p50' | 'p75' | 'p95'>,
+): string {
   const { n, p50, p75, p95 } = figures
   return `n ${n} · p50 ${p50} · p75 ${p75} · p95 ${p95} ms`
 }

@@ -1,0 +1,50 @@
+import { describe, expect, it } from 'vitest'
+import { createMemoryHistory, createRouter } from 'vue-router'
+import type { WebVitalEvent } from './webVitalEvent'
+import { attributeWebVitals } from './webVitalRoutes'
+
+const Page = { render: () => null }
+
+/** A router over two pages, a clock the test moves, and what got recorded. */
+function visiting() {
+  const router = createRouter({
+    history: createMemoryHistory(),
+    routes: [
+      { path: '/', component: Page },
+      { path: '/foods', component: Page },
+    ],
+  })
+  const clock = { now: 0 }
+  const recorded: WebVitalEvent[] = []
+  const take = attributeWebVitals(
+    router,
+    (event) => recorded.push(event),
+    () => clock.now,
+  )
+  return { router, clock, recorded, take }
+}
+
+describe('a web vital put on the route it happened on', () => {
+  it('puts a tap on the page the User was on, not the one they went to after', async () => {
+    const { router, clock, recorded, take } = visiting()
+    await router.push('/')
+    clock.now = 1_000
+    await router.push('/foods')
+
+    take({ name: 'INP', value: 240, entries: [{ startTime: 500 }] })
+
+    expect(recorded).toEqual([{ kind: 'inp', route: '/', valueMs: 240 }])
+  })
+
+  it('keeps a tap on the page still showing when a move to another was refused', async () => {
+    const { router, clock, recorded, take } = visiting()
+    router.beforeEach((to) => to.path !== '/foods')
+    await router.push('/')
+    clock.now = 1_000
+    await router.push('/foods')
+
+    take({ name: 'INP', value: 240, entries: [{ startTime: 1_500 }] })
+
+    expect(recorded).toEqual([{ kind: 'inp', route: '/', valueMs: 240 }])
+  })
+})

@@ -4,12 +4,12 @@ import com.tucker.domain.BrowserEngine
 import com.tucker.domain.MetricBatch
 import com.tucker.domain.MetricEvent
 import com.tucker.domain.MetricFilter
-import com.tucker.domain.MetricKind
 import com.tucker.domain.MetricLayout
 import com.tucker.domain.MetricSource
 import com.tucker.domain.OperatingSystem
 import com.tucker.domain.Platform
 import com.tucker.domain.RouteChange
+import com.tucker.domain.VitalKind
 import com.tucker.domain.WebVital
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -53,7 +53,10 @@ class MetricEventRepositoryTest {
 
         metrics.insert(MetricBatch(listOf(installed, inBrowser)), recordedAt = Instant.parse("2026-10-21T08:00:00Z"))
 
-        assertEquals(setOf(installed, inBrowser), metrics.find(MetricFilter(Instant.EPOCH, null, null, null)).toSet())
+        assertEquals(
+            setOf(installed, inBrowser),
+            metrics.routeChanges(MetricFilter(Instant.EPOCH, null, null, null)).toSet(),
+        )
     }
 
     @Test
@@ -64,8 +67,8 @@ class MetricEventRepositoryTest {
             appVersion = "0.1.42",
             platform = Platform(BrowserEngine.WEBKIT, OperatingSystem.IOS),
         )
-        val pageLoad = WebVital(MetricKind.LCP, route = "/review", valueMs = 1_840, source = source)
-        val tap = WebVital(MetricKind.INP, route = "/foods", valueMs = 160, source = source)
+        val pageLoad = WebVital(VitalKind.LCP, route = "/review", valueMs = 1_840, source = source)
+        val tap = WebVital(VitalKind.INP, route = "/foods", valueMs = 160, source = source)
 
         metrics.insert(MetricBatch(listOf(pageLoad, tap)), recordedAt = Instant.parse("2026-10-21T08:00:00Z"))
 
@@ -94,7 +97,7 @@ class MetricEventRepositoryTest {
 
         assertEquals(
             listOf(event),
-            metrics.find(MetricFilter(Instant.parse("2026-10-22T09:30:00.123Z"), null, null, null)),
+            metrics.routeChanges(MetricFilter(Instant.parse("2026-10-22T09:30:00.123Z"), null, null, null)),
         )
     }
 }

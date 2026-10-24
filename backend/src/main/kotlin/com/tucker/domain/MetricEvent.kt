@@ -67,17 +67,24 @@ sealed interface MetricEvent {
     }
 }
 
+/** The [MetricKind]s a [WebVital] can be. */
+enum class VitalKind(val kind: MetricKind) {
+    LCP(MetricKind.LCP),
+    INP(MetricKind.INP),
+}
+
 /** A page load (LCP) or a tap's response (INP), on the route it happened on. */
 data class WebVital(
-    override val kind: MetricKind,
+    val vitalKind: VitalKind,
     override val route: String,
     override val valueMs: Int,
     override val source: MetricSource,
 ) : MetricEvent {
     init {
-        require(kind != MetricKind.ROUTE_CHANGE) { "a web vital is lcp or inp, not ${kind.wire}" }
         MetricEvent.requireMeasurement(route, valueMs)
     }
+
+    override val kind get() = vitalKind.kind
 }
 
 /** A move between pages, and where its time went. */

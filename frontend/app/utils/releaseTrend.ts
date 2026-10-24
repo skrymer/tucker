@@ -26,8 +26,7 @@ export function figureIn(
   release: Release,
   layout: ReleaseSeries['layout'],
 ): string {
-  const { n = 0, p75 = null } = layoutIn(release, layout) ?? {}
-  return p75 == null ? tooFewLabel(n) : `${p75} ms`
+  return p75Label(layoutIn(release, layout) ?? { n: 0 })
 }
 
 /** The top of the one y-scale every route's chart shares. */

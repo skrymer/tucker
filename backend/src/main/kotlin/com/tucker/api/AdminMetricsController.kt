@@ -10,8 +10,8 @@ import com.tucker.domain.RELEASE_ORDER
 import com.tucker.domain.ReleaseFigures
 import com.tucker.domain.ReleaseLayoutFigures
 import com.tucker.domain.ReleaseTrend
-import com.tucker.domain.RouteFigures
 import com.tucker.domain.RouteChange
+import com.tucker.domain.RouteFigures
 import com.tucker.domain.RouteReleases
 import com.tucker.domain.VitalLayoutFigures
 import com.tucker.domain.WebVital
@@ -132,13 +132,15 @@ class AdminMetricsController(private val metrics: MetricEventRepository, private
     ): PerformanceReportResponse {
         val since = (range ?: MetricRange.MONTH).since(clock.instant())
         val filter = MetricFilter(since, engine, version?.takeIf { it.isNotBlank() }, installed)
+        val chosen = metrics.find(filter)
+        val moves = chosen.filterIsInstance<RouteChange>()
         // Releases are the trend's axis, so it reads every version whichever is chosen.
-        val everyVersion = metrics.find(filter.copy(appVersion = null))
-        val chosen = if (filter.appVersion == null) everyVersion else metrics.find(filter)
+        val everyVersion =
+            if (filter.appVersion == null) moves else metrics.routeChanges(filter.copy(appVersion = null))
         return PerformanceReportResponse(
-            PerformanceReport.of(chosen.filterIsInstance<RouteChange>()),
+            PerformanceReport.of(moves),
             metrics.versionsSince(since).sortedWith(RELEASE_ORDER.reversed()),
-            ReleaseTrend.of(everyVersion.filterIsInstance<RouteChange>()),
+            ReleaseTrend.of(everyVersion),
             WebVitalReport.of(chosen.filterIsInstance<WebVital>()),
         )
     }

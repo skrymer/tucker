@@ -26,7 +26,7 @@ describe('a web vital as Tucker records it', () => {
     const tap = {
       name: 'INP' as const,
       value: 240,
-      attribution: { interactionTime: 2_500 },
+      entries: [{ startTime: 2_500 }, { startTime: 2_520 }],
     }
 
     expect(webVitalEvent(tap, visits().routeAt)).toEqual({
@@ -36,9 +36,9 @@ describe('a web vital as Tucker records it', () => {
     })
   })
 
-  // web-vitals leaves the moment out when the browser kept no entry for the tap.
+  // web-vitals has no entry to time the tap by when the browser kept none.
   it('drops an interaction whose moment is unknown, rather than guess its route', () => {
-    const tap = { name: 'INP' as const, value: 240, attribution: {} }
+    const tap = { name: 'INP' as const, value: 240, entries: [] }
 
     expect(webVitalEvent(tap, visits().routeAt)).toBeUndefined()
   })

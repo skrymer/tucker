@@ -6,7 +6,7 @@ data class ReleaseLayoutFigures(val layout: MetricLayout, val n: Int, val p75: I
         fun of(layout: MetricLayout, moves: List<RouteChange>) = ReleaseLayoutFigures(
             layout,
             moves.size,
-            moves.takeIf { it.size >= LayoutFigures.MIN_SAMPLES }?.let { Percentiles.p75Of(it.map { m -> m.valueMs }) },
+            moves.takeIf { it.size >= Percentiles.MIN_SAMPLES }?.let { Percentiles.p75Of(it.map { m -> m.valueMs }) },
         )
     }
 }

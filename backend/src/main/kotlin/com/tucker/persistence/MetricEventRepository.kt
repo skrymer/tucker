@@ -10,9 +10,11 @@ import com.tucker.domain.MetricSource
 import com.tucker.domain.OperatingSystem
 import com.tucker.domain.Platform
 import com.tucker.domain.RouteChange
+import com.tucker.domain.VitalKind
 import com.tucker.domain.WebVital
 import com.tucker.jooq.Tables.METRIC_EVENT
 import com.tucker.jooq.tables.records.MetricEventRecord
+import org.jooq.Condition
 import org.jooq.DSLContext
 import org.jooq.impl.DSL.noCondition
 import org.springframework.stereotype.Repository
@@ -31,9 +33,15 @@ class MetricEventRepository(private val dsl: DSLContext) {
         dsl.batchInsert(batch.events.map { it.toRecord(recordedAt) }).execute()
     }
 
-    fun find(filter: MetricFilter): List<MetricEvent> =
+    fun find(filter: MetricFilter): List<MetricEvent> = find(filter, noCondition())
+
+    fun routeChanges(filter: MetricFilter): List<RouteChange> =
+        find(filter, METRIC_EVENT.KIND.eq(MetricKind.ROUTE_CHANGE.wire)).filterIsInstance<RouteChange>()
+
+    private fun find(filter: MetricFilter, ofKind: Condition): List<MetricEvent> =
         dsl.selectFrom(METRIC_EVENT)
             .where(recordedSince(filter.since))
+            .and(ofKind)
             .and(filter.engine?.let { METRIC_EVENT.ENGINE.eq(it.wire) } ?: noCondition())
             .and(filter.appVersion?.let { METRIC_EVENT.APP_VERSION.eq(it) } ?: noCondition())
             .and(filter.installed?.let { METRIC_EVENT.INSTALLED.eq(it.toFlag()) } ?: noCondition())
@@ -76,9 +84,10 @@ class MetricEventRepository(private val dsl: DSLContext) {
             appVersion,
             Platform(BrowserEngine.of(engine), OperatingSystem.of(os)),
         )
-        return when (val kind = MetricKind.of(kind)) {
+        return when (MetricKind.of(kind)) {
             MetricKind.ROUTE_CHANGE -> RouteChange(route, valueMs, apiMs, serverMs, firstVisit.isFlagSet(), source)
-            else -> WebVital(kind, route, valueMs, source)
+            MetricKind.LCP -> WebVital(VitalKind.LCP, route, valueMs, source)
+            MetricKind.INP -> WebVital(VitalKind.INP, route, valueMs, source)
         }
     }
 }
