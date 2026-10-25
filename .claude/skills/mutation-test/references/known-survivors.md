@@ -1744,9 +1744,11 @@ log's `afterEach`; a dropped vital was recorded as `undefined`) and one backend 
   and INP in the User's layout; every one of these mutants leaves one or both at `n 0`
   or hides the card.
 - **`admin.vue`'s `report.value?.webVitals` and `vitalsMeasured`'s `webVitals.value?.lcp`
-  / `?.inp` optional chains, and both `?? []` arrays — equivalent**: read only through
-  `v-if="webVitals && vitalsMeasured"`, inside `LoadErrorState`'s content, and `lcp` /
-  `inp` are required in the spec — as `report.value?.routes ?? []` above.
+  / `?.inp` optional chains, and both `?? []` arrays — equivalent**: every read of
+  `vitalsMeasured` (the card's `v-if` and the moves section's empty-state branches) sits
+  inside `LoadErrorState`'s content, which renders only after a successful read, and
+  `webVitals`, `lcp` and `inp` are required in the spec — as `report.value?.routes ?? []`
+  above.
 - **`releaseTrend.ts`'s `figureIn` fallback `{ n: 0 }` → `{}` — equivalent**: reached only
   for a release missing a layout, the case the `layoutIn(…)?.p75` entry rests on.
 - **`routeLog.ts`'s `entries` seeded with a string — equivalent**: `"…".at` is

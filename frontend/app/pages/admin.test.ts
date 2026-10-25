@@ -654,6 +654,27 @@ describe('/admin', () => {
     ).not.toBeInTheDocument()
   })
 
+  it('says there were no moves between pages while page load alone was measured', async () => {
+    server.use(
+      signedInAsAdmin,
+      metricsReport([], [], [], {
+        ...noWebVitals(),
+        lcp: [
+          vitalIn('phone', 20, { p50: 1_800, p75: 2_140, p95: 3_900 }),
+          vitalIn('desktop', 0),
+        ],
+      }),
+    )
+    await renderInApp(AdminPage)
+
+    const moves = within(
+      await screen.findByRole('region', { name: 'Moving between pages' }),
+    )
+    expect(
+      moves.getByText('No moves between pages in the last 30 days'),
+    ).toBeVisible()
+  })
+
   it('says nothing matches the filters only while page load and interaction do not either', async () => {
     const user = userEvent.setup()
     server.use(
@@ -678,11 +699,11 @@ describe('/admin', () => {
     await user.click(screen.getByRole('combobox', { name: 'App version' }))
     await user.click(await screen.findByRole('option', { name: '0.1.43' }))
 
-    await vi.waitFor(() =>
-      expect(
-        screen.queryByRole('heading', { name: 'Moving between pages' }),
-      ).not.toBeInTheDocument(),
+    const moves = within(
+      await screen.findByRole('region', { name: 'Moving between pages' }),
     )
+    expect(moves.getByText('No moves match these filters')).toBeVisible()
+    expect(moves.getByRole('button', { name: 'Reset filters' })).toBeVisible()
     expect(
       screen.getByRole('region', { name: 'Page load (LCP)' }),
     ).toBeVisible()

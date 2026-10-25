@@ -184,6 +184,21 @@ const filters = computed(() => [
               looks further back.
             </p>
           </div>
+          <UCard v-else as="section" aria-labelledby="moves-empty">
+            <h2 id="moves-empty" class="text-h2 text-highlighted">
+              Moving between pages
+            </h2>
+            <div
+              v-if="reportNarrowed"
+              class="mt-1 flex items-center justify-between gap-4"
+            >
+              <p class="text-sm text-muted">No moves match these filters</p>
+              <UButton label="Reset filters" variant="outline" @click="reset" />
+            </div>
+            <p v-else class="mt-1 text-sm text-muted">
+              No moves between pages in the last 30 days
+            </p>
+          </UCard>
           <!-- Never narrowed to a version, so it can stand beside an empty state. -->
           <LazyReleaseTrendCard
             v-if="byRelease.length"
