@@ -47,6 +47,32 @@ describe('a web vital put on the route it happened on', () => {
     expect(recorded).toEqual([{ kind: 'inp', route: '/', valueMs: 120 }])
   })
 
+  it('records a page load reported after the visit’s interaction', async () => {
+    const { router, recorded, take } = visiting()
+    await router.push('/')
+
+    take({ name: 'INP', value: 120, entries: [{ startTime: 500 }] })
+    take({ name: 'LCP', value: 300, entries: [{ startTime: 300 }] })
+
+    expect(recorded).toEqual([
+      { kind: 'inp', route: '/', valueMs: 120 },
+      { kind: 'lcp', route: '/', valueMs: 300 },
+    ])
+  })
+
+  it('records an interaction reported after the visit’s page load', async () => {
+    const { router, recorded, take } = visiting()
+    await router.push('/')
+
+    take({ name: 'LCP', value: 300, entries: [{ startTime: 300 }] })
+    take({ name: 'INP', value: 120, entries: [{ startTime: 500 }] })
+
+    expect(recorded).toEqual([
+      { kind: 'lcp', route: '/', valueMs: 300 },
+      { kind: 'inp', route: '/', valueMs: 120 },
+    ])
+  })
+
   it('records nothing for a tap whose moment is unknown', async () => {
     const { router, recorded, take } = visiting()
     await router.push('/')
