@@ -105,7 +105,10 @@ its log's verdict line is read as RED, and a revised fix cites the proof that we
 the final code: #522's pack twice cited a GREEN run as the red proof, and it took three
 resolutions passes to make faithful. Where an agent's summary line disagrees with its
 own rows, the pack takes the rows and gives the mismatch its own row — copying #522's
-triage summary ("15 … 12 … 5", rows 13 / 13 / 6) whole was still rejected.
+triage summary ("15 … 12 … 5", rows 13 / 13 / 6) whole was still rejected. Check the
+rows' counts sum to `wc -l` of the survivors file before writing them, and never pad a
+row to reach the summary: #523's "(and 1 more per agent)" invented a ninth equivalent.
+A FIXED cell reads `FIXED: <test> — red <log path>`; one without a log path is incomplete.
 
 **One row per remedy, and a ruling covers only what its question named.** Every pack
 row is `| id | agent | finding | remedy (one) | resolution |`, and a finding that

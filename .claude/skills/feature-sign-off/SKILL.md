@@ -366,8 +366,8 @@ Gate 1's fan-out is where this happens most, but gates 3 and 4 can split the sam
 when a correctness fix runs into a recorded constraint. The trigger is narrow —
 *opposing answers to one question*, not two findings to prioritise — and includes a
 resolution adopting one agent's remedy for lines another agent's would change (#432). **The arbiter's pick is what lands** — after you test any state its "strongest case
-against" names: #434's arbiter named the sheet closing over a draft, called it arguably
-correct, and gate 5 found exactly that harm. If you
+against" names, and measure any size it guesses for it; a row left OPEN is untested.
+#434's named a sheet closing over a draft; #523's guessed "milliseconds" — both harms. If you
 override it, that override goes into gate 5's pack as its own finding-and-resolution
 pair; a rule that forbade the override outright would be unenforceable, since you
 write the code either way.
@@ -397,10 +397,10 @@ losing a finding:
   carries both recipes. "It passes on write" never leaves behaviour unpinned, nor
   justifies deleting the test: the red removes the line the justification names (#432's
   `v-if`), and a "framework does it" claim owes the same red. **Save every red as it
-  fails, to its own `--log` file** — #498 left one "run in-session, not saved to a file".
+  fails, to its own log** — a FIXED row cites it (#498 left one unsaved; #523, ten).
   A fix that corrects a claim, or makes an exception to one, first `git grep`s its wording
-  across `CONTEXT.md`, `docs/adr`, `docs/architecture.md` and KDoc, in the same commit:
-  #411 fixed CLAUDE.md and missed the hook's comment; #498's left the old rule six times.
+  across `CONTEXT.md`, `docs/adr`, `docs/architecture.md`, KDoc **and the pack's own reasons**:
+  #411 missed a hook's comment; #523's fix voided a premise another ACCEPT rested on.
 
   Every gate fix follows a large agent report, which is exactly when Probity loses
   the run's test history and refuses a genuine RED as circular. Re-run the target

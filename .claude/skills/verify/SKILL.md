@@ -208,7 +208,10 @@ Related, all cheap:
   same question as the resize check, at the start (#474 lost gate 6 to it across three
   messages). A hidden window also pauses `requestAnimationFrame`, so a frame-sampling
   probe hangs or counts nothing: check `document.visibilityState === 'visible'`
-  immediately before each one (#498's moved to a Playwright fallback over it).
+  immediately before each one (#498's moved to a Playwright fallback over it). An
+  **occluded** window reads `visible` and still records no LCP at all — a buffered
+  `largest-contentful-paint` observer returns nothing — so a web-vitals probe reads as
+  lost vitals: bring the window to the front first (#523 chased it as a bug).
 - **The extension cannot hide a tab.** `tabs_create_mcp` opens the new tab behind the
   current one, so `visibilityState` never changes — and a background tab of yours runs
   no `requestAnimationFrame` either. To drive a hide, dispatch it in the page
@@ -291,7 +294,10 @@ and checks each against a concrete value in the verdict.
   resolutions pass showed the recipe. And look past today's endpoints to the rows
   already stored: a nullable column whose create path was tightened later still holds
   the state, so seed the row directly. #432 called a Food with no carbs figure
-  unreachable; the column is nullable, and the state was a real bug.
+  unreachable; the column is nullable, and the state was a real bug. A client-only state
+  has in-page recipes too: Back restores from the back-forward cache (check
+  `pageshow.persisted`), and a hide is dispatched in the page (the tab trap above) —
+  #523 wrote both off and drove the first with one Back after the audit.
 - Append the result to the verdict, so a reviewer sees what was checked:
   `verdict audit: 4 inputs — 3 COVERED, 1 UNCOVERED (start date = today) → drove it ✅`
   Write it only after marking every value the audit named DRIVEN (quote it) or NOT
