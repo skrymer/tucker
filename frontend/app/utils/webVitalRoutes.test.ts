@@ -25,6 +25,17 @@ describe('a web vital put on the route it happened on', () => {
     expect(recorded).toEqual([{ kind: 'inp', route: '/', valueMs: 240 }])
   })
 
+  // Until the first page has its data, nothing else was ever on screen.
+  it('puts a tap made while the first page loaded on that page', () => {
+    const { clock, recorded, shown, take } = visiting()
+    clock.now = 1_000
+    shown('/')
+
+    take({ name: 'INP', value: 240, entries: [{ startTime: 500 }] })
+
+    expect(recorded).toEqual([{ kind: 'inp', route: '/', valueMs: 240 }])
+  })
+
   it('names a page by its route template', () => {
     const { recorded, shown, take } = visiting()
     shown('/foods/:id(\\d+)')
@@ -45,6 +56,16 @@ describe('a web vital put on the route it happened on', () => {
     take({ name: 'INP', value: 400, entries: [{ startTime: 900 }] })
 
     expect(recorded).toEqual([{ kind: 'inp', route: '/', valueMs: 120 }])
+  })
+
+  it('sends no later interaction once the visit’s first could not be placed', () => {
+    const { recorded, shown, take } = visiting()
+    shown('/')
+
+    take({ name: 'INP', value: 120, entries: [] })
+    take({ name: 'INP', value: 400, entries: [{ startTime: 900 }] })
+
+    expect(recorded).toEqual([])
   })
 
   it('records a page load reported after the visit’s interaction', () => {

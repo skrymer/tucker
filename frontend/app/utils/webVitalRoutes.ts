@@ -18,16 +18,21 @@ export function attributeWebVitals(
   const routes = createRouteLog()
   // One INP per visit: web-vitals reports it again on each hide where it grew.
   let interactionTaken = false
+  // Until the first page has its data, nothing else was ever on screen.
+  let firstShown = true
   return {
     shown(matchedPath: string | undefined) {
-      if (matchedPath) routes.entered(routeTemplate(matchedPath), now())
+      if (!matchedPath) return
+      routes.entered(routeTemplate(matchedPath), firstShown ? 0 : now())
+      firstShown = false
     },
     take(vital: WebVital) {
-      if (vital.name === 'INP' && interactionTaken) return
+      if (vital.name === 'INP') {
+        if (interactionTaken) return
+        interactionTaken = true
+      }
       const event = webVitalEvent(vital, routes.routeAt)
-      if (!event) return
-      if (event.kind === 'inp') interactionTaken = true
-      record(event)
+      if (event) record(event)
     },
   }
 }
