@@ -2,14 +2,19 @@
 
 A Food's calories are still derived and never entered, but the rule is now FSANZ's
 energy formula instead of the three Atwater factors:
-`4 × protein + 4 × carbs + 9 × fat + 2 × fibre + 7 × alcohol` kcal (17, 17, 37, 8
-and 29 kJ/g). Fibre and alcohol become macros on a Food. **Carbs** means *available*
+`4 × protein + 4 × carbs + 9 × fat + 2 × fibre + 7 × alcohol` kcal per gram.
+Those are FSANZ's 17, 17, 37, 8 and 29 kJ/g rounded to whole kcal, and the rounded
+kcal factors are the rule rather than the kJ ones. The 4/4/9 already in use are the
+same rounding, so computing in kJ instead would shift every existing Food's
+calories by 1–2% for no gain (the wrap below reads 246.1 kcal one way and 245.2 the
+other, against a label of 246). Fibre and alcohol become macros on a Food. **Carbs** means *available*
 carbohydrate with fibre excluded, which is what an Australian label's
 "Carbohydrate" line states, so a User copies each line off the label as printed.
 
 The case that forced this was a protein wrap whose label reads 19.4 g protein,
 9.3 g fat, 12.8 g carbohydrate and 16.8 g fibre per 100 g, and 1026 kJ (246 kcal).
-The FSANZ formula reproduces that figure to within 0.1 kJ. The old rule could not:
+The FSANZ formula reproduces that figure: 1025.9 kJ, or 246.1 kcal by the rounded
+factors. The old rule could not:
 with the label's carbs it gave 213 kcal, and with Open Food Facts' carbs (29.4,
 fibre folded in by whoever entered the record) it gave 279. Wine was worse. It has
 no nutrition panel at all, and a 150 g glass of 13% wine derived about 16 kcal

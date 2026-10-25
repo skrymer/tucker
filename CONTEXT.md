@@ -58,8 +58,10 @@ weight-only mode
 A reusable definition of something edible — a name plus nutrition per 100g
 (protein, carbs, fat, fibre, alcohol). Calories per 100g are **derived**, not
 entered: a Food's calorie figure is always
-`4 × protein + 4 × carbs + 9 × fat + 2 × fibre + 7 × alcohol` (the FSANZ energy
-factors — 17, 17, 37, 8 and 29 kJ/g — per gram, scaled to 100g).
+`4 × protein + 4 × carbs + 9 × fat + 2 × fibre + 7 × alcohol` kcal per gram,
+scaled to 100g. Those are FSANZ's energy factors (17, 17, 37, 8 and 29 kJ/g)
+rounded to whole kcal, and the **rounded kcal factors are the rule**: computing in
+kJ would move every existing Food's calories by a percent or two for no gain.
 The user supplies the macros; the app computes calories.
 **Carbs** means *available* carbohydrate, fibre excluded — exactly what an
 Australian label's "Carbohydrate" line states — and **fibre** is its own macro,
