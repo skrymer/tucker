@@ -1745,6 +1745,10 @@ log's `afterEach`; a dropped vital was recorded as `undefined`) and one backend 
   load and tap reach the Admin, counted in their layout* asserts `n 1` for each of LCP
   and INP in the User's layout; every one of these mutants leaves one or both at `n 0`
   or hides the card.
+- **Which hook feeds `vitals.shown` (`page:finish`, not a router hook) — no layer can
+  pin it.** Moving it to `router.afterEach` changes only the route stored on an INP made
+  while a page awaits its data; no reader shows that route (the Admin's strip is per
+  layout), and the mocked e2e makes no request assertions (ADR 0034).
 - **`admin.vue`'s `report.value?.webVitals` and `vitalsMeasured`'s `webVitals.value?.lcp`
   / `?.inp` optional chains, and both `?? []` arrays — equivalent**: every read of
   `vitalsMeasured` (the card's `v-if` and the moves section's empty-state branches) sits
