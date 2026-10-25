@@ -1738,7 +1738,9 @@ log's `afterEach`; a dropped vital was recorded as `undefined`) and one backend 
 (`WebVital`'s `requireMeasurement`) got tests. What stays alive:
 
 - **`route-metrics.client.ts`'s `watchWebVitals` (its body, the `now` clock, the
-  `then` callback, `onLCP(take)`, `onINP(take)`, the `record` arrow and its spread) —
+  `then` callback, `onLCP`, `onINP`, the `send` arrow and its spread) and the
+  `page:finish` hook's `vitals.shown(matchedPath)` (no route logged, every vital
+  dropped) —
   killed by an out-of-scope layer**: `e2e/smoke/metrics.smoke.spec.ts` *a User's page
   load and tap reach the Admin, counted in their layout* asserts `n 1` for each of LCP
   and INP in the User's layout; every one of these mutants leaves one or both at `n 0`
