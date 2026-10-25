@@ -31,6 +31,34 @@ test('refuses a sed -i whose quoted script holds several ;-separated expressions
   )
 })
 
+test('refuses perl editing a gated file in place, whatever its flags are joined to', () => {
+  assert.equal(
+    refused('perl -0pi -e "s/a/b/g" backend/src/test/kotlin/com/tucker/domain/MetricEventTest.kt'),
+    true,
+  )
+  assert.equal(refused("perl -pi -e 's/a/b/' app/pages/admin.vue"), true)
+  assert.equal(refused("perl -i.bak -pe 's/a/b/' app/utils/x.ts"), true)
+})
+
+test('lets perl read a gated file without editing it', () => {
+  assert.equal(refused("perl -ne 'print if /x/' app/pages/admin.vue"), false)
+})
+
+test('refuses an in-place edit of a loop variable over gated files', () => {
+  assert.equal(
+    refused('for f in backend/src/test/kotlin/com/tucker/api/*.kt; do sed -i s/a/b/ $f; done'),
+    true,
+  )
+  assert.equal(
+    refused('for f in app/pages/*.vue; do perl -pi -e "s/a/b/" "$f"; done'),
+    true,
+  )
+})
+
+test('lets an in-place edit of a loop variable over ungated files through', () => {
+  assert.equal(refused('for f in docs/adr/*.md; do sed -i s/a/b/ $f; done'), false)
+})
+
 test('refuses a redirect or tee onto a gated file', () => {
   assert.equal(refused('cat > frontend/app/utils/x.ts <<EOF\nx\nEOF'), true)
   assert.equal(refused('echo y >> backend/src/main/kotlin/A.kt'), true)
