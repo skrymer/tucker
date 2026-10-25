@@ -8,6 +8,9 @@ import com.tucker.domain.MetricKind
 import com.tucker.domain.MetricLayout
 import com.tucker.domain.MetricSource
 import com.tucker.domain.Platform
+import com.tucker.domain.RouteChange
+import com.tucker.domain.VitalKind
+import com.tucker.domain.WebVital
 import com.tucker.persistence.MetricEventRepository
 import io.swagger.v3.oas.annotations.Parameter
 import org.springframework.http.HttpHeaders
@@ -22,31 +25,47 @@ import org.springframework.web.bind.annotation.RestController
 import java.time.Clock
 
 /**
- * One measurement as a browser sends it. A null time, first-visit or installed flag is
- * refused rather than read as 0 ms or `false`, which is what a primitive would
- * otherwise default to: a time the browser failed to take (NaN serialises as null)
- * is no measurement at all.
+ * One measurement as a browser sends it. A null time or installed flag is refused
+ * rather than read as 0 ms or `false`, which is what a primitive would otherwise
+ * default to: a time the browser failed to take (NaN serialises as null) is no
+ * measurement at all. [apiMs], [serverMs] and [firstVisit] belong to a route change,
+ * which must carry all three.
  */
 data class MetricEventRequest(
     val kind: MetricKind,
     val route: String,
     @param:JsonSetter(nulls = Nulls.FAIL) val valueMs: Int,
-    @param:JsonSetter(nulls = Nulls.FAIL) val apiMs: Int,
-    @param:JsonSetter(nulls = Nulls.FAIL) val serverMs: Int,
-    @param:JsonSetter(nulls = Nulls.FAIL) val firstVisit: Boolean,
+    val apiMs: Int?,
+    val serverMs: Int?,
+    val firstVisit: Boolean?,
     val layout: MetricLayout,
     @param:JsonSetter(nulls = Nulls.FAIL) val installed: Boolean,
     val appVersion: String,
 ) {
-    fun toDomain(platform: Platform) = MetricEvent(
-        kind,
+    fun toDomain(platform: Platform): MetricEvent {
+        val source = MetricSource(layout, installed, appVersion, platform)
+        return when (kind) {
+            MetricKind.ROUTE_CHANGE -> routeChange(source)
+            MetricKind.LCP -> webVital(VitalKind.LCP, source)
+            MetricKind.INP -> webVital(VitalKind.INP, source)
+        }
+    }
+
+    private fun routeChange(source: MetricSource) = RouteChange(
         route,
         valueMs,
-        apiMs,
-        serverMs,
-        firstVisit,
-        MetricSource(layout, installed, appVersion, platform),
+        requireNotNull(apiMs) { "a route change must say how long it waited on the api" },
+        requireNotNull(serverMs) { "a route change must say how long the server worked" },
+        requireNotNull(firstVisit) { "a route change must say whether it was the route's first visit" },
+        source,
     )
+
+    private fun webVital(vitalKind: VitalKind, source: MetricSource): WebVital {
+        require(apiMs == null) { "an ${kind.wire} event carries no apiMs" }
+        require(serverMs == null) { "an ${kind.wire} event carries no serverMs" }
+        require(firstVisit == null) { "an ${kind.wire} event carries no firstVisit" }
+        return WebVital(vitalKind, route, valueMs, source)
+    }
 }
 
 data class MetricBatchRequest(val events: List<MetricEventRequest>) {

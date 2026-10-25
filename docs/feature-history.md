@@ -2080,3 +2080,28 @@ null` now means two things that earn opposite messages — the same trap
     tables; unovis's Scatter wraps each point in a `point-group` and still emits an
     element for a missing value (select `[class$="-point"]`, skip zero-size boxes);
     the name-casing guard reads any `.name` in a template as a name a User typed.
+  - **Slice 6 ([#523](https://github.com/skrymer/tucker/issues/523)) — page load (LCP)
+    and interaction (INP).** The plugin loads the base `web-vitals` build lazily and
+    queues LCP and INP beside the moves; `attributeWebVitals` puts each on the page
+    showing when it happened, told by `page:finish` (the move timer's own "shown"
+    signal), the first page covering its own load. `MetricEvent` is a sealed
+    `RouteChange | WebVital` (`VitalKind` LCP/INP), the endpoint refuses `apiMs`,
+    `serverMs` and `firstVisit` on a vital, and `WebVitalReport` gives each layout's
+    n and percentiles from `Percentiles.MIN_SAMPLES` up. `/admin` shows
+    `WebVitalsCard`, two stat tiles of phone and desktop p75 with every figure on
+    hover, below the release charts.
+  - **Rulings (user):** INP's moment is the first event entry's `startTime`, read
+    from the base build, not the attribution build's `interactionTime` (the same
+    value, ~6.7 KB lighter); **one INP per page visit**, the first report, placed or
+    not — web-vitals re-reports on every hide where it grew; tile figures are
+    `text-stat`; with vitals but no moves the moves section says so in a compact card
+    ("No moves between pages…", or "No moves match these filters" with Reset).
+  - **Traps:** a `<dl>`'s `<dd>` has no accessible name in Chrome, so
+    `getByRole('definition', { name })` passed only in happy-dom — each tile is a
+    `<table>`; Reka's `role="tooltip"` node is an `aria-hidden` twin, so assert the
+    trigger's accessible description; `UTooltip` needs `UApp` (`test/render-in-app.ts`);
+    a router hook is the wrong "shown" signal — pages await data in setup, so the old
+    page stays up for a round trip after `afterEach`; an LCP after a back-forward-cache
+    restore is a duration with no paint entry (dropped); a vital over a minute would
+    take its whole batch down with a 400 (dropped on the client); Chrome records no
+    LCP at all for an occluded window, which reads as lost vitals in a walk-through.

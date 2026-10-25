@@ -139,6 +139,55 @@ class MetricApiTest {
         }
     }
 
+    @Test
+    fun `accepts a page load and an interaction, which say nothing of a split`() {
+        mockMvc.post("/api/metrics") {
+            contentType = MediaType.APPLICATION_JSON
+            content = batchOf(webVital("lcp"), webVital("inp"))
+        }.andExpect {
+            status { isNoContent() }
+        }
+    }
+
+    /** A page load or a tap is no move between pages, so it has no wait on the api to report. */
+    @Test
+    fun `refuses a web vital that says how long it waited on the api`() {
+        mockMvc.post("/api/metrics") {
+            contentType = MediaType.APPLICATION_JSON
+            content = batchOf(webVital("lcp").replace("\"valueMs\":1840,", "\"valueMs\":1840,\"apiMs\":0,"))
+        }.andExpect {
+            status { isBadRequest() }
+            jsonPath("$.message") { value("an lcp event carries no apiMs") }
+        }
+    }
+
+    @Test
+    fun `refuses a web vital that says how long the server worked`() {
+        mockMvc.post("/api/metrics") {
+            contentType = MediaType.APPLICATION_JSON
+            content = batchOf(webVital("inp").replace("\"valueMs\":1840,", "\"valueMs\":1840,\"serverMs\":0,"))
+        }.andExpect {
+            status { isBadRequest() }
+            jsonPath("$.message") { value("an inp event carries no serverMs") }
+        }
+    }
+
+    /** A first visit is a move's, fetching the page's code too; a page load always is one. */
+    @Test
+    fun `refuses a web vital that says whether it was the route's first visit`() {
+        mockMvc.post("/api/metrics") {
+            contentType = MediaType.APPLICATION_JSON
+            content = batchOf(webVital("lcp").replace("\"valueMs\":1840,", "\"valueMs\":1840,\"firstVisit\":true,"))
+        }.andExpect {
+            status { isBadRequest() }
+            jsonPath("$.message") { value("an lcp event carries no firstVisit") }
+        }
+    }
+
+    private fun webVital(kind: String) =
+        """{"kind":"$kind","route":"/review","valueMs":1840,""" +
+            """"layout":"phone","installed":false,"appVersion":"1.4.0"}"""
+
     private fun routeChange(
         route: String = "/review",
         layout: String = "phone",

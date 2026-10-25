@@ -32,7 +32,7 @@ for it says which User it came from.
 - **An event names a route, never a URL**: the router's route template (`/review`),
   so no id or query string is ever stored. Beside it go the layout (`phone` or
   `desktop`, the app's own breakpoint), whether the app is installed, the app version,
-  whether this is the route's first visit since the page loaded, and an engine and OS derived
+  for a route change whether this is the route's first visit since the page loaded, and an engine and OS derived
   on the server from the user agent. The raw user agent, the IP address and the exact
   screen size are never stored.
 - **The app version is a semantic version**, and an event carrying anything else is

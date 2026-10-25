@@ -81,8 +81,31 @@ class MetricEventTest {
         assertFailsWith<IllegalArgumentException> { event.copy(apiMs = 0, serverMs = -1) }
     }
 
-    private val event = MetricEvent(
-        kind = MetricKind.ROUTE_CHANGE,
+    @Test
+    fun `accepts a page load, which carries no split of its own`() {
+        val pageLoad = WebVital(VitalKind.LCP, route = "/review", valueMs = 1_840, source = source())
+
+        assertEquals(MetricKind.LCP, pageLoad.kind)
+        assertEquals(1_840, pageLoad.valueMs)
+    }
+
+    @Test
+    fun `accepts an interaction, which carries no split of its own`() {
+        val tap = WebVital(VitalKind.INP, route = "/foods", valueMs = 160, source = source())
+
+        assertEquals(MetricKind.INP, tap.kind)
+    }
+
+    @Test
+    fun `refuses a web vital on a route that is not a route template`() {
+        val refused = assertFailsWith<IllegalArgumentException> {
+            WebVital(VitalKind.LCP, route = "/foods/42?tab=all", valueMs = 1_840, source = source())
+        }
+
+        assertEquals("\"/foods/42?tab=all\" is not a route template", refused.message)
+    }
+
+    private val event = RouteChange(
         route = "/review",
         valueMs = 420,
         apiMs = 300,

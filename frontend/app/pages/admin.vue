@@ -65,6 +65,13 @@ const {
 } = await useApi('/api/admin/metrics', { query })
 const routes = computed(() => report.value?.routes ?? [])
 const byRelease = computed(() => report.value?.byRelease ?? [])
+const webVitals = computed(() => report.value?.webVitals)
+// Four "too few (n 0)" would say nothing the rest of the page does not.
+const vitalsMeasured = computed(() =>
+  [...(webVitals.value?.lcp ?? []), ...(webVitals.value?.inp ?? [])].some(
+    (l) => l.n > 0,
+  ),
+)
 // Whether the report on screen was read narrowed; a read under way leaves it be.
 const reportNarrowed = ref(narrowed.value)
 watch(report, () => (reportNarrowed.value = narrowed.value))
@@ -147,7 +154,7 @@ const filters = computed(() => [
         >
           <LazyRouteTimingCard v-if="routes.length" :routes="routes" />
           <div
-            v-else-if="reportNarrowed"
+            v-else-if="reportNarrowed && !vitalsMeasured"
             class="flex flex-col items-center gap-3 py-12 text-center"
           >
             <UIcon
@@ -161,7 +168,7 @@ const filters = computed(() => [
             <UButton label="Reset filters" variant="outline" @click="reset" />
           </div>
           <div
-            v-else
+            v-else-if="!vitalsMeasured"
             class="flex flex-col items-center gap-3 py-12 text-center"
           >
             <UIcon
@@ -177,10 +184,30 @@ const filters = computed(() => [
               looks further back.
             </p>
           </div>
+          <UCard v-else as="section" aria-labelledby="moves-empty">
+            <h2 id="moves-empty" class="text-h2 text-highlighted">
+              Moving between pages
+            </h2>
+            <div
+              v-if="reportNarrowed"
+              class="mt-1 flex items-center justify-between gap-4"
+            >
+              <p class="text-sm text-muted">No moves match these filters</p>
+              <UButton label="Reset filters" variant="outline" @click="reset" />
+            </div>
+            <p v-else class="mt-1 text-sm text-muted">
+              No moves between pages in the last 30 days
+            </p>
+          </UCard>
           <!-- Never narrowed to a version, so it can stand beside an empty state. -->
           <LazyReleaseTrendCard
             v-if="byRelease.length"
             :routes="byRelease"
+            class="mt-4"
+          />
+          <LazyWebVitalsCard
+            v-if="webVitals && vitalsMeasured"
+            :web-vitals="webVitals"
             class="mt-4"
           />
         </div>

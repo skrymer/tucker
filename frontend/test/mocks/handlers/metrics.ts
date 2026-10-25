@@ -4,6 +4,23 @@ import { http } from '../http'
 type RouteFigures = components['schemas']['RouteFiguresResponse']
 type RouteReleases = components['schemas']['RouteReleasesResponse']
 type LayoutFigures = components['schemas']['LayoutFiguresResponse']
+type WebVitals = components['schemas']['WebVitalsResponse']
+type VitalLayout = components['schemas']['VitalLayoutResponse']
+
+/** A web vital in [layout] with [n] samples: figures from five, as the backend states them. */
+export function vitalIn(
+  layout: VitalLayout['layout'],
+  n: number,
+  figures: { p50: number; p75: number; p95: number } | null = null,
+): VitalLayout {
+  return { layout, n, ...(figures ?? { p50: null, p75: null, p95: null }) }
+}
+
+/** Page load and interaction measured nowhere: every layout listed, none counted. */
+export function noWebVitals(): WebVitals {
+  const none = () => [vitalIn('phone', 0), vitalIn('desktop', 0)]
+  return { lcp: none(), inp: none() }
+}
 
 /** A layout with enough samples for every figure, its numbers any a test does not read. */
 export function measured(
@@ -56,8 +73,9 @@ const SEMVER =
  * Jackson reads it into an Int), no installed flag, or an app version that is
  * not a semantic version. A route change must also
  * carry its api wait, server time and first-visit flag, with 0 ≤ server ≤ api ≤
- * the move. Its CSRF proof is the backend's to check, as for every mutation
- * mocked here: a mocked page is handed no token.
+ * the move, and a page load or interaction must carry none of the three. Its CSRF
+ * proof is the backend's to check, as for every mutation mocked here: a mocked
+ * page is handed no token.
  */
 function refusal(events: Sent[]): string | null {
   if (events.length < 1 || events.length > 50) {
@@ -71,9 +89,14 @@ function refusal(events: Sent[]): string | null {
       !SEMVER.test(e.appVersion) ||
       e.valueMs < 0 ||
       e.valueMs > 60_000 ||
-      !isSplit(e),
+      !(e.kind === 'route-change' ? isSplit(e) : hasNoSplit(e)),
   )
   return bad ? `a malformed metric: ${JSON.stringify(bad)}` : null
+}
+
+/** Absent or null alike, as the backend's nullable request fields read them. */
+function hasNoSplit({ apiMs, serverMs, firstVisit }: Sent): boolean {
+  return apiMs == null && serverMs == null && firstVisit == null
 }
 
 function isSplit({ valueMs, apiMs, serverMs, firstVisit }: Sent): boolean {
@@ -161,6 +184,23 @@ function matching(sent: Sent[], { version, installed }: MetricQuery): Sent[] {
   )
 }
 
+/** The moves between pages among [sent]: a page load or a tap is no route of the report's. */
+function moves(sent: Sent[]): Sent[] {
+  return sent.filter((e) => e.kind === 'route-change')
+}
+
+/** How many page loads and interactions [sent] holds in each layout, with no figure. */
+function countedWebVitals(sent: Sent[]): WebVitals {
+  const counted = (kind: Sent['kind']) =>
+    (['phone', 'desktop'] as const).map((layout) =>
+      vitalIn(
+        layout,
+        sent.filter((e) => e.kind === kind && e.layout === layout).length,
+      ),
+    )
+  return { lcp: counted('lcp'), inp: counted('inp') }
+}
+
 /** Each route sent, with how many moves to it each layout made. */
 function countedRoutes(sent: Sent[]): RouteFigures[] {
   return [...new Set(sent.map((e) => e.route))].map((route) => ({
@@ -227,13 +267,14 @@ export function metricsRecorded() {
         )
       }
       return response(200).json({
-        routes: countedRoutes(matching(sent, filters)),
+        routes: countedRoutes(moves(matching(sent, filters))),
         // Latest sent first, where the backend lists the newest release first:
         // a test sends from one release, the app's own.
         versions: [...new Set(sent.map((e) => e.appVersion).reverse())],
         byRelease: countedReleases(
-          matching(sent, { ...filters, version: null }),
+          moves(matching(sent, { ...filters, version: null })),
         ),
+        webVitals: countedWebVitals(matching(sent, filters)),
       })
     }),
   ]
@@ -242,13 +283,14 @@ export function metricsRecorded() {
 /**
  * The Admin's report, measured as [answer] says for each set of filters, the
  * range holding [versions] — the same whichever filters are chosen, or as a
- * function says for each — and each release's p75 as [byRelease] says, which no
- * version filter narrows.
+ * function says for each — each release's p75 as [byRelease] says, which no
+ * version filter narrows, and page load and interaction as [webVitals] says.
  */
 export function metricsBy(
   answer: (query: MetricQuery) => RouteFigures[],
   versions: string[] | ((query: MetricQuery) => string[]) = [],
   byRelease: RouteReleases[] = [],
+  webVitals: (query: MetricQuery) => WebVitals = noWebVitals,
 ) {
   return http.get('/api/admin/metrics', ({ query, response }) => {
     const filters = readFilters(query)
@@ -259,15 +301,25 @@ export function metricsBy(
           versions:
             typeof versions === 'function' ? versions(filters) : versions,
           byRelease,
+          webVitals: webVitals(filters),
         })
   })
 }
 
-/** The Admin's report, measured as [routes] and [byRelease] say whatever the filters. */
+/**
+ * The Admin's report, measured as [routes], [byRelease] and [webVitals] say
+ * whatever the filters.
+ */
 export function metricsReport(
   routes: RouteFigures[],
   versions: string[] = [],
   byRelease: RouteReleases[] = [],
+  webVitals: WebVitals = noWebVitals(),
 ) {
-  return metricsBy(() => routes, versions, byRelease)
+  return metricsBy(
+    () => routes,
+    versions,
+    byRelease,
+    () => webVitals,
+  )
 }

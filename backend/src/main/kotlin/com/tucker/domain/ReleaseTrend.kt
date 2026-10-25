@@ -3,10 +3,10 @@ package com.tucker.domain
 /** One layout's moves in one release: their [n] always, their [p75] only once there are enough. */
 data class ReleaseLayoutFigures(val layout: MetricLayout, val n: Int, val p75: Int?) {
     companion object {
-        fun of(layout: MetricLayout, moves: List<MetricEvent>) = ReleaseLayoutFigures(
+        fun of(layout: MetricLayout, moves: List<RouteChange>) = ReleaseLayoutFigures(
             layout,
             moves.size,
-            moves.takeIf { it.size >= LayoutFigures.MIN_SAMPLES }?.let { Percentiles.p75Of(it.map { m -> m.valueMs }) },
+            moves.takeIf { it.size >= Percentiles.MIN_SAMPLES }?.let { Percentiles.p75Of(it.map { m -> m.valueMs }) },
         )
     }
 }
@@ -23,7 +23,7 @@ data class RouteReleases(val route: String, val releases: List<ReleaseFigures>)
  */
 data class ReleaseTrend(val routes: List<RouteReleases>) {
     companion object {
-        fun of(events: List<MetricEvent>): ReleaseTrend {
+        fun of(events: List<RouteChange>): ReleaseTrend {
             val releases = events.map { it.source.appVersion }.distinct().sortedWith(RELEASE_ORDER)
             return ReleaseTrend(
                 events.groupBy { it.route }.toSortedMap().map { (route, ofRoute) ->
@@ -33,7 +33,7 @@ data class ReleaseTrend(val routes: List<RouteReleases>) {
             )
         }
 
-        private fun figuresOf(version: String, moves: List<MetricEvent>): ReleaseFigures {
+        private fun figuresOf(version: String, moves: List<RouteChange>): ReleaseFigures {
             val byLayout = moves.groupBy { it.source.layout }
             return ReleaseFigures(
                 version,

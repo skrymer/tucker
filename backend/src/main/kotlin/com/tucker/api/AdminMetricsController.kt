@@ -10,8 +10,12 @@ import com.tucker.domain.RELEASE_ORDER
 import com.tucker.domain.ReleaseFigures
 import com.tucker.domain.ReleaseLayoutFigures
 import com.tucker.domain.ReleaseTrend
+import com.tucker.domain.RouteChange
 import com.tucker.domain.RouteFigures
 import com.tucker.domain.RouteReleases
+import com.tucker.domain.VitalLayoutFigures
+import com.tucker.domain.WebVital
+import com.tucker.domain.WebVitalReport
 import com.tucker.persistence.MetricEventRepository
 import org.springframework.http.HttpStatus
 import org.springframework.transaction.annotation.Transactional
@@ -73,6 +77,24 @@ data class RouteReleasesResponse(val route: String, val releases: List<ReleaseFi
     constructor(figures: RouteReleases) : this(figures.route, figures.releases.map(::ReleaseFiguresResponse))
 }
 
+/** One web vital in one layout (ms): [n] always, the percentiles only once there are enough samples. */
+data class VitalLayoutResponse(val layout: MetricLayout, val n: Int, val p50: Int?, val p75: Int?, val p95: Int?) {
+    // jscpd:ignore-start — a flat wire DTO spells its percentiles out, as LayoutFiguresResponse does
+    constructor(figures: VitalLayoutFigures) : this(
+        figures.layout,
+        figures.n,
+        figures.percentiles?.p50,
+        figures.percentiles?.p75,
+        figures.percentiles?.p95,
+    )
+    // jscpd:ignore-end
+}
+
+data class WebVitalsResponse(val lcp: List<VitalLayoutResponse>, val inp: List<VitalLayoutResponse>) {
+    constructor(report: WebVitalReport) :
+        this(report.lcp.map(::VitalLayoutResponse), report.inp.map(::VitalLayoutResponse))
+}
+
 /**
  * [versions] are those the range holds, whichever one the report is narrowed to, and
  * [byRelease] is never narrowed to one: releases are its axis.
@@ -81,9 +103,15 @@ data class PerformanceReportResponse(
     val routes: List<RouteFiguresResponse>,
     val versions: List<String>,
     val byRelease: List<RouteReleasesResponse>,
+    val webVitals: WebVitalsResponse,
 ) {
-    constructor(report: PerformanceReport, versions: List<String>, trend: ReleaseTrend) :
-        this(report.routes.map(::RouteFiguresResponse), versions, trend.routes.map(::RouteReleasesResponse))
+    constructor(report: PerformanceReport, versions: List<String>, trend: ReleaseTrend, vitals: WebVitalReport) :
+        this(
+            report.routes.map(::RouteFiguresResponse),
+            versions,
+            trend.routes.map(::RouteReleasesResponse),
+            WebVitalsResponse(vitals),
+        )
 }
 
 /**
@@ -104,13 +132,16 @@ class AdminMetricsController(private val metrics: MetricEventRepository, private
     ): PerformanceReportResponse {
         val since = (range ?: MetricRange.MONTH).since(clock.instant())
         val filter = MetricFilter(since, engine, version?.takeIf { it.isNotBlank() }, installed)
+        val chosen = metrics.find(filter)
+        val moves = chosen.filterIsInstance<RouteChange>()
         // Releases are the trend's axis, so it reads every version whichever is chosen.
-        val everyVersion = metrics.find(filter.copy(appVersion = null))
-        val chosen = if (filter.appVersion == null) everyVersion else metrics.find(filter)
+        val everyVersion =
+            if (filter.appVersion == null) moves else metrics.routeChanges(filter.copy(appVersion = null))
         return PerformanceReportResponse(
-            PerformanceReport.of(chosen),
+            PerformanceReport.of(moves),
             metrics.versionsSince(since).sortedWith(RELEASE_ORDER.reversed()),
             ReleaseTrend.of(everyVersion),
+            WebVitalReport.of(chosen.filterIsInstance<WebVital>()),
         )
     }
 

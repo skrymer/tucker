@@ -281,9 +281,12 @@ here.
   PRD [#517](https://github.com/skrymer/tucker/issues/517), in slices #518–#525; slice 1,
   the Admin role and an empty Metrics page ([#518](https://github.com/skrymer/tucker/issues/518)),
   slice 2, route changes timed and charted for an Admin
-  ([#519](https://github.com/skrymer/tucker/issues/519)), and slice 3, each move split
+  ([#519](https://github.com/skrymer/tucker/issues/519)), slice 3, each move split
   into server, network + proxy and render time
-  ([#520](https://github.com/skrymer/tucker/issues/520)), are done.
+  ([#520](https://github.com/skrymer/tucker/issues/520)), slice 4, the filters
+  ([#521](https://github.com/skrymer/tucker/issues/521)), slice 5, p75 per release
+  ([#522](https://github.com/skrymer/tucker/issues/522)), and slice 6, page load (LCP)
+  and interaction (INP) ([#523](https://github.com/skrymer/tucker/issues/523)), are done.
 - **F22** — Fibre and alcohol are macros, and calories follow the FSANZ energy formula
   (PRD [#545](https://github.com/skrymer/tucker/issues/545),
   [ADR 0040](docs/adr/0040-calories-follow-the-fsanz-energy-formula-and-carbs-exclude-fibre.md)),

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { mockNuxtImport, renderSuspended } from '@nuxt/test-utils/runtime'
+import { mockNuxtImport } from '@nuxt/test-utils/runtime'
 import { screen, within } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import { http, serverError } from '~~/test/mocks/http'
@@ -9,7 +9,10 @@ import {
   measured,
   metricsBy,
   metricsReport,
+  noWebVitals,
+  vitalIn,
 } from '~~/test/mocks/handlers/metrics'
+import { renderInApp } from '~~/test/render-in-app'
 import AdminPage from './admin.vue'
 
 // unovis' chart, stubbed: its tooltip's `MutationObserver.disconnect` throws on
@@ -39,7 +42,7 @@ describe('/admin', () => {
   it('builds no filters on a phone', async () => {
     viewport.desktop = false
     server.use(signedInAsAdmin)
-    await renderSuspended(AdminPage)
+    await renderInApp(AdminPage)
 
     expect(screen.queryAllByRole('combobox', { hidden: true })).toHaveLength(0)
     expect(
@@ -49,7 +52,7 @@ describe('/admin', () => {
 
   it('is the Metrics page under an Admin eyebrow', async () => {
     server.use(signedInAsAdmin)
-    await renderSuspended(AdminPage)
+    await renderInApp(AdminPage)
 
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
       'Metrics',
@@ -59,7 +62,7 @@ describe('/admin', () => {
 
   it('narrows the metrics to the last 30 days, every engine, version and way of opening Tucker, until told otherwise', async () => {
     server.use(signedInAsAdmin)
-    await renderSuspended(AdminPage)
+    await renderInApp(AdminPage)
 
     const filters = screen.getByRole('group', { name: 'Filters' })
     expect(within(filters).getAllByRole('combobox')).toHaveLength(4)
@@ -80,7 +83,7 @@ describe('/admin', () => {
   it('offers the last day, week, month and quarter as ranges', async () => {
     const user = userEvent.setup()
     server.use(signedInAsAdmin)
-    await renderSuspended(AdminPage)
+    await renderInApp(AdminPage)
 
     await user.click(screen.getByRole('combobox', { name: 'Range' }))
 
@@ -92,7 +95,7 @@ describe('/admin', () => {
   it('offers WebKit, Blink and Gecko as engines', async () => {
     const user = userEvent.setup()
     server.use(signedInAsAdmin)
-    await renderSuspended(AdminPage)
+    await renderInApp(AdminPage)
 
     await user.click(screen.getByRole('combobox', { name: 'Engine' }))
 
@@ -104,7 +107,7 @@ describe('/admin', () => {
   it('offers the installed app and a browser tab as ways of opening Tucker', async () => {
     const user = userEvent.setup()
     server.use(signedInAsAdmin)
-    await renderSuspended(AdminPage)
+    await renderInApp(AdminPage)
 
     await user.click(screen.getByRole('combobox', { name: 'Opened in' }))
 
@@ -122,7 +125,7 @@ describe('/admin', () => {
         response.untyped(serverError()),
       ),
     )
-    await renderSuspended(AdminPage)
+    await renderInApp(AdminPage)
     expect(await screen.findByText("Couldn't load the metrics")).toBeVisible()
 
     await user.click(screen.getByRole('combobox', { name: 'App version' }))
@@ -147,7 +150,7 @@ describe('/admin', () => {
         ['0.1.43', '0.1.42'],
       ),
     )
-    await renderSuspended(AdminPage)
+    await renderInApp(AdminPage)
 
     await user.click(screen.getByRole('combobox', { name: 'App version' }))
 
@@ -166,7 +169,7 @@ describe('/admin', () => {
         ({ range }) => (range === '24h' ? ['0.1.43'] : ['0.1.43', '0.1.42']),
       ),
     )
-    await renderSuspended(AdminPage)
+    await renderInApp(AdminPage)
     await user.click(screen.getByRole('combobox', { name: 'App version' }))
     await user.click(await screen.findByRole('option', { name: '0.1.42' }))
 
@@ -198,7 +201,7 @@ describe('/admin', () => {
         ['0.1.43', '0.1.42'],
       ),
     )
-    await renderSuspended(AdminPage)
+    await renderInApp(AdminPage)
     expect(
       await screen.findByRole('heading', { name: 'Moving between pages' }),
     ).toBeVisible()
@@ -238,7 +241,7 @@ describe('/admin', () => {
         ],
       ),
     )
-    await renderSuspended(AdminPage)
+    await renderInApp(AdminPage)
     expect(
       await screen.findByRole('heading', { level: 2, name: 'p75 per release' }),
     ).toBeVisible()
@@ -268,7 +271,7 @@ describe('/admin', () => {
           : [{ route: '/review', layouts: [measured('phone')] }],
       ),
     )
-    await renderSuspended(AdminPage)
+    await renderInApp(AdminPage)
     expect(
       await screen.findByRole('heading', { name: 'Moving between pages' }),
     ).toBeVisible()
@@ -296,7 +299,7 @@ describe('/admin', () => {
             : [],
       ),
     )
-    await renderSuspended(AdminPage)
+    await renderInApp(AdminPage)
     expect(
       await screen.findByRole('heading', { name: 'Moving between pages' }),
     ).toBeVisible()
@@ -327,7 +330,7 @@ describe('/admin', () => {
             ],
       ),
     )
-    await renderSuspended(AdminPage)
+    await renderInApp(AdminPage)
 
     await user.click(screen.getByRole('combobox', { name: 'Engine' }))
     await user.click(await screen.findByRole('option', { name: 'Gecko' }))
@@ -366,7 +369,7 @@ describe('/admin', () => {
         ['0.1.43', '0.1.42'],
       ),
     )
-    await renderSuspended(AdminPage)
+    await renderInApp(AdminPage)
     await user.click(screen.getByRole('combobox', { name: 'Range' }))
     await user.click(
       await screen.findByRole('option', { name: 'Last 24 hours' }),
@@ -408,7 +411,7 @@ describe('/admin', () => {
   // Not "nothing measured yet": older timings may sit outside the default range.
   it('says nothing has been measured in the default range, and that a wider one looks further back', async () => {
     server.use(signedInAsAdmin)
-    await renderSuspended(AdminPage)
+    await renderInApp(AdminPage)
 
     expect(
       screen.getByRole('heading', {
@@ -436,7 +439,7 @@ describe('/admin', () => {
         { route: '/review', layouts: [measured('phone'), measured('desktop')] },
       ]),
     )
-    await renderSuspended(AdminPage)
+    await renderInApp(AdminPage)
     const metrics = screen.getByRole('region', { name: 'Metrics' })
     expect(metrics).toHaveAttribute('aria-busy', 'false')
 
@@ -461,7 +464,7 @@ describe('/admin', () => {
       ),
       metricsReport([]),
     )
-    await renderSuspended(AdminPage)
+    await renderInApp(AdminPage)
 
     await user.click(screen.getByRole('combobox', { name: 'Engine' }))
     await user.click(await screen.findByRole('option', { name: 'Gecko' }))
@@ -495,7 +498,7 @@ describe('/admin', () => {
       ),
       metricsReport([]),
     )
-    await renderSuspended(AdminPage)
+    await renderInApp(AdminPage)
     await user.click(screen.getByRole('combobox', { name: 'Engine' }))
     await user.click(await screen.findByRole('option', { name: 'Gecko' }))
     await user.click(
@@ -524,7 +527,7 @@ describe('/admin', () => {
         response.untyped(serverError()),
       ),
     )
-    await renderSuspended(AdminPage)
+    await renderInApp(AdminPage)
 
     expect(await screen.findByText("Couldn't load the metrics")).toBeVisible()
     expect(
@@ -547,7 +550,7 @@ describe('/admin', () => {
         },
       ]),
     )
-    await renderSuspended(AdminPage)
+    await renderInApp(AdminPage)
 
     // Lazy, so it lands after the page has rendered.
     expect(
@@ -570,5 +573,185 @@ describe('/admin', () => {
     expect(
       screen.queryByText('Nothing measured in the last 30 days'),
     ).not.toBeInTheDocument()
+  })
+
+  // Four "too few (n 0)" say nothing a moves chart beside them does not.
+  it('states no page load or interaction while neither has been measured', async () => {
+    server.use(
+      signedInAsAdmin,
+      metricsReport(
+        [{ route: '/review', layouts: [measured('phone')] }],
+        [],
+        [],
+        noWebVitals(),
+      ),
+    )
+    await renderInApp(AdminPage)
+
+    expect(
+      await screen.findByRole('heading', { name: 'Moving between pages' }),
+    ).toBeVisible()
+    expect(
+      screen.queryByRole('region', { name: 'Page load (LCP)' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('states page load as measured in the chosen engine', async () => {
+    const user = userEvent.setup()
+    server.use(
+      signedInAsAdmin,
+      metricsBy(
+        () => [],
+        [],
+        [],
+        ({ engine }) => ({
+          ...noWebVitals(),
+          lcp: [
+            engine === 'webkit'
+              ? vitalIn('phone', 6, { p50: 2_600, p75: 3_100, p95: 4_200 })
+              : vitalIn('phone', 20, { p50: 1_800, p75: 2_140, p95: 3_900 }),
+            vitalIn('desktop', 0),
+          ],
+        }),
+      ),
+    )
+    await renderInApp(AdminPage)
+    const pageLoad = within(
+      await screen.findByRole('region', { name: 'Page load (LCP)' }),
+    )
+
+    await user.click(screen.getByRole('combobox', { name: 'Engine' }))
+    await user.click(await screen.findByRole('option', { name: 'WebKit' }))
+
+    await vi.waitFor(() =>
+      expect(
+        pageLoad.getByRole('row', { name: 'Phone 3100 ms' }),
+      ).toBeVisible(),
+    )
+  })
+
+  // A single-page visit records a page load and no move between pages.
+  it('says nothing is measured only while page load and interaction are not either', async () => {
+    server.use(
+      signedInAsAdmin,
+      metricsReport([], [], [], {
+        ...noWebVitals(),
+        lcp: [
+          vitalIn('phone', 20, { p50: 1_800, p75: 2_140, p95: 3_900 }),
+          vitalIn('desktop', 0),
+        ],
+      }),
+    )
+    await renderInApp(AdminPage)
+
+    expect(
+      await screen.findByRole('region', { name: 'Page load (LCP)' }),
+    ).toBeVisible()
+    expect(
+      screen.queryByRole('heading', {
+        name: 'Nothing measured in the last 30 days',
+      }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('says there were no moves between pages while page load alone was measured', async () => {
+    server.use(
+      signedInAsAdmin,
+      metricsReport([], [], [], {
+        ...noWebVitals(),
+        lcp: [
+          vitalIn('phone', 20, { p50: 1_800, p75: 2_140, p95: 3_900 }),
+          vitalIn('desktop', 0),
+        ],
+      }),
+    )
+    await renderInApp(AdminPage)
+
+    const moves = within(
+      await screen.findByRole('region', { name: 'Moving between pages' }),
+    )
+    expect(
+      moves.getByText('No moves between pages in the last 30 days'),
+    ).toBeVisible()
+  })
+
+  it('says nothing matches the filters only while page load and interaction do not either', async () => {
+    const user = userEvent.setup()
+    server.use(
+      signedInAsAdmin,
+      metricsBy(
+        ({ version }) =>
+          version ? [] : [{ route: '/review', layouts: [measured('phone')] }],
+        ['0.1.43'],
+        [],
+        () => ({
+          ...noWebVitals(),
+          lcp: [
+            vitalIn('phone', 20, { p50: 1_800, p75: 2_140, p95: 3_900 }),
+            vitalIn('desktop', 0),
+          ],
+        }),
+      ),
+    )
+    await renderInApp(AdminPage)
+    await screen.findByRole('heading', { name: 'Moving between pages' })
+
+    await user.click(screen.getByRole('combobox', { name: 'App version' }))
+    await user.click(await screen.findByRole('option', { name: '0.1.43' }))
+
+    const moves = within(
+      await screen.findByRole('region', { name: 'Moving between pages' }),
+    )
+    expect(moves.getByText('No moves match these filters')).toBeVisible()
+    expect(moves.getByRole('button', { name: 'Reset filters' })).toBeVisible()
+    expect(
+      screen.getByRole('region', { name: 'Page load (LCP)' }),
+    ).toBeVisible()
+    expect(
+      screen.queryByRole('heading', { name: 'Nothing matches these filters' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('states interaction once it alone is measured', async () => {
+    server.use(
+      signedInAsAdmin,
+      metricsReport([], [], [], {
+        ...noWebVitals(),
+        inp: [
+          vitalIn('phone', 9, { p50: 120, p75: 180, p95: 260 }),
+          vitalIn('desktop', 0),
+        ],
+      }),
+    )
+    await renderInApp(AdminPage)
+
+    const interaction = within(
+      await screen.findByRole('region', { name: 'Interaction (INP)' }),
+    )
+    expect(interaction.getByRole('row', { name: 'Phone 180 ms' })).toBeVisible()
+  })
+
+  it('states page load and interaction per layout once either is measured', async () => {
+    server.use(
+      signedInAsAdmin,
+      metricsReport([], [], [], {
+        ...noWebVitals(),
+        lcp: [
+          vitalIn('phone', 20, { p50: 1_800, p75: 2_140, p95: 3_900 }),
+          vitalIn('desktop', 2),
+        ],
+      }),
+    )
+    await renderInApp(AdminPage)
+
+    const pageLoad = within(
+      await screen.findByRole('region', { name: 'Page load (LCP)' }),
+    )
+    expect(pageLoad.getByRole('row', { name: 'Phone 2140 ms' })).toBeVisible()
+    expect(
+      within(
+        screen.getByRole('region', { name: 'Interaction (INP)' }),
+      ).getByRole('row', { name: 'Phone too few (n 0)' }),
+    ).toBeVisible()
   })
 })

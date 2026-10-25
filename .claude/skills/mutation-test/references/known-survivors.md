@@ -1731,6 +1731,39 @@ is still loading raises no error*). The six left are **equivalent**:
 - A chart's `margin` scored as a real gap and moved nothing a screenshot could see; it was
   deleted rather than pinned.
 
+### Page load and interaction (#523) — frontend 206 of 267, backend 181 of 192
+
+Three real gaps (an INP-only report hid the card; an unmatched route threw in the route
+log's `afterEach`; a dropped vital was recorded as `undefined`) and one backend gap
+(`WebVital`'s `requireMeasurement`) got tests. What stays alive:
+
+- **`route-metrics.client.ts`'s `watchWebVitals` (its body, the `now` clock, the
+  `then` callback, `onLCP`, `onINP`, the `send` arrow and its spread) and the
+  `page:finish` hook's `vitals.shown(matchedPath)` (no route logged, every vital
+  dropped) —
+  killed by an out-of-scope layer**: `e2e/smoke/metrics.smoke.spec.ts` *a User's page
+  load and tap reach the Admin, counted in their layout* asserts `n 1` for each of LCP
+  and INP in the User's layout; every one of these mutants leaves one or both at `n 0`
+  or hides the card.
+- **Which hook feeds `vitals.shown` (`page:finish`, not a router hook) — no layer can
+  pin it.** Moving it to `router.afterEach` changes only the route stored on an INP made
+  while a page awaits its data; no reader shows that route (the Admin's strip is per
+  layout), and the mocked e2e makes no request assertions (ADR 0034).
+- **`admin.vue`'s `report.value?.webVitals` and `vitalsMeasured`'s `webVitals.value?.lcp`
+  / `?.inp` optional chains, and both `?? []` arrays — equivalent**: every read of
+  `vitalsMeasured` (the card's `v-if` and the moves section's empty-state branches) sits
+  inside `LoadErrorState`'s content, which renders only after a successful read, and
+  `webVitals`, `lcp` and `inp` are required in the spec — as `report.value?.routes ?? []`
+  above.
+- **`releaseTrend.ts`'s `figureIn` fallback `{ n: 0 }` → `{}` — equivalent**: reached only
+  for a release missing a layout, the case the `layoutIn(…)?.p75` entry rests on.
+- **`routeLog.ts`'s `entries` seeded with a string — equivalent**: `"…".at` is
+  `String.prototype.at`, and `function <= number` is false, so it never matches.
+- **`webVitalEvent.ts`'s `at === undefined ?` → always `routeAt(at)` — equivalent for the
+  one `routeAt` there is**: `createRouteLog`'s `entry.at <= undefined` is always false.
+- **`MetricEventRequest`'s nine getters and `MetricBatchRequest.getEvents`** — as the
+  #519 and #520 entries above.
+
 ### Noise removed at the source
 
 Four `getLog()` companion accessors (`MartijndwarsWebPushSender`, `RecordingWebPushSender`,
