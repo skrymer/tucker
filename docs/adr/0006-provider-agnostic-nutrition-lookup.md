@@ -145,14 +145,16 @@ only (keyless)**, so v1 needs *zero* credential code. Each Provider's config
 carries an *optional* credential field, so a keyed source (USDA's free key next;
 a paid API later) is a config addition, not a redesign.
 
-## Calories stay Atwater-derived, even for scanned Foods
+## Calories stay derived, even for scanned Foods
 
-Tucker's Food invariant — calories are never entered, always `4·P + 4·C + 9·F`
-(the F3 "calories derived from macros" rule) — **holds for scanned Foods too**.
-Whatever a Provider returns is normalised to per-100g macros and the calories are
-re-derived by Atwater, exactly like a hand-entered Food. The Provider's own
-**stated energy is shown only as a cross-check** at confirmation; it is never
-stored.
+Tucker's Food invariant — calories are never entered, always derived from the
+macros (the F3 rule, now the FSANZ energy formula of
+[ADR 0040](0040-calories-follow-the-fsanz-energy-formula-and-carbs-exclude-fibre.md))
+— **holds for scanned Foods too**. Whatever a Provider returns is normalised to
+per-100g macros and the calories are re-derived, exactly like a hand-entered Food.
+The Provider's own **stated energy is never stored**. It is shown as a cross-check at
+confirmation and, since ADR 0040, also decides whether the Provider's carbs had
+fibre folded in, an adjustment shown to the user and never applied silently.
 
 We considered storing the Provider/label energy for scanned Foods (option (b))
 and evolving every Food to have a calorie *source* (option (c)). Both rejected:

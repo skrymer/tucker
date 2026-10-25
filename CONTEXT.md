@@ -56,10 +56,30 @@ weight-only mode
 
 **Food**:
 A reusable definition of something edible — a name plus nutrition per 100g
-(protein, carbs, fat). Calories per 100g are **derived**, not entered: a
-Food's calorie figure is always `4 × protein + 4 × carbs + 9 × fat` (the
-standard Atwater factors, per gram, scaled to 100g). The user supplies the
-three macros; the app computes calories. Created once (e.g. by scanning a
+(protein, carbs, fat, fibre, alcohol). Calories per 100g are **derived**, not
+entered: a Food's calorie figure is always
+`4 × protein + 4 × carbs + 9 × fat + 2 × fibre + 7 × alcohol` (the FSANZ energy
+factors — 17, 17, 37, 8 and 29 kJ/g — per gram, scaled to 100g).
+The user supplies the macros; the app computes calories.
+**Carbs** means *available* carbohydrate, fibre excluded — exactly what an
+Australian label's "Carbohydrate" line states — and **fibre** is its own macro,
+so both are copied off the label as printed. Fibre is kept separate because it
+yields about half the energy of the carbohydrate it is often lumped with: a
+protein wrap labelled 12.8 g carbohydrate and 16.8 g fibre is 246 kcal per 100g,
+and counting its fibre as carbs (as a US-style total does) overstates it by 13%.
+Fibre is **optional**, and **not stated is not zero**. An Australian label declares
+fibre only when the product makes a claim about it, so most Foods have no figure;
+an unstated fibre contributes nothing to calories (an undercount of at most 2 kcal
+per gram nobody stated), but it stays distinct from a stated `0 g` — the one says
+the label was silent, the other that the product has none.
+**Alcohol** is optional on the same terms and stored the same way, as grams per
+100g. An Australian drink carries no nutrition panel, only its **ABV**, so the
+user enters and reads alcohol as ABV and Tucker converts by ethanol's density
+(`g per 100g = ABV × 0.789`, the drink taken as 1 g/ml): a 13% wine is 10.3 g per
+100g, and a 150 g glass carries about 108 kcal of alcohol alone. ABV is how the
+figure is written, never what is kept — grams are, so the calorie rule and a
+**Recipe**'s roll-up have one unit, and the ABV shown is always derived back from
+them. Created once (e.g. by scanning a
 barcode or entering manually), then referenced by many Entries. Every Food —
 scanned, hand-entered, or a **Recipe** — belongs to exactly one **User** and is
 visible only to them. There is no shared catalog: the same barcode may exist
@@ -95,6 +115,11 @@ nutrition. Two weights, meaning different things:
   protein — so the total is conserved and simply re-expressed per 100g of the
   cooked weight (`per-100g = total ÷ cooked weight`). A dish that loses water is
   denser per gram; one that absorbs it (pasta, rice) is lighter.
+  **Alcohol is conserved too**, though cooking does drive some off — anywhere from
+  5% to 85% depending on method and time, which Tucker would have to ask for and
+  could not check. Counting all of it errs on the side of more calories, by tens of
+  kcal a portion for wine in a stew, which is the safe side to err on while losing
+  fat.
 
 The cooked weight is a **representative batch**, not a per-batch measurement:
 cook the same recipe longer another day and the real density shifts a little.
@@ -117,7 +142,7 @@ lookup, in order, taking the first match. A Provider may support barcode lookup,
 free-text search, or both; only barcode-capable ones take part in a scan. A
 Provider answering *no match* and a Provider unable to answer at all are different
 results and are never collapsed into one — see **Inconclusive Lookup**. Whatever a Provider returns is normalised to Tucker's per-100g macro
-model — and its calories re-derived by the Atwater rule, exactly like a
+model — and its calories re-derived by the calorie rule, exactly like a
 hand-entered Food. The Provider's own stated energy is shown only as a cross-check
 at confirmation, never stored: scanned Foods follow the same calorie rule as every
 other Food.
@@ -129,7 +154,19 @@ Produced by a barcode lookup that misses the user's catalog but hits a Nutrition
 Provider: it carries the macros the Provider supplied (some possibly absent), the
 Provider it came from, that Provider's stated energy (shown as a cross-check, not
 stored), and the scanned barcode. The user completes any missing macro and
-confirms — only then does it become a Food. A catalog hit, by contrast, returns
+confirms — only then does it become a Food.
+A Provider's carbs may have **fibre folded in** — a contributor copying a US-style
+label's total carbohydrate, though Tucker's **carbs** excludes it. The carbs field
+alone cannot say so; the stated energy can. When subtracting fibre from carbs
+reproduces the stated energy and the carbs as given do not, the Candidate carries
+carbs minus fibre — and says so: the adjustment is **shown to the user, with both
+figures**, before they confirm, never applied silently. The stated energy arbitrates
+which reading of carbs to take; it is still never stored, and calories are still
+derived. The energy it is compared against is the *whole* derived figure, alcohol
+included — a Provider's stated energy for a drink counts its alcohol, so leaving it
+out would read every beer as a mismatch.
+A Provider's alcohol arrives as **ABV**, whatever its field is called (Open Food
+Facts' `alcohol_100g` is % vol), and is converted to grams like a typed one. A catalog hit, by contrast, returns
 an existing Food directly, not a Candidate.
 _Avoid_: result, product, match, scan result
 
@@ -153,7 +190,8 @@ A generic food in the Australian Food Composition Database — "Beef, mince,
 regular, raw" — carrying the micronutrient detail a package label never does. A
 **Food** may be **matched** to one, and then *borrows* its micronutrient profile:
 the Food's own macros are unchanged and still derive its calories, and only the
-vitamins and minerals come from the Reference Food, scaled by the grams eaten.
+vitamins and minerals come from the Reference Food, scaled by the grams eaten —
+plus fibre, where the Food states none of its own.
 Borrowed, never copied — a Reference Food is not owned by any **User**, the match
 is a pointer rather than a snapshot, and a new release of the database therefore
 reaches every Food already matched to it. That is the opposite of how a **Nutrition
@@ -229,6 +267,14 @@ and it is admitted on the same test sodium passes rather than on the fact that A
 reports it: the NHMRC publishes a reference for it, it is read against a **window**
 and never against a **Food**, and Tucker sets no target for it — so it stays a
 **Reference Intake** and does not become an opinion about a diet.
+Fibre is also the one member a **Food** can state for itself, since it is a macro
+there. A **stated** fibre wins and the borrowed one fills the gap only where the
+Food states none: the label describes *that product*, a **Reference Food** only
+something like it — a high-fibre wrap matched to a generic white one would
+otherwise read 3 g where its label says 16.8 g. So an unmatched Food that states
+fibre contributes fibre, though nothing else. The window's coverage share is not
+recomputed for it: fibre is then covered at least as well as the share says, which
+leaves the share true.
 **Every figure is a lower bound.** Only food that can contribute does — a
 **Weighed Entry** whose **Food** is matched to a **Reference Food**, or a
 **Recipe** through whichever of its ingredients are matched. An **Estimated Entry**
@@ -481,8 +527,7 @@ scanning a package in a shop. It states what a portion **costs** (its share of t
 Budget) and what it **returns** (its share of the Floor), and sets the Food's
 protein per 100 kcal against **Pace**. Nothing is created or stored: no Food, no
 Entry, no history — the answer is read and discarded. The result is never a label
-(see the no-good-or-bad rule below); it is two figures and a consequence.
-Distinct from a **Budget Projection**, its sibling: a Projection previews one
+(see the no-good-or-bad rule below); it is two figures and a consequence.Distinct from a **Budget Projection**, its sibling: a Projection previews one
 not-yet-logged **Entry** against what today has left, so its answer changes
 through the day, while a Check weighs a product against the whole day's targets
 and so reads the same at 9am and 8pm.
@@ -959,8 +1004,8 @@ _Avoid_: device token, push token, registration
   with a **Protein Floor** and no **Calorie Budget**, and none with a **Calorie
   Budget** and no **Maintenance** behind it
 - Tucker is **diet-agnostic**: protein is the only macro with a **target**, because
-  it is the lever for retaining muscle while losing fat. Carbs and fat are recorded
-  (they are needed to derive calories) but never judged, so keto, low-fat, and
+  it is the lever for retaining muscle while losing fat. Carbs, fat, fibre and
+  alcohol are recorded (they are needed to derive calories) but never judged, so keto, low-fat, and
   low-carb all track identically. Tucker has no opinion on sugar or saturated fat,
   and sets no target for any nutrient beyond protein and calories
 - A **Reference Intake** is not a target, and reporting against one does not breach
