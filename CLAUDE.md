@@ -284,6 +284,10 @@ here.
   ([#519](https://github.com/skrymer/tucker/issues/519)), and slice 3, each move split
   into server, network + proxy and render time
   ([#520](https://github.com/skrymer/tucker/issues/520)), are done.
+- **F22** — Fibre and alcohol are macros, and calories follow the FSANZ energy formula
+  (PRD [#545](https://github.com/skrymer/tucker/issues/545),
+  [ADR 0040](docs/adr/0040-calories-follow-the-fsanz-energy-formula-and-carbs-exclude-fibre.md)),
+  in slices [#546](https://github.com/skrymer/tucker/issues/546)–[#551](https://github.com/skrymer/tucker/issues/551).
 
 ## Architecture
 
