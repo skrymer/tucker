@@ -1797,6 +1797,9 @@ proofs on mutated copies). What stays alive:
 - **`ServerCard.vue`'s `data?.status` and `figures.value?.health` optional chains —
   equivalent**: the first throws inside `Promise.all`, into the same `error` the original
   rethrow lands in; `up` is read only under `v-if="figures && !error"`.
+- **`MetricsConfig$Companion.getNO_ENDPOINT` → `emptySet` — false survivor** (reported
+  `NO_COVERAGE`): the filter is consulted as each meter registers, inside the context
+  every later test class reuses. Emptied by hand, it fails two `ActuatorApiTest` cases.
 
 ### Noise removed at the source
 

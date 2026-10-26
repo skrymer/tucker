@@ -19,8 +19,8 @@ data class VersionResponse(
 
 /**
  * Reports the build stamp baked into the image at build time (Dockerfile ARG ->
- * ENV -> these properties). Open to every User, so not Actuator's `info`, which is
- * an Admin's alone (ADR 0039). Each @Value carries its own 0.0.0-dev/unknown default so the
+ * ENV -> these properties). Open to every User, where Actuator is an Admin's alone
+ * and exposes no `info` (ADR 0039). Each @Value carries its own 0.0.0-dev/unknown default so the
  * controller is self-sufficient even when the active property source omits the
  * key entirely — e.g. the test `application.yml`, which shadows the main one and
  * defines no `tucker.version`; without the inline default every @SpringBootTest

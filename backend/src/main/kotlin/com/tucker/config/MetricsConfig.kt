@@ -30,7 +30,11 @@ class MetricsConfig {
     @Bean
     fun onlyTuckersEndpoints(): MeterFilter = MeterFilter.deny { id ->
         val uri = id.getTag("uri").orEmpty()
-        id.name == "http.server.requests" &&
-            (uri.startsWith("/api/actuator/") || uri == "/**" || uri == "UNKNOWN")
+        id.name == "http.server.requests" && (uri.startsWith("/api/actuator/") || uri in NO_ENDPOINT)
+    }
+
+    private companion object {
+        /** Where Spring files a request no endpoint answered: unmatched, or refused before matching. */
+        val NO_ENDPOINT = setOf("/**", "UNKNOWN", "NOT_FOUND")
     }
 }

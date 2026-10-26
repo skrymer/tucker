@@ -96,6 +96,18 @@ class ActuatorApiTest {
         assertEquals(emptyList(), unmatchedSeries)
     }
 
+    /** Refused before any handler is matched, Spring files it under `NOT_FOUND`. */
+    @Test
+    fun `the scrape does not time a non-Admin refused at an Admin path no endpoint serves`() {
+        mockMvc.get("/api/admin/no-such-endpoint") { signedInAs(USER) }
+            .andExpect { status { isNotFound() } }
+
+        val notFoundSeries = scrape().lines()
+            .filter { it.startsWith("http_server_requests_seconds") && "uri=\"NOT_FOUND\"" in it }
+
+        assertEquals(emptyList(), notFoundSeries)
+    }
+
     /** They leak configuration and secrets, or change the running server (ADR 0039). */
     @ParameterizedTest
     @ValueSource(strings = ["env", "configprops", "heapdump", "threaddump", "loggers"])
