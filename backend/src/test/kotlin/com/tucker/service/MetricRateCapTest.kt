@@ -31,6 +31,18 @@ class MetricRateCapTest {
     }
 
     @Test
+    fun `forgets every admission an hour old at once, and keeps the ones still inside the hour`() {
+        val cap = MetricRateCap()
+        cap.admit(userId = 1, events = 200, at = noon)
+        cap.admit(userId = 1, events = 200, at = noon.plus(Duration.ofMinutes(1)))
+        cap.admit(userId = 1, events = 200, at = noon.plus(Duration.ofMinutes(30)))
+        val later = noon.plus(Duration.ofMinutes(62))
+
+        assertTrue(cap.admit(userId = 1, events = 400, at = later))
+        assertFalse(cap.admit(userId = 1, events = 1, at = later))
+    }
+
+    @Test
     fun `counts each User on their own`() {
         val cap = MetricRateCap()
         cap.admit(userId = 1, events = 600, at = noon)
