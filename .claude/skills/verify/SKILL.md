@@ -36,10 +36,15 @@ explicitly in the verdict.
    since the image was built, `docker compose build backend` first** — compare the
    `docker image inspect -f '{{.Created}}' tucker-backend:latest` with `git log -1 --format=%cI --
    backend/`: #498's first crossing probe ran on a stale image and read `reachedOn` null.
-   **When the diff adds a migration, layer `-f docker-compose.smoke.yml`** (a disposable
-   database; its Admin is `admin@tucker.invalid`): the gates after gate 0 routinely edit
-   that migration, and one applied to the shared `tucker-data` volume then fails Flyway's
-   checksum on every checkout. #520's gate 0 left V25 there, and the rollback was refused.
+   **Walk on a disposable database whenever the diff adds a migration or `tucker-data`
+   fails Flyway** (another branch may have left a checksum there — #525's did, with no
+   migration of its own). Only `TUCKER_DB_PATH` needs overriding, in a one-line compose
+   overlay (`/home/tucker/verify.db`, in the container's writable layer); `TUCKER_ADMIN_EMAILS`
+   already passes through from the environment. `-f docker-compose.smoke.yml` also gives a
+   disposable database, but forces the smoke profile — scheduling off, Admin
+   `admin@tucker.invalid` — so use it only when neither matters. The gates after gate 0
+   routinely edit a new migration, and one applied to the shared `tucker-data` volume then
+   fails Flyway's checksum on every checkout: #520's gate 0 left V25 there.
    **In a worktree, name it to compose** — `docker compose --project-directory <worktree>
    -f <worktree>/docker-compose.yml …` — and check `docker inspect -f '{{index
    .Config.Labels "com.docker.compose.project.working_dir"}}' tucker-backend` names it:
@@ -66,7 +71,9 @@ explicitly in the verdict.
    (`http://localhost:<port>/api`), not `:8080`, which demands an Access assertion
    `curl` does not carry; and a mutation needs the CSRF pair (ADR 0025): GET any
    `/api` path into a cookie jar, then send the `XSRF-TOKEN` cookie's value back as
-   the `X-XSRF-TOKEN` header. Most screens need a Calorie Budget, which needs
+   the `X-XSRF-TOKEN` header. Drive it with `curl` and one cookie file per User — #525's
+   hand-rolled Python `urllib` cookie jar alternated 400s and silently admitted 300 events,
+   and every probe on that User had to be re-driven on a fresh one. Most screens need a Calorie Budget, which needs
    profile + weight + goal; check first with `/api/summary?date=<today>`.
 3. **Walk the golden path** at **desktop**, then **repeat at phone width**. Tucker has a
    real responsive split (side-nav vs bottom-tabs, modal vs bottom sheet, header button
@@ -103,6 +110,7 @@ shapes a real user's data comes in, and drive at least one of each:
 | A new request-body field | read the saved record back through the API after the save, since a form can look right and send nothing (`GET /api/foods` showing the new `tags`, not the chips on screen) |
 | A threshold the code *reads* | a breakpoint, a timer, a grace period, a debounce — value−1 and value, both sides. #435's 1024px breakpoint and 250 ms grace were first walked at 555/2133px and 80/680 ms, which bracket them and prove neither edge. A **reveal delay** (a skeleton, a dim) is one too: hold the one endpoint for the slow side, and on the fast side read the element's opacity at insertion rather than concluding it never appeared — "the local read is too fast to show it" is not NOT DRIVEN. #475's first verdict wrote both off; the fast side was a 16.6 ms full-opacity flash |
 | A read a newer selection supersedes | a `latest`-mode read (a picked day, a window): hold the endpoint, pick A, then B before A answers, and confirm A's data never shows — one switch under a hold is not this probe. #511's audit sent the walk-through back for it |
+| State held in memory, a rate, a config switch | a process restart (`docker restart`, same DB), a concurrent burst from one User, the window rolling, and both values of the switch. Pick the starting count so exactly one of the burst fits: #525's first burst began at 551, where 551+50 = 601, so both refusals were right and proved nothing; from 550 four at once gave one 204. Its audit found all three missing from the first verdict |
 | A size or type change | the widest figure the data allows in each fixed box (a ring's hole, a tile's row), and the same at `html` font-size 20px — #445's 36px Check share "123%" drew 99px of ink in a 94px hole, and at 20px a px-sized SVG left it 124px in 106 |
 | A migration | the upgraded database, not only a fresh one, **in the first walk-through pass**: seed and delete top rows on `main`'s image on a disposable volume, then start the branch image on the same volume and read the result. `docker pull ghcr.io/skrymer/tucker-backend:latest` first and check it holds the base's latest migration; otherwise build the base from source — `git archive --format=tar -o /tmp/<x>.tar <base> backend` from the repo root, extract, `docker build` the extracted `backend/` (#520's `<base>:backend` form wrote an empty tar). Run both containers with `docker run --env-file` copied from `tucker-backend`'s env and a `TUCKER_DB_PATH` on the volume, and seed or read through `python:3-slim`. Stop the main stack first — `docker-compose.yml` fixes `container_name`, so a second `-p` project cannot run beside it — and read the applied migration by `installed_rank`, never `max(version)`: `version` is text, so `'9' > '21'`. #455's first run read it that way and could not show its migration had run at all |
 
@@ -298,6 +306,10 @@ and checks each against a concrete value in the verdict.
   has in-page recipes too: Back restores from the back-forward cache (check
   `pageshow.persisted`), and a hide is dispatched in the page (the tab trap above) —
   #523 wrote both off and drove the first with one Back after the audit.
+- **"Pinned by <test>" on a NOT DRIVEN value is a claim too** — open the test and check it
+  drives that exact value. Where it does not, the gap is a test owed red-first before the
+  PR, not a footnote: #525's verdict wrote "partial expiry: not pinned by any test either"
+  and marked PASS; the retro found `while` → `if` in the expiry loop survived every test.
 - Append the result to the verdict, so a reviewer sees what was checked:
   `verdict audit: 4 inputs — 3 COVERED, 1 UNCOVERED (start date = today) → drove it ✅`
   Write it only after marking every value the audit named DRIVEN (quote it) or NOT
@@ -322,6 +334,10 @@ and checks each against a concrete value in the verdict.
   The recorded PID is not the end of it: `pnpm dev` forks a Nuxt worker that holds the
   port, and killing the parent left it listening, reparented, twice in #445. Loop —
   read the port's listener, confirm its cwd and `--port`, kill it — until it is free.
+- **Load every route once before the walk-through.** On a route's first visit Vite finds
+  new dependencies (`zxing-wasm/reader`, `@unovis/vue`, `web-vitals`), re-bundles, and the
+  page goes blank on "Failed to fetch dynamically imported module …entry.js"; a reload
+  clears it. That blank page is the dev server, not the change — #525 met it three times.
 - Console errors are worth a look, but `read_console_messages` only captures from when
   it's first called — call it *before* the interesting interaction, or reload.
 - Don't trigger `alert`/`confirm` — a modal dialog freezes the extension for the rest

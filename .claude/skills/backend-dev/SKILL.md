@@ -126,6 +126,16 @@ not restate them.
   #455's version created a Tag as `tester`, and pitest's baseline, in another order, failed
   fifteen Tag-list tests without a mutant.
 
+- **A singleton holding per-User state outlives the test's rollback, and the id does
+  not.** Users take ids from `id_sequence` (`UserRepository.provision` → `nextId()`), whose
+  increment rolls back with a `@Transactional` test, so the next test's new User gets the
+  same id and inherits whatever the singleton counted. #525's in-memory metric cap failed
+  `AdminMetricsApiTest` 204→429, depending on test order. Clear such state after every
+  Spring test — a `forget()` called by a `TestExecutionListener` registered in
+  `src/test/resources/META-INF/spring.factories` (`ForgetMetricRateCapListener`) — and pin
+  it with an ordered two-test guard (`MetricRateCapIsolationTest`). The smoke reset keeps
+  `id_sequence`, so the smokes never reuse an id.
+
 - **Run the suite as `TZ=Etc/UTC ./gradlew build`** — it flakes in the UTC-evening window on a
   Brisbane host, where the two calendar days disagree.
 - **A green `./gradlew build` can be a cached one.** After a config or Spring-context change,
