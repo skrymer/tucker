@@ -1,0 +1,41 @@
+# The server's own figures, for an Admin only (ADR 0039). A file of its own so the test
+# application.yml, which shadows main's entirely, imports the very same allowlist the
+# image serves rather than a copy the suite would pin instead.
+management:
+  endpoints:
+    web:
+      # Under /api so the frontend's same-origin proxy reaches it like any other API path.
+      base-path: /api/actuator
+      # No links page at the base path: the allowlist is the two endpoints and nothing else.
+      discovery:
+        enabled: false
+      # An allowlist, and a security decision: env, configprops, heapdump, threaddump and
+      # loggers leak configuration or change the running server, and are never exposed.
+      exposure:
+        include: health,prometheus
+  endpoint:
+    health:
+      # Only an Admin reaches it (the security config), and the page reads its components.
+      show-details: always
+  health:
+    diskspace:
+      # The volume the database lives on. A gigabyte left turns health DOWN while there
+      # is still room to act.
+      path: ${tucker.data-dir:/data}
+      threshold: 1GB
+  metrics:
+    distribution:
+      # Each endpoint's p50 and p95, computed since the last start: an expiry past any
+      # uptime, where Micrometer's two-minute window would set a recent figure beside
+      # counts that run since the restart.
+      percentiles:
+        http.server.requests: 0.5,0.95
+      expiry:
+        http.server.requests: 3650d
+      buffer-length:
+        http.server.requests: 1
+
+# The exposed endpoints are in the OpenAPI spec, so OpenApiSnapshotTest pins the
+# allowlist: widening it fails the build until the spec change is committed.
+springdoc:
+  show-actuator: true

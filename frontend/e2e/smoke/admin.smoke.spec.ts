@@ -31,6 +31,30 @@ test.describe('an Admin', () => {
     ).toBeVisible()
   })
 
+  // The mocked suite renders a scrape it wrote itself; only the real backend
+  // shows Actuator served at /api/actuator, to an Admin, in the format parsed.
+  test("reads the server's own figures from Actuator", async ({
+    page,
+    goto,
+    isMobile,
+  }) => {
+    test.skip(isMobile, 'a phone shows the notice instead')
+    await goto('/admin', { waitUntil: 'hydration' })
+
+    const server = page.getByRole('region', { name: 'Server' })
+    await expect(server.getByText('Up', { exact: true })).toBeVisible()
+    await expect(server).toContainText('Since the last restart,')
+    for (const meter of ['Process CPU', 'System CPU', 'Heap', 'Disk used']) {
+      await expect(server.getByRole('group', { name: meter })).toContainText(
+        '· now',
+      )
+    }
+    // The page's own read of who is signed in, timed since the stack started.
+    await expect(
+      server.getByRole('row', { name: /^GET \/api\/me / }),
+    ).toBeVisible()
+  })
+
   test('is told on a phone that Metrics need a larger screen', async ({
     page,
     goto,

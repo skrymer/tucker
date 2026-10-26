@@ -40,9 +40,13 @@ ADR, not adding an endpoint.
   - **The percentiles run since the last start, one series per endpoint.** Their
     expiry is set past any uptime, since Micrometer's default two-minute window would
     put a recent figure beside cumulative counts. `http.server.requests` drops its
-    `status` and `exception` tags, because a percentile is one series per full tag
+    `status`, `exception` and `error` tags, because a percentile is one series per full tag
     set and cannot be summed across them. An endpoint is then `method + uri`,
-    with `outcome` left to split successes from 5xx.
+    with `outcome` left to split successes from 5xx. Actuator's own reads and the
+    buckets Spring files an unanswered request under (`/**`, `UNKNOWN`) are not
+    recorded at all. Actuator serves the rest unshaped, so the page mirrors two rules
+    the backend's own percentiles hold — fewer than five successes reads "too few",
+    and the slowest is listed first — and a change to either is made in both.
   - **A non-Admin gets 404 here too**, through the same refusal as
     `/api/admin/**`, so ADR 0021's rule holds without exception. A refusal of a
     missing CSRF token stays 403, on every path alike. For an Admin, an endpoint

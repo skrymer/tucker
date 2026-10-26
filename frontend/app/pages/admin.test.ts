@@ -50,6 +50,16 @@ describe('/admin', () => {
     ).not.toBeInTheDocument()
   })
 
+  it('builds no server section on a phone', async () => {
+    viewport.desktop = false
+    server.use(signedInAsAdmin)
+    await renderInApp(AdminPage)
+
+    expect(
+      screen.queryByRole('region', { name: 'Server', hidden: true }),
+    ).not.toBeInTheDocument()
+  })
+
   it('is the Metrics page under an Admin eyebrow', async () => {
     server.use(signedInAsAdmin)
     await renderInApp(AdminPage)
@@ -532,6 +542,73 @@ describe('/admin', () => {
     expect(await screen.findByText("Couldn't load the metrics")).toBeVisible()
     expect(
       screen.queryByText('Nothing measured in the last 30 days'),
+    ).not.toBeInTheDocument()
+  })
+
+  it("keeps the server's own figures up when the metrics can't be loaded", async () => {
+    server.use(
+      signedInAsAdmin,
+      http.get('/api/admin/metrics', ({ response }) =>
+        response.untyped(serverError()),
+      ),
+    )
+    await renderInApp(AdminPage)
+
+    expect(await screen.findByText("Couldn't load the metrics")).toBeVisible()
+    const serverCard = screen.getByRole('region', { name: 'Server' })
+    expect(await within(serverCard).findByText('Up')).toBeVisible()
+    expect(
+      within(serverCard).getByRole('group', { name: 'Heap' }),
+    ).toBeVisible()
+  })
+
+  it('shows the metrics while the server figures are still being read', async () => {
+    let answer!: () => void
+    const held = new Promise<void>((resolve) => (answer = resolve))
+    server.use(
+      signedInAsAdmin,
+      // Falls through to the baseline scrape once released.
+      http.get('/api/actuator/prometheus', async () => {
+        await held
+      }),
+    )
+    const rendered = renderInApp(AdminPage)
+
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Nothing measured in the last 30 days',
+      }),
+    ).toBeVisible()
+    const serverCard = screen.getByRole('region', { name: 'Server' })
+    expect(within(serverCard).queryByText('Up')).not.toBeInTheDocument()
+
+    answer()
+    expect(await within(serverCard).findByText('Up')).toBeVisible()
+    await rendered
+  })
+
+  it("keeps the metrics up when the server figures can't be read", async () => {
+    server.use(
+      signedInAsAdmin,
+      http.get('/api/actuator/prometheus', ({ response }) =>
+        response.untyped(serverError()),
+      ),
+    )
+    await renderInApp(AdminPage)
+
+    const serverCard = screen.getByRole('region', { name: 'Server' })
+    expect(
+      await within(serverCard).findByRole('heading', {
+        name: "Couldn't read the server figures",
+      }),
+    ).toBeVisible()
+    expect(
+      screen.getByRole('heading', {
+        name: 'Nothing measured in the last 30 days',
+      }),
+    ).toBeVisible()
+    expect(
+      screen.queryByText("Couldn't load the metrics"),
     ).not.toBeInTheDocument()
   })
 

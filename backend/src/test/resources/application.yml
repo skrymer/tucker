@@ -1,4 +1,7 @@
 spring:
+  # Actuator's allowlist, the same file main imports (ADR 0039).
+  config:
+    import: classpath:management.yml
   # V9 names the owner of a pre-multi-user database. This file shadows main
   # entirely, so it has to be stated here or every @SpringBootTest context fails.
   # Deliberately *not* AccessTokens.EMAIL: a test database starts empty, so V9
@@ -33,6 +36,10 @@ tucker:
     audience: tucker-dev
     jwk-set-uri: classpath:access/jwks.json
 
+  # Where health measures disk space. /data is the image's volume and exists nowhere
+  # else, and a missing path reads as no space, which would turn every test's health DOWN.
+  data-dir: build
+
   # One Admin, never the suite's default identity, so every other test runs as a
   # plain User (ADR 0039).
   admin:
@@ -42,3 +49,11 @@ tucker:
 # so the spec OpenApiSnapshotTest compares against would otherwise say `*/*`.
 springdoc:
   default-produces-media-type: application/json
+
+# @SpringBootTest switches every metrics exporter off by default, which would leave the
+# prometheus endpoint unmapped and the suite unable to see what production serves.
+management:
+  prometheus:
+    metrics:
+      export:
+        enabled: true
