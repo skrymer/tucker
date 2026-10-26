@@ -46,7 +46,10 @@ describe('DaySummary', () => {
 
 Find elements the way a user or assistive technology would. Prefer, in order:
 
-1. `getByRole` with `{ name }` — buttons, headings, inputs, links, regions
+1. `getByRole` with `{ name }` — buttons, headings, inputs, links, regions. happy-dom
+   names some roles a browser does not: a `<dl>`'s `<dd>` (`definition`) has no
+   accessible name in Chrome, so a `{ name }` query on it passes here and fails in
+   Playwright — #523's tiles became tables (`row` is named by its cells in both)
 2. `getByLabelText` / `getByPlaceholderText` — form fields
 3. `getByText` — non-interactive content
 4. `getByTestId` — last resort, only when nothing above can address the element

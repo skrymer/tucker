@@ -2,7 +2,8 @@
 /**
  * Claude Code PreToolUse hook (Bash) — refuses a shell command that writes a file
  * Probity gates (`frontend/app/**\/*.{ts,vue}`, `backend/src/**\/*.kt`). Probity
- * judges RED and GREEN on Write and Edit only, so `sed -i`, a redirect, `tee`, a
+ * judges RED and GREEN on Write and Edit only, so `sed -i`, `perl -pi` (on a path or on
+ * a loop variable over gated files), a redirect, `tee`, a
  * `cp`/`mv` onto the file or an inline script that writes it lands unjudged. A copy
  * under `.stryker-tmp/` or `/tmp` is not gated, so hand-mutation stays possible.
  *
@@ -17,7 +18,15 @@ const GATED = /(?:^|\/)(?:app\/\S*\.(?:ts|vue)|src\/\S*\.kt)$/
 /** A copy made to mutate or measure, which nothing gates. */
 const SCRATCH = /(?:^|\/)\.stryker-tmp\/|^\/tmp\//
 
-const PATH_TOKEN = /[\w./~@+-]+\.(?:ts|vue|kt)\b/g
+/** A path, or a glob over paths (`app/pages/*.vue`). */
+const PATH_TOKEN = /[\w./~@+*?-]+\.(?:ts|vue|kt)\b/g
+
+/** `sed` or `perl` editing in place, its `i` alone or joined to other flags (`-0pi`). */
+const IN_PLACE = /\b(?:sed|perl)\b[^|]*\s-[\w.]*i/
+
+/** An in-place edit whose target is a shell variable, as in a `for` loop's body. */
+const editsAVariable = (segment) =>
+  IN_PLACE.test(segment) && /\$\{?\w+\}?/.test(segment)
 
 const isGated = (path) => GATED.test(path) && !SCRATCH.test(path)
 
@@ -26,12 +35,12 @@ const gatedPaths = (segment) =>
 
 const escape = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
-/** A redirect, `tee`, or `sed -i` aimed at [path]. */
+/** A redirect, `tee`, or an in-place `sed`/`perl` aimed at [path]. */
 const writesWithShell = (segment, path) =>
   new RegExp(`(?:>>?|\\btee\\b(?:\\s+-a)?)\\s*['"]?${escape(path)}`).test(
     segment,
   ) ||
-  (/\bsed\b[^|]*\s-i/.test(segment) && segment.includes(path))
+  (IN_PLACE.test(segment) && segment.includes(path))
 
 /** `cp`, `mv` or `install` whose destination is [path]. */
 const copiesOnto = (segment, path) =>
@@ -88,8 +97,9 @@ export function decide(command) {
         offending.add(path)
     }
   }
+  const loopEdit = segmentsOf(command).some(editsAVariable)
   for (const path of gatedPaths(command)) {
-    if (scriptWrites(command, path)) offending.add(path)
+    if (loopEdit || scriptWrites(command, path)) offending.add(path)
   }
   if (offending.size === 0) return null
   return {
