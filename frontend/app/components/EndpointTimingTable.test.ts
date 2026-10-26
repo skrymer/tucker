@@ -19,6 +19,9 @@ const slowest = (p95Ms: number) => [
 // e2e/admin-server.spec.ts measures it.
 describe('EndpointTimingTable', () => {
   it.each([
+    [175, ['0 ms', '50 ms', '100 ms', '150 ms', '200 ms']],
+    [601, ['0 ms', '250 ms', '500 ms', '750 ms']],
+    [60000, ['0 ms', '20000 ms', '40000 ms', '60000 ms']],
     [37, ['0 ms', '10 ms', '20 ms', '30 ms', '40 ms']],
     [50, ['0 ms', '10 ms', '20 ms', '30 ms', '40 ms', '50 ms']],
     [190, ['0 ms', '50 ms', '100 ms', '150 ms', '200 ms']],

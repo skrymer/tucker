@@ -2,16 +2,21 @@ package com.tucker.api
 
 import com.tucker.security.ACCESS_ASSERTION_HEADER
 import com.tucker.security.AccessTokens
+import io.micrometer.core.instrument.Meter
+import io.micrometer.core.instrument.Tags
+import io.micrometer.core.instrument.distribution.DistributionStatisticConfig
 import org.hamcrest.Matchers.containsString
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.actuate.autoconfigure.metrics.PropertiesMeterFilter
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.web.servlet.MockHttpServletRequestDsl
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
+import java.time.Duration
 import kotlin.test.assertEquals
 
 /**
@@ -23,6 +28,7 @@ import kotlin.test.assertEquals
 class ActuatorApiTest {
 
     @Autowired lateinit var mockMvc: MockMvc
+    @Autowired lateinit var propertiesMeterFilter: PropertiesMeterFilter
 
     @Test
     fun `an Admin reads the server's health`() {
@@ -59,6 +65,17 @@ class ActuatorApiTest {
             .mapNotNull { QUANTILE.find(it)?.groupValues?.get(1) }
 
         assertEquals(listOf("0.5", "0.95"), quantiles.sorted())
+    }
+
+    /** Beside counts that run since the restart, a two-minute window would show a recent figure (ADR 0039). */
+    @Test
+    fun `an endpoint's percentiles run since the last start, never expiring within an uptime`() {
+        val id = Meter.Id("http.server.requests", Tags.of("uri", "/api/version"), null, null, Meter.Type.TIMER)
+
+        val config = propertiesMeterFilter.configure(id, DistributionStatisticConfig.NONE)!!
+
+        assertEquals(Duration.ofDays(3650), config.expiry)
+        assertEquals(1, config.bufferLength)
     }
 
     /** A percentile can't be summed across series, so an endpoint is one per outcome (ADR 0039). */

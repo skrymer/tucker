@@ -9,22 +9,22 @@ const LEGEND = Object.entries(DUMBBELL_MARKS).map(([label, mark]) => ({
 }))
 const count = (n: number) => n.toLocaleString('en-AU')
 
-/** A round step for an axis reaching [max] ms. */
-function axisStep(max: number) {
-  if (max > 200) return 100
-  if (max > 50) return 25
-  return 10
-}
+const STEPS = [10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000]
 
-/** One linear ms axis for every row, its top rounded up to a whole step. */
+/** The smallest round step that reaches [max] ms in five steps or fewer. */
+const axisStep = (max: number) =>
+  STEPS.find((step) => Math.ceil(max / step) <= 5) ??
+  Math.ceil(max / 5 / 10000) * 10000
+
+/** One linear ms axis for every row, its top a whole step, at most six labels. */
 const axis = computed(() => {
   const max = Math.max(1, ...props.endpoints.map((e) => e.p95Ms ?? 0))
   const step = axisStep(max)
   const top = Math.ceil(max / step) * step
-  const ticks = Array.from({ length: top / step + 1 }, (_, i) => i * step)
-  // At most six labels.
-  const every = Math.ceil(ticks.length / 6)
-  return { top, ticks: ticks.filter((_, i) => i % every === 0) }
+  return {
+    top,
+    ticks: Array.from({ length: top / step + 1 }, (_, i) => i * step),
+  }
 })
 
 /** A tick label sits right of zero, left of the top, and centred between. */

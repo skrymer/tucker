@@ -146,6 +146,23 @@ describe('ServerCard', () => {
     ).toBeVisible()
   })
 
+  it('counts a single GC pause as one pause', async () => {
+    server.use(
+      serving({
+        ...runningServer,
+        gcPauseCount: 1,
+        gcPauseTotalSeconds: 0.003,
+      }),
+    )
+    await renderAnswered()
+
+    expect(
+      within(screen.getByRole('group', { name: 'GC pauses' })).getByText(
+        'over 1 pause since the restart',
+      ),
+    ).toBeVisible()
+  })
+
   it('times each endpoint p50 to p95, slowest first, with its requests and 5xx, and those too few to time last', async () => {
     await renderAnswered()
 

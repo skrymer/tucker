@@ -111,8 +111,8 @@ const rings = computed(() => {
         seconds(figures.gcPauseTotalSeconds)
       }}</span>
       <span class="text-xs text-muted">
-        over {{ figures.gcPauseCount.toLocaleString('en-AU') }} pauses since the
-        restart
+        over {{ figures.gcPauseCount.toLocaleString('en-AU') }}
+        {{ figures.gcPauseCount === 1 ? 'pause' : 'pauses' }} since the restart
       </span>
     </div>
   </div>

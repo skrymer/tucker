@@ -30,8 +30,10 @@ management:
       # counts that run since the restart.
       percentiles:
         http.server.requests: 0.5,0.95
+      # Bracketed: unbracketed, the dotted key never reaches this Duration map, and
+      # the registry's one-minute default expires every percentile instead.
       expiry:
-        http.server.requests: 3650d
+        "[http.server.requests]": 3650d
       buffer-length:
         http.server.requests: 1
 
