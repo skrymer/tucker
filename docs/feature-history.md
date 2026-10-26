@@ -2105,3 +2105,23 @@ null` now means two things that earn opposite messages — the same trap
     restore is a duration with no paint entry (dropped); a vital over a minute would
     take its whole batch down with a 400 (dropped on the client); Chrome records no
     LCP at all for an occluded window, which reads as lost vitals in a walk-through.
+  - **Slice 8 ([#525](https://github.com/skrymer/tucker/issues/525)) — retention and
+    the rate cap.** `MetricRateCap` (a service `@Component`) counts each User's admitted
+    events over a rolling hour in memory, keyed by `CurrentUser.id`, and refuses whole a
+    batch that would pass 600; `POST /api/metrics` answers it 429 ("no more than 600 events
+    an hour") from an `@ExceptionHandler` on `MetricController`, so the spec gains the 429
+    on that operation alone, and the client drops it silently like any failed send.
+    `MetricRetention` deletes events recorded at or before `MetricRange.QUARTER.since(now)`,
+    so the widest Admin range and what is kept are one number; `MetricPruneTrigger` runs it
+    at 03:30 UTC. `SchedulingConfig` is now switched off by one `tucker.scheduling.enabled`
+    (false in the fast suite) in place of each trigger's own property and profile.
+  - **Rulings (user):** ADR 0010 is amended to name two scheduled jobs on its one thread,
+    rather than folding the prune into the reminder tick; no new smoke — the 429 is silent
+    and the prune runs only on a cron the smoke stack switches off.
+  - **Traps:** the fast suite's rollbacks rewind `id_sequence`, so a User provisioned in a
+    rolled-back test leaves its id to the next one while the in-memory cap outlives the
+    rollback — a test then inherits 600 events an earlier one sent, order-dependently.
+    `ForgetMetricRateCapListener` (test `spring.factories`) clears the cap after every
+    Spring test; a smoke reset keeps `id_sequence`, so the smokes never reuse an id. In a
+    walk-through every page load records its own LCP on hide, so `/admin` cannot be read
+    live over a store holding nothing at all.
