@@ -55,6 +55,11 @@ class MetricEventRepository(private val dsl: DSLContext) {
             .where(recordedSince(since))
             .fetch(METRIC_EVENT.APP_VERSION)
 
+    /** Deletes every event recorded at or before [cutoff]. */
+    fun deleteRecordedUpTo(cutoff: Instant) {
+        dsl.deleteFrom(METRIC_EVENT).where(METRIC_EVENT.RECORDED_AT.le(cutoff.stamp())).execute()
+    }
+
     private fun recordedSince(since: Instant) = METRIC_EVENT.RECORDED_AT.ge(since.stamp())
 
     private fun MetricEvent.toRecord(recordedAt: Instant) = MetricEventRecord().also {

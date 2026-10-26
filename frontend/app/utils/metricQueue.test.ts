@@ -96,23 +96,40 @@ describe('sending metrics', () => {
   })
 
   // Lossy on purpose (ADR 0038): a failed send is neither thrown to the page nor
-  // tried again, so a backend that would take it the second time never sees it.
-  it('drops a send that failed, without throwing or trying again', async () => {
-    // The failing answer first: within one use(), the first handler matches.
-    server.use(
-      http.post(
-        '/api/metrics',
-        ({ response }) => response.untyped(serverError()),
-        { once: true },
-      ),
-      ...metricsRecorded(),
-    )
-    const { $api } = useNuxtApp()
+  // tried again, so a backend that would take it the second time never sees it —
+  // a User past their 600 events an hour included.
+  it.each([
+    [
+      'failed',
+      () =>
+        http.post(
+          '/api/metrics',
+          ({ response }) => response.untyped(serverError()),
+          { once: true },
+        ),
+    ],
+    [
+      'was refused as too many',
+      () =>
+        http.post(
+          '/api/metrics',
+          ({ response }) =>
+            response(429).json({ message: 'no more than 600 events an hour' }),
+          { once: true },
+        ),
+    ],
+  ])(
+    'drops a send that %s, without throwing or trying again',
+    async (_, refusal) => {
+      // The failing answer first: within one use(), the first handler matches.
+      server.use(refusal(), ...metricsRecorded())
+      const { $api } = useNuxtApp()
 
-    await expect(sendMetrics($api, [event])).resolves.toBeUndefined()
+      await expect(sendMetrics($api, [event])).resolves.toBeUndefined()
 
-    expect((await $api('/api/admin/metrics')).routes).toEqual([])
-  })
+      expect((await $api('/api/admin/metrics')).routes).toEqual([])
+    },
+  )
 })
 
 function hidePage() {

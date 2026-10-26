@@ -184,6 +184,26 @@ class MetricApiTest {
         }
     }
 
+    @Test
+    fun `refuses an event past a User's 600 in an hour as too many requests`() {
+        val capped = AccessTokens.mint(email = "capped@tucker.invalid")
+        val fifty = batchOf(*Array(50) { routeChange() })
+        repeat(12) {
+            postAs(capped, fifty).andExpect { status { isNoContent() } }
+        }
+
+        postAs(capped, batchOf(routeChange())).andExpect {
+            status { isTooManyRequests() }
+            jsonPath("$.message") { value("no more than 600 events an hour") }
+        }
+    }
+
+    private fun postAs(assertion: String, batch: String) = mockMvc.post("/api/metrics") {
+        header(ACCESS_ASSERTION_HEADER, assertion)
+        contentType = MediaType.APPLICATION_JSON
+        content = batch
+    }
+
     private fun webVital(kind: String) =
         """{"kind":"$kind","route":"/review","valueMs":1840,""" +
             """"layout":"phone","installed":false,"appVersion":"1.4.0"}"""

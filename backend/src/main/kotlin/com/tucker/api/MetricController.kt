@@ -12,10 +12,13 @@ import com.tucker.domain.RouteChange
 import com.tucker.domain.VitalKind
 import com.tucker.domain.WebVital
 import com.tucker.persistence.MetricEventRepository
+import com.tucker.security.CurrentUser
+import com.tucker.service.MetricRateCap
 import io.swagger.v3.oas.annotations.Parameter
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestHeader
@@ -75,7 +78,12 @@ data class MetricBatchRequest(val events: List<MetricEventRequest>) {
 /** Where a browser sends what it measured of Tucker itself (ADR 0038). */
 @RestController
 @RequestMapping("/api/metrics")
-class MetricController(private val metrics: MetricEventRepository, private val clock: Clock) {
+class MetricController(
+    private val metrics: MetricEventRepository,
+    private val cap: MetricRateCap,
+    private val currentUser: CurrentUser,
+    private val clock: Clock,
+) {
 
     @PostMapping
     @ResponseStatus(HttpStatus.NO_CONTENT)
@@ -84,6 +92,18 @@ class MetricController(private val metrics: MetricEventRepository, private val c
         @RequestBody batch: MetricBatchRequest,
         @Parameter(hidden = true) @RequestHeader(HttpHeaders.USER_AGENT, required = false) userAgent: String?,
     ) {
-        metrics.insert(batch.toDomain(Platform.of(userAgent.orEmpty())), recordedAt = clock.instant())
+        val events = batch.toDomain(Platform.of(userAgent.orEmpty()))
+        val now = clock.instant()
+        if (!cap.admit(currentUser.id, events.events.size, now)) throw OverMetricCapException()
+        metrics.insert(events, recordedAt = now)
     }
+
+    @ExceptionHandler(OverMetricCapException::class)
+    @ResponseStatus(HttpStatus.TOO_MANY_REQUESTS)
+    fun overCap() = ApiError(OVER_CAP)
 }
+
+/** A User sent more than [MetricRateCap] admits in an hour; the batch is dropped. */
+class OverMetricCapException : RuntimeException(OVER_CAP)
+
+private const val OVER_CAP = "no more than ${MetricRateCap.PER_HOUR} events an hour"
