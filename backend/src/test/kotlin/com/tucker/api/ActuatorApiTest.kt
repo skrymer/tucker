@@ -113,6 +113,13 @@ class ActuatorApiTest {
         }
     }
 
+    @Test
+    fun `a User who is not an Admin is told the server's meters are not there`() {
+        mockMvc.get("/api/actuator/prometheus") { signedInAs(USER) }.andExpect {
+            status { isNotFound() }
+        }
+    }
+
     private fun scrape(): String =
         mockMvc.get("/api/actuator/prometheus") { signedInAs(ADMIN) }.andReturn().response.contentAsString
 

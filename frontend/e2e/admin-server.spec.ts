@@ -1,7 +1,8 @@
 import type { Locator } from '@playwright/test'
 import { expect, test } from './support/test'
+import { held } from '../test/mocks/http'
 import { signedInAsAdmin } from '../test/mocks/handlers/identity'
-import { health } from '../test/mocks/handlers/server'
+import { health, runningServer, serving } from '../test/mocks/handlers/server'
 
 // The server section of /admin (ADR 0039): built only on a desktop, as the page's
 // metrics are; the baseline is a server three days up and healthy.
@@ -121,6 +122,37 @@ test.describe('as an Admin, on a desktop', () => {
     expect(await p95Of('/api/summary')).toBeCloseTo(74 / 500, 2)
   })
 
+  // ADR 0007: a placeholder waits 150 ms before showing, so a fast answer never
+  // flashes it. Read at the moment the skeleton is inserted, before any delay.
+  test("holds the server figures' cold-load skeleton invisible for its first moment", async ({
+    page,
+    goto,
+    network,
+  }) => {
+    await page.addInitScript(() => {
+      new MutationObserver(() => {
+        const el = document.querySelector<HTMLElement>(
+          '[data-testid="server-skeleton"]',
+        )
+        if (el && el.dataset.firstOpacity === undefined) {
+          el.dataset.firstOpacity = getComputedStyle(el).opacity
+        }
+      }).observe(document, { childList: true, subtree: true })
+    })
+    const read = held('get', '/api/actuator/prometheus')
+    network.use(read.handler)
+
+    await goto('/admin', { waitUntil: 'hydration' })
+    const skeleton = page.getByTestId('server-skeleton')
+
+    await expect(skeleton).toHaveAttribute('data-first-opacity', '0')
+    await expect
+      .poll(() => skeleton.evaluate((el) => getComputedStyle(el).opacity))
+      .toBe('1')
+    read.release()
+    await expect(skeleton).toHaveCount(0)
+  })
+
   test('keeps every axis label inside the chart, each centred on its gridline', async ({
     page,
     goto,
@@ -146,6 +178,43 @@ test.describe('as an Admin, on a desktop', () => {
     near(last.box.x + last.box.width, column.x + column.width)
     for (const { ms, box } of rest)
       near(box.x + box.width / 2, column.x + (ms / 500) * column.width)
+  })
+
+  test('draws every ring in one colour, however full: no meter warns', async ({
+    page,
+    goto,
+    network,
+  }) => {
+    network.use(
+      serving({
+        ...runningServer,
+        processCpu: 0.99,
+        systemCpu: 0.97,
+        heapUsedBytes: 254 * 1024 * 1024,
+      }),
+      health({ freeBytes: 0.5 * 1024 ** 3 }),
+    )
+    await goto('/admin', { waitUntil: 'hydration' })
+    const strokeOf = (meter: string) =>
+      page
+        .getByRole('group', { name: meter })
+        .locator('circle')
+        .last()
+        .evaluate((arc) => getComputedStyle(arc).stroke)
+    const hue = await page
+      .getByRole('group', { name: 'Heap' })
+      .locator('svg')
+      .evaluate((svg) => {
+        const probe = document.createElementNS(svg.namespaceURI, 'circle')
+        probe.setAttribute('stroke', 'var(--tucker-cat-1)')
+        svg.append(probe)
+        const stroke = getComputedStyle(probe).stroke
+        probe.remove()
+        return stroke
+      })
+
+    for (const meter of ['Process CPU', 'System CPU', 'Heap', 'Disk used'])
+      expect(await strokeOf(meter)).toBe(hue)
   })
 
   test("fills each meter's ring to its share of the whole", async ({

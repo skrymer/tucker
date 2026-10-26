@@ -35,12 +35,12 @@ function uptime(seconds: number) {
 }
 
 // Not awaited, so the page's own metrics paint without waiting on the server's reads.
-const { data: figures, error, refresh } = useServerFigures()
+const { data: figures, error, pending, refresh } = useServerFigures()
 const up = computed(() => figures.value?.health === 'UP')
 </script>
 
 <template>
-  <UCard as="section" aria-labelledby="server-heading">
+  <UCard as="section" aria-labelledby="server-heading" :aria-busy="pending">
     <div class="flex flex-col gap-5">
       <div class="flex items-start justify-between gap-4">
         <div class="flex flex-col gap-1">
@@ -78,6 +78,26 @@ const up = computed(() => figures.value?.health === 'UP')
         <div v-if="figures" class="flex flex-col gap-5">
           <ServerMeters :figures="figures" />
           <EndpointTimingTable :endpoints="figures.endpoints" />
+        </div>
+        <!-- The first read only (ADR 0007's cold load). Decorative, so hidden:
+             the card's aria-busy says it is loading, and each USkeleton would
+             otherwise raise an alert. -->
+        <div
+          v-else
+          aria-hidden="true"
+          data-testid="server-skeleton"
+          class="appear-late flex flex-col gap-5"
+        >
+          <div class="grid grid-cols-5 gap-4">
+            <USkeleton
+              v-for="n in 5"
+              :key="n"
+              class="h-[4.5rem] rounded-inset"
+            />
+          </div>
+          <div class="flex flex-col gap-2">
+            <USkeleton v-for="n in 4" :key="n" class="h-7 w-full" />
+          </div>
         </div>
       </LoadErrorState>
     </div>

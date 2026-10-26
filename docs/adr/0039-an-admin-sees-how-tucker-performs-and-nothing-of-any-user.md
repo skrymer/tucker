@@ -56,6 +56,40 @@ ADR, not adding an endpoint.
     deploy, the page says so, and the page's filters do not apply to them. Keeping
     their history would need a metrics store, which is out of scope.
 
+## Scope: an operator's tool, beside the User's app
+
+The Admin page is a tool for looking after Tucker, not part of the diet tracker a
+User uses. It reads figures about Tucker — timings, the server's health — and no
+domain at all. So only the ADRs about how Tucker is built, secured and hosted govern
+it; those about the User's product do not.
+
+- **Govern the Admin surface:** [0004](0004-compose-inline-composables.md) (inline
+  composables), [0007](0007-async-in-flight-state.md) (in-flight states),
+  [0012](0012-single-node-self-hosting.md) and
+  [0015](0015-production-deployment-topology.md) (hosting),
+  [0013](0013-test-coverage-policy.md) (test coverage),
+  [0020](0020-identity-comes-from-cloudflare-access.md),
+  [0021](0021-every-row-is-owned-by-one-user.md) and
+  [0025](0025-a-mutation-must-prove-it-came-from-tuckers-own-page.md) (identity,
+  ownership, CSRF), [0023](0023-absence-on-the-wire-is-an-explicit-null.md) (explicit
+  null), [0034](0034-api-mocks-are-one-msw-handler-set-and-tests-assert-what-the-user-sees.md)
+  (MSW), [0036](0036-an-aggregate-has-its-identity-from-creation.md) (identity from
+  creation), [0038](0038-performance-is-measured-by-tucker-itself-and-no-metric-names-a-user.md)
+  and this one.
+- **Do not:** [0001](0001-domain-driven-design.md) and
+  [0002](0002-business-logic-belongs-in-the-backend.md) — the page holds no domain
+  rule, so shaping operational figures in the client (the five-success "too few", the
+  slowest-first order) is presentation, not a rule the backend owns;
+  [0005](0005-notifications-persistent-errors-quiet-success.md) (the page mutates
+  nothing); [0009](0009-responsive-pwa-over-native-app.md),
+  [0011](0011-supported-platforms.md) and
+  [0017](0017-phone-overlays-are-reka-dialog-bottom-sheets.md) — it is desktop-only,
+  a phone shows a notice; [0014](0014-client-owns-today.md) (no calendar day); and
+  every ADR about the diet domain.
+
+A new Admin feature checks itself against the first list, and widening the second is
+revising this ADR.
+
 ## Considered options
 
 - **An `is_admin` column on `user`.** It would need a migration, and something to set

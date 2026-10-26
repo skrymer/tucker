@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { screen, within } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import { HttpResponse } from 'msw'
-import { http, noConnection, serverError } from '~~/test/mocks/http'
+import { held, http, noConnection, serverError } from '~~/test/mocks/http'
 import { server } from '~~/test/mocks/node'
 import { health, runningServer, serving } from '~~/test/mocks/handlers/server'
 import { renderInApp } from '~~/test/render-in-app'
@@ -22,6 +22,26 @@ async function renderAnswered() {
 }
 
 describe('ServerCard', () => {
+  it('holds a loading skeleton where the figures will go, claiming nothing until they are answered', async () => {
+    const read = held('get', '/api/actuator/prometheus')
+    server.use(read.handler)
+
+    await renderInApp(ServerCard)
+    await read.arrived
+    const card = screen.getByRole('region', { name: 'Server' })
+    expect(card).toHaveAttribute('aria-busy', 'true')
+    // Decorative: the card's aria-busy says it is loading, so the rows raise no
+    // alert of their own.
+    expect(within(card).getByTestId('server-skeleton')).toBeInTheDocument()
+    expect(within(card).queryByRole('alert')).not.toBeInTheDocument()
+    expect(within(card).queryByText('Up')).not.toBeInTheDocument()
+
+    read.release()
+    expect(await within(card).findByText('Up')).toBeVisible()
+    expect(card).toHaveAttribute('aria-busy', 'false')
+    expect(screen.queryByTestId('server-skeleton')).not.toBeInTheDocument()
+  })
+
   it('says its figures run since the last restart, how long ago, and that the filters miss them', async () => {
     await renderAnswered()
 
