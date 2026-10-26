@@ -12,7 +12,6 @@ import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
 import org.springframework.transaction.annotation.Transactional
-import java.util.UUID
 
 /** `/api/metrics` — the measurements a browser sends about Tucker itself (ADR 0038). */
 @SpringBootTest
@@ -185,27 +184,24 @@ class MetricApiTest {
         }
     }
 
-    /** A User of its own, so the cap this spends is nobody else's; its rows roll back with the test. */
     @Test
     fun `refuses an event past a User's 600 in an hour as too many requests`() {
-        val capped = AccessTokens.mint(email = "capped-${UUID.randomUUID()}@tucker.invalid")
+        val capped = AccessTokens.mint(email = "capped@tucker.invalid")
         val fifty = batchOf(*Array(50) { routeChange() })
         repeat(12) {
-            mockMvc.post("/api/metrics") {
-                header(ACCESS_ASSERTION_HEADER, capped)
-                contentType = MediaType.APPLICATION_JSON
-                content = fifty
-            }.andExpect { status { isNoContent() } }
+            postAs(capped, fifty).andExpect { status { isNoContent() } }
         }
 
-        mockMvc.post("/api/metrics") {
-            header(ACCESS_ASSERTION_HEADER, capped)
-            contentType = MediaType.APPLICATION_JSON
-            content = batchOf(routeChange())
-        }.andExpect {
+        postAs(capped, batchOf(routeChange())).andExpect {
             status { isTooManyRequests() }
             jsonPath("$.message") { value("no more than 600 events an hour") }
         }
+    }
+
+    private fun postAs(assertion: String, batch: String) = mockMvc.post("/api/metrics") {
+        header(ACCESS_ASSERTION_HEADER, assertion)
+        contentType = MediaType.APPLICATION_JSON
+        content = batch
     }
 
     private fun webVital(kind: String) =

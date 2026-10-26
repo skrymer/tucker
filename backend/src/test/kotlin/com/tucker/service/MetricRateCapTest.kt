@@ -1,4 +1,4 @@
-package com.tucker.domain
+package com.tucker.service
 
 import org.junit.jupiter.api.Test
 import java.time.Duration

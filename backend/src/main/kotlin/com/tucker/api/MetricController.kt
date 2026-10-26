@@ -11,9 +11,9 @@ import com.tucker.domain.Platform
 import com.tucker.domain.RouteChange
 import com.tucker.domain.VitalKind
 import com.tucker.domain.WebVital
-import com.tucker.domain.MetricRateCap
 import com.tucker.persistence.MetricEventRepository
 import com.tucker.security.CurrentUser
+import com.tucker.service.MetricRateCap
 import io.swagger.v3.oas.annotations.Parameter
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
@@ -25,7 +25,6 @@ import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
-import org.springframework.web.bind.annotation.RestControllerAdvice
 import java.time.Clock
 
 /**
@@ -98,16 +97,13 @@ class MetricController(
         if (!cap.admit(currentUser.id, events.events.size, now)) throw OverMetricCapException()
         metrics.insert(events, recordedAt = now)
     }
-}
-
-/** A User sent more than [MetricRateCap] admits in an hour; the batch is dropped. */
-class OverMetricCapException : RuntimeException("no more than ${MetricRateCap.PER_HOUR} events an hour")
-
-/** Scoped to [MetricController], so the 429 is described on `POST /api/metrics` alone. */
-@RestControllerAdvice(assignableTypes = [MetricController::class])
-class MetricCapExceptionHandler {
 
     @ExceptionHandler(OverMetricCapException::class)
     @ResponseStatus(HttpStatus.TOO_MANY_REQUESTS)
-    fun handleOverCap(e: OverMetricCapException) = ApiError(e.message ?: "too many requests")
+    fun overCap() = ApiError(OVER_CAP)
 }
+
+/** A User sent more than [MetricRateCap] admits in an hour; the batch is dropped. */
+class OverMetricCapException : RuntimeException(OVER_CAP)
+
+private const val OVER_CAP = "no more than ${MetricRateCap.PER_HOUR} events an hour"
