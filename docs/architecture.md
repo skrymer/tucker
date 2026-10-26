@@ -78,7 +78,7 @@ flowchart TB
   subgraph vps["Tucker VPS — Docker Compose"]
     tunnel["<b>cloudflared</b><br/>[Container: Cloudflare Tunnel]<br/>Outbound-only connector; no open ports"]:::container
     web["<b>Frontend server</b><br/>[Container: Nitro, Node]<br/>Serves the SPA; proxies /api to the backend"]:::container
-    api["<b>Backend API</b><br/>[Container: Kotlin, Spring Boot]<br/>Domain model, weekly review, REST API, reminder cron"]:::container
+    api["<b>Backend API</b><br/>[Container: Kotlin, Spring Boot]<br/>Domain model, weekly review, REST API, reminder and metric-prune crons"]:::container
     db[("<b>Database</b><br/>[Container: SQLite WAL, jOOQ, Flyway]<br/>One file; every User's row owned by that User, plus installation-wide tables")]:::container
     litestream["<b>Litestream</b><br/>[Container: Litestream]<br/>Streams the WAL off-host"]:::container
   end
@@ -190,7 +190,7 @@ flowchart TD
   services --> domain
   services --> repos
   repos -- "reads owner from" --> current
-  controllers -- "is this an Admin?" --> current
+  controllers -- "is this an Admin? whose metric cap?" --> current
   repos -- "JDBC" --> db
 
   classDef component fill:#85bbf0,color:#000,stroke:#5d82a8

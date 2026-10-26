@@ -40,8 +40,8 @@ class RunAsCallSitesTest {
             sortedSetOf("com/tucker/service/ReminderScheduler.kt"),
             callers,
             "runAs establishes an identity out of thin air, so ADR 0021 confines it to " +
-                "the one job that has no request behind it. A new caller here needs the " +
-                "ADR changed first, not this assertion widened",
+                "the one job that acts as a User with no request behind it. A new caller " +
+                "here needs the ADR changed first, not this assertion widened",
         )
     }
 

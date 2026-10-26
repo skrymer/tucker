@@ -10,18 +10,17 @@ F6 adds a **Weekly-Review Reminder**: a web push that nudges the user to open
 Tucker when a review has come due and they've drifted away. That is, by
 definition, a *server-initiated event that must fire while the user is not in the
 app* — otherwise there is nothing to remind them of. A lazy, request-driven model
-cannot do it. So F6 introduces the one scheduled job Tucker has ever had, and this
+cannot do it. So F6 introduces Tucker's first scheduled job, and this
 ADR records why that does **not** break the "no scheduler" decision.
 
 ## Decision
 
-Add exactly **one** Spring `@Scheduled` job, scoped solely to *sending reminders*.
-A second, the nightly metric prune, came with
+Add **one** Spring `@Scheduled` job for reminders, scoped solely to *sending
+reminders*. (A second job, the nightly metric prune, came with
 [ADR 0038](0038-performance-is-measured-by-tucker-itself-and-no-metric-names-a-user.md):
-it touches only `metric_event`, never the domain, and runs at 03:30 UTC, between
-the reminder's hourly ticks on the one scheduler thread.
-It **computes nothing** — it never runs a review, never touches Maintenance, the
-Calorie Budget, or the Protein Floor. It only *reads* existing state and, when the
+it touches only `metric_event`, never the domain.)
+The reminder job **computes nothing** — it never runs a review, never touches
+Maintenance, the Calorie Budget, or the Protein Floor. It only *reads* existing state and, when the
 conditions hold, sends a push.
 
 The invariant that mattered is preserved: **Maintenance, the Budget, and the Floor
@@ -253,15 +252,16 @@ Reminder**, a different trigger and a different feature (F13).
   [ADR 0011/0012-class hosting](0012-single-node-self-hosting.md) commits to
   (single-node, no scale-to-zero). This reinforces, rather than complicates, the
   hosting decision.
-- **One job, hourly, idempotent and deduped.** It is read-only against the domain,
-  sends through the Web Push port, and prunes a dead subscription — one the push
-  service reports `410 Gone`, or one whose stored keys will not decode, which is
+- **One reminder job, hourly, idempotent and deduped.** It is read-only against the
+  domain, sends through the Web Push port, and prunes a dead subscription — one the
+  push service reports `410 Gone`, or one whose stored keys will not decode, which is
   just as permanent and was previously retried forever.
-- **One job means one thread, so every send is time-bounded.** The scheduler is
-  single-threaded by design (it has nothing to run concurrently with), which makes an
-  unbounded wait on a push endpoint a whole-feature outage rather than one lost
-  nudge: a service that accepts the connection and never answers would hold that
-  thread until the app restarts. Each send therefore waits a fixed number of seconds
+- **One thread, so every send is time-bounded.** The scheduler is single-threaded
+  by design, and the only other job on it — the metric prune, a single indexed
+  `DELETE` — runs at 03:30 UTC, half an hour from the reminder's tick on the hour.
+  That single thread makes an unbounded wait on a push endpoint a whole-feature
+  outage rather than one lost nudge: a service that accepts the connection and
+  never answers would hold that thread until the app restarts. Each send therefore waits a fixed number of seconds
   and no longer. This is a documented bound rather than a tested one — the failure
   needs a deliberately hung server, and the library offers no seam to fake one
   without also faking the transport this ADR treats as external.
