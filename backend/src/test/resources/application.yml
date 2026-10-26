@@ -16,12 +16,12 @@ spring:
       # (e.g. recipe_ingredient's ON DELETE CASCADE) would silently not fire.
       connection-init-sql: PRAGMA foreign_keys = ON
 
-# No background reminder cron during tests — they drive ReminderScheduler.runTick
-# explicitly, and an hourly tick firing mid-test would contend for the single
-# SQLite connection and mutate shared reminder_state.
+# No background cron during tests — they drive ReminderScheduler.runTick and
+# MetricRetention.prune explicitly, and a tick firing mid-test would contend for
+# the single SQLite connection and mutate shared state.
 tucker:
-  reminders:
-    scheduler-enabled: false
+  scheduling:
+    enabled: false
 
   # Verify against the committed non-production key (dev/access-key/), so the suite
   # runs through the real decoder rather than a bypass (ADR 0020). These three have

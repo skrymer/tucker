@@ -78,7 +78,7 @@ flowchart TB
   subgraph vps["Tucker VPS — Docker Compose"]
     tunnel["<b>cloudflared</b><br/>[Container: Cloudflare Tunnel]<br/>Outbound-only connector; no open ports"]:::container
     web["<b>Frontend server</b><br/>[Container: Nitro, Node]<br/>Serves the SPA; proxies /api to the backend"]:::container
-    api["<b>Backend API</b><br/>[Container: Kotlin, Spring Boot]<br/>Domain model, weekly review, REST API, reminder cron"]:::container
+    api["<b>Backend API</b><br/>[Container: Kotlin, Spring Boot]<br/>Domain model, weekly review, REST API, reminder and metric-prune crons"]:::container
     db[("<b>Database</b><br/>[Container: SQLite WAL, jOOQ, Flyway]<br/>One file; every User's row owned by that User, plus installation-wide tables")]:::container
     litestream["<b>Litestream</b><br/>[Container: Litestream]<br/>Streams the WAL off-host"]:::container
   end
@@ -190,7 +190,7 @@ flowchart TD
   services --> domain
   services --> repos
   repos -- "reads owner from" --> current
-  controllers -- "is this an Admin?" --> current
+  controllers -- "is this an Admin? whose metric cap?" --> current
   repos -- "JDBC" --> db
 
   classDef component fill:#85bbf0,color:#000,stroke:#5d82a8
@@ -300,7 +300,8 @@ flowchart LR
 
 ### Backend: the Weekly-Review Reminder
 
-Tucker's only scheduled job, and it only *sends* — it computes no review. Each
+One of Tucker's two scheduled jobs — the other is the nightly metric prune — and it
+only *sends*: it computes no review. Each
 hour it gives every User their own turn under their own identity, so the same
 scoped repositories a request uses serve the cron too
 ([ADR 0010](adr/0010-minimal-scheduler-for-the-weekly-reminder.md)).
@@ -555,7 +556,7 @@ measurements, which say nothing of who made them
 | `reference_food_synonym` | Query rewrites for Reference Food search (`term` → `replacement`) | Flyway (V17) |
 | `nutrient_reference_value` | NHMRC Nutrient Reference Values by nutrient, sex and the age a band opens at | Flyway (V18) |
 | `app_config` | Installation-wide key/value settings, such as the VAPID key pair | The app, on first boot |
-| `metric_event` | One measurement per row — a route change, a page load (LCP) or a tap's response (INP): its kind, route template and time, and for a route change its wait on `/api`, the server's part of that and whether it was the route's first visit; then layout, installed, the browser engine and OS read off the request's user agent, app version, when recorded. No `user_id`, no user agent | `POST /api/metrics` (V24–V27) |
+| `metric_event` | One measurement per row — a route change, a page load (LCP) or a tap's response (INP): its kind, route template and time, and for a route change its wait on `/api`, the server's part of that and whether it was the route's first visit; then layout, installed, the browser engine and OS read off the request's user agent, app version, when recorded. No `user_id`, no user agent | `POST /api/metrics` (V24–V27), at most 600 per User an hour, counted in memory; `MetricPruneTrigger` deletes rows 90 days old nightly |
 | `id_sequence` | The last id handed out per aggregate table, so an aggregate has its id before it is stored ([ADR 0036](adr/0036-an-aggregate-has-its-identity-from-creation.md)) | Flyway (V21), then the app on every create |
 
 ## Keeping this current
