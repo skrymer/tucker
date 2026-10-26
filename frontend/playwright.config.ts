@@ -26,7 +26,9 @@ export default defineConfig<ConfigOptions>({
   testIgnore: 'smoke/**',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
+  // One local retry: a test that passes on it is reported "flaky", not failed,
+  // so a cold-start flake costs a line in the report rather than a re-run.
+  retries: process.env.CI ? 2 : 1,
   // Locally capped at 4. The app is built once, before any browser starts, so
   // peak memory is the build's own ~2.7 GB and barely moves with workers.
   // Measured on a 14-core / 30 GB host inside scripts/bounded-run.sh, full suite:
