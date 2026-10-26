@@ -67,7 +67,10 @@ class ActuatorApiTest {
         assertEquals(listOf("0.5", "0.95"), quantiles.sorted())
     }
 
-    /** Beside counts that run since the restart, a two-minute window would show a recent figure (ADR 0039). */
+    /**
+     * Beside counts that run since the restart, the registry's one-minute window would
+     * show a recent figure (ADR 0039).
+     */
     @Test
     fun `an endpoint's percentiles run since the last start, never expiring within an uptime`() {
         val id = Meter.Id("http.server.requests", Tags.of("uri", "/api/version"), null, null, Meter.Type.TIMER)

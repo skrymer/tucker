@@ -1767,8 +1767,8 @@ log's `afterEach`; a dropped vital was recorded as `undefined`) and one backend 
 ### Server section (#524) — `serverFigures.ts` 121 of 135, components 78 of 141, backend 1 of 1
 
 Two parser gaps (the quantile lookup ignored `method`; a timed p95 rounding to 0 ms
-sorted below "too few") and the components' untested branches — the ms axis's steps,
-boundaries and thinning, the meters' formatters at their thresholds, a non-503 health
+sorted below "too few") and the components' untested branches — the ms axis's steps
+and boundaries, the meters' formatters at their thresholds, a non-503 health
 failure whose Spring error body carries a `status`, the rings' fill and the tick labels'
 placement — got tests: Vitest for text, `e2e/admin-server.spec.ts` for geometry (red
 proofs on mutated copies). What stays alive:

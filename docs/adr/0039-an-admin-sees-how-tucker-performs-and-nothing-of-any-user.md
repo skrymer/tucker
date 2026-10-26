@@ -38,8 +38,8 @@ ADR, not adding an endpoint.
     it. It also types the two paths for the client and the shared mocks like any
     other.
   - **The percentiles run since the last start, one series per endpoint.** Their
-    expiry is set past any uptime, since Micrometer's default two-minute window would
-    put a recent figure beside cumulative counts. `http.server.requests` drops its
+    expiry is set past any uptime, since the Prometheus registry's default one-minute
+    window would put a recent figure beside cumulative counts. `http.server.requests` drops its
     `status`, `exception` and `error` tags, because a percentile is one series per full tag
     set and cannot be summed across them. An endpoint is then `method + uri`,
     with `outcome` left to split successes from 5xx. Actuator's own reads and the

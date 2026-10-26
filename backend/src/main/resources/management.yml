@@ -26,12 +26,12 @@ management:
   metrics:
     distribution:
       # Each endpoint's p50 and p95, computed since the last start: an expiry past any
-      # uptime, where Micrometer's two-minute window would set a recent figure beside
-      # counts that run since the restart.
+      # uptime, where the Prometheus registry's one-minute window would set a recent
+      # figure beside counts that run since the restart.
       percentiles:
         http.server.requests: 0.5,0.95
       # Bracketed: unbracketed, the dotted key never reaches this Duration map, and
-      # the registry's one-minute default expires every percentile instead.
+      # that one-minute window expires every percentile instead.
       expiry:
         "[http.server.requests]": 3650d
       buffer-length:
