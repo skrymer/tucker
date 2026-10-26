@@ -3,14 +3,20 @@ import type { ServerFigures } from '~/utils/serverFigures'
 
 const props = defineProps<{ figures: ServerFigures }>()
 
-const percent = (share: number) =>
-  share < 0.1 ? `${(share * 100).toFixed(1)}%` : `${Math.round(share * 100)}%`
-const bytes = (b: number) =>
-  b >= 1024 ** 3
-    ? `${(b / 1024 ** 3).toFixed(1)} GB`
-    : `${Math.round(b / 1024 ** 2)} MB`
-const seconds = (s: number) =>
-  s < 1 ? `${Math.round(s * 1000)} ms` : `${s.toFixed(1)} s`
+// Each unit is chosen on the rounded figure, so a value never shows in the
+// smaller unit's format once rounding carries it into the next.
+const percent = (share: number) => {
+  const tenths = Math.round(share * 1000) / 10
+  return tenths < 10 ? `${tenths.toFixed(1)}%` : `${Math.round(share * 100)}%`
+}
+const bytes = (b: number) => {
+  const mb = Math.round(b / 1024 ** 2)
+  return mb >= 1024 ? `${(b / 1024 ** 3).toFixed(1)} GB` : `${mb} MB`
+}
+const seconds = (s: number) => {
+  const ms = Math.round(s * 1000)
+  return ms < 1000 ? `${ms} ms` : `${s.toFixed(1)} s`
+}
 
 // A ring in a 48-unit box.
 const R = 19

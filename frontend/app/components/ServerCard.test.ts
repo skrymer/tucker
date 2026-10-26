@@ -91,12 +91,34 @@ describe('ServerCard', () => {
     ).not.toBeInTheDocument()
   })
 
+  it('reads a heap that rounds up to a gigabyte in gigabytes', async () => {
+    server.use(
+      serving({ ...runningServer, heapUsedBytes: 1023.6 * 1024 * 1024 }),
+    )
+    await renderAnswered()
+
+    expect(
+      within(screen.getByRole('group', { name: 'Heap' })).getByText('1.0 GB'),
+    ).toBeVisible()
+  })
+
   it('reads a heap of exactly a gigabyte in gigabytes', async () => {
     server.use(serving({ ...runningServer, heapUsedBytes: 1024 ** 3 }))
     await renderAnswered()
 
     expect(
       within(screen.getByRole('group', { name: 'Heap' })).getByText('1.0 GB'),
+    ).toBeVisible()
+  })
+
+  it('reads a CPU share that rounds up to a tenth as a whole percent', async () => {
+    server.use(serving({ ...runningServer, processCpu: 0.0996 }))
+    await renderAnswered()
+
+    expect(
+      within(screen.getByRole('group', { name: 'Process CPU' })).getByText(
+        '10%',
+      ),
     ).toBeVisible()
   })
 
@@ -113,6 +135,7 @@ describe('ServerCard', () => {
 
   it.each([
     [0.5, '500 ms'],
+    [0.9996, '1.0 s'],
     [1, '1.0 s'],
   ])('reads GC pauses totalling %s s as %s', async (total, said) => {
     server.use(serving({ ...runningServer, gcPauseTotalSeconds: total }))
