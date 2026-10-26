@@ -113,6 +113,25 @@ describe('sending metrics', () => {
 
     expect((await $api('/api/admin/metrics')).routes).toEqual([])
   })
+
+  // A User past their 600 events an hour is refused (ADR 0038), which is no more
+  // theirs to see than any other failed send.
+  it('drops a send refused as too many, without throwing or trying again', async () => {
+    server.use(
+      http.post(
+        '/api/metrics',
+        ({ response }) =>
+          response(429).json({ message: 'no more than 600 events an hour' }),
+        { once: true },
+      ),
+      ...metricsRecorded(),
+    )
+    const { $api } = useNuxtApp()
+
+    await expect(sendMetrics($api, [event])).resolves.toBeUndefined()
+
+    expect((await $api('/api/admin/metrics')).routes).toEqual([])
+  })
 })
 
 function hidePage() {

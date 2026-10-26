@@ -11,17 +11,21 @@ import com.tucker.domain.Platform
 import com.tucker.domain.RouteChange
 import com.tucker.domain.VitalKind
 import com.tucker.domain.WebVital
+import com.tucker.domain.MetricRateCap
 import com.tucker.persistence.MetricEventRepository
+import com.tucker.security.CurrentUser
 import io.swagger.v3.oas.annotations.Parameter
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.bind.annotation.RestControllerAdvice
 import java.time.Clock
 
 /**
@@ -75,7 +79,12 @@ data class MetricBatchRequest(val events: List<MetricEventRequest>) {
 /** Where a browser sends what it measured of Tucker itself (ADR 0038). */
 @RestController
 @RequestMapping("/api/metrics")
-class MetricController(private val metrics: MetricEventRepository, private val clock: Clock) {
+class MetricController(
+    private val metrics: MetricEventRepository,
+    private val cap: MetricRateCap,
+    private val currentUser: CurrentUser,
+    private val clock: Clock,
+) {
 
     @PostMapping
     @ResponseStatus(HttpStatus.NO_CONTENT)
@@ -84,6 +93,21 @@ class MetricController(private val metrics: MetricEventRepository, private val c
         @RequestBody batch: MetricBatchRequest,
         @Parameter(hidden = true) @RequestHeader(HttpHeaders.USER_AGENT, required = false) userAgent: String?,
     ) {
-        metrics.insert(batch.toDomain(Platform.of(userAgent.orEmpty())), recordedAt = clock.instant())
+        val events = batch.toDomain(Platform.of(userAgent.orEmpty()))
+        val now = clock.instant()
+        if (!cap.admit(currentUser.id, events.events.size, now)) throw OverMetricCapException()
+        metrics.insert(events, recordedAt = now)
     }
+}
+
+/** A User sent more than [MetricRateCap] admits in an hour; the batch is dropped. */
+class OverMetricCapException : RuntimeException("no more than ${MetricRateCap.PER_HOUR} events an hour")
+
+/** Scoped to [MetricController], so the 429 is described on `POST /api/metrics` alone. */
+@RestControllerAdvice(assignableTypes = [MetricController::class])
+class MetricCapExceptionHandler {
+
+    @ExceptionHandler(OverMetricCapException::class)
+    @ResponseStatus(HttpStatus.TOO_MANY_REQUESTS)
+    fun handleOverCap(e: OverMetricCapException) = ApiError(e.message ?: "too many requests")
 }

@@ -22,6 +22,9 @@ spring:
 tucker:
   reminders:
     scheduler-enabled: false
+  # Nor the nightly metric prune, for the same reason.
+  metrics:
+    prune-enabled: false
 
   # Verify against the committed non-production key (dev/access-key/), so the suite
   # runs through the real decoder rather than a bypass (ADR 0020). These three have

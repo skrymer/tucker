@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component
 import java.time.Clock
 
 /**
- * Tucker's one and only scheduled job (ADR 0010): every hour, ask the
+ * The reminder's scheduled job (ADR 0010): every hour, ask the
  * [ReminderScheduler] to send the Weekly-Review Reminder if it is due. The trigger
  * is intentionally thin — it just supplies "now" from the shared [Clock] and
  * delegates; all the logic lives in [ReminderScheduler] and [com.tucker.domain.ReminderPolicy].

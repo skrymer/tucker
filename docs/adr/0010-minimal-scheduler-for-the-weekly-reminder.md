@@ -16,6 +16,10 @@ ADR records why that does **not** break the "no scheduler" decision.
 ## Decision
 
 Add exactly **one** Spring `@Scheduled` job, scoped solely to *sending reminders*.
+A second, the nightly metric prune, came with
+[ADR 0038](0038-performance-is-measured-by-tucker-itself-and-no-metric-names-a-user.md):
+it touches only `metric_event`, never the domain, and runs at 03:30 UTC, between
+the reminder's hourly ticks on the one scheduler thread.
 It **computes nothing** — it never runs a review, never touches Maintenance, the
 Calorie Budget, or the Protein Floor. It only *reads* existing state and, when the
 conditions hold, sends a push.

@@ -8,7 +8,10 @@ import com.tucker.domain.MetricSource
 import com.tucker.domain.OperatingSystem
 import com.tucker.domain.Platform
 import com.tucker.domain.RouteChange
+import com.tucker.domain.VitalKind
+import com.tucker.domain.WebVital
 import com.tucker.persistence.MetricEventRepository
+import com.tucker.service.MetricRetention
 import com.tucker.security.ACCESS_ASSERTION_HEADER
 import com.tucker.security.AccessTokens
 import org.hamcrest.Matchers.contains
@@ -39,6 +42,8 @@ class AdminMetricsApiTest {
     @Autowired lateinit var mockMvc: MockMvc
 
     @Autowired lateinit var metrics: MetricEventRepository
+
+    @Autowired lateinit var retention: MetricRetention
 
     @Test
     fun `an Admin sees a route a User moved to, counted`() {
@@ -94,6 +99,21 @@ class AdminMetricsApiTest {
 
         mockMvc.get("/api/admin/metrics?range=7d") { signedInAs(ADMIN) }.andExpect {
             jsonPath("$.routes[0].layouts[0].n") { value(1) }
+        }
+    }
+
+    @Test
+    fun `an Admin reads an empty report once every event has been pruned`() {
+        store(move(), daysAgo = 89)
+        store(WebVital(VitalKind.LCP, "/review", 1_840, move().source), daysAgo = 89)
+        retention.prune(Instant.now().plus(Duration.ofDays(2)))
+
+        mockMvc.get("/api/admin/metrics?range=90d") { signedInAs(ADMIN) }.andExpect {
+            status { isOk() }
+            jsonPath("$.routes.length()") { value(0) }
+            jsonPath("$.versions.length()") { value(0) }
+            jsonPath("$.byRelease.length()") { value(0) }
+            jsonPath("$.webVitals.lcp[*].n") { value(contains(0, 0)) }
         }
     }
 
