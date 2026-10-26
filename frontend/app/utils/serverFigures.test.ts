@@ -176,6 +176,39 @@ describe('serverFiguresFrom', () => {
       expect(four).toMatchObject({ count: 7, p50Ms: null, p95Ms: null })
     })
 
+    it('times each method on a shared path by its own requests', () => {
+      const rows = endpointsOf(
+        series('GET', '/api/entries/{id}', 'SUCCESS', {
+          count: 40,
+          p50: 0.004,
+          p95: 0.009,
+        }),
+        series('DELETE', '/api/entries/{id}', 'SUCCESS', {
+          count: 6,
+          p50: 0.012,
+          p95: 0.03,
+        }),
+      )
+
+      expect(rows).toEqual([
+        expect.objectContaining({ method: 'DELETE', p50Ms: 12, p95Ms: 30 }),
+        expect.objectContaining({ method: 'GET', p50Ms: 4, p95Ms: 9 }),
+      ])
+    })
+
+    it('lists an endpoint timed under half a millisecond above those too few to time', () => {
+      const uris = endpointsOf(
+        series('POST', '/api/weekly-review', 'SUCCESS', { count: 1 }),
+        series('GET', '/api/version', 'SUCCESS', {
+          count: 30,
+          p50: 0.0002,
+          p95: 0.0004,
+        }),
+      ).map((e) => e.uri)
+
+      expect(uris).toEqual(['/api/version', '/api/weekly-review'])
+    })
+
     it('lists the slowest p95 first and the endpoints too few to time last', () => {
       const uris = endpointsOf(
         series('POST', '/api/weekly-review', 'SUCCESS', { count: 1, p95: 2 }),

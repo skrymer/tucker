@@ -121,6 +121,54 @@ test.describe('as an Admin, on a desktop', () => {
     expect(await p95Of('/api/summary')).toBeCloseTo(74 / 500, 2)
   })
 
+  test('keeps every axis label inside the chart, each centred on its gridline', async ({
+    page,
+    goto,
+  }) => {
+    await goto('/admin', { waitUntil: 'hydration' })
+    const axis = page.getByRole('columnheader', { name: 'p50 to p95' })
+    const labels = axis.getByText(/^\s*\d+ ms\s*$/)
+    await expect(labels).toHaveCount(6)
+    const column = (await axis.boundingBox())!
+    const boxes = await Promise.all(
+      (await labels.all()).map(async (label) => ({
+        ms: parseInt((await label.textContent())!),
+        box: (await label.boundingBox())!,
+      })),
+    )
+    // 0 to 500 ms, as the slowest p95 of 412 ms rounds up; within a cell's padding.
+    const near = (actual: number, expected: number) =>
+      expect(Math.abs(actual - expected)).toBeLessThan(2)
+    const [first, ...rest] = boxes
+    const last = rest.pop()!
+
+    near(first!.box.x, column.x)
+    near(last.box.x + last.box.width, column.x + column.width)
+    for (const { ms, box } of rest)
+      near(box.x + box.width / 2, column.x + (ms / 500) * column.width)
+  })
+
+  test("fills each meter's ring to its share of the whole", async ({
+    page,
+    goto,
+  }) => {
+    await goto('/admin', { waitUntil: 'hydration' })
+    const filled = async (meter: string) => {
+      const arc = page
+        .getByRole('group', { name: meter })
+        .locator('circle')
+        .last()
+      const whole = Number(await arc.getAttribute('stroke-dasharray'))
+      const gap = Number(await arc.getAttribute('stroke-dashoffset'))
+      return 1 - gap / whole
+    }
+
+    expect(await filled('Process CPU')).toBeCloseTo(0.034, 3)
+    expect(await filled('System CPU')).toBeCloseTo(0.21, 3)
+    expect(await filled('Heap')).toBeCloseTo(182 / 256, 3)
+    expect(await filled('Disk used')).toBeCloseTo((39.1 - 31.4) / 39.1, 3)
+  })
+
   test('colours health and nothing else: Up in the success colour, Down in the error colour', async ({
     page,
     goto,

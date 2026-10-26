@@ -11,21 +11,16 @@ function downAsAResult(error: unknown) {
 // The spec types both reads as Actuator describes them, bodies without properties.
 function useServerFigures() {
   const { $api } = useNuxtApp()
-  // Lazy, so the page's own metrics paint without waiting on the server's reads.
-  return useAsyncData(
-    'server-figures',
-    async () => {
-      const [scrape, health] = await Promise.all([
-        $api('/api/actuator/prometheus', { responseType: 'text' }),
-        $api('/api/actuator/health').catch(downAsAResult),
-      ])
-      return serverFiguresFrom(
-        scrape as unknown as string,
-        health as unknown as ActuatorHealth,
-      )
-    },
-    { lazy: true },
-  )
+  return useAsyncData('server-figures', async () => {
+    const [scrape, health] = await Promise.all([
+      $api('/api/actuator/prometheus', { responseType: 'text' }),
+      $api('/api/actuator/health').catch(downAsAResult),
+    ])
+    return serverFiguresFrom(
+      scrape as unknown as string,
+      health as unknown as ActuatorHealth,
+    )
+  })
 }
 
 /** An uptime in its two largest units. */
@@ -39,6 +34,7 @@ function uptime(seconds: number) {
   return m ? `${m} min ${s} s` : `${s} s`
 }
 
+// Not awaited, so the page's own metrics paint without waiting on the server's reads.
 const { data: figures, error, refresh } = useServerFigures()
 const up = computed(() => figures.value?.health === 'UP')
 </script>

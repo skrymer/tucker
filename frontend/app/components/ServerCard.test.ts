@@ -71,6 +71,38 @@ describe('ServerCard', () => {
     ).not.toBeInTheDocument()
   })
 
+  it('reads a heap of exactly a gigabyte in gigabytes', async () => {
+    server.use(serving({ ...runningServer, heapUsedBytes: 1024 ** 3 }))
+    await renderAnswered()
+
+    expect(
+      within(screen.getByRole('group', { name: 'Heap' })).getByText('1.0 GB'),
+    ).toBeVisible()
+  })
+
+  it('reads a CPU share of exactly a tenth as a whole percent', async () => {
+    server.use(serving({ ...runningServer, processCpu: 0.1 }))
+    await renderAnswered()
+
+    expect(
+      within(screen.getByRole('group', { name: 'Process CPU' })).getByText(
+        '10%',
+      ),
+    ).toBeVisible()
+  })
+
+  it.each([
+    [0.5, '500 ms'],
+    [1, '1.0 s'],
+  ])('reads GC pauses totalling %s s as %s', async (total, said) => {
+    server.use(serving({ ...runningServer, gcPauseTotalSeconds: total }))
+    await renderAnswered()
+
+    expect(
+      within(screen.getByRole('group', { name: 'GC pauses' })).getByText(said),
+    ).toBeVisible()
+  })
+
   it('times each endpoint p50 to p95, slowest first, with its requests and 5xx, and those too few to time last', async () => {
     await renderAnswered()
 
@@ -171,6 +203,34 @@ describe('ServerCard', () => {
     server.use(
       http.get('/api/actuator/health', ({ response }) =>
         response.untyped(HttpResponse.json(noConnection, { status: 503 })),
+      ),
+    )
+    await renderInApp(ServerCard)
+
+    const card = screen.getByRole('region', { name: 'Server' })
+    expect(
+      await within(card).findByRole('heading', {
+        name: "Couldn't read the server figures",
+      }),
+    ).toBeVisible()
+    expect(within(card).queryByText('Down')).not.toBeInTheDocument()
+  })
+
+  // Spring's own error body carries a `status` too, which is not a health.
+  it("says the server figures couldn't be read when health fails with Spring's own error body", async () => {
+    server.use(
+      http.get('/api/actuator/health', ({ response }) =>
+        response.untyped(
+          HttpResponse.json(
+            {
+              timestamp: '2026-10-26T08:00:00.000+00:00',
+              status: 500,
+              error: 'Internal Server Error',
+              path: '/api/actuator/health',
+            },
+            { status: 500 },
+          ),
+        ),
       ),
     )
     await renderInApp(ServerCard)
