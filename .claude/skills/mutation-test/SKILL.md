@@ -465,12 +465,11 @@ domain code and **~1.6s for anything a controller test covers**.
   `TuckerApplicationKt`), each 100% unkilled by hand-mutation first; a class where *some*
   die stays in. Named in `-PmutationTargets`, an excluded class is dropped silently (#521's
   "15/15" was another class's alone) and alone fails "No mutations found": read per-class rows.
-- **pitest never mutates a constant.** Its default mutator set has no
-  `INLINE_CONSTS`, so `SMOOTHING`, `OBSERVED_WINDOW_DAYS` and the Atwater factors
-  are invisible to it: 100% on `Nutrition` says nothing about whether a test would
-  notice `9` becoming `8`. A tuning constant needs an explicit test asserting the
-  number it produces; the score will not ask for one. (This is pitest's version of
-  Stryker's missing truthiness mutator — same lesson, different blind spot.)
+- **pitest never mutates a constant, nor a loop into an `if`.** No `INLINE_CONSTS`, so
+  `SMOOTHING` and the Atwater factors are invisible: 100% on `Nutrition` says nothing about
+  `9` becoming `8` — assert the number a constant produces. And a draining `while` scores
+  100% with only its first pass tested: #525's expiry loop survived `while` → `if` under
+  every test until one let two entries expire at once. Drain two or more in a test.
 - **pitest never mutates a jOOQ predicate either.** `le`, `lt`, `ge`, `eq` are calls
   returning a `Condition`, and no default mutator swaps one for another, so a 100%
   score on a repository says nothing about whether a test would notice `<=` becoming

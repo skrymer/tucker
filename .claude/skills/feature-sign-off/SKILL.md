@@ -427,8 +427,8 @@ justified):
    **`docker compose build backend` only when the diff touched the backend** — the
    smokes recreate from the existing image (#70), and a needless build is a minute spent.
 2. **Commit and push** on the feature branch (never straight to `main`; see
-   `[[always-work-on-a-feature-branch]]` and `[[push-after-committing]]`). Group
-   commits by concern; end messages with the `Co-Authored-By` trailer.
+   `[[always-work-on-a-feature-branch]]`, `[[push-after-committing]]`). Group by concern, worded
+   from the change applied, not the finding (#525 claimed "the widest range"); add the trailer.
 3. Open the PR if the user wants one. CI re-runs the automated suites; the PR
    body should note the sign-off gates that passed.
 4. **Retro — what should the next session not have to learn again?** Every run
