@@ -66,7 +66,10 @@ sent it back).
    that satisfies or violates it. A constraint with no corresponding code in a diff
    that should implement it is itself a finding (likely a gap). Assign a verdict:
 
-   - **PASS** — code clearly honours it; cite the file:line that does.
+   - **PASS** — code clearly honours it; cite the file:line that does. A constraint met
+     by **configuration** passes only on a test of the bound behaviour; the yml line
+     alone, or a test that never reaches the setting, is UNCERTAIN — #524's "expiry
+     3650d" PASS cited a percentile test that never read expiry, and the key never bound.
    - **FAIL** — code contradicts it (rejected alternative present, out-of-scope
      built, invariant broken, term misspelled); cite the offending file:line.
    - **UNCERTAIN** — relevant but you can't confirm from the diff alone (logic not

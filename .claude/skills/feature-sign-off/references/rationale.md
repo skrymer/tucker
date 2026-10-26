@@ -104,7 +104,10 @@ short of the POST in the very file the efficiency agent cited. And a **measureme
 offered as evidence checks every response's status (`curl -sf`, or
 `-w '%{http_code}'`) and times the path the code under judgement takes: the same
 dismissal's timing script discarded statuses and went through the dev proxy while the
-smoke calls the backend directly. Gate 5 rejected both.
+smoke calls the backend directly. Gate 5 rejected both. It also probes **every input the
+mechanism routes to the claimed state, one at a time**, not the finding's example: #524
+dismissed "refusals land in `NOT_FOUND`" on `/api/admin/metrics`, which has a handler;
+`/api/admin` and `/api/actuator` did land there, found only when the log was re-taken.
 
 ## Ablation
 

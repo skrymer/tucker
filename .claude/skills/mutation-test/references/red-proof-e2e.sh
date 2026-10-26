@@ -7,7 +7,9 @@
 set -u
 here=$(cd "$(dirname "$0")" && pwd)
 src=/path/to/worktree/frontend          # the frontend under test
-work=/path/to/scratchpad/red-proof       # copies land here, one at a time
+# Copies land here, one at a time. On the repo's filesystem (~/.cache), never the /tmp
+# scratchpad: `cp -al node_modules` cannot hard-link across mounts (#524's first run).
+work=~/.cache/tucker-red-proof
 mkdir -p "$work"
 echo "HEAD $(git -C "$src" rev-parse HEAD)" > "$here/red-proof.log"
 git -C "$src" status --short >> "$here/red-proof.log"
