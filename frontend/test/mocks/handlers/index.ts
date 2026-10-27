@@ -10,6 +10,7 @@ import { profileHandlers } from './profile'
 import { pushHandlers } from './push'
 import { referenceFoodHandlers } from './reference-foods'
 import { reviewHandlers } from './reviews'
+import { serverHandlers } from './server'
 import { summaryHandlers } from './summary'
 import { tagHandlers } from './tags'
 import { weightHandlers } from './weight'
@@ -20,8 +21,8 @@ import { weightTimelineHandlers } from './weight-timeline'
  * set up, counting calories, reminders off, weighed in once, no Goal, an
  * empty catalog and no Tags, nothing logged today, tomorrow or this week, one Weekly
  * Review (the first, which set the Budget), too few readings for a Weight
- * Timeline, no Reference Food matching anything, and nothing of Tucker
- * itself measured. A test `use()`s only the
+ * Timeline, no Reference Food matching anything, nothing of Tucker
+ * itself measured, and a server three days up and healthy. A test `use()`s only the
  * variation it is about (ADR 0034).
  */
 export const handlers = [
@@ -41,4 +42,5 @@ export const handlers = [
   ...micronutrientHandlers,
   ...weightTimelineHandlers,
   ...metricHandlers,
+  ...serverHandlers,
 ]

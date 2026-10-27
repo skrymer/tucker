@@ -168,8 +168,9 @@ flowchart TD
       jwt["<b>AccessJwtDecoder</b><br/>[Component: Nimbus, Cloudflare JWKS]<br/>verifies the assertion"]:::component
       principal["<b>AccessPrincipalConverter</b><br/>[Component: Spring Security]<br/>assertion → User, provisioned just-in-time"]:::component
       csrf["<b>SpaCsrf</b><br/>[Component: Spring Security]<br/>XSRF-TOKEN on every mutation"]:::component
-      authz["<b>AccessSecurityConfig</b><br/>[Component: Spring Security]<br/>/api/admin/** for an Admin alone, anyone else 404"]:::component
+      authz["<b>AccessSecurityConfig</b><br/>[Component: Spring Security]<br/>/api/admin/** and /api/actuator/** for an Admin alone, anyone else 404"]:::component
     end
+    actuator["<b>Actuator</b><br/>[Component: Spring Boot Actuator, Micrometer]<br/>health and prometheus only; every meter since the last start"]:::component
     current["<b>CurrentUser</b><br/>[Component: com.tucker.security]<br/>whose request this is, from the SecurityContext"]:::component
     controllers["<b>Controllers</b><br/>[Component: com.tucker.api, springdoc]<br/>REST endpoints + OpenAPI spec"]:::component
     services["<b>Services</b><br/>[Component: com.tucker.service]<br/>orchestrate a use case"]:::component
@@ -184,6 +185,8 @@ flowchart TD
   jwt --> principal
   principal --> authz
   authz --> controllers
+  authz -- "an Admin's server figures" --> actuator
+  actuator -- "health: a connection, and /data's free space" --> db
   controllers --> services
   controllers -- "reads and simple writes" --> repos
   controllers -- "simple use cases" --> domain
@@ -351,6 +354,7 @@ flowchart TD
     pwa["<b>usePwaInstall · useWebPush</b><br/>[Component: PushManager]<br/>install and reminders"]:::component
     plugins["<b>Plugins</b><br/>[Component: Nuxt plugins]<br/>auth-gate, csrf, route-metrics<br/>signed-out state, CSRF header, route-change timing and its split"]:::component
     client["<b>API client</b><br/>[Component: nuxt-open-fetch]<br/>typed from openapi/tucker.json"]:::component
+    figures["<b>serverFiguresFrom</b><br/>[Component: app/utils]<br/>one prometheus scrape and health, as the Admin's server section"]:::component
   end
   sw["<b>Service worker</b><br/>[Container: Workbox + push-sw.js]"]:::container
 
@@ -364,6 +368,7 @@ flowchart TD
   pages --> scanner
   pages --> pwa
   composables --> client
+  pages -- "reads /api/actuator through the client, parsed by" --> figures
   plugins -- "hooks into; sends metric batches (keepalive)" --> client
   client -- "JSON/HTTPS, same origin" --> proxy
   proxy -- "JSON/HTTP" --> api

@@ -146,7 +146,9 @@ Identical for both stacks; only step 1 and 2's commands differ.
 3. **Triage every survivor.** A score is not the deliverable — the verdict per
    survivor is. Each is exactly one of:
    - **Real gap** — the mutant changes behaviour a user could observe, in a
-     module that owes its own test (a deep module, per ADR 0013). Write the
+     module that owes its own test (a deep module, per ADR 0013). A threshold in a
+     unit-switching formatter also owes the value that rounds onto it (0.0996, 1023.6 MiB,
+     0.9996 s): #524 killed `<`→`<=` at the threshold and shipped three carries. Write the
      missing test red-green (per `tdd`): confirm it fails against the mutant's
      behaviour before restoring the source, which is already correct.
      Probity refuses a test that passes the moment it is written, so show the red
@@ -269,17 +271,16 @@ pnpm exec stryker run --mutate "app/utils/entry.ts,app/components/DaySummary.vue
 ```
 
 `pnpm test:mutation` runs the whole mutable surface — minutes, not seconds. Scope it.
-
 ### Budget (measured on this repo)
-
 | Scope                            | Mutants | Time   |
 | -------------------------------- | ------- | ------ |
 | One util (`app/utils/entry.ts`)  | 8       | ~20s   |
-| One component (`DaySummary.vue`) | 19      | ~19s   |
 | All of `app/utils/`              | 211     | ~2m25s |
+| A util a page test renders (#524 `serverFigures.ts`) | 135 | 15m15s |
+| Components under a page test (#524, four files) | 141 | 30m36s |
 
-Roughly **0.7s per mutant**. `vitest.related` scopes each mutant to its related
-tests (~1–5 tests, not all 473), which is what makes this affordable as a gate.
+**~0.7s per mutant** when `vitest.related` finds ~1–5 small tests; **6–14s** once a page
+test (`admin.test.ts`) is among them, plus a ~1-minute dry run. Size scope and wait from that.
 
 ### Gotchas
 

@@ -154,7 +154,15 @@ not restate them.
 - **A header or filter behaviour on an error response needs an `e2eTest` case.** A
   refusal Spring sends with `sendError` commits the response there and then, and a real
   socket drops any header set after it — MockMvc's response keeps it, so the fast suite
-  stays green (#520's `Server-Timing` on a 404/403/400, found at code review).
+  stays green (#520's `Server-Timing` on a 404/403/400, found at code review). The same
+  goes for a Micrometer `uri` tag on a refusal: a CSRF 403 is filed `UNKNOWN` on the image
+  and never in MockMvc, where an unmatched path also lands on the `/**` handler (#524).
+- **A dotted key into a non-String `Map` property must be bracketed** —
+  `"[http.server.requests]": 3650d`. Unbracketed it never binds, silently: #524's
+  percentile `expiry` fell back to the Prometheus registry's one-minute window (the
+  `Integer` map beside it bound either way), so "since the restart" p95s decayed to 0 ms,
+  past every gate until a walk-through left an endpoint idle. Pin the bound value — a
+  test on `PropertiesMeterFilter.configure`, say — never the yml line.
 - **Never edit an applied migration** — the checksum changes and the next `docker compose up`
   refuses to start against your dev volume. Repair the stored checksum rather than wiping data.
   An unmerged one you edit still fails every fast-suite context on `build/test-tucker.db`

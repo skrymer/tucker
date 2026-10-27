@@ -40,6 +40,8 @@ const figures = (layout: 'phone' | 'desktop', p75: number) => ({
  */
 async function barPart(page: Page, row: 'top' | 'bottom', part: number) {
   const selector = '.route-timing path[class*="-bar"]'
+  // The chart draws its bars after it mounts; reading before then finds none.
+  await expect(page.locator(selector).first()).toBeAttached()
   const index = await page.evaluate(
     ([selector, row, part]) => {
       const paths = [...document.querySelectorAll(selector as string)].map(
@@ -156,6 +158,60 @@ test.describe('as an Admin', () => {
             - combobox "Opened in": Installed or browser
           - heading "Nothing measured in the last 30 days" [level=2]
           - paragraph: Page timings appear here once Tucker records them. A wider range looks further back.
+          - region "Server":
+            - heading "Server" [level=2]
+            - paragraph:
+              - text: Since the last restart,
+              - strong: 3 d 7 h
+              - text: ago. The range and engine filters above don't apply.
+            - text: Up
+            - group "Process CPU": Process CPU · now 3.4% Tucker's own share
+            - group "System CPU": System CPU · now 21% the host, as seen
+            - group "Heap": Heap · now 182 MB used of 256 MB
+            - group "Disk used": Disk used · now 7.7 GB of 39.1 GB, 31.4 GB free
+            - group "GC pauses": GC pauses 4.8 s over 1,317 pauses since the restart
+            - heading "Request time by endpoint, p50 to p95" [level=3]
+            - list "Percentiles":
+              - listitem: p50
+              - listitem: p95
+            - table "Request time by endpoint, p50 to p95":
+              - rowgroup:
+                - row "Endpoint p50 to p95 Requests 5xx":
+                  - columnheader "Endpoint"
+                  - columnheader "p50 to p95"
+                  - columnheader "Requests"
+                  - columnheader "5xx"
+              - rowgroup:
+                - row "GET /api/admin/metrics p50 88 ms, p95 412 ms 41 0":
+                  - cell "GET /api/admin/metrics"
+                  - cell "p50 88 ms, p95 412 ms"
+                  - cell "41"
+                  - cell "0"
+                - 'row "GET /api/foods/barcode/{barcode} p50 214 ms, p95 380 ms 23 2"':
+                  - 'cell "GET /api/foods/barcode/{barcode}"'
+                  - cell "p50 214 ms, p95 380 ms"
+                  - cell "23"
+                  - cell "2"
+                - row "GET /api/summary p50 19 ms, p95 74 ms 812 0":
+                  - cell "GET /api/summary"
+                  - cell "p50 19 ms, p95 74 ms"
+                  - cell "812"
+                  - cell "0"
+                - row "GET /api/me p50 4 ms, p95 11 ms 977 0":
+                  - cell "GET /api/me"
+                  - cell "p50 4 ms, p95 11 ms"
+                  - cell "977"
+                  - cell "0"
+                - 'row "DELETE /api/entries/{id} too few 3 0"':
+                  - 'cell "DELETE /api/entries/{id}"'
+                  - cell "too few"
+                  - cell "3"
+                  - cell "0"
+                - row "POST /api/weekly-review too few 1 1":
+                  - cell "POST /api/weekly-review"
+                  - cell "too few"
+                  - cell "1"
+                  - cell "1"
     `)
   })
 

@@ -47,6 +47,10 @@ dependencies {
     // Verifies Cloudflare Access's signed assertion (ADR 0020). Resource server
     // only — Tucker never issues a token, it only ever checks one.
     implementation("org.springframework.boot:spring-boot-starter-oauth2-resource-server")
+    // The server's own figures, read on the Admin page (ADR 0039).
+    implementation("org.springframework.boot:spring-boot-starter-actuator")
+    // Renders the registry as one text scrape on request; there is no Prometheus server.
+    implementation("io.micrometer:micrometer-registry-prometheus")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("org.flywaydb:flyway-core")

@@ -2,6 +2,7 @@ package com.tucker.security
 
 import jakarta.servlet.DispatcherType
 import jakarta.servlet.http.HttpServletResponse
+import org.springframework.boot.actuate.autoconfigure.security.servlet.EndpointRequest
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -24,9 +25,12 @@ import org.springframework.security.web.csrf.CsrfFilter
 import org.springframework.security.web.csrf.CsrfTokenRepository
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher
 import org.springframework.security.web.util.matcher.DispatcherTypeRequestMatcher
+import org.springframework.security.web.util.matcher.OrRequestMatcher
+import org.springframework.security.web.util.matcher.RequestMatcher
 
-/** Where only an Admin is let in (ADR 0039). */
-private const val ADMIN_PATHS = "/api/admin/**"
+/** Where only an Admin is let in (ADR 0039): Tucker's own metrics, and Actuator's. */
+private val adminPaths: RequestMatcher =
+    OrRequestMatcher(AntPathRequestMatcher("/api/admin/**"), EndpointRequest.toAnyEndpoint())
 
 /**
  * Cloudflare Access authenticates; this is where Tucker checks its work (ADR 0020).
@@ -115,7 +119,7 @@ class AccessSecurityConfig {
         // third door anyone can knock on. An unauthenticated request to a gated
         // path is refused by the entry point without ever dispatching here.
         authorize(DispatcherTypeRequestMatcher(DispatcherType.ERROR), permitAll)
-        authorize(ADMIN_PATHS, hasAuthority(ROLE_ADMIN))
+        authorize(adminPaths, hasAuthority(ROLE_ADMIN))
         authorize(anyRequest, authenticated)
     }
 
@@ -134,7 +138,7 @@ class AccessSecurityConfig {
                     response.sendError(HttpServletResponse.SC_NOT_FOUND)
                 }
             },
-            AntPathRequestMatcher(ADMIN_PATHS),
+            adminPaths,
         )
     }
 

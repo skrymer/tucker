@@ -1764,6 +1764,43 @@ log's `afterEach`; a dropped vital was recorded as `undefined`) and one backend 
 - **`MetricEventRequest`'s nine getters and `MetricBatchRequest.getEvents`** — as the
   #519 and #520 entries above.
 
+### Server section (#524) — `serverFigures.ts` 121 of 135, components 78 of 141, backend 1 of 1
+
+Two parser gaps (the quantile lookup ignored `method`; a timed p95 rounding to 0 ms
+sorted below "too few") and the components' untested branches — the ms axis's steps
+and boundaries, the meters' formatters at their thresholds, a non-503 health
+failure whose Spring error body carries a `status`, the rings' fill and the tick labels'
+placement — got tests: Vitest for text, `e2e/admin-server.spec.ts` for geometry (red
+proofs on mutated copies). What stays alive:
+
+- **`dumbbell.ts`'s `HUE` and `DUMBBELL_STEM` → `""` — real gap, accepted by decision**,
+  as the presentation tokens above: a test would pin a colour value, not a rule.
+- **`serverFigures.ts`'s parser leniencies — equivalent**: `SAMPLE` without `^` or with
+  `\s` for `\s+` (comment lines become samples named `TYPE`/`HELP` that no lookup reads;
+  Micrometer writes one space), the `[]` for an unmatched line seeded with a string (no
+  `.name`, never matched), and the destructuring defaults for groups the regex always
+  fills or labels Micrometer always writes.
+- **`serverFigures.ts`'s `s.name === REQUESTS` → `true` in the quantile lookup —
+  equivalent**: the only other series with a `quantile` label is
+  `http_server_requests_active_seconds` (the percentile config matches it by prefix),
+  tagged `uri="UNKNOWN"` because it starts before a handler matches.
+- **`serverFigures.ts`'s `s.value > 0` → `>= 0` (heap pools)**, **`outcomes[0]?.labels`**
+  and **`components?.diskSpace?.details` dropping its second `?.` — equivalent**: a zero
+  pool adds nothing; a `groupBy` group is never empty; `ActuatorApiTest` pins
+  `components.diskSpace.details` in every health body.
+- **`EndpointTimingTable.vue`'s `timed`: `&&` → `||`, either operand → `true` —
+  equivalent**: they differ only when one quantile is null alone, and both come from one
+  `timed` gate over series `management.yml` publishes together.
+- **`EndpointTimingTable.vue`'s `''` placement → any non-utility string, and
+  `ServerCard.vue`'s `responseType: 'text'` → `{}` / `""` — equivalent**: no CSS rule
+  matches the words; ofetch detects text from Actuator's `text/plain` without it.
+- **`ServerCard.vue`'s `data?.status` and `figures.value?.health` optional chains —
+  equivalent**: the first throws inside `Promise.all`, into the same `error` the original
+  rethrow lands in; `up` is read only under `v-if="figures && !error"`.
+- **`MetricsConfig$Companion.getNO_ENDPOINT` → `emptySet` — false survivor** (reported
+  `NO_COVERAGE`): the filter is consulted as each meter registers, inside the context
+  every later test class reuses. Emptied by hand, it fails two `ActuatorApiTest` cases.
+
 ### Fibre on a Food (#546) — frontend 247 of 266, backend 159 of 172
 
 No new real gap. 16 frontend and 12 backend survivors are standing verdicts above
