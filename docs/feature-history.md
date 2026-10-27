@@ -2105,6 +2105,30 @@ null` now means two things that earn opposite messages — the same trap
     restore is a duration with no paint entry (dropped); a vital over a minute would
     take its whole batch down with a 400 (dropped on the client); Chrome records no
     LCP at all for an occluded window, which reads as lost vitals in a walk-through.
+  - **Slice 7 ([#524](https://github.com/skrymer/tucker/issues/524)) — the server
+    section, from Actuator.** Actuator at `/api/actuator` joins `/api/admin/**` behind
+    `ROLE_ADMIN` (`EndpointRequest`, one 404 refusal), exposing `health` and `prometheus`
+    only; `MetricsConfig` drops `http.server.requests`' `status`, `exception` and `error`
+    tags (one series per `method + uri + outcome`) and records nothing under Actuator's
+    own paths or the `/**`, `UNKNOWN` and `NOT_FOUND` buckets. `/admin` gains a
+    desktop-only `ServerCard`: one unawaited `prometheus` scrape and the `health` read,
+    parsed by `serverFiguresFrom` into ring meters, a GC tile and a p50→p95 dot plot on
+    one ms axis (p50/p95 from the SUCCESS series, fewer than five successes "too few"),
+    with a cold-load skeleton and health's 503 read as Down.
+  - **Rulings (user):** a row is timed by its SUCCESS series alone; a non-Admin gets 404
+    at Actuator, as at `/api/admin/**`; AC2's "typed" is typed by path, the bodies left
+    untyped as the spec describes them; ADR 0007's skeleton governs the card; and ADR
+    0039 gains a scope section — the Admin page is an operator's tool beside the User's
+    app, and lists the ADRs that govern it (0002 and the domain ADRs do not).
+  - **Traps:** a dotted key into a `Duration` map in YAML must be bracketed —
+    `"[http.server.requests]": 3650d` — or it never binds, and the registry's
+    one-minute window quietly makes "since the restart" percentiles decay to 0 ms (the
+    `Integer` map for `buffer-length` binds either way; only a walk-through left idle
+    showed it). A non-Admin refused at a gated path with no handler is filed under
+    `NOT_FOUND`, one refused for its CSRF token under `UNKNOWN` — MockMvc reproduces the
+    first, only the image the second. Unit and threshold chains carry: choose the unit on
+    the rounded figure (9.96% is "10%", not "10.0%"). An unawaited `useAsyncData` makes
+    every Vitest and Playwright assertion straight after render read the unanswered state.
   - **Slice 8 ([#525](https://github.com/skrymer/tucker/issues/525)) — retention and
     the rate cap.** `MetricRateCap` (a service `@Component`) counts each User's admitted
     events over a rolling hour in memory, keyed by `CurrentUser.id`, and refuses whole a

@@ -1,6 +1,8 @@
 spring:
   application:
     name: tucker
+  config:
+    import: classpath:management.yml
   datasource:
     url: jdbc:sqlite:${TUCKER_DB_PATH:tucker.db}
     driver-class-name: org.sqlite.JDBC

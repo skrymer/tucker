@@ -33,6 +33,7 @@ class ApiEndToEndTest {
 
     companion object {
         private const val APP_PORT = 8080
+        private const val ADMIN = "admin@tucker.invalid"
 
         /** What `CookieCsrfTokenRepository` puts on the wire by default (ADR 0025). */
         private const val CSRF_COOKIE = "XSRF-TOKEN"
@@ -55,6 +56,7 @@ class ApiEndToEndTest {
                 // The container's database is brand new, so V9 finds nothing to adopt and
                 // never writes this row — the first request provisions the real User.
                 .withEnv("TUCKER_OWNER_EMAIL", "owner@tucker.invalid")
+                .withEnv("TUCKER_ADMIN_EMAILS", ADMIN)
                 .waitingFor(Wait.forHttp("/v3/api-docs").forStatusCode(200))
     }
 
@@ -95,9 +97,12 @@ class ApiEndToEndTest {
             HttpResponse.BodyHandlers.ofString(),
         )
 
-    private fun get(path: String): HttpResponse<String> =
+    private fun get(path: String, email: String = AccessTokens.EMAIL): HttpResponse<String> =
         http.send(
-            HttpRequest.newBuilder(URI.create(baseUrl() + path)).signedIn().GET().build(),
+            HttpRequest.newBuilder(URI.create(baseUrl() + path))
+                .header(ACCESS_ASSERTION_HEADER, AccessTokens.mint(email = email))
+                .GET()
+                .build(),
             HttpResponse.BodyHandlers.ofString(),
         )
 
@@ -197,6 +202,41 @@ class ApiEndToEndTest {
         assertEquals(404, refused.statusCode())
         assertEquals(missing.statusCode(), refused.statusCode())
         assertEquals(missing.body().withoutWhereAndWhen(), refused.body().withoutWhereAndWhen())
+    }
+
+    /**
+     * The suite's context imports the same allowlist, but only the image reads it with
+     * production's data volume beneath health's disk check (ADR 0039).
+     */
+    @Test
+    fun `the running image serves an Admin health and the prometheus scrape, and nothing else of Actuator`() {
+        val health = get("/api/actuator/health", email = ADMIN)
+        assertEquals(200, health.statusCode(), health.body())
+        assertTrue("\"diskSpace\"" in health.body(), "health carries no disk space: ${health.body()}")
+        assertEquals(200, get("/api/actuator/prometheus", email = ADMIN).statusCode())
+
+        val withheld = listOf("env", "configprops", "heapdump", "threaddump", "loggers")
+            .filter { get("/api/actuator/$it", email = ADMIN).statusCode() != 404 }
+        assertEquals(emptyList(), withheld, "served to an Admin despite the allowlist")
+        assertEquals(404, get("/api/actuator/health").statusCode())
+    }
+
+    /** Refused in a filter, before an endpoint is matched, Spring files it under `UNKNOWN`. */
+    @Test
+    fun `the running image's scrape does not time a request no endpoint answered`() {
+        val unproven = http.send(
+            HttpRequest.newBuilder(URI.create(baseUrl() + "/api/entries"))
+                .header("Content-Type", "application/json")
+                .signedIn()
+                .POST(HttpRequest.BodyPublishers.ofString("{}"))
+                .build(),
+            HttpResponse.BodyHandlers.ofString(),
+        )
+        assertEquals(403, unproven.statusCode())
+
+        val unknownSeries = get("/api/actuator/prometheus", email = ADMIN).body().lines()
+            .filter { it.startsWith("http_server_requests_seconds") && "uri=\"UNKNOWN\"" in it }
+        assertEquals(emptyList(), unknownSeries)
     }
 
     /** An error body without the two fields that differ by request: the path and the moment. */

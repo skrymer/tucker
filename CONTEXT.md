@@ -32,7 +32,8 @@ User sees. Being an Admin grants no view of another User's data: what an Admin
 sees is about Tucker, aggregated, with no User identity in it, because nothing
 recorded for it says which User it came from. A User becomes an Admin the way
 they became a User, by an operator step — an operator lists their email address —
-never from inside Tucker.
+never from inside Tucker. The Admin page is a tool for looking after Tucker, beside
+the diet tracker rather than part of it; ADR 0039 lists which decisions govern it.
 _Avoid_: superuser, operator (the operator acts on Tucker's configuration from
 outside it; an Admin is a User inside it)
 
