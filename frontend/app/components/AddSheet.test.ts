@@ -217,9 +217,12 @@ describe('AddSheet', () => {
   it('marks the barcode as an optional shortcut', async () => {
     await renderSuspended(AddSheet, { props: { open: true } })
 
-    expect(
-      screen.getByRole('textbox', { name: /barcode/i }),
-    ).toHaveAccessibleDescription(/^optional/i)
+    const barcode = screen.getByRole('textbox', { name: /barcode/i })
+    expect(barcode).toHaveAccessibleDescription('optional')
+    const hint = document.getElementById(
+      barcode.getAttribute('aria-describedby') ?? '',
+    )
+    expect(hint).toBeVisible()
   })
 
   it('frames the barcode as an optional pre-fill for the form', async () => {
