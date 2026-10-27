@@ -19,6 +19,11 @@
         - spinbutton "Fat /100g*": '7'
         - button "Increment"
         - button "Decrement"
+    - text: Fibre /100g optional
+    - group:
+        - spinbutton "Fibre /100g"
+        - button "Increment"
+        - button "Decrement"
     - status: 427 kcal · 31 g protein /100g
     - button "Used in 14 recipes" [expanded]
     - list:

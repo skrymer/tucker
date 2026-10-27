@@ -180,4 +180,15 @@ describe('previewing a Food’s calories from its macros', () => {
       previewCalories({ proteinPer100g: 13, carbsPer100g: 60, fatPer100g: 7 }),
     ).toBe(355)
   })
+
+  it('counts fibre at 2 kcal a gram, so the protein wrap reads its label’s 246 kcal', () => {
+    expect(
+      previewCalories({
+        proteinPer100g: 19.4,
+        carbsPer100g: 12.8,
+        fatPer100g: 9.3,
+        fibrePer100g: 16.8,
+      }),
+    ).toBeCloseTo(246.1, 9)
+  })
 })

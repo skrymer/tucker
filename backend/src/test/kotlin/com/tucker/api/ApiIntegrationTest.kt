@@ -12,6 +12,8 @@ import org.springframework.test.web.servlet.delete
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
 import org.springframework.transaction.annotation.Transactional
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 /**
  * The API's happy paths end to end, over a real MockMvc and a real database.
@@ -68,6 +70,50 @@ class ApiIntegrationTest {
             jsonPath("$.entries[0].protein", closeTo(1.32, 1e-6))
             jsonPath("$.caloriesConsumed", closeTo(117.96, 1e-6))
         }
+    }
+
+    @Test
+    fun `a food created with its label's fibre reads the label's calories, and its fibre back`() {
+        // The protein wrap (ADR 0040): 4 * 19.4 + 4 * 12.8 + 9 * 9.3 + 2 * 16.8 = 246.1 kcal /100g
+        val foodJson = mockMvc.post("/api/foods") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"name":"Protein wrap","proteinPer100g":19.4,"carbsPer100g":12.8,"fatPer100g":9.3,""" +
+                """"fibrePer100g":16.8,"tagIds":[]}"""
+        }.andExpect {
+            status { isCreated() }
+            jsonPath("$.caloriesPer100g", closeTo(246.1, 1e-6))
+            jsonPath("$.fibrePer100g") { value(16.8) }
+        }.andReturn().response.contentAsString
+        val foodId = objectMapper.readTree(foodJson).get("id").asLong()
+
+        mockMvc.get("/api/foods/$foodId").andExpect {
+            status { isOk() }
+            jsonPath("$.caloriesPer100g", closeTo(246.1, 1e-6))
+            jsonPath("$.fibrePer100g") { value(16.8) }
+        }
+    }
+
+    @Test
+    fun `a food's fibre not stated is an explicit null on the wire, and zero stays zero`() {
+        val unstated = objectMapper.readTree(
+            mockMvc.post("/api/foods") {
+                contentType = MediaType.APPLICATION_JSON
+                content = """{"name":"Rolled oats","proteinPer100g":13.0,"carbsPer100g":60.0,"fatPer100g":7.0,""" +
+                    """"fibrePer100g":null,"tagIds":[]}"""
+            }.andExpect { status { isCreated() } }.andReturn().response.contentAsString,
+        )
+        val none = objectMapper.readTree(
+            mockMvc.post("/api/foods") {
+                contentType = MediaType.APPLICATION_JSON
+                content = """{"name":"Chicken breast","proteinPer100g":31.0,"carbsPer100g":0.0,"fatPer100g":3.6,""" +
+                    """"fibrePer100g":0.0,"tagIds":[]}"""
+            }.andExpect { status { isCreated() } }.andReturn().response.contentAsString,
+        )
+
+        // Not stated is not zero (ADR 0040), and absence is an explicit null (ADR 0023).
+        assertTrue(unstated.has("fibrePer100g") && unstated.get("fibrePer100g").isNull)
+        assertEquals(0.0, none.get("fibrePer100g").asDouble())
+        assertTrue(none.get("fibrePer100g").isNumber)
     }
 
     @Test

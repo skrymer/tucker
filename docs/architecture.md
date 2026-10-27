@@ -431,10 +431,11 @@ erDiagram
     text name
     text kind "FOOD or RECIPE"
     text barcode UK "per User"
-    real calories_per_100g "4P + 4C + 9F"
+    real calories_per_100g "4P + 4C + 9F + 2 fibre"
     real protein_per_100g
     real carbs_per_100g
     real fat_per_100g
+    real fibre_per_100g "null = not stated"
     real cooked_weight_g "Recipes only"
     integer reference_food_id FK
   }

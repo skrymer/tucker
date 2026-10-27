@@ -4440,6 +4440,11 @@
             "format": "double",
             "nullable": true
           },
+          "fibrePer100g": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
           "cookedWeightG": {
             "type": "number",
             "format": "double",
@@ -4768,6 +4773,11 @@
           "fatPer100g": {
             "type": "number",
             "format": "double"
+          },
+          "fibrePer100g": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
           },
           "tagIds": {
             "type": "array",
@@ -5962,6 +5972,11 @@
           "fatPer100g": {
             "type": "number",
             "format": "double"
+          },
+          "fibrePer100g": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
           },
           "tagIds": {
             "type": "array",

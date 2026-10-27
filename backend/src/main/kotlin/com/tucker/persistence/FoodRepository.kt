@@ -153,6 +153,7 @@ private fun FoodRecord.applyFrom(food: Food, ownerId: Int) {
     proteinPer_100g = food.nutrition.proteinPer100g
     carbsPer_100g = food.nutrition.carbsPer100g
     fatPer_100g = food.nutrition.fatPer100g
+    fibrePer_100g = food.nutrition.fibrePer100g
     cookedWeightG = (food.kind as? FoodKind.Recipe)?.cookedWeightG
     referenceFoodId = food.referenceFoodId?.toInt()
 }
@@ -167,6 +168,7 @@ private fun FoodRecord.toFood(): Food = Food(
         proteinPer100g = proteinPer_100g,
         carbsPer100g = carbsPer_100g,
         fatPer100g = fatPer_100g,
+        fibrePer100g = fibrePer_100g,
     ),
     referenceFoodId = referenceFoodId?.toLong(),
 )

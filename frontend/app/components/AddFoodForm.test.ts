@@ -454,6 +454,28 @@ describe('AddFoodForm', () => {
     })
   })
 
+  it('saves the fibre copied off the label beside the three required macros', async () => {
+    const onSubmit = vi.fn()
+    await renderSuspended(AddFoodForm, { props: { onSubmit } })
+    const user = userEvent.setup()
+
+    await user.type(screen.getByLabelText(/^name$/i), 'Protein wrap')
+    await user.type(screen.getByLabelText(/protein \/100\s*g/i), '19.4')
+    await user.type(screen.getByLabelText(/carbs \/100\s*g/i), '12.8')
+    await user.type(screen.getByLabelText(/fat \/100\s*g/i), '9.3')
+    await user.type(screen.getByLabelText(/fibre \/100\s*g/i), '16.8')
+    await user.click(screen.getByRole('button', { name: /save food/i }))
+
+    expect(onSubmit).toHaveBeenCalledWith({
+      name: 'Protein wrap',
+      proteinPer100g: 19.4,
+      carbsPer100g: 12.8,
+      fatPer100g: 9.3,
+      fibrePer100g: 16.8,
+      tagIds: [],
+    })
+  })
+
   it('saves the Food carrying the Tags picked for it', async () => {
     server.use(
       ...foodCatalog({

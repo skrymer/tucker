@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { foodSchema, gramsSchema } from './validation'
+import {
+  FOOD_FIGURES,
+  foodSchema,
+  gramsSchema,
+  isOptionalFigure,
+} from './validation'
 
 /** A Food as its form holds it once every field is filled in. */
 const filled = {
@@ -42,6 +47,17 @@ describe('foodSchema', () => {
     ])
   })
 
+  it('refuses a negative fibre figure, and nothing else about it', () => {
+    expect(refusals({ ...filled, fibrePer100g: -0.1 })).toEqual([
+      'fibrePer100g: Fibre can’t be negative',
+    ])
+  })
+
+  it('accepts a Food whose fibre is left blank, since not stated is not zero', () => {
+    expect(refusals({ ...filled, fibrePer100g: undefined })).toEqual([])
+    expect(refusals({ ...filled, fibrePer100g: null })).toEqual([])
+  })
+
   it('judges a blank name by what the server trims, not by what JavaScript trims', () => {
     expect(refusals({ ...filled, name: '\u001F' })).toEqual([
       'name: Enter a name for this food',
@@ -52,6 +68,14 @@ describe('foodSchema', () => {
   it('refuses a name of only whitespace as no name, as the server would', () => {
     expect(refusals({ ...filled, name: ' \t ' })).toEqual([
       'name: Enter a name for this food',
+    ])
+  })
+})
+
+describe('isOptionalFigure', () => {
+  it('holds fibre optional and every macro required', () => {
+    expect(FOOD_FIGURES.filter((figure) => isOptionalFigure(figure))).toEqual([
+      'fibrePer100g',
     ])
   })
 })
