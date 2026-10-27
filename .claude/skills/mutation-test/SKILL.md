@@ -279,8 +279,8 @@ pnpm exec stryker run --mutate "app/utils/entry.ts,app/components/DaySummary.vue
 | A util a page test renders (#524 `serverFigures.ts`) | 135 | 15m15s |
 | Components under a page test (#524, four files) | 141 | 30m36s |
 
-**~0.7s per mutant** when `vitest.related` finds ~1–5 small tests; **6–14s** once a page
-test (`admin.test.ts`) is among them, plus a ~1-minute dry run. Size scope and wait from that.
+**~0.7s per mutant** with ~1–5 small related tests; **6–14s** once a page test or a sheet's
+own large suite joins (#546 `EditFoodSheet.vue`: 81 in 8m54s), plus a ~1-minute dry run.
 
 ### Gotchas
 
@@ -361,7 +361,7 @@ read out of the files rather than derived from their paths:
   git ls-files --others --exclude-standard -- backend/src/main/kotlin
 } | grep '\.kt$' | sort -u | while read -r f; do
     pkg=$(sed -n '/^package /{s///p;q}' "$f")
-    grep -hoE '^[a-z ]*(class|object|interface) [A-Za-z0-9_]+' "$f" \
+    grep -hoE '^([a-z]+ )*(class|object|interface) [A-Za-z0-9_]+' "$f" \
       | awk -v p="$pkg" '{print p"."$NF; print p"."$NF"$*"}'
     echo "$pkg.$(basename "$f" .kt)Kt"
   done | sort -u | paste -sd,
@@ -370,9 +370,9 @@ read out of the files rather than derived from their paths:
 Two globs per declaration, not one. `Foo` alone misses `Foo$Companion` — 44
 mutants against 49 on `Nutrition` — and `Foo*` overshoots into every sibling
 whose name it prefixes, so a diff touching `Goal.kt` would drag in
-`GoalProgress`. `Foo` + `Foo$*` is exactly the class and its nested types. The
-`…Kt` entry is the facade class Kotlin emits for a file's top-level functions;
-naming one that doesn't exist is harmless.
+`GoalProgress`. `Foo` + `Foo$*` is exactly the class and its nested types, which is
+why the grep reads column 0 only: an indented match made `FoodKind.Recipe` sweep
+Recipe.kt (#546). The `…Kt` entry is the facade class for a file's top-level functions.
 
 Run (in `backend/`):
 

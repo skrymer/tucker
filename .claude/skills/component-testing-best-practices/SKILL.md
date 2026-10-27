@@ -88,6 +88,10 @@ reproduces real user behaviour (focus, key sequences, pointer events). Call
   renders (#475's "opens on today" passed with the read broken, and its busy test
   passed only because the click aborted the unanswered first read).
 - Never assert on CSS classes, DOM structure, `wrapper.vm`, or emitted internals.
+- **A query made ambiguous by new duplicate text is scoped, not swapped for a weaker
+  matcher.** `toHaveAccessibleDescription` is computed from hidden elements too, so it
+  does not replace `toBeVisible`, and a regex loses its end anchor without `$`. #546's
+  fibre hint duplicated "optional"; the first edit dropped both clauses (gate 5).
 - A toast never renders under `renderSuspended`, which mounts no toaster. Mock
   `useToast` with `mockNuxtImport` and assert what `add` is handed — the title and
   description are the words the User reads (`app/pages/log.test.ts`).
