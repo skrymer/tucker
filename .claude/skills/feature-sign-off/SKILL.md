@@ -28,20 +28,20 @@ reachability pass first, the real walk-through last, on the code that ships
 you spawn it, write any handoff into the pack directory — never `/tmp`, which a reboot
 wipes: #521 lost its handoff and every recorded path to a power loss — and write every run
 log to a new file through `scripts/bounded-run.sh --log <path>`**, which refuses a path that exists
-and stamps HEAD + `git status --short` at its top. A re-run is a new log, never the old
-one overwritten: gate 5 reads both, #455's and #497's unstamped logs could not be placed,
-and #498 lost a pitest red and a "91 failed" e2e log to the re-runs written over them.
+and stamps HEAD + `git status --short` at its top — so commit a fix before re-sweeping it
+(#546's "+ uncommitted" stamp cost gate 5 a blob hash). A re-run is a new log, never the
+old one overwritten: #498 lost a pitest red and a "91 failed" e2e log that way.
 
 0. **`/verify` (reachability) — does it run at all?** One viewport, the golden
    path, no probes. Two minutes. FAIL or BLOCKED stops the sign-off before an agent
    is spawned — fix, re-run. Its one-line verdict opens gate 5's pack (#464 left it out).
 
-1. **`/simplify` — clean it up.** Apply reuse / simplification / efficiency /
-   altitude cleanups to the changed code. It *edits* the working tree, so run it before
-   the bug hunt, so the reviewer reads the code you ship. Re-run the tests after its
-   fixes; pin a consumer's output before a fix makes a helper serve it (#468); extract here
-   a fix that leaves two files' markup identical, not at the clone gate later (#432). Every
-   fix, an agent's remedy most of all, is read against the issue's criteria first (#464).
+1. **`/simplify` — clean it up.** Reuse / simplification / efficiency / altitude cleanups.
+   It *edits* the tree: run it before the bug hunt, then the tests; pin a consumer's
+   output before a fix makes a helper serve it (#468), and each input a guard handled
+   before a fix deletes it (#546 lost `stated`; a lone "." read NaN); extract here a fix
+   leaving two files' markup identical (#432); read every fix, an agent's most of all,
+   against the issue's criteria first (#464).
 
    It fans out to **three** review agents in parallel — reuse+simplification (one
    agent: the two shared 3 of 3 findings when split), efficiency, and altitude — each
@@ -66,8 +66,8 @@ and #498 lost a pitest red and a "91 failed" e2e log to the re-runs written over
    fixes reach other files (#432 left two unswept) — and it *adds tests* that gate 3
    must then review. The browser and container layers are out of scope in both, so keep checking those by hand (an
    unanchored aria-snapshot regex and a substring `getByText` both pass a change they
-   should have caught). Budget roughly a minute for a frontend scope and a few for a
-   backend one. SKIP a stack, with a note, only if the diff touches no mutable source
+   should have caught). Budget minutes per stack; a sheet component runs ~6 s a mutant
+   (that skill's Budget table). SKIP a stack, with a note, only if the diff touches no mutable source
    there (docs, config, tests only) — a `.claude/hooks/*.mjs` change is swept by hand
    per that skill, never SKIPped (#469). Its step 1 owns the base, command and STOP rule.
 
@@ -93,16 +93,16 @@ and #498 lost a pitest red and a "91 failed" e2e log to the re-runs written over
 
    **Judge each state by what the User sees in it**, not by whether a function's
    return value is right on its own terms. When a fix — this gate's or any later one's —
-   narrows one read of some rows, list every *other* reader by `git grep` on the
+   narrows one read of some rows, when the diff loosens an invariant a doc states, and
+   before any dismissal reading "only X reads it", list every reader by `git grep` on the
    underlying read, never from memory, and walk each through the states — none
    standing, a stale one standing, a later one existing. #498 guarded one reader of
-   three (the summary, not the Budget Projection or the Check), and once the guard
-   moved down the ledger found a no-day Check branch reading `reviews.latest()`
-   unguarded. #358's inline review wrote "`isOverdue` with a future latest (negative days, not overdue)" as a check that
-   passed; that branch was a regression ("No budget yet" on the device behind), one
-   of three the narrowed read produced against the unbounded one, all found by later
-   gates. (Bump to high only if the diff is large or security-sensitive and you want
-   the broader net despite the redundancy.)
+   three (the summary, not the Budget Projection or the Check). #546 deleted "summing to
+   1" from `MacroEnergyShares`; three agents and the pack agreed only a fibre-less
+   candidate reached it, and gate 5 found the `BarcodeLookup.Existing` branch drawing
+   the Check bar 14% short. #358's "`isOverdue` with a future latest" check passed on a
+   regression. (Bump to high only if the diff is large or security-sensitive and you
+   want the broader net despite the redundancy.)
 
    **Launch the adversary (Brief A) in this same message.** `/code-review` runs
    inline, so the adversary is a background agent alongside it and gate 4. See

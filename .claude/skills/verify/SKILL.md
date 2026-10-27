@@ -100,6 +100,7 @@ shapes a real user's data comes in, and drive at least one of each:
 | A text query | a **capitalised** word (every Food name starts with one), an **accented** name, whitespace alone, the empty string, a word matching nothing |
 | A capped, trimmed name | the cap and cap+1 **padded with spaces**, the cap counted in UTF-16 (16 × 😀 is 32 units), a character the two sides trim differently, **both ways** — `"\u001F"` (JS keeps it, Kotlin's `trim()` strips it) and `"﻿"` (JS strips it, Kotlin keeps it) — driven alone *and* in front of a real value (`"\u001FSnack"`) through **every** client-side decision the name feeds (a duplicate check, a merge preview), not only the server's refusal: F18 slice 6 drove `"\u001F"` to the blank refusal alone, and the untested branch was an unannounced merge |
 | A number | zero, the boundary of its rule, one past it, a decimal where an integer is expected. With no cap, the largest value a person could really enter (250.0 kg for a weight), not the largest you seeded and not a stress constant: #496 typed `1234567` kg, which no one measures, and it wedged the browser for nothing. Where the display chains two steps, the value one step pushes over the next one's threshold — round-then-group carries `999.5` into `1,000 g`; #471's audit sent the walk-through back for both |
+| An optional number where blank is not zero | blank → 0 and 0 → blank on a saved record (the figure derived from it may not move while the stored value does), and a stepper press on a blank field — #546's audit found all three undriven |
 | A list | none, one, the cap, one past the cap |
 | A date | today, a local midnight, a day the rule spans — and for a derived day (tomorrow, a window edge) the last day of a month, 31 Dec, and 28 Feb in a leap year. To get there in the real browser, swap `window.Date` for a subclass with an offset and fire `document.dispatchEvent(new Event('visibilitychange'))` so `useLocalDay` re-reads it (#443); label those probes "page clock shifted", not typed entry. A clock shifted past ±1 day makes every `clientToday` write a 400, so it proves rollover **labels**, never a stored rollover date — pin that with a unit test. A bound **anchored to today** moves daily, so a held value can drift past it after it was saved: judge each bound on its own (#474's birth-date `min`, 120 years ago, overtakes a value saved at the edge; its `max` does not) |
 | A cell's states at once | a repeated cell that can hold several flags (marked, selected, disabled, today) gets each pair on one cell — including in the `/design` specimen, whose fixture otherwise keeps them apart. #474's specimen selected an unmarked day, and the primary dot on the primary selected circle surfaced only in the verdict audit |
@@ -118,9 +119,11 @@ Then the states: empty/zero, the error path, the reset. Two of those, chosen by 
 change could plausibly have broken. **And the case each fix commit since gate 0 was
 written for** — `git log` the branch and drive each fix's own scenario: #435's last
 commit fixed a stop landing on the next scan, and the first walk-through never drove it.
-**And every other caller of a shared path the diff changed** — #443 changed the
+**And every other caller of a shared path the diff changed** — `git grep '<Component'`
+(or the composable's name) and name each mount in the verdict: #443 changed the
 entry-logging composable both sheets share, and only the audit sent the walk-through to
-the estimate form. **And every page that reads data the diff makes reachable in a new
+the estimate form; #546 changed `AddFoodForm`, and its barcode pre-fill and the Recipe
+builder's new-food form waited for the audit too. **And every page that reads data the diff makes reachable in a new
 state** — `git grep` the read, then drive each page in that state: #498 drove "last
 reading → none" on /review only, and Profile, Today, /log and /check in it were found
 by later gates, one filed "Noted, not this diff" though only this diff's delete reached it. **For a refactor or a class/style sweep, the input list comes from
@@ -207,7 +210,9 @@ Related, all cheap:
   its hidden inputs in the tree, and `find` will hand those back. Scope the query to
   the open dialog by name, and check the state after each click: a ref click can
   report success without landing. When it does, a DOM `.click()` through
-  `javascript_tool` gets through.
+  `javascript_tool` gets through — but it does not blur, so Tab out of a number field
+  first: #546's DOM click on Save sent the typed fibre uncommitted, and the row never
+  moved. A stepper press straight after typing is lost the same way.
 - **A screenshot can time out on an open modal** (`Page.captureScreenshot` after
   30s). That is a capture flake, not a frozen page — read the dialog's text with
   `javascript_tool` and carry on rather than retrying the screenshot. **Every**
