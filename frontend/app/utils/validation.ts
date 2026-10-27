@@ -13,12 +13,17 @@ export const gramsSchema = z
 export const MACROS = ['proteinPer100g', 'carbsPer100g', 'fatPer100g'] as const
 export type Macro = (typeof MACROS)[number]
 
-/**
- * Every figure a User supplies for a Food: the three macros, then fibre, which
- * may be left blank — not stated, which is not zero (ADR 0040).
- */
-export const FOOD_FIGURES = [...MACROS, 'fibrePer100g'] as const
+/** The figures a User may leave blank: not stated, which is not zero (ADR 0040). */
+export const OPTIONAL_FIGURES = ['fibrePer100g'] as const
+export type OptionalFigure = (typeof OPTIONAL_FIGURES)[number]
+
+/** Every figure a User supplies for a Food: the three macros, then the optional ones. */
+export const FOOD_FIGURES = [...MACROS, ...OPTIONAL_FIGURES] as const
 export type FoodFigure = (typeof FOOD_FIGURES)[number]
+
+export function isOptionalFigure(figure: FoodFigure): figure is OptionalFigure {
+  return (OPTIONAL_FIGURES as readonly FoodFigure[]).includes(figure)
+}
 
 export const MACRO_LABELS: Record<FoodFigure, string> = {
   proteinPer100g: 'Protein /100g',

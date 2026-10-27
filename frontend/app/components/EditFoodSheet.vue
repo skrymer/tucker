@@ -52,41 +52,44 @@ const creatingTag = ref(false)
 const recipesKnown = ref(false)
 
 /**
+ * A figure with no value: an empty macro is no figure, leaving the figures
+ * incomplete, while an empty optional figure is not stated and counts for nothing.
+ */
+function blankOf(figure: FoodFigure) {
+  return isOptionalFigure(figure) ? undefined : Number.NaN
+}
+
+/**
  * Each figure as typed, for the preview: a number field commits its value only on
- * blur, so these follow the field's own keystrokes. An empty field is no figure.
+ * blur, so these follow the field's own keystrokes.
  */
 function useTypedMacros() {
-  const typed = reactive<Record<FoodFigure, number>>({
+  const typed = reactive<TypedMacros>({
     proteinPer100g: 0,
     carbsPer100g: 0,
     fatPer100g: 0,
-    fibrePer100g: Number.NaN,
   })
+  /** Holds [value], or the figure's blank: a macro is never left undefined. */
+  function set(figure: FoodFigure, value: number | undefined) {
+    ;(typed as Record<FoodFigure, number | undefined>)[figure] =
+      value ?? blankOf(figure)
+  }
   onEachFood((food) => {
-    for (const figure of FOOD_FIGURES)
-      typed[figure] = food[figure] ?? Number.NaN
+    for (const figure of FOOD_FIGURES) set(figure, food[figure] ?? undefined)
   })
-  function onType(macro: FoodFigure, event: Event) {
+  function onType(figure: FoodFigure, event: Event) {
     // The field groups thousands as it formats ("1,000").
     const text = (event.target as HTMLInputElement).value.replace(/,/g, '')
-    typed[macro] = text.trim() === '' ? Number.NaN : Number(text)
+    set(figure, text.trim() === '' ? undefined : Number(text))
   }
-  // A fibre left empty is not stated, so it counts for nothing rather than
-  // leaving the figures incomplete (ADR 0040).
-  const stated = computed(() => ({
-    ...typed,
-    fibrePer100g: Number.isFinite(typed.fibrePer100g)
-      ? typed.fibrePer100g
-      : undefined,
-  }))
-  return { typed, stated, onType }
+  return { typed, set, onType }
 }
-const { typed, stated, onType } = useTypedMacros()
+const { typed, set: setTyped, onType } = useTypedMacros()
 
-/** A committed macro — typed and left, or stepped with its buttons, which type nothing. */
-function commit(macro: FoodFigure, value: number | undefined) {
-  draft[macro] = value
-  typed[macro] = value ?? Number.NaN
+/** A committed figure — typed and left, or stepped with its buttons, which type nothing. */
+function commit(figure: FoodFigure, value: number | undefined) {
+  draft[figure] = value
+  setTyped(figure, value)
 }
 
 /** The Food's own figures, before and with its macros as typed. */
@@ -99,15 +102,15 @@ function useLiveFigures() {
     protein: props.food?.proteinPer100g ?? 0,
   }))
   const after = computed(() => ({
-    kcal: previewCalories(stated.value),
+    kcal: previewCalories(typed),
     protein: typed.proteinPer100g,
   }))
   const macrosMoved = computed(
     () =>
       complete.value &&
-      (MACROS.some((macro) => typed[macro] !== (props.food?.[macro] ?? 0)) ||
-        (stated.value.fibrePer100g ?? null) !==
-          (props.food?.fibrePer100g ?? null)),
+      FOOD_FIGURES.some(
+        (figure) => (typed[figure] ?? null) !== (props.food?.[figure] ?? null),
+      ),
   )
   return { complete, before, after, macrosMoved }
 }
@@ -204,7 +207,7 @@ onEachFood(() => {
         :key="food.id"
         v-model:settled="recipesKnown"
         :food-id="food.id"
-        :correction="macrosMoved ? stated : null"
+        :correction="macrosMoved ? typed : null"
       />
 
       <UFormField label="Tags">

@@ -20,8 +20,8 @@ const emit = defineEmits<{
       :key="figure"
       :label="MACRO_LABELS[figure]"
       :name="figure"
-      :required="figure !== 'fibrePer100g'"
-      :hint="figure === 'fibrePer100g' ? 'optional' : undefined"
+      :required="!isOptionalFigure(figure)"
+      :hint="isOptionalFigure(figure) ? 'optional' : undefined"
     >
       <NumberField
         :model-value="values[figure]"

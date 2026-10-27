@@ -63,6 +63,21 @@ data class FoodResponse(
 /** A Tag as a Food carries it: enough to draw a chip and to send the id back. */
 data class FoodTagResponse(val id: Long, val name: String)
 
+/** The figures a request supplies for a plain Food, fibre optional. */
+interface MacroFigures {
+    val proteinPer100g: Double
+    val carbsPer100g: Double
+    val fatPer100g: Double
+    val fibrePer100g: Double?
+
+    fun macros() = Macros(
+        proteinPer100g = proteinPer100g,
+        carbsPer100g = carbsPer100g,
+        fatPer100g = fatPer100g,
+        fibrePer100g = fibrePer100g,
+    )
+}
+
 /**
  * Request to create a plain, manually-entered Food.
  *
@@ -72,12 +87,12 @@ data class FoodTagResponse(val id: Long, val name: String)
 data class CreateFoodRequest(
     val name: String,
     val barcode: String?,
-    val proteinPer100g: Double,
-    val carbsPer100g: Double,
-    val fatPer100g: Double,
-    val fibrePer100g: Double?,
+    override val proteinPer100g: Double,
+    override val carbsPer100g: Double,
+    override val fatPer100g: Double,
+    override val fibrePer100g: Double?,
     val tagIds: List<Long>,
-)
+) : MacroFigures
 
 // Two wire bodies that share fields on purpose: nesting one in the other would move the wire.
 /* jscpd:ignore-start */
@@ -87,12 +102,12 @@ data class CreateFoodRequest(
  */
 data class CorrectFoodRequest(
     val name: String,
-    val proteinPer100g: Double,
-    val carbsPer100g: Double,
-    val fatPer100g: Double,
-    val fibrePer100g: Double?,
+    override val proteinPer100g: Double,
+    override val carbsPer100g: Double,
+    override val fatPer100g: Double,
+    override val fibrePer100g: Double?,
     val tagIds: List<Long>,
-)
+) : MacroFigures
 /* jscpd:ignore-end */
 
 /**
@@ -295,12 +310,7 @@ class FoodController(
             id = foods.nextId(),
             name = request.name,
             barcode = request.barcode,
-            nutrition = Macros(
-                request.proteinPer100g,
-                request.carbsPer100g,
-                request.fatPer100g,
-                request.fibrePer100g,
-            ).nutrition(),
+            nutrition = request.macros().nutrition(),
         ).retagged(request.tagIds)
         val created = foodService.create(food) ?: throw NotFoundException("no Tag among ${request.tagIds}")
         return describer.describe(created)
@@ -312,7 +322,7 @@ class FoodController(
         val corrected = foodService.correct(
             id,
             request.name,
-            Macros(request.proteinPer100g, request.carbsPer100g, request.fatPer100g, request.fibrePer100g),
+            request.macros(),
             request.tagIds,
         ) ?: throw NotFoundException("no Food with id $id, or no Tag among ${request.tagIds}")
         return describer.describe(corrected)
