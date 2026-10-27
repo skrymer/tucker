@@ -75,7 +75,7 @@ function useTypedMacros() {
    */
   function set(figure: FoodFigure, value: number | undefined) {
     ;(typed as Record<FoodFigure, number | undefined>)[figure] =
-      value !== undefined && Number.isFinite(value) ? value : blankOf(figure)
+      Number.isFinite(value) ? value : blankOf(figure)
   }
   onEachFood((food) => {
     for (const figure of FOOD_FIGURES) set(figure, food[figure] ?? undefined)
