@@ -55,6 +55,19 @@ class RepositoryRoundTripTest {
     }
 
     @Test
+    fun `a Food's fibre round-trips, with not stated kept apart from zero`() {
+        val wrapNutrition = Nutrition.fromMacros(19.4, 12.8, 9.3, fibrePer100g = 16.8)
+        val wrap = foods.insert(Food.plain(foods.nextId(), "Protein wrap", null, wrapNutrition))
+        val chickenNutrition = Nutrition.fromMacros(31.0, 0.0, 3.6, fibrePer100g = 0.0)
+        val chicken = foods.insert(Food.plain(foods.nextId(), "Chicken breast", null, chickenNutrition))
+        val oats = foods.insert(Food.plain(foods.nextId(), "Rolled oats", null, Nutrition(389.0, 16.9, 66.3, 6.9)))
+
+        assertEquals(16.8, foods.findById(wrap.id)?.nutrition?.fibrePer100g)
+        assertEquals(0.0, foods.findById(chicken.id)?.nutrition?.fibrePer100g)
+        assertNull(foods.findById(oats.id)?.nutrition?.fibrePer100g)
+    }
+
+    @Test
     fun `a Food is stored under the id it was built with`() {
         foods.nextId() // taken and never used, so the table's own next rowid is not this id
         val id = foods.nextId()

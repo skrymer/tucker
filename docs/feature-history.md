@@ -1,6 +1,6 @@
 # Feature history
 
-The slice-by-slice record of every frontend increment (F1–F21): what each slice
+The slice-by-slice record of every frontend increment (F1–F22): what each slice
 shipped, and the non-obvious findings, traps and deviations its sign-off turned
 up. Moved out of `CLAUDE.md`, which keeps only the roster, to keep the start-up
 context small. The decisions themselves live in the ADRs (`docs/adr/`) and the
@@ -2125,3 +2125,24 @@ null` now means two things that earn opposite messages — the same trap
     Spring test; a smoke reset keeps `id_sequence`, so the smokes never reuse an id. In a
     walk-through every page load records its own LCP on hide, so `/admin` cannot be read
     live over a store holding nothing at all.
+- **F22** — **Fibre and alcohol are macros, and calories follow the FSANZ energy
+  formula** (PRD [#545](https://github.com/skrymer/tucker/issues/545),
+  [ADR 0040](docs/adr/0040-calories-follow-the-fsanz-energy-formula-and-carbs-exclude-fibre.md)),
+  in slices #546–#551.
+  - **Slice 1 ([#546](https://github.com/skrymer/tucker/issues/546)) — fibre on a
+    Food, typed off the label.** `Nutrition` gains an optional `fibrePer100g` and
+    `fromMacros` adds `2 × fibre` kcal, a null fibre contributing none; `Macros`
+    carries it through create and correct, so a correction re-rolls the Food's
+    Recipes in the same save (ADR 0037). V28 adds a nullable `fibre_per_100g`, so
+    every existing Food reads *not stated* with its calories unchanged. The API
+    carries `fibrePer100g` as an explicit, nullable field on `CreateFoodRequest`,
+    `CorrectFoodRequest` and `FoodResponse`. `MacroFields` renders `FOOD_FIGURES`
+    (the three macros, then fibre beneath them) with fibre optional; Zod refuses a
+    negative fibre and allows blank. `previewCalories` counts fibre, and the Edit
+    sheet's preview and its Recipe preview treat an empty fibre as not stated rather
+    than as incomplete figures. The wrap's label (19.4 / 12.8 / 9.3 / 16.8) reads
+    246 kcal, pinned end to end by a real-stack smoke.
+  - **Ruled (user):** the field reads "Fibre /100g" with an "optional" hint, like its
+    siblings, rather than the issue's "Fibre (g)".
+  - **Left for later slices:** alcohol (#547), a Recipe's fibre roll-up (#550), and a
+    Check's macro energy shares, which no longer sum to 1 for a Food stating fibre.

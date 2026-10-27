@@ -83,6 +83,26 @@ class FoodCorrectionApiTest {
     }
 
     @Test
+    fun `correcting a Food's fibre re-derives its calories and recalculates every Recipe using it`() {
+        // The wrap typed without its fibre: 4 × 19.4 + 4 × 12.8 + 9 × 9.3 = 212.5 kcal /100g.
+        val wrap = createFood("Protein wrap", protein = 19.4, carbs = 12.8, fat = 9.3)
+        // 200 g of wrap in a 400 g dish: 106.25 kcal /100g before the correction.
+        val burrito = createRecipe("Burrito", 400.0, wrap to 200.0)
+
+        correct(wrap, "Protein wrap", Macros(19.4, 12.8, 9.3, fibrePer100g = 16.8))
+
+        // + 2 × 16.8 = 246.1 kcal /100g (ADR 0040).
+        mockMvc.get("/api/foods/$wrap").andExpect {
+            jsonPath("$.caloriesPer100g", closeTo(246.1, 0.001))
+            jsonPath("$.fibrePer100g") { value(16.8) }
+        }
+        // Burrito: 492.2 / 400 × 100 = 123.05 kcal /100g.
+        mockMvc.get("/api/foods/$burrito").andExpect {
+            jsonPath("$.caloriesPer100g", closeTo(123.05, 0.001))
+        }
+    }
+
+    @Test
     fun `a past Entry of a corrected Food keeps its calories and protein but reads under the corrected name`() {
         val oats = createFood("Rolled oast", protein = 31.0, carbs = 60.0, fat = 7.0) // 427 kcal /100g
         mockMvc.post("/api/entries/weighed") {
@@ -187,7 +207,8 @@ class FoodCorrectionApiTest {
         mockMvc.put("/api/foods/$id") {
             contentType = MediaType.APPLICATION_JSON
             content = """{"name":"$name","proteinPer100g":${macros.proteinPer100g},
-                          "carbsPer100g":${macros.carbsPer100g},"fatPer100g":${macros.fatPer100g},"tagIds":[]}"""
+                          "carbsPer100g":${macros.carbsPer100g},"fatPer100g":${macros.fatPer100g},
+                          "fibrePer100g":${macros.fibrePer100g},"tagIds":[]}"""
         }.andExpect { status { isOk() } }
     }
 

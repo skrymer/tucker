@@ -36,11 +36,12 @@ function useCorrectionDraft() {
     proteinPer100g: undefined as number | undefined,
     carbsPer100g: undefined as number | undefined,
     fatPer100g: undefined as number | undefined,
+    fibrePer100g: undefined as number | undefined,
   })
   const tags = ref<components['schemas']['FoodTagResponse'][]>([])
   onEachFood((food) => {
     draft.name = food.name
-    for (const macro of MACROS) draft[macro] = food[macro] ?? undefined
+    for (const figure of FOOD_FIGURES) draft[figure] = food[figure] ?? undefined
     tags.value = [...food.tags]
   })
   return { draft, tags }
@@ -51,29 +52,39 @@ const creatingTag = ref(false)
 const recipesKnown = ref(false)
 
 /**
- * Each macro as typed, for the preview: a number field commits its value only on
+ * Each figure as typed, for the preview: a number field commits its value only on
  * blur, so these follow the field's own keystrokes. An empty field is no figure.
  */
 function useTypedMacros() {
-  const typed = reactive<Record<Macro, number>>({
+  const typed = reactive<Record<FoodFigure, number>>({
     proteinPer100g: 0,
     carbsPer100g: 0,
     fatPer100g: 0,
+    fibrePer100g: Number.NaN,
   })
   onEachFood((food) => {
-    for (const macro of MACROS) typed[macro] = food[macro] ?? Number.NaN
+    for (const figure of FOOD_FIGURES)
+      typed[figure] = food[figure] ?? Number.NaN
   })
-  function onType(macro: Macro, event: Event) {
+  function onType(macro: FoodFigure, event: Event) {
     // The field groups thousands as it formats ("1,000").
     const text = (event.target as HTMLInputElement).value.replace(/,/g, '')
     typed[macro] = text.trim() === '' ? Number.NaN : Number(text)
   }
-  return { typed, onType }
+  // A fibre left empty is not stated, so it counts for nothing rather than
+  // leaving the figures incomplete (ADR 0040).
+  const stated = computed(() => ({
+    ...typed,
+    fibrePer100g: Number.isFinite(typed.fibrePer100g)
+      ? typed.fibrePer100g
+      : undefined,
+  }))
+  return { typed, stated, onType }
 }
-const { typed, onType } = useTypedMacros()
+const { typed, stated, onType } = useTypedMacros()
 
 /** A committed macro — typed and left, or stepped with its buttons, which type nothing. */
-function commit(macro: Macro, value: number | undefined) {
+function commit(macro: FoodFigure, value: number | undefined) {
   draft[macro] = value
   typed[macro] = value ?? Number.NaN
 }
@@ -88,13 +99,15 @@ function useLiveFigures() {
     protein: props.food?.proteinPer100g ?? 0,
   }))
   const after = computed(() => ({
-    kcal: previewCalories(typed),
+    kcal: previewCalories(stated.value),
     protein: typed.proteinPer100g,
   }))
   const macrosMoved = computed(
     () =>
       complete.value &&
-      MACROS.some((macro) => typed[macro] !== (props.food?.[macro] ?? 0)),
+      (MACROS.some((macro) => typed[macro] !== (props.food?.[macro] ?? 0)) ||
+        (stated.value.fibrePer100g ?? null) !==
+          (props.food?.fibrePer100g ?? null)),
   )
   return { complete, before, after, macrosMoved }
 }
@@ -106,6 +119,7 @@ function correctionOf(): components['schemas']['CorrectFoodRequest'] {
     proteinPer100g: draft.proteinPer100g!,
     carbsPer100g: draft.carbsPer100g!,
     fatPer100g: draft.fatPer100g!,
+    fibrePer100g: draft.fibrePer100g,
     tagIds: tags.value.map((tag) => tag.id),
   }
 }
@@ -190,7 +204,7 @@ onEachFood(() => {
         :key="food.id"
         v-model:settled="recipesKnown"
         :food-id="food.id"
-        :correction="macrosMoved ? typed : null"
+        :correction="macrosMoved ? stated : null"
       />
 
       <UFormField label="Tags">

@@ -42,6 +42,17 @@ describe('foodSchema', () => {
     ])
   })
 
+  it('refuses a negative fibre figure, and nothing else about it', () => {
+    expect(refusals({ ...filled, fibrePer100g: -0.1 })).toEqual([
+      'fibrePer100g: Fibre can’t be negative',
+    ])
+  })
+
+  it('accepts a Food whose fibre is left blank, since not stated is not zero', () => {
+    expect(refusals({ ...filled, fibrePer100g: undefined })).toEqual([])
+    expect(refusals({ ...filled, fibrePer100g: null })).toEqual([])
+  })
+
   it('judges a blank name by what the server trims, not by what JavaScript trims', () => {
     expect(refusals({ ...filled, name: '\u001F' })).toEqual([
       'name: Enter a name for this food',

@@ -31,6 +31,17 @@ const oats = food({
   tags: [{ id: 7, name: 'Breakfast' }],
 })
 
+/** The protein wrap off its label: 4 × 19.4 + 4 × 12.8 + 9 × 9.3 + 2 × 16.8 = 246.1 kcal. */
+const wrap = food({
+  id: 2,
+  name: 'Protein wrap',
+  caloriesPer100g: 246.1,
+  proteinPer100g: 19.4,
+  carbsPer100g: 12.8,
+  fatPer100g: 9.3,
+  fibrePer100g: 16.8,
+})
+
 describe('EditFoodSheet', () => {
   it('opens on the Food, its name and macros ready to correct', async () => {
     server.use(...foodCatalog({ foods: [oats] }))
@@ -49,6 +60,21 @@ describe('EditFoodSheet', () => {
     expect(screen.getByRole('spinbutton', { name: /^Carbs/ })).toHaveValue('60')
     expect(screen.getByRole('spinbutton', { name: /^Fat/ })).toHaveValue('7')
     expect(await screen.findByText('Breakfast')).toBeVisible()
+  })
+
+  it('opens on the fibre the Food states, and on a blank field where it states none', async () => {
+    server.use(...foodCatalog({ foods: [wrap, oats] }))
+    const { rerender } = await renderSuspended(EditFoodSheet, {
+      props: { food: wrap },
+    })
+
+    expect(screen.getByRole('spinbutton', { name: /^Fibre/ })).toHaveValue(
+      '16.8',
+    )
+
+    await rerender({ food: oats })
+
+    expect(screen.getByRole('spinbutton', { name: /^Fibre/ })).toHaveValue('')
   })
 
   it('saves the correction, closing itself once the corrected Food is in the catalog', async () => {
@@ -76,6 +102,26 @@ describe('EditFoodSheet', () => {
     ).toHaveTextContent('355 kcal · 13 g protein /100g')
     expect(tagsOn(shown, 'Rolled oats')).toEqual(['Breakfast'])
     expect(toastAdd).not.toHaveBeenCalled()
+  })
+
+  it('saves the fibre the correction states, the catalog reading the calories it adds', async () => {
+    server.use(...foodCatalog({ foods: [oats] }))
+    const onClose = vi.fn()
+    await renderSuspended(besideCatalog(EditFoodSheet), {
+      props: { food: oats, onClose },
+    })
+    const user = userEvent.setup()
+
+    await user.type(screen.getByRole('spinbutton', { name: /^Fibre/ }), '10')
+    await user.tab()
+    await user.click(screen.getByRole('button', { name: 'Save changes' }))
+
+    await vi.waitFor(() => expect(onClose).toHaveBeenCalledOnce())
+    const shown = await catalogOnceReread()
+    // 427 + 2 × 10 = 447 kcal, derived by the server.
+    expect(
+      shown.getByText('Rolled oast').parentElement?.nextElementSibling,
+    ).toHaveTextContent('447 kcal · 31 g protein /100g')
   })
 
   it('opens on the next Food it is handed, with none of the last one’s edits', async () => {
@@ -125,6 +171,32 @@ describe('EditFoodSheet', () => {
     expect(protein).toHaveFocus()
     expect(figures).toHaveTextContent(
       /^was 427 355 kcal · was 31 13 g protein \/100g$/,
+    )
+  })
+
+  it('counts the fibre as it is typed, at 2 kcal a gram, before the field is left', async () => {
+    // The wrap typed without its fibre: 4 × 19.4 + 4 × 12.8 + 9 × 9.3 = 212.5 kcal.
+    const unstated = { ...wrap, caloriesPer100g: 212.5, fibrePer100g: null }
+    server.use(...foodCatalog({ foods: [unstated] }))
+    await renderSuspended(EditFoodSheet, { props: { food: unstated } })
+    const user = userEvent.setup()
+    const figures = screen.getByRole('status')
+
+    const fibre = screen.getByRole('spinbutton', { name: /^Fibre/ })
+    await user.type(fibre, '16.8')
+
+    expect(fibre).toHaveFocus()
+    expect(figures).toHaveTextContent(
+      /^was 213 246 kcal · 19 g protein \/100g$/,
+    )
+  })
+
+  it('opens a Food that states fibre on its own figures, its fibre counted', async () => {
+    server.use(...foodCatalog({ foods: [wrap] }))
+    await renderSuspended(EditFoodSheet, { props: { food: wrap } })
+
+    expect(screen.getByRole('status')).toHaveTextContent(
+      /^246 kcal · 19 g protein \/100g$/,
     )
   })
 
@@ -640,6 +712,32 @@ describe('EditFoodSheet’s Recipes', () => {
     )
     expect(porridge).toHaveTextContent(
       /^Porridge\s*was 85 71 kcal · was 6 3 g protein \/100g$/,
+    )
+  })
+
+  it('restates each Recipe’s figures as the Food’s fibre is typed, before the field is left', async () => {
+    server.use(...usedTwice())
+    await renderSuspended(EditFoodSheet, { props: { food: oats } })
+    const user = userEvent.setup()
+    await user.click(
+      await screen.findByRole('button', { name: 'Used in 2 recipes' }),
+    )
+
+    const fibre = screen.getByRole('spinbutton', { name: /^Fibre/ })
+    await user.type(fibre, '10')
+
+    // Oats with 10 g fibre: 427 + 2 × 10 = 447 kcal /100g. Granola bars:
+    // 447 × 300 / 400 = 335.25 kcal. Porridge: 447 × 50 / 250 = 89.4 kcal.
+    expect(fibre).toHaveFocus()
+    expect(
+      screen.getByRole('button', { name: 'Also updates 2 recipes' }),
+    ).toBeVisible()
+    const [granolaBars, porridge] = screen.getAllByRole('listitem')
+    expect(granolaBars).toHaveTextContent(
+      /^Granola bars\s*was 320 335 kcal · 23 g protein \/100g$/,
+    )
+    expect(porridge).toHaveTextContent(
+      /^Porridge\s*was 85 89 kcal · 6 g protein \/100g$/,
     )
   })
 

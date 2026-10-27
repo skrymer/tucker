@@ -58,12 +58,18 @@ function tagName(given: string): { name: string } | { refused: string } {
 type Row = Omit<FoodResponse, 'tags'> & { tagIds: number[] }
 type Macros = Pick<
   components['schemas']['CorrectFoodRequest'],
-  'proteinPer100g' | 'carbsPer100g' | 'fatPer100g'
+  'proteinPer100g' | 'carbsPer100g' | 'fatPer100g' | 'fibrePer100g'
 >
 
-/** A Food's calories per 100 g, as the server derives them (Atwater). */
+/**
+ * A Food's calories per 100 g, as the server derives them (ADR 0040): an
+ * unstated fibre counts for nothing.
+ */
 const caloriesOf = (m: Macros) =>
-  4 * m.proteinPer100g + 4 * m.carbsPer100g + 9 * m.fatPer100g
+  4 * m.proteinPer100g +
+  4 * m.carbsPer100g +
+  9 * m.fatPer100g +
+  2 * (m.fibrePer100g ?? 0)
 
 /**
  * Why `Food.corrected` refuses correcting [row] to [name] and [macros], in its
@@ -78,7 +84,9 @@ function correctionRefusal(
     return 'a Recipe is corrected through its composition, not its macros'
   }
   if (!name.replace(EDGES, '')) return 'Food name must not be blank'
-  const negative = Object.entries(macros).find(([, value]) => value < 0)
+  const negative = Object.entries(macros).find(
+    ([, value]) => value != null && value < 0,
+  )
   return negative ? `${negative[0]} must be >= 0` : null
 }
 type Shelved = { id: number; name: string; offCatalog: number }
@@ -91,7 +99,7 @@ type RecipeRequest = components['schemas']['CreateRecipeRequest']
  * read back by the next read, so a test asserts the page after its re-read.
  *
  * - Foods are listed by name, ignoring the case of ASCII letters alone (SQL
- *   `lower()`). Saving one derives its calories from its macros (Atwater) and
+ *   `lower()`). Saving one derives its calories from its macros (ADR 0040) and
  *   refuses a Tag the User does not have.
  *   Deleting one that has [logged] Entries, or that a Recipe weighs in, is
  *   refused, naming it — which is also what keeps every composition readable.
@@ -317,6 +325,8 @@ export function foodCatalog({
       Object.assign(row, {
         name,
         ...macros,
+        // A correction that leaves fibre out states none, as the server reads it.
+        fibrePer100g: macros.fibrePer100g ?? null,
         caloriesPer100g: caloriesOf(macros),
         tagIds: distinct(tagIds),
       })

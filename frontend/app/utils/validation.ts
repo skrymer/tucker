@@ -13,10 +13,18 @@ export const gramsSchema = z
 export const MACROS = ['proteinPer100g', 'carbsPer100g', 'fatPer100g'] as const
 export type Macro = (typeof MACROS)[number]
 
-export const MACRO_LABELS: Record<Macro, string> = {
+/**
+ * Every figure a User supplies for a Food: the three macros, then fibre, which
+ * may be left blank — not stated, which is not zero (ADR 0040).
+ */
+export const FOOD_FIGURES = [...MACROS, 'fibrePer100g'] as const
+export type FoodFigure = (typeof FOOD_FIGURES)[number]
+
+export const MACRO_LABELS: Record<FoodFigure, string> = {
   proteinPer100g: 'Protein /100g',
   carbsPer100g: 'Carbs /100g',
   fatPer100g: 'Fat /100g',
+  fibrePer100g: 'Fibre /100g',
 }
 
 /**
@@ -31,4 +39,5 @@ export const foodSchema = z.object({
   proteinPer100g: z.number({ error: 'Enter protein per 100 g' }),
   carbsPer100g: z.number({ error: 'Enter carbs per 100 g' }),
   fatPer100g: z.number({ error: 'Enter fat per 100 g' }),
+  fibrePer100g: z.number().nonnegative('Fibre can’t be negative').nullish(),
 })

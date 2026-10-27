@@ -37,6 +37,8 @@ data class FoodResponse(
     val proteinPer100g: Double,
     val carbsPer100g: Double?,
     val fatPer100g: Double?,
+    /** Dietary fibre per 100 g, or null where it is not stated — which is not zero (ADR 0040). */
+    val fibrePer100g: Double?,
     val cookedWeightG: Double?,
     /**
      * How many ingredient lines a Recipe is composed of — the catalog's
@@ -64,9 +66,8 @@ data class FoodTagResponse(val id: Long, val name: String)
 /**
  * Request to create a plain, manually-entered Food.
  *
- * The user supplies the three macros; the backend derives `caloriesPer100g`
- * via the Atwater factors (`4 × protein + 4 × carbs + 9 × fat`). See
- * `Nutrition.fromMacros` and CONTEXT.md.
+ * The user supplies the macros, fibre optionally; the backend derives `caloriesPer100g`
+ * by the FSANZ factors (ADR 0040). See `Nutrition.fromMacros` and CONTEXT.md.
  */
 data class CreateFoodRequest(
     val name: String,
@@ -74,13 +75,14 @@ data class CreateFoodRequest(
     val proteinPer100g: Double,
     val carbsPer100g: Double,
     val fatPer100g: Double,
+    val fibrePer100g: Double?,
     val tagIds: List<Long>,
 )
 
 // Two wire bodies that share fields on purpose: nesting one in the other would move the wire.
 /* jscpd:ignore-start */
 /**
- * Request to correct a plain Food (ADR 0037): the same three macros as [CreateFoodRequest],
+ * Request to correct a plain Food (ADR 0037): the same macros as [CreateFoodRequest],
  * calories derived from them. No barcode — it comes from the scanner, never a correction.
  */
 data class CorrectFoodRequest(
@@ -88,6 +90,7 @@ data class CorrectFoodRequest(
     val proteinPer100g: Double,
     val carbsPer100g: Double,
     val fatPer100g: Double,
+    val fibrePer100g: Double?,
     val tagIds: List<Long>,
 )
 /* jscpd:ignore-end */
@@ -158,6 +161,7 @@ internal fun Food.toResponse(
     proteinPer100g = nutrition.proteinPer100g,
     carbsPer100g = nutrition.carbsPer100g,
     fatPer100g = nutrition.fatPer100g,
+    fibrePer100g = nutrition.fibrePer100g,
     cookedWeightG = (kind as? FoodKind.Recipe)?.cookedWeightG,
     ingredientCount = ingredientCount,
     referenceFoodId = referenceFoodId,
@@ -291,7 +295,12 @@ class FoodController(
             id = foods.nextId(),
             name = request.name,
             barcode = request.barcode,
-            nutrition = Macros(request.proteinPer100g, request.carbsPer100g, request.fatPer100g).nutrition(),
+            nutrition = Macros(
+                request.proteinPer100g,
+                request.carbsPer100g,
+                request.fatPer100g,
+                request.fibrePer100g,
+            ).nutrition(),
         ).retagged(request.tagIds)
         val created = foodService.create(food) ?: throw NotFoundException("no Tag among ${request.tagIds}")
         return describer.describe(created)
@@ -303,7 +312,7 @@ class FoodController(
         val corrected = foodService.correct(
             id,
             request.name,
-            Macros(request.proteinPer100g, request.carbsPer100g, request.fatPer100g),
+            Macros(request.proteinPer100g, request.carbsPer100g, request.fatPer100g, request.fibrePer100g),
             request.tagIds,
         ) ?: throw NotFoundException("no Food with id $id, or no Tag among ${request.tagIds}")
         return describer.describe(corrected)

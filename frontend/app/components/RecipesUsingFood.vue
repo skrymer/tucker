@@ -7,8 +7,8 @@
 // Stryker disable next-line all: a compiler macro must stay a top-level statement
 const props = defineProps<{
   foodId: number
-  /** The Food's macros as typed once one has moved, else null. */
-  correction: Record<Macro, number> | null
+  /** The Food's figures as typed once one has moved, else null. */
+  correction: TypedMacros | null
 }>()
 /** Whether the first read has answered, either way — what Save waits on. */
 // Stryker disable next-line all: a compiler macro must stay a top-level statement
