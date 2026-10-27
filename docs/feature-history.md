@@ -2144,5 +2144,10 @@ null` now means two things that earn opposite messages — the same trap
     246 kcal, pinned end to end by a real-stack smoke.
   - **Ruled (user):** the field reads "Fibre /100g" with an "optional" hint, like its
     siblings, rather than the issue's "Fibre (g)".
-  - **Left for later slices:** alcohol (#547), a Recipe's fibre roll-up (#550), and a
-    Check's macro energy shares, which no longer sum to 1 for a Food stating fibre.
+  - **Ruled (user):** a scanned Food whose Provider carbs fold fibre in can be
+    double-counted if the User also types its fibre; accepted until #549 catches the
+    fold at scan time. A Check on a catalog Food stating fibre draws its composition
+    bar short (its shares no longer sum to 1); not fixed, since the Check is to be
+    deprecated behind a feature flag (#564).
+  - **Left for later slices:** alcohol (#547), a Recipe's fibre roll-up (#550), a
+    scan filling fibre (#548), and Micronutrient Intake using a stated fibre (#551).
