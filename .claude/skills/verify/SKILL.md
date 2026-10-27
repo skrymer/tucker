@@ -338,6 +338,8 @@ and checks each against a concrete value in the verdict.
   new dependencies (`zxing-wasm/reader`, `@unovis/vue`, `web-vitals`), re-bundles, and the
   page goes blank on "Failed to fetch dynamically imported module …entry.js"; a reload
   clears it. That blank page is the dev server, not the change — #525 met it three times.
+  Again after every dev-server restart, and before installing a fetch shim: the forced
+  reload wipes `window`, and #524's shim vanished mid-probe twice.
 - Console errors are worth a look, but `read_console_messages` only captures from when
   it's first called — call it *before* the interesting interaction, or reload.
 - Don't trigger `alert`/`confirm` — a modal dialog freezes the extension for the rest
