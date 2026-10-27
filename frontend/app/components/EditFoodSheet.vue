@@ -69,10 +69,13 @@ function useTypedMacros() {
     carbsPer100g: 0,
     fatPer100g: 0,
   })
-  /** Holds [value], or the figure's blank: a macro is never left undefined. */
+  /**
+   * Holds [value], or the figure's blank where it is no number yet (a lone
+   * decimal point): a macro is never left undefined.
+   */
   function set(figure: FoodFigure, value: number | undefined) {
     ;(typed as Record<FoodFigure, number | undefined>)[figure] =
-      value ?? blankOf(figure)
+      value !== undefined && Number.isFinite(value) ? value : blankOf(figure)
   }
   onEachFood((food) => {
     for (const figure of FOOD_FIGURES) set(figure, food[figure] ?? undefined)

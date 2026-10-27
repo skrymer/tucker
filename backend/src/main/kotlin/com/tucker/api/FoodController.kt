@@ -113,8 +113,8 @@ data class CorrectFoodRequest(
 /**
  * A [FoodCandidate] on the wire (ADR 0006): normalised per-100g macros with
  * absent ones left `null`, the Provider's stated energy as a cross-check, the
- * source for attribution, and the barcode. No calories — they are Atwater-derived
- * when the user confirms the Food via `POST /api/foods`.
+ * source for attribution, and the barcode. No calories — they are derived by the
+ * FSANZ factors (ADR 0040) when the user confirms the Food via `POST /api/foods`.
  */
 data class FoodCandidateResponse(
     val name: String,

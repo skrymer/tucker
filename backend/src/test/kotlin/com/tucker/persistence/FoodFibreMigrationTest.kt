@@ -36,4 +36,31 @@ class FoodFibreMigrationTest {
             )
         }
     }
+
+    @Test
+    fun `an Entry logged before fibre keeps its snapshot`() {
+        val db = tempDir.resolve("pre-fibre-entry.db").toString()
+
+        migrate(db, upTo = "27")
+        connect(db).use { connection ->
+            connection.seedOwner()
+            connection.execute(
+                "INSERT INTO food (id, name, calories_per_100g, protein_per_100g, carbs_per_100g, " +
+                    "fat_per_100g, user_id) VALUES (41, 'Oats', 389.0, 16.9, 66.3, 6.9, $OWNER_ID)",
+            )
+            connection.execute(
+                "INSERT INTO entry (id, logged_on, kind, food_id, grams, calories, protein, user_id) " +
+                    "VALUES (7, '2026-10-01', 'WEIGHED', 41, 50.0, 194.5, 8.45, $OWNER_ID)",
+            )
+        }
+
+        migrate(db, upTo = null)
+
+        connect(db).use { connection ->
+            assertEquals(
+                listOf("41|50.0|194.5|8.45"),
+                connection.rows("SELECT food_id, grams, calories, protein FROM entry WHERE id = 7"),
+            )
+        }
+    }
 }

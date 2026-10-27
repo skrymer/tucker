@@ -191,6 +191,19 @@ describe('EditFoodSheet', () => {
     )
   })
 
+  it('reads a fibre typed only as far as its decimal point as not stated yet', async () => {
+    const unstated = { ...wrap, caloriesPer100g: 212.5, fibrePer100g: null }
+    server.use(...foodCatalog({ foods: [unstated] }))
+    await renderSuspended(EditFoodSheet, { props: { food: unstated } })
+    const user = userEvent.setup()
+
+    await user.type(screen.getByRole('spinbutton', { name: /^Fibre/ }), '.')
+
+    expect(screen.getByRole('status')).toHaveTextContent(
+      /^213 kcal · 19 g protein \/100g$/,
+    )
+  })
+
   it('opens a Food that states fibre on its own figures, its fibre counted', async () => {
     server.use(...foodCatalog({ foods: [wrap] }))
     await renderSuspended(EditFoodSheet, { props: { food: wrap } })

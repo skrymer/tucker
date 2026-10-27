@@ -1,7 +1,7 @@
 <!--
-  A Food's three macros per 100 g, side by side, and its fibre beneath them. A
-  number field commits its value only on blur, so each keystroke is reported
-  apart from the commit.
+  A Food's macros per 100 g: the three required ones side by side, and the
+  optional fibre beneath them. A number field commits its value only on blur, so
+  each keystroke is reported apart from the commit.
 -->
 <script setup lang="ts">
 // Stryker disable next-line all: a compiler macro must stay a top-level statement

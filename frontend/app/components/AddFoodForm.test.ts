@@ -454,7 +454,7 @@ describe('AddFoodForm', () => {
     })
   })
 
-  it('saves the fibre copied off the label beside the three macros', async () => {
+  it('saves the fibre copied off the label beside the three required macros', async () => {
     const onSubmit = vi.fn()
     await renderSuspended(AddFoodForm, { props: { onSubmit } })
     const user = userEvent.setup()

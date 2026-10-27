@@ -15,7 +15,7 @@ const props = defineProps<{
   }
   /**
    * A Provider's stated energy per 100 g, shown only as a cross-check — calories
-   * are always recalculated from the macros (Atwater). See ADR 0006.
+   * are always recalculated from the macros (ADR 0040). See ADR 0006.
    */
   statedEnergyKcalPer100g?: number
   /**
