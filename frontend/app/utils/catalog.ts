@@ -100,17 +100,19 @@ export function tagsOnOffer(foods: FoodResponse[]): FoodResponse['tags'] {
   })
 }
 
+/** A Food's figures as typed, before they are saved; fibre absent where not stated. */
+export type TypedMacros = Record<Macro, number> & { fibrePer100g?: number }
+
 /**
- * A Food's calories per 100 g from macros not yet saved, by the Atwater factors
- * the server derives them with. A preview of the User's own input only: what is
- * stored is always the server's figure (ADR 0002).
+ * A Food's calories per 100 g from macros not yet saved, by the factors the
+ * server derives them with (ADR 0040). A preview of the User's own input only:
+ * what is stored is always the server's figure (ADR 0002).
  */
-export function previewCalories(macros: {
-  proteinPer100g: number
-  carbsPer100g: number
-  fatPer100g: number
-}): number {
+export function previewCalories(macros: TypedMacros): number {
   return (
-    4 * macros.proteinPer100g + 4 * macros.carbsPer100g + 9 * macros.fatPer100g
+    4 * macros.proteinPer100g +
+    4 * macros.carbsPer100g +
+    9 * macros.fatPer100g +
+    2 * (macros.fibrePer100g ?? 0)
   )
 }

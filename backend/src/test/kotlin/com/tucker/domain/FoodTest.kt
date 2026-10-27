@@ -55,6 +55,18 @@ class FoodTest {
     }
 
     @Test
+    fun `a corrected Food counts the fibre the correction states`() {
+        val corrected = CHEESE.corrected(
+            name = "Protein wrap",
+            macros = Macros(proteinPer100g = 19.4, carbsPer100g = 12.8, fatPer100g = 9.3, fibrePer100g = 16.8),
+            tagIds = emptyList(),
+        )
+
+        assertEquals(16.8, corrected.nutrition.fibrePer100g)
+        assertEquals(246.1, corrected.nutrition.caloriesPer100g, 1e-9)
+    }
+
+    @Test
     fun `a corrected Food carries the corrected name and exactly the Tags it was given`() {
         val corrected = CHEESE.retagged(listOf(BREAKFAST)).corrected(
             name = "Tasty cheddar",

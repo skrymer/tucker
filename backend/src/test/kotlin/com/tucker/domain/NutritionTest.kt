@@ -18,6 +18,27 @@ class NutritionTest {
     }
 
     @Test
+    fun `fibre counts 2 kcal per gram, so the protein wrap reads its label's 246 kcal`() {
+        // 4 * 19.4 + 4 * 12.8 + 9 * 9.3 + 2 * 16.8 = 77.6 + 51.2 + 83.7 + 33.6 = 246.1 (ADR 0040)
+        val wrap = Nutrition.fromMacros(
+            proteinPer100g = 19.4,
+            carbsPer100g = 12.8,
+            fatPer100g = 9.3,
+            fibrePer100g = 16.8,
+        )
+        assertEquals(246.1, wrap.caloriesPer100g, 1e-9)
+        assertEquals(16.8, wrap.fibrePer100g)
+    }
+
+    @Test
+    fun `a negative fibre is refused`() {
+        assertThrows<IllegalArgumentException> {
+            // Positive macros keep calories above zero, so only the fibre rule can refuse it.
+            Nutrition.fromMacros(proteinPer100g = 10.0, carbsPer100g = 0.0, fatPer100g = 0.0, fibrePer100g = -0.1)
+        }
+    }
+
+    @Test
     fun `macro energy shares split the Food's own calories by the Atwater factors`() {
         // Nutella: 25.2 kcal from protein, 230 from carbs, 278.1 from fat, of 533.3.
         val n = Nutrition.fromMacros(proteinPer100g = 6.3, carbsPer100g = 57.5, fatPer100g = 30.9)

@@ -33,6 +33,7 @@ export function food(
     proteinPer100g: 10,
     carbsPer100g: 0,
     fatPer100g: 0,
+    fibrePer100g: null,
     cookedWeightG: null,
     ingredientCount: null,
     referenceFoodId: null,

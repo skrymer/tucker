@@ -15,7 +15,7 @@ const props = defineProps<{
   }
   /**
    * A Provider's stated energy per 100 g, shown only as a cross-check — calories
-   * are always recalculated from the macros (Atwater). See ADR 0006.
+   * are always recalculated from the macros (ADR 0040). See ADR 0006.
    */
   statedEnergyKcalPer100g?: number
   /**
@@ -37,6 +37,7 @@ function seedOf(initial: typeof props.initial) {
     proteinPer100g: initial?.proteinPer100g,
     carbsPer100g: initial?.carbsPer100g,
     fatPer100g: initial?.fatPer100g,
+    fibrePer100g: undefined as number | undefined,
   }
 }
 type Draft = ReturnType<typeof seedOf>
@@ -55,6 +56,7 @@ function useFoodDraft() {
     proteinPer100g: false,
     carbsPer100g: false,
     fatPer100g: false,
+    fibrePer100g: false,
   })
   function markTouched(field: keyof typeof touched) {
     touched[field] = true
@@ -65,7 +67,7 @@ function useFoodDraft() {
   // skipped by the merge for the rest of the sheet-open. An update that leaves
   // the value where it was is not an edit, so the macros bind one way and commit
   // here; typing is carried separately, by the field's own `@input`.
-  function updateMacro(field: Macro, value: number | undefined) {
+  function updateMacro(field: FoodFigure, value: number | undefined) {
     if (isSameToDisplayedPrecision(value, state[field])) return
     state[field] = value
     markTouched(field)
@@ -106,6 +108,7 @@ function onSubmit() {
     proteinPer100g: state.proteinPer100g!,
     carbsPer100g: state.carbsPer100g!,
     fatPer100g: state.fatPer100g!,
+    fibrePer100g: state.fibrePer100g,
     tagIds: tags.value.map((tag) => tag.id),
   })
 }

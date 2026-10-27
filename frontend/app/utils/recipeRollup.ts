@@ -59,7 +59,7 @@ export function previewRecipeFigures(
     ingredients: (RollupIngredient & { foodId: number })[]
   },
   foodId: number,
-  draft: Record<Macro, number>,
+  draft: TypedMacros,
 ): Per100gFigures {
   const corrected = {
     caloriesPer100g: previewCalories(draft),

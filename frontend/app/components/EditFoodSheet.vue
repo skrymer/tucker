@@ -36,11 +36,12 @@ function useCorrectionDraft() {
     proteinPer100g: undefined as number | undefined,
     carbsPer100g: undefined as number | undefined,
     fatPer100g: undefined as number | undefined,
+    fibrePer100g: undefined as number | undefined,
   })
   const tags = ref<components['schemas']['FoodTagResponse'][]>([])
   onEachFood((food) => {
     draft.name = food.name
-    for (const macro of MACROS) draft[macro] = food[macro] ?? undefined
+    for (const figure of FOOD_FIGURES) draft[figure] = food[figure] ?? undefined
     tags.value = [...food.tags]
   })
   return { draft, tags }
@@ -51,31 +52,47 @@ const creatingTag = ref(false)
 const recipesKnown = ref(false)
 
 /**
- * Each macro as typed, for the preview: a number field commits its value only on
- * blur, so these follow the field's own keystrokes. An empty field is no figure.
+ * A figure with no value: an empty macro is no figure, leaving the figures
+ * incomplete, while an empty optional figure is not stated and counts for nothing.
+ */
+function blankOf(figure: FoodFigure) {
+  return isOptionalFigure(figure) ? undefined : Number.NaN
+}
+
+/**
+ * Each figure as typed, for the preview: a number field commits its value only on
+ * blur, so these follow the field's own keystrokes.
  */
 function useTypedMacros() {
-  const typed = reactive<Record<Macro, number>>({
+  const typed = reactive<TypedMacros>({
     proteinPer100g: 0,
     carbsPer100g: 0,
     fatPer100g: 0,
   })
+  /**
+   * Holds [value], or the figure's blank where it is no number yet (a lone
+   * decimal point): a macro is never left undefined.
+   */
+  function set(figure: FoodFigure, value: number | undefined) {
+    ;(typed as Record<FoodFigure, number | undefined>)[figure] =
+      Number.isFinite(value) ? value : blankOf(figure)
+  }
   onEachFood((food) => {
-    for (const macro of MACROS) typed[macro] = food[macro] ?? Number.NaN
+    for (const figure of FOOD_FIGURES) set(figure, food[figure] ?? undefined)
   })
-  function onType(macro: Macro, event: Event) {
+  function onType(figure: FoodFigure, event: Event) {
     // The field groups thousands as it formats ("1,000").
     const text = (event.target as HTMLInputElement).value.replace(/,/g, '')
-    typed[macro] = text.trim() === '' ? Number.NaN : Number(text)
+    set(figure, text.trim() === '' ? undefined : Number(text))
   }
-  return { typed, onType }
+  return { typed, set, onType }
 }
-const { typed, onType } = useTypedMacros()
+const { typed, set: setTyped, onType } = useTypedMacros()
 
-/** A committed macro — typed and left, or stepped with its buttons, which type nothing. */
-function commit(macro: Macro, value: number | undefined) {
-  draft[macro] = value
-  typed[macro] = value ?? Number.NaN
+/** A committed figure — typed and left, or stepped with its buttons, which type nothing. */
+function commit(figure: FoodFigure, value: number | undefined) {
+  draft[figure] = value
+  setTyped(figure, value)
 }
 
 /** The Food's own figures, before and with its macros as typed. */
@@ -94,7 +111,9 @@ function useLiveFigures() {
   const macrosMoved = computed(
     () =>
       complete.value &&
-      MACROS.some((macro) => typed[macro] !== (props.food?.[macro] ?? 0)),
+      FOOD_FIGURES.some(
+        (figure) => (typed[figure] ?? null) !== (props.food?.[figure] ?? null),
+      ),
   )
   return { complete, before, after, macrosMoved }
 }
@@ -106,6 +125,7 @@ function correctionOf(): components['schemas']['CorrectFoodRequest'] {
     proteinPer100g: draft.proteinPer100g!,
     carbsPer100g: draft.carbsPer100g!,
     fatPer100g: draft.fatPer100g!,
+    fibrePer100g: draft.fibrePer100g,
     tagIds: tags.value.map((tag) => tag.id),
   }
 }

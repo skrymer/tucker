@@ -37,6 +37,8 @@ data class FoodResponse(
     val proteinPer100g: Double,
     val carbsPer100g: Double?,
     val fatPer100g: Double?,
+    /** Dietary fibre per 100 g, or null where it is not stated — which is not zero (ADR 0040). */
+    val fibrePer100g: Double?,
     val cookedWeightG: Double?,
     /**
      * How many ingredient lines a Recipe is composed of — the catalog's
@@ -61,42 +63,58 @@ data class FoodResponse(
 /** A Tag as a Food carries it: enough to draw a chip and to send the id back. */
 data class FoodTagResponse(val id: Long, val name: String)
 
+/** The figures a request supplies for a plain Food, fibre optional. */
+interface MacroFigures {
+    val proteinPer100g: Double
+    val carbsPer100g: Double
+    val fatPer100g: Double
+    val fibrePer100g: Double?
+
+    fun macros() = Macros(
+        proteinPer100g = proteinPer100g,
+        carbsPer100g = carbsPer100g,
+        fatPer100g = fatPer100g,
+        fibrePer100g = fibrePer100g,
+    )
+}
+
 /**
  * Request to create a plain, manually-entered Food.
  *
- * The user supplies the three macros; the backend derives `caloriesPer100g`
- * via the Atwater factors (`4 × protein + 4 × carbs + 9 × fat`). See
- * `Nutrition.fromMacros` and CONTEXT.md.
+ * The user supplies the macros, fibre optionally; the backend derives `caloriesPer100g`
+ * by the FSANZ factors (ADR 0040). See `Nutrition.fromMacros` and CONTEXT.md.
  */
 data class CreateFoodRequest(
     val name: String,
     val barcode: String?,
-    val proteinPer100g: Double,
-    val carbsPer100g: Double,
-    val fatPer100g: Double,
+    override val proteinPer100g: Double,
+    override val carbsPer100g: Double,
+    override val fatPer100g: Double,
+    override val fibrePer100g: Double?,
     val tagIds: List<Long>,
-)
+) : MacroFigures
 
 // Two wire bodies that share fields on purpose: nesting one in the other would move the wire.
 /* jscpd:ignore-start */
 /**
- * Request to correct a plain Food (ADR 0037): the same three macros as [CreateFoodRequest],
+ * Request to correct a plain Food (ADR 0037): the same macros as [CreateFoodRequest],
  * calories derived from them. No barcode — it comes from the scanner, never a correction.
  */
 data class CorrectFoodRequest(
     val name: String,
-    val proteinPer100g: Double,
-    val carbsPer100g: Double,
-    val fatPer100g: Double,
+    override val proteinPer100g: Double,
+    override val carbsPer100g: Double,
+    override val fatPer100g: Double,
+    override val fibrePer100g: Double?,
     val tagIds: List<Long>,
-)
+) : MacroFigures
 /* jscpd:ignore-end */
 
 /**
  * A [FoodCandidate] on the wire (ADR 0006): normalised per-100g macros with
  * absent ones left `null`, the Provider's stated energy as a cross-check, the
- * source for attribution, and the barcode. No calories — they are Atwater-derived
- * when the user confirms the Food via `POST /api/foods`.
+ * source for attribution, and the barcode. No calories — they are derived by the
+ * FSANZ factors (ADR 0040) when the user confirms the Food via `POST /api/foods`.
  */
 data class FoodCandidateResponse(
     val name: String,
@@ -158,6 +176,7 @@ internal fun Food.toResponse(
     proteinPer100g = nutrition.proteinPer100g,
     carbsPer100g = nutrition.carbsPer100g,
     fatPer100g = nutrition.fatPer100g,
+    fibrePer100g = nutrition.fibrePer100g,
     cookedWeightG = (kind as? FoodKind.Recipe)?.cookedWeightG,
     ingredientCount = ingredientCount,
     referenceFoodId = referenceFoodId,
@@ -291,7 +310,7 @@ class FoodController(
             id = foods.nextId(),
             name = request.name,
             barcode = request.barcode,
-            nutrition = Macros(request.proteinPer100g, request.carbsPer100g, request.fatPer100g).nutrition(),
+            nutrition = request.macros().nutrition(),
         ).retagged(request.tagIds)
         val created = foodService.create(food) ?: throw NotFoundException("no Tag among ${request.tagIds}")
         return describer.describe(created)
@@ -303,7 +322,7 @@ class FoodController(
         val corrected = foodService.correct(
             id,
             request.name,
-            Macros(request.proteinPer100g, request.carbsPer100g, request.fatPer100g),
+            request.macros(),
             request.tagIds,
         ) ?: throw NotFoundException("no Food with id $id, or no Tag among ${request.tagIds}")
         return describer.describe(corrected)
