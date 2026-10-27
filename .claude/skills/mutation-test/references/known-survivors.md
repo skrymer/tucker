@@ -1764,6 +1764,23 @@ log's `afterEach`; a dropped vital was recorded as `undefined`) and one backend 
 - **`MetricEventRequest`'s nine getters and `MetricBatchRequest.getEvents`** — as the
   #519 and #520 entries above.
 
+### Fibre on a Food (#546) — frontend 247 of 266, backend 159 of 172
+
+No new real gap. 16 frontend and 12 backend survivors are standing verdicts above
+(`EditFoodSheet`'s initial values and `props.food?.` chains, `AddFoodForm`'s `touched`,
+`catalog.ts`'s `fold` and equal-name branch, the `FoodResponse` accessors, `applyFrom`'s
+carbs and fat setters, the `isEmpty()` returns). New:
+
+- **`AddFoodForm.vue`'s `touched.fibrePer100g: false` → `true` — equivalent**: nothing
+  reads it. The seed mirror loops over `MACROS`, and `seedOf` never supplies fibre.
+- **`EditFoodSheet.vue`'s `blankOf` body → `{}` — equivalent**: a macro's blank becomes
+  `undefined` rather than `NaN`, and every reader treats the two alike —
+  `complete`'s `Number.isFinite` is false for both, and `after` and `macrosMoved` sit
+  behind `complete`.
+- **`FoodResponse.getFibrePer100g` → 0 (pitest) — false survivor**: hand-mutating
+  `toResponse`'s `fibrePer100g` to `0.0` fails three tests in `ApiIntegrationTest` and
+  `FoodCorrectionApiTest`.
+
 ### Noise removed at the source
 
 Four `getLog()` companion accessors (`MartijndwarsWebPushSender`, `RecordingWebPushSender`,
