@@ -212,6 +212,8 @@ const filters = computed(() => [
           />
         </div>
       </LoadErrorState>
+      <!-- Outside the report's error state: either read can fail alone. -->
+      <ServerCard v-if="isDesktop" />
     </section>
   </div>
 </template>

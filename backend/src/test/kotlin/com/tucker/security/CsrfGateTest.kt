@@ -8,6 +8,7 @@ import com.tucker.persistence.WeeklyReviewRepository
 import com.tucker.persistence.WeightMeasurementRepository
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.http.HttpMethod
 import org.springframework.http.HttpStatus
@@ -47,7 +48,9 @@ class CsrfGateTest {
     @Autowired private lateinit var profiles: ProfileRepository
     @Autowired private lateinit var weights: WeightMeasurementRepository
     @Autowired private lateinit var reviews: WeeklyReviewRepository
-    @Autowired private lateinit var handlerMappings: RequestMappingHandlerMapping
+    // Tucker's own controllers; Actuator registers a second mapping beside it.
+    @Autowired @Qualifier("requestMappingHandlerMapping")
+    private lateinit var handlerMappings: RequestMappingHandlerMapping
 
     private val mockMvc: MockMvc by lazy {
         MockMvcBuilders.webAppContextSetup(context).apply<DefaultMockMvcBuilder>(springSecurity())
@@ -86,6 +89,14 @@ class CsrfGateTest {
     fun `an Admin's request carrying no CSRF token is refused under the Admin paths too`() {
         mockMvc.post("/api/admin/metrics") {
             header(ACCESS_ASSERTION_HEADER, AccessTokens.mint(email = "admin@tucker.invalid"))
+        }.andExpect { status { isForbidden() } }
+    }
+
+    /** Refused before anyone is known, so even a non-Admin at Actuator reads 403, not 404 (ADR 0039). */
+    @Test
+    fun `a request carrying no CSRF token is refused at Actuator as everywhere`() {
+        mockMvc.post("/api/actuator/health") {
+            header(ACCESS_ASSERTION_HEADER, AccessTokens.mint())
         }.andExpect { status { isForbidden() } }
     }
 
