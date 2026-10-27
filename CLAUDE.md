@@ -273,7 +273,7 @@ here.
   ([#498](https://github.com/skrymer/tucker/issues/498)) and one History card for
   weight and Entries ([#511](https://github.com/skrymer/tucker/issues/511)). Open:
   [#505](https://github.com/skrymer/tucker/issues/505).
-- **F21** — Performance metrics and an Admin page: Tucker measures its own route
+- **F21** — ✅ Performance metrics and an Admin page: Tucker measures its own route
   changes, LCP and INP in every engine, splits each navigation into server, network
   and render time, and shows an Admin the result beside Actuator's server figures
   ([ADR 0038](docs/adr/0038-performance-is-measured-by-tucker-itself-and-no-metric-names-a-user.md),
@@ -285,8 +285,10 @@ here.
   into server, network + proxy and render time
   ([#520](https://github.com/skrymer/tucker/issues/520)), slice 4, the filters
   ([#521](https://github.com/skrymer/tucker/issues/521)), slice 5, p75 per release
-  ([#522](https://github.com/skrymer/tucker/issues/522)), and slice 6, page load (LCP)
-  and interaction (INP) ([#523](https://github.com/skrymer/tucker/issues/523)), are done.
+  ([#522](https://github.com/skrymer/tucker/issues/522)), slice 6, page load (LCP)
+  and interaction (INP) ([#523](https://github.com/skrymer/tucker/issues/523)), slice 7,
+  the server section from Actuator ([#524](https://github.com/skrymer/tucker/issues/524)),
+  and slice 8, retention and the rate cap ([#525](https://github.com/skrymer/tucker/issues/525)), are done.
 - **F22** — Fibre and alcohol are macros, and calories follow the FSANZ energy formula
   (PRD [#545](https://github.com/skrymer/tucker/issues/545),
   [ADR 0040](docs/adr/0040-calories-follow-the-fsanz-energy-formula-and-carbs-exclude-fibre.md)),
