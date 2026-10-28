@@ -28,9 +28,12 @@ instead of about 120.
   the gap only where the Food states none. Where the Food does state fibre, the
   label's figure wins. Borrowed fibre never enters calories.
 - **Alcohol is stored as grams per 100 g and written as ABV.** An Australian drink
-  carries only its ABV, so the form accepts and shows ABV and converts using
-  ethanol's density (`g/100 g = ABV × 0.789`, with the drink taken as 1 g/ml).
-  Open Food Facts' `alcohol_100g` is % vol and converts the same way.
+  carries only its ABV, so the form accepts and shows ABV, and the request and
+  response carry it. The backend domain converts it, using ethanol's density
+  (`g/100 g = ABV × 0.789`, with the drink taken as 1 g/ml), and derives it back
+  from the stored grams. The client copies the factor only for the live calorie
+  preview (ADR 0002). Open Food Facts' `alcohol_100g` is % vol and converts the
+  same way.
 - **A Provider's stated energy now arbitrates which reading of carbs to take.**
   Carbs with fibre folded in cannot be detected from the carbs field, but the
   stated energy reveals them. If subtracting fibre reproduces the stated energy and

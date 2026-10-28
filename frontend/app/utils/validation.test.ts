@@ -64,6 +64,11 @@ describe('foodSchema', () => {
     ])
   })
 
+  it('accepts an ABV of exactly 0 and exactly 100, the two ends of its range', () => {
+    expect(refusals({ ...filled, alcoholAbv: 0 })).toEqual([])
+    expect(refusals({ ...filled, alcoholAbv: 100 })).toEqual([])
+  })
+
   it('refuses an ABV above 100 percent, and nothing else about it', () => {
     expect(refusals({ ...filled, alcoholAbv: 100.1 })).toEqual([
       'alcoholAbv: ABV can’t be over 100%',
