@@ -21,6 +21,10 @@ not restate them.
 - **Every derived number is computed here.** Domain verdicts and derived state ship as plain
   API fields; the frontend presents them and re-derives nothing. A new rule is a backend
   change first. (ADR 0002.)
+- **A stored figure is read back unchecked.** A value class that refuses what a User
+  types is the write path, never the read path: a figure legal in storage but outside the
+  input range (a Recipe conserving its alcohol past 100% ABV) would fail every read of it.
+  Derive the display value through a plain function (#547's `AlcoholByVolume.percentOf`).
 - **Speak `CONTEXT.md`.** It is the ubiquitous language — domain code uses exactly those
   terms, and a change to the model updates it in the same commit.
 - **A guard or a label reads a projection; a write reads the aggregate.** A read that only

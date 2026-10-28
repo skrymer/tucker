@@ -139,6 +139,10 @@ handlers free of app auto-imports (`localToday()` etc.) — pass such values in.
 
 ## Changing a handler
 
+- A handler computes a derived figure (calories, a unit conversion) on its own, never
+  by importing the client's preview formula or constant: shared, a wrong client factor
+  agrees with the "saved" figure by construction and every mocked test passes. A reuse
+  pass will propose the import (#547's R2); the duplication is the point.
 - A stateful handler stands for the backend: before writing one, read the controller,
   the service, the repository and the domain type's own `init`/`require`s behind each
   endpoint it answers — the status for an absent or foreign id, every refusal and the

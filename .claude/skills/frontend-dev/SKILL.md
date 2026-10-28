@@ -254,10 +254,13 @@ assertion with the dev token), and no browser-level layer can reach it.
   and the walk-through found "Page not found: /admin" under "/". `showError` from the
   middleware is no way out: the navigation clears it (7 of 8 red).
 - **`net::ERR_NETWORK_CHANGED` in a local e2e or smoke failure is the host, not the
-  code** — Docker creating and removing networks (the smokes' compose up/down) changes
-  the host's network under Chrome, and the console guard reports the failed fetch.
-  Re-run `--last-failed`; a spec that keeps failing on it is still unproven until CI on
-  the PR runs it — "left to CI" is not evidence before that run exists (#523: 84 lines).
+  code** — Docker creating and removing networks changes the host's network under
+  Chrome, and the console guard reports the failed fetch. In the smokes it is nearly
+  always `api.iconify.design`: the mocked fixture answers Iconify itself
+  (`answerIconLookups`), the smoke fixture does not. A re-run does not converge — #547's
+  `--last-failed` passed the four and failed a fifth on the same host — so a spec failing
+  only on it is unproven until CI on the PR runs it; "left to CI" is not evidence before
+  that run exists (#523: 84 lines).
 - **Stale Playwright build** — the mocked e2e rebuilds `.nuxt/e2e` from scratch every run, so it cannot
   serve a stale build; the smokes still build through `@nuxt/test-utils`, so if a UI change doesn't show
   in a smoke run, `rm -rf frontend/.nuxt/test`.

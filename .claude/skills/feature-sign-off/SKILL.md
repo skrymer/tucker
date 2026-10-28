@@ -396,8 +396,8 @@ losing a finding:
   never by mutating the source in place, which the TDD hook refuses. `mutation-test`
   carries both recipes. "It passes on write" never leaves behaviour unpinned, nor
   justifies deleting the test: the red removes the line the justification names (#432's
-  `v-if`), and a "framework does it" claim owes the same red. **Save every red as it
-  fails, to its own log** — a FIXED row cites it (#498 left one unsaved; #523, ten).
+  `v-if`), and a "framework does it" claim owes the same red. **`tee` each red to a log before
+  its GREEN** — a FIXED row cites it, and the TDD hook bars re-showing it after (#523: ten; #547: two).
   A fix that corrects a claim, or makes an exception to one, first `git grep`s its wording
   across `CONTEXT.md`, `docs/adr`, `docs/architecture.md`, KDoc **and the pack's own reasons**:
   #411 missed a hook's comment; #523's fix voided a premise another ACCEPT rested on.
