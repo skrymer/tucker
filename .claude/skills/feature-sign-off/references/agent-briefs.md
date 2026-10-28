@@ -402,7 +402,8 @@ report) is MISSING with "no evidence yet"; a later gate judges it against the ev
 Then once, at the end: behaviour this diff adds, removes or changes (a deleted
 `require` or refusal included) that no criterion asked for. Check
 it against whatever the issue rules out — an `## Out of scope` section where there
-is one, or a sentence saying a thing is not part of this — and quote the ruling it
+is one (match the heading ignoring case), in the issue and in the PRD its `## Parent`
+names, or a sentence saying a thing is not part of this — and quote the ruling it
 crosses. Name it; do not judge whether it is good.
 
 A ledger whose every row is MET is a complete and valued answer. Do not manufacture

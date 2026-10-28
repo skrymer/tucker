@@ -417,14 +417,14 @@ domain code and **~1.6s for anything a controller test covers**.
   to it, so the four logging frameworks it ships with are restated alongside
   `Intrinsics`; drop them and every deleted `log.warn(…)` comes back as a survivor
   no test should be asked to kill.
-- **Generated code is excluded structurally, not by name.** jOOQ generates Java and
-  everything hand-written is Kotlin, so `--mutableCodePaths` names only the Kotlin
-  output directory. Don't "simplify" that back to all of `classesDirs` — it silently
-  re-admits ~40 generated schema classes.
-- **`--threads 1` is pitest's default, restated on purpose.** Raising it is the
-  obvious way to speed a sweep up, and it corrupts the result: every test shares one
-  SQLite file, so parallel minions contend for it and report mutants killed by lock
-  timeouts rather than by assertions.
+- **Generated code is excluded structurally, not by name.** jOOQ generates Java and the
+  rest is Kotlin, so `--mutableCodePaths` names only the Kotlin output directory; all of
+  `classesDirs` would silently re-admit ~40 generated schema classes.
+- **`--threads 1` is pitest's default, restated on purpose**: every test shares one
+  SQLite file, and parallel minions report mutants killed by lock timeouts. That file
+  outlives the sweep, and a mutant that drops a refusal lets a non-`@Transactional` test
+  commit the row it expected refused (#547: one "Oats" row failed four Tag tests in the
+  next baseline). Delete `build/test-tucker.db` before every re-sweep.
 - **A `ConditionalsBoundaryMutator` survivor inside an `init` block is usually a
   real gap, not noise.** It is a `require(x > 0)` relaxed to `>= 0` — the invariant
   holds, but no test constructs the value exactly at the boundary.
