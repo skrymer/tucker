@@ -17,7 +17,13 @@ class AlcoholByVolumeTest {
         // 10.257 / 0.789 is 12.999999999999998 in floating point; the reopened form must not show that.
         val stored = AlcoholByVolume(13.0).gramsPer100g
 
-        assertEquals(13.0, AlcoholByVolume.ofGramsPer100g(stored).percent)
+        assertEquals(13.0, AlcoholByVolume.percentOf(stored))
+    }
+
+    @Test
+    fun `grams past what any drink holds still read back as an ABV, a Recipe conserving its alcohol`() {
+        // 154 g /100g: a bottle of 13% wine's 77 g of alcohol cooked down to 50 g (ADR 0040).
+        assertEquals(195.183777, AlcoholByVolume.percentOf(154.0), 1e-9)
     }
 
     @Test

@@ -22,7 +22,7 @@ test('a 13% wine created by its ABV reopens at 13%, and a glass of it logs its a
     [/protein \/100\s*g/i, '0.1'],
     [/carbs \/100\s*g/i, '2.6'],
     [/fat \/100\s*g/i, '0'],
-    [/alcohol \(abv %\)/i, '13'],
+    [/^alc % vol/i, '13'],
   ] as const) {
     await add.getByLabel(label).click()
     await page.keyboard.type(figure)
@@ -34,9 +34,9 @@ test('a 13% wine created by its ABV reopens at 13%, and a glass of it logs its a
   // Grams are stored unrounded, so the ABV it was written as comes back exact.
   await page.getByRole('button', { name: 'Edit Shiraz' }).click()
   const edit = page.getByRole('dialog', { name: 'Edit Shiraz' })
-  await expect(edit.getByRole('spinbutton', { name: /^Alcohol/ })).toHaveValue(
-    '13',
-  )
+  await expect(
+    edit.getByRole('spinbutton', { name: /^Alc % vol/ }),
+  ).toHaveValue('13')
   await expect(edit.getByRole('status')).toHaveText(
     '83 kcal · 0 g protein /100g',
   )

@@ -485,7 +485,7 @@ describe('AddFoodForm', () => {
     await user.type(screen.getByLabelText(/protein \/100\s*g/i), '0.1')
     await user.type(screen.getByLabelText(/carbs \/100\s*g/i), '2.6')
     await user.type(screen.getByLabelText(/fat \/100\s*g/i), '0')
-    await user.type(screen.getByLabelText(/alcohol \(abv %\)/i), '13')
+    await user.type(screen.getByLabelText(/^alc % vol/i), '13')
     await user.click(screen.getByRole('button', { name: /save food/i }))
 
     expect(onSubmit).toHaveBeenCalledWith({

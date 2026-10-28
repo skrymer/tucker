@@ -97,7 +97,7 @@ data class Nutrition(
          * fibre or alcohol contributing none. See CONTEXT.md — Food calories are derived from
          * macros, never user-entered.
          */
-        fun fromMacros(macros: Macros): Nutrition = with(macros) {
+        internal fun fromMacros(macros: Macros): Nutrition = with(macros) {
             Nutrition(
                 caloriesPer100g = KCAL_PER_GRAM_PROTEIN * proteinPer100g +
                     KCAL_PER_GRAM_CARBS * carbsPer100g +

@@ -24,10 +24,11 @@ value class AlcoholByVolume(val percent: Double) {
         private const val ABV_DECIMALS = 1e6
 
         /**
-         * The ABV a stored grams-per-100 g figure was written as, rounded off the float
-         * noise of the division so a 13% wine reopens as 13, not 12.999999999999998.
+         * The ABV a stored grams-per-100 g figure reads as, rounded off the float noise
+         * of the division so a 13% wine reopens as 13, not 12.999999999999998. Unchecked:
+         * a Recipe conserves its alcohol, so its grams can exceed what any drink holds.
          */
-        fun ofGramsPer100g(gramsPer100g: Double) =
-            AlcoholByVolume(Math.round(gramsPer100g / ETHANOL_GRAMS_PER_ML * ABV_DECIMALS) / ABV_DECIMALS)
+        fun percentOf(gramsPer100g: Double): Double =
+            Math.round(gramsPer100g / ETHANOL_GRAMS_PER_ML * ABV_DECIMALS) / ABV_DECIMALS
     }
 }

@@ -33,7 +33,7 @@ export const MACRO_LABELS: Record<FoodFigure, string> = {
   carbsPer100g: 'Carbs /100g',
   fatPer100g: 'Fat /100g',
   fibrePer100g: 'Fibre /100g',
-  alcoholAbv: 'Alcohol (ABV %)',
+  alcoholAbv: 'Alc % vol',
 }
 
 /**

@@ -92,7 +92,7 @@ interface MacroFigures {
  * Request to create a plain, manually-entered Food.
  *
  * The user supplies the macros, fibre and alcohol optionally; the backend derives
- * `caloriesPer100g` by the FSANZ factors (ADR 0040). See `Nutrition.fromMacros` and CONTEXT.md.
+ * `caloriesPer100g` by the FSANZ factors (ADR 0040). See `Macros.nutrition` and CONTEXT.md.
  */
 data class CreateFoodRequest(
     val name: String,
@@ -192,7 +192,7 @@ internal fun Food.toResponse(
     fatPer100g = nutrition.fatPer100g,
     fibrePer100g = nutrition.fibrePer100g,
     alcoholPer100g = nutrition.alcoholPer100g,
-    alcoholAbv = nutrition.alcoholPer100g?.let { AlcoholByVolume.ofGramsPer100g(it).percent },
+    alcoholAbv = nutrition.alcoholPer100g?.let(AlcoholByVolume::percentOf),
     cookedWeightG = (kind as? FoodKind.Recipe)?.cookedWeightG,
     ingredientCount = ingredientCount,
     referenceFoodId = referenceFoodId,

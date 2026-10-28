@@ -55,19 +55,24 @@ const wine = food({
 })
 
 describe('EditFoodSheet', () => {
-  it('opens on the ABV the Food’s alcohol was written as, and on a blank field where it states none', async () => {
+  it('opens on the ABV the Food’s alcohol was written as, its figures unmoved, and on a blank field where it states none', async () => {
     server.use(...foodCatalog({ foods: [wine, oats] }))
     const { rerender } = await renderSuspended(EditFoodSheet, {
       props: { food: wine },
     })
 
-    expect(screen.getByRole('spinbutton', { name: /^Alcohol/ })).toHaveValue(
+    expect(screen.getByRole('spinbutton', { name: /^Alc % vol/ })).toHaveValue(
       '13',
+    )
+    expect(screen.getByRole('status')).toHaveTextContent(
+      /^83 kcal · 0 g protein \/100g$/,
     )
 
     await rerender({ food: oats })
 
-    expect(screen.getByRole('spinbutton', { name: /^Alcohol/ })).toHaveValue('')
+    expect(screen.getByRole('spinbutton', { name: /^Alc % vol/ })).toHaveValue(
+      '',
+    )
   })
 
   it('opens on the Food, its name and macros ready to correct', async () => {
@@ -159,7 +164,7 @@ describe('EditFoodSheet', () => {
     })
     const user = userEvent.setup()
 
-    await user.type(screen.getByRole('spinbutton', { name: /^Alcohol/ }), '5')
+    await user.type(screen.getByRole('spinbutton', { name: /^Alc % vol/ }), '5')
     await user.tab()
     await user.click(screen.getByRole('button', { name: 'Save changes' }))
 
@@ -272,7 +277,7 @@ describe('EditFoodSheet', () => {
     await renderSuspended(EditFoodSheet, { props: { food: unstated } })
     const user = userEvent.setup()
 
-    const alcohol = screen.getByRole('spinbutton', { name: /^Alcohol/ })
+    const alcohol = screen.getByRole('spinbutton', { name: /^Alc % vol/ })
     await user.type(alcohol, '13')
 
     expect(alcohol).toHaveFocus()
@@ -292,19 +297,10 @@ describe('EditFoodSheet', () => {
     await renderSuspended(EditFoodSheet, { props: { food: unstated } })
     const user = userEvent.setup()
 
-    await user.type(screen.getByRole('spinbutton', { name: /^Alcohol/ }), '.')
+    await user.type(screen.getByRole('spinbutton', { name: /^Alc % vol/ }), '.')
 
     expect(screen.getByRole('status')).toHaveTextContent(
       /^11 kcal · 0 g protein \/100g$/,
-    )
-  })
-
-  it('opens a 13% wine on its own figures, its alcohol counted and nothing shown as moved', async () => {
-    server.use(...foodCatalog({ foods: [wine] }))
-    await renderSuspended(EditFoodSheet, { props: { food: wine } })
-
-    expect(screen.getByRole('status')).toHaveTextContent(
-      /^83 kcal · 0 g protein \/100g$/,
     )
   })
 
