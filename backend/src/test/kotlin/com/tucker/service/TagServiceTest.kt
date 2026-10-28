@@ -2,7 +2,7 @@ package com.tucker.service
 
 import com.tucker.api.NotFoundException
 import com.tucker.domain.Food
-import com.tucker.domain.Nutrition
+import com.tucker.domain.Macros
 import com.tucker.domain.Tag
 import com.tucker.domain.TagName
 import com.tucker.persistence.FoodRepository
@@ -26,7 +26,7 @@ class TagServiceTest {
     @Autowired lateinit var foods: FoodRepository
 
     private fun food(name: String, vararg tagIds: Long): Food = foods.insert(
-        Food.plain(foods.nextId(), name, null, Nutrition.fromMacros(10.0, 10.0, 1.0)).retagged(tagIds.toList()),
+        Food.plain(foods.nextId(), name, null, Macros(10.0, 10.0, 1.0).nutrition()).retagged(tagIds.toList()),
     )
 
     @Test

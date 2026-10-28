@@ -476,6 +476,28 @@ describe('AddFoodForm', () => {
     })
   })
 
+  it('saves a drink’s alcohol as the ABV read off its bottle', async () => {
+    const onSubmit = vi.fn()
+    await renderSuspended(AddFoodForm, { props: { onSubmit } })
+    const user = userEvent.setup()
+
+    await user.type(screen.getByLabelText(/^name$/i), 'Shiraz')
+    await user.type(screen.getByLabelText(/protein \/100\s*g/i), '0.1')
+    await user.type(screen.getByLabelText(/carbs \/100\s*g/i), '2.6')
+    await user.type(screen.getByLabelText(/fat \/100\s*g/i), '0')
+    await user.type(screen.getByLabelText(/^alc % vol/i), '13')
+    await user.click(screen.getByRole('button', { name: /save food/i }))
+
+    expect(onSubmit).toHaveBeenCalledWith({
+      name: 'Shiraz',
+      proteinPer100g: 0.1,
+      carbsPer100g: 2.6,
+      fatPer100g: 0,
+      alcoholAbv: 13,
+      tagIds: [],
+    })
+  })
+
   it('saves the Food carrying the Tags picked for it', async () => {
     server.use(
       ...foodCatalog({

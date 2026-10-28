@@ -34,6 +34,8 @@ export function food(
     carbsPer100g: 0,
     fatPer100g: 0,
     fibrePer100g: null,
+    alcoholPer100g: null,
+    alcoholAbv: null,
     cookedWeightG: null,
     ingredientCount: null,
     referenceFoodId: null,

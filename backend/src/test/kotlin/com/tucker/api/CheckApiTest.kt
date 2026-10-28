@@ -4,7 +4,7 @@ import com.tucker.domain.Food
 import com.tucker.domain.FoodCandidate
 import com.tucker.domain.IntakeTargets
 import com.tucker.domain.Maintenance
-import com.tucker.domain.Nutrition
+import com.tucker.domain.Macros
 import com.tucker.domain.ProviderCapability
 import com.tucker.domain.ProviderLookup
 import com.tucker.domain.WeeklyReview
@@ -326,7 +326,7 @@ class CheckApiTest {
                 id = foods.nextId(),
                 name = "My skyr",
                 barcode = "5701234567890",
-                nutrition = Nutrition.fromMacros(proteinPer100g = 10.0, carbsPer100g = 4.0, fatPer100g = 0.2),
+                nutrition = Macros(proteinPer100g = 10.0, carbsPer100g = 4.0, fatPer100g = 0.2).nutrition(),
             ),
         )
 

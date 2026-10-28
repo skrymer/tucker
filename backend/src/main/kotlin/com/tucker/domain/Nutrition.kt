@@ -16,9 +16,9 @@ data class MacroEnergyShares(
  * Nutrition values per 100 g of a Food. A value object: immutable, compared by
  * value, and able to scale itself to an actual weight.
  *
- * Calories and protein are always present; carbs, fat and fibre are stored when a
- * source provides them but are not targeted (see CONTEXT.md). A null fibre is
- * *not stated*, which is not zero (ADR 0040).
+ * Calories and protein are always present; carbs, fat, fibre and alcohol are stored
+ * when a source provides them but are not targeted (see CONTEXT.md). A null fibre or
+ * alcohol is *not stated*, which is not zero (ADR 0040).
  */
 data class Nutrition(
     val caloriesPer100g: Double,
@@ -26,6 +26,7 @@ data class Nutrition(
     val carbsPer100g: Double?,
     val fatPer100g: Double?,
     val fibrePer100g: Double? = null,
+    val alcoholPer100g: Double? = null,
 ) {
     init {
         require(caloriesPer100g >= 0) { "caloriesPer100g must be >= 0, was $caloriesPer100g" }
@@ -33,6 +34,7 @@ data class Nutrition(
         require(carbsPer100g == null || carbsPer100g >= 0) { "carbsPer100g must be >= 0" }
         require(fatPer100g == null || fatPer100g >= 0) { "fatPer100g must be >= 0" }
         require(fibrePer100g == null || fibrePer100g >= 0) { "fibrePer100g must be >= 0" }
+        require(alcoholPer100g == null || alcoholPer100g >= 0) { "alcoholPer100g must be >= 0" }
     }
 
     /**
@@ -87,27 +89,27 @@ data class Nutrition(
         private const val KCAL_PER_GRAM_CARBS = 4.0
         private const val KCAL_PER_GRAM_FAT = 9.0
         private const val KCAL_PER_GRAM_FIBRE = 2.0
+        private const val KCAL_PER_GRAM_ALCOHOL = 7.0
 
         /**
          * Build a [Nutrition] from its macros, computing calories per 100g via
-         * `4 × protein + 4 × carbs + 9 × fat + 2 × fibre`, an unstated fibre
-         * contributing none. See CONTEXT.md — Food calories are derived from
+         * `4 × protein + 4 × carbs + 9 × fat + 2 × fibre + 7 × alcohol`, an unstated
+         * fibre or alcohol contributing none. See CONTEXT.md — Food calories are derived from
          * macros, never user-entered.
          */
-        fun fromMacros(
-            proteinPer100g: Double,
-            carbsPer100g: Double,
-            fatPer100g: Double,
-            fibrePer100g: Double? = null,
-        ): Nutrition = Nutrition(
-            caloriesPer100g = KCAL_PER_GRAM_PROTEIN * proteinPer100g +
-                KCAL_PER_GRAM_CARBS * carbsPer100g +
-                KCAL_PER_GRAM_FAT * fatPer100g +
-                KCAL_PER_GRAM_FIBRE * (fibrePer100g ?: 0.0),
-            proteinPer100g = proteinPer100g,
-            carbsPer100g = carbsPer100g,
-            fatPer100g = fatPer100g,
-            fibrePer100g = fibrePer100g,
-        )
+        internal fun fromMacros(macros: Macros): Nutrition = with(macros) {
+            Nutrition(
+                caloriesPer100g = KCAL_PER_GRAM_PROTEIN * proteinPer100g +
+                    KCAL_PER_GRAM_CARBS * carbsPer100g +
+                    KCAL_PER_GRAM_FAT * fatPer100g +
+                    KCAL_PER_GRAM_FIBRE * (fibrePer100g ?: 0.0) +
+                    KCAL_PER_GRAM_ALCOHOL * (alcoholPer100g ?: 0.0),
+                proteinPer100g = proteinPer100g,
+                carbsPer100g = carbsPer100g,
+                fatPer100g = fatPer100g,
+                fibrePer100g = fibrePer100g,
+                alcoholPer100g = alcoholPer100g,
+            )
+        }
     }
 }

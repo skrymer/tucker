@@ -100,8 +100,14 @@ export function tagsOnOffer(foods: FoodResponse[]): FoodResponse['tags'] {
   })
 }
 
-/** A Food's figures as typed, before they are saved; fibre absent where not stated. */
-export type TypedMacros = Record<Macro, number> & { fibrePer100g?: number }
+/** A Food's figures as typed, before they are saved; fibre and alcohol absent where not stated. */
+export type TypedMacros = Record<Macro, number> & {
+  fibrePer100g?: number
+  alcoholAbv?: number
+}
+
+/** Ethanol's density, the drink taken as 1 g/ml: the server's ABV-to-grams factor (ADR 0040). */
+const ETHANOL_GRAMS_PER_ML = 0.789
 
 /**
  * A Food's calories per 100 g from macros not yet saved, by the factors the
@@ -113,6 +119,7 @@ export function previewCalories(macros: TypedMacros): number {
     4 * macros.proteinPer100g +
     4 * macros.carbsPer100g +
     9 * macros.fatPer100g +
-    2 * (macros.fibrePer100g ?? 0)
+    2 * (macros.fibrePer100g ?? 0) +
+    7 * ETHANOL_GRAMS_PER_ML * (macros.alcoholAbv ?? 0)
   )
 }

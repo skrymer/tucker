@@ -58,6 +58,23 @@ describe('foodSchema', () => {
     expect(refusals({ ...filled, fibrePer100g: null })).toEqual([])
   })
 
+  it('refuses a negative ABV, and nothing else about it', () => {
+    expect(refusals({ ...filled, alcoholAbv: -0.1 })).toEqual([
+      'alcoholAbv: Alcohol can’t be negative',
+    ])
+  })
+
+  it('accepts an ABV of exactly 0 and exactly 100, the two ends of its range', () => {
+    expect(refusals({ ...filled, alcoholAbv: 0 })).toEqual([])
+    expect(refusals({ ...filled, alcoholAbv: 100 })).toEqual([])
+  })
+
+  it('refuses an ABV above 100 percent, and nothing else about it', () => {
+    expect(refusals({ ...filled, alcoholAbv: 100.1 })).toEqual([
+      'alcoholAbv: ABV can’t be over 100%',
+    ])
+  })
+
   it('judges a blank name by what the server trims, not by what JavaScript trims', () => {
     expect(refusals({ ...filled, name: '\u001F' })).toEqual([
       'name: Enter a name for this food',
@@ -73,9 +90,10 @@ describe('foodSchema', () => {
 })
 
 describe('isOptionalFigure', () => {
-  it('holds fibre optional and every macro required', () => {
+  it('holds fibre and alcohol optional and every macro required', () => {
     expect(FOOD_FIGURES.filter((figure) => isOptionalFigure(figure))).toEqual([
       'fibrePer100g',
+      'alcoholAbv',
     ])
   })
 })

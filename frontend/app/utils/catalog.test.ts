@@ -191,4 +191,16 @@ describe('previewing a Food’s calories from its macros', () => {
       }),
     ).toBeCloseTo(246.1, 9)
   })
+
+  it('counts alcohol written as ABV at 7 kcal a gram, so a 13% wine reads about 83 kcal', () => {
+    // 13 × 0.789 = 10.257 g; 4 × 0.1 + 4 × 2.6 + 7 × 10.257 = 82.599 (ADR 0040)
+    expect(
+      previewCalories({
+        proteinPer100g: 0.1,
+        carbsPer100g: 2.6,
+        fatPer100g: 0,
+        alcoholAbv: 13,
+      }),
+    ).toBeCloseTo(82.599, 9)
+  })
 })

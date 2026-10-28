@@ -37,6 +37,7 @@ function useCorrectionDraft() {
     carbsPer100g: undefined as number | undefined,
     fatPer100g: undefined as number | undefined,
     fibrePer100g: undefined as number | undefined,
+    alcoholAbv: undefined as number | undefined,
   })
   const tags = ref<components['schemas']['FoodTagResponse'][]>([])
   onEachFood((food) => {
@@ -126,6 +127,7 @@ function correctionOf(): components['schemas']['CorrectFoodRequest'] {
     carbsPer100g: draft.carbsPer100g!,
     fatPer100g: draft.fatPer100g!,
     fibrePer100g: draft.fibrePer100g,
+    alcoholAbv: draft.alcoholAbv,
     tagIds: tags.value.map((tag) => tag.id),
   }
 }

@@ -38,6 +38,7 @@ function seedOf(initial: typeof props.initial) {
     carbsPer100g: initial?.carbsPer100g,
     fatPer100g: initial?.fatPer100g,
     fibrePer100g: undefined as number | undefined,
+    alcoholAbv: undefined as number | undefined,
   }
 }
 type Draft = ReturnType<typeof seedOf>
@@ -57,6 +58,7 @@ function useFoodDraft() {
     carbsPer100g: false,
     fatPer100g: false,
     fibrePer100g: false,
+    alcoholAbv: false,
   })
   function markTouched(field: keyof typeof touched) {
     touched[field] = true
@@ -109,6 +111,7 @@ function onSubmit() {
     carbsPer100g: state.carbsPer100g!,
     fatPer100g: state.fatPer100g!,
     fibrePer100g: state.fibrePer100g,
+    alcoholAbv: state.alcoholAbv,
     tagIds: tags.value.map((tag) => tag.id),
   })
 }
