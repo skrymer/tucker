@@ -32,6 +32,11 @@ class AlcoholByVolumeTest {
     }
 
     @Test
+    fun `pure alcohol, exactly 100 percent, is accepted`() {
+        assertEquals(78.9, AlcoholByVolume(100.0).gramsPer100g, 1e-9)
+    }
+
+    @Test
     fun `an ABV above 100 is refused`() {
         assertThrows<IllegalArgumentException> { AlcoholByVolume(100.1) }
     }

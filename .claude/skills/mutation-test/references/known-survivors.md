@@ -1818,6 +1818,23 @@ carbs and fat setters, the `isEmpty()` returns). New:
   `toResponse`'s `fibrePer100g` to `0.0` fails three tests in `ApiIntegrationTest` and
   `FoodCorrectionApiTest`.
 
+### Alcohol on a Food, entered as ABV (#547) — frontend 197 of 217, backend 168 of 183
+
+No new real gap left. 19 frontend and 12 backend survivors are standing verdicts above
+(`EditFoodSheet`'s initial values and `props.food?.` chains, `AddFoodForm`'s `touched`,
+`creatingTag` and `if (!next)`, `catalog.ts`'s `fold` and equal-name branch, the
+`FoodResponse` accessors, `applyFrom`'s carbs and fat setters, the `isEmpty()` returns).
+`AlcoholByVolume`'s `percent <= 100` → `< 100` was a real gap, now killed by "pure alcohol,
+exactly 100 percent, is accepted". New:
+
+- **`AddFoodForm.vue`'s `touched.alcoholAbv: false` → `true` — equivalent**, for the
+  fibre key's reason: nothing reads it. The seed mirror loops over `MACROS`, and `seedOf`
+  never supplies alcohol.
+- **`FoodResponse.getAlcoholPer100g` / `getAlcoholAbv` → 0 (pitest) — false survivors**:
+  `toResponse`'s two alcohol fields forced to `0.0` by hand fail three tests
+  (`ApiIntegrationTest`'s wine, `FoodAlcoholApiTest`, `FoodCorrectionApiTest`'s alcohol
+  re-roll).
+
 ### Noise removed at the source
 
 Four `getLog()` companion accessors (`MartijndwarsWebPushSender`, `RecordingWebPushSender`,

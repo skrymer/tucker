@@ -5,7 +5,7 @@ package com.tucker.domain
  * written and read, never how it is kept: a Food stores grams per 100 g (ADR 0040).
  */
 @JvmInline
-value class AlcoholByVolume(val percent: Double) {
+value class AlcoholByVolume(private val percent: Double) {
     init {
         require(percent >= 0) { "ABV must be >= 0, was $percent" }
         require(percent <= MAX_PERCENT) { "ABV must be <= 100, was $percent" }
