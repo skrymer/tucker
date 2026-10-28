@@ -1808,8 +1808,6 @@ No new real gap. 16 frontend and 12 backend survivors are standing verdicts abov
 `catalog.ts`'s `fold` and equal-name branch, the `FoodResponse` accessors, `applyFrom`'s
 carbs and fat setters, the `isEmpty()` returns). New:
 
-- **`AddFoodForm.vue`'s `touched.fibrePer100g: false` → `true` — equivalent**: nothing
-  reads it. The seed mirror loops over `MACROS`, and `seedOf` never supplies fibre.
 - **`EditFoodSheet.vue`'s `blankOf` body → `{}` — equivalent**: a macro's blank becomes
   `undefined` rather than `NaN`, and every reader treats the two alike —
   `complete`'s `Number.isFinite` is false for both, and `after` and `macrosMoved` sit
@@ -1827,13 +1825,37 @@ No new real gap left. 19 frontend and 12 backend survivors are standing verdicts
 `AlcoholByVolume`'s `percent <= 100` → `< 100` was a real gap, now killed by "pure alcohol,
 exactly 100 percent, is accepted". New:
 
-- **`AddFoodForm.vue`'s `touched.alcoholAbv: false` → `true` — equivalent**, for the
-  fibre key's reason: nothing reads it. The seed mirror loops over `MACROS`, and `seedOf`
-  never supplies alcohol.
 - **`FoodResponse.getAlcoholPer100g` / `getAlcoholAbv` → 0 (pitest) — false survivors**:
   `toResponse`'s two alcohol fields forced to `0.0` by hand fail three tests
   (`ApiIntegrationTest`'s wine, `FoodAlcoholApiTest`, `FoodCorrectionApiTest`'s alcohol
   re-roll).
+
+### A scan carries fibre and alcohol (#548) — frontend 108 of 134, backend 203 of 236
+
+The `touched.fibrePer100g` / `touched.alcoholAbv` `false` → `true` equivalents #546 and
+#547 recorded are retired: the seed mirror now loops over `FOOD_FIGURES` and `seedOf`
+reads both from `initial`, so both mutants die. Every other survivor is a standing verdict
+above — the `AddSheet.vue` look-up entries for the code #454 moved into `FoodBuilder.vue`
+unchanged, `AddFoodForm`'s `touched` / `if (!next)` / `creatingTag`, the
+`OpenFoodFactsProvider` pre-warm, retry-cap, budget-edge and log entries (lines shifted,
+code unmoved), `requestFactory`, and the `FoodResponse` accessors. New:
+
+- **`OpenFoodFactsProvider.statedOrNull`'s `onFailure` negated — real gap, closed**: the
+  figure is still dropped, but no WARN is logged. Log-only, as `readCandidate`'s, yet #548's
+  criterion says an out-of-range figure "is logged", so `logs an alcohol_100g it leaves not
+  stated` and `logs a fiber_100g it leaves not stated` pin it through a Logback
+  `ListAppender`.
+- **`FoodBuilder.vue`'s `result.candidate` → `true` (`branchFor`) — equivalent**: reached
+  only once `EXISTING && food` failed, which leaves a `CANDIDATE` body, and that always
+  carries `candidate`.
+- **`FoodBuilder.vue`'s `current.kind === 'existing'` → `true` — equivalent**: the other
+  arms emit `found(undefined)`, as falsy as `null` for `AddSheet`'s `v-if="existingFood"`.
+- **`FoodBuilder.vue`'s `!open` → `true` — equivalent**: adds a `cancel()` on opening,
+  when nothing is in flight (the close cancelled it, and `AddSheet` re-keys the builder per
+  open). The close path, and its standing real gap, are unchanged.
+- **`FoodBuilder.vue`'s `branch.value.kind === 'candidate'` → `true` (`useFormSeed`) —
+  equivalent**: a non-candidate branch yields `undefined` rather than `null`, and every
+  reader (`if (!c)`, `?.… ?? undefined`) treats the two alike.
 
 ### Noise removed at the source
 

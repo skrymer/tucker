@@ -1,7 +1,12 @@
 package com.tucker.provider
 
+import ch.qos.logback.classic.Level
+import ch.qos.logback.classic.Logger
+import ch.qos.logback.classic.spi.ILoggingEvent
+import ch.qos.logback.core.read.ListAppender
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import org.junit.jupiter.api.Test
+import org.slf4j.LoggerFactory
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
@@ -18,6 +23,19 @@ class OpenFoodFactsMappingTest {
 
     private fun mapFixture(barcode: String, json: String) =
         OpenFoodFactsProvider.toCandidate(barcode, mapper.readValue(json, OffResponse::class.java))
+
+    /** The WARN lines the provider logs while [block] runs. */
+    private fun warningsWhile(block: () -> Unit): List<String> {
+        val logger = LoggerFactory.getLogger(OpenFoodFactsProvider::class.java) as Logger
+        val appender = ListAppender<ILoggingEvent>().apply { start() }
+        logger.addAppender(appender)
+        try {
+            block()
+        } finally {
+            logger.detachAppender(appender)
+        }
+        return appender.list.filter { it.level == Level.WARN }.map { it.formattedMessage }
+    }
 
     @Test
     fun `maps a full OFF product to a per-100g candidate with the OFF stated energy`() {
@@ -223,6 +241,46 @@ class OpenFoodFactsMappingTest {
         assertNotNull(candidate)
         assertNull(candidate.fibrePer100g)
         assertEquals(19.4285714285714, candidate.proteinPer100g)
+    }
+
+    @Test
+    fun `logs an alcohol_100g it leaves not stated`() {
+        val warnings = warningsWhile {
+            mapFixture(
+                "8712000900045",
+                """
+                {
+                  "status": 1,
+                  "product": {
+                    "product_name": "Heineken Beer",
+                    "nutriments": { "alcohol_100g": 150, "proteins_100g": 0 }
+                  }
+                }
+                """.trimIndent(),
+            )
+        }
+
+        assertEquals(1, warnings.count { "alcohol_100g 150.0 for barcode 8712000900045" in it })
+    }
+
+    @Test
+    fun `logs a fiber_100g it leaves not stated`() {
+        val warnings = warningsWhile {
+            mapFixture(
+                "9334169000566",
+                """
+                {
+                  "status": 1,
+                  "product": {
+                    "product_name": "HIGH PROTEIN LOW CARB + FIBRE WRAPS",
+                    "nutriments": { "fiber_100g": -2.5, "proteins_100g": 19.4 }
+                  }
+                }
+                """.trimIndent(),
+            )
+        }
+
+        assertEquals(1, warnings.count { "fiber_100g -2.5 for barcode 9334169000566" in it })
     }
 
     @Test
