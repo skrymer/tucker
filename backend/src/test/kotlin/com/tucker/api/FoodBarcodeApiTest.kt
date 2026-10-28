@@ -82,6 +82,33 @@ class FoodBarcodeApiTest {
     }
 
     @Test
+    fun `a candidate carries its fibre, and its alcohol both in grams and as the ABV the form reads`() {
+        whenever(openFoodFacts.capabilities).thenReturn(setOf(ProviderCapability.BARCODE_LOOKUP))
+        whenever(openFoodFacts.lookupByBarcode("8712000900045")).thenReturn(
+            ProviderLookup.Found(
+                FoodCandidate(
+                    name = "Heineken Beer",
+                    barcode = "8712000900045",
+                    proteinPer100g = 0.0,
+                    carbsPer100g = 3.2,
+                    fatPer100g = 0.0,
+                    statedEnergyKcalPer100g = 42.0,
+                    source = "Open Food Facts",
+                    fibrePer100g = 0.4,
+                    alcoholPer100g = 3.945,
+                ),
+            ),
+        )
+
+        mockMvc.get("/api/foods/barcode/8712000900045").andExpect {
+            status { isOk() }
+            jsonPath("$.candidate.fibrePer100g") { value(0.4) }
+            jsonPath("$.candidate.alcoholPer100g") { value(3.945) }
+            jsonPath("$.candidate.alcoholAbv") { value(5.0) }
+        }
+    }
+
+    @Test
     fun `a second look-up of the same barcode is served from the cache without a second Provider call`() {
         whenever(openFoodFacts.capabilities).thenReturn(setOf(ProviderCapability.BARCODE_LOOKUP))
         whenever(openFoodFacts.lookupByBarcode("5702222222222")).thenReturn(

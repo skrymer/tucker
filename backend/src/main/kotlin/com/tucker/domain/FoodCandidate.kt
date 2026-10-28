@@ -19,6 +19,10 @@ data class FoodCandidate(
     val fatPer100g: Double?,
     val statedEnergyKcalPer100g: Double?,
     val source: String,
+    /** Null where the Provider states none, which is not zero (ADR 0040). */
+    val fibrePer100g: Double? = null,
+    /** Grams per 100 g, never ABV; null where the Provider states none. */
+    val alcoholPer100g: Double? = null,
 ) {
     /**
      * The Atwater nutrition this candidate implies, or `null` when a macro is
@@ -35,8 +39,12 @@ data class FoodCandidate(
 
     init {
         require(name.isNotBlank()) { "Food Candidate name must not be blank" }
-        require(proteinPer100g == null || proteinPer100g >= 0) { "proteinPer100g must be >= 0" }
-        require(carbsPer100g == null || carbsPer100g >= 0) { "carbsPer100g must be >= 0" }
-        require(fatPer100g == null || fatPer100g >= 0) { "fatPer100g must be >= 0" }
+        requireNonNegativeWhereStated(
+            "proteinPer100g" to proteinPer100g,
+            "carbsPer100g" to carbsPer100g,
+            "fatPer100g" to fatPer100g,
+            "fibrePer100g" to fibrePer100g,
+            "alcoholPer100g" to alcoholPer100g,
+        )
     }
 }

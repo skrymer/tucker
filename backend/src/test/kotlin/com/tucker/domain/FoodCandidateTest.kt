@@ -66,6 +66,16 @@ class FoodCandidateTest {
     }
 
     @Test
+    fun `rejects a negative fibre`() {
+        assertThrows<IllegalArgumentException> { candidate().copy(fibrePer100g = -1.0) }
+    }
+
+    @Test
+    fun `rejects a negative alcohol`() {
+        assertThrows<IllegalArgumentException> { candidate().copy(alcoholPer100g = -1.0) }
+    }
+
+    @Test
     fun `rejects a blank name`() {
         assertThrows<IllegalArgumentException> { candidate(name = " ") }
     }

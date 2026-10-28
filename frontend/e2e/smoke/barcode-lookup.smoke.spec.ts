@@ -103,6 +103,63 @@ test('typed known barcode resolves to a candidate and saves a Food', async ({
   }
 })
 
+// Two more recorded payloads: the wrap's fibre, and Heineken's alcohol_100g,
+// which OFF states as % vol and Tucker keeps as 5 × 0.789 g per 100 g.
+const SCANNED_FIGURES = [
+  {
+    barcode: '9334169000566',
+    name: 'HIGH PROTEIN LOW CARB + FIBRE WRAPS',
+    field: /fibre \/100\s*g/i,
+    shown: '16.714',
+    saved: { fibrePer100g: 16.7142857142857 },
+  },
+  {
+    barcode: '8712000900045',
+    name: 'Heineken Beer',
+    field: /alc % vol/i,
+    shown: '5',
+    saved: { alcoholPer100g: 3.945, alcoholAbv: 5 },
+  },
+]
+
+for (const product of SCANNED_FIGURES) {
+  test(`a looked-up ${product.name} prefills and saves what OFF states beyond the macros`, async ({
+    page,
+    goto,
+    request,
+  }) => {
+    await deleteFoodByBarcode(request, product.barcode)
+
+    let createdId: number | undefined
+    try {
+      await goto('/foods', { waitUntil: 'hydration' })
+      await page.getByRole('button', { name: 'Add food' }).click()
+      const sheet = page.getByRole('dialog', { name: /add food/i })
+
+      await sheet.getByLabel(/barcode/i).fill(product.barcode)
+      await sheet.getByRole('button', { name: /look up/i }).click()
+
+      await expect(sheet.getByLabel(/^name$/i)).toHaveValue(product.name)
+      await expect(sheet.getByLabel(product.field)).toHaveValue(product.shown)
+      await sheet.getByRole('button', { name: /save food/i }).click()
+      await expect(sheet).toBeHidden()
+
+      const foods = (await (await request.get(`${API}/foods`)).json()) as Array<
+        Record<string, unknown> & { id: number; barcode?: string }
+      >
+      const created = foods.find((f) => f.barcode === product.barcode)
+      expect(created, 'created Food should carry the barcode').toBeDefined()
+      createdId = created!.id
+      for (const [figure, value] of Object.entries(product.saved))
+        expect(created![figure] as number).toBeCloseTo(value, 3)
+    } finally {
+      if (createdId !== undefined) {
+        await request.delete(`${API}/foods/${createdId}`)
+      }
+    }
+  })
+}
+
 test('typed unknown barcode drops to manual entry carrying the barcode', async ({
   page,
   goto,

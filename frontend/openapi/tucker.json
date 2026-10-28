@@ -5732,6 +5732,21 @@
           },
           "source": {
             "type": "string"
+          },
+          "fibrePer100g": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "alcoholPer100g": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "alcoholAbv": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
           }
         }
       },

@@ -128,6 +128,8 @@ data class CorrectFoodRequest(
  * source for attribution, and the barcode. No calories — they are derived by the
  * FSANZ factors (ADR 0040) when the user confirms the Food via `POST /api/foods`.
  */
+// The wire mirror of the domain FoodCandidate on purpose: the domain stays free of the wire.
+/* jscpd:ignore-start */
 data class FoodCandidateResponse(
     val name: String,
     val barcode: String,
@@ -136,7 +138,12 @@ data class FoodCandidateResponse(
     val fatPer100g: Double?,
     val statedEnergyKcalPer100g: Double?,
     val source: String,
+    val fibrePer100g: Double?,
+    val alcoholPer100g: Double?,
+    /** The same alcohol as the ABV the form prefills; null exactly when [alcoholPer100g] is. */
+    val alcoholAbv: Double?,
 )
+/* jscpd:ignore-end */
 
 /**
  * Which arm of a barcode lookup came back — the value the client branches on.
@@ -166,6 +173,9 @@ internal fun FoodCandidate.toResponse() = FoodCandidateResponse(
     fatPer100g = fatPer100g,
     statedEnergyKcalPer100g = statedEnergyKcalPer100g,
     source = source,
+    fibrePer100g = fibrePer100g,
+    alcoholPer100g = alcoholPer100g,
+    alcoholAbv = alcoholPer100g?.let(AlcoholByVolume::percentOf),
 )
 
 private fun FoodKind.onTheWire() = when (this) {

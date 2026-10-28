@@ -142,13 +142,9 @@ function useFormSeed() {
   const initial = computed(() => {
     const c = candidate.value
     if (!c) return { barcode: barcode.value.trim() || undefined }
-    return {
-      name: c.name,
-      barcode: c.barcode,
-      proteinPer100g: c.proteinPer100g ?? undefined,
-      carbsPer100g: c.carbsPer100g ?? undefined,
-      fatPer100g: c.fatPer100g ?? undefined,
-    }
+    const figures: Partial<Record<FoodFigure, number>> = {}
+    for (const figure of FOOD_FIGURES) figures[figure] = c[figure] ?? undefined
+    return { name: c.name, barcode: c.barcode, ...figures }
   })
   const statedEnergy = computed(
     () => candidate.value?.statedEnergyKcalPer100g ?? undefined,

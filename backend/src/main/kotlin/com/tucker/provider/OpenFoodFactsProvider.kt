@@ -2,9 +2,11 @@ package com.tucker.provider
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.fasterxml.jackson.annotation.JsonProperty
+import com.tucker.domain.AlcoholByVolume
 import com.tucker.domain.FoodCandidate
 import com.tucker.domain.NutritionProvider
 import com.tucker.domain.ProviderCapability
+import com.tucker.domain.requireNonNegativeWhereStated
 import com.tucker.domain.ProviderLookup
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
@@ -46,6 +48,9 @@ data class OffNutriments(
     @param:JsonProperty("carbohydrates_100g") val carbohydrates100g: Double?,
     @param:JsonProperty("fat_100g") val fat100g: Double?,
     @param:JsonProperty("energy-kcal_100g") val energyKcal100g: Double?,
+    @param:JsonProperty("fiber_100g") val fiber100g: Double? = null,
+    /** Percent by volume, whatever OFF's name for it says. */
+    @param:JsonProperty("alcohol_100g") val alcohol100g: Double? = null,
 )
 
 /**
@@ -341,8 +346,29 @@ class OpenFoodFactsProvider(
                     fatPer100g = n?.fat100g,
                     statedEnergyKcalPer100g = n?.energyKcal100g,
                     source = SOURCE,
+                    fibrePer100g = fibreGrams(barcode, n?.fiber100g),
+                    alcoholPer100g = alcoholGrams(barcode, n?.alcohol100g),
                 )
             }
+        }
+
+        private fun fibreGrams(barcode: String, fibre: Double?) =
+            statedOrNull(barcode, "fiber_100g", fibre) { it.also { requireNonNegativeWhereStated("fiber_100g" to it) } }
+
+        private fun alcoholGrams(barcode: String, abv: Double?) =
+            statedOrNull(barcode, "alcohol_100g", abv) { AlcoholByVolume(it).gramsPer100g }
+
+        /** An optional OFF figure in grams, or not stated when it is absent or the domain refuses it. */
+        private fun statedOrNull(barcode: String, field: String, raw: Double?, toGrams: (Double) -> Double): Double? {
+            if (raw == null) return null
+            return runCatching { toGrams(raw) }
+                .onFailure {
+                    log.warn(
+                        "Open Food Facts states {} {} for barcode {}; leaving it not stated",
+                        field, raw, barcode, it,
+                    )
+                }
+                .getOrNull()
         }
     }
 }
