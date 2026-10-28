@@ -1,5 +1,6 @@
 package com.tucker.api
 
+import com.tucker.domain.AlcoholByVolume
 import com.tucker.domain.BarcodeLookup
 import com.tucker.domain.Food
 import com.tucker.domain.FoodCandidate
@@ -39,6 +40,10 @@ data class FoodResponse(
     val fatPer100g: Double?,
     /** Dietary fibre per 100 g, or null where it is not stated — which is not zero (ADR 0040). */
     val fibrePer100g: Double?,
+    /** Alcohol in grams per 100 g, or null where it is not stated (ADR 0040). */
+    val alcoholPer100g: Double?,
+    /** The same alcohol as the ABV it is written and read as; null exactly when [alcoholPer100g] is. */
+    val alcoholAbv: Double?,
     val cookedWeightG: Double?,
     /**
      * How many ingredient lines a Recipe is composed of — the catalog's
@@ -63,26 +68,31 @@ data class FoodResponse(
 /** A Tag as a Food carries it: enough to draw a chip and to send the id back. */
 data class FoodTagResponse(val id: Long, val name: String)
 
-/** The figures a request supplies for a plain Food, fibre optional. */
+/**
+ * The figures a request supplies for a plain Food, fibre and alcohol optional. Alcohol
+ * arrives as the ABV a User reads off the bottle and is kept as grams (ADR 0040).
+ */
 interface MacroFigures {
     val proteinPer100g: Double
     val carbsPer100g: Double
     val fatPer100g: Double
     val fibrePer100g: Double?
+    val alcoholAbv: Double?
 
     fun macros() = Macros(
         proteinPer100g = proteinPer100g,
         carbsPer100g = carbsPer100g,
         fatPer100g = fatPer100g,
         fibrePer100g = fibrePer100g,
+        alcoholPer100g = alcoholAbv?.let { AlcoholByVolume(it).gramsPer100g },
     )
 }
 
 /**
  * Request to create a plain, manually-entered Food.
  *
- * The user supplies the macros, fibre optionally; the backend derives `caloriesPer100g`
- * by the FSANZ factors (ADR 0040). See `Nutrition.fromMacros` and CONTEXT.md.
+ * The user supplies the macros, fibre and alcohol optionally; the backend derives
+ * `caloriesPer100g` by the FSANZ factors (ADR 0040). See `Nutrition.fromMacros` and CONTEXT.md.
  */
 data class CreateFoodRequest(
     val name: String,
@@ -91,6 +101,7 @@ data class CreateFoodRequest(
     override val carbsPer100g: Double,
     override val fatPer100g: Double,
     override val fibrePer100g: Double?,
+    override val alcoholAbv: Double?,
     val tagIds: List<Long>,
 ) : MacroFigures
 
@@ -106,6 +117,7 @@ data class CorrectFoodRequest(
     override val carbsPer100g: Double,
     override val fatPer100g: Double,
     override val fibrePer100g: Double?,
+    override val alcoholAbv: Double?,
     val tagIds: List<Long>,
 ) : MacroFigures
 /* jscpd:ignore-end */
@@ -156,6 +168,11 @@ internal fun FoodCandidate.toResponse() = FoodCandidateResponse(
     source = source,
 )
 
+private fun FoodKind.onTheWire() = when (this) {
+    FoodKind.Plain -> FoodResponse.Kind.FOOD
+    is FoodKind.Recipe -> FoodResponse.Kind.RECIPE
+}
+
 /**
  * This Food on the wire. [tags] is required rather than defaulted: a Food's Tags live
  * in another table, so a caller that forgot them would report a tagged Food as untagged.
@@ -167,16 +184,15 @@ internal fun Food.toResponse(
 ) = FoodResponse(
     id = id,
     name = name,
-    kind = when (kind) {
-        FoodKind.Plain -> FoodResponse.Kind.FOOD
-        is FoodKind.Recipe -> FoodResponse.Kind.RECIPE
-    },
+    kind = kind.onTheWire(),
     barcode = barcode,
     caloriesPer100g = nutrition.caloriesPer100g,
     proteinPer100g = nutrition.proteinPer100g,
     carbsPer100g = nutrition.carbsPer100g,
     fatPer100g = nutrition.fatPer100g,
     fibrePer100g = nutrition.fibrePer100g,
+    alcoholPer100g = nutrition.alcoholPer100g,
+    alcoholAbv = nutrition.alcoholPer100g?.let { AlcoholByVolume.ofGramsPer100g(it).percent },
     cookedWeightG = (kind as? FoodKind.Recipe)?.cookedWeightG,
     ingredientCount = ingredientCount,
     referenceFoodId = referenceFoodId,

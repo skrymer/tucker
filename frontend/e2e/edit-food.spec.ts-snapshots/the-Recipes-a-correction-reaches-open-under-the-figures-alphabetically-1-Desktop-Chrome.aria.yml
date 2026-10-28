@@ -24,6 +24,11 @@
         - spinbutton "Fibre /100g"
         - button "Increment"
         - button "Decrement"
+    - text: Alcohol (ABV %) optional
+    - group:
+        - spinbutton "Alcohol (ABV %)"
+        - button "Increment"
+        - button "Decrement"
     - status: 427 kcal · 31 g protein /100g
     - button "Used in 14 recipes" [expanded]
     - list:

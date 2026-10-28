@@ -1,7 +1,7 @@
 package com.tucker.persistence
 
 import com.tucker.domain.Food
-import com.tucker.domain.Nutrition
+import com.tucker.domain.Macros
 import com.tucker.domain.User
 import com.tucker.jooq.Tables.TAG
 import com.tucker.security.WithTuckerUser
@@ -35,7 +35,7 @@ class FoodTagOwnershipTest {
             .values(theirTag.toInt(), someoneElse.toInt(), "breakfast")
             .execute()
         val oats = foods.insert(
-            Food.plain(foods.nextId(), "Rolled oats", null, Nutrition.fromMacros(13.0, 60.0, 7.0)),
+            Food.plain(foods.nextId(), "Rolled oats", null, Macros(13.0, 60.0, 7.0).nutrition()),
         )
 
         foods.update(oats.retagged(listOf(theirTag)))

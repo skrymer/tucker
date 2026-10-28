@@ -1,7 +1,7 @@
 package com.tucker.persistence
 
 import com.tucker.domain.Food
-import com.tucker.domain.Nutrition
+import com.tucker.domain.Macros
 import com.tucker.domain.Recipe
 import com.tucker.domain.RecipeIngredient
 import com.tucker.domain.Tag
@@ -39,7 +39,7 @@ class LinkTableOwnerPredicateTest {
     fun `retagging a Food removes its old links only through the owner`() {
         val snack = tags.insert(Tag(tags.nextId(), TagName("snack"))).id
         val oats = foods.insert(
-            Food.plain(foods.nextId(), "Rolled oats", null, Nutrition.fromMacros(13.0, 60.0, 7.0)),
+            Food.plain(foods.nextId(), "Rolled oats", null, Macros(13.0, 60.0, 7.0).nutrition()),
         )
 
         recorder.statements.clear()
@@ -50,7 +50,7 @@ class LinkTableOwnerPredicateTest {
 
     @Test
     fun `editing a Recipe removes its old ingredient lines only through the owner`() {
-        val oats = foods.insert(Food.plain(foods.nextId(), "Oats", null, Nutrition.fromMacros(16.9, 66.3, 6.9)))
+        val oats = foods.insert(Food.plain(foods.nextId(), "Oats", null, Macros(16.9, 66.3, 6.9).nutrition()))
         val porridge = recipes.insert(
             Recipe(recipes.nextId(), "Porridge", listOf(RecipeIngredient(oats, 80.0)), cookedWeightG = 300.0),
         )
@@ -65,7 +65,7 @@ class LinkTableOwnerPredicateTest {
     fun `merging a Tag moves its links only through the owner`() {
         val snack = tags.insert(Tag(tags.nextId(), TagName("snack"))).id
         val treats = tags.insert(Tag(tags.nextId(), TagName("treats"))).id
-        val biscuit = Food.plain(foods.nextId(), "Biscuit", null, Nutrition.fromMacros(6.0, 70.0, 20.0))
+        val biscuit = Food.plain(foods.nextId(), "Biscuit", null, Macros(6.0, 70.0, 20.0).nutrition())
         foods.insert(biscuit.retagged(listOf(treats)))
 
         recorder.statements.clear()

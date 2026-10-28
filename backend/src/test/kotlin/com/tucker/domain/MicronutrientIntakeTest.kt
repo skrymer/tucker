@@ -566,12 +566,12 @@ class MicronutrientIntakeTest {
             id = 1,
             name = "Lettuce",
             referenceFoodId = 42,
-            nutrition = Nutrition.fromMacros(proteinPer100g = 0.0, carbsPer100g = 2.5, fatPer100g = 0.0),
+            nutrition = Macros(proteinPer100g = 0.0, carbsPer100g = 2.5, fatPer100g = 0.0).nutrition(),
         )
         val oil = food(
             id = 2,
             name = "Olive oil",
-            nutrition = Nutrition.fromMacros(proteinPer100g = 0.0, carbsPer100g = 0.0, fatPer100g = 100.0),
+            nutrition = Macros(proteinPer100g = 0.0, carbsPer100g = 0.0, fatPer100g = 100.0).nutrition(),
         )
         val entries = listOf(
             weighed(day, lettuce, grams = 1000.0),
@@ -593,7 +593,7 @@ class MicronutrientIntakeTest {
         id: Long,
         name: String,
         referenceFoodId: Long? = null,
-        nutrition: Nutrition = Nutrition.fromMacros(proteinPer100g = 31.0, carbsPer100g = 0.0, fatPer100g = 3.6),
+        nutrition: Nutrition = Macros(proteinPer100g = 31.0, carbsPer100g = 0.0, fatPer100g = 3.6).nutrition(),
     ) = Food.plain(id = id, name = name, barcode = null, nutrition = nutrition)
         .copy(referenceFoodId = referenceFoodId)
 

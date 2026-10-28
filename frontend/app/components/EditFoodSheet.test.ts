@@ -42,7 +42,34 @@ const wrap = food({
   fibrePer100g: 16.8,
 })
 
+/** A 13% wine: 13 × 0.789 = 10.257 g alcohol; 4 × 0.1 + 4 × 2.6 + 7 × 10.257 = 82.599 kcal. */
+const wine = food({
+  id: 3,
+  name: 'Shiraz',
+  caloriesPer100g: 82.599,
+  proteinPer100g: 0.1,
+  carbsPer100g: 2.6,
+  fatPer100g: 0,
+  alcoholPer100g: 10.257,
+  alcoholAbv: 13,
+})
+
 describe('EditFoodSheet', () => {
+  it('opens on the ABV the Food’s alcohol was written as, and on a blank field where it states none', async () => {
+    server.use(...foodCatalog({ foods: [wine, oats] }))
+    const { rerender } = await renderSuspended(EditFoodSheet, {
+      props: { food: wine },
+    })
+
+    expect(screen.getByRole('spinbutton', { name: /^Alcohol/ })).toHaveValue(
+      '13',
+    )
+
+    await rerender({ food: oats })
+
+    expect(screen.getByRole('spinbutton', { name: /^Alcohol/ })).toHaveValue('')
+  })
+
   it('opens on the Food, its name and macros ready to correct', async () => {
     server.use(...foodCatalog({ foods: [oats] }))
 
@@ -122,6 +149,26 @@ describe('EditFoodSheet', () => {
     expect(
       shown.getByText('Rolled oast').parentElement?.nextElementSibling,
     ).toHaveTextContent('447 kcal · 31 g protein /100g')
+  })
+
+  it('saves the ABV the correction states, the catalog reading the calories its alcohol adds', async () => {
+    server.use(...foodCatalog({ foods: [oats] }))
+    const onClose = vi.fn()
+    await renderSuspended(besideCatalog(EditFoodSheet), {
+      props: { food: oats, onClose },
+    })
+    const user = userEvent.setup()
+
+    await user.type(screen.getByRole('spinbutton', { name: /^Alcohol/ }), '5')
+    await user.tab()
+    await user.click(screen.getByRole('button', { name: 'Save changes' }))
+
+    await vi.waitFor(() => expect(onClose).toHaveBeenCalledOnce())
+    const shown = await catalogOnceReread()
+    // 427 + 7 × 5 × 0.789 = 454.615 kcal, derived by the server.
+    expect(
+      shown.getByText('Rolled oast').parentElement?.nextElementSibling,
+    ).toHaveTextContent('455 kcal · 31 g protein /100g')
   })
 
   it('opens on the next Food it is handed, with none of the last one’s edits', async () => {
@@ -210,6 +257,54 @@ describe('EditFoodSheet', () => {
 
     expect(screen.getByRole('status')).toHaveTextContent(
       /^246 kcal · 19 g protein \/100g$/,
+    )
+  })
+
+  it('counts the alcohol as its ABV is typed, at 7 kcal a gram, before the field is left', async () => {
+    // The wine typed without its alcohol: 4 × 0.1 + 4 × 2.6 = 10.8 kcal.
+    const unstated = {
+      ...wine,
+      caloriesPer100g: 10.8,
+      alcoholPer100g: null,
+      alcoholAbv: null,
+    }
+    server.use(...foodCatalog({ foods: [unstated] }))
+    await renderSuspended(EditFoodSheet, { props: { food: unstated } })
+    const user = userEvent.setup()
+
+    const alcohol = screen.getByRole('spinbutton', { name: /^Alcohol/ })
+    await user.type(alcohol, '13')
+
+    expect(alcohol).toHaveFocus()
+    expect(screen.getByRole('status')).toHaveTextContent(
+      /^was 11 83 kcal · 0 g protein \/100g$/,
+    )
+  })
+
+  it('reads an ABV typed only as far as its decimal point as not stated yet', async () => {
+    const unstated = {
+      ...wine,
+      caloriesPer100g: 10.8,
+      alcoholPer100g: null,
+      alcoholAbv: null,
+    }
+    server.use(...foodCatalog({ foods: [unstated] }))
+    await renderSuspended(EditFoodSheet, { props: { food: unstated } })
+    const user = userEvent.setup()
+
+    await user.type(screen.getByRole('spinbutton', { name: /^Alcohol/ }), '.')
+
+    expect(screen.getByRole('status')).toHaveTextContent(
+      /^11 kcal · 0 g protein \/100g$/,
+    )
+  })
+
+  it('opens a 13% wine on its own figures, its alcohol counted and nothing shown as moved', async () => {
+    server.use(...foodCatalog({ foods: [wine] }))
+    await renderSuspended(EditFoodSheet, { props: { food: wine } })
+
+    expect(screen.getByRole('status')).toHaveTextContent(
+      /^83 kcal · 0 g protein \/100g$/,
     )
   })
 

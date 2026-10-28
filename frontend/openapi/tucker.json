@@ -4445,6 +4445,16 @@
             "format": "double",
             "nullable": true
           },
+          "alcoholPer100g": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "alcoholAbv": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
           "cookedWeightG": {
             "type": "number",
             "format": "double",
@@ -4775,6 +4785,11 @@
             "format": "double"
           },
           "fibrePer100g": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "alcoholAbv": {
             "type": "number",
             "format": "double",
             "nullable": true
@@ -5974,6 +5989,11 @@
             "format": "double"
           },
           "fibrePer100g": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "alcoholAbv": {
             "type": "number",
             "format": "double",
             "nullable": true

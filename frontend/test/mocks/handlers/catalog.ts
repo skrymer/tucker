@@ -58,18 +58,45 @@ function tagName(given: string): { name: string } | { refused: string } {
 type Row = Omit<FoodResponse, 'tags'> & { tagIds: number[] }
 type Macros = Pick<
   components['schemas']['CorrectFoodRequest'],
-  'proteinPer100g' | 'carbsPer100g' | 'fatPer100g' | 'fibrePer100g'
+  | 'proteinPer100g'
+  | 'carbsPer100g'
+  | 'fatPer100g'
+  | 'fibrePer100g'
+  | 'alcoholAbv'
 >
+
+/** Grams of alcohol per 100 g in a drink of [abv], as `AlcoholByVolume` converts it (ADR 0040). */
+const alcoholGramsOf = (abv: number) => abv * 0.789
 
 /**
  * A Food's calories per 100 g, as the server derives them (ADR 0040): an
- * unstated fibre counts for nothing.
+ * unstated fibre or alcohol counts for nothing.
  */
 const caloriesOf = (m: Macros) =>
   4 * m.proteinPer100g +
   4 * m.carbsPer100g +
   9 * m.fatPer100g +
-  2 * (m.fibrePer100g ?? 0)
+  2 * (m.fibrePer100g ?? 0) +
+  7 * alcoholGramsOf(m.alcoholAbv ?? 0)
+
+/**
+ * The alcohol a request states, as the server keeps and returns it: grams, and the
+ * ABV they were written as. A correction that leaves it out states none.
+ */
+const alcoholOf = (abv: number | null | undefined) => ({
+  alcoholPer100g: abv == null ? null : alcoholGramsOf(abv),
+  alcoholAbv: abv ?? null,
+})
+
+/**
+ * `AlcoholByVolume`'s refusal of [abv], or null. It is built from the request
+ * before anything else is checked, so it refuses first.
+ */
+function abvRefusal(abv: number | null | undefined): string | null {
+  if (abv == null) return null
+  if (abv < 0) return `ABV must be >= 0, was ${abv}`
+  return abv > 100 ? `ABV must be <= 100, was ${abv}` : null
+}
 
 /**
  * Why `Food.corrected` refuses correcting [row] to [name] and [macros], in its
@@ -277,11 +304,14 @@ export function foodCatalog({
     ),
     http.post('/api/foods', async ({ request, response }) => {
       const { tagIds, barcode, ...macros } = await request.json()
+      const abvRefused = abvRefusal(macros.alcoholAbv)
+      if (abvRefused) return response(400).json({ message: abvRefused })
       if (!shelved(tagIds)) {
         return response(404).json({ message: `no Tag among ${tagIds}` })
       }
       const row: Row = {
         ...food({ id: nextFoodId++, ...macros, barcode: barcode ?? null }),
+        ...alcoholOf(macros.alcoholAbv),
         caloriesPer100g: caloriesOf(macros),
         tagIds: distinct(tagIds),
       }
@@ -313,6 +343,8 @@ export function foodCatalog({
     }),
     http.put('/api/foods/{id}', async ({ params, request, response }) => {
       const { tagIds, name, ...macros } = await request.json()
+      const abvRefused = abvRefusal(macros.alcoholAbv)
+      if (abvRefused) return response(400).json({ message: abvRefused })
       if (!shelved(tagIds)) {
         return response(404).json({ message: `no Tag among ${tagIds}` })
       }
@@ -327,6 +359,7 @@ export function foodCatalog({
         ...macros,
         // A correction that leaves fibre out states none, as the server reads it.
         fibrePer100g: macros.fibrePer100g ?? null,
+        ...alcoholOf(macros.alcoholAbv),
         caloriesPer100g: caloriesOf(macros),
         tagIds: distinct(tagIds),
       })
