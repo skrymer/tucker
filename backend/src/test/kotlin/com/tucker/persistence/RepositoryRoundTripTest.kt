@@ -5,6 +5,7 @@ import com.tucker.domain.Food
 import com.tucker.domain.FoodKind
 import com.tucker.domain.Goal
 import com.tucker.domain.IntakeTargets
+import com.tucker.domain.Macros
 import com.tucker.domain.Maintenance
 import com.tucker.domain.Nutrition
 import com.tucker.domain.Profile
@@ -56,15 +57,28 @@ class RepositoryRoundTripTest {
 
     @Test
     fun `a Food's fibre round-trips, with not stated kept apart from zero`() {
-        val wrapNutrition = Nutrition.fromMacros(19.4, 12.8, 9.3, fibrePer100g = 16.8)
+        val wrapNutrition = Macros(19.4, 12.8, 9.3, fibrePer100g = 16.8).nutrition()
         val wrap = foods.insert(Food.plain(foods.nextId(), "Protein wrap", null, wrapNutrition))
-        val chickenNutrition = Nutrition.fromMacros(31.0, 0.0, 3.6, fibrePer100g = 0.0)
+        val chickenNutrition = Macros(31.0, 0.0, 3.6, fibrePer100g = 0.0).nutrition()
         val chicken = foods.insert(Food.plain(foods.nextId(), "Chicken breast", null, chickenNutrition))
         val oats = foods.insert(Food.plain(foods.nextId(), "Rolled oats", null, Nutrition(389.0, 16.9, 66.3, 6.9)))
 
         assertEquals(16.8, foods.findById(wrap.id)?.nutrition?.fibrePer100g)
         assertEquals(0.0, foods.findById(chicken.id)?.nutrition?.fibrePer100g)
         assertNull(foods.findById(oats.id)?.nutrition?.fibrePer100g)
+    }
+
+    @Test
+    fun `a Food's alcohol round-trips unrounded, with not stated kept apart from zero`() {
+        val wineNutrition = Macros(0.1, 2.6, 0.0, alcoholPer100g = 10.257).nutrition()
+        val wine = foods.insert(Food.plain(foods.nextId(), "Shiraz", null, wineNutrition))
+        val juiceNutrition = Macros(0.7, 10.4, 0.2, alcoholPer100g = 0.0).nutrition()
+        val juice = foods.insert(Food.plain(foods.nextId(), "Orange juice", null, juiceNutrition))
+        val oats = foods.insert(Food.plain(foods.nextId(), "Rolled oats", null, Nutrition(389.0, 16.9, 66.3, 6.9)))
+
+        assertEquals(10.257, foods.findById(wine.id)?.nutrition?.alcoholPer100g)
+        assertEquals(0.0, foods.findById(juice.id)?.nutrition?.alcoholPer100g)
+        assertNull(foods.findById(oats.id)?.nutrition?.alcoholPer100g)
     }
 
     @Test

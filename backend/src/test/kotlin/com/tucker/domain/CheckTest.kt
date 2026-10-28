@@ -16,7 +16,7 @@ class CheckTest {
     private val floorG = 170.0
 
     /** Nutella: 533 kcal and 6.3 g protein per 100 g — well below pace. */
-    private val nutella = Nutrition.fromMacros(proteinPer100g = 6.3, carbsPer100g = 57.5, fatPer100g = 30.9)
+    private val nutella = Macros(proteinPer100g = 6.3, carbsPer100g = 57.5, fatPer100g = 30.9).nutrition()
 
     @Test
     fun `100 g costs a share of the Calorie Budget and returns a share of the Protein Floor`() {
@@ -44,7 +44,7 @@ class CheckTest {
 
     @Test
     fun `a Food above pace carries its own protein weight and needs nothing balanced`() {
-        val tuna = Nutrition.fromMacros(proteinPer100g = 26.0, carbsPer100g = 0.0, fatPer100g = 4.7)
+        val tuna = Macros(proteinPer100g = 26.0, carbsPer100g = 0.0, fatPer100g = 4.7).nutrition()
 
         val check = Check.of(tuna, calorieBudgetKcal = budgetKcal, proteinFloorG = floorG)
 
@@ -66,7 +66,7 @@ class CheckTest {
     fun `a Food with no calories costs nothing and has no ratio or allowance to state`() {
         // Calories are Atwater-derived, so no calories means no macros either — a
         // diet drink or black coffee. Every ratio here would divide by zero.
-        val dietDrink = Nutrition.fromMacros(proteinPer100g = 0.0, carbsPer100g = 0.0, fatPer100g = 0.0)
+        val dietDrink = Macros(proteinPer100g = 0.0, carbsPer100g = 0.0, fatPer100g = 0.0).nutrition()
 
         val check = Check.of(dietDrink, calorieBudgetKcal = budgetKcal, proteinFloorG = floorG)
 

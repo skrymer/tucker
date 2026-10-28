@@ -103,6 +103,26 @@ class FoodCorrectionApiTest {
     }
 
     @Test
+    fun `correcting a Food's alcohol re-derives its calories and recalculates every Recipe using it`() {
+        // The wine typed without its alcohol: 4 × 0.1 + 4 × 2.6 = 10.8 kcal /100g.
+        val wine = createFood("Shiraz", protein = 0.1, carbs = 2.6, fat = 0.0)
+        // 300 g of wine in a 600 g sauce: 5.4 kcal /100g before the correction.
+        val sauce = createRecipe("Red wine sauce", 600.0, wine to 300.0)
+
+        correct(wine, "Shiraz", Macros(0.1, 2.6, 0.0), alcoholAbv = 13.0)
+
+        // + 7 × 13 × 0.789 = 82.599 kcal /100g (ADR 0040).
+        mockMvc.get("/api/foods/$wine").andExpect {
+            jsonPath("$.caloriesPer100g", closeTo(82.599, 0.001))
+            jsonPath("$.alcoholAbv") { value(13.0) }
+        }
+        // Sauce: 247.797 / 600 × 100 = 41.2995 kcal /100g — all the alcohol conserved (ADR 0040).
+        mockMvc.get("/api/foods/$sauce").andExpect {
+            jsonPath("$.caloriesPer100g", closeTo(41.2995, 0.001))
+        }
+    }
+
+    @Test
     fun `a past Entry of a corrected Food keeps its calories and protein but reads under the corrected name`() {
         val oats = createFood("Rolled oast", protein = 31.0, carbs = 60.0, fat = 7.0) // 427 kcal /100g
         mockMvc.post("/api/entries/weighed") {
@@ -203,12 +223,12 @@ class FoodCorrectionApiTest {
         }
     }
 
-    private fun correct(id: Long, name: String, macros: Macros) {
+    private fun correct(id: Long, name: String, macros: Macros, alcoholAbv: Double? = null) {
         mockMvc.put("/api/foods/$id") {
             contentType = MediaType.APPLICATION_JSON
             content = """{"name":"$name","proteinPer100g":${macros.proteinPer100g},
                           "carbsPer100g":${macros.carbsPer100g},"fatPer100g":${macros.fatPer100g},
-                          "fibrePer100g":${macros.fibrePer100g},"tagIds":[]}"""
+                          "fibrePer100g":${macros.fibrePer100g},"alcoholAbv":$alcoholAbv,"tagIds":[]}"""
         }.andExpect { status { isOk() } }
     }
 

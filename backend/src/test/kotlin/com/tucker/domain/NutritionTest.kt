@@ -8,9 +8,9 @@ import kotlin.test.assertNull
 class NutritionTest {
 
     @Test
-    fun `fromMacros computes calories per 100g using 4P + 4C + 9F`() {
+    fun `macros derive calories per 100g using 4P + 4C + 9F`() {
         // 4 * 10 + 4 * 20 + 9 * 5 = 40 + 80 + 45 = 165 kcal /100g
-        val n = Nutrition.fromMacros(proteinPer100g = 10.0, carbsPer100g = 20.0, fatPer100g = 5.0)
+        val n = Macros(proteinPer100g = 10.0, carbsPer100g = 20.0, fatPer100g = 5.0).nutrition()
         assertEquals(165.0, n.caloriesPer100g, 1e-9)
         assertEquals(10.0, n.proteinPer100g)
         assertEquals(20.0, n.carbsPer100g)
@@ -20,28 +20,49 @@ class NutritionTest {
     @Test
     fun `fibre counts 2 kcal per gram, so the protein wrap reads its label's 246 kcal`() {
         // 4 * 19.4 + 4 * 12.8 + 9 * 9.3 + 2 * 16.8 = 77.6 + 51.2 + 83.7 + 33.6 = 246.1 (ADR 0040)
-        val wrap = Nutrition.fromMacros(
+        val wrap = Macros(
             proteinPer100g = 19.4,
             carbsPer100g = 12.8,
             fatPer100g = 9.3,
             fibrePer100g = 16.8,
-        )
+        ).nutrition()
         assertEquals(246.1, wrap.caloriesPer100g, 1e-9)
         assertEquals(16.8, wrap.fibrePer100g)
+    }
+
+    @Test
+    fun `alcohol counts 7 kcal per gram, so a 13 percent wine reads about 72 kcal per 100 g`() {
+        // 7 * 10.257 = 71.799 (ADR 0040)
+        val wine = Macros(
+            proteinPer100g = 0.0,
+            carbsPer100g = 0.0,
+            fatPer100g = 0.0,
+            alcoholPer100g = 10.257,
+        ).nutrition()
+        assertEquals(71.799, wine.caloriesPer100g, 1e-9)
+        assertEquals(10.257, wine.alcoholPer100g)
+    }
+
+    @Test
+    fun `a negative alcohol is refused`() {
+        assertThrows<IllegalArgumentException> {
+            // Positive macros keep calories above zero, so only the alcohol rule can refuse it.
+            Macros(proteinPer100g = 10.0, carbsPer100g = 0.0, fatPer100g = 0.0, alcoholPer100g = -0.1).nutrition()
+        }
     }
 
     @Test
     fun `a negative fibre is refused`() {
         assertThrows<IllegalArgumentException> {
             // Positive macros keep calories above zero, so only the fibre rule can refuse it.
-            Nutrition.fromMacros(proteinPer100g = 10.0, carbsPer100g = 0.0, fatPer100g = 0.0, fibrePer100g = -0.1)
+            Macros(proteinPer100g = 10.0, carbsPer100g = 0.0, fatPer100g = 0.0, fibrePer100g = -0.1).nutrition()
         }
     }
 
     @Test
     fun `macro energy shares split the Food's own calories by the Atwater factors`() {
         // Nutella: 25.2 kcal from protein, 230 from carbs, 278.1 from fat, of 533.3.
-        val n = Nutrition.fromMacros(proteinPer100g = 6.3, carbsPer100g = 57.5, fatPer100g = 30.9)
+        val n = Macros(proteinPer100g = 6.3, carbsPer100g = 57.5, fatPer100g = 30.9).nutrition()
 
         val shares = n.macroEnergyShares()
 
@@ -54,7 +75,7 @@ class NutritionTest {
     fun `a Food with no calories has no macro shares to state`() {
         // Calories are Atwater-derived, so no calories means no macros — black
         // coffee. Every share would divide by zero, which must not reach the wire.
-        val blackCoffee = Nutrition.fromMacros(proteinPer100g = 0.0, carbsPer100g = 0.0, fatPer100g = 0.0)
+        val blackCoffee = Macros(proteinPer100g = 0.0, carbsPer100g = 0.0, fatPer100g = 0.0).nutrition()
 
         val shares = blackCoffee.macroEnergyShares()
 
@@ -77,15 +98,15 @@ class NutritionTest {
     }
 
     @Test
-    fun `fromMacros rejects negative macros`() {
+    fun `negative macros are refused`() {
         assertThrows<IllegalArgumentException> {
-            Nutrition.fromMacros(proteinPer100g = -1.0, carbsPer100g = 0.0, fatPer100g = 0.0)
+            Macros(proteinPer100g = -1.0, carbsPer100g = 0.0, fatPer100g = 0.0).nutrition()
         }
         assertThrows<IllegalArgumentException> {
-            Nutrition.fromMacros(proteinPer100g = 0.0, carbsPer100g = -1.0, fatPer100g = 0.0)
+            Macros(proteinPer100g = 0.0, carbsPer100g = -1.0, fatPer100g = 0.0).nutrition()
         }
         assertThrows<IllegalArgumentException> {
-            Nutrition.fromMacros(proteinPer100g = 0.0, carbsPer100g = 0.0, fatPer100g = -1.0)
+            Macros(proteinPer100g = 0.0, carbsPer100g = 0.0, fatPer100g = -1.0).nutrition()
         }
     }
 }

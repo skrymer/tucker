@@ -67,6 +67,18 @@ class FoodTest {
     }
 
     @Test
+    fun `a corrected Food counts the alcohol the correction states`() {
+        val corrected = CHEESE.corrected(
+            name = "Red wine",
+            macros = Macros(proteinPer100g = 0.0, carbsPer100g = 0.0, fatPer100g = 0.0, alcoholPer100g = 10.257),
+            tagIds = emptyList(),
+        )
+
+        assertEquals(10.257, corrected.nutrition.alcoholPer100g)
+        assertEquals(71.799, corrected.nutrition.caloriesPer100g, 1e-9)
+    }
+
+    @Test
     fun `a corrected Food carries the corrected name and exactly the Tags it was given`() {
         val corrected = CHEESE.retagged(listOf(BREAKFAST)).corrected(
             name = "Tasty cheddar",
@@ -133,7 +145,7 @@ private val CHEESE = Food.plain(
     id = 1L,
     name = "Tasty cheese",
     barcode = null,
-    nutrition = Nutrition.fromMacros(proteinPer100g = 25.0, carbsPer100g = 0.0, fatPer100g = 33.0),
+    nutrition = Macros(proteinPer100g = 25.0, carbsPer100g = 0.0, fatPer100g = 33.0).nutrition(),
 )
 
 private val CHEDDAR = ReferenceFood(

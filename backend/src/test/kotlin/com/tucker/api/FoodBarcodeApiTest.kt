@@ -2,7 +2,7 @@ package com.tucker.api
 
 import com.tucker.domain.Food
 import com.tucker.domain.FoodCandidate
-import com.tucker.domain.Nutrition
+import com.tucker.domain.Macros
 import com.tucker.domain.ProviderCapability
 import com.tucker.domain.ProviderLookup
 import com.tucker.persistence.FoodRepository
@@ -40,7 +40,7 @@ class FoodBarcodeApiTest {
     @Test
     fun `a catalog hit returns 200 EXISTING with the saved Food`() {
         foods.insert(
-            Food.plain(foods.nextId(), "Skyr", "5701234567890", Nutrition.fromMacros(10.0, 4.0, 0.2)),
+            Food.plain(foods.nextId(), "Skyr", "5701234567890", Macros(10.0, 4.0, 0.2).nutrition()),
         )
 
         mockMvc.get("/api/foods/barcode/5701234567890").andExpect {

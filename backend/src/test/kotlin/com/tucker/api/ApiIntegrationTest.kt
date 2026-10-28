@@ -94,6 +94,50 @@ class ApiIntegrationTest {
     }
 
     @Test
+    fun `a wine created by its ABV counts its alcohol, stored as grams and read back as the ABV it was written as`() {
+        // 13% ABV is 13 * 0.789 = 10.257 g /100g; 4 * 0.1 + 4 * 2.6 + 7 * 10.257 = 82.599 kcal /100g (ADR 0040)
+        val foodJson = mockMvc.post("/api/foods") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"name":"Shiraz","proteinPer100g":0.1,"carbsPer100g":2.6,"fatPer100g":0.0,""" +
+                """"alcoholAbv":13,"tagIds":[]}"""
+        }.andExpect {
+            status { isCreated() }
+            jsonPath("$.caloriesPer100g", closeTo(82.599, 1e-6))
+        }.andReturn().response.contentAsString
+        val foodId = objectMapper.readTree(foodJson).get("id").asLong()
+
+        mockMvc.get("/api/foods/$foodId").andExpect {
+            status { isOk() }
+            jsonPath("$.caloriesPer100g", closeTo(82.599, 1e-6))
+            jsonPath("$.alcoholPer100g", closeTo(10.257, 1e-9))
+            jsonPath("$.alcoholAbv") { value(13.0) }
+        }
+    }
+
+    @Test
+    fun `a food's alcohol not stated is an explicit null on the wire, in grams and ABV, and zero stays zero`() {
+        val unstated = objectMapper.readTree(
+            mockMvc.post("/api/foods") {
+                contentType = MediaType.APPLICATION_JSON
+                content = """{"name":"Grape juice","proteinPer100g":0.4,"carbsPer100g":15.0,"fatPer100g":0.1,""" +
+                    """"alcoholAbv":null,"tagIds":[]}"""
+            }.andExpect { status { isCreated() } }.andReturn().response.contentAsString,
+        )
+        val none = objectMapper.readTree(
+            mockMvc.post("/api/foods") {
+                contentType = MediaType.APPLICATION_JSON
+                content = """{"name":"Alcohol-free wine","proteinPer100g":0.1,"carbsPer100g":4.0,"fatPer100g":0.0,""" +
+                    """"alcoholAbv":0,"tagIds":[]}"""
+            }.andExpect { status { isCreated() } }.andReturn().response.contentAsString,
+        )
+
+        // Not stated is not zero (ADR 0040), and absence is an explicit null (ADR 0023).
+        assertTrue(unstated.get("alcoholPer100g").isNull && unstated.get("alcoholAbv").isNull)
+        assertEquals(listOf(0.0, 0.0), listOf(none.get("alcoholPer100g").asDouble(), none.get("alcoholAbv").asDouble()))
+        assertTrue(none.get("alcoholPer100g").isNumber && none.get("alcoholAbv").isNumber)
+    }
+
+    @Test
     fun `a food's fibre not stated is an explicit null on the wire, and zero stays zero`() {
         val unstated = objectMapper.readTree(
             mockMvc.post("/api/foods") {
@@ -122,6 +166,18 @@ class ApiIntegrationTest {
             contentType = MediaType.APPLICATION_JSON
             content = """{"name":"Bad","proteinPer100g":-1.0,"carbsPer100g":0.0,"fatPer100g":0.0,"tagIds":[]}"""
         }.andExpect { status { isBadRequest() } }
+    }
+
+    @Test
+    fun `a food stating an ABV above 100 percent is refused, naming the bound`() {
+        mockMvc.post("/api/foods") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"name":"Bad","proteinPer100g":0.0,"carbsPer100g":0.0,"fatPer100g":0.0,""" +
+                """"alcoholAbv":100.1,"tagIds":[]}"""
+        }.andExpect {
+            status { isBadRequest() }
+            jsonPath("$.message") { value("ABV must be <= 100, was 100.1") }
+        }
     }
 
     @Test

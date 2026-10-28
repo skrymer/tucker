@@ -2175,3 +2175,31 @@ null` now means two things that earn opposite messages — the same trap
     deprecated behind a feature flag (#564).
   - **Left for later slices:** alcohol (#547), a Recipe's fibre roll-up (#550), a
     scan filling fibre (#548), and Micronutrient Intake using a stated fibre (#551).
+  - **Slice 2 ([#547](https://github.com/skrymer/tucker/issues/547)) — alcohol on a
+    Food, entered as ABV.** `AlcoholByVolume` is the one conversion: it refuses an ABV
+    outside 0..100, gives `gramsPer100g` (`ABV × 0.789`), and `percentOf(grams)` derives
+    the ABV back, rounded to six decimals so a 13% wine reopens at 13 and not
+    12.999999999999998. `Nutrition` gains an optional `alcoholPer100g` at 7 kcal/g, a
+    null contributing none, and V29 adds a nullable `alcohol_per_100g`, so existing Foods
+    keep their calories. Create and correct requests carry `alcoholAbv`; `FoodResponse`
+    carries `alcoholPer100g` and the derived `alcoholAbv`. The form joins alcohol to
+    `OPTIONAL_FIGURES` beside fibre, Zod refuses below 0 and above 100, and
+    `previewCalories` mirrors the factor for the live and Recipe previews. A 13% wine
+    logged at 150 g reads 124 kcal (108 from alcohol), pinned by a real-stack smoke.
+    `Nutrition.fromMacros` now takes `Macros` (Detekt's parameter cap) and is internal.
+  - **Ruled (user):** the conversion lives in the backend domain only (ADR 0002), not in
+    the form as PRD #545 first said; ADR 0040 and the PRD were amended to match.
+  - **Ruled (user):** the field reads "Alc % vol", as a bottle prints it, because
+    "Alcohol (ABV %)" wrapped beside its "optional" hint at desktop and pushed its input
+    out of line with Fibre's.
+  - **Ruled (user):** a tab still running a pre-deploy app sends a correction without
+    `alcoholAbv`, which the backend reads as not stated, clearing the alcohol. Accepted,
+    as fibre already behaves; PWA `autoUpdate` narrows it to tabs never reloaded.
+  - **Trap:** reading stored grams back through the checked value class would 400 any
+    Food holding more than 78.9 g/100 g, which a Recipe conserving its alcohol (#550)
+    can. `percentOf` is unchecked; the 0..100 check belongs to what a User types.
+  - **Not changed:** a Check's composition bar draws short for a drink (alcohol has no
+    energy share), PRD #545 putting Check changes out of scope. "Atwater" wording
+    predating this slice remains in the Check and candidate code.
+  - **Left for later slices:** a scan filling alcohol (#548) and a Recipe's alcohol
+    roll-up (#550).

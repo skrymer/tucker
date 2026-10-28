@@ -16,15 +16,16 @@ sealed interface FoodKind {
     }
 }
 
-/** The macros per 100 g a User supplies for a Food, fibre optional; calories are derived from them. */
+/** The macros per 100 g a User supplies for a Food, fibre and alcohol optional; calories are derived from them. */
 data class Macros(
     val proteinPer100g: Double,
     val carbsPer100g: Double,
     val fatPer100g: Double,
     val fibrePer100g: Double? = null,
+    val alcoholPer100g: Double? = null,
 ) {
     /** The [Nutrition] these macros make, calories derived from them. */
-    fun nutrition(): Nutrition = Nutrition.fromMacros(proteinPer100g, carbsPer100g, fatPer100g, fibrePer100g)
+    fun nutrition(): Nutrition = Nutrition.fromMacros(this)
 }
 
 /**

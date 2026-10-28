@@ -13,8 +13,11 @@ export const gramsSchema = z
 export const MACROS = ['proteinPer100g', 'carbsPer100g', 'fatPer100g'] as const
 export type Macro = (typeof MACROS)[number]
 
-/** The macros a User may leave blank — fibre: not stated, which is not zero (ADR 0040). */
-export const OPTIONAL_FIGURES = ['fibrePer100g'] as const
+/**
+ * The figures a User may leave blank — fibre and alcohol: not stated, which is not
+ * zero (ADR 0040). Alcohol is written as ABV; the server keeps it as grams.
+ */
+export const OPTIONAL_FIGURES = ['fibrePer100g', 'alcoholAbv'] as const
 export type OptionalFigure = (typeof OPTIONAL_FIGURES)[number]
 
 /** Every macro a User supplies for a Food: the three required ones, then the optional ones. */
@@ -30,6 +33,7 @@ export const MACRO_LABELS: Record<FoodFigure, string> = {
   carbsPer100g: 'Carbs /100g',
   fatPer100g: 'Fat /100g',
   fibrePer100g: 'Fibre /100g',
+  alcoholAbv: 'Alc % vol',
 }
 
 /**
@@ -45,4 +49,9 @@ export const foodSchema = z.object({
   carbsPer100g: z.number({ error: 'Enter carbs per 100 g' }),
   fatPer100g: z.number({ error: 'Enter fat per 100 g' }),
   fibrePer100g: z.number().nonnegative('Fibre can’t be negative').nullish(),
+  alcoholAbv: z
+    .number()
+    .nonnegative('Alcohol can’t be negative')
+    .max(100, 'ABV can’t be over 100%')
+    .nullish(),
 })

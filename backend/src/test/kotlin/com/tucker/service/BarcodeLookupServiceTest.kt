@@ -3,7 +3,7 @@ package com.tucker.service
 import com.tucker.domain.BarcodeLookup
 import com.tucker.domain.Food
 import com.tucker.domain.FoodCandidate
-import com.tucker.domain.Nutrition
+import com.tucker.domain.Macros
 import com.tucker.domain.NutritionProvider
 import com.tucker.domain.ProviderCapability
 import com.tucker.domain.ProviderLookup
@@ -44,7 +44,7 @@ class BarcodeLookupServiceTest {
 
     private fun existingFood(barcode: String) = Food.plain(
         id = 7, name = "Skyr", barcode = barcode,
-        nutrition = Nutrition.fromMacros(10.0, 4.0, 0.2),
+        nutrition = Macros(10.0, 4.0, 0.2).nutrition(),
     )
 
     @Test

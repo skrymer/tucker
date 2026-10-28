@@ -147,13 +147,13 @@ class BorrowedFoodTest {
         name = "Bolognese",
         kind = FoodKind.Recipe(cookedWeightG = 900.0),
         barcode = null,
-        nutrition = Nutrition.fromMacros(proteinPer100g = 8.0, carbsPer100g = 12.0, fatPer100g = 5.0),
+        nutrition = Macros(proteinPer100g = 8.0, carbsPer100g = 12.0, fatPer100g = 5.0).nutrition(),
     )
 
     private fun food(referenceFoodId: Long?) = Food.plain(
         id = 1,
         name = "Chicken breast",
         barcode = null,
-        nutrition = Nutrition.fromMacros(proteinPer100g = 31.0, carbsPer100g = 0.0, fatPer100g = 3.6),
+        nutrition = Macros(proteinPer100g = 31.0, carbsPer100g = 0.0, fatPer100g = 3.6).nutrition(),
     ).copy(referenceFoodId = referenceFoodId)
 }
