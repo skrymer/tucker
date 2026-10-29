@@ -2203,3 +2203,39 @@ null` now means two things that earn opposite messages — the same trap
     predating this slice remains in the Check and candidate code.
   - **Left for later slices:** a scan filling alcohol (#548) and a Recipe's alcohol
     roll-up (#550).
+  - **Slices 3 and 4 ([#548](https://github.com/skrymer/tucker/issues/548),
+    [#549](https://github.com/skrymer/tucker/issues/549)) — a scan fills in fibre and
+    alcohol, and catches folded-in fibre.** Open Food Facts' `fiber_100g` maps to the
+    Food Candidate's fibre and `alcohol_100g` (% vol) to grams through
+    `AlcoholByVolume`; each goes through `statedOrNull`, which leaves a figure the
+    domain refuses (a negative fibre, an ABV past 100) not stated and logs a WARN, so
+    the rest of the product still prefills. `FoodCandidate.adjustedCarbsPer100g`
+    (computed once, `by lazy`) is carbs minus fibre when the carbs as given miss the
+    stated energy by more than `FIBRE_FOLDED_TOLERANCE` (5 %, alcohol counted) and
+    carbs minus fibre reproduces it, and never when fibre exceeds the carbs.
+    `offeredCarbsPer100g` is what the form prefills, and `offeredFibrePer100g` offers
+    the fibre only when the stated energy vouches for a reading (as given, or the fold
+    caught). The wire carries the offered fibre as `fibrePer100g`,
+    `alcoholPer100g`, the derived `alcoholAbv`, and `providerCarbsPer100g` /
+    `adjustedCarbsPer100g`, both set only when the rule fires; the Add-food fill notice
+    adds "Carbs adjusted from 29.4 g to 12.7 g: Open Food Facts' carbs included the
+    16.7 g of fibre." and the carbs stay editable. The wrap's real record saves at
+    245.6 kcal against its label's 246, pinned by a real-stack smoke.
+  - **Ruled (user):** the Candidate's wire mirrors `FoodResponse` (grams and the derived
+    ABV), so the client converts nothing; an out-of-range OFF figure is logged and left
+    not stated.
+  - **Ruled (user):** #549 ships in #548's PR. #548 alone made the wrap read 312 kcal
+    against its label's 246 (main read 279), and the sign-off's resolutions pass
+    rejected merging that behind a deploy hold.
+  - **Ruled (user):** a scan offers fibre only when the stated energy vouches for it.
+    The adversary showed a US-style record (fibre counted inside the carbs), which main
+    read right, saving +2 × fibre high once fibre was prefilled; a US-style adjustment
+    was built and then withdrawn, because the figures cannot tell that record from one
+    whose label energy left fibre out, where it subtracted fibre twice. An
+    unreconcilable record now reads as main did. The notice's kcal clause was dropped.
+  - **Not changed:** a Check still derives a Candidate's calories from protein, carbs
+    and fat as given (`atwaterNutrition`), so it reads a scanned beer at ~13 kcal and
+    the wrap at 279; the Check is to be turned off pending redesign (#564). A negative
+    OFF carbs or fat still costs the whole scan (#570).
+  - **Trap:** type-resolving Detekt (`./gradlew build`) refused a shadowed `it` that the
+    pre-commit hook's plain `detekt` passed, two commits after it landed.

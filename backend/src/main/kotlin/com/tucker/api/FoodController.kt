@@ -138,6 +138,7 @@ data class FoodCandidateResponse(
     val fatPer100g: Double?,
     val statedEnergyKcalPer100g: Double?,
     val source: String,
+    /** The Provider's fibre where the stated energy vouches for it; null otherwise (not stated). */
     val fibrePer100g: Double?,
     val alcoholPer100g: Double?,
     /** The same alcohol as the ABV the form prefills; null exactly when [alcoholPer100g] is. */
@@ -177,7 +178,7 @@ internal fun FoodCandidate.toResponse() = FoodCandidateResponse(
     fatPer100g = fatPer100g,
     statedEnergyKcalPer100g = statedEnergyKcalPer100g,
     source = source,
-    fibrePer100g = fibrePer100g,
+    fibrePer100g = offeredFibrePer100g,
     alcoholPer100g = alcoholPer100g,
     alcoholAbv = alcoholPer100g?.let(AlcoholByVolume::percentOf),
     providerCarbsPer100g = carbsPer100g.takeIf { adjustedCarbsPer100g != null },

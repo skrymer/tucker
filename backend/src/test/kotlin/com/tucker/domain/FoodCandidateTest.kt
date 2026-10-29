@@ -221,12 +221,62 @@ class FoodCandidateTest {
     }
 
     @Test
-    fun `a US-style record's fibre, counted inside its carbs at 4 kcal per gram, is caught too`() {
-        // The label's 298 = 4 × 10 + 4 × 60 + 9 × 2: fibre counted inside the carbs.
+    fun `a record only a reading without fibre energy reproduces is not adjusted`() {
+        // 298 = 4 × 10 + 4 × 60 + 9 × 2: a US-style label counting fibre inside the
+        // carbs, or one whose energy left fibre out — the figures cannot say which.
         // Tucker as given reads 358 and carbs minus fibre 238; neither is within 5 %.
         val cereal = candidate(proteinPer100g = 10.0, carbsPer100g = 60.0, fatPer100g = 2.0)
             .copy(fibrePer100g = 30.0, statedEnergyKcalPer100g = 298.0)
 
-        assertEquals(30.0, cereal.adjustedCarbsPer100g)
+        assertNull(cereal.adjustedCarbsPer100g)
+    }
+
+    @Test
+    fun `the fibre is offered when the stated energy caught it folded into the carbs`() {
+        val wrap = candidate(
+            proteinPer100g = 19.4285714285714,
+            carbsPer100g = 29.4285714285714,
+            fatPer100g = 9.28571428571429,
+        ).copy(fibrePer100g = 16.7142857142857, statedEnergyKcalPer100g = 246.0)
+
+        assertEquals(16.7142857142857, wrap.offeredFibrePer100g)
+    }
+
+    @Test
+    fun `the fibre is offered when the carbs as given, fibre counted, reproduce the stated energy`() {
+        val wrap = candidate(proteinPer100g = 19.4, carbsPer100g = 12.8, fatPer100g = 9.3)
+            .copy(fibrePer100g = 16.8, statedEnergyKcalPer100g = 246.0)
+
+        assertEquals(16.8, wrap.offeredFibrePer100g)
+    }
+
+    @Test
+    fun `the fibre of a record only a reading without fibre energy reproduces is not offered`() {
+        val cereal = candidate(proteinPer100g = 10.0, carbsPer100g = 60.0, fatPer100g = 2.0)
+            .copy(fibrePer100g = 30.0, statedEnergyKcalPer100g = 298.0)
+
+        assertNull(cereal.offeredFibrePer100g)
+    }
+
+    @Test
+    fun `the fibre is not offered without a stated energy to vouch for it`() {
+        val wrap = candidate(
+            proteinPer100g = 19.4285714285714,
+            carbsPer100g = 29.4285714285714,
+            fatPer100g = 9.28571428571429,
+        ).copy(fibrePer100g = 16.7142857142857, statedEnergyKcalPer100g = null)
+
+        assertNull(wrap.offeredFibrePer100g)
+    }
+
+    @Test
+    fun `the fibre is not offered when a missing macro leaves nothing to derive the energy from`() {
+        val wrap = candidate(
+            proteinPer100g = null,
+            carbsPer100g = 29.4285714285714,
+            fatPer100g = 9.28571428571429,
+        ).copy(fibrePer100g = 16.7142857142857, statedEnergyKcalPer100g = 246.0)
+
+        assertNull(wrap.offeredFibrePer100g)
     }
 }

@@ -162,6 +162,31 @@ class FoodBarcodeApiTest {
     }
 
     @Test
+    fun `a candidate whose fibre no stated energy vouches for answers it as not stated`() {
+        whenever(openFoodFacts.capabilities).thenReturn(setOf(ProviderCapability.BARCODE_LOOKUP))
+        whenever(openFoodFacts.lookupByBarcode("9334169000580")).thenReturn(
+            ProviderLookup.Found(
+                FoodCandidate(
+                    name = "Protein wrap",
+                    barcode = "9334169000580",
+                    proteinPer100g = 19.4285714285714,
+                    carbsPer100g = 29.4285714285714,
+                    fatPer100g = 9.28571428571429,
+                    statedEnergyKcalPer100g = null,
+                    source = "Open Food Facts",
+                    fibrePer100g = 16.7142857142857,
+                ),
+            ),
+        )
+
+        mockMvc.get("/api/foods/barcode/9334169000580").andExpect {
+            status { isOk() }
+            jsonPath("$.candidate.fibrePer100g") { value(null) }
+            jsonPath("$.candidate.carbsPer100g", closeTo(29.4285714285714, 1e-9))
+        }
+    }
+
+    @Test
     fun `a second look-up of the same barcode is served from the cache without a second Provider call`() {
         whenever(openFoodFacts.capabilities).thenReturn(setOf(ProviderCapability.BARCODE_LOOKUP))
         whenever(openFoodFacts.lookupByBarcode("5702222222222")).thenReturn(

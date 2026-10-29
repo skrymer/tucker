@@ -165,13 +165,17 @@ the rest of the product.
 A Provider's carbs may have **fibre folded in** — a contributor copying a US-style
 label's total carbohydrate, though Tucker's **carbs** excludes it. The carbs field
 alone cannot say so; the stated energy can. When the carbs as given miss the stated
-energy (by more than 5 %) and either subtracting fibre from them reproduces it, or
-the US-style reading does — the carbs as given with the fibre counted inside them,
-at 4 kcal/g — the Candidate carries carbs minus fibre, and says so: the adjustment is
-**shown to the user, with both figures**, before they confirm, never applied
-silently. More fibre than carbs was never folded into them, so that is never
-adjusted. The stated energy arbitrates
-which reading of carbs to take; it is still never stored, and calories are still
+energy (by more than 5 %) and subtracting fibre from them reproduces it, the
+Candidate carries carbs minus fibre, and says so: the adjustment is **shown to the
+user, with both figures**, before they confirm, never applied silently. More fibre
+than carbs was never folded into them, so that is never adjusted. The Candidate
+**offers its fibre** only when the stated energy vouches for one of those two
+readings; otherwise — no stated energy, a macro missing, or a record only a reading
+without fibre energy reproduces (a US-style label counting fibre inside the carbs,
+or one whose energy left fibre out, which the figures cannot tell apart) — the fibre
+is left not stated, so a scan never reads further from its label than one without
+fibre would. The stated energy arbitrates which reading of carbs to take; it is
+still never stored, and calories are still
 derived. The energy it is compared against is the *whole* derived figure, alcohol
 included — a Provider's stated energy for a drink counts its alcohol, so leaving it
 out would read every beer as a mismatch.
