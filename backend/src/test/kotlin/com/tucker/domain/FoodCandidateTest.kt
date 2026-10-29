@@ -271,6 +271,15 @@ class FoodCandidateTest {
     }
 
     @Test
+    fun `a reading with fibre only as close as the one without it does not get the fibre offered`() {
+        // Without fibre 205, with fibre 213: both 4 kcal from a stated 209.
+        val muesli = candidate(proteinPer100g = 10.0, carbsPer100g = 30.0, fatPer100g = 5.0)
+            .copy(fibrePer100g = 4.0, statedEnergyKcalPer100g = 209.0)
+
+        assertNull(muesli.offeredFibrePer100g)
+    }
+
+    @Test
     fun `the fibre of a record only a reading without fibre energy reproduces is not offered`() {
         val cereal = candidate(proteinPer100g = 10.0, carbsPer100g = 60.0, fatPer100g = 2.0)
             .copy(fibrePer100g = 30.0, statedEnergyKcalPer100g = 298.0)

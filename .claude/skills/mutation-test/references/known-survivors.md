@@ -1865,10 +1865,16 @@ Every survivor the #548 section names stands (lines shifted, code unmoved). The
 folded-in fibre are offered as zero* and *carbs are not adjusted when the Provider states
 none*. New:
 
-- **`FoodCandidate.derivesStatedEnergy`'s three guards → `return true` — equivalent**:
-  the stated energy, protein or fat absent. `carbsWithoutFoldedFibre` asks about the
-  carbs as given first, and a `true` there returns null, as the `false` path does by
-  failing the adjusted reading.
+- **`FoodCandidate.derivesStatedEnergy`'s two guards → `return true`, and `energyGap`'s
+  three → `0.0` — equivalent**: each fires only with the stated energy, protein or fat
+  absent, where `energyGap` (unmutated) is null for every reading. `vouchesFor` returns
+  false on its first elvis before it reads either, and `carbsWithoutFoldedFibre`'s "as
+  given matches" early return gives the null the `false` path gives. A `0.0` gap ties
+  the two readings, and a tie is not closer.
+- **`FoodCandidate.vouchesFor`'s second elvis → `return true` — equivalent**: unreachable
+  once the first passed, since both gaps need the same stated energy, protein and fat.
+  The `<` → `<=` beside it was a real gap, closed by *a reading with fibre only as close
+  as the one without it does not get the fibre offered*.
 - **`FoodBuilder.vue`'s `c.adjustedCarbsPer100g == null` → `false` (`foldedFibreNote`) —
   equivalent**: the wire sets `providerCarbsPer100g` only beside `adjustedCarbsPer100g`
   (`toResponse`), so the first operand already decides.
