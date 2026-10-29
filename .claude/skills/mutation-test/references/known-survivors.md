@@ -1871,8 +1871,9 @@ none*. New:
   false on its first elvis before it reads either, and `carbsWithoutFoldedFibre`'s "as
   given matches" early return gives the null the `false` path gives. A `0.0` gap ties
   the two readings, and a tie is not closer.
-- **`FoodCandidate.vouchesFor`'s second elvis → `return true` — equivalent**: unreachable
-  once the first passed, since both gaps need the same stated energy, protein and fat.
+- **`FoodCandidate.vouchesFor`'s second elvis → `return true` (NO_COVERAGE) — equivalent**:
+  unreachable once the first passed, since both gaps need the same stated energy,
+  protein and fat, and both callers pass carbs only when `carbsPer100g` is non-null.
   The `<` → `<=` beside it was a real gap, closed by *a reading with fibre only as close
   as the one without it does not get the fibre offered*.
 - **`FoodBuilder.vue`'s `c.adjustedCarbsPer100g == null` → `false` (`foldedFibreNote`) —
