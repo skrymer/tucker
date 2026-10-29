@@ -270,6 +270,14 @@ class FoodCandidateTest {
     }
 
     @Test
+    fun `the fibre is not offered when a missing fat leaves nothing to derive the energy from`() {
+        val wrap = candidate(proteinPer100g = 19.4, carbsPer100g = 12.8, fatPer100g = null)
+            .copy(fibrePer100g = 16.8, statedEnergyKcalPer100g = 246.0)
+
+        assertNull(wrap.offeredFibrePer100g)
+    }
+
+    @Test
     fun `the fibre is not offered when a missing macro leaves nothing to derive the energy from`() {
         val wrap = candidate(
             proteinPer100g = null,
