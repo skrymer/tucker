@@ -5747,6 +5747,16 @@
             "type": "number",
             "format": "double",
             "nullable": true
+          },
+          "providerCarbsPer100g": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "adjustedCarbsPer100g": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
           }
         }
       },

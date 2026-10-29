@@ -8,6 +8,7 @@ import com.tucker.domain.ProviderLookup
 import com.tucker.persistence.FoodRepository
 import com.tucker.provider.OpenFoodFactsProvider
 import com.tucker.security.WithTuckerUser
+import org.hamcrest.Matchers.closeTo
 import org.hamcrest.Matchers.containsString
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.times
@@ -105,6 +106,58 @@ class FoodBarcodeApiTest {
             jsonPath("$.candidate.fibrePer100g") { value(0.4) }
             jsonPath("$.candidate.alcoholPer100g") { value(3.945) }
             jsonPath("$.candidate.alcoholAbv") { value(5.0) }
+        }
+    }
+
+    @Test
+    fun `a candidate with fibre folded into its carbs offers them without it, and names both figures`() {
+        whenever(openFoodFacts.capabilities).thenReturn(setOf(ProviderCapability.BARCODE_LOOKUP))
+        whenever(openFoodFacts.lookupByBarcode("9334169000566")).thenReturn(
+            ProviderLookup.Found(
+                FoodCandidate(
+                    name = "HIGH PROTEIN LOW CARB + FIBRE WRAPS",
+                    barcode = "9334169000566",
+                    proteinPer100g = 19.4285714285714,
+                    carbsPer100g = 29.4285714285714,
+                    fatPer100g = 9.28571428571429,
+                    statedEnergyKcalPer100g = 246.0,
+                    source = "Open Food Facts",
+                    fibrePer100g = 16.7142857142857,
+                ),
+            ),
+        )
+
+        mockMvc.get("/api/foods/barcode/9334169000566").andExpect {
+            status { isOk() }
+            jsonPath("$.candidate.carbsPer100g", closeTo(12.7142857142857, 1e-9))
+            jsonPath("$.candidate.providerCarbsPer100g", closeTo(29.4285714285714, 1e-9))
+            jsonPath("$.candidate.adjustedCarbsPer100g", closeTo(12.7142857142857, 1e-9))
+        }
+    }
+
+    @Test
+    fun `a candidate with nothing folded into its carbs offers them as given, with no adjustment named`() {
+        whenever(openFoodFacts.capabilities).thenReturn(setOf(ProviderCapability.BARCODE_LOOKUP))
+        whenever(openFoodFacts.lookupByBarcode("9334169000573")).thenReturn(
+            ProviderLookup.Found(
+                FoodCandidate(
+                    name = "Protein wrap",
+                    barcode = "9334169000573",
+                    proteinPer100g = 19.4,
+                    carbsPer100g = 12.8,
+                    fatPer100g = 9.3,
+                    statedEnergyKcalPer100g = 246.0,
+                    source = "Open Food Facts",
+                    fibrePer100g = 16.8,
+                ),
+            ),
+        )
+
+        mockMvc.get("/api/foods/barcode/9334169000573").andExpect {
+            status { isOk() }
+            jsonPath("$.candidate.carbsPer100g") { value(12.8) }
+            jsonPath("$.candidate.providerCarbsPer100g") { value(null) }
+            jsonPath("$.candidate.adjustedCarbsPer100g") { value(null) }
         }
     }
 

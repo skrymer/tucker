@@ -139,6 +139,22 @@ const oatmealStout = {
   source: 'Open Food Facts',
 }
 
+// A candidate whose carbs had fibre folded in, as the server answers it: the
+// carbs offered without the fibre, and both figures named.
+const WRAP_BARCODE = '9334169000566'
+const foldedFibreWrap = {
+  name: 'HIGH PROTEIN LOW CARB + FIBRE WRAPS',
+  barcode: WRAP_BARCODE,
+  proteinPer100g: 19.4285714285714,
+  carbsPer100g: 12.7142857142857,
+  fatPer100g: 9.28571428571429,
+  fibrePer100g: 16.7142857142857,
+  providerCarbsPer100g: 29.4285714285714,
+  adjustedCarbsPer100g: 12.7142857142857,
+  statedEnergyKcalPer100g: 246,
+  source: 'Open Food Facts',
+}
+
 // Each test's catalog: one Food that owns EXISTING_BARCODE, and what the
 // provider knows of the candidates. Any other barcode misses.
 beforeEach(() => {
@@ -286,6 +302,40 @@ describe('AddSheet', () => {
     expect(await screen.findByDisplayValue('Oatmeal Stout')).toBeVisible()
     expect(screen.getByLabelText(/fibre \/100\s*g/i)).toHaveDisplayValue('0.4')
     expect(screen.getByLabelText(/alc % vol/i)).toHaveDisplayValue('5.2')
+  })
+
+  it('names both carbs figures when the fibre folded into them was taken out', async () => {
+    catalogHolding({ candidates: [foldedFibreWrap] })
+    await renderSuspended(AddSheet, { props: { open: true } })
+    const user = userEvent.setup()
+
+    await user.type(screen.getByLabelText(/barcode/i), WRAP_BARCODE)
+    await user.click(screen.getByRole('button', { name: /look up/i }))
+
+    expect(
+      await screen.findByText(
+        "Carbs adjusted from 29.4 g to 12.7 g: Open Food Facts' carbs included the 16.7 g of fibre, which the label's 246 kcal does not.",
+      ),
+    ).toBeVisible()
+    const carbs = screen.getByLabelText(/carbs \/100\s*g/i)
+    expect(carbs).toHaveDisplayValue('12.714')
+    expect(carbs).toBeEnabled()
+  })
+
+  it('says nothing about carbs when the provider candidate offers them as given', async () => {
+    catalogHolding({ candidates: [oatmealStout] })
+    await renderSuspended(AddSheet, { props: { open: true } })
+    const user = userEvent.setup()
+
+    await user.type(screen.getByLabelText(/barcode/i), BEER_BARCODE)
+    await user.click(screen.getByRole('button', { name: /look up/i }))
+
+    expect(
+      await screen.findByText(
+        "Review the values and edit anything that's off.",
+      ),
+    ).toBeVisible()
+    expect(screen.queryByText(/carbs adjusted/i)).not.toBeInTheDocument()
   })
 
   it('saves a provider candidate with the fibre and alcohol it supplied', async () => {

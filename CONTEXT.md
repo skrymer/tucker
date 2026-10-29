@@ -159,16 +159,16 @@ Provider it came from, that Provider's stated energy (shown as a cross-check, no
 stored), and the scanned barcode. The user completes any missing macro and
 confirms — only then does it become a Food.
 Its fibre and alcohol are carried like any other macro, absent where the Provider
-states none. The Candidate keeps alcohol in grams, as a Food does, and shows the User
-the ABV. A fibre or ABV no food could have — negative,
-or past 100 % vol — is left not stated rather than costing the User the rest of the
-product.
+states none, and the User is shown the alcohol as ABV. A fibre or ABV no food could
+have — negative, or past 100 % vol — is left not stated rather than costing the User
+the rest of the product.
 A Provider's carbs may have **fibre folded in** — a contributor copying a US-style
 label's total carbohydrate, though Tucker's **carbs** excludes it. The carbs field
 alone cannot say so; the stated energy can. When subtracting fibre from carbs
-reproduces the stated energy and the carbs as given do not, the Candidate carries
-carbs minus fibre — and says so: the adjustment is **shown to the user, with both
-figures**, before they confirm, never applied silently. The stated energy arbitrates
+reproduces the stated energy (within 5 %) and the carbs as given do not, the
+Candidate carries carbs minus fibre — and says so: the adjustment is **shown to the
+user, with both figures**, before they confirm, never applied silently. More fibre
+than carbs was never folded into them, so that is never adjusted. The stated energy arbitrates
 which reading of carbs to take; it is still never stored, and calories are still
 derived. The energy it is compared against is the *whole* derived figure, alcohol
 included — a Provider's stated energy for a drink counts its alcohol, so leaving it

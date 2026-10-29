@@ -353,7 +353,10 @@ class OpenFoodFactsProvider(
         }
 
         private fun fibreGrams(barcode: String, fibre: Double?) =
-            statedOrNull(barcode, "fiber_100g", fibre) { it.also { requireNonNegativeWhereStated("fiber_100g" to it) } }
+            statedOrNull(barcode, "fiber_100g", fibre) { grams ->
+                requireNonNegativeWhereStated("fiber_100g" to grams)
+                grams
+            }
 
         private fun alcoholGrams(barcode: String, abv: Double?) =
             statedOrNull(barcode, "alcohol_100g", abv) { AlcoholByVolume(it).gramsPer100g }

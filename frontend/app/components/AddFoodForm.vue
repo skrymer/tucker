@@ -26,6 +26,8 @@ const props = defineProps<{
    * (ADR 0007 — the fill is shown inline, not as a toast).
    */
   filledFromSource?: string
+  /** A further sentence under the fill notice, naming a change the look-up made. */
+  fillNote?: string
 }>()
 
 const emit = defineEmits<{
@@ -132,8 +134,12 @@ function onSubmit() {
       color="neutral"
       variant="subtle"
       :title="`Filled from ${filledFromSource}`"
-      description="Review the values and edit anything that's off."
-    />
+    >
+      <template #description>
+        <p>Review the values and edit anything that's off.</p>
+        <p v-if="fillNote">{{ fillNote }}</p>
+      </template>
+    </UAlert>
 
     <UFormField label="Name" name="name" required>
       <UInput

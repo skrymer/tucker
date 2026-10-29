@@ -1,5 +1,7 @@
 package com.tucker.domain
 
+import kotlin.math.abs
+
 /**
  * Normalised, unsaved nutrition the user reviews before confirming it into a [Food].
  *
@@ -25,6 +27,27 @@ data class FoodCandidate(
     val alcoholPer100g: Double? = null,
 ) {
     /**
+     * The Provider's carbs minus fibre when the fibre is **folded in** — that reading
+     * reproduces the stated energy and the carbs as given do not (CONTEXT.md); null
+     * otherwise. The energy compared is the whole derived figure, alcohol included.
+     */
+    val adjustedCarbsPer100g: Double?
+        get() {
+            val carbs = carbsPer100g ?: return null
+            val fibre = fibrePer100g ?: return null
+            if (derivesStatedEnergy(carbs)) return null
+            return (carbs - fibre).takeIf { it >= 0 && derivesStatedEnergy(it) }
+        }
+
+    private fun derivesStatedEnergy(carbs: Double): Boolean {
+        val stated = statedEnergyKcalPer100g ?: return false
+        val protein = proteinPer100g ?: return false
+        val fat = fatPer100g ?: return false
+        val derived = Macros(protein, carbs, fat, fibrePer100g, alcoholPer100g).nutrition().caloriesPer100g
+        return abs(derived - stated) <= FIBRE_FOLDED_TOLERANCE * stated
+    }
+
+    /**
      * The Atwater nutrition this candidate implies, or `null` when a macro is
      * absent. An absent macro is never defaulted to zero, so an incomplete
      * candidate has no calories to derive — the user fills the gaps on the
@@ -46,5 +69,10 @@ data class FoodCandidate(
             "fibrePer100g" to fibrePer100g,
             "alcoholPer100g" to alcoholPer100g,
         )
+    }
+
+    companion object {
+        /** How far from the stated energy, as a share of it, a derived energy still reproduces it. */
+        const val FIBRE_FOLDED_TOLERANCE = 0.05
     }
 }

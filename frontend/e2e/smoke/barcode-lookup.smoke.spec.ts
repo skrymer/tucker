@@ -160,6 +160,52 @@ for (const product of SCANNED_FIGURES) {
   })
 }
 
+test("a looked-up wrap with fibre folded into its carbs saves without it, reading the label's kcal", async ({
+  page,
+  goto,
+  request,
+}) => {
+  // OFF's wrap record states carbs 29.43 with fibre 16.71 folded in, and 246 kcal.
+  const barcode = '9334169000566'
+  await deleteFoodByBarcode(request, barcode)
+
+  let createdId: number | undefined
+  try {
+    await goto('/foods', { waitUntil: 'hydration' })
+    await page.getByRole('button', { name: 'Add food' }).click()
+    const sheet = page.getByRole('dialog', { name: /add food/i })
+
+    await sheet.getByLabel(/barcode/i).fill(barcode)
+    await sheet.getByRole('button', { name: /look up/i }).click()
+
+    await expect(
+      sheet.getByText(
+        "Carbs adjusted from 29.4 g to 12.7 g: Open Food Facts' carbs included the 16.7 g of fibre, which the label's 246 kcal does not.",
+        { exact: true },
+      ),
+    ).toBeVisible()
+    await sheet.getByRole('button', { name: /save food/i }).click()
+    await expect(sheet).toBeHidden()
+
+    const foods = (await (await request.get(`${API}/foods`)).json()) as Array<{
+      id: number
+      barcode?: string
+      carbsPer100g: number
+      caloriesPer100g: number
+    }>
+    const created = foods.find((f) => f.barcode === barcode)
+    expect(created, 'created Food should carry the barcode').toBeDefined()
+    createdId = created!.id
+    expect(created!.carbsPer100g).toBeCloseTo(12.714, 3)
+    // 4 × 19.43 + 4 × 12.71 + 9 × 9.29 + 2 × 16.71 = 245.6
+    expect(created!.caloriesPer100g).toBeCloseTo(245.57, 1)
+  } finally {
+    if (createdId !== undefined) {
+      await request.delete(`${API}/foods/${createdId}`)
+    }
+  }
+})
+
 test('typed unknown barcode drops to manual entry carrying the barcode', async ({
   page,
   goto,

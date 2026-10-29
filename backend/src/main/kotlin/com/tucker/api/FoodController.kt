@@ -142,6 +142,10 @@ data class FoodCandidateResponse(
     val alcoholPer100g: Double?,
     /** The same alcohol as the ABV the form prefills; null exactly when [alcoholPer100g] is. */
     val alcoholAbv: Double?,
+    /** The Provider's carbs, set only when fibre folded into them was taken out of [carbsPer100g]. */
+    val providerCarbsPer100g: Double?,
+    /** [carbsPer100g] without the folded-in fibre; null exactly when [providerCarbsPer100g] is. */
+    val adjustedCarbsPer100g: Double?,
 )
 /* jscpd:ignore-end */
 
@@ -169,13 +173,15 @@ internal fun FoodCandidate.toResponse() = FoodCandidateResponse(
     name = name,
     barcode = barcode,
     proteinPer100g = proteinPer100g,
-    carbsPer100g = carbsPer100g,
+    carbsPer100g = adjustedCarbsPer100g ?: carbsPer100g,
     fatPer100g = fatPer100g,
     statedEnergyKcalPer100g = statedEnergyKcalPer100g,
     source = source,
     fibrePer100g = fibrePer100g,
     alcoholPer100g = alcoholPer100g,
     alcoholAbv = alcoholPer100g?.let(AlcoholByVolume::percentOf),
+    providerCarbsPer100g = carbsPer100g.takeIf { adjustedCarbsPer100g != null },
+    adjustedCarbsPer100g = adjustedCarbsPer100g,
 )
 
 private fun FoodKind.onTheWire() = when (this) {
