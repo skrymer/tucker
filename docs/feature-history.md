@@ -2212,10 +2212,11 @@ null` now means two things that earn opposite messages — the same trap
     the rest of the product still prefills. `FoodCandidate.adjustedCarbsPer100g`
     (computed once, `by lazy`) is carbs minus fibre when the carbs as given miss the
     stated energy by more than `FIBRE_FOLDED_TOLERANCE` (5 %, alcohol counted) and
-    carbs minus fibre reproduces it, and never when fibre exceeds the carbs.
-    `offeredCarbsPer100g` is what the form prefills, and `offeredFibrePer100g` offers
-    the fibre only when the stated energy vouches for a reading (as given, or the fold
-    caught) — within 5 % and closer to it than the carbs read with no fibre energy. The wire carries the offered fibre as `fibrePer100g`,
+    carbs minus fibre is vouched for — `vouchesFor`: within 5 % and closer to the
+    stated energy than the same scan read without fibre — and never when fibre exceeds
+    the carbs. `offeredCarbsPer100g` is what the form prefills, and
+    `offeredFibrePer100g` offers the fibre only when a reading is vouched for (as given,
+    or the fold caught). The wire carries the offered fibre as `fibrePer100g`,
     `alcoholPer100g`, the derived `alcoholAbv`, and `providerCarbsPer100g` /
     `adjustedCarbsPer100g`, both set only when the rule fires; the Add-food fill notice
     adds "Carbs adjusted from 29.4 g to 12.7 g: Open Food Facts' carbs included the
