@@ -31,13 +31,18 @@ data class FoodCandidate(
      * reproduces the stated energy and the carbs as given do not (CONTEXT.md); null
      * otherwise. The energy compared is the whole derived figure, alcohol included.
      */
-    val adjustedCarbsPer100g: Double?
-        get() {
-            val carbs = carbsPer100g ?: return null
-            val fibre = fibrePer100g ?: return null
-            if (derivesStatedEnergy(carbs)) return null
-            return (carbs - fibre).takeIf { it >= 0 && derivesStatedEnergy(it) }
-        }
+    val adjustedCarbsPer100g: Double? by lazy { carbsWithoutFoldedFibre() }
+
+    /** The carbs the User is offered: [adjustedCarbsPer100g] where fibre was folded in, else the Provider's. */
+    val offeredCarbsPer100g: Double?
+        get() = adjustedCarbsPer100g ?: carbsPer100g
+
+    private fun carbsWithoutFoldedFibre(): Double? {
+        val carbs = carbsPer100g ?: return null
+        val fibre = fibrePer100g ?: return null
+        if (derivesStatedEnergy(carbs)) return null
+        return (carbs - fibre).takeIf { it >= 0 && derivesStatedEnergy(it) }
+    }
 
     private fun derivesStatedEnergy(carbs: Double): Boolean {
         val stated = statedEnergyKcalPer100g ?: return false

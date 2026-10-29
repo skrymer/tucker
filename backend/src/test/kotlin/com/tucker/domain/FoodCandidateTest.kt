@@ -95,6 +95,25 @@ class FoodCandidateTest {
     }
 
     @Test
+    fun `the carbs offered are the adjusted ones when the fibre was folded in`() {
+        val wrap = candidate(
+            proteinPer100g = 19.4285714285714,
+            carbsPer100g = 29.4285714285714,
+            fatPer100g = 9.28571428571429,
+        ).copy(fibrePer100g = 16.7142857142857, statedEnergyKcalPer100g = 246.0)
+
+        assertEquals(12.7142857142857, assertNotNull(wrap.offeredCarbsPer100g), 1e-9)
+    }
+
+    @Test
+    fun `the carbs offered are the Provider's when nothing was folded in`() {
+        val wrap = candidate(proteinPer100g = 19.4, carbsPer100g = 12.8, fatPer100g = 9.3)
+            .copy(fibrePer100g = 16.8, statedEnergyKcalPer100g = 246.0)
+
+        assertEquals(12.8, wrap.offeredCarbsPer100g)
+    }
+
+    @Test
     fun `carbs that already match the stated energy are not adjusted`() {
         // The wrap as its label states it: carbs exclude fibre, and derive 246.1 kcal.
         val wrap = candidate(proteinPer100g = 19.4, carbsPer100g = 12.8, fatPer100g = 9.3)
