@@ -219,4 +219,14 @@ class FoodCandidateTest {
 
         assertNull(noCarbs.adjustedCarbsPer100g)
     }
+
+    @Test
+    fun `a US-style record's fibre, counted inside its carbs at 4 kcal per gram, is caught too`() {
+        // The label's 298 = 4 × 10 + 4 × 60 + 9 × 2: fibre counted inside the carbs.
+        // Tucker as given reads 358 and carbs minus fibre 238; neither is within 5 %.
+        val cereal = candidate(proteinPer100g = 10.0, carbsPer100g = 60.0, fatPer100g = 2.0)
+            .copy(fibrePer100g = 30.0, statedEnergyKcalPer100g = 298.0)
+
+        assertEquals(30.0, cereal.adjustedCarbsPer100g)
+    }
 }

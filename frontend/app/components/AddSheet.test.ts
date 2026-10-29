@@ -314,7 +314,7 @@ describe('AddSheet', () => {
 
     expect(
       await screen.findByText(
-        "Carbs adjusted from 29.4 g to 12.7 g: Open Food Facts' carbs included the 16.7 g of fibre, which the label's 246 kcal does not.",
+        "Carbs adjusted from 29.4 g to 12.7 g: Open Food Facts' carbs included the 16.7 g of fibre.",
       ),
     ).toBeVisible()
     const carbs = screen.getByLabelText(/carbs \/100\s*g/i)

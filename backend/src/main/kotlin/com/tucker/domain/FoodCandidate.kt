@@ -27,9 +27,10 @@ data class FoodCandidate(
     val alcoholPer100g: Double? = null,
 ) {
     /**
-     * The Provider's carbs minus fibre when the fibre is **folded in** — that reading
-     * reproduces the stated energy and the carbs as given do not (CONTEXT.md); null
-     * otherwise. The energy compared is the whole derived figure, alcohol included.
+     * The Provider's carbs minus fibre when the fibre is **folded in** (CONTEXT.md); null
+     * otherwise. Folded in means the carbs as given miss the stated energy while either
+     * carbs minus fibre reproduces it, or a US-style reading does — the carbs as given
+     * with no separate fibre energy. The energy compared includes alcohol.
      */
     val adjustedCarbsPer100g: Double? by lazy { carbsWithoutFoldedFibre() }
 
@@ -41,14 +42,16 @@ data class FoodCandidate(
         val carbs = carbsPer100g ?: return null
         val fibre = fibrePer100g ?: return null
         if (derivesStatedEnergy(carbs)) return null
-        return (carbs - fibre).takeIf { it >= 0 && derivesStatedEnergy(it) }
+        return (carbs - fibre).takeIf {
+            it >= 0 && (derivesStatedEnergy(it) || derivesStatedEnergy(carbs, fibre = null))
+        }
     }
 
-    private fun derivesStatedEnergy(carbs: Double): Boolean {
+    private fun derivesStatedEnergy(carbs: Double, fibre: Double? = fibrePer100g): Boolean {
         val stated = statedEnergyKcalPer100g ?: return false
         val protein = proteinPer100g ?: return false
         val fat = fatPer100g ?: return false
-        val derived = Macros(protein, carbs, fat, fibrePer100g, alcoholPer100g).nutrition().caloriesPer100g
+        val derived = Macros(protein, carbs, fat, fibre, alcoholPer100g).nutrition().caloriesPer100g
         return abs(derived - stated) <= FIBRE_FOLDED_TOLERANCE * stated
     }
 

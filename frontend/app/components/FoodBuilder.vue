@@ -162,8 +162,7 @@ function foldedFibreNote(c: Candidate | null) {
   }
   return (
     `Carbs adjusted from ${c.providerCarbsPer100g.toFixed(1)} g to ${c.adjustedCarbsPer100g.toFixed(1)} g: ` +
-    `${c.source}' carbs included the ${c.fibrePer100g?.toFixed(1)} g of fibre, ` +
-    `which the label's ${c.statedEnergyKcalPer100g} kcal does not.`
+    `${c.source}' carbs included the ${c.fibrePer100g?.toFixed(1)} g of fibre.`
   )
 }
 </script>
