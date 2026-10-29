@@ -28,9 +28,9 @@ data class FoodCandidate(
     val alcoholPer100g: Double? = null,
 ) {
     /**
-     * The Provider's carbs minus fibre when the fibre is **folded in** — that reading
-     * reproduces the stated energy and the carbs as given do not (CONTEXT.md); null
-     * otherwise. The energy compared is the whole derived figure, alcohol included.
+     * The Provider's carbs minus fibre when the fibre is **folded in** — the carbs as
+     * given miss the stated energy and that reading [vouchesFor] it (CONTEXT.md); null
+     * otherwise.
      */
     val adjustedCarbsPer100g: Double? by lazy { carbsWithoutFoldedFibre() }
 
@@ -40,26 +40,42 @@ data class FoodCandidate(
 
     /**
      * The Provider's fibre, offered only when the stated energy vouches for a reading of
-     * the carbs — as given, or with the fibre taken out — so a scan never double-counts it.
+     * the carbs — as given, or with the fibre taken out — so a scan never reads further
+     * from its label than one without fibre.
      */
     val offeredFibrePer100g: Double?
         get() = fibrePer100g.takeIf {
-            adjustedCarbsPer100g != null || carbsPer100g?.let { carbs -> derivesStatedEnergy(carbs) } == true
+            adjustedCarbsPer100g != null || carbsPer100g?.let { carbs -> vouchesFor(carbs) } == true
         }
 
     private fun carbsWithoutFoldedFibre(): Double? {
         val carbs = carbsPer100g ?: return null
         val fibre = fibrePer100g ?: return null
         if (derivesStatedEnergy(carbs)) return null
-        return (carbs - fibre).takeIf { it >= 0 && derivesStatedEnergy(it) }
+        return (carbs - fibre).takeIf { it >= 0 && vouchesFor(it) }
+    }
+
+    /**
+     * Whether [carbs], fibre counted, reproduce the stated energy and sit closer to it
+     * than the Provider's carbs with no fibre energy — the reading a scan without fibre saves.
+     */
+    private fun vouchesFor(carbs: Double): Boolean {
+        val withFibre = energyGap(carbs, fibrePer100g) ?: return false
+        val withoutFibre = carbsPer100g?.let { given -> energyGap(given, fibre = null) } ?: return false
+        return derivesStatedEnergy(carbs) && withFibre < withoutFibre
     }
 
     private fun derivesStatedEnergy(carbs: Double): Boolean {
         val stated = statedEnergyKcalPer100g ?: return false
-        val protein = proteinPer100g ?: return false
-        val fat = fatPer100g ?: return false
-        val derived = Macros(protein, carbs, fat, fibrePer100g, alcoholPer100g).nutrition().caloriesPer100g
-        return abs(derived - stated) <= FIBRE_FOLDED_TOLERANCE * stated
+        val gap = energyGap(carbs, fibrePer100g) ?: return false
+        return gap <= FIBRE_FOLDED_TOLERANCE * stated
+    }
+
+    private fun energyGap(carbs: Double, fibre: Double?): Double? {
+        val stated = statedEnergyKcalPer100g ?: return null
+        val protein = proteinPer100g ?: return null
+        val fat = fatPer100g ?: return null
+        return abs(Macros(protein, carbs, fat, fibre, alcoholPer100g).nutrition().caloriesPer100g - stated)
     }
 
     /**

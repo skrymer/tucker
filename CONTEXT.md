@@ -164,21 +164,22 @@ have — negative, or past 100 % vol — is left not stated rather than costing 
 the rest of the product.
 A Provider's carbs may have **fibre folded in** — a contributor copying a US-style
 label's total carbohydrate, though Tucker's **carbs** excludes it. The carbs field
-alone cannot say so; the stated energy can. When the carbs as given miss the stated
-energy (by more than 5 %) and subtracting fibre from them reproduces it, the
-Candidate carries carbs minus fibre, and says so: the adjustment is **shown to the
-user, with both figures**, before they confirm, never applied silently. More fibre
-than carbs was never folded into them, so that is never adjusted. The Candidate
-**offers its fibre** only when the stated energy vouches for one of those two
-readings; otherwise — no stated energy, a macro missing, or a record only a reading
-without fibre energy reproduces (a US-style label counting fibre inside the carbs,
-or one whose energy left fibre out, which the figures cannot tell apart) — the fibre
-is left not stated, so a scan never reads further from its label than one without
-fibre would. The stated energy arbitrates which reading of carbs to take; it is
-still never stored, and calories are still
-derived. The energy it is compared against is the *whole* derived figure, alcohol
-included — a Provider's stated energy for a drink counts its alcohol, so leaving it
-out would read every beer as a mismatch.
+alone cannot say so; the stated energy can. A reading of the carbs is **vouched
+for** when, fibre counted, it reproduces the stated energy (within 5 %) and sits
+closer to it than the carbs as given with no fibre energy — the figure a scan
+without fibre would save. When the carbs as given miss the stated energy and carbs
+minus fibre is vouched for, the Candidate carries carbs minus fibre, and says so:
+the adjustment is **shown to the user, with both figures**, before they confirm,
+never applied silently. More fibre than carbs was never folded into them, so that
+is never adjusted. The Candidate **offers its fibre** only when one of those two
+readings is vouched for; otherwise — no stated energy, a macro missing, or a record
+the reading without fibre fits better (a US-style label counting fibre inside the
+carbs, or one whose energy left fibre out, which the figures cannot tell apart) —
+the fibre is left not stated, so a scan never reads further from its label than
+one without fibre would. The stated energy is still never stored, and calories are
+still derived. The energy compared is the *whole* derived figure, alcohol included
+— a Provider's stated energy for a drink counts its alcohol, so leaving it out
+would read every beer as a mismatch.
 A Provider's alcohol arrives as **ABV**, whatever its field is called (Open Food
 Facts' `alcohol_100g` is % vol), and is converted to grams like a typed one. A catalog hit, by contrast, returns
 an existing Food directly, not a Candidate.

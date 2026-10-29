@@ -2215,7 +2215,7 @@ null` now means two things that earn opposite messages — the same trap
     carbs minus fibre reproduces it, and never when fibre exceeds the carbs.
     `offeredCarbsPer100g` is what the form prefills, and `offeredFibrePer100g` offers
     the fibre only when the stated energy vouches for a reading (as given, or the fold
-    caught). The wire carries the offered fibre as `fibrePer100g`,
+    caught) — within 5 % and closer to it than the carbs read with no fibre energy. The wire carries the offered fibre as `fibrePer100g`,
     `alcoholPer100g`, the derived `alcoholAbv`, and `providerCarbsPer100g` /
     `adjustedCarbsPer100g`, both set only when the rule fires; the Add-food fill notice
     adds "Carbs adjusted from 29.4 g to 12.7 g: Open Food Facts' carbs included the
@@ -2232,7 +2232,9 @@ null` now means two things that earn opposite messages — the same trap
     read right, saving +2 × fibre high once fibre was prefilled; a US-style adjustment
     was built and then withdrawn, because the figures cannot tell that record from one
     whose label energy left fibre out, where it subtracted fibre twice. An
-    unreconcilable record now reads as main did. The notice's kcal clause was dropped.
+    unreconcilable record now reads as main did, and so does one the no-fibre reading
+    fits better: inside the 5 % band both readings can fit. The notice's kcal clause
+    was dropped.
   - **Not changed:** a Check still derives a Candidate's calories from protein, carbs
     and fat as given (`atwaterNutrition`), so it reads a scanned beer at ~13 kcal and
     the wrap at 279; the Check is to be turned off pending redesign (#564). A negative

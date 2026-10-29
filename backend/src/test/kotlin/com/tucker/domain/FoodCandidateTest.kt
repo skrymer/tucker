@@ -232,6 +232,16 @@ class FoodCandidateTest {
     }
 
     @Test
+    fun `carbs are not adjusted when the reading without fibre already sits closer to the stated energy`() {
+        // Without fibre: 4 × 10 + 4 × 36 + 9 × 2 = 202 against a stated 200. Carbs minus
+        // fibre reads 192, within 5 % but further off than what the record says unadjusted.
+        val bar = candidate(proteinPer100g = 10.0, carbsPer100g = 36.0, fatPer100g = 2.0)
+            .copy(fibrePer100g = 5.0, statedEnergyKcalPer100g = 200.0)
+
+        assertNull(bar.adjustedCarbsPer100g)
+    }
+
+    @Test
     fun `the fibre is offered when the stated energy caught it folded into the carbs`() {
         val wrap = candidate(
             proteinPer100g = 19.4285714285714,
@@ -248,6 +258,16 @@ class FoodCandidateTest {
             .copy(fibrePer100g = 16.8, statedEnergyKcalPer100g = 246.0)
 
         assertEquals(16.8, wrap.offeredFibrePer100g)
+    }
+
+    @Test
+    fun `the fibre is not offered when the reading without it sits closer to the stated energy`() {
+        // Without fibre: 4 × 10 + 4 × 30 + 9 × 5 = 205, the stated energy exactly. With
+        // fibre it reads 213, within 5 % but further off.
+        val muesli = candidate(proteinPer100g = 10.0, carbsPer100g = 30.0, fatPer100g = 5.0)
+            .copy(fibrePer100g = 4.0, statedEnergyKcalPer100g = 205.0)
+
+        assertNull(muesli.offeredFibrePer100g)
     }
 
     @Test
