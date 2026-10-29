@@ -36,8 +36,10 @@ instead of about 120.
   same way.
 - **A Provider's stated energy now arbitrates which reading of carbs to take.**
   Carbs with fibre folded in cannot be detected from the carbs field, but the
-  stated energy reveals them. If subtracting fibre reproduces the stated energy and
-  the carbs as given do not, the **Food Candidate** carries carbs minus fibre. It
+  stated energy reveals them. If the carbs as given do not reproduce the stated
+  energy, and either subtracting fibre does or a US-style reading does (the carbs as
+  given with the fibre counted inside them at 4 kcal/g), the **Food Candidate**
+  carries carbs minus fibre. It
   shows the User both figures before they confirm, and never applies the
   adjustment silently. The comparison uses the whole derived energy, alcohol
   included. The stated energy is still never stored. This amends ADR 0006's
