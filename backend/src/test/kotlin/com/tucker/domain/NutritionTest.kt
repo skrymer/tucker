@@ -109,4 +109,17 @@ class NutritionTest {
             Macros(proteinPer100g = 0.0, carbsPer100g = 0.0, fatPer100g = -1.0).nutrition()
         }
     }
+
+    @Test
+    fun `a negative figure where one may go unstated is refused, naming the figure`() {
+        val refusal = assertThrows<IllegalArgumentException> {
+            requireNonNegativeWhereStated("carbsPer100g" to 3.0, "fibrePer100g" to -0.5)
+        }
+        assertEquals("fibrePer100g must be >= 0", refusal.message)
+    }
+
+    @Test
+    fun `an unstated figure and a zero one both pass the non-negative check`() {
+        requireNonNegativeWhereStated("fibrePer100g" to null, "alcoholPer100g" to 0.0)
+    }
 }

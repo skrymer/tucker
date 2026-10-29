@@ -159,8 +159,8 @@ Provider it came from, that Provider's stated energy (shown as a cross-check, no
 stored), and the scanned barcode. The user completes any missing macro and
 confirms — only then does it become a Food.
 Its fibre and alcohol are carried like any other macro, absent where the Provider
-states none. A Provider states alcohol as ABV; the Candidate keeps it in grams, as a
-Food does, and shows the User the ABV. A fibre or ABV no food could have — negative,
+states none. The Candidate keeps alcohol in grams, as a Food does, and shows the User
+the ABV. A fibre or ABV no food could have — negative,
 or past 100 % vol — is left not stated rather than costing the User the rest of the
 product.
 A Provider's carbs may have **fibre folded in** — a contributor copying a US-style
