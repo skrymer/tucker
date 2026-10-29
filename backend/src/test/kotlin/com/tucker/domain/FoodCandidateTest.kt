@@ -202,4 +202,21 @@ class FoodCandidateTest {
 
         assertNull(beer.adjustedCarbsPer100g)
     }
+
+    @Test
+    fun `carbs that are all folded-in fibre are offered as zero`() {
+        // 4 × 10 + 4 × (10 − 10) + 2 × 10 = 60, the stated energy; carbs as given read 100.
+        val fibreOnly = candidate(proteinPer100g = 10.0, carbsPer100g = 10.0, fatPer100g = 0.0)
+            .copy(fibrePer100g = 10.0, statedEnergyKcalPer100g = 60.0)
+
+        assertEquals(0.0, fibreOnly.adjustedCarbsPer100g)
+    }
+
+    @Test
+    fun `carbs are not adjusted when the Provider states none`() {
+        val noCarbs = candidate(proteinPer100g = 10.0, carbsPer100g = null, fatPer100g = 0.0)
+            .copy(fibrePer100g = 10.0, statedEnergyKcalPer100g = 60.0)
+
+        assertNull(noCarbs.adjustedCarbsPer100g)
+    }
 }

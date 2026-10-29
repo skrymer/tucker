@@ -1857,6 +1857,27 @@ code unmoved), `requestFactory`, and the `FoodResponse` accessors. New:
   equivalent**: a non-candidate branch yields `undefined` rather than `null`, and every
   reader (`if (!c)`, `?.… ?? undefined`) treats the two alike.
 
+### Folded-in fibre caught at scan time (#549) — frontend 121 of 149, backend 160 of 197
+
+Every survivor the #548 section names stands (lines shifted, code unmoved). The
+`carbs − fibre ≥ 0` boundary and an absent carbs figure in
+`FoodCandidate.carbsWithoutFoldedFibre` were real gaps, closed by *carbs that are all
+folded-in fibre are offered as zero* and *carbs are not adjusted when the Provider states
+none*. New:
+
+- **`FoodCandidate.derivesStatedEnergy`'s three guards → `return true` — equivalent**:
+  the stated energy, protein or fat absent. `carbsWithoutFoldedFibre` asks about the
+  carbs as given first, and a `true` there returns null, as the `false` path does by
+  failing the adjusted reading.
+- **`FoodBuilder.vue`'s `c.adjustedCarbsPer100g == null` → `false` (`foldedFibreNote`) —
+  equivalent**: the wire sets `providerCarbsPer100g` only beside `adjustedCarbsPer100g`
+  (`toResponse`), so the first operand already decides.
+- **`FoodBuilder.vue`'s `c.fibrePer100g?.toFixed` → `.toFixed` — equivalent**: a
+  Candidate is adjusted only when it states fibre.
+- **`AddFoodForm.vue`'s `v-if="fillNote"` removed (hand mutant) — equivalent**: with no
+  note it renders an empty `<p>`, zero-height under Tailwind's preflight and skipped by
+  assistive tech.
+
 ### Noise removed at the source
 
 Four `getLog()` companion accessors (`MartijndwarsWebPushSender`, `RecordingWebPushSender`,
