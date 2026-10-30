@@ -46,7 +46,8 @@ export function decide(command) {
       permissionDecisionReason:
         'Project convention: never filter a test run through grep, head or a short tail — ' +
         'Probity reads the full output to judge RED and GREEN. Pipe it through ' +
-        '`| tail -N` instead (N of 5 or more, so the summary survives), and retry.',
+        '`| tail -N` instead (N of 5 or more, so the summary survives), and retry. ' +
+        'For a RED a sign-off will cite, save it too: `2>&1 | tee <scratch>/red-<name>.log | tail -N`.',
     },
   }
 }

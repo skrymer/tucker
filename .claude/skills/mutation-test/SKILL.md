@@ -207,8 +207,8 @@ Identical for both stacks; only step 1 and 2's commands differ.
 
    **Check [`references/known-survivors.md`](references/known-survivors.md) first.**
    Every mutant a full sweep leaves alive already has a verdict there, with the
-   evidence. Triage what your *change* introduced; only re-litigate an entry if the
-   code under it moved, and retire one whose code your change deleted, in the same
+   evidence. Triage what your *change* introduced; only re-litigate an entry if the code under
+   it moved, or a test now asserts what it calls unasserted, and retire one whose code your change deleted, in the same
    feature PR — it is the feature's code, not process — since nothing else
    notices (#464's retro found a `MEMORY_ERROR` entry on code gone two commits earlier).
 
@@ -488,9 +488,9 @@ domain code and **~1.6s for anything a controller test covers**.
 
 ## Delegating triage
 
-Past ~3 survivors with no standing entry on unmoved code, a read-only `Agent` briefed
-from agent-briefs.md (*The survivor triage*) returns the verdicts (#498's standing ones
-were triaged inline, all upheld); you write the tests. Take its rows, not its summary.
+Past ~3 survivors with no standing entry on unmoved code, re-sweeps after a fix included, a read-only `Agent`
+briefed from agent-briefs.md (*The survivor triage*) returns the verdicts (#548's inline triage mislabelled a NO_COVERAGE);
+you write the tests. A matrix sweep's survivors file is the XML's non-`KILLED` rows. Take its rows, not its summary.
 
 ## Related
 

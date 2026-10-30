@@ -90,6 +90,11 @@ summary line copied whole, never fields picked from it (#468 quoted a Vitest fil
 `environment` and `setup` and left out the `tests` where its boot landed), and every finding an agent returns gets a row, a
 "harmless" nit included — and so does a behaviour change the agent dismissed itself (an
 adversary's failed attack, a ledger's scope tail): #455 PR 2's pack read one as resolved.
+A row id is never a range (`A4-1…A4-11`): count the handback's attacks, tail items and
+triage rows, and write that many rows — #548's gate 5 rejected seven merged rows. An agent's
+dismissal of its own attack is re-derived before it is copied: recompute its figure and open
+the ruling it cites (#548's "contrived" case saved 192 kcal where `main` saved 202, and
+three adversaries cited a ruling to the wrong issue).
 A re-run brief's report is diffed against the first run's, and each attack or row it adds
 is its own row — "fail as in run 1" hid two new attacks in #497. #443's pack recounted a hand-mutation run as "11/12" (the
 file said 10 of 11) and dropped a one-line nit; gate 5 had to correct both. A row says
@@ -121,7 +126,10 @@ citing the user's ruling quotes the question as asked; an item the question did 
 name is asked again, so write the ruling question from every clause of the finding. A
 ruling never answers a later gate's alternative either — that is asked again too — and a
 ruling question's premise is checked before it is asked: #521's "never deployed" was
-confirmed only afterwards, from the prod image tag.
+confirmed only afterwards, from the prod image tag. A premise about a rule choosing
+between readings within a tolerance ("never worse than `main`") is checked on five cases
+of one record, branch against `main`: only one reading fits, only the other, both, neither,
+a tie. #548 checked one per round, and three resolutions passes each found the next.
 
 **Where a justification has to be tested, it is presented as a claim, attributed to
 nobody**: "It is claimed that `startedOn` is the only way to create a backdated Goal.
@@ -242,7 +250,8 @@ this same diff right now; duplicating it wastes you. Your angles:
 
 Report:
 1. Your strongest argument that this should not merge, with the evidence.
-2. Every other attack you tried, one line each, and why it failed.
+2. Every other attack you tried, one line each, and why it failed — a figure you
+   computed or a source you quote, never "unlikely" or "contrived".
 3. A verdict: SHOULD NOT MERGE / SHOULD MERGE.
 
 "It is sound — here is the attack that came closest, and here is exactly why it

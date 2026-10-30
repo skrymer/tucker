@@ -2,7 +2,8 @@
 
 Every mutant a full sweep leaves alive, with the verdict already reached for it.
 Triage the survivors a _change_ introduces; check them against this list first, and
-only re-litigate an entry if the code under it moved.
+only re-litigate an entry if the code under it moved, or a test now asserts what it
+calls unasserted.
 
 The four verdicts are the skill's: **real gap**, **killed by an out-of-scope
 layer**, **equivalent mutant**, **false survivor**. A fifth label appears here —
@@ -1012,7 +1013,10 @@ The note is on `ApiIntegrationTest`.
 
 **Narrower than it looks** (#455's scoped sweep, triaged by hand):
 - 8 of the 10 `FoodResponse` accessors a scoped sweep reports are **false survivors**: asserted on the wire (`FoodBarcodeApiTest`, `RecipeApiTest`, `FoodReferenceFoodApiTest`, and `ApiIntegrationTest` feeding the response `id` into a weighed POST). The same goes for `EntryResponse`'s `foodId` / `foodName` / `grams` / `isEstimate` (`ApiIntegrationTest`, `TomorrowsEntriesApiTest`), `calories` (`ApiIntegrationTest` `$.entries[0].calories` closeTo 117.96) and `label` (`CrossUserIsolationTest` `$.entries[0].label`, three cases) — #476's scoped sweep.
-- `carbsPer100g` and `fatPer100g` are the two genuinely unasserted accessors. They are the "(2)" above.
+- `carbsPer100g` and `fatPer100g` were the two unasserted accessors (the "(2)" above) until
+  `FoodCorrectionApiTest`'s *a corrected Food answers with its new name and macros* asserted
+  both (#432). They are false survivors now: forcing either `FoodResponse` mapping to `0.0`
+  by hand fails that test, 420 completed, 1 failed (#548's retro).
 
 Four survivors that looked like this cluster were **real gaps and are now fixed**:
 `caloriesRemaining`'s sign, `FoodController.byId`'s recipe branch, `EntryController.delete`

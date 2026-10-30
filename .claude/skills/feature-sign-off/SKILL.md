@@ -169,8 +169,8 @@ old one overwritten: #498 lost a pitest red and a "91 failed" e2e log that way.
    (#435's denied-camera fix honoured every ADR and contradicted AC6 as written).
    Likewise an item an agent marks "the user's call" goes to the user, never the pack;
    for a harm against `main` it lists only fixes (#511). The adversary needs no
-   re-check after a correctness fix. A user ruling that adds behaviour, or settles how
-   a criterion is met: `gh issue edit` it in the user's words, re-run Briefs A and D (#476).
+   re-check after a correctness fix. A user ruling that adds behaviour, or settles how a criterion
+   is met: `gh issue edit` it in the user's words, re-run A and D (#476) — on top of F, `/check-adrs` and the re-sweep any fix owes (#548).
 
    **Gate 2's verdicts do need one, after every later fix** — gate 2's own triage's,
    gate 3's, a gate-5 re-resolution's, a gate-6 fix's: re-run the scoped mutation sweep over the files
@@ -393,8 +393,8 @@ losing a finding:
   you prove by hand-mutation — one at a time, to watch that single mutant die — and a
   test that passes on write because the code already delivers it (a gate-3 ledger gap,
   say): show its red on a throwaway copy, or with `-PmutationFullMatrix` on the backend,
-  never by mutating the source in place, which the TDD hook refuses. `mutation-test`
-  carries both recipes. "It passes on write" never leaves behaviour unpinned, nor
+  never by mutating the source in place, which the TDD hook refuses. `mutation-test` carries both; a smoke's
+  red on `main` is a `main` worktree with the spec copied in — `up --build` rebuilds over a retag (#548). "It passes on write" never leaves behaviour unpinned, nor
   justifies deleting the test: the red removes the line the justification names (#432's
   `v-if`), and a "framework does it" claim owes the same red. **`tee` each red to a log before
   its GREEN** — a FIXED row cites it, and the TDD hook bars re-showing it after (#523: ten; #547: two).
