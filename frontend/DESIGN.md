@@ -107,6 +107,13 @@ White cards sit on the pale-green canvas wash and lift with the card shadow;
 Over-budget is the one place the calorie ring leaves green: the arc and centre
 figure switch to **error**, not coral.
 
+Warning stays `#D9922B` in light mode by choice, though it measures **2.59:1**
+on the white card, under the 3:1 a meaningful mark or large text asks for.
+Darker ambers that pass all read brown, and were judged live against the coral
+protein arc and rejected. So warning is never the only carrier of its meaning:
+it always sits beside a word that says the same thing, and a large figure never
+takes it. Dark mode's `#F5B544` (8.88:1 on `#16241d`) passes and is kept.
+
 ---
 
 ### Categorical — the Intake Breakdown ring (data only)
