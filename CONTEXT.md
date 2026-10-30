@@ -535,8 +535,9 @@ Check's share is of the Budget — a different denominator)
 
 **Budget Projection**:
 A forecast of whether logging a prospective **Entry** would push the day over the
-**Calorie Budget** — the over-budget rule applied to the day's intake *plus* one
-not-yet-logged Entry. Computed before the Entry is committed, so Tucker can warn
+**Calorie Budget** — the day's intake *plus* one not-yet-logged Entry, read
+against the Budget itself rather than the **Tolerance**, so the heads-up comes
+before the first calorie past it. Computed before the Entry is committed, so Tucker can warn
 that it would exceed the Budget and by how many calories. The user may log it
 anyway: the projection informs the choice, it never blocks it. Defined only while a
 Calorie Budget exists, and about calories alone — the **Protein Floor** is a
@@ -597,6 +598,16 @@ week and held steady in between, so it stays a stable habit. A User with
 **Calorie Tracking** off has none at all — see **Intake Targets**. It is never
 floored: the only Budget Tucker publishes is one it derived.
 _Avoid_: limit, allowance
+
+**Tolerance**:
+A band 10% of the **Calorie Budget** wide, sitting directly above it. A day whose
+intake lands inside it is **slightly over** — past the Budget, but not a blown
+day: a Budget is a weekly-corrected estimate, and a few percent over it is noise
+the next **Weekly Review** absorbs, not a failure. The Budget itself does not
+move; the Tolerance only grades how far past it a day went. It is the same 10%
+for every User, never a setting — a knob would let a User redefine a blown day —
+and scales with the Budget rather than being a flat number of calories.
+_Avoid_: margin, grace, buffer, allowance
 
 **Protein Floor**:
 The minimum daily protein intake: 2 g per kg of current Trend Weight, recomputed
@@ -1057,8 +1068,8 @@ _Avoid_: device token, push token, registration
 - A **Goal** and the current **Trend Weight** yield **Goal Progress** — how far the
   trend has moved toward the target and when, at the Goal's rate, it's projected to arrive
 - **Maintenance** is corrected over time from **Entries** and the **Trend Weight**
-- A day is **on-target** once the **Protein Floor** is met and intake is at or under the **Calorie Budget**; it is **over budget** the moment intake exceeds the **Calorie Budget**. An in-progress day in neither state has no verdict — being under the floor mid-day isn't a failure, the day just isn't finished.
-- A **Budget Projection** applies the over-budget rule to the day's intake plus a prospective **Entry**, warning before it's logged; the user may log it regardless
+- A day is **on-target** once the **Protein Floor** is met and intake is at or under the **Calorie Budget**; it is **slightly over** the moment intake exceeds the **Calorie Budget** while staying within the **Tolerance** (exactly 110% of the Budget is still slightly over); it is **over budget** the moment intake exceeds the Tolerance. Both over-states are about calories alone — a slightly-over day with the Protein Floor met is not on-target — and both are earned mid-day, since intake only grows. An in-progress day in none of these states has no verdict — being under the floor mid-day isn't a failure, the day just isn't finished.
+- A **Budget Projection** warns when the day's intake plus a prospective **Entry** would exceed the **Calorie Budget** itself — not the **Tolerance** — before it's logged; the user may log it regardless
 - A **Check** weighs a **Food** or **Food Candidate** against the whole day's
   **Calorie Budget** and **Protein Floor** — never against what's left — so the
   same product reads the same at any hour. It creates nothing and is defined only
