@@ -12,6 +12,11 @@ data class MacroEnergyShares(
     val fat: Double?,
 )
 
+/** Refuses a negative figure among ones a source may leave unstated, naming it. */
+internal fun requireNonNegativeWhereStated(vararg figures: Pair<String, Double?>) {
+    for ((name, value) in figures) require(value == null || value >= 0) { "$name must be >= 0" }
+}
+
 /**
  * Nutrition values per 100 g of a Food. A value object: immutable, compared by
  * value, and able to scale itself to an actual weight.
@@ -31,10 +36,12 @@ data class Nutrition(
     init {
         require(caloriesPer100g >= 0) { "caloriesPer100g must be >= 0, was $caloriesPer100g" }
         require(proteinPer100g >= 0) { "proteinPer100g must be >= 0, was $proteinPer100g" }
-        require(carbsPer100g == null || carbsPer100g >= 0) { "carbsPer100g must be >= 0" }
-        require(fatPer100g == null || fatPer100g >= 0) { "fatPer100g must be >= 0" }
-        require(fibrePer100g == null || fibrePer100g >= 0) { "fibrePer100g must be >= 0" }
-        require(alcoholPer100g == null || alcoholPer100g >= 0) { "alcoholPer100g must be >= 0" }
+        requireNonNegativeWhereStated(
+            "carbsPer100g" to carbsPer100g,
+            "fatPer100g" to fatPer100g,
+            "fibrePer100g" to fibrePer100g,
+            "alcoholPer100g" to alcoholPer100g,
+        )
     }
 
     /**

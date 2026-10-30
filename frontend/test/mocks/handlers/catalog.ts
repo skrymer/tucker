@@ -149,7 +149,9 @@ type RecipeRequest = components['schemas']['CreateRecipeRequest']
  *   Created Tags are numbered from 20, or from one past the highest id given.
  *   A Tag a [foods] entry carries is on the shelf even if [tags] omits it.
  * - A barcode finds the catalog's Food carrying it, then a provider
- *   [candidates] entry, and otherwise misses.
+ *   [candidates] entry, and otherwise misses. A candidate states alcohol as ABV
+ *   and answers with the grams beside it, as the server pairs them. A carbs
+ *   adjustment is the test's to state, as the server would send it.
  *
  * Built per test: the state is the test's own.
  */
@@ -489,7 +491,13 @@ export function foodCatalog({
         return response(200).json({
           outcome: 'CANDIDATE',
           food: null,
-          candidate,
+          candidate: {
+            ...candidate,
+            fibrePer100g: candidate.fibrePer100g ?? null,
+            ...alcoholOf(candidate.alcoholAbv),
+            providerCarbsPer100g: candidate.providerCarbsPer100g ?? null,
+            adjustedCarbsPer100g: candidate.adjustedCarbsPer100g ?? null,
+          },
         })
       }
       return response(404).json({

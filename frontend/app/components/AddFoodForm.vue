@@ -12,6 +12,8 @@ const props = defineProps<{
     proteinPer100g?: number
     carbsPer100g?: number
     fatPer100g?: number
+    fibrePer100g?: number
+    alcoholAbv?: number
   }
   /**
    * A Provider's stated energy per 100 g, shown only as a cross-check — calories
@@ -24,6 +26,8 @@ const props = defineProps<{
    * (ADR 0007 — the fill is shown inline, not as a toast).
    */
   filledFromSource?: string
+  /** A further sentence under the fill notice, naming a change the look-up made. */
+  fillNote?: string
 }>()
 
 const emit = defineEmits<{
@@ -37,8 +41,8 @@ function seedOf(initial: typeof props.initial) {
     proteinPer100g: initial?.proteinPer100g,
     carbsPer100g: initial?.carbsPer100g,
     fatPer100g: initial?.fatPer100g,
-    fibrePer100g: undefined as number | undefined,
-    alcoholAbv: undefined as number | undefined,
+    fibrePer100g: initial?.fibrePer100g,
+    alcoholAbv: initial?.alcoholAbv,
   }
 }
 type Draft = ReturnType<typeof seedOf>
@@ -93,8 +97,8 @@ function useSeedMirror(state: Draft, touched: Record<keyof Draft, boolean>) {
       if (!next) return
       const seed = seedOf(next)
       if (!touched.name) state.name = seed.name
-      for (const macro of MACROS)
-        if (!touched[macro]) state[macro] = seed[macro]
+      for (const figure of FOOD_FIGURES)
+        if (!touched[figure]) state[figure] = seed[figure]
     },
   )
 }
@@ -130,8 +134,12 @@ function onSubmit() {
       color="neutral"
       variant="subtle"
       :title="`Filled from ${filledFromSource}`"
-      description="Review the values and edit anything that's off."
-    />
+    >
+      <template #description>
+        <p>Review the values and edit anything that's off.</p>
+        <p v-if="fillNote">{{ fillNote }}</p>
+      </template>
+    </UAlert>
 
     <UFormField label="Name" name="name" required>
       <UInput

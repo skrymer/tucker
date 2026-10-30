@@ -142,21 +142,29 @@ function useFormSeed() {
   const initial = computed(() => {
     const c = candidate.value
     if (!c) return { barcode: barcode.value.trim() || undefined }
-    return {
-      name: c.name,
-      barcode: c.barcode,
-      proteinPer100g: c.proteinPer100g ?? undefined,
-      carbsPer100g: c.carbsPer100g ?? undefined,
-      fatPer100g: c.fatPer100g ?? undefined,
-    }
+    const figures: Partial<Record<FoodFigure, number>> = {}
+    for (const figure of FOOD_FIGURES) figures[figure] = c[figure] ?? undefined
+    return { name: c.name, barcode: c.barcode, ...figures }
   })
   const statedEnergy = computed(
     () => candidate.value?.statedEnergyKcalPer100g ?? undefined,
   )
   const source = computed(() => candidate.value?.source ?? undefined)
-  return { initial, statedEnergy, source }
+  const fillNote = computed(() => foldedFibreNote(candidate.value))
+  return { initial, statedEnergy, source, fillNote }
 }
-const { initial, statedEnergy, source } = useFormSeed()
+const { initial, statedEnergy, source, fillNote } = useFormSeed()
+
+/** Names both carbs figures when the Candidate took folded-in fibre out of them. */
+function foldedFibreNote(c: Candidate | null) {
+  if (c?.providerCarbsPer100g == null || c.adjustedCarbsPer100g == null) {
+    return undefined
+  }
+  return (
+    `Carbs adjusted from ${c.providerCarbsPer100g.toFixed(1)} g to ${c.adjustedCarbsPer100g.toFixed(1)} g: ` +
+    `${c.source}' carbs included the ${c.fibrePer100g?.toFixed(1)} g of fibre.`
+  )
+}
 </script>
 
 <template>
@@ -164,6 +172,7 @@ const { initial, statedEnergy, source } = useFormSeed()
     :initial="initial"
     :stated-energy-kcal-per100g="statedEnergy"
     :filled-from-source="source"
+    :fill-note="fillNote"
     @submit="(payload) => emit('submit', payload)"
   >
     <!-- Optional barcode pre-fill, between the fields and Save so a scanned

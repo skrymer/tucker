@@ -125,6 +125,36 @@ const FULL_CANDIDATE_BARCODE = '5700000000002'
 
 const EXISTING_BARCODE = '5709999999999'
 
+// A candidate stating both fibre and ABV.
+const BEER_BARCODE = '5700000000003'
+const oatmealStout = {
+  name: 'Oatmeal Stout',
+  barcode: BEER_BARCODE,
+  proteinPer100g: 0.5,
+  carbsPer100g: 4.6,
+  fatPer100g: 0,
+  fibrePer100g: 0.4,
+  alcoholAbv: 5.2,
+  statedEnergyKcalPer100g: 52,
+  source: 'Open Food Facts',
+}
+
+// A candidate whose carbs had fibre folded in, as the server answers it: the
+// carbs offered without the fibre, and both figures named.
+const WRAP_BARCODE = '9334169000566'
+const foldedFibreWrap = {
+  name: 'HIGH PROTEIN LOW CARB + FIBRE WRAPS',
+  barcode: WRAP_BARCODE,
+  proteinPer100g: 19.4285714285714,
+  carbsPer100g: 12.7142857142857,
+  fatPer100g: 9.28571428571429,
+  fibrePer100g: 16.7142857142857,
+  providerCarbsPer100g: 29.4285714285714,
+  adjustedCarbsPer100g: 12.7142857142857,
+  statedEnergyKcalPer100g: 246,
+  source: 'Open Food Facts',
+}
+
 // Each test's catalog: one Food that owns EXISTING_BARCODE, and what the
 // provider knows of the candidates. Any other barcode misses.
 beforeEach(() => {
@@ -259,6 +289,75 @@ describe('AddSheet', () => {
     // to pin the blank, so no single fixture can pin both.
     expect(await screen.findByDisplayValue('Peanut Butter')).toBeVisible()
     expect(screen.getByLabelText(/fat \/100\s*g/i)).toHaveDisplayValue('50.3')
+  })
+
+  it('carries the fibre and the ABV the provider supplied into the form', async () => {
+    catalogHolding({ candidates: [oatmealStout] })
+    await renderSuspended(AddSheet, { props: { open: true } })
+    const user = userEvent.setup()
+
+    await user.type(screen.getByLabelText(/barcode/i), BEER_BARCODE)
+    await user.click(screen.getByRole('button', { name: /look up/i }))
+
+    expect(await screen.findByDisplayValue('Oatmeal Stout')).toBeVisible()
+    expect(screen.getByLabelText(/fibre \/100\s*g/i)).toHaveDisplayValue('0.4')
+    expect(screen.getByLabelText(/alc % vol/i)).toHaveDisplayValue('5.2')
+  })
+
+  it('names both carbs figures when the fibre folded into them was taken out', async () => {
+    catalogHolding({ candidates: [foldedFibreWrap] })
+    await renderSuspended(AddSheet, { props: { open: true } })
+    const user = userEvent.setup()
+
+    await user.type(screen.getByLabelText(/barcode/i), WRAP_BARCODE)
+    await user.click(screen.getByRole('button', { name: /look up/i }))
+
+    expect(
+      await screen.findByText(
+        "Carbs adjusted from 29.4 g to 12.7 g: Open Food Facts' carbs included the 16.7 g of fibre.",
+      ),
+    ).toBeVisible()
+    const carbs = screen.getByLabelText(/carbs \/100\s*g/i)
+    expect(carbs).toHaveDisplayValue('12.714')
+    expect(carbs).toBeEnabled()
+  })
+
+  it('says nothing about carbs when the provider candidate offers them as given', async () => {
+    catalogHolding({ candidates: [oatmealStout] })
+    await renderSuspended(AddSheet, { props: { open: true } })
+    const user = userEvent.setup()
+
+    await user.type(screen.getByLabelText(/barcode/i), BEER_BARCODE)
+    await user.click(screen.getByRole('button', { name: /look up/i }))
+
+    expect(
+      await screen.findByText(
+        "Review the values and edit anything that's off.",
+      ),
+    ).toBeVisible()
+    expect(screen.queryByText(/carbs adjusted/i)).not.toBeInTheDocument()
+  })
+
+  it('saves a provider candidate with the fibre and alcohol it supplied', async () => {
+    catalogHolding({ candidates: [oatmealStout] })
+    const onUpdateOpen = vi.fn()
+    await renderSuspended(besideCatalog(AddSheet), {
+      props: { open: true, 'onUpdate:open': onUpdateOpen },
+    })
+    const user = userEvent.setup()
+
+    await user.type(screen.getByLabelText(/barcode/i), BEER_BARCODE)
+    await user.click(screen.getByRole('button', { name: /look up/i }))
+    expect(await screen.findByDisplayValue('Oatmeal Stout')).toBeVisible()
+    await user.click(screen.getByRole('button', { name: /save food/i }))
+
+    await vi.waitFor(() =>
+      expect(onUpdateOpen).toHaveBeenCalledExactlyOnceWith(false),
+    )
+    // 4·0.5 + 4·4.6 + 2·0.4 fibre + 7·(5.2 × 0.789) alcohol ≈ 50 kcal; without
+    // the fibre it rounds to 49, without the alcohol to 21.
+    const shown = await catalogOnceReread()
+    expect(shown.getByText('50 kcal · 1 g protein /100g')).toBeVisible()
   })
 
   it('saves a provider candidate carrying the Tags picked for it', async () => {

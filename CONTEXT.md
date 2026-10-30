@@ -146,9 +146,9 @@ free-text search, or both; only barcode-capable ones take part in a scan. A
 Provider answering *no match* and a Provider unable to answer at all are different
 results and are never collapsed into one — see **Inconclusive Lookup**. Whatever a Provider returns is normalised to Tucker's per-100g macro
 model — and its calories re-derived by the calorie rule, exactly like a
-hand-entered Food. The Provider's own stated energy is shown only as a cross-check
-at confirmation, never stored: scanned Foods follow the same calorie rule as every
-other Food.
+hand-entered Food. The Provider's own stated energy is shown as a cross-check at
+confirmation and arbitrates **fibre folded in** (see **Food Candidate**), never
+stored: scanned Foods follow the same calorie rule as every other Food.
 _Avoid_: nutrition API, food database, data source
 
 **Food Candidate**:
@@ -158,16 +158,28 @@ Provider: it carries the macros the Provider supplied (some possibly absent), th
 Provider it came from, that Provider's stated energy (shown as a cross-check, not
 stored), and the scanned barcode. The user completes any missing macro and
 confirms — only then does it become a Food.
+Its fibre and alcohol are carried like any other macro, absent where the Provider
+states none, and the User is shown the alcohol as ABV. A fibre or ABV no food could
+have — negative, or past 100 % vol — is left not stated rather than costing the User
+the rest of the product.
 A Provider's carbs may have **fibre folded in** — a contributor copying a US-style
 label's total carbohydrate, though Tucker's **carbs** excludes it. The carbs field
-alone cannot say so; the stated energy can. When subtracting fibre from carbs
-reproduces the stated energy and the carbs as given do not, the Candidate carries
-carbs minus fibre — and says so: the adjustment is **shown to the user, with both
-figures**, before they confirm, never applied silently. The stated energy arbitrates
-which reading of carbs to take; it is still never stored, and calories are still
-derived. The energy it is compared against is the *whole* derived figure, alcohol
-included — a Provider's stated energy for a drink counts its alcohol, so leaving it
-out would read every beer as a mismatch.
+alone cannot say so; the stated energy can. A reading of the carbs is **vouched
+for** when, fibre counted, it reproduces the stated energy (within 5 %) and sits
+closer to it than the carbs as given with no fibre energy — the figure a scan
+without fibre would save. When the carbs as given miss the stated energy and carbs
+minus fibre is vouched for, the Candidate carries carbs minus fibre, and says so:
+the adjustment is **shown to the user, with both figures**, before they confirm,
+never applied silently. More fibre than carbs was never folded into them, so that
+is never adjusted. The Candidate **offers its fibre** only when one of those two
+readings is vouched for; otherwise — no stated energy, a macro missing, or a record
+the reading without fibre fits better (a US-style label counting fibre inside the
+carbs, or one whose energy left fibre out, which the figures cannot tell apart) —
+the fibre is left not stated, so a scan never reads further from its label than
+one without fibre would. The stated energy is still never stored, and calories are
+still derived. The energy compared is the *whole* derived figure, alcohol included
+— a Provider's stated energy for a drink counts its alcohol, so leaving it out
+would read every beer as a mismatch.
 A Provider's alcohol arrives as **ABV**, whatever its field is called (Open Food
 Facts' `alcohol_100g` is % vol), and is converted to grams like a typed one. A catalog hit, by contrast, returns
 an existing Food directly, not a Candidate.

@@ -1808,8 +1808,6 @@ No new real gap. 16 frontend and 12 backend survivors are standing verdicts abov
 `catalog.ts`'s `fold` and equal-name branch, the `FoodResponse` accessors, `applyFrom`'s
 carbs and fat setters, the `isEmpty()` returns). New:
 
-- **`AddFoodForm.vue`'s `touched.fibrePer100g: false` → `true` — equivalent**: nothing
-  reads it. The seed mirror loops over `MACROS`, and `seedOf` never supplies fibre.
 - **`EditFoodSheet.vue`'s `blankOf` body → `{}` — equivalent**: a macro's blank becomes
   `undefined` rather than `NaN`, and every reader treats the two alike —
   `complete`'s `Number.isFinite` is false for both, and `after` and `macrosMoved` sit
@@ -1827,13 +1825,65 @@ No new real gap left. 19 frontend and 12 backend survivors are standing verdicts
 `AlcoholByVolume`'s `percent <= 100` → `< 100` was a real gap, now killed by "pure alcohol,
 exactly 100 percent, is accepted". New:
 
-- **`AddFoodForm.vue`'s `touched.alcoholAbv: false` → `true` — equivalent**, for the
-  fibre key's reason: nothing reads it. The seed mirror loops over `MACROS`, and `seedOf`
-  never supplies alcohol.
 - **`FoodResponse.getAlcoholPer100g` / `getAlcoholAbv` → 0 (pitest) — false survivors**:
   `toResponse`'s two alcohol fields forced to `0.0` by hand fail three tests
   (`ApiIntegrationTest`'s wine, `FoodAlcoholApiTest`, `FoodCorrectionApiTest`'s alcohol
   re-roll).
+
+### A scan carries fibre and alcohol (#548) — frontend 108 of 134, backend 203 of 236
+
+The `touched.fibrePer100g` / `touched.alcoholAbv` `false` → `true` equivalents #546 and
+#547 recorded are retired: the seed mirror now loops over `FOOD_FIGURES` and `seedOf`
+reads both from `initial`, so both mutants die. Every other survivor is a standing verdict
+above — the `AddSheet.vue` look-up entries for the code #454 moved into `FoodBuilder.vue`
+unchanged, `AddFoodForm`'s `touched` / `if (!next)` / `creatingTag`, the
+`OpenFoodFactsProvider` pre-warm, retry-cap, budget-edge and log entries (lines shifted,
+code unmoved), `requestFactory`, and the `FoodResponse` accessors. New:
+
+- **`OpenFoodFactsProvider.statedOrNull`'s `onFailure` negated — real gap, closed**: the
+  figure is still dropped, but no WARN is logged. Log-only, as `readCandidate`'s, yet #548's
+  criterion says an out-of-range figure "is logged", so `logs an alcohol_100g it leaves not
+  stated` and `logs a fiber_100g it leaves not stated` pin it through a Logback
+  `ListAppender`.
+- **`FoodBuilder.vue`'s `result.candidate` → `true` (`branchFor`) — equivalent**: reached
+  only once `EXISTING && food` failed, which leaves a `CANDIDATE` body, and that always
+  carries `candidate`.
+- **`FoodBuilder.vue`'s `current.kind === 'existing'` → `true` — equivalent**: the other
+  arms emit `found(undefined)`, as falsy as `null` for `AddSheet`'s `v-if="existingFood"`.
+- **`FoodBuilder.vue`'s `!open` → `true` — equivalent**: adds a `cancel()` on opening,
+  when nothing is in flight (the close cancelled it, and `AddSheet` re-keys the builder per
+  open). The close path, and its standing real gap, are unchanged.
+- **`FoodBuilder.vue`'s `branch.value.kind === 'candidate'` → `true` (`useFormSeed`) —
+  equivalent**: a non-candidate branch yields `undefined` rather than `null`, and every
+  reader (`if (!c)`, `?.… ?? undefined`) treats the two alike.
+
+### Folded-in fibre caught at scan time (#549) — frontend 121 of 149, backend 160 of 197
+
+Every survivor the #548 section names stands (lines shifted, code unmoved). The
+`carbs − fibre ≥ 0` boundary and an absent carbs figure in
+`FoodCandidate.carbsWithoutFoldedFibre` were real gaps, closed by *carbs that are all
+folded-in fibre are offered as zero* and *carbs are not adjusted when the Provider states
+none*. New:
+
+- **`FoodCandidate.derivesStatedEnergy`'s two guards → `return true`, and `energyGap`'s
+  three → `0.0` — equivalent**: each fires only with the stated energy, protein or fat
+  absent, where `energyGap` (unmutated) is null for every reading. `vouchesFor` returns
+  false on its first elvis before it reads either, and `carbsWithoutFoldedFibre`'s "as
+  given matches" early return gives the null the `false` path gives. A `0.0` gap ties
+  the two readings, and a tie is not closer.
+- **`FoodCandidate.vouchesFor`'s second elvis → `return true` (NO_COVERAGE) — equivalent**:
+  unreachable once the first passed, since both gaps need the same stated energy,
+  protein and fat, and both callers pass carbs only when `carbsPer100g` is non-null.
+  The `<` → `<=` beside it was a real gap, closed by *a reading with fibre only as close
+  as the one without it does not get the fibre offered*.
+- **`FoodBuilder.vue`'s `c.adjustedCarbsPer100g == null` → `false` (`foldedFibreNote`) —
+  equivalent**: the wire sets `providerCarbsPer100g` only beside `adjustedCarbsPer100g`
+  (`toResponse`), so the first operand already decides.
+- **`FoodBuilder.vue`'s `c.fibrePer100g?.toFixed` → `.toFixed` — equivalent**: a
+  Candidate is adjusted only when it states fibre.
+- **`AddFoodForm.vue`'s `v-if="fillNote"` removed (hand mutant) — equivalent**: with no
+  note it renders an empty `<p>`, zero-height under Tailwind's preflight and skipped by
+  assistive tech.
 
 ### Noise removed at the source
 

@@ -37,7 +37,10 @@ instead of about 120.
 - **A Provider's stated energy now arbitrates which reading of carbs to take.**
   Carbs with fibre folded in cannot be detected from the carbs field, but the
   stated energy reveals them. If subtracting fibre reproduces the stated energy and
-  the carbs as given do not, the **Food Candidate** carries carbs minus fibre. It
+  the carbs as given do not, the **Food Candidate** carries carbs minus fibre. A
+  reading counts only if it also sits closer to the stated energy than the carbs
+  read with no fibre energy, and the fibre is offered only when one does, so a scan
+  never reads further from its label than one without fibre. The Candidate
   shows the User both figures before they confirm, and never applies the
   adjustment silently. The comparison uses the whole derived energy, alcohol
   included. The stated energy is still never stored. This amends ADR 0006's

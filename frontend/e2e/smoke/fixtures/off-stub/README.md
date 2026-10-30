@@ -53,7 +53,11 @@ curl -A "Tucker/1.0 (personal diet tracker; +https://github.com/skrymer/tucker)"
   "https://world.openfoodfacts.org/api/v2/product/3017620422003.json?fields=product_name,nutriments"
 ```
 
-The barcode is Nutella, one of the most-scanned products in OFF. The body is
+The barcode is Nutella, one of the most-scanned products in OFF.
+
+`9334169000566.json` (a high-fibre wrap, `fiber_100g`) and `8712000900045.json`
+(Heineken, `alcohol_100g` — % vol, whatever its name says) were recorded the same
+way on 2026-10-29, for the smoke that a scan carries fibre and alcohol. The body is
 verbatim apart from being pretty-printed for readability; it is listed in
 `.prettierignore` so no formatter rewrites a recorded third-party response.
 
