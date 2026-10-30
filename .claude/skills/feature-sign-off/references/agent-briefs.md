@@ -114,6 +114,10 @@ triage summary ("15 … 12 … 5", rows 13 / 13 / 6) whole was still rejected. C
 rows' counts sum to `wc -l` of the survivors file before writing them, and never pad a
 row to reach the summary: #523's "(and 1 more per agent)" invented a ninth equivalent.
 A FIXED cell reads `FIXED: <test> — red <log path>`; one without a log path is incomplete.
+A green or final-suite citation follows the same timing: written after the run's summary
+line is read, at the path the log actually sits at, and naming every `--last-failed` log a
+suite needed to converge. #551's pack cited a smoke log before the run started, at a path
+it was never written to, and that log read "29 failed".
 
 **One row per remedy, and a ruling covers only what its question named.** Every pack
 row is `| id | agent | finding | remedy (one) | resolution |`, and a finding that
@@ -340,7 +344,10 @@ Method:
 Report per input: COVERED (quote the value) / WEAK (quote it, say why it is a
 happy-path lookalike) / UNCOVERED, then list the specific values you would drive
 for everything not covered — numbered, each with the outcome you expect — and end
-with one line of totals: inputs, COVERED, WEAK, UNCOVERED, values named.
+with one line of totals: inputs, COVERED, WEAK, UNCOVERED, values named. Each expected
+outcome names the field or text that shows it in that state: check the response's null
+rule or the template's `v-if` for that state before naming it, since a figure read in
+one state may be withheld in another.
 
 Do not judge whether the feature is right, whether the code is good, or whether
 the verdict's PASS is correct in some larger sense. Only whether its evidence
