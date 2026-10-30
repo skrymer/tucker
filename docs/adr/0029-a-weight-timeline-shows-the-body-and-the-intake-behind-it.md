@@ -52,7 +52,7 @@ gain, which putting calories on the same axis actively invites.
 unrounded comparison a day's own **Day Status** already makes, rather than a
 comparison the chart repeats — two answers to one question would sooner or later
 colour a bar green that Today calls over budget (ADR 0002).
-ADR 0038 grades that verdict in three (`budgetVerdict`: within budget, slightly
+ADR 0041 grades that verdict in three (`budgetVerdict`: within budget, slightly
 over, over budget) in place of the original boolean.
 
 **An unlogged day is absent, never zero.** A missing bar and a floor-height bar

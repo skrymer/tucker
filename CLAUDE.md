@@ -296,6 +296,10 @@ here.
   (PRD [#545](https://github.com/skrymer/tucker/issues/545),
   [ADR 0040](docs/adr/0040-calories-follow-the-fsanz-energy-formula-and-carbs-exclude-fibre.md)),
   in slices [#546](https://github.com/skrymer/tucker/issues/546)–[#551](https://github.com/skrymer/tucker/issues/551).
+- **F23** — Tolerance: a day up to 10% past its Calorie Budget is **slightly over**
+  (amber), not over budget (red), on the Day Ring, the day verdict and the Weight
+  Timeline (PRD [#579](https://github.com/skrymer/tucker/issues/579),
+  [ADR 0041](docs/adr/0041-a-day-a-few-percent-past-its-budget-is-slightly-over.md)).
 
 ## Architecture
 
