@@ -45,8 +45,21 @@ data class Recipe(
             proteinPer100g = totalProtein * per100g,
             carbsPer100g = null,
             fatPer100g = null,
+            fibrePer100g = totalWhereStated(Nutrition::fibrePer100g)?.times(per100g),
+            alcoholPer100g = totalWhereStated(Nutrition::alcoholPer100g)?.times(per100g),
         )
     }
+
+    /**
+     * The batch's total of a figure a Food may leave unstated: stated when any ingredient
+     * states it, an ingredient stating none adding nothing (CONTEXT.md, Recipe).
+     */
+    private fun totalWhereStated(figure: (Nutrition) -> Double?): Double? =
+        if (ingredients.none { figure(it.ingredient.nutrition) != null }) {
+            null
+        } else {
+            ingredients.sumOf { (figure(it.ingredient.nutrition) ?: 0.0) * it.grams / Nutrition.GRAMS_PER_100G }
+        }
 
     /** This Recipe in its persistable [Food] form. */
     fun asFood(): Food = Food(

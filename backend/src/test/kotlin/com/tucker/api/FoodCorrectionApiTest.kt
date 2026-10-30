@@ -96,9 +96,10 @@ class FoodCorrectionApiTest {
             jsonPath("$.caloriesPer100g", closeTo(246.1, 0.001))
             jsonPath("$.fibrePer100g") { value(16.8) }
         }
-        // Burrito: 492.2 / 400 × 100 = 123.05 kcal /100g.
+        // Burrito: 492.2 / 400 × 100 = 123.05 kcal /100g, and 33.6 / 400 × 100 = 8.4 g fibre /100g.
         mockMvc.get("/api/foods/$burrito").andExpect {
             jsonPath("$.caloriesPer100g", closeTo(123.05, 0.001))
+            jsonPath("$.fibrePer100g", closeTo(8.4, 0.001))
         }
     }
 
@@ -116,9 +117,11 @@ class FoodCorrectionApiTest {
             jsonPath("$.caloriesPer100g", closeTo(82.599, 0.001))
             jsonPath("$.alcoholAbv") { value(13.0) }
         }
-        // Sauce: 247.797 / 600 × 100 = 41.2995 kcal /100g — all the alcohol conserved (ADR 0040).
+        // Sauce: 247.797 / 600 × 100 = 41.2995 kcal /100g and 30.771 / 600 × 100 = 5.1285 g
+        // alcohol /100g — all the alcohol conserved (ADR 0040).
         mockMvc.get("/api/foods/$sauce").andExpect {
             jsonPath("$.caloriesPer100g", closeTo(41.2995, 0.001))
+            jsonPath("$.alcoholPer100g", closeTo(5.1285, 0.001))
         }
     }
 

@@ -66,6 +66,38 @@ class RecipeApiTest {
     }
 
     @Test
+    fun `a recipe rolls up its ingredients' fibre and alcohol, and its calories count both`() {
+        // Wrap 246.1 kcal /100g (16.8 g fibre) × 200 g = 492.2 kcal, 33.6 g fibre.
+        // 13% wine: 10.257 g alcohol /100g, 71.799 kcal /100g × 200 g = 143.598 kcal, 20.514 g alcohol.
+        // Mince 170 kcal /100g × 300 g = 510 kcal. Over a 600 g dish: 190.966 kcal, 5.6 g fibre,
+        // 3.419 g alcohol /100g — which reads back as 4.3333% ABV.
+        val json = mockMvc.post("/api/foods") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"name":"Protein wrap","proteinPer100g":19.4,"carbsPer100g":12.8,"fatPer100g":9.3,
+                "fibrePer100g":16.8,"tagIds":[]}"""
+        }.andExpect { status { isCreated() } }.andReturn().response.contentAsString
+        val wrapId = objectMapper.readTree(json).get("id").asLong()
+        val wineJson = mockMvc.post("/api/foods") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"name":"Red wine","proteinPer100g":0,"carbsPer100g":0,"fatPer100g":0,
+                "alcoholAbv":13,"tagIds":[]}"""
+        }.andExpect { status { isCreated() } }.andReturn().response.contentAsString
+        val wineId = objectMapper.readTree(wineJson).get("id").asLong()
+        val minceId = createFood("Mince", protein = 20.0, carbs = 0.0, fat = 10.0)
+
+        mockMvc.post("/api/recipes") {
+            contentType = MediaType.APPLICATION_JSON
+            content = recipeBody("Wrap bake", 600.0, wrapId to 200.0, wineId to 200.0, minceId to 300.0)
+        }.andExpect {
+            status { isCreated() }
+            jsonPath("$.caloriesPer100g", closeTo(190.966, 0.001))
+            jsonPath("$.fibrePer100g", closeTo(5.6, 0.001))
+            jsonPath("$.alcoholPer100g", closeTo(3.419, 0.001))
+            jsonPath("$.alcoholAbv", closeTo(4.3333, 0.001))
+        }
+    }
+
+    @Test
     fun `a created recipe appears in the foods catalog as a RECIPE`() {
         val minceId = createFood("Beef", protein = 20.0, carbs = 0.0, fat = 10.0)
 
