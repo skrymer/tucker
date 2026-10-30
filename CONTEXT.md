@@ -123,6 +123,12 @@ nutrition. Two weights, meaning different things:
   could not check. Counting all of it errs on the side of more calories, by tens of
   kcal a portion for wine in a stew, which is the safe side to err on while losing
   fat.
+  A Recipe's **fibre** and **alcohol** are **stated** when any ingredient states
+  them: the figure is the stated ingredients' total over the cooked weight, an
+  ingredient that states none adding nothing. That is exactly what the Recipe's
+  calories already count, so a Recipe never reads "not stated" while its calories
+  include fibre. Only a Recipe none of whose ingredients state the figure leaves it
+  not stated.
 
 The cooked weight is a **representative batch**, not a per-batch measurement:
 cook the same recipe longer another day and the real density shifts a little.
