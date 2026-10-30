@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test
 import java.time.LocalDate
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertNotNull
 
 /**
  * The **Micronutrient Intake** read: a lower-bound daily average per nutrient, what
@@ -53,6 +54,103 @@ class MicronutrientIntakeTest {
             "700 g of a food reporting 1 mg per 100 g is 7 mg over the window, and a " +
                 "Reference Intake is a daily figure — so a week's total read against it " +
                 "would clear almost everything at once (CONTEXT.md)",
+        )
+    }
+
+    @Test
+    fun `a matched Food's stated fibre wins over its Reference Food's`() {
+        val wrap = food(id = 1, name = "Protein wrap", referenceFoodId = 42, nutrition = wrapNutrition(fibre = 16.8))
+        val entries = listOf(weighed(day, wrap, grams = 700.0))
+
+        val read = intake(
+            entries,
+            mapOf(1L to wrap),
+            mapOf(42L to referenceFood("Wrap, white", Micronutrient.FIBRE to 3.0, id = 42)),
+        )
+
+        assertEquals(
+            16.8,
+            read.rows.single { it.nutrient == Micronutrient.FIBRE }.amount,
+            1e-9,
+            "700 g of a wrap labelled 16.8 g fibre per 100 g is 16.8 g a day — the label " +
+                "describes that product, the Reference Food only something like it (CONTEXT.md)",
+        )
+    }
+
+    @Test
+    fun `an unmatched Food stating fibre supplies its fibre and nothing else`() {
+        val wrap = food(id = 1, name = "Protein wrap", nutrition = wrapNutrition(fibre = 16.8))
+        val entries = listOf(weighed(day, wrap, grams = 700.0))
+
+        val read = intake(entries, mapOf(1L to wrap))
+
+        assertEquals(
+            Micronutrient.entries.associateWith { if (it == Micronutrient.FIBRE) 16.8 else 0.0 },
+            read.rows.associate { it.nutrient to it.amount },
+            "what the User typed counts, but the label supplies fibre alone — every other " +
+                "figure still needs a Reference Food behind it (CONTEXT.md)",
+        )
+    }
+
+    @Test
+    fun `a matched Food stating no fibre borrows its Reference Food's`() {
+        val wrap = food(id = 1, name = "Protein wrap", referenceFoodId = 42, nutrition = wrapNutrition(fibre = null))
+        val entries = listOf(weighed(day, wrap, grams = 700.0))
+
+        val read = intake(
+            entries,
+            mapOf(1L to wrap),
+            mapOf(42L to referenceFood("Wrap, white", Micronutrient.FIBRE to 3.0, id = 42)),
+        )
+
+        assertEquals(
+            3.0,
+            read.rows.single { it.nutrient == Micronutrient.FIBRE }.amount,
+            1e-9,
+            "a label silent on fibre is not a label saying none — the borrowed figure fills " +
+                "the gap, so a matched Food's fibre never drops (CONTEXT.md)",
+        )
+    }
+
+    @Test
+    fun `a matched Food stating 0 g fibre supplies none, rather than borrowing`() {
+        val wrap = food(id = 1, name = "Protein wrap", referenceFoodId = 42, nutrition = wrapNutrition(fibre = 0.0))
+        val entries = listOf(weighed(day, wrap, grams = 700.0))
+
+        val read = intake(
+            entries,
+            mapOf(1L to wrap),
+            mapOf(42L to referenceFood("Wrap, white", Micronutrient.FIBRE to 3.0, id = 42)),
+        )
+
+        assertEquals(
+            0.0,
+            read.rows.single { it.nutrient == Micronutrient.FIBRE }.amount,
+            "a stated 0 g says the product has none, which is not the label being silent — " +
+                "so it is not filled in from the Reference Food (CONTEXT.md, Food)",
+        )
+    }
+
+    @Test
+    fun `an unmatched Food stating fibre still counts as unmatched in the coverage share and the queue`() {
+        val chicken = food(id = 1, name = "Chicken breast", referenceFoodId = 42)
+        val wrap = food(id = 2, name = "Protein wrap", nutrition = wrapNutrition(fibre = 16.8))
+        val entries = listOf(weighed(day, chicken, grams = 300.0), weighed(day, wrap, grams = 300.0))
+
+        val read = intake(entries, mapOf(1L to chicken, 2L to wrap), aBorrow)
+
+        val chickenCalories = chicken.caloriesFor(300.0)
+        assertEquals(
+            chickenCalories / (chickenCalories + wrap.caloriesFor(300.0)),
+            assertNotNull(read.coverage),
+            1e-9,
+            "the share is not recomputed for stated fibre: fibre is then covered at least as " +
+                "well as the share says, which leaves the share true (CONTEXT.md)",
+        )
+        assertEquals(
+            listOf("Protein wrap"),
+            read.unmatched.map { it.name },
+            "stating fibre is not a match — the wrap's other nutrients are still unread",
         )
     }
 
@@ -311,6 +409,47 @@ class MicronutrientIntakeTest {
             "the batch holds 18 mg of iron in its 600 g of mince and 3 mg in its 300 g of " +
                 "passata, and the 600 g it cooked down to re-expresses that (ADR 0019) — so " +
                 "a 200 g serve is a third of the batch, 7 mg across the window, 1 mg a day",
+        )
+    }
+
+    @Test
+    fun `a Recipe supplies fibre ingredient by ingredient, stated before borrowed`() {
+        val fibre = { amount: Double -> Micronutrient.FIBRE to amount }
+        val lines = listOf(
+            // Matched and stating: the label wins over the Reference Food's 3 g.
+            RecipeIngredient(
+                food(id = 1, name = "Protein wrap", referenceFoodId = 42, nutrition = wrapNutrition(fibre = 16.8)),
+                grams = 200.0,
+            ),
+            // Matched and silent: borrowed.
+            RecipeIngredient(food(id = 2, name = "Chicken breast", referenceFoodId = 43), grams = 400.0),
+            // Unmatched and stating: fibre alone.
+            RecipeIngredient(
+                food(id = 3, name = "Bean mix", nutrition = wrapNutrition(fibre = 6.0)),
+                grams = 100.0,
+            ),
+            // Unmatched and silent: nothing.
+            RecipeIngredient(food(id = 4, name = "Olive oil"), grams = 100.0),
+        )
+        val wraps = Recipe(id = 5, name = "Chicken wraps", ingredients = lines, cookedWeightG = 700.0)
+        val entries = listOf(weighed(day, wraps.asFood(), grams = 700.0))
+
+        val read = intake(
+            entries,
+            referenceFoods = mapOf(
+                42L to referenceFood("Wrap, white", fibre(3.0), id = 42),
+                43L to referenceFood("Chicken, breast", fibre(1.0), id = 43),
+            ),
+            recipes = listOf(wraps),
+        )
+
+        assertEquals(
+            (33.6 + 4.0 + 6.0) / 7,
+            read.rows.single { it.nutrient == Micronutrient.FIBRE }.amount,
+            1e-9,
+            "the whole batch was eaten: 33.6 g stated by the wrap, 4 g borrowed for the " +
+                "chicken, 6 g stated by the beans and none from the oil — the same " +
+                "precedence each Food gets on its own, never the Recipe's own rolled-up fibre",
         )
     }
 
@@ -634,6 +773,10 @@ class MicronutrientIntakeTest {
             recipes.associate { it.id to it.ingredients },
         ),
     )
+
+    /** The protein wrap's label, with [fibre] stated or not. */
+    private fun wrapNutrition(fibre: Double?) =
+        Macros(proteinPer100g = 19.4, carbsPer100g = 12.8, fatPer100g = 9.3, fibrePer100g = fibre).nutrition()
 
     /** Nutrition stated by its calories, where the macros behind them are beside the point. */
     private fun perHundredGrams(calories: Double) = Nutrition(
