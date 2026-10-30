@@ -55,11 +55,10 @@ data class Recipe(
      * states it, an ingredient stating none adding nothing (CONTEXT.md, Recipe).
      */
     private fun totalWhereStated(figure: (Nutrition) -> Double?): Double? =
-        if (ingredients.none { figure(it.ingredient.nutrition) != null }) {
-            null
-        } else {
-            ingredients.sumOf { (figure(it.ingredient.nutrition) ?: 0.0) * it.grams / Nutrition.GRAMS_PER_100G }
-        }
+        ingredients.mapNotNull { line -> figure(line.ingredient.nutrition)?.times(line.grams) }
+            .takeIf { it.isNotEmpty() }
+            ?.sum()
+            ?.div(Nutrition.GRAMS_PER_100G)
 
     /** This Recipe in its persistable [Food] form. */
     fun asFood(): Food = Food(

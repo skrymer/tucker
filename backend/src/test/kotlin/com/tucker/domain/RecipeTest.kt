@@ -39,7 +39,7 @@ class RecipeTest {
     @Test
     fun `fibre rolls up per 100g of the cooked weight, an ingredient stating none adding nothing`() {
         // 200 g of wrap at 16.8 g fibre = 33.6 g; the beef states none. Over a 480 g dish: 7 g /100g.
-        val wrap = Food.plain(1L, "Wrap", null, Nutrition(246.1, 19.4, null, null, fibrePer100g = 16.8))
+        val wrap = Food.plain(1L, "Wrap", null, Macros(19.4, 12.8, 9.3, fibrePer100g = 16.8).nutrition())
         val recipe = Recipe(
             id = 1,
             name = "Wrap bake",
@@ -70,7 +70,7 @@ class RecipeTest {
         // 200 g of 13% wine carries 20.514 g of alcohol. Cooked down to 500 g, the stew counts
         // every gram of it: 4.1028 g /100g, with nothing taken off for what simmering drives off.
         val alcohol = AlcoholByVolume(13.0).gramsPer100g
-        val wine = Food.plain(1L, "Red wine", null, Nutrition(7 * alcohol, 0.0, null, null, alcoholPer100g = alcohol))
+        val wine = Food.plain(1L, "Red wine", null, Macros(0.0, 0.0, 0.0, alcoholPer100g = alcohol).nutrition())
         val recipe = Recipe(
             id = 1,
             name = "Beef bourguignon",
