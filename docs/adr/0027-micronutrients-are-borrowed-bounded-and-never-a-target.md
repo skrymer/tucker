@@ -339,7 +339,8 @@ seven-day window inside which recipe drift is small.
 ## Every figure is a lower bound, and a bound that falls short is not a shortfall
 
 Coverage is structurally poor and always will be. An **Estimated Entry** has no Food
-so can never contribute; an unmatched Food contributes nothing; some manufactured
+so can never contribute; an unmatched Food contributes nothing but the fibre it
+states (amended by [0040](0040-calories-follow-the-fsanz-energy-formula-and-carbs-exclude-fibre.md), below); some manufactured
 foods have no generic worth matching to. So the summed figure is *at least* what was
 eaten, and **the share of the window's calories that could contribute is stated
 alongside it whenever there are calories to measure it against** (amended by
@@ -465,6 +466,17 @@ the `dayStatusVerdict` / `paceBadge` precedent — and so does which claim is st
 That is one bit per claim, beside that claim's heading, and both claims are on the
 wire; shipping the operator would put a field on the response whose only consumer is
 a formatter.
+
+## Amended by [0040](0040-calories-follow-the-fsanz-energy-formula-and-carbs-exclude-fibre.md): fibre a Food states wins over fibre it borrows
+
+ADR 0040 makes fibre a macro a Food can state. Fibre is also the one member of the
+Micronutrient Intake a label can carry, so for fibre alone a Food's **stated** figure
+wins and the borrowed one fills in only where the Food states none (a stated `0 g`
+is a figure, not a gap). An unmatched Food stating fibre therefore contributes
+fibre, and nothing else. A Recipe gets the same precedence ingredient by
+ingredient, and its own rolled-up fibre is never read. The coverage share is not
+recomputed: it stays the share of calories with a Reference Food behind them, and
+stated fibre only leaves fibre covered better than that share says.
 
 ## Consequences
 

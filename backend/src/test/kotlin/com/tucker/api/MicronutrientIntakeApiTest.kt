@@ -119,6 +119,28 @@ class MicronutrientIntakeApiTest {
     }
 
     @Test
+    fun `an unmatched Food's stated fibre reaches the window, and nothing else of it does`() {
+        seedProfile(sex = "MALE", birthDate = "1990-06-15")
+        val crispbread = mockMvc.post("/api/foods") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"name":"Rye crispbread","proteinPer100g":10.0,"carbsPer100g":60.0,""" +
+                """"fatPer100g":2.0,"fibrePer100g":14.0,"tagIds":[]}"""
+        }.andExpect { status { isCreated() } }.andReturn().response.contentAsString
+            .let { objectMapper.readTree(it).get("id").asLong() }
+        // 245 g of fibre over the week, 35 g a day — past a 31–50 man's 30 g.
+        logWeighed(crispbread, grams = 1750.0)
+
+        readWindow().andExpect {
+            jsonPath("$.rows[?(@.nutrient == 'FIBRE')].claim") { value("CLEARS_REFERENCE") }
+            jsonPath("$.rows[?(@.nutrient == 'FIBRE')].amount") { value(35.0) }
+            // Stating fibre is not a match: no other figure, no coverage, still queued.
+            jsonPath("$.rows[?(@.nutrient == 'IRON')].claim") { value("NOT_ENOUGH_MATCHED") }
+            jsonPath("$.coverage") { value(0.0) }
+            jsonPath("$.unmatched[0].name") { value("Rye crispbread") }
+        }
+    }
+
+    @Test
     fun `a nutrient Tucker cannot claim is published without figures at all`() {
         seedProfile(sex = "MALE", birthDate = "1990-06-15")
         val cheese = createFood("Tasty cheese")

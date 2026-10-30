@@ -142,7 +142,18 @@ data class FoodContribution(
     val borrowed: BorrowedFood,
     val grams: Double,
     val calories: Double,
-)
+) {
+    /**
+     * How much of [nutrient] these grams supplied: borrowed from the Reference Food,
+     * except fibre the Food states itself, which wins — the label describes that
+     * product, the Reference Food only something like it (CONTEXT.md). So an
+     * unmatched Food stating fibre supplies fibre and nothing else.
+     */
+    fun amountOf(nutrient: Micronutrient): Double {
+        val stated = if (nutrient == Micronutrient.FIBRE) borrowed.food.nutrition.fibreFor(grams) else null
+        return stated ?: borrowed.reference?.micronutrients?.amountFor(nutrient, grams) ?: 0.0
+    }
+}
 
 /**
  * A window's **Entries** and every Food they name, keyed by id and each joined to

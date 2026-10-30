@@ -134,6 +134,87 @@ class BorrowedFoodTest {
         )
     }
 
+    @Test
+    fun `a contribution's stated fibre wins over the fibre it borrows`() {
+        val eaten = wrapEaten(fibre = 16.8, borrowsFibre = 3.0)
+
+        assertEquals(
+            33.6,
+            eaten.amountOf(Micronutrient.FIBRE),
+            1e-9,
+            "200 g of a wrap labelled 16.8 g per 100 g — the label describes that " +
+                "product, the Reference Food only something like it (CONTEXT.md)",
+        )
+    }
+
+    @Test
+    fun `a contribution stating 0 g fibre supplies none, rather than borrowing`() {
+        val eaten = wrapEaten(fibre = 0.0, borrowsFibre = 3.0)
+
+        assertEquals(
+            0.0,
+            eaten.amountOf(Micronutrient.FIBRE),
+            "a stated 0 g says the product has none — not stated is not zero, so zero " +
+                "is not filled in from the Reference Food (CONTEXT.md, Food)",
+        )
+    }
+
+    @Test
+    fun `a contribution stating no fibre borrows it, scaled by the grams eaten`() {
+        val eaten = wrapEaten(fibre = null, borrowsFibre = 3.0)
+
+        assertEquals(
+            6.0,
+            eaten.amountOf(Micronutrient.FIBRE),
+            1e-9,
+            "a label silent on fibre is not one saying none, so the borrow fills the gap: " +
+                "3 g per 100 g over the 200 g eaten",
+        )
+    }
+
+    @Test
+    fun `an unmatched contribution stating fibre supplies that fibre and nothing else`() {
+        val eaten = wrapEaten(fibre = 16.8, borrowsFibre = null)
+
+        assertEquals(
+            Micronutrient.entries.associateWith { if (it == Micronutrient.FIBRE) 33.6 else 0.0 },
+            Micronutrient.entries.associateWith { eaten.amountOf(it) },
+            "what the User typed counts, but a label states fibre alone — every other " +
+                "figure needs a Reference Food behind it (CONTEXT.md)",
+        )
+    }
+
+    @Test
+    fun `stating fibre leaves every other nutrient borrowed`() {
+        val eaten = wrapEaten(fibre = 16.8, borrowsFibre = 3.0)
+
+        assertEquals(
+            2.0,
+            eaten.amountOf(Micronutrient.IRON),
+            1e-9,
+            "the label wins for fibre alone — the iron still comes from the Reference " +
+                "Food, 1 mg per 100 g over the 200 g eaten",
+        )
+    }
+
+    /**
+     * 200 g of a wrap stating [fibre] per 100 g, matched to a Reference Food lending
+     * [borrowsFibre] g of fibre and 1 mg of iron per 100 g — or unmatched, where
+     * [borrowsFibre] is null.
+     */
+    private fun wrapEaten(fibre: Double?, borrowsFibre: Double?): FoodContribution {
+        val wrap = Food.plain(
+            id = 7,
+            name = "Protein wrap",
+            barcode = null,
+            nutrition = Macros(19.4, 12.8, 9.3, fibrePer100g = fibre).nutrition(),
+        ).copy(referenceFoodId = borrowsFibre?.let { 42 })
+        val reference = borrowsFibre?.let {
+            referenceFood("Wrap, white", Micronutrient.FIBRE to it, Micronutrient.IRON to 1.0, id = 42)
+        }
+        return FoodContribution(BorrowedFood(wrap, reference), grams = 200.0, calories = 492.2)
+    }
+
     /** A plain Food stated by its calories, where the macros behind them don't matter. */
     private fun plain(name: String, calories: Double) = Food.plain(
         id = name.hashCode().toLong(),

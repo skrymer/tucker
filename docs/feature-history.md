@@ -2261,3 +2261,21 @@ null` now means two things that earn opposite messages — the same trap
     backend started afterwards from that tag is `main`'s. The walk-through's first desktop
     pass read a null fibre that way; check `docker inspect tucker-backend -f '{{.Image}}'`
     against a fresh `docker compose build backend` before driving.
+  - **Slice 6 ([#551](https://github.com/skrymer/tucker/issues/551)) — Micronutrient
+    Intake uses a Food's stated fibre.** `FoodContribution.amountOf(nutrient)` returns
+    the Food's own `fibreFor(grams)` for fibre where stated (a `0 g` included), the
+    Reference Food's figure otherwise, and 0 with neither. `rowsOf` sums it over every
+    contribution, matched or not, so an unmatched Food stating fibre supplies fibre and
+    nothing else, and a Recipe gets the same precedence per ingredient (its own
+    rolled-up fibre is never read). The coverage share and the match queue still split
+    on the borrow alone. No frontend change: the card draws what the API claims, so a
+    stated fibre shows only once it reaches its reference (smoke: an unmatched wrap at
+    200 g a day for a week, which reads "≥ 33 g").
+  - **Ruled (user):** the card's "0% … calories came from food Tucker can read vitamins
+    and minerals for" stays as it is above a fibre tile, because fibre is neither a
+    vitamin nor a mineral. CONTEXT.md and ADR 0027 (now "Amended by 0040") were brought
+    in line in the same PR.
+  - **Trap:** Probity loses its test history after a long agent report and refuses even
+    a behaviour-preserving Move Function as a fresh implementation. The way through was
+    the member's own red-green: compile red, a `= 0.0` stub for an assertion red, then
+    the body.

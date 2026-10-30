@@ -58,8 +58,8 @@ data class MicronutrientRow(
 /**
  * What a window of food told a User about their vitamins and minerals
  * (CONTEXT.md, ADR 0027): a lower-bound daily average per nutrient read against
- * its **Reference Intake**, how much of the window could contribute one at all,
- * and what is left to match.
+ * its **Reference Intake**, how much of the window could borrow one at all, and
+ * what is left to match.
  *
  * [coverage] is the share of the window's calories that came from a Food with a
  * **Reference Food** behind it, and is **never scaled up**: what goes unmatched is
@@ -137,8 +137,12 @@ data class MicronutrientIntake(
             //
             // Split once rather than filtered twice: what covers and what is left to do
             // are the two halves of one split, so a state added later has to be given a
-            // home there rather than falling through both predicates unnoticed.
-            val (covered, queued) = splitByBorrow(contributionsOf(entries, foods))
+            // home there rather than falling through both predicates unnoticed. A Recipe
+            // needs no clause of its own: `Food` refuses to match one. Fibre a Food
+            // states is not a borrow, so it moves neither side — it only leaves fibre
+            // covered better than the share says, which keeps the share true.
+            val contributions = contributionsOf(entries, foods)
+            val (covered, queued) = contributions.partition { it.borrowed.reference != null }
             return MicronutrientIntake(
                 from = from,
                 to = to,
@@ -152,15 +156,15 @@ data class MicronutrientIntake(
                 // resolves nothing, and telling that User to match more food is advice
                 // no amount of matching can satisfy.
                 hasReferenceIntakes = !references.isNullOrEmpty(),
-                rows = rowsOf(covered, references.orEmpty()),
+                rows = rowsOf(contributions, references.orEmpty()),
                 unmatched = queueOf(queued, breakdown.totalCalories),
             )
         }
 
         /**
          * Every Food that supplied the window, with each **Recipe** opened into the
-         * ingredients that made it — matched or not, because [splitByBorrow] is what
-         * splits those. An **Estimated Entry** names no Food and supplies none.
+         * ingredients that made it — matched or not, because the caller splits those.
+         * An **Estimated Entry** names no Food and supplies none.
          *
          * `getValue`, not a lookup that can miss: a Food absent from [eaten] is a
          * caller that broke `of`'s contract, and quietly dropping it would return a
@@ -212,48 +216,20 @@ data class MicronutrientIntake(
         /**
          * A row per nutrient: the window's lower bound, and what it can be read as.
          *
-         * [covered] contributes by the **grams eaten** — never by its calories or
-         * protein, which would compound the inevitable disagreement between a package
-         * label and a generic food (ADR 0027).
+         * Every contribution is asked, matched or not, by the **grams eaten** — never
+         * by its calories or protein, which would compound the inevitable disagreement
+         * between a package label and a generic food (ADR 0027).
          */
         private fun rowsOf(
-            covered: List<CoveredContribution>,
+            contributions: List<FoodContribution>,
             references: Map<Micronutrient, ReferenceIntake>,
         ): List<MicronutrientRow> = Micronutrient.entries.map { nutrient ->
             // Divided by the window's whole width rather than by the days that were
             // logged: a day nothing was logged on still happened, and averaging it
             // away would quietly scale the missing share up (CONTEXT.md).
-            val perDay = covered.sumOf { it.reference.micronutrients.amountFor(nutrient, it.grams) } / WINDOW_DAYS
+            val perDay = contributions.sumOf { it.amountOf(nutrient) } / WINDOW_DAYS
             rowFor(nutrient, perDay, references[nutrient])
         }
-
-        /**
-         * The window's contributions split once: those whose Food borrows a Reference
-         * Food, carried with it, and the rest, left to match. One question, asked once
-         * per contribution, so each lands on exactly one side — and what can supply a
-         * figure is what counts toward coverage, so the numerator and the denominator
-         * of one read describe the same set of food. A **Recipe** needs no clause of
-         * its own: `Food`'s invariant refuses to match one, so a borrow implies a
-         * plain Food.
-         */
-        private fun splitByBorrow(
-            contributions: List<FoodContribution>,
-        ): Pair<List<CoveredContribution>, List<FoodContribution>> {
-            val covered = mutableListOf<CoveredContribution>()
-            val queued = mutableListOf<FoodContribution>()
-            for (contribution in contributions) {
-                val reference = contribution.borrowed.reference
-                if (reference != null) {
-                    covered += CoveredContribution(contribution.grams, contribution.calories, reference)
-                } else {
-                    queued += contribution
-                }
-            }
-            return covered to queued
-        }
-
-        /** A contribution that can supply figures, with the Reference Food it supplies them from. */
-        private data class CoveredContribution(val grams: Double, val calories: Double, val reference: ReferenceFood)
 
         /**
          * What a lower bound of [amount] lets Tucker say about [nutrient] against
