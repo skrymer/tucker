@@ -2242,3 +2242,22 @@ null` now means two things that earn opposite messages — the same trap
     OFF carbs or fat still costs the whole scan (#570).
   - **Trap:** type-resolving Detekt (`./gradlew build`) refused a shadowed `it` that the
     pre-commit hook's plain `detekt` passed, two commits after it landed.
+  - **Slice 5 ([#550](https://github.com/skrymer/tucker/issues/550)) — a Recipe rolls up
+    fibre and alcohol.** `Recipe.nutrition()` sets `fibrePer100g` / `alcoholPer100g`
+    from `totalWhereStated`: the sum of `Nutrition.fibreFor` / `alcoholFor` (a portion's
+    grams, null where not stated) over the ingredients that state the figure, over the
+    cooked weight, with no alcohol retention. A Recipe's calories already counted both,
+    since it sums its ingredients' five-factor calories; this slice pins that end to end
+    (API test, correction re-roll, real-stack smoke: wrap + 13 % wine, cooked 300 g,
+    212 kcal, 11.2 g fibre, 6.838 g alcohol /100g).
+  - **Ruled (user):** a Recipe's fibre and alcohol are stated when any ingredient states
+    them (CONTEXT.md, Recipe); the builder shows no fibre or ABV figure, so the rolled-up
+    figures live in the domain and API only.
+  - **Ruled (user):** no backfill migration — no F22 slice had been deployed, so no stored
+    Recipe can hold a fibre-inclusive calorie figure beside a null fibre. That holds only
+    if slices 1–5 ship together: a deploy of `main` between #549 and #550 would open it.
+  - **Trap:** the smoke's global setup runs `docker compose up --build`, so a smoke run in
+    a scratch worktree of `main` rebuilds `tucker-backend:latest` from `main`, and a
+    backend started afterwards from that tag is `main`'s. The walk-through's first desktop
+    pass read a null fibre that way; check `docker inspect tucker-backend -f '{{.Image}}'`
+    against a fresh `docker compose build backend` before driving.
