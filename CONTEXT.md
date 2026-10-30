@@ -298,8 +298,8 @@ recomputed for it: fibre is then covered at least as well as the share says, whi
 leaves the share true.
 **Every figure is a lower bound.** Only food that can contribute does — a
 **Weighed Entry** whose **Food** is matched to a **Reference Food**, or a
-**Recipe** through whichever of its ingredients are matched, plus the fibre any
-of those Foods or ingredients state for themselves, matched or not. A Recipe's
+**Recipe** through whichever of its ingredients are matched — and, for fibre,
+any weighed Food or ingredient that states its own, matched or not. A Recipe's
 own rolled-up fibre is never read here: its ingredients are. An **Estimated Entry**
 has no Food, so it can never contribute at all. What is summed is therefore *at
 least* what was eaten, and the share of the window's calories that could borrow
