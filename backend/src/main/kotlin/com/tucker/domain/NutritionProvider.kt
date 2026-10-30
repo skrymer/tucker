@@ -15,8 +15,8 @@ enum class ProviderCapability { BARCODE_LOOKUP, TEXT_SEARCH }
  * a Provider directly.
  *
  * Implementations normalise whatever the source returns to Tucker's per-100g
- * macro model and return a [FoodCandidate]; calories are re-derived by Atwater
- * downstream, so a Provider never supplies them.
+ * macro model and return a [FoodCandidate]; calories are re-derived by the calorie
+ * rule (ADR 0040) downstream, so a Provider never supplies them.
  */
 interface NutritionProvider {
     /** The capabilities this Provider declares; see [ProviderCapability]. */

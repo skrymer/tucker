@@ -166,8 +166,9 @@ missing fields come back blank and must be filled before save, so Atwater never
 silently runs on a hole.
 
 **Accepted consequence:** a scanned Food's calories will *systematically* differ
-slightly from the package label (the label counts fibre/polyols/rounding that
-flat 4-4-9 does not). We chose model uniformity and determinism over matching the
+slightly from the package label (the label counts polyols and rounding that the
+calorie rule does not; fibre and alcohol are counted since ADR 0040, which also lets
+the stated energy arbitrate folded-in fibre). We chose model uniformity and determinism over matching the
 wrapper; the shown stated-energy cross-check lets the user notice and adjust. This
 is the question a future reader is most likely to ask ("why don't scanned foods
 match the label?"), and this section is its answer.
