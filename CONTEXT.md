@@ -231,8 +231,8 @@ user taps to accept it; nothing is matched silently, because a wrong match repor
 a confident figure for a food that was never eaten. Australian labelling declares
 only energy, protein, fat, saturated fat, carbohydrate, sugars and sodium, so a
 scanned Food arrives with no micronutrients at all — matching is how it gets them,
-and an unmatched Food simply contributes none (see **Reference Intake** on how much
-of a window that leaves unaccounted for).
+and an unmatched Food contributes none, apart from any fibre it states (see
+**Reference Intake** on how much of a window that leaves unaccounted for).
 _Avoid_: generic food, AFCD food, food match, nutrient source, composition record
 
 **Reference Intake**:
@@ -298,9 +298,11 @@ recomputed for it: fibre is then covered at least as well as the share says, whi
 leaves the share true.
 **Every figure is a lower bound.** Only food that can contribute does — a
 **Weighed Entry** whose **Food** is matched to a **Reference Food**, or a
-**Recipe** through whichever of its ingredients are matched. An **Estimated Entry**
+**Recipe** through whichever of its ingredients are matched, plus the fibre any
+of those Foods or ingredients state for themselves, matched or not. A Recipe's
+own rolled-up fibre is never read here: its ingredients are. An **Estimated Entry**
 has no Food, so it can never contribute at all. What is summed is therefore *at
-least* what was eaten, and the share of the window's calories that could contribute
+least* what was eaten, and the share of the window's calories that could borrow
 is stated alongside it whenever there are calories to measure it against. Calories
 are the measure of that share for the same reason they measure an **Intake
 Breakdown**: an Estimated Entry has no mass, so grams cannot measure the very

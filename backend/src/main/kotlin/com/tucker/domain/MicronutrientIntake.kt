@@ -58,8 +58,8 @@ data class MicronutrientRow(
 /**
  * What a window of food told a User about their vitamins and minerals
  * (CONTEXT.md, ADR 0027): a lower-bound daily average per nutrient read against
- * its **Reference Intake**, how much of the window could contribute one at all,
- * and what is left to match.
+ * its **Reference Intake**, how much of the window could borrow one at all, and
+ * what is left to match.
  *
  * [coverage] is the share of the window's calories that came from a Food with a
  * **Reference Food** behind it, and is **never scaled up**: what goes unmatched is
