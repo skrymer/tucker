@@ -85,6 +85,18 @@ class RecipeTest {
     }
 
     @Test
+    fun `alcohol is not stated when no ingredient states it`() {
+        val recipe = Recipe(
+            id = 1,
+            name = "Stew",
+            ingredients = listOf(RecipeIngredient(food("Beef", 200.0, 20.0), grams = 500.0)),
+            cookedWeightG = 500.0,
+        )
+
+        assertNull(recipe.nutrition().alcoholPer100g)
+    }
+
+    @Test
     fun `nutrition leaves carbs and fat null in the rollup`() {
         val recipe = Recipe(
             id = 1,
