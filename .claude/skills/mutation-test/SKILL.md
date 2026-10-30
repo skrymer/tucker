@@ -344,11 +344,11 @@ own large suite joins (#546 `EditFoodSheet.vue`: 81 in 8m54s), plus a ~1-minute 
   other. F18 slice 6's swap survived the whole suite until a sharp-s fixture killed
   it; kill it the same way rather than recording it equivalent. And it knows
   nothing at all about a normaliser you wrote.
-- **Stryker has no truthiness mutator.** `x == null ? a : b` scoring 100% says
-  nothing about whether `x ? b : a` would be caught — and those differ for `0`,
-  `''` and `NaN`. Any guard distinguishing *absent* from *zero* needs an explicit
-  zero case; the score will not ask for one. (`formatEntryName` shipped a 100%
-  score while the falsy form passed all 473 tests.)
+- **Neither engine adds a default or a truthiness test.** Stryker scoring 100% on
+  `x == null ? a : b` says nothing of `x ? b : a` (they differ for `0`, `''`, `NaN`;
+  `formatEntryName` passed 473 tests in the falsy form), and pitest never adds `?: 0.0`.
+  So *absent* vs *zero* needs an explicit case **per call site**: #550's shared helper
+  scored 32/32 while its alcohol caller's `?: 0.0` passed every test.
 
 ## Backend — pitest
 

@@ -68,6 +68,9 @@ not restate them.
   specifying) gets its own test; **thin glue is covered by the integrated test** — a
   delegating controller and scheduler wiring get no standalone test, and mocking internal
   collaborators to give them one is the anti-pattern. (ADR 0013.)
+- **A slice that changes no UI still owes a smoke that can go red**: after the UI flow it
+  reads back the field the slice adds, and is shown red from a `main` worktree before it
+  counts. #550's smoke asserted only kcal the UI already showed on `main`; gate 1 caught it.
 - **A rule no behaviour can break still gets a RED — make the rule executable.** Some
   ADR rules hold "reachable or not" (ADR 0021: every scoped statement names the owner,
   even when a scoped read upstream already makes it safe). No test through a public
