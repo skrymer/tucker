@@ -1,4 +1,5 @@
 import { test, expect } from './support/smoke-test'
+import { create, expectCreated, expectStatus } from './support/seeding'
 import { isoShiftDays, todayIso } from '../support/date'
 
 // F22 slice 6 smoke (#551): the fibre a Food states reaches Micronutrient Intake
@@ -12,35 +13,36 @@ test('an unmatched wrap stating its fibre puts that fibre in the window', async 
   request,
 }) => {
   // Born 1990, so the 31–50 band: a man's fibre reference is 30 g a day.
-  const profiled = await request.put(`${API}/profile`, {
-    data: { sex: 'MALE', birthDate: '1990-06-15', heightCm: 180 },
-  })
-  expect(profiled.ok()).toBe(true)
+  await expectStatus(
+    request.put(`${API}/profile`, {
+      data: { sex: 'MALE', birthDate: '1990-06-15', heightCm: 180 },
+    }),
+    200,
+  )
 
   // The protein wrap's label, fibre and all — and never matched to a Reference Food.
-  const created = await request.post(`${API}/foods`, {
-    data: {
-      tagIds: [],
-      name: 'Protein wrap',
-      proteinPer100g: 19.4,
-      carbsPer100g: 12.8,
-      fatPer100g: 9.3,
-      fibrePer100g: 16.8,
-    },
+  const wrap = await create(request, '/foods', {
+    tagIds: [],
+    name: 'Protein wrap',
+    proteinPer100g: 19.4,
+    carbsPer100g: 12.8,
+    fatPer100g: 9.3,
+    fibrePer100g: 16.8,
   })
-  expect(created.status()).toBe(201)
-  const wrap = (await created.json()) as { id: number }
 
   // 200 g of wraps on each of the seven days: 235.2 g of fibre, 33.6 g a day —
   // past the 30 g line, which is what it takes for the card to draw a figure. A
   // lower bound is rounded down, so it reads 33 g.
   const today = todayIso()
-  for (let back = 0; back < 7; back++) {
-    const logged = await request.post(`${API}/entries/weighed`, {
-      data: { date: isoShiftDays(today, -back), foodId: wrap.id, grams: 200 },
-    })
-    expect(logged.status()).toBe(201)
-  }
+  await Promise.all(
+    Array.from({ length: 7 }, (_, back) =>
+      expectCreated(
+        request.post(`${API}/entries/weighed`, {
+          data: { date: isoShiftDays(today, -back), foodId: wrap, grams: 200 },
+        }),
+      ),
+    ),
+  )
 
   await goto('/review', { waitUntil: 'hydration' })
   const section = page.getByRole('region', { name: 'Vitamins and minerals' })

@@ -137,9 +137,12 @@ data class MicronutrientIntake(
             //
             // Split once rather than filtered twice: what covers and what is left to do
             // are the two halves of one split, so a state added later has to be given a
-            // home there rather than falling through both predicates unnoticed.
+            // home there rather than falling through both predicates unnoticed. A Recipe
+            // needs no clause of its own: `Food` refuses to match one. Fibre a Food
+            // states is not a borrow, so it moves neither side — it only leaves fibre
+            // covered better than the share says, which keeps the share true.
             val contributions = contributionsOf(entries, foods)
-            val (covered, queued) = splitByBorrow(contributions)
+            val (covered, queued) = contributions.partition { it.borrowed.reference != null }
             return MicronutrientIntake(
                 from = from,
                 to = to,
@@ -160,8 +163,8 @@ data class MicronutrientIntake(
 
         /**
          * Every Food that supplied the window, with each **Recipe** opened into the
-         * ingredients that made it — matched or not, because [splitByBorrow] is what
-         * splits those. An **Estimated Entry** names no Food and supplies none.
+         * ingredients that made it — matched or not, because the caller splits those.
+         * An **Estimated Entry** names no Food and supplies none.
          *
          * `getValue`, not a lookup that can miss: a Food absent from [eaten] is a
          * caller that broke `of`'s contract, and quietly dropping it would return a
@@ -227,33 +230,6 @@ data class MicronutrientIntake(
             val perDay = contributions.sumOf { it.amountOf(nutrient) } / WINDOW_DAYS
             rowFor(nutrient, perDay, references[nutrient])
         }
-
-        /**
-         * How much of [nutrient] this contribution supplied: borrowed from its Reference
-         * Food, except fibre the Food states itself, which wins — the label describes
-         * that product, the Reference Food only something like it (CONTEXT.md). So an
-         * unmatched Food stating fibre supplies fibre and nothing else.
-         */
-        private fun FoodContribution.amountOf(nutrient: Micronutrient): Double {
-            val stated = if (nutrient == Micronutrient.FIBRE) borrowed.food.nutrition.fibreFor(grams) else null
-            return stated ?: borrowed.reference?.micronutrients?.amountFor(nutrient, grams) ?: 0.0
-        }
-
-        /**
-         * The window's contributions split once: those whose Food borrows a Reference
-         * Food, and the rest, left to match. One question, asked once per
-         * contribution, so each lands on exactly one side. A **Recipe** needs no clause
-         * of its own: `Food`'s invariant refuses to match one, so a borrow implies a
-         * plain Food.
-         *
-         * Fibre a Food states is not a borrow, so it moves neither side: it only leaves
-         * fibre covered better than the share says, which keeps the share true
-         * (CONTEXT.md).
-         */
-        private fun splitByBorrow(
-            contributions: List<FoodContribution>,
-        ): Pair<List<FoodContribution>, List<FoodContribution>> =
-            contributions.partition { it.borrowed.reference != null }
 
         /**
          * What a lower bound of [amount] lets Tucker say about [nutrient] against
