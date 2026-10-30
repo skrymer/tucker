@@ -287,9 +287,12 @@ How the moves land here:
   .getResourceMap()`, as `FoodCorrectionTransactionTest` does), never its name: every
   repository write is transactional under its own method's name, so two separate
   `FoodRepository.update` transactions share one and the check passes vacuously (#432).
-- **Move Class out to a public domain type, and it owes its own test in the same change**
-  (ADR 0013 rules 2 and 5) — the service tests that drove it while it was private are not
-  its spec. #455's `AdaptiveWindow` was moved untested and gate 5 sent it back.
+- **Move Class or Move Function out to a public domain type or member, and it owes its own
+  test in the same change** (ADR 0013 rules 2 and 5) — the tests that drove it while it was
+  private are not its spec, and "one consumer covers it" is not an exemption. #455's
+  `AdaptiveWindow` was moved untested and gate 5 sent it back; #551 moved a private
+  extension onto `FoodContribution.amountOf`, and `/check-adrs` failed it. Written after
+  the move, the spec passes on write, so its red has to come from a full-matrix pitest run.
 - **Introduce Parameter Object onto the domain value the group already is**
   (`LoggedIntake`, `WeighedPortion`, `BorrowedLog`); a fixture parameter no caller varies
   is Change Function Declaration, not an object.

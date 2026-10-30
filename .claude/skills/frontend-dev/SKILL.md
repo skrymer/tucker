@@ -258,8 +258,11 @@ assertion with the dev token), and no browser-level layer can reach it.
   Chrome, and the console guard reports the failed fetch. In the smokes it is usually
   `api.iconify.design` (the mocked fixture answers Iconify itself, `answerIconLookups`; the
   smoke fixture does not), and a "Failed to fetch dynamically imported module" fails the
-  same way (#548). A re-run may or may not converge — #547's `--last-failed` failed a fifth,
-  #548's passed all 17 — so record the re-run's own count; a spec still failing only on it
+  same way (#548). A smoke run is itself such a change, so never run the mocked e2e beside
+  one: #551's mocked suite went 3 flaky on `127.0.0.1/_nuxt` chunks while a smoke
+  `--last-failed` tore its network down. A re-run may or may not converge — #547's
+  `--last-failed` failed a fifth, #548's passed all 17, #551's went 29 → 8 → 0 over two
+  rounds — so record the re-run's own count; a spec still failing only on it
   is unproven until CI on the PR runs it, and "left to CI" is not evidence before that run
   exists (#523: 84 lines).
 - **Stale Playwright build** — the mocked e2e rebuilds `.nuxt/e2e` from scratch every run, so it cannot
