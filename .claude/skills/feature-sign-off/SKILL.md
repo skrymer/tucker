@@ -208,8 +208,8 @@ old one overwritten: #498 lost a pitest red and a "91 failed" e2e log that way.
      looking; FIXED with no test red on its removal is REJECTED (#511 passed two).
    - **Does each dismissal hold?** "By design per ADR 00xx", "pre-existing", "out
      of scope" are checkable claims; "no worse than `main`" is checked by driving the
-     same User steps on `main`, never by `main` lacking the new state (#476), and "a
-     follow-up" holds only with a filed issue's number in the row. Rejected on sight:
+     same User steps on `main`, never by `main` lacking the new state (#476), "a follow-up"
+     needs a filed issue's number, "no caller yet" the PRD's open slices read (#550). Rejected on sight:
      a harm the diff makes worse than `main` recorded as accepted (a regression: fix
      it, never offer "accept and record"), and a tool's refusal as the reason
      something was left. A Remedy cell names one remedy (agent-briefs.md's rule).
@@ -424,8 +424,8 @@ justified):
    these smokes, and freeing it is the user's call, asked then — never a reason to skip
    them (#521 opened its PR with the smokes last run at gate 3).
 
-   **`docker compose build backend` only when the diff touched the backend** — the
-   smokes recreate from the existing image (#70), and a needless build is a minute spent.
+   **The smokes rebuild the backend from the tree that runs them** (`up --build`), so a
+   retagged image never reaches one; a red on `main` runs from a `main` worktree (#550).
 2. **Commit and push** on the feature branch (never straight to `main`; see
    `[[always-work-on-a-feature-branch]]`, `[[push-after-committing]]`). Group by concern, worded
    from the change applied, not the finding (#525 claimed "the widest range"); add the trailer.

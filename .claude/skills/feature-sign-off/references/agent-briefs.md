@@ -88,7 +88,7 @@ briefs read `HEAD` while uncommitted fixes sat in the tree, and one agent judged
 **The pack copies, it does not recount.** A figure in it is the saved output's own
 summary line copied whole, never fields picked from it (#468 quoted a Vitest file's
 `environment` and `setup` and left out the `tests` where its boot landed), and every finding an agent returns gets a row, a
-"harmless" nit included — and so does a behaviour change the agent dismissed itself (an
+"harmless" nit included, and a numbered finding holding two observations gets two (#550 lost one) — and so does a behaviour change the agent dismissed itself (an
 adversary's failed attack, a ledger's scope tail): #455 PR 2's pack read one as resolved.
 A row id is never a range (`A4-1…A4-11`): count the handback's attacks, tail items and
 triage rows, and write that many rows — #548's gate 5 rejected seven merged rows. An agent's

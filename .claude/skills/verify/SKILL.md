@@ -32,10 +32,12 @@ explicitly in the verdict.
 ## Workflow
 
 1. **Bring the stack up.** `docker compose up -d backend` (repo root), then `pnpm dev`
-   in `frontend/`. Wait for both before navigating. **If the branch touched `backend/`
-   since the image was built, `docker compose build backend` first** — compare the
-   `docker image inspect -f '{{.Created}}' tucker-backend:latest` with `git log -1 --format=%cI --
-   backend/`: #498's first crossing probe ran on a stale image and read `reachedOn` null.
+   in `frontend/`. Wait for both before navigating. **`docker compose build backend` from
+   this worktree first, and check `docker inspect tucker-backend -f '{{.Image}}'` is the id
+   that build produced** — a build time proves nothing: any smoke or build run from another
+   worktree (a `main` scratch for a red proof) leaves `tucker-backend:latest` holding that
+   tree's code, newer than your last commit. #498's probe read a stale `reachedOn` null;
+   #550's first desktop pass read `main`'s null fibre from an image built after its commit.
    **Walk on a disposable database whenever the diff adds a migration or `tucker-data`
    fails Flyway** (another branch may have left a checksum there — #525's did, with no
    migration of its own). Only `TUCKER_DB_PATH` needs overriding, in a one-line compose
