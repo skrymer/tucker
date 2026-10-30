@@ -1,6 +1,7 @@
 package com.tucker.api
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.tucker.domain.Macros
 import com.tucker.jooq.Tables.RECIPE_INGREDIENT
 import org.hamcrest.Matchers.closeTo
 import org.jooq.DSLContext
@@ -28,11 +29,16 @@ class RecipeApiTest {
     @Autowired lateinit var dsl: DSLContext
 
     /** Create a plain Food via the public API and return its id. */
-    private fun createFood(name: String, protein: Double, carbs: Double, fat: Double): Long {
+    private fun createFood(name: String, protein: Double, carbs: Double, fat: Double): Long =
+        createFood(name, Macros(protein, carbs, fat))
+
+    /** Create a plain Food via the public API, alcohol written as the ABV the API takes, and return its id. */
+    private fun createFood(name: String, macros: Macros, alcoholAbv: Double? = null): Long {
         val json = mockMvc.post("/api/foods") {
             contentType = MediaType.APPLICATION_JSON
-            content = """{"name":"$name","proteinPer100g":$protein,"carbsPer100g":$carbs,"fatPer100g":$fat,
-                "tagIds":[]}"""
+            content = """{"name":"$name","proteinPer100g":${macros.proteinPer100g},
+                "carbsPer100g":${macros.carbsPer100g},"fatPer100g":${macros.fatPer100g},
+                "fibrePer100g":${macros.fibrePer100g},"alcoholAbv":$alcoholAbv,"tagIds":[]}"""
         }.andExpect { status { isCreated() } }.andReturn().response.contentAsString
         return objectMapper.readTree(json).get("id").asLong()
     }
@@ -62,6 +68,28 @@ class RecipeApiTest {
             jsonPath("$.cookedWeightG") { value(200.0) }
             jsonPath("$.caloriesPer100g", closeTo(255.0, 0.1))
             jsonPath("$.proteinPer100g", closeTo(30.0, 0.1))
+        }
+    }
+
+    @Test
+    fun `a recipe rolls up its ingredients' fibre and alcohol, and its calories count both`() {
+        // Wrap 246.1 kcal /100g (16.8 g fibre) × 200 g = 492.2 kcal, 33.6 g fibre.
+        // 13% wine: 10.257 g alcohol /100g, 71.799 kcal /100g × 200 g = 143.598 kcal, 20.514 g alcohol.
+        // Mince 170 kcal /100g × 300 g = 510 kcal. Over a 600 g dish: 190.966 kcal, 5.6 g fibre,
+        // 3.419 g alcohol /100g — which reads back as 4.3333% ABV.
+        val wrapId = createFood("Protein wrap", Macros(19.4, 12.8, 9.3, fibrePer100g = 16.8))
+        val wineId = createFood("Red wine", Macros(0.0, 0.0, 0.0), alcoholAbv = 13.0)
+        val minceId = createFood("Mince", protein = 20.0, carbs = 0.0, fat = 10.0)
+
+        mockMvc.post("/api/recipes") {
+            contentType = MediaType.APPLICATION_JSON
+            content = recipeBody("Wrap bake", 600.0, wrapId to 200.0, wineId to 200.0, minceId to 300.0)
+        }.andExpect {
+            status { isCreated() }
+            jsonPath("$.caloriesPer100g", closeTo(190.966, 0.001))
+            jsonPath("$.fibrePer100g", closeTo(5.6, 0.001))
+            jsonPath("$.alcoholPer100g", closeTo(3.419, 0.001))
+            jsonPath("$.alcoholAbv", closeTo(4.3333, 0.001))
         }
     }
 

@@ -37,6 +37,66 @@ class RecipeTest {
     }
 
     @Test
+    fun `fibre rolls up per 100g of the cooked weight, an ingredient stating none adding nothing`() {
+        // 200 g of wrap at 16.8 g fibre = 33.6 g; the beef states none. Over a 480 g dish: 7 g /100g.
+        val wrap = Food.plain(1L, "Wrap", null, Macros(19.4, 12.8, 9.3, fibrePer100g = 16.8).nutrition())
+        val recipe = Recipe(
+            id = 1,
+            name = "Wrap bake",
+            ingredients = listOf(
+                RecipeIngredient(wrap, grams = 200.0),
+                RecipeIngredient(food("Beef", 200.0, 20.0), grams = 300.0),
+            ),
+            cookedWeightG = 480.0,
+        )
+
+        assertEquals(7.0, recipe.nutrition().fibrePer100g!!, 1e-9)
+    }
+
+    @Test
+    fun `fibre is not stated when no ingredient states it`() {
+        val recipe = Recipe(
+            id = 1,
+            name = "Stew",
+            ingredients = listOf(RecipeIngredient(food("Beef", 200.0, 20.0), grams = 500.0)),
+            cookedWeightG = 500.0,
+        )
+
+        assertNull(recipe.nutrition().fibrePer100g)
+    }
+
+    @Test
+    fun `alcohol is conserved through cooking, all of the wine's grams counted over the cooked weight`() {
+        // 200 g of 13% wine carries 20.514 g of alcohol. Cooked down to 500 g, the stew counts
+        // every gram of it: 4.1028 g /100g, with nothing taken off for what simmering drives off.
+        val alcohol = AlcoholByVolume(13.0).gramsPer100g
+        val wine = Food.plain(1L, "Red wine", null, Macros(0.0, 0.0, 0.0, alcoholPer100g = alcohol).nutrition())
+        val recipe = Recipe(
+            id = 1,
+            name = "Beef bourguignon",
+            ingredients = listOf(
+                RecipeIngredient(wine, grams = 200.0),
+                RecipeIngredient(food("Beef", 200.0, 20.0), grams = 400.0),
+            ),
+            cookedWeightG = 500.0,
+        )
+
+        assertEquals(4.1028, recipe.nutrition().alcoholPer100g!!, 1e-9)
+    }
+
+    @Test
+    fun `alcohol is not stated when no ingredient states it`() {
+        val recipe = Recipe(
+            id = 1,
+            name = "Stew",
+            ingredients = listOf(RecipeIngredient(food("Beef", 200.0, 20.0), grams = 500.0)),
+            cookedWeightG = 500.0,
+        )
+
+        assertNull(recipe.nutrition().alcoholPer100g)
+    }
+
+    @Test
     fun `nutrition leaves carbs and fat null in the rollup`() {
         val recipe = Recipe(
             id = 1,
