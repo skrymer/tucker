@@ -8,6 +8,18 @@ import kotlin.test.assertNull
 class NutritionTest {
 
     @Test
+    fun `the fibre in a portion scales the stated fibre per 100g by the grams`() {
+        val wrap = Macros(proteinPer100g = 19.4, carbsPer100g = 12.8, fatPer100g = 9.3, fibrePer100g = 16.8).nutrition()
+        assertEquals(33.6, wrap.fibreFor(200.0)!!, 1e-9)
+    }
+
+    @Test
+    fun `the alcohol in a portion scales the stated alcohol per 100g by the grams`() {
+        val wine = Macros(0.0, 0.0, 0.0, alcoholPer100g = 10.257).nutrition()
+        assertEquals(20.514, wine.alcoholFor(200.0)!!, 1e-9)
+    }
+
+    @Test
     fun `macros derive calories per 100g using 4P + 4C + 9F`() {
         // 4 * 10 + 4 * 20 + 9 * 5 = 40 + 80 + 45 = 165 kcal /100g
         val n = Macros(proteinPer100g = 10.0, carbsPer100g = 20.0, fatPer100g = 5.0).nutrition()

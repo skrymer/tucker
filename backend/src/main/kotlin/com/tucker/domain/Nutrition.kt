@@ -57,6 +57,12 @@ data class Nutrition(
     /** Protein (grams) in [grams] of this food. */
     fun proteinFor(grams: Double): Double = proteinPer100g * grams / GRAMS_PER_100G
 
+    /** Fibre (grams) in [grams] of this food; null where the fibre is not stated. */
+    fun fibreFor(grams: Double): Double? = fibrePer100g?.times(grams)?.div(GRAMS_PER_100G)
+
+    /** Alcohol (grams) in [grams] of this food; null where the alcohol is not stated. */
+    fun alcoholFor(grams: Double): Double? = alcoholPer100g?.times(grams)?.div(GRAMS_PER_100G)
+
     /**
      * The grams of this food that [kcal] calories buy — the inverse of
      * [caloriesFor]. Null for a food with no calories, which no amount of
