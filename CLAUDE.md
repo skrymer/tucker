@@ -266,9 +266,6 @@ here.
   Open: [#385](https://github.com/skrymer/tucker/issues/385).
 - **F19** — ✅ Correct a Food (PRD [#431](https://github.com/skrymer/tucker/issues/431),
   [ADR 0037](docs/adr/0037-editing-a-food-is-a-correction.md)).
-- **F22** — ✅ Fibre and alcohol are macros; calories follow the FSANZ energy formula
-  (PRD [#545](https://github.com/skrymer/tucker/issues/545),
-  [ADR 0040](docs/adr/0040-calories-follow-the-fsanz-energy-formula-and-carbs-exclude-fibre.md)).
 - **F20** — ✅ Weight history on `/review`: add, correct or remove a past Weight
   Measurement (PRD [#495](https://github.com/skrymer/tucker/issues/495)), in four
   slices — the card ([#496](https://github.com/skrymer/tucker/issues/496)), Edit
@@ -292,10 +289,9 @@ here.
   and interaction (INP) ([#523](https://github.com/skrymer/tucker/issues/523)), slice 7,
   the server section from Actuator ([#524](https://github.com/skrymer/tucker/issues/524)),
   and slice 8, retention and the rate cap ([#525](https://github.com/skrymer/tucker/issues/525)), are done.
-- **F22** — Fibre and alcohol are macros, and calories follow the FSANZ energy formula
+- **F22** — ✅ Fibre and alcohol are macros; calories follow the FSANZ energy formula
   (PRD [#545](https://github.com/skrymer/tucker/issues/545),
-  [ADR 0040](docs/adr/0040-calories-follow-the-fsanz-energy-formula-and-carbs-exclude-fibre.md)),
-  in slices [#546](https://github.com/skrymer/tucker/issues/546)–[#551](https://github.com/skrymer/tucker/issues/551).
+  [ADR 0040](docs/adr/0040-calories-follow-the-fsanz-energy-formula-and-carbs-exclude-fibre.md)).
 - **F23** — Tolerance: a day up to 10% past its Calorie Budget is **slightly over**
   (amber), not over budget (red), on the Day Ring, the day verdict and the Weight
   Timeline (PRD [#579](https://github.com/skrymer/tucker/issues/579),
