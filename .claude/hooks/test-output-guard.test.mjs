@@ -78,6 +78,14 @@ test('answers a filtered test run with a deny naming tail', () => {
   assert.match(verdict.permissionDecisionReason, /tail -N/)
 })
 
+test('the deny tells a red to tee its run to a log', () => {
+  const out = runHook(
+    JSON.stringify({ tool_input: { command: 'pnpm test | grep Tests' } }),
+  )
+
+  assert.match(JSON.parse(out).hookSpecificOutput.permissionDecisionReason, /\| tee /)
+})
+
 test('fails open on input it cannot read', () => {
   assert.equal(runHook('{not json'), '')
 })

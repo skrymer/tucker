@@ -16,7 +16,9 @@ git -C "$src" status --short >> "$here/red-proof.log"
 
 # name|file|old|new|grep of the test that must fail. `old` must match exactly once.
 # The control mutates nothing and must pass every grep after it: a copy that cannot
-# build reads as red to every other line.
+# build reads as red to every other line. Escape every `"` inside an entry, as the
+# example does: an unescaped one ends the bash string, `old` never matches, and the line
+# reads MUTATION NOT APPLIED (#548's three template mutants cost a second run).
 mutants=(
   "control|app/components/Chart.vue|const x = 1|const x = 1|first test|second test"
   "example|app/components/Chart.vue|:x-domain=\"xDomain\"||first test"

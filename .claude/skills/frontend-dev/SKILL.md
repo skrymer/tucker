@@ -255,12 +255,13 @@ assertion with the dev token), and no browser-level layer can reach it.
   middleware is no way out: the navigation clears it (7 of 8 red).
 - **`net::ERR_NETWORK_CHANGED` in a local e2e or smoke failure is the host, not the
   code** — Docker creating and removing networks changes the host's network under
-  Chrome, and the console guard reports the failed fetch. In the smokes it is nearly
-  always `api.iconify.design`: the mocked fixture answers Iconify itself
-  (`answerIconLookups`), the smoke fixture does not. A re-run does not converge — #547's
-  `--last-failed` passed the four and failed a fifth on the same host — so a spec failing
-  only on it is unproven until CI on the PR runs it; "left to CI" is not evidence before
-  that run exists (#523: 84 lines).
+  Chrome, and the console guard reports the failed fetch. In the smokes it is usually
+  `api.iconify.design` (the mocked fixture answers Iconify itself, `answerIconLookups`; the
+  smoke fixture does not), and a "Failed to fetch dynamically imported module" fails the
+  same way (#548). A re-run may or may not converge — #547's `--last-failed` failed a fifth,
+  #548's passed all 17 — so record the re-run's own count; a spec still failing only on it
+  is unproven until CI on the PR runs it, and "left to CI" is not evidence before that run
+  exists (#523: 84 lines).
 - **Stale Playwright build** — the mocked e2e rebuilds `.nuxt/e2e` from scratch every run, so it cannot
   serve a stale build; the smokes still build through `@nuxt/test-utils`, so if a UI change doesn't show
   in a smoke run, `rm -rf frontend/.nuxt/test`.
