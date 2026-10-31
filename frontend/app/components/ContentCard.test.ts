@@ -62,6 +62,15 @@ describe('ContentCard', () => {
     expect(card).not.toHaveTextContent('0 entries')
   })
 
+  it('takes its icon only from a known subject, so an unknown one does not compile', () => {
+    type Props = InstanceType<typeof ContentCard>['$props']
+    // Checked by `pnpm typecheck`: the directive fails it if the line compiles.
+    // @ts-expect-error — no such subject
+    const unknown: Props = { subject: 'sleep', title: 'Sleep' }
+
+    expect(unknown.subject).not.toBe('goal')
+  })
+
   it('types a failed read as needing its "Couldn\'t load …" title', () => {
     type Props = InstanceType<typeof ContentCard>['$props']
     // Checked by `pnpm typecheck`: the directive fails it if the line compiles.
