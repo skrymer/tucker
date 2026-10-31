@@ -2,6 +2,8 @@ package com.tucker.domain
 
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class BudgetVerdictTest {
 
@@ -18,6 +20,12 @@ class BudgetVerdictTest {
     @Test
     fun `intake at exactly the tolerance is still slightly over`() {
         assertEquals(BudgetVerdict.SLIGHTLY_OVER, BudgetVerdict.of(intakeKcal = 2200.0, budgetKcal = 2000.0))
+    }
+
+    @Test
+    fun `one calorie past the budget is past it, at the budget is not`() {
+        assertTrue(BudgetVerdict.isPastBudget(intakeKcal = 2001.0, budgetKcal = 2000.0))
+        assertFalse(BudgetVerdict.isPastBudget(intakeKcal = 2000.0, budgetKcal = 2000.0))
     }
 
     @Test

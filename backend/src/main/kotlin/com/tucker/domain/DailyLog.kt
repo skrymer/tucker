@@ -40,21 +40,16 @@ data class DailyLog(
     /**
      * A [BudgetProjection]: the would-be state of this day if [prospective] were also
      * logged. It warns past the Calorie Budget itself, not the Tolerance, so the
-     * heads-up comes before the first calorie over. With no budget yet ([calorieBudgetKcal] null, before the first
-     * WeeklyReview) there is nothing to exceed — the projection reports the running
-     * total only.
+     * heads-up comes before the first calorie over. With no budget yet
+     * ([calorieBudgetKcal] null, before the first WeeklyReview) there is nothing to
+     * exceed — the projection reports the running total only.
      */
-    fun project(
-        prospective: Entry,
-        calorieBudgetKcal: Double?,
-        proteinFloorG: Double?,
-    ): BudgetProjection {
-        val projected = DailyLog(date, entries + prospective)
-        val projectedConsumed = projected.caloriesConsumed()
-        if (calorieBudgetKcal == null || proteinFloorG == null) {
+    fun project(prospective: Entry, calorieBudgetKcal: Double?): BudgetProjection {
+        val projectedConsumed = caloriesConsumed() + prospective.calories
+        if (calorieBudgetKcal == null) {
             return BudgetProjection(false, projectedConsumed, overByKcal = null)
         }
-        val wouldExceed = projectedConsumed > calorieBudgetKcal
+        val wouldExceed = BudgetVerdict.isPastBudget(projectedConsumed, calorieBudgetKcal)
         return BudgetProjection(
             wouldExceedBudget = wouldExceed,
             projectedCaloriesConsumed = projectedConsumed,

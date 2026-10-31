@@ -28,7 +28,6 @@ class BudgetProjectionTest {
         val projection = log.project(
             WeighedEntry.log(1, date, WeighedPortion(food, grams = 600.0), today = date),
             calorieBudgetKcal = 2000.0,
-            proteinFloorG = 150.0,
         )
 
         assertTrue(projection.wouldExceedBudget)
@@ -42,7 +41,6 @@ class BudgetProjectionTest {
         val projection = log.project(
             WeighedEntry.log(1, date, WeighedPortion(food, grams = 400.0), today = date),
             calorieBudgetKcal = 2000.0,
-            proteinFloorG = 150.0,
         )
 
         assertFalse(projection.wouldExceedBudget)
@@ -56,7 +54,6 @@ class BudgetProjectionTest {
         val projection = log.project(
             WeighedEntry.log(1, date, WeighedPortion(food, grams = 600.0), today = date),
             calorieBudgetKcal = 2000.0,
-            proteinFloorG = 150.0,
         )
 
         assertEquals(2100.0, projection.projectedCaloriesConsumed)
@@ -70,7 +67,6 @@ class BudgetProjectionTest {
         val projection = log.project(
             WeighedEntry.log(1, date, WeighedPortion(food, grams = 400.0), today = date),
             calorieBudgetKcal = 2000.0,
-            proteinFloorG = 150.0,
         )
 
         assertNull(projection.overByKcal)
@@ -84,7 +80,6 @@ class BudgetProjectionTest {
         val projection = log.project(
             WeighedEntry.log(1, date, WeighedPortion(food, grams = 600.0), today = date),
             calorieBudgetKcal = null,
-            proteinFloorG = null,
         )
 
         assertFalse(projection.wouldExceedBudget)
@@ -100,7 +95,6 @@ class BudgetProjectionTest {
         val projection = log.project(
             WeighedEntry.log(1, date, WeighedPortion(food, grams = 500.0), today = date),
             calorieBudgetKcal = 2000.0,
-            proteinFloorG = 150.0,
         )
 
         assertFalse(projection.wouldExceedBudget)

@@ -111,12 +111,12 @@ class TimelineIntake(
 
     /**
      * Whether [date] went past its Budget, or null when there is nothing to exceed.
-     * The same unrounded comparison [DailyLog.dayStatus] makes, so the chart and the
-     * day's own status can never disagree.
+     * The Budget boundary [BudgetVerdict] grades from, unrounded, so the bar turns at
+     * the same calorie the day's own status does.
      */
     fun overBudgetOn(date: LocalDate): Boolean? {
         val budget = budgetOn(date)
-        return if (budget == null) null else caloriesOn(date)?.let { it > budget }
+        return if (budget == null) null else caloriesOn(date)?.let { BudgetVerdict.isPastBudget(it, budget) }
     }
 
     override fun drawOn(day: WeightTimelineDay) = day.copy(

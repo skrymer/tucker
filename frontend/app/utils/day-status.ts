@@ -11,10 +11,9 @@ export type DayStatus = NonNullable<DailySummary['dayStatus']>
 
 /**
  * Presentation for a [DayStatus]: the verdict label, its icon, and a text
- * colour — or `null` when the day has earned no verdict. Only on-target (success)
- * and over-budget (error) are shown; an in-progress or pre-review (absent) day
- * has none, so the progress bars carry the numbers instead. The classification
- * itself is the backend's; this only maps it (ADR 0002).
+ * colour — or `null` when the day has earned no verdict. An in-progress or
+ * pre-review (absent) day has none, so the Day Ring carries the numbers instead.
+ * The classification itself is the backend's; this only maps it (ADR 0002).
  */
 export function dayStatusVerdict(
   status: DayStatus | null | undefined,

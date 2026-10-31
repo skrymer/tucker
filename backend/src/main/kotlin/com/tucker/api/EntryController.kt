@@ -259,7 +259,7 @@ class EntryController(
     private fun projectionFor(date: LocalDate, prospective: Entry): BudgetProjectionResponse {
         val log = DailyLog(date, entries.findByDate(date))
         val targets = weeklyReview.reviewsStandingOn(date).firstOrNull()?.intakeTargets
-        val projection = log.project(prospective, targets?.calorieBudgetKcal, targets?.proteinFloorG)
+        val projection = log.project(prospective, targets?.calorieBudgetKcal)
         return BudgetProjectionResponse(
             wouldExceedBudget = projection.wouldExceedBudget,
             projectedCaloriesConsumed = projection.projectedCaloriesConsumed,

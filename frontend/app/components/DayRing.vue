@@ -19,12 +19,11 @@ const props = defineProps<{
 
 // Over budget once the *rounded* remaining goes negative — deciding on the same
 // rounded figure the centre shows means a -0.3 kcal overage never flips the ring
-// to a red "0 kcal over".
+// to "0 kcal over".
 const isOver = computed(() => Math.round(props.caloriesRemaining) < 0)
 
 // The calorie arc, swatch and meter's colour role. Only error reaches the centre
 // figure: light-mode warning is under 3:1, too faint for a large figure.
-
 const calorieTone = computed(() => {
   if (!isOver.value) return 'primary' as const
   return props.dayStatus === 'slightly-over'

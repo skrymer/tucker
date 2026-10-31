@@ -11,9 +11,12 @@ enum class BudgetVerdict {
         /** The Tolerance: the band above the Budget, as a fraction of it. */
         private const val TOLERANCE = 0.10
 
+        /** Past the Calorie Budget itself, slightly over included — where the Budget Projection warns. */
+        fun isPastBudget(intakeKcal: Double, budgetKcal: Double): Boolean = intakeKcal > budgetKcal
+
         fun of(intakeKcal: Double, budgetKcal: Double): BudgetVerdict = when {
             intakeKcal > budgetKcal * (1 + TOLERANCE) -> OVER_BUDGET
-            intakeKcal > budgetKcal -> SLIGHTLY_OVER
+            isPastBudget(intakeKcal, budgetKcal) -> SLIGHTLY_OVER
             else -> WITHIN_BUDGET
         }
     }

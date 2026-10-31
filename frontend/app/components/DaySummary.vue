@@ -8,9 +8,8 @@ const props = defineProps<{
 // Budget and floor are absent until the first weekly review has run.
 const hasBudget = computed(() => props.summary.calorieBudget != null)
 
-// The earned day verdict, or null for an in-progress or pre-review day that has
-// none — the Day Ring carries the numbers instead. Presentation mapping lives in
-// the shared util, alongside its drift/pace siblings.
+// Only decides whether the divider above the verdict is drawn: an in-progress or
+// pre-review day has no verdict, so no line under the ring.
 const verdict = computed(() => dayStatusVerdict(props.summary.dayStatus))
 
 // A budget carried forward rather than corrected, and the one thing that would

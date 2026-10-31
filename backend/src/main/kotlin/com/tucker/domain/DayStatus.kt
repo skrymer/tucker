@@ -8,7 +8,7 @@ import com.fasterxml.jackson.annotation.JsonValue
  * still in progress from one that has earned a verdict — the two halves of the
  * old predicate have opposite intra-day characters:
  *
- * - [OVER_BUDGET] the moment intake exceeds the Tolerance — real and
+ * - [OVER_BUDGET] the moment intake exceeds the Budget by more than the Tolerance — real and
  *   irreversible, so it wins unconditionally (over budget with the Floor met is
  *   still over budget, not on-target).
  * - [SLIGHTLY_OVER] once intake passes the Calorie Budget but stays within the
