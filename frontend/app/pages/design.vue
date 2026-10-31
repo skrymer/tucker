@@ -274,30 +274,23 @@ const calendarDay = ref('2026-10-08')
     </div>
 
     <!-- ── Typography ─────────────────────────────────────────── -->
-    <div class="flex flex-col gap-4">
-      <h2 class="text-h2 text-highlighted">Typography</h2>
-      <!-- Each caption is read off its rendered sample, so it states what the
-           token actually compiles to rather than what it was meant to. -->
-      <UCard>
-        <dl ref="specimens" class="flex flex-col gap-4">
-          <div
-            v-for="t in typeScale"
-            :key="t.token"
-            class="flex flex-col gap-1"
-          >
-            <dt :data-key="t.token" :class="[t.token, t.extra]">
-              {{ t.sample }}
-            </dt>
-            <dd class="text-xs text-dimmed tabular-nums">
-              {{ `${t.role} · ` }}<code>{{ t.token }}</code>
-              <template v-if="captions[t.token]">
-                · {{ captions[t.token] }}</template
-              >
-            </dd>
-          </div>
-        </dl>
-      </UCard>
-    </div>
+    <!-- Each caption is read off its rendered sample, so it states what the
+         token actually compiles to rather than what it was meant to. -->
+    <ContentCard subject="typography" title="Typography">
+      <dl ref="specimens" class="flex flex-col gap-4">
+        <div v-for="t in typeScale" :key="t.token" class="flex flex-col gap-1">
+          <dt :data-key="t.token" :class="[t.token, t.extra]">
+            {{ t.sample }}
+          </dt>
+          <dd class="text-xs text-dimmed tabular-nums">
+            {{ `${t.role} · ` }}<code>{{ t.token }}</code>
+            <template v-if="captions[t.token]">
+              · {{ captions[t.token] }}</template
+            >
+          </dd>
+        </div>
+      </dl>
+    </ContentCard>
 
     <!-- ── Shape & elevation ──────────────────────────────────── -->
     <div class="flex flex-col gap-4">
@@ -306,7 +299,13 @@ const calendarDay = ref('2026-10-08')
       <dl ref="shapeSpecimens" class="flex flex-wrap items-end gap-6">
         <div v-for="s in shapes" :key="s.role" class="flex flex-col gap-2">
           <dt :data-key="s.role" :class="s.sample">
-            <UCard v-if="s.measure === 'padding'" class="w-28">Body</UCard>
+            <ContentCard
+              v-if="s.measure === 'padding'"
+              subject="shape"
+              title="Card"
+              class="w-28"
+              >Body</ContentCard
+            >
           </dt>
           <dd class="text-xs text-dimmed">
             {{ `${s.role} · ` }}<code>{{ s.token }}</code
@@ -319,16 +318,17 @@ const calendarDay = ref('2026-10-08')
     </div>
 
     <!-- ── Signature: the Ring (the real component) ─────────────── -->
-    <div class="flex flex-col gap-4">
-      <h2 class="text-h2 text-highlighted">Signature · the Ring</h2>
-      <p class="-mt-2 text-sm text-muted">
+    <ContentCard subject="ring" title="Signature · the Ring">
+      <p class="text-sm text-muted">
         The live <code class="text-default">DayRing</code> component — under
         budget; slightly over, within the Tolerance (the calorie arc turns
         warning amber, the centre stays in the body ink); then over budget (the
         calorie arc and centre turn error red).
       </p>
-      <UCard>
+      <!-- Specimens of one thing: divided rows, never several cards. -->
+      <div class="mt-4 flex flex-col divide-y divide-default">
         <DayRing
+          class="pb-4"
           :calories-consumed="1004"
           :calorie-budget="2140"
           :calories-remaining="1136"
@@ -336,9 +336,8 @@ const calendarDay = ref('2026-10-08')
           :protein-floor="186"
           day-status="in-progress"
         />
-      </UCard>
-      <UCard>
         <DayRing
+          class="py-4"
           :calories-consumed="2200"
           :calorie-budget="2140"
           :calories-remaining="-60"
@@ -346,9 +345,8 @@ const calendarDay = ref('2026-10-08')
           :protein-floor="186"
           day-status="slightly-over"
         />
-      </UCard>
-      <UCard>
         <DayRing
+          class="py-4"
           :calories-consumed="2500"
           :calorie-budget="2140"
           :calories-remaining="-360"
@@ -356,18 +354,18 @@ const calendarDay = ref('2026-10-08')
           :protein-floor="186"
           day-status="over-budget"
         />
-      </UCard>
-      <p class="text-sm text-muted">
-        The day verdict beneath the ring — word, icon and colour together.
-      </p>
-      <UCard>
-        <div class="flex flex-wrap gap-6">
-          <DayVerdict status="on-target" />
-          <DayVerdict status="slightly-over" />
-          <DayVerdict status="over-budget" />
+        <div class="flex flex-col gap-3 pt-4">
+          <p class="text-sm text-muted">
+            The day verdict beneath the ring — word, icon and colour together.
+          </p>
+          <div class="flex flex-wrap gap-6">
+            <DayVerdict status="on-target" />
+            <DayVerdict status="slightly-over" />
+            <DayVerdict status="over-budget" />
+          </div>
         </div>
-      </UCard>
-    </div>
+      </div>
+    </ContentCard>
 
     <!-- ── Buttons ────────────────────────────────────────────── -->
     <div class="flex flex-col gap-4">
@@ -403,143 +401,175 @@ const calendarDay = ref('2026-10-08')
     </div>
 
     <!-- ── Cards & entries ────────────────────────────────────── -->
-    <div class="flex flex-col gap-4">
-      <h2 class="text-h2 text-highlighted">Cards &amp; entries</h2>
-      <UCard>
-        <p class="text-eyebrow text-muted">Logged today</p>
-        <!-- The Figure row: the name is what the eye lands on, and what the
+    <ContentCard subject="entries" title="Cards & entries">
+      <p class="text-eyebrow text-muted">Logged today</p>
+      <!-- The Figure row: the name is what the eye lands on, and what the
              entry cost sits under it in quieter type, led by the grams a weighed
              entry was logged at. The unit is spelled out,
              so the pair gets the row's whole width and the far end carries only
              the action. The middle row shows an Estimated entry logged without a
              protein figure — the clause is omitted, never rendered as
              `0 g protein` — and wears the flag inline after its name. -->
-        <ul class="mt-2 divide-y divide-default">
-          <li class="flex items-center justify-between gap-2 py-2.5">
-            <FigureRow
-              class="flex-1"
-              name="Rolled oats"
-              figures="80 g · 302 kcal · 11 g protein"
-            />
-            <RowActionButton
-              action="delete"
-              aria-label="Delete Rolled oats — 80 g · 302 kcal · 11 g protein"
-            />
-          </li>
-          <li class="flex items-center justify-between gap-2 py-2.5">
-            <FigureRow class="flex-1" name="Flat white" figures="90 kcal">
-              <template #marker>
-                <EstimateBadge />
-              </template>
-            </FigureRow>
-            <RowActionButton
-              action="delete"
-              aria-label="Delete Flat white — 90 kcal"
-            />
-          </li>
-          <li class="flex items-center justify-between gap-2 py-2.5">
-            <FigureRow
-              class="flex-1"
-              name="Kangaroo burger"
-              figures="150 g · 219 kcal · 33 g protein"
-            />
-            <RowActionButton
-              action="delete"
-              aria-label="Delete Kangaroo burger — 150 g · 219 kcal · 33 g protein"
-            />
-          </li>
-        </ul>
-      </UCard>
-    </div>
+      <ul class="mt-2 divide-y divide-default">
+        <li class="flex items-center justify-between gap-2 py-2.5">
+          <FigureRow
+            class="flex-1"
+            name="Rolled oats"
+            figures="80 g · 302 kcal · 11 g protein"
+          />
+          <RowActionButton
+            action="delete"
+            aria-label="Delete Rolled oats — 80 g · 302 kcal · 11 g protein"
+          />
+        </li>
+        <li class="flex items-center justify-between gap-2 py-2.5">
+          <FigureRow class="flex-1" name="Flat white" figures="90 kcal">
+            <template #marker>
+              <EstimateBadge />
+            </template>
+          </FigureRow>
+          <RowActionButton
+            action="delete"
+            aria-label="Delete Flat white — 90 kcal"
+          />
+        </li>
+        <li class="flex items-center justify-between gap-2 py-2.5">
+          <FigureRow
+            class="flex-1"
+            name="Kangaroo burger"
+            figures="150 g · 219 kcal · 33 g protein"
+          />
+          <RowActionButton
+            action="delete"
+            aria-label="Delete Kangaroo burger — 150 g · 219 kcal · 33 g protein"
+          />
+        </li>
+      </ul>
+    </ContentCard>
 
     <!-- ── Form controls ──────────────────────────────────────── -->
-    <div class="flex flex-col gap-4">
-      <h2 class="text-h2 text-highlighted">Form controls</h2>
-      <UCard>
-        <div class="flex flex-col gap-4">
-          <UFormField label="Food">
-            <USelectMenu
-              v-model="selectedFood"
-              :items="foodOptions"
-              class="w-full"
-            />
-          </UFormField>
-          <UFormField label="Grams">
-            <UInput
-              v-model="grams"
-              type="number"
-              trailing-icon="i-lucide-scale"
-              class="w-full"
-            />
-          </UFormField>
-          <UButton block color="primary">Log weighed entry</UButton>
-        </div>
-      </UCard>
-    </div>
+    <ContentCard subject="formControls" title="Form controls">
+      <div class="flex flex-col gap-4">
+        <UFormField label="Food">
+          <USelectMenu
+            v-model="selectedFood"
+            :items="foodOptions"
+            class="w-full"
+          />
+        </UFormField>
+        <UFormField label="Grams">
+          <UInput
+            v-model="grams"
+            type="number"
+            trailing-icon="i-lucide-scale"
+            class="w-full"
+          />
+        </UFormField>
+        <UButton block color="primary">Log weighed entry</UButton>
+      </div>
+    </ContentCard>
 
     <!-- ── Sheet navigation ───────────────────────────────────── -->
-    <div class="flex flex-col gap-4">
-      <h2 class="text-h2 text-highlighted">Sheet navigation</h2>
-      <UCard class="max-w-md">
-        <!-- The header of a sheet stepped inside itself: Back leads, the title
+    <ContentCard
+      subject="sheetNavigation"
+      title="Sheet navigation"
+      class="max-w-md"
+    >
+      <!-- The header of a sheet stepped inside itself: Back leads, the title
              names the step, Close stays the corner exit. Never a second sheet
              stacked over the first. -->
-        <div
-          role="group"
-          aria-label="Sheet header"
-          class="flex items-center gap-1.5 border-b border-default pb-3"
-        >
-          <SheetBackButton />
-          <p class="min-w-0 font-semibold text-balance text-highlighted">
-            Match Tasty cheese
-          </p>
-          <UButton
-            icon="i-lucide-x"
-            color="neutral"
-            variant="ghost"
-            aria-label="Close"
-            class="ms-auto"
-          />
-        </div>
-        <p class="pt-3 text-sm text-muted">
-          Back returns to the sheet's previous step with what was typed there
-          kept; Close leaves the sheet.
+      <div
+        role="group"
+        aria-label="Sheet header"
+        class="flex items-center gap-1.5 border-b border-default pb-3"
+      >
+        <SheetBackButton />
+        <p class="min-w-0 font-semibold text-balance text-highlighted">
+          Match Tasty cheese
         </p>
-      </UCard>
-    </div>
+        <UButton
+          icon="i-lucide-x"
+          color="neutral"
+          variant="ghost"
+          aria-label="Close"
+          class="ms-auto"
+        />
+      </div>
+      <p class="pt-3 text-sm text-muted">
+        Back returns to the sheet's previous step with what was typed there
+        kept; Close leaves the sheet.
+      </p>
+    </ContentCard>
 
     <!-- ── Calendar ───────────────────────────────────────────── -->
+    <ContentCard subject="calendar" title="Calendar" class="self-start">
+      <AppCalendar
+        v-model="calendarDay"
+        min="2026-10-03"
+        max="2026-10-24"
+        :weighed="[
+          '2026-10-05',
+          '2026-10-06',
+          '2026-10-08',
+          '2026-10-09',
+          '2026-10-25',
+        ]"
+        :logged="['2026-10-05', '2026-10-07', '2026-10-09', '2026-10-25']"
+      />
+      <p class="pt-3 text-sm text-muted">
+        A ring is a Weight Measurement and a dot is Entries; a day with both
+        carries both. On the selected day they take its text colour, and on a
+        day that can't be picked they dim with the numeral (25 Oct).
+      </p>
+    </ContentCard>
+
+    <!-- ── Content card ──────────────────────────────────────── -->
     <div class="flex flex-col gap-4">
-      <h2 class="text-h2 text-highlighted">Calendar</h2>
-      <UCard class="self-start">
-        <AppCalendar
-          v-model="calendarDay"
-          min="2026-10-03"
-          max="2026-10-24"
-          :weighed="[
-            '2026-10-05',
-            '2026-10-06',
-            '2026-10-08',
-            '2026-10-09',
-            '2026-10-25',
-          ]"
-          :logged="['2026-10-05', '2026-10-07', '2026-10-09', '2026-10-25']"
+      <h2 class="text-h2 text-highlighted">Content card</h2>
+      <p class="-mt-2 text-sm text-muted">
+        <code class="text-default">ContentCard</code>: the band (subject icon,
+        title, optional trailing slot) stays put; only the body changes — ready,
+        loading, empty, load error.
+      </p>
+      <div class="grid gap-4 lg:grid-cols-2">
+        <ContentCard subject="weight" title="Today's weight">
+          <p class="text-stat text-default">84.2 kg</p>
+        </ContentCard>
+        <ContentCard subject="today" title="Today · Sat 31 Oct">
+          <template #trailing>
+            <p class="text-sm text-muted tabular-nums">
+              3 entries · 1,240 kcal
+            </p>
+          </template>
+          <p class="text-sm text-muted">The day's Entries, as rows.</p>
+        </ContentCard>
+        <ContentCard subject="goal" title="Goal" loading />
+        <ContentCard subject="targets" title="Today's targets" empty>
+          <template #empty>
+            <p class="text-sm text-muted">
+              No budget yet — log your weight and run a weekly review.
+            </p>
+          </template>
+        </ContentCard>
+        <ContentCard
+          subject="intakeBreakdown"
+          title="What you're eating"
+          :error="true"
+          error-title="Couldn't load what you're eating"
         />
-        <p class="pt-3 text-sm text-muted">
-          A ring is a Weight Measurement and a dot is Entries; a day with both
-          carries both. On the selected day they take its text colour, and on a
-          day that can't be picked they dim with the numeral (25 Oct).
-        </p>
-      </UCard>
+      </div>
     </div>
 
     <!-- ── Feedback states ────────────────────────────────────── -->
     <div class="flex flex-col gap-4">
       <h2 class="text-h2 text-highlighted">Feedback states</h2>
-      <UCard class="max-w-md">
-        <p class="text-h2 text-highlighted">History</p>
-        <LoadErrorState :error="true" title="Couldn't load Thu 8 Oct" nested />
-      </UCard>
+      <ContentCard
+        subject="history"
+        title="History"
+        :error="true"
+        error-title="Couldn't load Thu 8 Oct"
+        class="max-w-md"
+      />
     </div>
   </section>
 </template>

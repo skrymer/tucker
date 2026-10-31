@@ -1,12 +1,9 @@
 <script setup lang="ts">
-const props = defineProps<{ paceStatus: PaceStatus | null | undefined }>()
-
-const pace = computed(() => paceBadge(props.paceStatus))
+// Stryker disable next-line all: a compiler macro must stay a top-level statement
+defineProps<{ paceStatus: PaceStatus | null | undefined }>()
 </script>
 
 <template>
   <h2 class="text-h2 text-highlighted">Goal progress</h2>
-  <UBadge v-if="pace" :color="pace.color" variant="subtle" size="sm">
-    {{ pace.label }}
-  </UBadge>
+  <PaceBadge :pace-status="paceStatus" />
 </template>

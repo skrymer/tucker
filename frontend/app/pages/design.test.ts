@@ -52,6 +52,43 @@ describe('/design', () => {
     ])
   })
 
+  it('frames each specimen section as a content card, its heading in the band', async () => {
+    await renderSuspended(Design)
+
+    for (const name of [
+      'Typography',
+      'Signature · the Ring',
+      'Cards & entries',
+      'Form controls',
+      'Sheet navigation',
+      'Calendar',
+    ]) {
+      expect(
+        within(screen.getByRole('region', { name })).getByRole('heading', {
+          level: 2,
+          name,
+        }),
+      ).toBeVisible()
+    }
+  })
+
+  it('shows the content card with and without a trailing slot, and in each body state', async () => {
+    await renderSuspended(Design)
+
+    const section = screen
+      .getByRole('heading', { name: 'Content card', level: 2 })
+      .closest('div')!
+    const cards = within(section).getAllByRole('region')
+    expect(cards).toHaveLength(5)
+    const [plain, withTally, loading, empty, failed] = cards
+    expect(plain).toHaveAccessibleName("Today's weight")
+    expect(plain).toHaveTextContent('84.2 kg')
+    expect(withTally).toHaveTextContent('3 entries · 1,240 kcal')
+    expect(loading).toHaveAttribute('aria-busy', 'true')
+    expect(within(empty!).getByText(/^No budget yet/)).toBeVisible()
+    expect(within(failed!).getByRole('button', { name: 'Retry' })).toBeVisible()
+  })
+
   it("shows a load error nested under a card's own heading, a level down", async () => {
     await renderSuspended(Design)
 
@@ -72,9 +109,7 @@ describe('/design', () => {
   it('shows a sheet stepped inside itself: Back, then its title, then Close', async () => {
     await renderSuspended(Design)
 
-    const section = screen
-      .getByRole('heading', { name: 'Sheet navigation' })
-      .closest('div')!
+    const section = screen.getByRole('region', { name: 'Sheet navigation' })
     const header = within(section).getByRole('group', { name: 'Sheet header' })
     expect(header).toHaveTextContent(/^Back\s*Match Tasty cheese$/)
     expect(
@@ -91,9 +126,7 @@ describe('/design', () => {
     await renderSuspended(Design)
 
     const ringSection = within(
-      screen
-        .getByRole('heading', { name: 'Signature · the Ring' })
-        .closest('div')!,
+      screen.getByRole('region', { name: 'Signature · the Ring' }),
     )
     expect(
       ringSection
@@ -113,9 +146,7 @@ describe('/design', () => {
   it('shows the one calendar with both marks, their legend and a bounded range', async () => {
     await renderSuspended(Design)
 
-    const calendar = screen
-      .getByRole('heading', { name: 'Calendar' })
-      .closest('div')!
+    const calendar = screen.getByRole('region', { name: 'Calendar' })
     const day = (name: string) => within(calendar).getByRole('button', { name })
     expect(markedDays('weight', calendar)).toEqual([
       'Monday, October 5, 2026',

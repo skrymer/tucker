@@ -50,7 +50,7 @@ const { tracked, kgToGo, trend, target } = useGoalReadout()
     class="block"
     aria-label="Goal progress — open your weekly review"
   >
-    <UCard>
+    <ContentCard subject="goal" title="Goal">
       <div class="flex flex-col items-center gap-6 sm:flex-row">
         <RingGauge :arcs="arcs">
           <template v-if="tracked">
@@ -62,17 +62,17 @@ const { tracked, kgToGo, trend, target } = useGoalReadout()
         </RingGauge>
 
         <div class="flex w-full flex-col gap-4">
-          <div>
-            <div class="mb-1 flex items-center gap-2">
-              <span class="size-2.5 rounded bg-primary" />
-              <GoalProgressHeading :pace-status="progress.paceStatus" />
-            </div>
+          <!-- The band names the Goal, so the legend leads with the figure:
+               the swatch keys it to the arc, the pace badge sits beside it. -->
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="size-2.5 shrink-0 rounded bg-primary" />
             <p v-if="tracked" class="text-sm text-muted">
               {{ percent }}% complete
             </p>
             <p v-else class="text-sm text-muted">
               Log a weight to see where you stand on your Goal.
             </p>
+            <PaceBadge :pace-status="progress.paceStatus" />
           </div>
 
           <div class="border-t border-default pt-3">
@@ -91,6 +91,6 @@ const { tracked, kgToGo, trend, target } = useGoalReadout()
           </div>
         </div>
       </div>
-    </UCard>
+    </ContentCard>
   </ULink>
 </template>

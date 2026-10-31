@@ -21,6 +21,20 @@ const summary: DailySummary = {
 }
 
 describe('DaySummary', () => {
+  it.each([
+    ['with a budget', summary],
+    [
+      'before the first weekly review',
+      { ...summary, calorieBudget: null, proteinFloor: null },
+    ],
+  ])("is the Today's targets card %s", async (_, day) => {
+    await renderSuspended(DaySummary, { props: { summary: day } })
+
+    expect(
+      screen.getByRole('region', { name: "Today's targets" }),
+    ).toHaveTextContent('kcal')
+  })
+
   it('shows calories consumed against the budget', async () => {
     await renderSuspended(DaySummary, { props: { summary } })
 

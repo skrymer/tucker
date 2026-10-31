@@ -3,7 +3,7 @@ import { summaryOf } from '../test/mocks/handlers/summary'
 
 // Maintenance Mode (ADR 0008, F7 slice 1): no active Goal (goal endpoints 404)
 // but a weekly review has produced a Budget and Trend Weight. The Today page
-// replaces the Goal-Progress card with the calm "Maintaining" card; Budget and
+// replaces the Goal ring with the calm maintaining Goal card; Budget and
 // Floor still render in the daily summary as normal. The baseline has no Goal.
 test('the Today page shows the Maintaining card in place of Goal-Progress when there is no active Goal', async ({
   page,
@@ -30,18 +30,17 @@ test('the Today page shows the Maintaining card in place of Goal-Progress when t
 
   await goto('/', { waitUntil: 'hydration' })
 
-  // The Maintaining card: a calm heading, the Trend Weight, and the Drift Status.
-  await expect(
-    page.getByRole('heading', { name: 'Maintaining', level: 2 }),
-  ).toBeVisible()
-  await expect(page.getByText('85.8 kg')).toBeVisible()
-  await expect(page.getByText('Holding', { exact: true })).toBeVisible()
+  // The Goal card, maintaining: the Trend Weight and the Drift Status.
+  const goal = page.getByRole('region', { name: 'Goal' })
+  await expect(goal.getByText("You're maintaining")).toBeVisible()
+  await expect(goal.getByText('85.8 kg')).toBeVisible()
+  await expect(goal.getByText('Holding', { exact: true })).toBeVisible()
 
   // Budget and Floor still render in the daily summary as normal.
   await expect(page.getByText('1200 / 2400 kcal')).toBeVisible()
   await expect(page.getByText('90 / 172 g')).toBeVisible()
 
-  // The Goal-Progress card is gone — no "Goal progress" tile, no "Set a goal" CTA.
+  // The Goal ring is gone — no link to the review's goal progress, no "Set a goal" CTA.
   await expect(
     page.getByRole('link', { name: /goal progress|set a goal/i }),
   ).toHaveCount(0)

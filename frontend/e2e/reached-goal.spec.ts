@@ -6,7 +6,7 @@ import { summaryOf } from '../test/mocks/handlers/summary'
 // the Goal is *reached* and /today shows an insistent two-way fork banner — no
 // dismiss. "Switch to maintenance" deactivates the Goal (DELETE /api/goal); the
 // backend force-recomputes today's review so the Budget lifts to Maintenance,
-// and the page lands on the calm "Maintaining" card.
+// and the page lands on the calm maintaining Goal card.
 
 test('a reached goal with every reading deleted claims no trend, and waits on a weight before offering maintenance', async ({
   page,
@@ -97,18 +97,18 @@ test('reaching a goal shows the fork banner, and switching to maintenance lands 
     page.getByRole('link', { name: /set a lower goal/i }),
   ).toHaveAttribute('href', '/profile')
 
-  // The banner carries the milestone, so the 100% Goal-Progress tile is
+  // The banner carries the milestone, so the 100% Goal ring is
   // suppressed while reached — only the fork shows.
-  await expect(page.getByText('Goal progress')).toHaveCount(0)
+  await expect(page.getByRole('region', { name: 'Goal' })).toHaveCount(0)
 
   // The cut Budget is still in force before the user resolves the fork.
   await expect(page.getByText('1200 / 2000 kcal')).toBeVisible()
 
   await switchToMaintenance.click()
 
-  // Lands on the calm Maintaining card; the Budget has lifted to Maintenance.
+  // Lands on the Goal card, maintaining; the Budget has lifted to Maintenance.
   await expect(
-    page.getByRole('heading', { name: 'Maintaining', level: 2 }),
+    page.getByRole('region', { name: 'Goal' }).getByText("You're maintaining"),
   ).toBeVisible()
   await expect(page.getByText('1200 / 2400 kcal')).toBeVisible()
 

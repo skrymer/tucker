@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { renderSuspended } from '@nuxt/test-utils/runtime'
-import { screen } from '@testing-library/vue'
+import { screen, within } from '@testing-library/vue'
 import { goalProgress } from '~~/test/goal-fixtures'
 import { RING_RADIUS_OUTER } from '~/utils/ring'
 import GoalRingTile from './GoalRingTile.vue'
@@ -36,11 +36,14 @@ describe('GoalRingTile', () => {
     expect(screen.getByText('kg to go')).toBeVisible()
   })
 
-  it('names the goal and how far through it the User is', async () => {
+  it('is the Goal card, headed once, saying how far through the Goal the User is', async () => {
     await renderSuspended(GoalRingTile, { props: { progress } })
 
-    expect(screen.getByRole('heading', { name: 'Goal progress' })).toBeVisible()
-    expect(screen.getByText('40% complete')).toBeVisible()
+    const card = screen.getByRole('region', { name: 'Goal' })
+    expect(within(card).getAllByRole('heading')).toEqual([
+      within(card).getByRole('heading', { level: 2, name: 'Goal' }),
+    ])
+    expect(within(card).getByText('40% complete')).toBeVisible()
   })
 
   it('reads the percentage against the trend weight and the target it closes on', async () => {

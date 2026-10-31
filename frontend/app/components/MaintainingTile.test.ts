@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { renderSuspended } from '@nuxt/test-utils/runtime'
-import { screen } from '@testing-library/vue'
+import { screen, within } from '@testing-library/vue'
 import { withCalorieTracking } from '~~/test/calorie-tracking-helpers'
 import MaintainingTile from './MaintainingTile.vue'
 
@@ -15,12 +15,14 @@ const tileFor = (
   })
 
 describe('MaintainingTile', () => {
-  it('announces that the user is maintaining', async () => {
+  it('is the Goal card, saying in its body that the user is maintaining', async () => {
     await renderSuspended(tileFor(true, 'holding'))
 
+    const card = screen.getByRole('region', { name: 'Goal' })
+    expect(within(card).getByText("You're maintaining")).toBeVisible()
     expect(
-      screen.getByRole('heading', { level: 2, name: 'Maintaining' }),
-    ).toBeVisible()
+      within(card).queryByRole('heading', { name: /maintaining/i }),
+    ).not.toBeInTheDocument()
   })
 
   it('shows the current trend weight to one decimal place', async () => {

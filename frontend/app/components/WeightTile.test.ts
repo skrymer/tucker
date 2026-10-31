@@ -1,10 +1,38 @@
 import { describe, expect, it, vi } from 'vitest'
 import { renderSuspended } from '@nuxt/test-utils/runtime'
-import { screen } from '@testing-library/vue'
+import { screen, within } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import WeightTile from './WeightTile.vue'
 
 describe('WeightTile', () => {
+  it("keeps the Today's weight band over a failed read, with a Retry that replays it", async () => {
+    const onRetry = vi.fn()
+    await renderSuspended(WeightTile, {
+      props: {
+        today: '2026-05-29',
+        latest: null,
+        error: new Error('boom'),
+        onRetry,
+      },
+    })
+
+    const card = screen.getByRole('region', { name: "Today's weight" })
+    expect(
+      within(card).getByRole('heading', {
+        level: 3,
+        name: "Couldn't load your weight",
+      }),
+    ).toBeVisible()
+    expect(
+      within(card).queryByRole('button', { name: /log weight/i }),
+    ).not.toBeInTheDocument()
+
+    await userEvent
+      .setup()
+      .click(within(card).getByRole('button', { name: 'Retry' }))
+    expect(onRetry).toHaveBeenCalledOnce()
+  })
+
   it('shows a Log weight CTA when no weight has been logged today', async () => {
     await renderSuspended(WeightTile, {
       props: { today: '2026-05-29', latest: null },

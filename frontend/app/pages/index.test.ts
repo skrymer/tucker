@@ -8,7 +8,13 @@ import { dailyLogs } from '~~/test/mocks/handlers/entries'
 import { weightMeasurements } from '~~/test/mocks/handlers/weight'
 import { goalInProgress } from '~~/test/mocks/handlers/goal'
 import { summaryOf, type SummaryDay } from '~~/test/mocks/handlers/summary'
-import { failingWrite, held, http, serverError } from '~~/test/mocks/http'
+import {
+  failingRead,
+  failingWrite,
+  held,
+  http,
+  serverError,
+} from '~~/test/mocks/http'
 import { server } from '~~/test/mocks/node'
 import { ref, type Ref } from 'vue'
 import Today from './index.vue'
@@ -30,6 +36,9 @@ mockNuxtImport('useToast', () => () => ({
 // The day Today shows, held here so a test can turn it over as the clock would.
 let localDay: Ref<string>
 mockNuxtImport('useLocalDay', () => () => localDay)
+
+// Every card on Today is a region; a day's Entries are the ones named by a day.
+const DAY_LIST = { name: /^(Today|Tomorrow) · / }
 
 const tracking = { tracksCalories: true }
 const renderToday = () =>
@@ -91,7 +100,11 @@ describe('/ with Calorie Tracking off', () => {
     await renderToday()
 
     // The day did load: what is missing is missing by choice.
-    expect(screen.getByRole('heading', { name: 'Maintaining' })).toBeVisible()
+    expect(
+      within(screen.getByRole('region', { name: 'Goal' })).getByText(
+        "You're maintaining",
+      ),
+    ).toBeVisible()
     expect(screen.queryByText(/kcal/i)).toBeNull()
     expect(screen.queryByText(/protein/i)).toBeNull()
   })
@@ -117,7 +130,11 @@ describe('/ with Calorie Tracking off', () => {
     // query (Nuxt UI's UAlert carries none) and not a page-wide /budget/i — the
     // Maintaining card says "budget" too, so that would pass or fail on which
     // Drift Status the fixture happens to carry.
-    expect(screen.getByRole('heading', { name: 'Maintaining' })).toBeVisible()
+    expect(
+      within(screen.getByRole('region', { name: 'Goal' })).getByText(
+        "You're maintaining",
+      ),
+    ).toBeVisible()
     expect(screen.queryByText(/your calorie budget has changed/i)).toBeNull()
     expect(screen.queryByText(/1800/)).toBeNull()
     expect(screen.queryByText(/2000/)).toBeNull()
@@ -212,7 +229,11 @@ describe('/ in Maintenance Mode', () => {
 
       // Maintenance Mode is the absence of a Goal (ADR 0008) — there is nothing
       // to close, so there is no ring to close it with.
-      expect(screen.getByRole('heading', { name: 'Maintaining' })).toBeVisible()
+      expect(
+        within(screen.getByRole('region', { name: 'Goal' })).getByText(
+          "You're maintaining",
+        ),
+      ).toBeVisible()
       expect(screen.getByText('86.0 kg')).toBeVisible()
       expect(screen.getByText(/a couple more readings/i)).toBeVisible()
       expect(screen.queryByText('kg to go')).toBeNull()
@@ -249,7 +270,7 @@ describe("/ with today's Entries", () => {
     await renderToday()
 
     expect(screen.getByText('1500 / 2000 kcal')).toBeVisible()
-    expect(screen.queryByRole('region')).not.toBeInTheDocument()
+    expect(screen.queryByRole('region', DAY_LIST)).not.toBeInTheDocument()
     expect(screen.queryByRole('list')).not.toBeInTheDocument()
   })
 
@@ -284,7 +305,7 @@ describe("/ with today's Entries", () => {
     )
 
     await vi.waitFor(() =>
-      expect(screen.queryByRole('region')).not.toBeInTheDocument(),
+      expect(screen.queryByRole('region', DAY_LIST)).not.toBeInTheDocument(),
     )
     expect(screen.getByText('0 / 2000 kcal')).toBeVisible()
   })
@@ -321,7 +342,7 @@ describe("/ with today's Entries", () => {
     await toastAdd.mock.calls.at(-1)![0].actions[0].onClick()
 
     await vi.waitFor(() =>
-      expect(screen.queryByRole('region')).not.toBeInTheDocument(),
+      expect(screen.queryByRole('region', DAY_LIST)).not.toBeInTheDocument(),
     )
     expect(toastAdd).toHaveBeenCalledTimes(failures)
   })
@@ -454,7 +475,7 @@ describe('/ with Entries logged for tomorrow', () => {
   it("lists them in a Tomorrow list below today's, apart from today's", async () => {
     await renderToday()
 
-    const [today, tomorrow] = await screen.findAllByRole('region')
+    const [today, tomorrow] = await screen.findAllByRole('region', DAY_LIST)
     expect(today).toHaveAccessibleName(/^Today · /)
     expect(within(today!).getByText('1 entry · 312 kcal')).toBeVisible()
     expect(within(today!).queryByText('Rolled oats')).not.toBeInTheDocument()
@@ -500,7 +521,7 @@ describe('/ with Entries logged for tomorrow', () => {
     tracking.tracksCalories = false
     await renderToday()
 
-    expect(screen.queryByRole('region')).not.toBeInTheDocument()
+    expect(screen.queryByRole('region', DAY_LIST)).not.toBeInTheDocument()
     expect(screen.queryByText('Rolled oats')).not.toBeInTheDocument()
     expect(screen.queryByText('Salmon')).not.toBeInTheDocument()
   })
@@ -511,14 +532,87 @@ describe('/ with nothing logged for tomorrow', () => {
     server.use(summaryOf(todayWithSalmon))
     await renderToday()
 
-    expect(await screen.findByRole('region')).toHaveAccessibleName(/^Today · /)
-    expect(screen.getAllByRole('region')).toHaveLength(1)
+    expect(await screen.findByRole('region', DAY_LIST)).toHaveAccessibleName(
+      /^Today · /,
+    )
+    expect(screen.getAllByRole('region', DAY_LIST)).toHaveLength(1)
     expect(screen.queryByText(/^Tomorrow/)).not.toBeInTheDocument()
   })
 })
 
+describe('/ when the latest weight cannot be read', () => {
+  it("keeps the Today's weight band over the failure, and a Retry that recovers it", async () => {
+    let failing = true
+    const day = localDay.value
+    server.use(
+      summaryOf(todayWithSalmon),
+      http.get('/api/weight/latest', ({ response }) =>
+        failing
+          ? response.untyped(serverError())
+          : response(200).json({ id: 1, measuredOn: day, weightKg: 84.2 }),
+      ),
+    )
+    await renderToday()
+
+    const card = await screen.findByRole('region', { name: "Today's weight" })
+    expect(
+      within(card).getByRole('heading', { name: "Couldn't load your weight" }),
+    ).toBeVisible()
+    expect(screen.getByText('312 / 2000 kcal')).toBeVisible()
+
+    failing = false
+    await userEvent
+      .setup()
+      .click(within(card).getByRole('button', { name: 'Retry' }))
+
+    expect(await within(card).findByText('84.2 kg')).toBeVisible()
+  })
+})
+
+describe('/ when the goal cannot be read', () => {
+  it('keeps one Goal band over the failure, claiming neither a Goal nor Maintenance', async () => {
+    server.use(
+      http.get('/api/goal/progress', ({ response }) =>
+        response.untyped(serverError()),
+      ),
+    )
+    await renderToday()
+
+    const goal = await screen.findByRole('region', { name: 'Goal' })
+    expect(
+      within(goal).getByRole('heading', {
+        level: 3,
+        name: "Couldn't load your goal",
+      }),
+    ).toBeVisible()
+    expect(within(goal).getByRole('button', { name: 'Retry' })).toBeVisible()
+    expect(screen.getAllByRole('region', { name: 'Goal' })).toHaveLength(1)
+    expect(screen.queryByText("You're maintaining")).not.toBeInTheDocument()
+  })
+
+  it('recovers the Goal from its Retry', async () => {
+    let failing = true
+    server.use(
+      failingRead('/api/goal/progress', () => failing),
+      goalInProgress(),
+    )
+    await renderToday()
+
+    const goal = await screen.findByRole('region', { name: 'Goal' })
+    failing = false
+    await userEvent
+      .setup()
+      .click(within(goal).getByRole('button', { name: 'Retry' }))
+
+    expect(await screen.findByText('40% complete')).toBeVisible()
+    expect(screen.getByRole('region', { name: 'Goal' })).toHaveTextContent(
+      '40% complete',
+    )
+  })
+})
+
 describe("/ when tomorrow's entries cannot be read", () => {
-  it("says so with a Retry, and keeps today's list", async () => {
+  it("says so with a Retry under the Tomorrow band, and keeps today's list", async () => {
     server.use(
       summaryOf(todayWithSalmon),
       http.get('/api/entries', ({ response }) =>
@@ -527,14 +621,56 @@ describe("/ when tomorrow's entries cannot be read", () => {
     )
     await renderToday()
 
+    const tomorrow = await screen.findByRole('region', {
+      name: `Tomorrow · ${formatDayHeadingFromISO(localTomorrow(localDay.value))}`,
+    })
     expect(
-      await screen.findByRole('heading', {
+      within(tomorrow).getByRole('heading', {
+        level: 3,
         name: "Couldn't load tomorrow's entries",
       }),
     ).toBeVisible()
-    expect(screen.getByRole('button', { name: 'Retry' })).toBeVisible()
+    expect(
+      within(tomorrow).getByRole('button', { name: 'Retry' }),
+    ).toBeVisible()
+    // The one failed read raises the one Retry on the page.
+    expect(screen.getAllByRole('button', { name: 'Retry' })).toHaveLength(1)
     expect(screen.getByRole('region', { name: /^Today · / })).toBeVisible()
     expect(screen.getByText('312 / 2000 kcal')).toBeVisible()
+  })
+
+  it('recovers them under the Tomorrow band from its Retry', async () => {
+    let failing = true
+    const tomorrow = localTomorrow(localDay.value)
+    server.use(
+      summaryOf(todayWithSalmon),
+      failingRead('/api/entries', () => failing),
+      ...dailyLogs({
+        [tomorrow]: [
+          weighedEntry({
+            id: 31,
+            calories: 200,
+            protein: 10,
+            foodId: 4,
+            foodName: 'Greek yoghurt',
+            grams: 170,
+          }),
+        ],
+      }),
+    )
+    await renderToday()
+
+    const name = `Tomorrow · ${formatDayHeadingFromISO(tomorrow)}`
+    const card = await screen.findByRole('region', { name })
+    failing = false
+    await userEvent
+      .setup()
+      .click(within(card).getByRole('button', { name: 'Retry' }))
+
+    expect(await screen.findByText('Greek yoghurt')).toBeVisible()
+    expect(screen.getByRole('region', { name })).toHaveTextContent(
+      '1 entry · 200 kcal',
+    )
   })
 })
 

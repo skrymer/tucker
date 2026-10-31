@@ -1,14 +1,16 @@
 - main:
     - /children: deep-equal
     - heading "Today" [level=1]
-    - heading "Today's weight" [level=2]
-    - paragraph: No weight logged today.
-    - button "Log weight"
+    - region "Today's weight":
+        - heading "Today's weight" [level=2]
+        - paragraph: No weight logged today.
+        - button "Log weight"
     - link "Goal progress — open your weekly review":
         - /url: /review
-        - text: 6.0 kg to go
-        - heading "Goal progress" [level=2]
-        - text: On pace
-        - paragraph: 40% complete
-        - paragraph: Trend weight 86.0 kg
-        - paragraph: Target 80.0 kg
+        - region "Goal":
+            - heading "Goal" [level=2]
+            - text: 6.0 kg to go
+            - paragraph: 40% complete
+            - text: On pace
+            - paragraph: Trend weight 86.0 kg
+            - paragraph: Target 80.0 kg

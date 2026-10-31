@@ -512,10 +512,10 @@ Same geometry as the Day Ring, one arc instead of two.
 - **Centre** = kilograms still to go as the big Nunito-800 figure + a quiet
   `kg to go` label. No red state: being short of a goal is not a fault, and red
   on the Day Ring means something that has happened.
-- **Legend** beside (desktop) / below (phone): the swatch and an `h2` reading
-  **Goal progress**, the **pace badge** beside it, `NN% complete` under it, and
-  the **Trend Weight** and **Target** below a rule — the denominator the
-  percentage is a share of. The pace badge is **omitted** while the backend
+- **Legend** beside (desktop) / below (phone): the swatch, `NN% complete` and
+  the **pace badge** on one line, and the **Trend Weight** and **Target** below a
+  rule — the denominator the percentage is a share of. The card's band already
+  says **Goal**, so the legend carries no heading of its own (Content card). The pace badge is **omitted** while the backend
   withholds `paceStatus`; an empty badge would claim a verdict there isn't one.
 - **Geometry:** identical to the Day Ring, deliberately (see Thesis). Its own
   hole is the wider of the two — one arc, at the outer radius — so `3.3` sits
@@ -524,8 +524,8 @@ Same geometry as the Day Ring, one arc instead of two.
 - **Whole card is a link** to `/review`, carrying its own `aria-label` so the
   link announces as one rather than as every figure on the card read aloud.
 - **No ring in Maintenance Mode.** Maintenance Mode _is_ the absence of a Goal
-  (ADR 0008), so there is nothing to close; the Maintaining card stays the shape
-  for it.
+  (ADR 0008), so there is nothing to close; the Goal card says "You're
+  maintaining" in its body instead, the Drift Status badge in its band.
 - **No ring on a reached Goal either.** A reached Goal stays active until the User
   resolves the fork (ADR 0008), and `ReachedGoalBanner` carries that moment; a
   100% ring beside it would say the same thing twice.
@@ -600,8 +600,8 @@ kcal`) sits beneath its own ring, so no arc is ever colour-alone. Calorie
 ## Component treatments
 
 - **Card** — white surface, 1px `border-default`, 20px radius, green-tinted card
-  shadow, padded by the card itself (Shape & elevation). The default container
-  for every Today block.
+  shadow, padded by the card itself (Shape & elevation). A section of a page is
+  a card under a header band: see [Content card](#content-card).
 - **Button** — pill. Primary = solid green; secondary = coral; low-emphasis =
   ghost/neutral. Icon buttons are circular.
 - **Row action** — an icon action on a row (edit or delete on an Entry, a Food, a
@@ -758,6 +758,87 @@ text-muted` what it cost and returned — `153 kcal · 13 g protein`, with
   the shell-level signed-out interstitial. The failure is logged, not swallowed:
   otherwise the only symptom is a missing name, which reads as a design choice.
 
+### Content card
+
+A **content card** is a Card that holds one section of a page, under a header
+**band**. `ContentCard` builds it, and it is the only way the app builds a card:
+ESLint's `tucker/one-card` refuses a bare `UCard` anywhere else, and points here.
+Until they are migrated, Review's, Profile's and Admin's files are on its
+allowlist.
+
+- **When a page is carded.** A page with **several independent sections** puts
+  each section in a content card: Today, Review, Profile, Admin, and `/design`,
+  whose sections that frame a specimen are cards too. A page that
+  **is** one list or one tool is not carded, and its `h1` is the title: Foods (the
+  catalog), Check (the tool) and Log (its Frequent-Foods grid and catalog, with
+  their eyebrow kickers, ADR 0028).
+- **One section, one card. Cards never nest.** Repeated things inside a card are
+  divided rows, not cards.
+- **The band** is the card's top row, full-bleed and ruled off from the body by
+  the card's own divider. It holds the **subject icon** (`size-5`, `text-primary`,
+  hidden from assistive tech) and the `h2` **title** (`text-h2 text-highlighted`),
+  with an optional **trailing slot** at the right: at most a tally, one action, a
+  badge or tabs. On a narrow phone the trailing slot wraps under the title rather
+  than either one truncating. It is `UCard`'s own header slot, padded at the
+  body's sides (Shape & elevation). The card is a `section` region named by its title, so
+  assistive tech can move between cards by landmark.
+- **The icon names the subject, not the state.** The same subject has the same
+  icon everywhere, and no two cards on a page share one. A card takes its icon
+  from a typed subject key, never a free icon string, so a stray icon is a type
+  error. The table below is the subject map's twin (`contentCard.test.ts` fails
+  when they disagree):
+
+  | Subject key       | Card                                                      | Icon                  |
+  | ----------------- | --------------------------------------------------------- | --------------------- |
+  | `weight`          | Today's weight                                            | `scale`               |
+  | `targets`         | Today's targets (the Day Ring)                            | `gauge`               |
+  | `today`           | Today's Entries                                           | `sun`                 |
+  | `tomorrow`        | Tomorrow's Entries                                        | `sunrise`             |
+  | `goal`            | Goal (Today's ring and maintaining, Profile, Review hero) | `target`              |
+  | `weightTimeline`  | Your weight (the Weight Timeline)                         | `chart-line`          |
+  | `history`         | History / Look up a day                                   | `calendar`            |
+  | `intakeBreakdown` | What you're eating (the Intake Breakdown)                 | `chart-pie`           |
+  | `micronutrients`  | Vitamins and minerals                                     | `leaf`                |
+  | `weeklyReviews`   | Weekly reviews                                            | `history`             |
+  | `details`         | Your details                                              | `user-round`          |
+  | `reminder`        | Weekly-review reminder                                    | `bell`                |
+  | `appearance`      | Appearance                                                | `sun-moon`            |
+  | `typography`      | `/design`: Typography                                     | `type`                |
+  | `shape`           | `/design`: the card-padding specimen                      | `square-round-corner` |
+  | `ring`            | `/design`: Signature · the Ring                           | `circle-dot`          |
+  | `entries`         | `/design`: Cards & entries                                | `list`                |
+  | `formControls`    | `/design`: Form controls                                  | `text-cursor-input`   |
+  | `sheetNavigation` | `/design`: Sheet navigation                               | `panel-bottom`        |
+  | `calendar`        | `/design`: Calendar                                       | `calendar-days`       |
+
+  Admin's cards add a row each when they are carded. `/design`'s own subjects
+  are the style guide's, so its specimens of real cards never share an icon with
+  the section framing them.
+
+- **The title** is a short noun phrase naming the subject in `CONTEXT.md`'s words,
+  in sentence case, with no verb and no status. Status goes in the body or the
+  trailing slot. The Day Ring card is **Today's targets**, because it carries both
+  the Calorie Budget and the Protein Floor. The Goal ring and the maintaining card
+  are both **Goal**: the Goal's band also stands over Maintenance Mode, which is
+  the absence of an active Goal (ADR 0008), and its body says so.
+- **The band is constant; only the body changes.** The body is one of:
+  - **ready** — the card's content;
+  - **loading** — skeleton rows hidden from assistive tech, the region marked
+    busy; the rows show 150 ms late (ADR 0007), so a fast answer never flashes
+    them, while the band shows at once;
+  - **empty / not yet** — says what to do next, with the action that does it
+    where there is one;
+  - **load error** — the `nested` load-error row (Feedback states), with Retry.
+
+  A page whose primary read fails still shows one full-page error instead of its
+  cards.
+
+- **Headings inside a card body** are `h3` in `text-label` or `text-eyebrow`,
+  never `text-h2`. A heading that only repeats the band is cut.
+- **Not content cards:** notices (`UAlert` banners), Feedback-state pages, sheets
+  and dialogs (`ResponsiveOverlay` has its own header), and `rounded-inset`
+  sub-panels inside a card, which are insets.
+
 ---
 
 ## Feedback states — empty / load-error / signed-out
@@ -787,7 +868,11 @@ error nested inside a card, below.
   Foods can have no rotation, so a failed ranking read is not worth a panel over
   the dead end that is. A **nested** load error is not one of the page's: it
   belongs to a card whose own control still works (History's calendar picks
-  another day), so it stands on its own. Two failed halves in one card follow
+  another day), or it stands under a content card's band, which names the card
+  that failed while its Retry replays that card's read alone — so it stands on
+  its own. Today can show one under each band whose read failed; when the
+  primary read fails, the page shows one full-page error instead of its cards.
+  Two failed halves in one card follow
   the page's rule: when History's weight half and its Entries half both fail,
   one row ("Couldn't load this card") stands in for the whole card, and its
   Retry replays every read.
@@ -809,8 +894,10 @@ error nested inside a card, below.
   (Cloudflare's own `/cdn-cgi/access/logout` path is theirs, not copy.)
 - **Placement:** a load-error state replaces the specific region that failed to
   load — the full page body for a page's primary data (Today's summary, the
-  Foods catalog, a Review), or just the one card for a secondary widget (e.g.
-  Today's weight or goal-progress card). It never sits beside a misleading
+  Foods catalog, a Review), or just the one card's body for a secondary widget
+  (e.g. Today's weight or Goal card). A card-level load error stays **under its
+  band**, as the `nested` row: the band names which card failed before its copy
+  is read ([Content card](#content-card)). It never sits beside a misleading
   empty state. When History's logged days fail, the region that failed is the
   calendar's dots, not the calendar: it stays up, every day still pickable,
   with the error row under it saying the dots are missing. The readings failing

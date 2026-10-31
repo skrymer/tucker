@@ -165,8 +165,11 @@ endpoint:
 
 - **`/today`** carries the *moment* and the *daily state*: the reached banner (the
   two-way fork, shown while the active Goal is reached-but-unresolved), and — once
-  maintaining — a calmer "Maintaining" card that *replaces* the Goal-Progress card,
-  showing the Trend Weight and Drift Status, with Budget/Floor rendering as normal.
+  maintaining — a calmer maintaining card that *replaces* the Goal ring, showing
+  the Trend Weight and Drift Status, with Budget/Floor rendering as normal. It
+  keeps the Goal's content-card band ("Goal", DESIGN.md → Content card) and says
+  "You're maintaining" in its body: the band names the subject, and the absence of
+  an active Goal is what the body reports.
 - **`/profile`** carries the *durable status* and *re-entry*: a persistent "you're
   maintaining since {date}" with a "Start a goal" CTA, so a cut can be re-entered
   any time — not only from a banner the user might never see. The banner's "Set a
@@ -199,8 +202,8 @@ endpoint:
   against zero; `GET /api/goal` + `/api/goal/progress` return 404 when no Goal is
   active. Regenerate the OpenAPI spec and the typed `nuxt-open-fetch` client after
   the response change.
-- **Frontend:** the reached banner (two-way fork) on `/today`; the "Maintaining"
-  card replacing Goal-Progress in Maintenance Mode; the persistent maintenance
+- **Frontend:** the reached banner (two-way fork) on `/today`; the maintaining
+  card (under the Goal's band) replacing the Goal ring in Maintenance Mode; the persistent maintenance
   status + "Start a goal" CTA on `/profile`; the client inferring Maintenance Mode
   from a 404 on `GET /api/goal`.
 - **Scope held narrow:** no defended target weight / guard band; the recompute

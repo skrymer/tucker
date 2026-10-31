@@ -48,14 +48,16 @@ const description = computed(() =>
 </script>
 
 <template>
-  <UCard>
-    <div class="flex items-center justify-between gap-2">
-      <h2 class="text-h2 text-highlighted">Maintaining</h2>
+  <!-- Maintenance Mode is the absence of an active Goal (ADR 0008): the card
+       keeps the Goal's band, and its body says the User is maintaining. -->
+  <ContentCard subject="goal" title="Goal">
+    <template #trailing>
       <UBadge :color="drift.color" variant="subtle" size="sm">
         {{ drift.label }}
       </UBadge>
-    </div>
+    </template>
+    <p class="text-label text-muted">You're maintaining</p>
     <p class="mt-1 text-ring-figure text-default">{{ trendWeight }}</p>
     <p class="mt-1 text-sm text-muted">{{ description }}</p>
-  </UCard>
+  </ContentCard>
 </template>

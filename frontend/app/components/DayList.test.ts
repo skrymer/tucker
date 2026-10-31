@@ -18,6 +18,26 @@ const twoEntries = [
 ]
 
 describe('DayList', () => {
+  it('drops the tally over a failed read, which would otherwise claim an empty day', async () => {
+    await renderSuspended(DayList, {
+      props: {
+        day: 'tomorrow',
+        date: '2026-10-08',
+        entries: [],
+        caloriesConsumed: 0,
+        error: new Error('boom'),
+      },
+    })
+
+    const region = screen.getByRole('region', { name: 'Tomorrow · Thu 8 Oct' })
+    expect(
+      within(region).getByRole('heading', {
+        name: "Couldn't load tomorrow's entries",
+      }),
+    ).toBeVisible()
+    expect(region).not.toHaveTextContent('0 entries')
+  })
+
   it("is a region named for today and its date, tallying the day's entries and calories", async () => {
     await renderSuspended(DayList, {
       props: {
@@ -115,5 +135,40 @@ describe('DayList', () => {
     expect(screen.getByRole('button', { name: 'Show all 5' })).toBeVisible()
     // The tally counts the whole day, not the rows the cap leaves showing.
     expect(screen.getByText('5 entries · 1,500 kcal')).toBeVisible()
+  })
+
+  it("draws the sunrise for tomorrow, the sun being today's", async () => {
+    await renderSuspended(DayList, {
+      props: {
+        day: 'tomorrow',
+        date: '2026-10-08',
+        entries: twoEntries,
+        caloriesConsumed: 1188,
+      },
+    })
+
+    // An aria-hidden glyph has no role or name: its icon name says which it is.
+    const heading = screen.getByRole('heading', {
+      level: 2,
+      name: 'Tomorrow · Thu 8 Oct',
+    })
+    expect(heading.querySelector('.i-lucide\\:sunrise')).not.toBeNull()
+  })
+
+  it('replays a failed read when its Retry is tapped', async () => {
+    const onRetry = vi.fn()
+    await renderSuspended(DayList, {
+      props: {
+        day: 'tomorrow',
+        date: '2026-10-08',
+        entries: [],
+        caloriesConsumed: 0,
+        error: new Error('boom'),
+        onRetry,
+      },
+    })
+
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Retry' }))
+    expect(onRetry).toHaveBeenCalledOnce()
   })
 })

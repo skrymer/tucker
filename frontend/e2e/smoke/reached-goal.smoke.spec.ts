@@ -7,7 +7,7 @@ import { todayIso, isoShiftDays } from '../support/date'
 // target, assert the backend stamps `reachedOn`, then exercise the /today fork
 // banner: "Switch to maintenance" deactivates the Goal, the backend force-
 // recomputes today's review to Maintenance, and the page lands on the calm
-// "Maintaining" card with a lifted Budget.
+// maintaining Goal card with a lifted Budget.
 //
 // The trend is computed over *all* weight readings, so to make crossing
 // deterministic we wipe the (shared-volume) weights, seed a known two-reading
@@ -79,13 +79,12 @@ test('reaching a goal surfaces the fork banner and switching to maintenance lift
 
     await switchToMaintenance.click()
 
-    // Lands on the Maintaining card; the Goal is deactivated and the Budget has
+    // Lands on the maintaining Goal card; the Goal is deactivated and the Budget has
     // lifted to Maintenance (the deficit is gone).
-    const card = page
-      .locator('[data-slot="root"]')
-      .filter({ hasText: 'Maintaining' })
     await expect(
-      card.getByRole('heading', { name: 'Maintaining', level: 2 }),
+      page
+        .getByRole('region', { name: 'Goal' })
+        .getByText("You're maintaining"),
     ).toBeVisible()
     await expect(
       page.getByRole('heading', { name: /you reached your goal/i }),
