@@ -38,8 +38,6 @@ function useGoalReadout() {
   return { tracked, kgToGo, trend, target }
 }
 
-const pace = computed(() => paceBadge(props.progress.paceStatus))
-
 const { percent, arcs } = useGoalArc()
 const { tracked, kgToGo, trend, target } = useGoalReadout()
 </script>
@@ -74,9 +72,7 @@ const { tracked, kgToGo, trend, target } = useGoalReadout()
             <p v-else class="text-sm text-muted">
               Log a weight to see where you stand on your Goal.
             </p>
-            <UBadge v-if="pace" :color="pace.color" variant="subtle" size="sm">
-              {{ pace.label }}
-            </UBadge>
+            <PaceBadge :pace-status="progress.paceStatus" />
           </div>
 
           <div class="border-t border-default pt-3">

@@ -46,6 +46,31 @@ describe('ContentCard', () => {
     ).not.toHaveTextContent('entries')
   })
 
+  it('drops its trailing readout over a failed read, which has nothing to describe', async () => {
+    await renderSuspended(ContentCard, {
+      props: {
+        subject: 'today',
+        title: 'Today · Sat 31 Oct',
+        error: new Error('boom'),
+        errorTitle: "Couldn't load today's entries",
+      },
+      slots: { trailing: () => '0 entries · 0 kcal' },
+    })
+
+    const card = screen.getByRole('region', { name: 'Today · Sat 31 Oct' })
+    expect(within(card).getByRole('button', { name: 'Retry' })).toBeVisible()
+    expect(card).not.toHaveTextContent('0 entries')
+  })
+
+  it('types a failed read as needing its "Couldn\'t load …" title', () => {
+    type Props = InstanceType<typeof ContentCard>['$props']
+    // Checked by `pnpm typecheck`: the directive fails it if the line compiles.
+    // @ts-expect-error — an error with no errorTitle would head its row with nothing
+    const titleless: Props = { subject: 'goal', title: 'Goal', error: true }
+
+    expect(titleless).not.toHaveProperty('errorTitle')
+  })
+
   it('keeps its band over a failed read, standing in the load-error row whose Retry replays it', async () => {
     const onRetry = vi.fn()
     await renderSuspended(ContentCard, {

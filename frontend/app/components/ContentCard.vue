@@ -1,16 +1,22 @@
 <script setup lang="ts">
+/**
+ * A card whose read can fail names what failed ("Couldn't load …"): set, the
+ * error makes the body the nested load-error row under the band.
+ */
+type ReadState =
+  | { error?: null; errorTitle?: string }
+  | { error: unknown; errorTitle: string }
+
 // Stryker disable next-line all: a compiler macro must stay a top-level statement
-defineProps<{
-  subject: ContentCardSubject
-  title: string
-  /** A failed read: the body becomes the nested load-error row under the band. */
-  error?: unknown
-  /** "Couldn't load …" — what the load-error row says failed. */
-  errorTitle?: string
-  loading?: boolean
-  /** Nothing here yet: the `empty` slot, saying what to do next, stands in for the body. */
-  empty?: boolean
-}>()
+defineProps<
+  {
+    subject: ContentCardSubject
+    title: string
+    loading?: boolean
+    /** Nothing here yet: the `empty` slot, saying what to do next, stands in for the body. */
+    empty?: boolean
+  } & ReadState
+>()
 const emit = defineEmits<{ retry: [] }>()
 
 const headingId = useId()
@@ -33,7 +39,8 @@ const headingId = useId()
           />
           {{ title }}
         </h2>
-        <slot name="trailing" />
+        <!-- A readout of the body has nothing to say once the body failed. -->
+        <slot v-if="!error" name="trailing" />
       </div>
     </template>
     <!-- LoadErrorState is itself the switch: its row when `error` is set, its

@@ -33,7 +33,7 @@ const tally = computed(() =>
     :error-title="`Couldn't load ${day}'s entries`"
     @retry="emit('retry')"
   >
-    <template v-if="!error" #trailing>
+    <template #trailing>
       <p class="text-sm text-muted tabular-nums">{{ tally }}</p>
     </template>
     <CappedEntryList :entries="entries">
