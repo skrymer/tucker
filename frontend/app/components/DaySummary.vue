@@ -27,44 +27,41 @@ const heldNote = computed(() =>
 </script>
 
 <template>
-  <div class="flex flex-col gap-4">
-    <UCard v-if="hasBudget">
-      <DayRing
-        :calories-consumed="summary.caloriesConsumed"
-        :calorie-budget="summary.calorieBudget ?? 1"
-        :calories-remaining="summary.caloriesRemaining ?? 0"
-        :protein-consumed="summary.proteinConsumed"
-        :protein-floor="summary.proteinFloor ?? 1"
-      />
+  <!-- Titled for both targets it carries, the Calorie Budget and the Protein
+       Floor; before the first review it has neither yet. -->
+  <ContentCard subject="targets" title="Today's targets" :empty="!hasBudget">
+    <DayRing
+      :calories-consumed="summary.caloriesConsumed"
+      :calorie-budget="summary.calorieBudget ?? 1"
+      :calories-remaining="summary.caloriesRemaining ?? 0"
+      :protein-consumed="summary.proteinConsumed"
+      :protein-floor="summary.proteinFloor ?? 1"
+    />
 
-      <div v-if="verdict" class="mt-6 border-t border-default pt-3">
-        <p
-          :class="[
-            'flex items-center gap-2 text-sm font-medium',
-            verdict.class,
-          ]"
-        >
-          <UIcon :name="verdict.icon" class="size-4" aria-hidden />
-          {{ verdict.label }}
-        </p>
-      </div>
-
+    <div v-if="verdict" class="mt-6 border-t border-default pt-3">
       <p
-        v-if="heldNote"
-        class="mt-3 flex items-start gap-2 border-t border-default pt-3 text-sm text-muted"
+        :class="['flex items-center gap-2 text-sm font-medium', verdict.class]"
       >
-        <!-- Not a pause glyph: SuspendedDeficitBanner carries one on this same
-             page, and both states can be live at once. -->
-        <UIcon
-          name="i-lucide-history"
-          class="mt-0.5 size-4 shrink-0"
-          aria-hidden
-        />
-        <span>Your calorie budget is being held steady. {{ heldNote }}</span>
+        <UIcon :name="verdict.icon" class="size-4" aria-hidden />
+        {{ verdict.label }}
       </p>
-    </UCard>
+    </div>
 
-    <UCard v-else>
+    <p
+      v-if="heldNote"
+      class="mt-3 flex items-start gap-2 border-t border-default pt-3 text-sm text-muted"
+    >
+      <!-- Not a pause glyph: SuspendedDeficitBanner carries one on this same
+             page, and both states can be live at once. -->
+      <UIcon
+        name="i-lucide-history"
+        class="mt-0.5 size-4 shrink-0"
+        aria-hidden
+      />
+      <span>Your calorie budget is being held steady. {{ heldNote }}</span>
+    </p>
+
+    <template #empty>
       <p class="text-stat text-default">
         {{ Math.round(summary.caloriesConsumed) }} kcal,
         {{ Math.round(summary.proteinConsumed) }} g protein
@@ -72,6 +69,6 @@ const heldNote = computed(() =>
       <p class="mt-2 text-sm text-muted">
         No budget yet — log your weight and run a weekly review.
       </p>
-    </UCard>
-  </div>
+    </template>
+  </ContentCard>
 </template>

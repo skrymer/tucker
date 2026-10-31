@@ -52,6 +52,23 @@ describe('/design', () => {
     ])
   })
 
+  it('shows the content card with and without a trailing slot, and in each body state', async () => {
+    await renderSuspended(Design)
+
+    const section = screen
+      .getByRole('heading', { name: 'Content card', level: 2 })
+      .closest('div')!
+    const cards = within(section).getAllByRole('region')
+    expect(cards).toHaveLength(5)
+    const [plain, withTally, loading, empty, failed] = cards
+    expect(plain).toHaveAccessibleName("Today's weight")
+    expect(plain).toHaveTextContent('84.2 kg')
+    expect(withTally).toHaveTextContent('3 entries · 1,240 kcal')
+    expect(loading).toHaveAttribute('aria-busy', 'true')
+    expect(within(empty!).getByText('No weight logged today.')).toBeVisible()
+    expect(within(failed!).getByRole('button', { name: 'Retry' })).toBeVisible()
+  })
+
   it("shows a load error nested under a card's own heading, a level down", async () => {
     await renderSuspended(Design)
 

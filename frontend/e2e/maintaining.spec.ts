@@ -30,12 +30,11 @@ test('the Today page shows the Maintaining card in place of Goal-Progress when t
 
   await goto('/', { waitUntil: 'hydration' })
 
-  // The Maintaining card: a calm heading, the Trend Weight, and the Drift Status.
-  await expect(
-    page.getByRole('heading', { name: 'Maintaining', level: 2 }),
-  ).toBeVisible()
-  await expect(page.getByText('85.8 kg')).toBeVisible()
-  await expect(page.getByText('Holding', { exact: true })).toBeVisible()
+  // The Goal card, maintaining: the Trend Weight and the Drift Status.
+  const goal = page.getByRole('region', { name: 'Goal' })
+  await expect(goal.getByText("You're maintaining")).toBeVisible()
+  await expect(goal.getByText('85.8 kg')).toBeVisible()
+  await expect(goal.getByText('Holding', { exact: true })).toBeVisible()
 
   // Budget and Floor still render in the daily summary as normal.
   await expect(page.getByText('1200 / 2400 kcal')).toBeVisible()

@@ -18,6 +18,26 @@ const twoEntries = [
 ]
 
 describe('DayList', () => {
+  it('drops the tally over a failed read, which would otherwise claim an empty day', async () => {
+    await renderSuspended(DayList, {
+      props: {
+        day: 'tomorrow',
+        date: '2026-10-08',
+        entries: [],
+        caloriesConsumed: 0,
+        error: new Error('boom'),
+      },
+    })
+
+    const region = screen.getByRole('region', { name: 'Tomorrow · Thu 8 Oct' })
+    expect(
+      within(region).getByRole('heading', {
+        name: "Couldn't load tomorrow's entries",
+      }),
+    ).toBeVisible()
+    expect(region).not.toHaveTextContent('0 entries')
+  })
+
   it("is a region named for today and its date, tallying the day's entries and calories", async () => {
     await renderSuspended(DayList, {
       props: {

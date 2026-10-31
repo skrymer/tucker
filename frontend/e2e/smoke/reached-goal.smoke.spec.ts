@@ -81,11 +81,10 @@ test('reaching a goal surfaces the fork banner and switching to maintenance lift
 
     // Lands on the Maintaining card; the Goal is deactivated and the Budget has
     // lifted to Maintenance (the deficit is gone).
-    const card = page
-      .locator('[data-slot="root"]')
-      .filter({ hasText: 'Maintaining' })
     await expect(
-      card.getByRole('heading', { name: 'Maintaining', level: 2 }),
+      page
+        .getByRole('region', { name: 'Goal' })
+        .getByText("You're maintaining"),
     ).toBeVisible()
     await expect(
       page.getByRole('heading', { name: /you reached your goal/i }),

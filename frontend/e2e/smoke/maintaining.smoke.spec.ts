@@ -49,13 +49,9 @@ test('with no active Goal the Today page shows the Maintaining card and a Mainte
 
   await goto('/', { waitUntil: 'hydration' })
 
-  // The Maintaining card replaces Goal-Progress: a calm heading and the Trend Weight.
-  const card = page
-    .locator('[data-slot="root"]')
-    .filter({ hasText: 'Maintaining' })
-  await expect(
-    card.getByRole('heading', { name: 'Maintaining', level: 2 }),
-  ).toBeVisible()
+  // The Goal card says the User is maintaining, with the Trend Weight.
+  const card = page.getByRole('region', { name: 'Goal' })
+  await expect(card.getByText("You're maintaining")).toBeVisible()
   await expect(card.getByText(trendText)).toBeVisible()
 
   // Budget still renders in the daily summary.

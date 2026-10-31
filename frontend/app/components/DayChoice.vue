@@ -9,12 +9,12 @@ const today = useLocalDay()
 const options = computed(() => [
   {
     value: 'today' as const,
-    icon: RELATIVE_DAYS.today.icon,
+    icon: CONTENT_CARD_SUBJECTS.today,
     label: relativeDayHeading('today', today.value),
   },
   {
     value: 'tomorrow' as const,
-    icon: RELATIVE_DAYS.tomorrow.icon,
+    icon: CONTENT_CARD_SUBJECTS.tomorrow,
     label: relativeDayHeading('tomorrow', localTomorrow(today.value)),
   },
 ])

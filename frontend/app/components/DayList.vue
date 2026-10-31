@@ -9,14 +9,15 @@ const props = defineProps<{
   date: string
   entries: EntryResponse[]
   caloriesConsumed: number
+  /** The day's read failed: the card keeps its band over a Retry. */
+  error?: unknown
 }>()
 
 const emit = defineEmits<{
   delete: [EntryResponse]
+  retry: []
 }>()
 
-// Static per day: both lists can share a page, and each names its own region.
-const headingId = `day-list-${props.day}`
 const heading = computed(() => relativeDayHeading(props.day, props.date))
 
 const tally = computed(() =>
@@ -25,26 +26,17 @@ const tally = computed(() =>
 </script>
 
 <template>
-  <UCard as="section" :aria-labelledby="headingId">
-    <!-- On a narrow phone the tally drops under the day rather than either
-         breaking mid-phrase. -->
-    <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-      <h2
-        :id="headingId"
-        class="flex items-center gap-2 text-h2 text-highlighted"
-      >
-        <UIcon
-          :name="RELATIVE_DAYS[day].icon"
-          class="size-5 text-muted"
-          aria-hidden
-        />
-        {{ heading }}
-      </h2>
-      <p class="text-sm text-muted tabular-nums">
-        {{ tally }}
-      </p>
-    </div>
-    <CappedEntryList :entries="entries" class="mt-2">
+  <ContentCard
+    :subject="day"
+    :title="heading"
+    :error="error"
+    :error-title="`Couldn't load ${day}'s entries`"
+    @retry="emit('retry')"
+  >
+    <template v-if="!error" #trailing>
+      <p class="text-sm text-muted tabular-nums">{{ tally }}</p>
+    </template>
+    <CappedEntryList :entries="entries">
       <template #action="{ entry }">
         <RowActionButton
           action="delete"
@@ -53,5 +45,5 @@ const tally = computed(() =>
         />
       </template>
     </CappedEntryList>
-  </UCard>
+  </ContentCard>
 </template>

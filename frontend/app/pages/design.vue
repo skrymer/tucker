@@ -509,6 +509,44 @@ const calendarDay = ref('2026-10-08')
       </UCard>
     </div>
 
+    <!-- ── Content card ──────────────────────────────────────── -->
+    <div class="flex flex-col gap-4">
+      <h2 class="text-h2 text-highlighted">Content card</h2>
+      <p class="-mt-2 text-sm text-muted">
+        <code class="text-default">ContentCard</code>: the band (subject icon,
+        title, optional trailing slot) stays put; only the body changes — ready,
+        loading, empty, load error.
+      </p>
+      <div class="grid gap-4 lg:grid-cols-2">
+        <ContentCard subject="weight" title="Today's weight">
+          <p class="text-stat text-default">84.2 kg</p>
+        </ContentCard>
+        <ContentCard subject="today" title="Today · Sat 31 Oct">
+          <template #trailing>
+            <p class="text-sm text-muted tabular-nums">
+              3 entries · 1,240 kcal
+            </p>
+          </template>
+          <p class="text-sm text-muted">The day's Entries, as rows.</p>
+        </ContentCard>
+        <ContentCard subject="goal" title="Goal" loading />
+        <ContentCard subject="weight" title="Today's weight" empty>
+          <template #empty>
+            <p class="text-sm text-muted">No weight logged today.</p>
+            <UButton color="primary" icon="i-lucide-plus" block class="mt-3">
+              Log weight
+            </UButton>
+          </template>
+        </ContentCard>
+        <ContentCard
+          subject="targets"
+          title="Today's targets"
+          :error="true"
+          error-title="Couldn't load today's targets"
+        />
+      </div>
+    </div>
+
     <!-- ── Feedback states ────────────────────────────────────── -->
     <div class="flex flex-col gap-4">
       <h2 class="text-h2 text-highlighted">Feedback states</h2>

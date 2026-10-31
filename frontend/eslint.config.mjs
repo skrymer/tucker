@@ -9,6 +9,45 @@ import sonarjs from 'eslint-plugin-sonarjs'
 // replaces an earlier one's selectors rather than adding to them. Each group of
 // files below therefore lists every selector set that applies to it.
 
+// AppCalendar is the one calendar (DESIGN.md → Calendar): its treatment is
+// props, not theme slots, so a bare UCalendar elsewhere would drop it.
+const oneCalendar = {
+  selector: 'VElement[name=/^(lazy-?)?u-?calendar$/]',
+  message:
+    'Use AppCalendar, the one calendar (DESIGN.md → Calendar), not a bare UCalendar.',
+}
+
+// A section of a page is a content card, built from ContentCard, so its band
+// cannot drift (DESIGN.md → Content card).
+const oneCard = {
+  selector: 'VElement[name=/^(lazy-?)?u-?card$/]',
+  message:
+    'Build a section card from ContentCard (DESIGN.md → Content card), not a bare UCard.',
+}
+
+const BARE_UCARD_ALLOWED = [
+  'app/components/ContentCard.vue',
+  // The style guide's specimen frames draw the card surface itself, not a
+  // section of a page.
+  'app/pages/design.vue',
+  // Not yet content cards: Review, Profile and Admin.
+  'app/components/GoalCard.vue',
+  'app/components/GoalProgressHero.vue',
+  'app/components/HistorySection.vue',
+  'app/components/IntakeBreakdownSection.vue',
+  'app/components/MaintenanceStatus.vue',
+  'app/components/MicronutrientSection.vue',
+  'app/components/ReleaseTrendCard.vue',
+  'app/components/ReminderSettings.vue',
+  'app/components/ReviewLedgerItem.vue',
+  'app/components/RouteTimingCard.vue',
+  'app/components/ServerCard.vue',
+  'app/components/WebVitalsCard.vue',
+  'app/components/WeightTimelineSection.vue',
+  'app/pages/admin.vue',
+  'app/pages/profile/index.vue',
+]
+
 // A focused test is never something to commit: `.only` silently reduces the
 // suite to itself while every runner still reports green, so the gate keeps
 // passing over code nothing ran against. `.skip` is deliberately NOT banned —
@@ -245,22 +284,23 @@ export default withNuxt(
       'vue/no-unused-emit-declarations': 'error',
     },
   },
+  // The one-component bans share vue/no-restricted-syntax, so each group of
+  // files lists every ban that applies to it (see the note at the top).
   {
-    // AppCalendar is the one calendar (DESIGN.md → Calendar): its treatment is
-    // props, not theme slots, so a bare UCalendar elsewhere would drop it.
-    name: 'tucker/one-calendar',
+    name: 'tucker/one-calendar+one-card',
     files: ['app/**/*.vue'],
-    ignores: ['app/components/AppCalendar.vue'],
-    rules: {
-      'vue/no-restricted-syntax': [
-        'error',
-        {
-          selector: 'VElement[name=/^(lazy-?)?u-?calendar$/]',
-          message:
-            'Use AppCalendar, the one calendar (DESIGN.md → Calendar), not a bare UCalendar.',
-        },
-      ],
-    },
+    ignores: ['app/components/AppCalendar.vue', ...BARE_UCARD_ALLOWED],
+    rules: { 'vue/no-restricted-syntax': ['error', oneCalendar, oneCard] },
+  },
+  {
+    name: 'tucker/one-calendar',
+    files: BARE_UCARD_ALLOWED,
+    rules: { 'vue/no-restricted-syntax': ['error', oneCalendar] },
+  },
+  {
+    name: 'tucker/one-card',
+    files: ['app/components/AppCalendar.vue'],
+    rules: { 'vue/no-restricted-syntax': ['error', oneCard] },
   },
   // Prettier owns formatting; switch off ESLint rules that would conflict.
   eslintConfigPrettier,

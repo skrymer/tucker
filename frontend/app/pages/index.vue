@@ -142,19 +142,15 @@ const {
         v-if="tracksCalories"
         :budget-change="summary?.budgetChange"
       />
-      <LoadErrorState
+      <WeightTile
+        v-model:open="weightSheetOpen"
+        :today="today"
+        :latest="latestWeight"
+        :pending="savingWeight"
         :error="latestWeightError"
-        title="Couldn't load your weight"
+        @logged="logWeight"
         @retry="refreshLatestWeight"
-      >
-        <WeightTile
-          v-model:open="weightSheetOpen"
-          :today="today"
-          :latest="latestWeight"
-          :pending="savingWeight"
-          @logged="logWeight"
-        />
-      </LoadErrorState>
+      />
       <!-- Explains the Budget rather than flagging the Goal (ADR 0030): the
            Budget is the figure that visibly moved, and "why is my budget my
            maintenance?" is the question it answers — so it sits directly above
@@ -173,28 +169,33 @@ const {
         :calories-consumed="summary.caloriesConsumed"
         @delete="selectedEntry = $event"
       />
-      <LoadErrorState
-        v-if="tracksCalories"
+      <!-- Only once the read is for the current tomorrow: across a turnover the
+           previous one would otherwise stand under the day that is now today. -->
+      <DayList
+        v-if="
+          tracksCalories &&
+          (tomorrowsLogError ||
+            (tomorrowsLog?.entries.length && tomorrowsLog.date === tomorrow))
+        "
+        day="tomorrow"
+        :date="tomorrow"
+        :entries="tomorrowsLog?.entries ?? []"
+        :calories-consumed="tomorrowsLog?.caloriesConsumed ?? 0"
         :error="tomorrowsLogError"
-        title="Couldn't load tomorrow's entries"
+        @delete="selectedEntry = $event"
         @retry="refreshTomorrow"
-      >
-        <!-- Only once the read is for the current tomorrow: across a turnover the
-             previous one would otherwise stand under the day that is now today. -->
-        <DayList
-          v-if="tomorrowsLog?.entries.length && tomorrowsLog.date === tomorrow"
-          day="tomorrow"
-          :date="tomorrowsLog.date"
-          :entries="tomorrowsLog.entries"
-          :calories-consumed="tomorrowsLog.caloriesConsumed"
-          @delete="selectedEntry = $event"
-        />
-      </LoadErrorState>
-      <LoadErrorState
+      />
+      <!-- A failed read can say neither which Goal card applies nor whether the
+           User is maintaining, so it stands under the Goal's band alone. -->
+      <ContentCard
+        v-if="goalProgressError"
+        subject="goal"
+        title="Goal"
         :error="goalProgressError"
-        title="Couldn't load your goal"
+        error-title="Couldn't load your goal"
         @retry="refreshGoalProgress"
-      >
+      />
+      <template v-else>
         <ReachedGoalBanner
           v-if="goalProgress?.reachedOn"
           :target-weight-kg="goalProgress.targetWeightKg"
@@ -213,7 +214,7 @@ const {
           v-else-if="goalProgress && !goalProgress.reachedOn"
           :progress="goalProgress"
         />
-      </LoadErrorState>
+      </template>
     </LoadErrorState>
     <DeleteEntryConfirm
       :entry="selectedEntry"

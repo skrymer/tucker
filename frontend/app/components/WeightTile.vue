@@ -5,10 +5,13 @@ const props = defineProps<{
   today: string
   latest: components['schemas']['WeightMeasurementResponse'] | null
   pending?: boolean
+  /** The latest-weight read failed: the card keeps its band over a Retry. */
+  error?: unknown
 }>()
 
 const emit = defineEmits<{
   logged: [{ date: string; weightKg: number }]
+  retry: []
 }>()
 
 // Stryker disable next-line all: a compiler macro's arguments are hoisted out of setup()
@@ -20,28 +23,29 @@ const loggedToday = computed(
 </script>
 
 <template>
-  <UCard>
-    <h2 class="text-h2 text-highlighted">Today's weight</h2>
+  <ContentCard
+    subject="weight"
+    title="Today's weight"
+    :error="error"
+    error-title="Couldn't load your weight"
+    :empty="!loggedToday"
+    @retry="emit('retry')"
+  >
+    <div class="flex items-center justify-between gap-3">
+      <p class="text-stat text-default">{{ latest?.weightKg.toFixed(1) }} kg</p>
+      <RowActionButton
+        action="edit"
+        aria-label="Edit today's weight"
+        @click="
+          () => {
+            open = true
+          }
+        "
+      />
+    </div>
 
-    <template v-if="loggedToday">
-      <div class="mt-1 flex items-center justify-between gap-3">
-        <p class="text-stat text-default">
-          {{ latest!.weightKg.toFixed(1) }} kg
-        </p>
-        <RowActionButton
-          action="edit"
-          aria-label="Edit today's weight"
-          @click="
-            () => {
-              open = true
-            }
-          "
-        />
-      </div>
-    </template>
-
-    <template v-else>
-      <p class="mt-1 text-sm text-muted">No weight logged today.</p>
+    <template #empty>
+      <p class="text-sm text-muted">No weight logged today.</p>
       <UButton
         color="primary"
         icon="i-lucide-plus"
@@ -56,13 +60,13 @@ const loggedToday = computed(
         Log weight
       </UButton>
     </template>
+  </ContentCard>
 
-    <LogWeightSheet
-      v-model:open="open"
-      :date="today"
-      :initial-weight-kg="latest?.weightKg"
-      :pending="pending"
-      @submit="emit('logged', $event)"
-    />
-  </UCard>
+  <LogWeightSheet
+    v-model:open="open"
+    :date="today"
+    :initial-weight-kg="latest?.weightKg"
+    :pending="pending"
+    @submit="emit('logged', $event)"
+  />
 </template>

@@ -63,13 +63,9 @@ test('the Maintaining card shows a Drifting up status when the trend is rising',
 
   await goto('/', { waitUntil: 'hydration' })
 
-  // The Maintaining card carries the Drift Status badge.
-  const card = page
-    .locator('[data-slot="root"]')
-    .filter({ hasText: 'Maintaining' })
-  await expect(
-    card.getByRole('heading', { name: 'Maintaining', level: 2 }),
-  ).toBeVisible()
+  // The Goal card, maintaining, carries the Drift Status badge.
+  const card = page.getByRole('region', { name: 'Goal' })
+  await expect(card.getByText("You're maintaining")).toBeVisible()
   await expect(card.getByText('Drifting up', { exact: true })).toBeVisible()
 
   // Restore the dates we touched: delete readings we minted, put originals back.
