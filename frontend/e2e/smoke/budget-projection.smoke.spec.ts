@@ -5,15 +5,16 @@ import { enterGrams, pickFoodToLog } from '../support/log-page'
 // Budget Projection smoke (issue #119): the confirm-to-proceed gate over the real
 // backend, from the Log destination — the only surface that creates an Entry, so
 // every path through it carries this gate (ADR 0028). With a Calorie Budget in
-// place and most of the day already eaten, a weighed entry that would tip the day
-// over budget is NOT logged on the first Save — the sheet shows an over-budget
-// warning and the action becomes "Log anyway". A second deliberate tap logs it,
-// and the day earns its over-budget verdict. That verdict is read off the API
+// place and most of the day already eaten, a weighed entry that would take the
+// day only slightly past the Budget — within the Tolerance — is NOT logged on the
+// first Save: the projection warns at the Budget itself, not the Tolerance, so the
+// sheet shows its "over your … budget" warning and the action becomes "Log anyway". A
+// second deliberate tap logs it, and the day earns its slightly-over verdict. That verdict is read off the API
 // rather than off Today, which day-status.smoke.spec.ts already renders.
 // The per-test reset (smoke-test.ts) wipes the seeded review, food, and entries.
 const API = 'http://localhost:8080/api'
 
-test('a weighed entry over budget warns first, then logs on "Log anyway"', async ({
+test('a weighed entry slightly past the budget warns first, then logs on "Log anyway"', async ({
   page,
   goto,
   request,
@@ -51,8 +52,9 @@ test('a weighed entry over budget warns first, then logs on "Log anyway"', async
     },
   })
 
-  // A food at 400 kcal/100g (0P + 100C + 0F → 4 × 100). Grams sized to add ~50%
-  // of the budget, so the projected total (~130%) is clearly over.
+  // A food at 400 kcal/100g (0P + 100C + 0F → 4 × 100). Grams sized to add ~25%
+  // of the budget, so the projected total (~105%) is past the Budget but inside
+  // the Tolerance — the case a threshold moved to 110% would stop warning for.
   const foodName = `Budget smoke ${Date.now()}`
   const created = await request.post(`${API}/foods`, {
     data: {
@@ -64,7 +66,7 @@ test('a weighed entry over budget warns first, then logs on "Log anyway"', async
     },
   })
   expect(created.status()).toBe(201)
-  const grams = Math.ceil((budget * 0.5) / 4)
+  const grams = Math.ceil((budget * 0.25) / 4)
 
   await goto('/log', { waitUntil: 'hydration' })
 
@@ -85,7 +87,7 @@ test('a weighed entry over budget warns first, then logs on "Log anyway"', async
   await expect(logAnyway).toBeVisible()
   await expect(sheet.getByRole('button', { name: /log entry/i })).toBeHidden()
 
-  // Second deliberate tap → logs anyway; the day is now over budget.
+  // Second deliberate tap → logs anyway; the day is now slightly over.
   await logAnyway.click()
   await expect(sheet).toBeHidden()
   await expect
@@ -97,5 +99,5 @@ test('a weighed entry over budget warns first, then logs on "Log anyway"', async
           ).json()
         ).dayStatus,
     )
-    .toBe('over-budget')
+    .toBe('slightly-over')
 })

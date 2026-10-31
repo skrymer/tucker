@@ -4,7 +4,7 @@ import { todayIso } from '../support/date'
 // Budget Projection smoke (issue #120): the confirm-to-proceed gate extends to
 // Estimated Entries. With a Calorie Budget in place and most of the day already
 // eaten, an estimated entry whose calories would tip the day over budget is NOT
-// logged on the first Save — the sheet shows an over-budget warning and the action
+// logged on the first Save — the sheet shows its "over your … budget" warning and the action
 // becomes "Log anyway". A second deliberate tap logs it, and the day earns its
 // over-budget verdict — read off the API rather than off Today, which
 // day-status.smoke.spec.ts already renders. Driven from the Log destination,

@@ -8,11 +8,6 @@ const props = defineProps<{
 // Budget and floor are absent until the first weekly review has run.
 const hasBudget = computed(() => props.summary.calorieBudget != null)
 
-// The earned day verdict, or null for an in-progress or pre-review day that has
-// none — the Day Ring carries the numbers instead. Presentation mapping lives in
-// the shared util, alongside its drift/pace siblings.
-const verdict = computed(() => dayStatusVerdict(props.summary.dayStatus))
-
 // A budget carried forward rather than corrected, and the one thing that would
 // let the engine correct it. Quiet by design (ADR 0031): a held budget is stale
 // rather than wrong-direction, and it recurs every week a user logs thinly.
@@ -35,19 +30,15 @@ const heldNote = computed(() =>
         :calories-remaining="summary.caloriesRemaining ?? 0"
         :protein-consumed="summary.proteinConsumed"
         :protein-floor="summary.proteinFloor ?? 1"
+        :day-status="summary.dayStatus"
       />
 
-      <div v-if="verdict" class="mt-6 border-t border-default pt-3">
-        <p
-          :class="[
-            'flex items-center gap-2 text-sm font-medium',
-            verdict.class,
-          ]"
-        >
-          <UIcon :name="verdict.icon" class="size-4" aria-hidden />
-          {{ verdict.label }}
-        </p>
-      </div>
+      <!-- The divider falls through onto DayVerdict's root, so a day with no
+           verdict draws no line under the ring. -->
+      <DayVerdict
+        :status="summary.dayStatus"
+        class="mt-6 border-t border-default pt-3"
+      />
 
       <p
         v-if="heldNote"

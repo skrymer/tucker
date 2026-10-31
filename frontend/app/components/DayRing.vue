@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // The Day Ring (frontend/DESIGN.md) — Tucker's signature. Outer arc = calories
-// against the Calorie Budget (green, error red once over), inner arc = protein
+// against the Calorie Budget (green; warning amber slightly over, error red over
+// budget — the backend's day verdict decides which), inner arc = protein
 // against the Protein Floor (coral). Every figure is backend-sourced (ADR 0002);
 // only the arc sweep and colours are presentation. The SVG is decorative
 // (aria-hidden) — the legend rows are the accessible equivalent, and no arc is
@@ -13,18 +14,33 @@ const props = defineProps<{
   caloriesRemaining: number
   proteinConsumed: number
   proteinFloor: number
+  dayStatus: DayStatus | null | undefined
 }>()
 
-// Over budget once the *rounded* remaining goes negative — deciding on the same
+// Past the Budget once the *rounded* remaining goes negative — deciding on the same
 // rounded figure the centre shows means a -0.3 kcal overage never flips the ring
-// to a red "0 kcal over". Drives the calorie arc + centre colour.
+// to "0 kcal over".
 const isOver = computed(() => Math.round(props.caloriesRemaining) < 0)
+
+// The calorie arc, swatch and meter's colour role. Only error reaches the centre
+// figure: light-mode warning is under 3:1, too faint for a large figure.
+const calorieTone = computed(() => {
+  if (!isOver.value) return 'primary' as const
+  return props.dayStatus === 'slightly-over'
+    ? ('warning' as const)
+    : ('error' as const)
+})
+const CALORIE_SWATCH = {
+  primary: 'bg-primary',
+  warning: 'bg-warning',
+  error: 'bg-error',
+}
 
 // Calories outside protein, each arc drawn over a faint tint of its own role.
 const arcs = computed<RingArc[]>(() => [
   {
     radius: RING_RADIUS_OUTER,
-    stroke: isOver.value ? 'var(--ui-error)' : 'var(--ui-primary)',
+    stroke: `var(--ui-${calorieTone.value})`,
     consumed: props.caloriesConsumed,
     target: props.calorieBudget,
   },
@@ -61,8 +77,8 @@ function useLegend() {
   const rows = computed(() => [
     {
       title: 'Calories',
-      swatch: isOver.value ? 'bg-error' : 'bg-primary',
-      meter: isOver.value ? ('error' as const) : ('primary' as const),
+      swatch: CALORIE_SWATCH[calorieTone.value],
+      meter: calorieTone.value,
       label: 'Calories against the Calorie Budget',
       ...measured(props.caloriesConsumed, props.calorieBudget, 'kcal'),
     },
@@ -84,7 +100,7 @@ const { rows } = useLegend()
     <RingGauge :arcs="arcs">
       <span
         class="text-ring-figure tabular-nums"
-        :class="isOver ? 'text-error' : 'text-highlighted'"
+        :class="calorieTone === 'error' ? 'text-error' : 'text-highlighted'"
       >
         {{ centreValue }}
       </span>
