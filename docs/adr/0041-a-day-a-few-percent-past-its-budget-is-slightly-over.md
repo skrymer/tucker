@@ -36,7 +36,11 @@ have never been about protein.
 
 ## Consequences
 
-The light-mode `--ui-warning` ink was 2.59:1 on the white card, under the 3:1 a
-ring arc, a chart bar and the large centre figure need. It is darkened app-wide
-rather than given a ring-only token, so warning stays one ink. The exact hex is
-chosen live on `/design` against the coral protein arc (see `frontend/DESIGN.md`).
+The light-mode `--ui-warning` ink stays `#D9922B`, which measures 2.59:1 on the
+white card, under the 3:1 a ring arc and a chart bar ask for. Darker ambers that
+pass all read brown, and were judged live against the coral protein arc and
+rejected (#580). So warning is never the only carrier of slightly over: the arc
+always sits beside `kcal over` and the "Slightly over" pill, and the large centre
+figure never takes it — it stays in the body ink. Dark mode's `#F5B544` passes and
+is kept. Warning stays one ink app-wide, never a ring-only token (see
+`frontend/DESIGN.md` → Status).

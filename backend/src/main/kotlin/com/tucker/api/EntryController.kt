@@ -251,8 +251,8 @@ class EntryController(
     }
 
     /**
-     * Forecast the day's over-budget state if [prospective] were logged on [date],
-     * against the budget and floor of the review standing on [date]. With no review
+     * Forecast whether [prospective], logged on [date], would take the day past the
+     * Calorie Budget of the review standing on [date]. With no review
      * yet there is no budget to exceed, so the projection reports the running total
      * only.
      */

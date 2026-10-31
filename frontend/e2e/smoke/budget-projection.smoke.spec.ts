@@ -8,7 +8,7 @@ import { enterGrams, pickFoodToLog } from '../support/log-page'
 // place and most of the day already eaten, a weighed entry that would take the
 // day only slightly past the Budget — within the Tolerance — is NOT logged on the
 // first Save: the projection warns at the Budget itself, not the Tolerance, so the
-// sheet shows an over-budget warning and the action becomes "Log anyway". A
+// sheet shows its "over your … budget" warning and the action becomes "Log anyway". A
 // second deliberate tap logs it, and the day earns its slightly-over verdict. That verdict is read off the API
 // rather than off Today, which day-status.smoke.spec.ts already renders.
 // The per-test reset (smoke-test.ts) wipes the seeded review, food, and entries.

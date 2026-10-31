@@ -18,10 +18,10 @@ data class WeightTimelineDay(
     val caloriesKcal: Double? = null,
     val calorieBudgetKcal: Double? = null,
     /**
-     * Whether the day's calories went past the Budget it was read against — the
-     * verdict, not the comparison, because a client that derived it could disagree
-     * with the same day's DayStatus (ADR 0002). Null when there is nothing to
-     * exceed: no Entry, or no Budget in force.
+     * Whether the day's calories went past the Budget it was read against, slightly
+     * over included — the verdict, not the comparison, so the boundary is the
+     * backend's (ADR 0002). Null when there is nothing to exceed: no Entry, or no
+     * Budget in force.
      */
     val overBudget: Boolean? = null,
     /**

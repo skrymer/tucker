@@ -17,7 +17,7 @@ const props = defineProps<{
   dayStatus: DayStatus | null | undefined
 }>()
 
-// Over budget once the *rounded* remaining goes negative — deciding on the same
+// Past the Budget once the *rounded* remaining goes negative — deciding on the same
 // rounded figure the centre shows means a -0.3 kcal overage never flips the ring
 // to "0 kcal over".
 const isOver = computed(() => Math.round(props.caloriesRemaining) < 0)

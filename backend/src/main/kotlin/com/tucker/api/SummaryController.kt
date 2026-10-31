@@ -36,8 +36,9 @@ data class DailySummaryResponse(
     val caloriesRemaining: Double?,
     val proteinRemaining: Double?,
     /**
-     * The day's earned verdict (DayStatus): "on-target", "over-budget", or
-     * "in-progress" — null until the first WeeklyReview has run. An in-progress
+     * The day's earned verdict (DayStatus): "on-target", "slightly-over",
+     * "over-budget", or "in-progress" — null until the first WeeklyReview has run,
+     * and while Calorie Tracking is off. An in-progress
      * day carries no verdict; the progress bars carry the numbers.
      */
     val dayStatus: DayStatus?,

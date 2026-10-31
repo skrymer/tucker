@@ -178,6 +178,23 @@ describe('DayRing', () => {
     expect(section).toMatch(/\*\*Over budget\*\*[^\n]*\n[^\n]*\*\*error/)
   })
 
+  it('stays green with kcal left when slightly over by less than half a calorie', async () => {
+    const { container } = await renderSuspended(DayRing, {
+      props: {
+        ...underBudget,
+        caloriesConsumed: 2140.3,
+        caloriesRemaining: -0.3,
+        dayStatus: 'slightly-over',
+      },
+    })
+
+    expect(screen.getByText('0')).toBeVisible()
+    expect(screen.getByText('kcal left')).toBeVisible()
+    expect(screen.queryByText('kcal over')).not.toBeInTheDocument()
+    expect(arcs(container)[0]!.getAttribute('stroke')).toBe('var(--ui-primary)')
+    expect(swatches(container)[0]).toContain('bg-primary')
+  })
+
   it('turns the calorie swatch to the warning role alongside its arc', async () => {
     const { container } = await renderSuspended(DayRing, {
       props: slightlyOver,

@@ -3,14 +3,14 @@ import type { components } from '#open-fetch-schemas/api'
 type BudgetProjectionResponse =
   components['schemas']['BudgetProjectionResponse']
 
-/** The over-budget heads-up shown before an Entry is committed (CONTEXT.md — Budget Projection). */
+/** The heads-up shown before an Entry that would pass the Calorie Budget is committed (CONTEXT.md — Budget Projection). */
 export interface BudgetWarning {
   overByKcal: number
   calorieBudget: number
 }
 
 export interface BudgetGateOptions<TPayload> {
-  /** Forecast the day's over-budget state if this entry were logged (non-persisting). */
+  /** Forecast whether this entry would take the day past its Calorie Budget (non-persisting). */
   preview: (payload: TPayload) => Promise<BudgetProjectionResponse>
   /** Commit the entry for real. */
   commit: (payload: TPayload) => unknown
@@ -67,7 +67,7 @@ function useShownWarning<TPayload>() {
 
 /**
  * The confirm-to-proceed gate for logging an Entry. `attempt` previews the entry at
- * the Save gesture: within budget it commits straight away; over budget it raises a
+ * the Save gesture: within budget it commits straight away; past it it raises a
  * `warning` instead of committing, and a second `attempt` (the deliberate "Log
  * anyway") commits. `reset` clears the warning when the form is edited. A failed
  * preview fails open — it commits rather than blocking logging.
