@@ -6,7 +6,7 @@ import { summaryOf } from '../test/mocks/handlers/summary'
 // the Goal is *reached* and /today shows an insistent two-way fork banner — no
 // dismiss. "Switch to maintenance" deactivates the Goal (DELETE /api/goal); the
 // backend force-recomputes today's review so the Budget lifts to Maintenance,
-// and the page lands on the calm "Maintaining" card.
+// and the page lands on the calm maintaining Goal card.
 
 test('a reached goal with every reading deleted claims no trend, and waits on a weight before offering maintenance', async ({
   page,

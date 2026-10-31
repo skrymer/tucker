@@ -159,6 +159,12 @@ for (const colorScheme of ['light', 'dark'] as const) {
       const goal = page.getByRole('region', { name: 'Goal' })
       await expect(goal.getByText("You're maintaining")).toBeVisible()
       await expectBand(goal, 'target')
+      // The Drift Status rides in the band, beside the title.
+      await expect(
+        goal
+          .locator('[data-slot="header"]')
+          .getByText('Holding', { exact: true }),
+      ).toBeVisible()
     })
   })
 }

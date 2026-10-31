@@ -202,8 +202,8 @@ endpoint:
   against zero; `GET /api/goal` + `/api/goal/progress` return 404 when no Goal is
   active. Regenerate the OpenAPI spec and the typed `nuxt-open-fetch` client after
   the response change.
-- **Frontend:** the reached banner (two-way fork) on `/today`; the "Maintaining"
-  card replacing Goal-Progress in Maintenance Mode; the persistent maintenance
+- **Frontend:** the reached banner (two-way fork) on `/today`; the maintaining
+  card (under the Goal's band) replacing the Goal ring in Maintenance Mode; the persistent maintenance
   status + "Start a goal" CTA on `/profile`; the client inferring Maintenance Mode
   from a 404 on `GET /api/goal`.
 - **Scope held narrow:** no defended target weight / guard band; the recompute

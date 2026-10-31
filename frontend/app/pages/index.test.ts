@@ -100,7 +100,11 @@ describe('/ with Calorie Tracking off', () => {
     await renderToday()
 
     // The day did load: what is missing is missing by choice.
-    expect(screen.getByText("You're maintaining")).toBeVisible()
+    expect(
+      within(screen.getByRole('region', { name: 'Goal' })).getByText(
+        "You're maintaining",
+      ),
+    ).toBeVisible()
     expect(screen.queryByText(/kcal/i)).toBeNull()
     expect(screen.queryByText(/protein/i)).toBeNull()
   })
@@ -126,7 +130,11 @@ describe('/ with Calorie Tracking off', () => {
     // query (Nuxt UI's UAlert carries none) and not a page-wide /budget/i — the
     // Maintaining card says "budget" too, so that would pass or fail on which
     // Drift Status the fixture happens to carry.
-    expect(screen.getByText("You're maintaining")).toBeVisible()
+    expect(
+      within(screen.getByRole('region', { name: 'Goal' })).getByText(
+        "You're maintaining",
+      ),
+    ).toBeVisible()
     expect(screen.queryByText(/your calorie budget has changed/i)).toBeNull()
     expect(screen.queryByText(/1800/)).toBeNull()
     expect(screen.queryByText(/2000/)).toBeNull()
@@ -221,7 +229,11 @@ describe('/ in Maintenance Mode', () => {
 
       // Maintenance Mode is the absence of a Goal (ADR 0008) — there is nothing
       // to close, so there is no ring to close it with.
-      expect(screen.getByText("You're maintaining")).toBeVisible()
+      expect(
+        within(screen.getByRole('region', { name: 'Goal' })).getByText(
+          "You're maintaining",
+        ),
+      ).toBeVisible()
       expect(screen.getByText('86.0 kg')).toBeVisible()
       expect(screen.getByText(/a couple more readings/i)).toBeVisible()
       expect(screen.queryByText('kg to go')).toBeNull()
@@ -621,6 +633,8 @@ describe("/ when tomorrow's entries cannot be read", () => {
     expect(
       within(tomorrow).getByRole('button', { name: 'Retry' }),
     ).toBeVisible()
+    // The one failed read raises the one Retry on the page.
+    expect(screen.getAllByRole('button', { name: 'Retry' })).toHaveLength(1)
     expect(screen.getByRole('region', { name: /^Today · / })).toBeVisible()
     expect(screen.getByText('312 / 2000 kcal')).toBeVisible()
   })

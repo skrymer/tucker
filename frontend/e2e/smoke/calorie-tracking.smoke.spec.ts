@@ -178,7 +178,7 @@ test('Tucker takes the shape of the choice', async ({
     page.getByRole('heading', { name: "Today's weight", level: 2 }),
   ).toBeVisible()
   await expect(
-    page.getByRole('heading', { name: 'Goal', level: 2 }),
+    page.getByRole('heading', { name: 'Goal', level: 2, exact: true }),
   ).toBeVisible()
   await expect(page.getByText('kg to go')).toBeVisible()
 

@@ -7,7 +7,7 @@ import { todayIso, isoShiftDays } from '../support/date'
 // target, assert the backend stamps `reachedOn`, then exercise the /today fork
 // banner: "Switch to maintenance" deactivates the Goal, the backend force-
 // recomputes today's review to Maintenance, and the page lands on the calm
-// "Maintaining" card with a lifted Budget.
+// maintaining Goal card with a lifted Budget.
 //
 // The trend is computed over *all* weight readings, so to make crossing
 // deterministic we wipe the (shared-volume) weights, seed a known two-reading
