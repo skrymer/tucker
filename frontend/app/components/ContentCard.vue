@@ -52,8 +52,13 @@ const headingId = useId()
       @retry="emit('retry')"
     >
       <!-- Decorative, so hidden: the region's aria-busy says it is loading,
-           and each USkeleton would otherwise raise an alert. -->
-      <div v-if="loading" aria-hidden="true" class="flex flex-col gap-2">
+           and each USkeleton would otherwise raise an alert. It shows 150 ms
+           late (ADR 0007), so a fast answer never flashes it. -->
+      <div
+        v-if="loading"
+        aria-hidden="true"
+        class="appear-late flex flex-col gap-2"
+      >
         <USkeleton class="h-6 w-1/3" />
         <USkeleton class="h-4 w-2/3" />
         <USkeleton class="h-4 w-1/2" />

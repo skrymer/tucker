@@ -48,8 +48,8 @@ const description = computed(() =>
 </script>
 
 <template>
-  <!-- Maintaining is a state of the Goal, not a subject of its own (ADR 0008),
-       so it is said in the body under the Goal's band. -->
+  <!-- Maintenance Mode is the absence of an active Goal (ADR 0008): the card
+       keeps the Goal's band, and its body says the User is maintaining. -->
   <ContentCard subject="goal" title="Goal">
     <template #trailing>
       <UBadge :color="drift.color" variant="subtle" size="sm">

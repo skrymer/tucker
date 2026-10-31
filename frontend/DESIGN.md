@@ -751,11 +751,14 @@ text-muted` what it cost and returned — `153 kcal · 13 g protein`, with
 ### Content card
 
 A **content card** is a Card that holds one section of a page, under a header
-**band**. `ContentCard` builds it, and it is the only place the app uses `UCard`:
-ESLint's `tucker/one-card` refuses a bare one, and points here.
+**band**. `ContentCard` builds it, and it is the only way the app builds a card:
+ESLint's `tucker/one-card` refuses a bare `UCard` anywhere else, and points here.
+Until they are migrated, Review's, Profile's and Admin's files are on its
+allowlist.
 
 - **When a page is carded.** A page with **several independent sections** puts
-  each section in a content card: Today, Review, Profile and Admin. A page that
+  each section in a content card: Today, Review, Profile, Admin, and `/design`,
+  whose sections that frame a specimen are cards too. A page that
   **is** one list or one tool is not carded, and its `h1` is the title: Foods (the
   catalog), Check (the tool) and Log (its Frequent-Foods grid and catalog, with
   their eyebrow kickers, ADR 0028).
@@ -766,8 +769,8 @@ ESLint's `tucker/one-card` refuses a bare one, and points here.
   hidden from assistive tech) and the `h2` **title** (`text-h2 text-highlighted`),
   with an optional **trailing slot** at the right: at most a tally, one action, a
   badge or tabs. On a narrow phone the trailing slot wraps under the title rather
-  than either one truncating. It is `UCard`'s own header slot, padded like the
-  body (Shape & elevation). The card is a `section` region named by its title, so
+  than either one truncating. It is `UCard`'s own header slot, padded at the
+  body's sides (Shape & elevation). The card is a `section` region named by its title, so
   assistive tech can move between cards by landmark.
 - **The icon names the subject, not the state.** The same subject has the same
   icon everywhere, and no two cards on a page share one. A card takes its icon
@@ -775,34 +778,46 @@ ESLint's `tucker/one-card` refuses a bare one, and points here.
   error. The table below is the subject map's twin (`contentCard.test.ts` fails
   when they disagree):
 
-  | Subject key       | Card                                                      | Icon         |
-  | ----------------- | --------------------------------------------------------- | ------------ |
-  | `weight`          | Today's weight                                            | `scale`      |
-  | `targets`         | Today's targets (the Day Ring)                            | `gauge`      |
-  | `today`           | Today's Entries                                           | `sun`        |
-  | `tomorrow`        | Tomorrow's Entries                                        | `sunrise`    |
-  | `goal`            | Goal (Today's ring and maintaining, Profile, Review hero) | `target`     |
-  | `weightTimeline`  | Your weight (the Weight Timeline)                         | `chart-line` |
-  | `history`         | History / Look up a day                                   | `calendar`   |
-  | `intakeBreakdown` | What you're eating (the Intake Breakdown)                 | `chart-pie`  |
-  | `micronutrients`  | Vitamins and minerals                                     | `leaf`       |
-  | `weeklyReviews`   | Weekly reviews                                            | `history`    |
-  | `details`         | Your details                                              | `user-round` |
-  | `reminder`        | Weekly-review reminder                                    | `bell`       |
-  | `appearance`      | Appearance                                                | `sun-moon`   |
+  | Subject key       | Card                                                      | Icon                  |
+  | ----------------- | --------------------------------------------------------- | --------------------- |
+  | `weight`          | Today's weight                                            | `scale`               |
+  | `targets`         | Today's targets (the Day Ring)                            | `gauge`               |
+  | `today`           | Today's Entries                                           | `sun`                 |
+  | `tomorrow`        | Tomorrow's Entries                                        | `sunrise`             |
+  | `goal`            | Goal (Today's ring and maintaining, Profile, Review hero) | `target`              |
+  | `weightTimeline`  | Your weight (the Weight Timeline)                         | `chart-line`          |
+  | `history`         | History / Look up a day                                   | `calendar`            |
+  | `intakeBreakdown` | What you're eating (the Intake Breakdown)                 | `chart-pie`           |
+  | `micronutrients`  | Vitamins and minerals                                     | `leaf`                |
+  | `weeklyReviews`   | Weekly reviews                                            | `history`             |
+  | `details`         | Your details                                              | `user-round`          |
+  | `reminder`        | Weekly-review reminder                                    | `bell`                |
+  | `appearance`      | Appearance                                                | `sun-moon`            |
+  | `typography`      | `/design`: Typography                                     | `type`                |
+  | `shape`           | `/design`: the card-padding specimen                      | `square-round-corner` |
+  | `ring`            | `/design`: Signature · the Ring                           | `circle-dot`          |
+  | `entries`         | `/design`: Cards & entries                                | `list`                |
+  | `formControls`    | `/design`: Form controls                                  | `text-cursor-input`   |
+  | `sheetNavigation` | `/design`: Sheet navigation                               | `panel-bottom`        |
+  | `calendar`        | `/design`: Calendar                                       | `calendar-days`       |
 
-  Admin's cards add a row each when they are carded.
+  Admin's cards add a row each when they are carded. `/design`'s own subjects
+  are the style guide's, so its specimens of real cards never share an icon with
+  the section framing them.
 
 - **The title** is a short noun phrase naming the subject in `CONTEXT.md`'s words,
   in sentence case, with no verb and no status. Status goes in the body or the
   trailing slot. The Day Ring card is **Today's targets**, because it carries both
-  the Calorie Budget and the Protein Floor; the Goal ring and the maintaining card
-  are both **Goal**, maintaining being a state of the Goal.
+  the Calorie Budget and the Protein Floor. The Goal ring and the maintaining card
+  are both **Goal**: the Goal's band also stands over Maintenance Mode, which is
+  the absence of an active Goal (ADR 0008), and its body says so.
 - **The band is constant; only the body changes.** The body is one of:
   - **ready** — the card's content;
   - **loading** — skeleton rows hidden from assistive tech, the region marked
-    busy;
-  - **empty / not yet** — says what to do next, with the action that does it;
+    busy; the rows show 150 ms late (ADR 0007), so a fast answer never flashes
+    them, while the band shows at once;
+  - **empty / not yet** — says what to do next, with the action that does it
+    where there is one;
   - **load error** — the `nested` load-error row (Feedback states), with Retry.
 
   A page whose primary read fails still shows one full-page error instead of its

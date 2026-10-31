@@ -27,9 +27,6 @@ const oneCard = {
 
 const BARE_UCARD_ALLOWED = [
   'app/components/ContentCard.vue',
-  // The style guide's specimen frames draw the card surface itself, not a
-  // section of a page.
-  'app/pages/design.vue',
   // Not yet content cards: Review, Profile and Admin.
   'app/components/GoalCard.vue',
   'app/components/GoalProgressHero.vue',

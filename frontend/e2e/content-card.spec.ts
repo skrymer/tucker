@@ -1,7 +1,9 @@
 import type { Locator, Page } from '@playwright/test'
 import { weighedEntry } from '../test/entry-fixtures'
+import { dailyLogs } from '../test/mocks/handlers/entries'
 import { goalInProgress } from '../test/mocks/handlers/goal'
 import { summaryOf } from '../test/mocks/handlers/summary'
+import { isoShiftDays, pinToLocalMorning } from './support/date'
 import { expect, test } from './support/test'
 
 // The content card's band, measured. The component test sees the region, its
@@ -13,8 +15,29 @@ const TODAYS_CARDS = [
   { name: "Today's weight", icon: 'scale' },
   { name: "Today's targets", icon: 'gauge' },
   { name: /^Today · /, icon: 'sun' },
+  { name: /^Tomorrow · /, icon: 'sunrise' },
   { name: 'Goal', icon: 'target' },
 ]
+
+const OATS = weighedEntry({
+  id: 1,
+  calories: 240,
+  protein: 8,
+  foodName: 'Oats',
+})
+
+/** Today with an Entry logged, and its Budget and Floor set. */
+const loggedDay = {
+  caloriesConsumed: 240,
+  proteinConsumed: 8,
+  estimatedCalorieShare: 0,
+  setupComplete: true,
+  calorieBudget: 2000,
+  proteinFloor: 140,
+  caloriesRemaining: 1760,
+  dayStatus: 'in-progress' as const,
+  entries: [OATS],
+}
 
 /**
  * Answer the Iconify CDN with a stand-in glyph for every icon asked for. The
@@ -82,6 +105,19 @@ async function bandOf(card: Locator) {
   })
 }
 
+/** [card] is visible and its band draws a divider, [icon] and the body's sides. */
+async function expectBand(card: Locator, icon: string) {
+  await expect(card).toBeVisible()
+  // A CSS icon paints once its icon data has loaded, after hydration.
+  await expect
+    .poll(() => bandOf(card), { message: icon })
+    .toEqual({
+      divider: { width: '1px', drawn: true },
+      icon: { name: icon, size: '20x20', painted: true, primary: true },
+      sides: true,
+    })
+}
+
 for (const colorScheme of ['light', 'dark'] as const) {
   test.describe(`in ${colorScheme} mode`, () => {
     test.use({ colorScheme })
@@ -92,41 +128,73 @@ for (const colorScheme of ['light', 'dark'] as const) {
       network,
     }) => {
       await drawEveryIcon(page)
+      const today = await pinToLocalMorning(page)
       network.use(
         goalInProgress(),
-        summaryOf({
-          caloriesConsumed: 240,
-          proteinConsumed: 8,
-          estimatedCalorieShare: 0,
-          setupComplete: true,
-          calorieBudget: 2000,
-          proteinFloor: 140,
-          caloriesRemaining: 1760,
-          dayStatus: 'in-progress',
-          entries: [
-            weighedEntry({
-              id: 1,
-              calories: 240,
-              protein: 8,
-              foodName: 'Oats',
-            }),
-          ],
-        }),
+        summaryOf(loggedDay),
+        ...dailyLogs({ [isoShiftDays(today, 1)]: [OATS] }),
       )
       await goto('/', { waitUntil: 'hydration' })
 
       for (const { name, icon } of TODAYS_CARDS) {
-        const card = page.getByRole('region', { name })
-        await expect(card).toBeVisible()
-        // A CSS icon paints once its icon data has loaded, after hydration.
-        await expect
-          .poll(() => bandOf(card), { message: String(name) })
-          .toEqual({
-            divider: { width: '1px', drawn: true },
-            icon: { name: icon, size: '20x20', painted: true, primary: true },
-            sides: true,
-          })
+        await expectBand(page.getByRole('region', { name }), icon)
       }
+    })
+
+    test('the Goal card draws the same band over Maintenance Mode', async ({
+      page,
+      goto,
+      network,
+    }) => {
+      await drawEveryIcon(page)
+      network.use(
+        summaryOf({
+          ...loggedDay,
+          trendWeightKg: 85.8,
+          driftStatus: 'holding',
+        }),
+      )
+      await goto('/', { waitUntil: 'hydration' })
+
+      const goal = page.getByRole('region', { name: 'Goal' })
+      await expect(goal.getByText("You're maintaining")).toBeVisible()
+      await expectBand(goal, 'target')
     })
   })
 }
+
+// ADR 0007: a placeholder waits 150 ms before showing, so a fast answer never
+// flashes it. Read at the moment the skeleton is inserted, before any delay —
+// on /design's loading specimen, the one card that renders loading.
+test("holds a loading card's skeleton invisible for its first moment, under a band shown at once", async ({
+  goto,
+  page,
+}) => {
+  await page.addInitScript(() => {
+    new MutationObserver(() => {
+      const skeleton = document.querySelector<HTMLElement>(
+        'section[aria-busy="true"] [data-slot="body"] > [aria-hidden="true"]',
+      )
+      const band = skeleton
+        ?.closest('section')
+        ?.querySelector<HTMLElement>('[data-slot="header"]')
+      if (skeleton && band && skeleton.dataset.firstOpacity === undefined) {
+        skeleton.dataset.firstOpacity = getComputedStyle(skeleton).opacity
+        band.dataset.firstOpacity = getComputedStyle(band).opacity
+      }
+    }).observe(document, { childList: true, subtree: true })
+  })
+
+  await goto('/design', { waitUntil: 'hydration' })
+  const card = page.locator('section[aria-busy="true"]')
+  const skeleton = card.locator('[data-slot="body"] > [aria-hidden="true"]')
+
+  await expect(skeleton).toHaveAttribute('data-first-opacity', '0')
+  await expect(card.locator('[data-slot="header"]')).toHaveAttribute(
+    'data-first-opacity',
+    '1',
+  )
+  await expect
+    .poll(() => skeleton.evaluate((el) => getComputedStyle(el).opacity))
+    .toBe('1')
+})
