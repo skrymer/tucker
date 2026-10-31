@@ -8,7 +8,13 @@ import { dailyLogs } from '~~/test/mocks/handlers/entries'
 import { weightMeasurements } from '~~/test/mocks/handlers/weight'
 import { goalInProgress } from '~~/test/mocks/handlers/goal'
 import { summaryOf, type SummaryDay } from '~~/test/mocks/handlers/summary'
-import { failingWrite, held, http, serverError } from '~~/test/mocks/http'
+import {
+  failingRead,
+  failingWrite,
+  held,
+  http,
+  serverError,
+} from '~~/test/mocks/http'
 import { server } from '~~/test/mocks/node'
 import { ref, type Ref } from 'vue'
 import Today from './index.vue'
@@ -571,6 +577,26 @@ describe('/ when the goal cannot be read', () => {
     expect(screen.getAllByRole('region', { name: 'Goal' })).toHaveLength(1)
     expect(screen.queryByText("You're maintaining")).not.toBeInTheDocument()
   })
+
+  it('recovers the Goal from its Retry', async () => {
+    let failing = true
+    server.use(
+      failingRead('/api/goal/progress', () => failing),
+      goalInProgress(),
+    )
+    await renderToday()
+
+    const goal = await screen.findByRole('region', { name: 'Goal' })
+    failing = false
+    await userEvent
+      .setup()
+      .click(within(goal).getByRole('button', { name: 'Retry' }))
+
+    expect(await screen.findByText('40% complete')).toBeVisible()
+    expect(screen.getByRole('region', { name: 'Goal' })).toHaveTextContent(
+      '40% complete',
+    )
+  })
 })
 
 describe("/ when tomorrow's entries cannot be read", () => {
@@ -597,6 +623,40 @@ describe("/ when tomorrow's entries cannot be read", () => {
     ).toBeVisible()
     expect(screen.getByRole('region', { name: /^Today · / })).toBeVisible()
     expect(screen.getByText('312 / 2000 kcal')).toBeVisible()
+  })
+
+  it('recovers them under the Tomorrow band from its Retry', async () => {
+    let failing = true
+    const tomorrow = localTomorrow(localDay.value)
+    server.use(
+      summaryOf(todayWithSalmon),
+      failingRead('/api/entries', () => failing),
+      ...dailyLogs({
+        [tomorrow]: [
+          weighedEntry({
+            id: 31,
+            calories: 200,
+            protein: 10,
+            foodId: 4,
+            foodName: 'Greek yoghurt',
+            grams: 170,
+          }),
+        ],
+      }),
+    )
+    await renderToday()
+
+    const name = `Tomorrow · ${formatDayHeadingFromISO(tomorrow)}`
+    const card = await screen.findByRole('region', { name })
+    failing = false
+    await userEvent
+      .setup()
+      .click(within(card).getByRole('button', { name: 'Retry' }))
+
+    expect(await screen.findByText('Greek yoghurt')).toBeVisible()
+    expect(screen.getByRole('region', { name })).toHaveTextContent(
+      '1 entry · 200 kcal',
+    )
   })
 })
 
