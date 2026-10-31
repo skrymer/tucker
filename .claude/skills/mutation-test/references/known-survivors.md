@@ -649,6 +649,15 @@ agreement. Two things about it are load-bearing and easy to undo by accident:
 
 Both failure modes look like a green guard that is not guarding anything.
 
+### `utils/day-status.ts` — 7 of 20, false survivors
+
+The six icon/class `StringLiteral` mutants (L25, 26, 31, 32, 37, 38) and the default
+branch's missing `return null` (L40) survive a scoped sweep: `mutation.json`'s
+`coveredBy` lists only `app/pages/design.test.ts`, never the file's own
+`day-status.test.ts`, at 65% rather than the 0% that usually flags this. Each was killed
+by hand-mutating a copy (#581): the `toEqual` verdict tests, the DESIGN.md Status-table
+test, and "earns no verdict while the day is in progress" (`toBeNull`). No test owed.
+
 ### `utils/catalog.ts` — 0 of 21, and the score was a lie
 
 The file scores **100%** and did so while holding a user-facing bug: `filterFoods`
@@ -660,7 +669,10 @@ Stryker's `MethodExpression` mutator **swaps** `toLowerCase` for `toUpperCase` a
 never **deletes** the call, so the two sides of a comparison are not independently
 mutated: `fold(name).includes(fold(query))` and `name.includes(fold(query))` are
 indistinguishable to the engine. Every normalise-then-compare function inherits this
-— trimming, accent stripping, unit conversion, key canonicalisation.
+— trimming, accent stripping, unit conversion, key canonicalisation, and rounding: no
+mutator touches `Math.round`, so #581's `DayRing.vue` scored 45/45 while
+`Math.round(remaining) < 0` → `remaining < 0` survived every test, until the acceptance
+ledger asked and a hand-mutant showed it.
 
 What kills it is a fixture whose *stored* value needs the transform, not only the
 query: `filterFoods(foods, 'tinned')` against `Tinned tuna`, and `'creme fraiche'`

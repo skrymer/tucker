@@ -302,7 +302,10 @@ and checks each against a concrete value in the verdict.
 - **UNCOVERED or WEAK sends you back into the browser**, not into a justification.
   Drive the values it names, then extend the verdict.
 - **The reachability pass is exempt** — it has no probes to audit.
-- **"Not drivable" is a claim, and it needs checking before it is written.** Look for
+- **"Not drivable" is a claim, and it needs checking before it is written.** A derived
+  figure is steered through its inputs: #581 wrote off a Budget with a non-integer
+  Tolerance edge as "comes only from a Weekly Review", but the Budget is an unrounded
+  `BMR × 1.4 − deficit`, so seeding 85.5 kg instead of 85 gives one. Look for
   every endpoint that can put the app in that state, unbounded ones included:
   `/api/summary?date=` takes no ±1 check and runs a due review, so it can seed review
   history on any date. #358's verdict called a state unseedable over the API; the
