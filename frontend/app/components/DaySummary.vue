@@ -8,10 +8,6 @@ const props = defineProps<{
 // Budget and floor are absent until the first weekly review has run.
 const hasBudget = computed(() => props.summary.calorieBudget != null)
 
-// Only decides whether the divider above the verdict is drawn: an in-progress or
-// pre-review day has no verdict, so no line under the ring.
-const verdict = computed(() => dayStatusVerdict(props.summary.dayStatus))
-
 // A budget carried forward rather than corrected, and the one thing that would
 // let the engine correct it. Quiet by design (ADR 0031): a held budget is stale
 // rather than wrong-direction, and it recurs every week a user logs thinly.
@@ -37,9 +33,12 @@ const heldNote = computed(() =>
         :day-status="summary.dayStatus"
       />
 
-      <div v-if="verdict" class="mt-6 border-t border-default pt-3">
-        <DayVerdict :status="summary.dayStatus" />
-      </div>
+      <!-- The divider falls through onto DayVerdict's root, so a day with no
+           verdict draws no line under the ring. -->
+      <DayVerdict
+        :status="summary.dayStatus"
+        class="mt-6 border-t border-default pt-3"
+      />
 
       <p
         v-if="heldNote"
