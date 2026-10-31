@@ -858,7 +858,11 @@ error nested inside a card, below.
   Foods can have no rotation, so a failed ranking read is not worth a panel over
   the dead end that is. A **nested** load error is not one of the page's: it
   belongs to a card whose own control still works (History's calendar picks
-  another day), so it stands on its own. Two failed halves in one card follow
+  another day), or it stands under a content card's band, which names the card
+  that failed while its Retry replays that card's read alone — so it stands on
+  its own. Today can show one under each band whose read failed; when the
+  primary read fails, the page shows one full-page error instead of its cards.
+  Two failed halves in one card follow
   the page's rule: when History's weight half and its Entries half both fail,
   one row ("Couldn't load this card") stands in for the whole card, and its
   Retry replays every read.

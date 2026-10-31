@@ -3,8 +3,8 @@ import { todayIso } from '../support/date'
 
 // F7 slice 1 smoke: Maintenance Mode on /today, end-to-end against the real
 // backend. No /api mocks. With no active Goal the backend budgets the weekly
-// review at Maintenance (no deficit) and the dashboard replaces the Goal-Progress
-// card with the calm "Maintaining" card showing the Trend Weight, while the daily
+// review at Maintenance (no deficit) and the dashboard replaces the Goal ring
+// with the calm maintaining Goal card showing the Trend Weight, while the daily
 // summary still renders the Budget and Floor.
 //
 // The shared volume may already hold an active Goal from an earlier goal-smoke,
@@ -57,7 +57,7 @@ test('with no active Goal the Today page shows the Maintaining card and a Mainte
   // Budget still renders in the daily summary.
   await expect(page.getByText(budgetText, { exact: false })).toBeVisible()
 
-  // The Goal-Progress card is gone.
+  // The Goal ring is gone.
   await expect(
     page.getByRole('link', { name: /goal progress|set a goal/i }),
   ).toHaveCount(0)

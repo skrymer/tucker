@@ -48,8 +48,8 @@ const {
 await Promise.all([refreshLatestWeight(), refreshGoalProgress()])
 
 // Maintenance Mode (ADR 0008): no active Goal (goal/progress 404 → null) yet a
-// review has produced a Trend Weight. Surfaces the calm Maintaining card with
-// the Trend Weight in place of the Goal-Progress card. In a cut the Goal carries
+// review has produced a Trend Weight. Surfaces the calm maintaining card with
+// the Trend Weight in place of the Goal ring. In a cut the Goal carries
 // the trend, so this is non-null only when maintaining.
 const maintainingTrendWeightKg = computed(() =>
   goalProgress.value == null ? (summary.value?.trendWeightKg ?? null) : null,
@@ -65,7 +65,7 @@ const maintainingDriftStatus = computed<DriftStatus>(
 // switch to maintenance (deactivate the Goal) or set a lower goal (on /profile).
 // Switching force-lifts the Budget — the backend recomputes today's review on
 // DELETE — so we refresh both the summary and the now-404 goal progress, which
-// flips the page into the Maintaining card.
+// flips the page into the maintaining card.
 const { execute: switchToMaintenance } = useApiMutation(
   // Client owns "today" (ADR 0014): the recompute lifts the Budget on the user's
   // local day, not the server's wall-clock day.
@@ -208,7 +208,7 @@ const {
           :drift-status="maintainingDriftStatus"
         />
         <!-- The reached banner already carries the milestone; a 100%
-             Goal-Progress tile beside it would be redundant, so it's
+             Goal ring beside it would be redundant, so it's
              suppressed while reached. -->
         <GoalRingTile
           v-else-if="goalProgress && !goalProgress.reachedOn"

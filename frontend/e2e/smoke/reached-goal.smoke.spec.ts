@@ -79,7 +79,7 @@ test('reaching a goal surfaces the fork banner and switching to maintenance lift
 
     await switchToMaintenance.click()
 
-    // Lands on the Maintaining card; the Goal is deactivated and the Budget has
+    // Lands on the maintaining Goal card; the Goal is deactivated and the Budget has
     // lifted to Maintenance (the deficit is gone).
     await expect(
       page

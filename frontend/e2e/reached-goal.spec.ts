@@ -97,7 +97,7 @@ test('reaching a goal shows the fork banner, and switching to maintenance lands 
     page.getByRole('link', { name: /set a lower goal/i }),
   ).toHaveAttribute('href', '/profile')
 
-  // The banner carries the milestone, so the 100% Goal-Progress tile is
+  // The banner carries the milestone, so the 100% Goal ring is
   // suppressed while reached — only the fork shows.
   await expect(page.getByRole('region', { name: 'Goal' })).toHaveCount(0)
 
