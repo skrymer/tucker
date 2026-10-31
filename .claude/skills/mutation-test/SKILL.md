@@ -185,7 +185,7 @@ Identical for both stacks; only step 1 and 2's commands differ.
      animation. #498 called a confirm's `''` fallback equivalent ("`:open` is false");
      a frame-sampling e2e showed "will be removed…" with no name (12–14 frames on main).
    - **False survivor** — a test *does* kill it, but the engine never ran that
-     test. Suspect it whenever a whole class scores 0%, and **settle it by
+     test. Suspect it at 0%, or when `coveredBy` lacks a sibling test, and **settle it by
      hand-mutating a throwaway copy and running the suite against it**: if tests
      fail, the verdict is "the tool can't see it" and no test is owed. Mutate a
      copy, never the line in place — the TDD hook refuses an in-place mutant as an

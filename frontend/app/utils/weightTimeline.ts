@@ -421,9 +421,8 @@ function intakeAccessors(scale: () => TimelineScale | null) {
     // no Entry was logged at all.
     intakeColor: (day: TimelineDay) => {
       if (day.caloriesKcal == null) return UNLOGGED_COLOR
-      // The verdict the backend stated, never a comparison made here: a client that
-      // re-derived it could colour a day the same day's DayStatus calls over
-      // budget (ADR 0002).
+      // The verdict the backend stated, never a comparison made here (ADR 0002):
+      // true for any day past the Budget, slightly over included.
       return day.overBudget ? OVER_BUDGET_COLOR : INTAKE_COLOR
     },
     // A day's bar, undefined throughout with Calorie Tracking off so that no bar

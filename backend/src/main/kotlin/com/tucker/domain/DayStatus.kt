@@ -8,9 +8,11 @@ import com.fasterxml.jackson.annotation.JsonValue
  * still in progress from one that has earned a verdict — the two halves of the
  * old predicate have opposite intra-day characters:
  *
- * - [OVER_BUDGET] the moment intake exceeds the Calorie Budget — real and
+ * - [OVER_BUDGET] the moment intake exceeds the Budget by more than the Tolerance — real and
  *   irreversible, so it wins unconditionally (over budget with the Floor met is
  *   still over budget, not on-target).
+ * - [SLIGHTLY_OVER] once intake passes the Calorie Budget but stays within the
+ *   Tolerance — like over budget, about calories alone and earned mid-day.
  * - [ON_TARGET] once the Protein Floor is met with intake at or under the
  *   Calorie Budget — earned and stable, since a met Floor never un-meets.
  * - [IN_PROGRESS] otherwise — being under the Floor mid-day isn't a failure, the
@@ -20,6 +22,7 @@ import com.fasterxml.jackson.annotation.JsonValue
  */
 enum class DayStatus(@JsonValue val value: String) {
     ON_TARGET("on-target"),
+    SLIGHTLY_OVER("slightly-over"),
     OVER_BUDGET("over-budget"),
     IN_PROGRESS("in-progress"),
 }

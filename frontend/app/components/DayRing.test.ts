@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen } from '@testing-library/vue'
 import DayRing from './DayRing.vue'
+import { designSection } from '../../test/designDoc'
+import type { DayStatus } from '~/utils/day-status'
 
 // A day comfortably under budget: 1004 of 2140 kcal, 1136 remaining; 86 of the
 // 186 g protein floor. All figures are backend-sourced (ADR 0002).
@@ -11,6 +13,7 @@ const underBudget = {
   caloriesRemaining: 1136,
   proteinConsumed: 86,
   proteinFloor: 186,
+  dayStatus: 'in-progress' as DayStatus,
 }
 
 describe('DayRing', () => {
@@ -27,6 +30,7 @@ describe('DayRing', () => {
         ...underBudget,
         caloriesConsumed: 2500,
         caloriesRemaining: -360,
+        dayStatus: 'over-budget',
       },
     })
 
@@ -123,6 +127,7 @@ describe('DayRing', () => {
         ...underBudget,
         caloriesConsumed: 2500,
         caloriesRemaining: -360,
+        dayStatus: 'over-budget',
       },
     })
 
@@ -136,6 +141,7 @@ describe('DayRing', () => {
         ...underBudget,
         caloriesConsumed: 2500,
         caloriesRemaining: -360,
+        dayStatus: 'over-budget',
       },
     })
 
@@ -143,5 +149,58 @@ describe('DayRing', () => {
     expect(arcs(container)[1]!.getAttribute('stroke')).toBe(
       'var(--ui-secondary)',
     )
+  })
+
+  // 2200 of 2140 kcal is ~103% of the Budget: within the Tolerance.
+  const slightlyOver = {
+    ...underBudget,
+    caloriesConsumed: 2200,
+    caloriesRemaining: -60,
+    dayStatus: 'slightly-over' as const,
+  }
+
+  it('turns the calorie arc to the warning role when slightly over', async () => {
+    const { container } = await renderSuspended(DayRing, {
+      props: slightlyOver,
+    })
+
+    expect(arcs(container)[0]!.getAttribute('stroke')).toBe('var(--ui-warning)')
+    expect(arcs(container)[1]!.getAttribute('stroke')).toBe(
+      'var(--ui-secondary)',
+    )
+  })
+
+  it("is described in DESIGN.md's Day Ring section in each calorie state, with its ink", () => {
+    const section = designSection('## Signature — the Day Ring')
+
+    expect(section).toMatch(/\*\*Within the Budget\*\* — green arc/)
+    expect(section).toMatch(/\*\*Slightly over\*\*[^\n]*\n[^\n]*\*\*warning/)
+    expect(section).toMatch(/\*\*Over budget\*\*[^\n]*\n[^\n]*\*\*error/)
+  })
+
+  it('stays green with kcal left when slightly over by less than half a calorie', async () => {
+    const { container } = await renderSuspended(DayRing, {
+      props: {
+        ...underBudget,
+        caloriesConsumed: 2140.3,
+        caloriesRemaining: -0.3,
+        dayStatus: 'slightly-over',
+      },
+    })
+
+    expect(screen.getByText('0')).toBeVisible()
+    expect(screen.getByText('kcal left')).toBeVisible()
+    expect(screen.queryByText('kcal over')).not.toBeInTheDocument()
+    expect(arcs(container)[0]!.getAttribute('stroke')).toBe('var(--ui-primary)')
+    expect(swatches(container)[0]).toContain('bg-primary')
+  })
+
+  it('turns the calorie swatch to the warning role alongside its arc', async () => {
+    const { container } = await renderSuspended(DayRing, {
+      props: slightlyOver,
+    })
+
+    expect(swatches(container)[0]).toContain('bg-warning')
+    expect(swatches(container)[1]).toContain('bg-secondary')
   })
 })

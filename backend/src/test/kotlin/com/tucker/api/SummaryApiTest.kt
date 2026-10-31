@@ -346,6 +346,24 @@ class SummaryApiTest {
     }
 
     @Test
+    fun `the summary reports a day past the budget but within the tolerance as slightly over`() {
+        val day = LocalDate.of(2026, 6, 10)
+        seedReview(day, budgetKcal = 2000.0, floorG = 140.0)
+        // 105% of the Budget with the Floor met: slightly over, not on-target.
+        mockMvc.post("/api/entries/estimated") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"date":"$day","label":"dinner out","calories":2100,"protein":150}"""
+        }.andExpect { status { isCreated() } }
+
+        mockMvc.get("/api/summary") {
+            param("date", "$day")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.dayStatus") { value("slightly-over") }
+        }
+    }
+
+    @Test
     fun `the summary reports no day status before the first weekly review`() {
         // A fresh database has no WeeklyReview, so there is no Budget or Floor to
         // judge the day against — the verdict is withheld (null), unchanged from

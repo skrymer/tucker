@@ -321,9 +321,11 @@ const calendarDay = ref('2026-10-08')
     <ContentCard subject="ring" title="Signature · the Ring">
       <p class="text-sm text-muted">
         The live <code class="text-default">DayRing</code> component — under
-        budget, then over (the calorie arc + centre turn to error red).
+        budget; slightly over, within the Tolerance (the calorie arc turns
+        warning amber, the centre stays in the body ink); then over budget (the
+        calorie arc and centre turn error red).
       </p>
-      <!-- Two specimens of one thing: divided rows, never two cards. -->
+      <!-- Specimens of one thing: divided rows, never several cards. -->
       <div class="mt-4 flex flex-col divide-y divide-default">
         <DayRing
           class="pb-4"
@@ -332,15 +334,36 @@ const calendarDay = ref('2026-10-08')
           :calories-remaining="1136"
           :protein-consumed="86"
           :protein-floor="186"
+          day-status="in-progress"
         />
         <DayRing
-          class="pt-4"
+          class="py-4"
+          :calories-consumed="2200"
+          :calorie-budget="2140"
+          :calories-remaining="-60"
+          :protein-consumed="190"
+          :protein-floor="186"
+          day-status="slightly-over"
+        />
+        <DayRing
+          class="py-4"
           :calories-consumed="2500"
           :calorie-budget="2140"
           :calories-remaining="-360"
           :protein-consumed="205"
           :protein-floor="186"
+          day-status="over-budget"
         />
+        <div class="flex flex-col gap-3 pt-4">
+          <p class="text-sm text-muted">
+            The day verdict beneath the ring — word, icon and colour together.
+          </p>
+          <div class="flex flex-wrap gap-6">
+            <DayVerdict status="on-target" />
+            <DayVerdict status="slightly-over" />
+            <DayVerdict status="over-budget" />
+          </div>
+        </div>
       </div>
     </ContentCard>
 

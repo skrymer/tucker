@@ -2,10 +2,10 @@ import type { BudgetWarning } from '~/composables/useBudgetGate'
 import type { RelativeDay } from './day'
 
 /**
- * The over-budget heads-up copy (CONTEXT.md — Budget Projection): how far logging
+ * The Budget Projection's heads-up copy (CONTEXT.md): how far logging
  * the prospective Entry would push the day past the Calorie Budget, rounded to whole
  * calories — or `null` when within budget. Shared by every entry form (Weighed,
- * Estimated) so the wording can't drift between them. The over-budget verdict and
+ * Estimated) so the wording can't drift between them. The would-exceed verdict and
  * figures are the backend's; this only phrases them (ADR 0002).
  */
 export function formatBudgetWarning(

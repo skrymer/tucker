@@ -31,9 +31,9 @@ import java.time.LocalDate
  * Review and holds all week. It is null only before the first review, and where the
  * review in force carried no Intake Targets (ADR 0024).
  *
- * [overBudget] is the verdict rather than the comparison, so a client cannot
- * disagree with the same day's DayStatus (ADR 0002); it is null when there is
- * nothing to exceed.
+ * [overBudget] is the verdict rather than the comparison, so the boundary is the
+ * backend's (ADR 0002): true past the Budget itself, slightly over included; null
+ * when there is nothing to exceed.
  *
  * [trajectoryKg] is where the active Goal's plan puts the Trend Weight on the day,
  * and takes the intake half's place: it is null throughout with Calorie Tracking

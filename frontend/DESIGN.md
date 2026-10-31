@@ -101,11 +101,13 @@ White cards sit on the pale-green canvas wash and lift with the card shadow;
 | Role    | Hex                   | Use                                    |
 | ------- | --------------------- | -------------------------------------- |
 | Success | `#00A155` (green-600) | on-target day                          |
-| Warning | `#D9922B` (amber)     | estimate flag                          |
+| Warning | `#D9922B` (amber)     | estimate flag, **slightly over**       |
 | Error   | `#E5484D`             | **over budget**, destructive, failures |
 
-Over-budget is the one place the calorie ring leaves green: the arc and centre
-figure switch to **error**, not coral.
+The two over-states are the only places the calorie ring leaves green, and
+never for coral: **slightly over** (past the Budget, within the Tolerance) turns
+the arc **warning**, and **over budget** turns the arc and centre figure
+**error**.
 
 Warning stays `#D9922B` in light mode by choice, though it measures **2.59:1**
 on the white card, under the 3:1 a meaningful mark or large text asks for.
@@ -461,8 +463,16 @@ Calorie Budget exists. Replaces the twin progress-bar block it grew out of.
   **protein** (coral). Each arc's sweep = `consumed / target`, **capped at 100%**
   so an over-target day reads as a full ring, never an overshoot.
 - **Centre** = calories remaining as the big Nunito-800 figure + a quiet
-  `kcal left` label. Over budget → the figure and the calorie arc switch to
-  **error red** and the label reads `kcal over`.
+  `kcal left` label. Three states, set by the backend's day verdict:
+  - **Within the Budget** — green arc, `kcal left`.
+  - **Slightly over** (within the Tolerance) — the calorie arc, its swatch and
+    its meter switch to **warning amber**, and the label reads `kcal over`. The
+    figure stays in the body ink: light amber is under 3:1 (see Status).
+  - **Over budget** — the figure, the calorie arc, its swatch and its meter
+    switch to **error red**, and the label reads `kcal over`.
+
+  The protein arc stays coral in every state.
+
 - **Legend** beside (desktop) / below (phone): two rows — Calories and Protein —
   each one **swatch, title and meter on a single line**, with the figures
   (`1004 / 2140 kcal`, `86 / 186 g`) on their own line beneath. The titles are

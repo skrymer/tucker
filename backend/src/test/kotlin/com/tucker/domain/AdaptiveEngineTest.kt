@@ -267,8 +267,8 @@ class AdaptiveEngineTest {
     }
 
     @Test
-    fun `DailyLog is over budget when intake exceeds the budget even with the floor met`() {
-        val log = DailyLog(day(1), listOf(EstimatedEntry(1, day(1), "Lunch", 2200.0, 150.0)))
+    fun `DailyLog is over budget when intake exceeds the tolerance even with the floor met`() {
+        val log = DailyLog(day(1), listOf(EstimatedEntry(1, day(1), "Lunch", 2300.0, 150.0)))
         assertEquals(
             DayStatus.OVER_BUDGET,
             log.dayStatus(calorieBudgetKcal = 2000.0, proteinFloorG = 140.0),
@@ -276,8 +276,8 @@ class AdaptiveEngineTest {
     }
 
     @Test
-    fun `DailyLog is over budget when intake exceeds the budget with the floor unmet`() {
-        val log = DailyLog(day(1), listOf(EstimatedEntry(1, day(1), "Lunch", 2200.0, 90.0)))
+    fun `DailyLog is over budget when intake exceeds the tolerance with the floor unmet`() {
+        val log = DailyLog(day(1), listOf(EstimatedEntry(1, day(1), "Lunch", 2300.0, 90.0)))
         assertEquals(
             DayStatus.OVER_BUDGET,
             log.dayStatus(calorieBudgetKcal = 2000.0, proteinFloorG = 140.0),
@@ -308,6 +308,33 @@ class AdaptiveEngineTest {
         val log = DailyLog(day(1), listOf(EstimatedEntry(1, day(1), "Lunch", 2000.0, 150.0)))
         assertEquals(
             DayStatus.ON_TARGET,
+            log.dayStatus(calorieBudgetKcal = 2000.0, proteinFloorG = 140.0),
+        )
+    }
+
+    @Test
+    fun `DailyLog is slightly over one calorie past the budget`() {
+        val log = DailyLog(day(1), listOf(EstimatedEntry(1, day(1), "Lunch", 2001.0, 90.0)))
+        assertEquals(
+            DayStatus.SLIGHTLY_OVER,
+            log.dayStatus(calorieBudgetKcal = 2000.0, proteinFloorG = 140.0),
+        )
+    }
+
+    @Test
+    fun `DailyLog is slightly over, not on target, past the budget with the floor met`() {
+        val log = DailyLog(day(1), listOf(EstimatedEntry(1, day(1), "Lunch", 2001.0, 150.0)))
+        assertEquals(
+            DayStatus.SLIGHTLY_OVER,
+            log.dayStatus(calorieBudgetKcal = 2000.0, proteinFloorG = 140.0),
+        )
+    }
+
+    @Test
+    fun `DailyLog is slightly over at exactly the tolerance`() {
+        val log = DailyLog(day(1), listOf(EstimatedEntry(1, day(1), "Lunch", 2200.0, 90.0)))
+        assertEquals(
+            DayStatus.SLIGHTLY_OVER,
             log.dayStatus(calorieBudgetKcal = 2000.0, proteinFloorG = 140.0),
         )
     }

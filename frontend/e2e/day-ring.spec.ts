@@ -29,6 +29,66 @@ const WELL_OVER: SummaryDay = {
   dayStatus: 'over-budget',
 }
 
+/** The same Budget, ~5% past it — within the Tolerance, so slightly over. */
+const SLIGHTLY_OVER: SummaryDay = {
+  ...FRESH_DAY,
+  caloriesConsumed: 1787,
+  proteinConsumed: 150,
+  caloriesRemaining: -85,
+  dayStatus: 'slightly-over',
+}
+
+test('a slightly-over day draws its calorie arc, swatch and meter in the warning ink, its centre figure in the body ink', async ({
+  page,
+  goto,
+  network,
+}) => {
+  network.use(summaryOf(SLIGHTLY_OVER))
+  await goto('/', { waitUntil: 'hydration' })
+
+  // What a token resolves to on this page, in this theme.
+  const colourOf = (token: string) =>
+    page.evaluate((token) => {
+      const probe = document.createElement('span')
+      probe.style.color = `var(${token})`
+      document.body.append(probe)
+      const colour = getComputedStyle(probe).color
+      probe.remove()
+      return colour
+    }, token)
+  const [warning, secondary, highlighted] = await Promise.all([
+    colourOf('--ui-warning'),
+    colourOf('--ui-secondary'),
+    colourOf('--ui-text-highlighted'),
+  ])
+
+  const centre = page.getByText('85', { exact: true })
+  await expect(centre).toBeVisible()
+  await expect(page.getByText('kcal over', { exact: true })).toBeVisible()
+  await expect(centre).toHaveCSS('color', highlighted)
+
+  // The two sweeping arcs, outer (calories) then inner (protein).
+  const arcStroke = (n: number) =>
+    rings(page)
+      .first()
+      .locator('circle[stroke-dashoffset]')
+      .nth(n)
+      .evaluate((arc) => getComputedStyle(arc).stroke)
+  expect(await arcStroke(0)).toBe(warning)
+  expect(await arcStroke(1)).toBe(secondary)
+
+  const caloriesRow = page.getByText('Calories', { exact: true }).locator('..')
+  await expect(caloriesRow.locator('span').first()).toHaveCSS(
+    'background-color',
+    warning,
+  )
+  await expect(
+    page
+      .getByRole('progressbar', { name: 'Calories against the Calorie Budget' })
+      .locator('[data-slot="indicator"]'),
+  ).toHaveCSS('background-color', warning)
+})
+
 for (const [state, summary, figure] of [
   ['a fresh day', FRESH_DAY, '1702'],
   ['a day well over budget', WELL_OVER, '5446'],

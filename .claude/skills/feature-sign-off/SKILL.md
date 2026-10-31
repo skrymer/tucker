@@ -168,9 +168,9 @@ old one overwritten: #498 lost a pitest red and a "91 failed" e2e log that way.
    answering a different criterion than the one filed is UNSOUND and goes to the user
    (#435's denied-camera fix honoured every ADR and contradicted AC6 as written).
    Likewise an item an agent marks "the user's call" goes to the user, never the pack;
-   for a harm against `main` it lists only fixes (#511). The adversary needs no
-   re-check after a correctness fix. A user ruling that adds behaviour, or settles how a criterion
-   is met: `gh issue edit` it in the user's words, re-run A and D (#476) — on top of F, `/check-adrs` and the re-sweep any fix owes (#548).
+   for a harm against `main` it lists only fixes (#511) — a split the next slice closes: hold the deploy, or stack the slices (#581). The adversary needs no
+   re-check after a correctness fix. A user ruling that adds or keeps behaviour, or settles how a criterion
+   is met: `gh issue edit` it in the user's words, show a hand-mutant of the ruled clause red, re-run A and D (#476, #581) — on top of F, `/check-adrs` and the re-sweep any fix owes (#548).
 
    **Gate 2's verdicts do need one, after every later fix** — gate 2's own triage's,
    gate 3's, a gate-5 re-resolution's, a gate-6 fix's: re-run the scoped mutation sweep over the files

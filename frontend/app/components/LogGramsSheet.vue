@@ -8,7 +8,7 @@ type FoodResponse = components['schemas']['FoodResponse']
 
 const props = defineProps<{
   food: FoodResponse | null
-  /** Over-budget heads-up for the entry being composed; null/absent when within budget. */
+  /** Budget Projection heads-up for the entry being composed; null/absent when within budget. */
   warning?: BudgetWarning | null
   /** True while the budget projection or the save is in flight, to lock the action. */
   pending?: boolean
