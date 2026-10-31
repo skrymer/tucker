@@ -56,7 +56,10 @@ Find elements the way a user or assistive technology would. Prefer, in order:
 
 `getBy*` throws when absent; `queryBy*` returns `null` (use for "is not there"
 assertions); `findBy*` is async (use to wait for something to appear). Scope to
-a region with `within(...)` rather than reaching for test ids.
+a region with `within(...)` rather than reaching for test ids. Scoping a page-wide
+`getByRole` into `within(region)` drops its implicit "exactly one on the page" — keep it
+with `getAllByRole(...).toHaveLength(1)` where it mattered: #585 scoped a Retry query to
+the failed card, and only a mutant giving a second card a Retry showed the loss.
 
 ## Interactions
 

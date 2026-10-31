@@ -138,7 +138,12 @@ first listed only "the tokens, the root size and the theme", and its audit found
 with a labelled fetch shim (a status, a network error, a hold), not a real-provider
 value that happens to fail differently: #454's "404 miss" timed out instead. Install
 it once per page load — keep the real `fetch` on `window` and toggle flags after; a
-second install wraps the first and recurses. **Reload before reading the page again**
+second install wraps the first and recurses. A fail-then-recover probe races two things:
+ofetch retries a failed GET once by itself, so an error row lands seconds late, and the
+page refetches on its own (focus), so a recovery can arrive without Retry. Poll for each
+state rather than sleeping, and lift the shim and click Retry in one `javascript_tool`
+call — #585's "Retry finds tomorrow empty" was split across calls three times and went
+undriven. **Reload before reading the page again**
 after a shim or a write made straight to the API: neither re-reads the page's data, so
 a stale row there is not a finding until a fresh page shows it (#434 chased one twice). **A
 refactor claiming no behaviour change is proved against main on the same data**: build

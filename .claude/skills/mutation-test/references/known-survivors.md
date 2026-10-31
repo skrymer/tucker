@@ -1901,6 +1901,23 @@ none*. New:
   note it renders an empty `<p>`, zero-height under Tailwind's preflight and skipped by
   assistive tech.
 
+### Content cards on Today (#585) — frontend 109 of 137 (Stryker), hand-mutants 32 of 38
+
+`ContentCard.vue` and `GoalProgressHeading.vue` are template-only (0 script mutants), so
+the band is pinned by hand-mutants. Four were real gaps, now tested: DayList's Retry
+emit, the page's Tomorrow and Goal `@retry` wiring, and DayList handing its `day` to the
+card as the subject. The two left:
+
+- **ContentCard's icon `aria-hidden="true"` removed — equivalent**: UIcon renders
+  `aria-hidden="true"` itself; ContentCard.test asserts the attribute and stays green.
+- **`DayChoice.vue`'s today icon swapped for tomorrow's — survives, as on `main`**: no test
+  on `main` asserts the sun or sunrise either (`RELATIVE_DAYS.*.icon` was as unasserted).
+  Not navigation.test's "destinations' icon names" policy, which is scoped to the nav. The
+  card subjects' own icons are pinned by `contentCard.test.ts`'s DESIGN.md sync and the
+  band e2e (`e2e/content-card.spec.ts`).
+- `pages/index.vue`'s 13 script survivors (7 Survived, 6 NoCoverage at lines 55, 61, 72-80,
+  105, 115) are identical on `main` — the untriaged entry above, code unmoved.
+
 ### Noise removed at the source
 
 Four `getLog()` companion accessors (`MartijndwarsWebPushSender`, `RecordingWebPushSender`,

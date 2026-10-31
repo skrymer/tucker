@@ -52,6 +52,11 @@ page.getByRole("dialog");
 page.getByRole("alert");
 ```
 
+A string `name` without `exact: true` is a **case-insensitive substring** match. When a
+rename leaves the new name a prefix of the old one, the old element still satisfies the
+locator: a heading renamed "Goal progress" → "Goal" passes `{ name: "Goal" }` either way,
+so assert the new name with `exact: true` (#585's smoke did not, until gate 5).
+
 ### getByLabel
 
 For form elements with associated labels.
