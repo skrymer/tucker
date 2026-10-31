@@ -25,20 +25,22 @@ data class DailyLog(
 
     /**
      * The day's earned [DayStatus] against [calorieBudgetKcal] and [proteinFloorG].
-     * Over budget wins unconditionally — it is real the moment it happens; a met
-     * Protein Floor under budget is on-target; anything else is still in progress.
+     * The two over-states come from [BudgetVerdict] and win unconditionally — they
+     * are real the moment they happen; a met Protein Floor within the Budget is
+     * on-target; anything else is still in progress.
      */
-    fun dayStatus(calorieBudgetKcal: Double, proteinFloorG: Double): DayStatus = when {
-        caloriesConsumed() > calorieBudgetKcal -> DayStatus.OVER_BUDGET
-        proteinConsumed() >= proteinFloorG -> DayStatus.ON_TARGET
-        else -> DayStatus.IN_PROGRESS
-    }
+    fun dayStatus(calorieBudgetKcal: Double, proteinFloorG: Double): DayStatus =
+        when (BudgetVerdict.of(caloriesConsumed(), calorieBudgetKcal)) {
+            BudgetVerdict.OVER_BUDGET -> DayStatus.OVER_BUDGET
+            BudgetVerdict.SLIGHTLY_OVER -> DayStatus.SLIGHTLY_OVER
+            BudgetVerdict.WITHIN_BUDGET ->
+                if (proteinConsumed() >= proteinFloorG) DayStatus.ON_TARGET else DayStatus.IN_PROGRESS
+        }
 
     /**
      * A [BudgetProjection]: the would-be state of this day if [prospective] were also
-     * logged. The over-budget verdict reuses [dayStatus] against the day's existing
-     * Entries plus the prospective one, so the forecast and the realized verdict can
-     * never disagree. With no budget yet ([calorieBudgetKcal] null, before the first
+     * logged. It warns past the Calorie Budget itself, not the Tolerance, so the
+     * heads-up comes before the first calorie over. With no budget yet ([calorieBudgetKcal] null, before the first
      * WeeklyReview) there is nothing to exceed — the projection reports the running
      * total only.
      */
@@ -52,7 +54,7 @@ data class DailyLog(
         if (calorieBudgetKcal == null || proteinFloorG == null) {
             return BudgetProjection(false, projectedConsumed, overByKcal = null)
         }
-        val wouldExceed = projected.dayStatus(calorieBudgetKcal, proteinFloorG) == DayStatus.OVER_BUDGET
+        val wouldExceed = projectedConsumed > calorieBudgetKcal
         return BudgetProjection(
             wouldExceedBudget = wouldExceed,
             projectedCaloriesConsumed = projectedConsumed,

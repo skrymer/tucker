@@ -26,6 +26,12 @@ export function dayStatusVerdict(
         icon: 'i-lucide-circle-check',
         class: 'text-success',
       }
+    case 'slightly-over':
+      return {
+        label: 'Slightly over',
+        icon: 'i-lucide-circle-alert',
+        class: 'text-warning',
+      }
     case 'over-budget':
       return {
         label: 'Over budget',

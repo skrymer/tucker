@@ -323,7 +323,9 @@ const calendarDay = ref('2026-10-08')
       <h2 class="text-h2 text-highlighted">Signature · the Ring</h2>
       <p class="-mt-2 text-sm text-muted">
         The live <code class="text-default">DayRing</code> component — under
-        budget, then over (the calorie arc + centre turn to error red).
+        budget; slightly over, within the Tolerance (the calorie arc turns
+        warning amber, the centre stays in the body ink); then over budget (the
+        calorie arc and centre turn error red).
       </p>
       <UCard>
         <DayRing
@@ -332,6 +334,17 @@ const calendarDay = ref('2026-10-08')
           :calories-remaining="1136"
           :protein-consumed="86"
           :protein-floor="186"
+          day-status="in-progress"
+        />
+      </UCard>
+      <UCard>
+        <DayRing
+          :calories-consumed="2200"
+          :calorie-budget="2140"
+          :calories-remaining="-60"
+          :protein-consumed="190"
+          :protein-floor="186"
+          day-status="slightly-over"
         />
       </UCard>
       <UCard>
@@ -341,7 +354,18 @@ const calendarDay = ref('2026-10-08')
           :calories-remaining="-360"
           :protein-consumed="205"
           :protein-floor="186"
+          day-status="over-budget"
         />
+      </UCard>
+      <p class="text-sm text-muted">
+        The day verdict beneath the ring — word, icon and colour together.
+      </p>
+      <UCard>
+        <div class="flex flex-wrap gap-6">
+          <DayVerdict status="on-target" />
+          <DayVerdict status="slightly-over" />
+          <DayVerdict status="over-budget" />
+        </div>
       </UCard>
     </div>
 

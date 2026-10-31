@@ -69,7 +69,7 @@ class OpenApiDiscriminatorTest {
     @Test
     fun `a status lists the wire values it sends, not its constant names`() {
         assertEquals(
-            setOf("on-target", "over-budget", "in-progress"),
+            setOf("on-target", "slightly-over", "over-budget", "in-progress"),
             enumOf("DailySummaryResponse", "dayStatus"),
             "The day verdict the frontend maps in dayStatusVerdict.",
         )

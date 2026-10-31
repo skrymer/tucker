@@ -87,6 +87,29 @@ describe('/design', () => {
     ).toEqual(['Back', 'Close'])
   })
 
+  it('shows the live Day Ring under, slightly over and over budget, and the three day verdicts', async () => {
+    await renderSuspended(Design)
+
+    const ringSection = within(
+      screen
+        .getByRole('heading', { name: 'Signature · the Ring' })
+        .closest('div')!,
+    )
+    expect(
+      ringSection
+        .getAllByText(/^kcal (left|over)$/)
+        .map((label) => label.previousElementSibling!.textContent!.trim()),
+    ).toEqual(['1136', '60', '360'])
+    expect(
+      ringSection.getAllByText(/^kcal (left|over)$/).map((l) => l.textContent),
+    ).toEqual(['kcal left', 'kcal over', 'kcal over'])
+    expect(
+      ringSection
+        .getAllByText(/^(On target|Slightly over|Over budget)$/)
+        .map((pill) => pill.textContent!.trim()),
+    ).toEqual(['On target', 'Slightly over', 'Over budget'])
+  })
+
   it('shows the one calendar with both marks, their legend and a bounded range', async () => {
     await renderSuspended(Design)
 

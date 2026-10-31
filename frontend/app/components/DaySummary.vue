@@ -35,18 +35,11 @@ const heldNote = computed(() =>
         :calories-remaining="summary.caloriesRemaining ?? 0"
         :protein-consumed="summary.proteinConsumed"
         :protein-floor="summary.proteinFloor ?? 1"
+        :day-status="summary.dayStatus"
       />
 
       <div v-if="verdict" class="mt-6 border-t border-default pt-3">
-        <p
-          :class="[
-            'flex items-center gap-2 text-sm font-medium',
-            verdict.class,
-          ]"
-        >
-          <UIcon :name="verdict.icon" class="size-4" aria-hidden />
-          {{ verdict.label }}
-        </p>
+        <DayVerdict :status="summary.dayStatus" />
       </div>
 
       <p

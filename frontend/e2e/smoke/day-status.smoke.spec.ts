@@ -4,14 +4,15 @@ import { todayIso } from '../support/date'
 // Earned day-status smoke (issue #104): the verdict on /today against the real
 // backend. DaySummary shows a verdict only once it's earned — nothing for a
 // fresh in-progress day, green "On target" once the Protein Floor is met within
-// the Calorie Budget, and red "Over budget" the moment intake passes the Budget
-// (which wins even with the Floor still met). No /api mocks: we complete setup
+// the Calorie Budget, amber "Slightly over" once intake passes the Budget but
+// stays within the Tolerance, and red "Over budget" past the Tolerance (both
+// over-states win even with the Floor still met). No /api mocks: we complete setup
 // to get a Budget + Floor, read them, then log Estimated entries through the API
-// to drive the day through all three states. The per-test reset (smoke-test.ts)
+// to drive the day through all four states. The per-test reset (smoke-test.ts)
 // wipes the seeded review + entries afterwards, so no cleanup is needed.
 const API = 'http://localhost:8080/api'
 
-test('the day verdict goes from none to on target to over budget as entries land', async ({
+test('the day verdict goes from none to on target to slightly over to over budget as entries land', async ({
   page,
   goto,
   request,
@@ -68,13 +69,29 @@ test('the day verdict goes from none to on target to over budget as entries land
   await expect(page.getByText('On target')).toBeVisible()
   await expect(page.getByText('Over budget')).toHaveCount(0)
 
-  // Log another Estimated entry that pushes intake past the Budget — over budget
-  // wins outright, even though the Floor is still met.
+  // Push intake ~5% past the Budget — within the Tolerance, so slightly over,
+  // and not on target even though the Floor is still met.
+  const slightlyOverEntry = await request.post(`${API}/entries/estimated`, {
+    data: {
+      date: today,
+      label: 'slightly-over snack',
+      calories: Math.round(budget * 0.55),
+      protein: 0,
+    },
+  })
+  expect(slightlyOverEntry.ok()).toBe(true)
+
+  await goto('/', { waitUntil: 'hydration' })
+  await expect(page.getByText('Slightly over')).toBeVisible()
+  await expect(page.getByText('On target')).toHaveCount(0)
+  await expect(page.getByText('Over budget')).toHaveCount(0)
+
+  // Another ~10% takes the day past the Tolerance — over budget.
   const overBudgetEntry = await request.post(`${API}/entries/estimated`, {
     data: {
       date: today,
       label: 'over-budget snack',
-      calories: Math.round(budget * 0.7),
+      calories: Math.round(budget * 0.1),
       protein: 0,
     },
   })
@@ -82,5 +99,6 @@ test('the day verdict goes from none to on target to over budget as entries land
 
   await goto('/', { waitUntil: 'hydration' })
   await expect(page.getByText('Over budget')).toBeVisible()
+  await expect(page.getByText('Slightly over')).toHaveCount(0)
   await expect(page.getByText('On target')).toHaveCount(0)
 })
