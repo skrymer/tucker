@@ -118,14 +118,26 @@ A green or final-suite citation follows the same timing: written after the run's
 line is read, at the path the log actually sits at, and naming every `--last-failed` log a
 suite needed to converge. #551's pack cited a smoke log before the run started, at a path
 it was never written to, and that log read "29 failed".
+A claim that something is **absent** — no section, no file, no element — enters the pack
+only after a command that would have found it: case-insensitive, multi-line where markup
+can span lines, run by the author whoever made the claim. #585 copied three false ones:
+a ledger's `sed '/[Oo]ut of scope/'` missed PRD #584's `## Out of Scope`, "there is no
+`today.vue`" was never listed, and an agent's single-line grep called three files with a
+multi-line `<UCard` empty. And a quote a dismissal rests on is never elided across the
+rule's ground: #585 quoted a carve-out as "it belongs to a card … so it stands on its own",
+and the elided "whose own control still works" was exactly what the case lacked.
 
 **One row per remedy, and a ruling covers only what its question named.** Every pack
 row is `| id | agent | finding | remedy (one) | resolution |`, and a finding that
 proposes two remedies is split into two rows *before* any resolution is written — so
 the one not adopted cannot hide under FIXED, or under a dismissal that answers only the
-other. Prose alone did not hold this: #445 and #476 each recorded a half-adopted remedy
-as FIXED, and #469 broke it three ways in one run (a dismissal answering one of two
-remedies, a FIXED row with half a remedy taken, a row holding "merge or fold"). A row
+other. Prose alone did not hold this (#445, #476, #469; #585's round 1 rejected 10 of 69
+rows, every one breaking a rule in this file), so **check the pack mechanically before
+launching gate 5**: `awk -F'|' 'NF>6 && $5 ~ /(^|[ (])or /' pack.md` lists every row whose
+remedy cell still holds two remedies (split them); every row a later row re-answers reads
+SUPERSEDED or re-recorded in its resolution cell; and each agent's row count equals the
+attacks, tail items or table rows its handback holds (count them in the transcript, not
+the pack). A row
 citing the user's ruling quotes the question as asked; an item the question did not
 name is asked again, so write the ruling question from every clause of the finding. A
 ruling never answers a later gate's alternative either — that is asked again too — and a
