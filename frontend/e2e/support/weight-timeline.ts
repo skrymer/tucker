@@ -42,36 +42,50 @@ function intakeLine(day: {
 }
 
 /**
- * How many of the chart's marks are filled in each bar colour. Only a browser
- * computes a fill — the chart is `aria-hidden` and happy-dom resolves no `var()` —
- * and each token is resolved on a probe inside the chart, so the light or dark
- * value is whichever the bars actually inherit.
+ * How many of the chart's marks are filled in each of [colours], by key. Only a
+ * browser computes a fill — the chart is `aria-hidden` and happy-dom resolves no
+ * `var()` — and each colour is resolved on a probe inside the chart, so the light
+ * or dark value is whichever the marks actually inherit.
  */
-export function barFills(section: Locator) {
+export function fillCounts<K extends string>(
+  section: Locator,
+  colours: Record<K, string>,
+): Promise<Record<K, number>> {
   return section
     .locator('svg')
     .first()
-    .evaluate((svg) => {
-      const fillOf = (colour: string) => {
-        const probe = document.createElementNS(
-          'http://www.w3.org/2000/svg',
-          'rect',
+    .evaluate(
+      (svg, wanted) => {
+        const fills = [...svg.querySelectorAll('path')].map(
+          (path) => getComputedStyle(path).fill,
         )
-        probe.style.fill = colour
-        svg.appendChild(probe)
-        const fill = getComputedStyle(probe).fill
-        probe.remove()
-        return fill
-      }
-      const fills = [...svg.querySelectorAll('path')].map(
-        (path) => getComputedStyle(path).fill,
-      )
-      const count = (colour: string) =>
-        fills.filter((fill) => fill === fillOf(colour)).length
-      return {
-        within: count('var(--tucker-timeline-intake)'),
-        slightlyOver: count('var(--ui-warning)'),
-        over: count('var(--ui-error)'),
-      }
-    })
+        const counts: Record<string, number> = {}
+        for (const [key, colour] of Object.entries(wanted)) {
+          const probe = document.createElementNS(
+            'http://www.w3.org/2000/svg',
+            'rect',
+          )
+          probe.style.fill = colour
+          svg.appendChild(probe)
+          const resolved = getComputedStyle(probe).fill
+          probe.remove()
+          counts[key] = fills.filter((fill) => fill === resolved).length
+        }
+        return counts
+      },
+      colours as Record<string, string>,
+    ) as Promise<Record<K, number>>
+}
+
+/**
+ * How many bars are drawn in each verdict's colour. The tokens mirror
+ * `INTAKE_COLOR`, `SLIGHTLY_OVER_COLOR` and `OVER_BUDGET_COLOR` in
+ * app/utils/weightTimeline.ts, which a Playwright spec cannot import; keep them in sync.
+ */
+export function barFills(section: Locator) {
+  return fillCounts(section, {
+    within: 'var(--tucker-timeline-intake)',
+    slightlyOver: 'var(--ui-warning)',
+    over: 'var(--ui-error)',
+  })
 }

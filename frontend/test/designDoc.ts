@@ -18,6 +18,16 @@ export function designSection(heading: string): string {
   return body.split(new RegExp(`^#{1,${level}} `, 'm'))[0]!
 }
 
+/** The cell at [column] of the table row in [section] whose first cell starts with [row], backticks stripped. */
+export function tableCell(
+  section: string,
+  row: string,
+  column: number,
+): string | undefined {
+  const line = section.split('\n').find((it) => it.startsWith(`| ${row}`))
+  return line?.split('|')[column]?.replace(/`/g, '').trim()
+}
+
 /** A rem length in the px DESIGN.md writes: `1.5rem` → `24px`. */
 export function remToPx(rem: string): string {
   return `${Number.parseFloat(rem) * 16}px`

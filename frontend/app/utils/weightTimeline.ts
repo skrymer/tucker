@@ -22,6 +22,15 @@ export const OVER_BUDGET_COLOR = 'var(--ui-error)'
 export const BUDGET_COLOR = 'var(--ui-text-muted)'
 export const UNLOGGED_COLOR = 'var(--ui-text-dimmed)'
 
+const VERDICT_COLOR: Record<
+  NonNullable<TimelineDay['budgetVerdict']>,
+  string
+> = {
+  'within-budget': INTAKE_COLOR,
+  'slightly-over': SLIGHTLY_OVER_COLOR,
+  'over-budget': OVER_BUDGET_COLOR,
+}
+
 /**
  * The Goal's planned trajectory, and the diamond marking where it runs off the
  * plot. A hue of the chart's own rather than a neutral role: the plan threads
@@ -423,10 +432,7 @@ function intakeAccessors(scale: () => TimelineScale | null) {
     intakeColor: (day: TimelineDay) => {
       if (day.caloriesKcal == null) return UNLOGGED_COLOR
       // The verdict the backend stated, never a comparison made here (ADR 0002).
-      if (day.budgetVerdict === 'slightly-over') return SLIGHTLY_OVER_COLOR
-      return day.budgetVerdict === 'over-budget'
-        ? OVER_BUDGET_COLOR
-        : INTAKE_COLOR
+      return VERDICT_COLOR[day.budgetVerdict ?? 'within-budget']
     },
     // A day's bar, undefined throughout with Calorie Tracking off so that no bar
     // is drawn at all. Within a tracking window every day has a mark: a day with

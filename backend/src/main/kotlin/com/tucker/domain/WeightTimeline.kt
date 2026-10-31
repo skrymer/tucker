@@ -109,20 +109,18 @@ class TimelineIntake(
         ?.calorieBudgetKcal
 
     /**
-     * How [date]'s calories grade against its Budget, or null when there is nothing
-     * to grade. Graded by [BudgetVerdict.of], unrounded, so the bar turns at the same
-     * calorie the day's own [DayStatus] does.
+     * The verdict is graded by [BudgetVerdict.of], unrounded, so the bar turns at the
+     * same calorie the day's own [DayStatus] does; null when there is nothing to grade.
      */
-    fun budgetVerdictOn(date: LocalDate): BudgetVerdict? {
-        val budget = budgetOn(date) ?: return null
-        return caloriesOn(date)?.let { BudgetVerdict.of(it, budget) }
+    override fun drawOn(day: WeightTimelineDay): WeightTimelineDay {
+        val calories = caloriesOn(day.date)
+        val budget = budgetOn(day.date)
+        return day.copy(
+            caloriesKcal = calories,
+            calorieBudgetKcal = budget,
+            budgetVerdict = if (calories == null || budget == null) null else BudgetVerdict.of(calories, budget),
+        )
     }
-
-    override fun drawOn(day: WeightTimelineDay) = day.copy(
-        caloriesKcal = caloriesOn(day.date),
-        calorieBudgetKcal = budgetOn(day.date),
-        budgetVerdict = budgetVerdictOn(day.date),
-    )
 
     /**
      * Counted off the days actually drawn rather than off the log: a day logged

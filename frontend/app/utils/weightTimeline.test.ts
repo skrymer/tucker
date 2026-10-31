@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { designSection } from '../../test/designDoc'
+import { designSection, tableCell } from '../../test/designDoc'
 import {
   BUDGET_COLOR,
   INTAKE_COLOR,
@@ -159,7 +159,11 @@ describe('weightTimelineSeries', () => {
 })
 
 describe('weightTimelineSeries — the intake half', () => {
-  const days = withIntake(timelineDays([80.4, null, 80.2]), [2000, null, 1000])
+  const days = withIntake(timelineDays([80.4, null, 80.2]), [
+    [2000, 'over-budget'],
+    null,
+    1000,
+  ])
   const tracked = weightTimeline({ days, evidence: intakeEvidence(2) })
   const series = seriesFor(tracked)
 
@@ -668,19 +672,14 @@ describe("DESIGN.md's Weight Timeline series table", () => {
     '### The Weight Timeline — a line and the readings under it',
   )
 
-  /** The Token cell of the row whose Series cell starts with [series]. */
-  function tokenOf(series: string): string | undefined {
-    const row = table.split('\n').find((line) => line.startsWith(`| ${series}`))
-    return row?.split('|')[2]?.replace(/`/g, '').trim()
-  }
-
   it.each([
     ['Calories', INTAKE_COLOR],
     ['— within the Tolerance', SLIGHTLY_OVER_COLOR],
     ['— over the Budget', OVER_BUDGET_COLOR],
     ['— no **Entry**', UNLOGGED_COLOR],
   ])('names the token the %s bar is drawn in', (series, colour) => {
-    expect(`var(${tokenOf(series)})`).toBe(colour)
+    // The Token column, the second cell after the leading pipe.
+    expect(`var(${tableCell(table, series, 2)})`).toBe(colour)
   })
 })
 

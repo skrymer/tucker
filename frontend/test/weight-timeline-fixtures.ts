@@ -123,35 +123,31 @@ export function withPlan(
   }))
 }
 
+type BudgetVerdict = NonNullable<WeightTimelineDayResponse['budgetVerdict']>
+
 /**
  * The same days given an intake half: [calories] positionally, null where nothing
- * was logged, all read against one [budgetKcal].
+ * was logged, all read against one [budgetKcal]. The verdict is stated, never
+ * graded here: a bare figure reads `within-budget`, and a `[kcal, verdict]` pair
+ * states any other.
  */
 export function withIntake(
   days: Required<WeightTimelineDayResponse>[],
-  calories: (number | null)[],
+  calories: (number | readonly [number, BudgetVerdict] | null)[],
   budgetKcal: number | null = 1800,
 ): Required<WeightTimelineDayResponse>[] {
   return days.map((day, index) => {
-    const caloriesKcal = calories[index] ?? null
+    const logged = calories[index] ?? null
+    const [caloriesKcal, verdict] =
+      typeof logged === 'number'
+        ? [logged, 'within-budget' as const]
+        : (logged ?? [null, null])
     return {
       ...day,
       caloriesKcal,
       calorieBudgetKcal: budgetKcal,
-      // The backend states the verdict (ADR 0002); the fixture mirrors its rule.
       budgetVerdict:
-        caloriesKcal != null && budgetKcal != null
-          ? verdictOf(caloriesKcal, budgetKcal)
-          : null,
+        caloriesKcal != null && budgetKcal != null ? verdict : null,
     }
   })
-}
-
-/** BudgetVerdict.of's rule: past the Budget is slightly over, past 110% over. */
-function verdictOf(
-  caloriesKcal: number,
-  budgetKcal: number,
-): NonNullable<WeightTimelineDayResponse['budgetVerdict']> {
-  if (caloriesKcal > budgetKcal * 1.1) return 'over-budget'
-  return caloriesKcal > budgetKcal ? 'slightly-over' : 'within-budget'
 }
