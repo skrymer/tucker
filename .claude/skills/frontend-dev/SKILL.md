@@ -322,6 +322,11 @@ How the moves land in Vue (ADR 0004):
   keyed read every catalog mutation refreshes directly (`useFoodCatalog` /
   `refreshFoodCatalog`); an event passed up through parents that only relay it is a
   Middle Man. `changed` is for data the page alone holds.
+- **A parent wrapper that re-checks a child's own `v-if` is duplication** — when the
+  child has a single `v-if` root, pass the wrapper's classes to the child as attributes
+  and delete the wrapper: fallthrough lands them on the root, and skips the comment node
+  a false `v-if` leaves, so nothing draws. #581's DaySummary divider on `DayVerdict`;
+  gate 5 rejected "the child would need a prop for it".
 - `vue/max-lines-per-block` counts comments; when it fires on a well-commented file the
   answer is still a component boundary, not fewer comments.
 
