@@ -168,22 +168,56 @@ class WeightTimelineTest {
     }
 
     @Test
-    fun `a day says whether it went over the Budget it was read against`() {
-        // The verdict is the backend's, on the unrounded rule DailyLog already uses
-        // for a day's own DayStatus, so the chart and Today cannot disagree about
-        // the same day.
+    fun `a day with no Entry or no Budget has no verdict`() {
+        val firstReview = from.plusDays(7)
         val intake = TimelineIntake(
-            caloriesByDay = mapOf(to to 1800.4, to.minusDays(1) to 1800.0),
+            caloriesByDay = mapOf(from to 2500.0, to to 1700.0),
+            reviews = listOf(review(firstReview, budgetKcal = 1800.0)),
+        )
+
+        val timeline = WeightTimeline.of(from, to, daily(*DoubleArray(28) { 80.0 })) { intake }!!
+
+        val verdicts = timeline.days.associate { it.date to it.budgetVerdict }
+        // Logged before any Budget was in force: nothing to have exceeded.
+        assertNull(verdicts[from])
+        // A Budget in force but no Entry.
+        assertNull(verdicts[to.minusDays(1)])
+        assertEquals(BudgetVerdict.WITHIN_BUDGET, verdicts[to])
+    }
+
+    @Test
+    fun `a day past its Budget but within the Tolerance is slightly over`() {
+        val intake = TimelineIntake(
+            caloriesByDay = mapOf(to to 1980.0),
             reviews = listOf(review(from, budgetKcal = 1800.0)),
         )
 
         val timeline = WeightTimeline.of(from, to, daily(*DoubleArray(28) { 80.0 })) { intake }!!
 
-        val verdicts = timeline.days.associate { it.date to it.overBudget }
-        assertEquals(true, verdicts[to])
-        assertEquals(false, verdicts[to.minusDays(1)])
-        // There is nothing to have exceeded on a day with no Entry.
-        assertNull(verdicts[to.minusDays(2)])
+        assertEquals(BudgetVerdict.SLIGHTLY_OVER, timeline.days.last().budgetVerdict)
+    }
+
+    @Test
+    fun `a day's bar and its own status grade the same calories alike at every boundary`() {
+        // At the Budget, one past it, exactly 110% and one past that. Protein is unmet
+        // throughout, so a day within the Budget is in progress on Today and still a
+        // within-budget bar: the bar is calories alone.
+        val expected = mapOf(
+            1800.0 to (BudgetVerdict.WITHIN_BUDGET to DayStatus.IN_PROGRESS),
+            1800.4 to (BudgetVerdict.SLIGHTLY_OVER to DayStatus.SLIGHTLY_OVER),
+            1980.0 to (BudgetVerdict.SLIGHTLY_OVER to DayStatus.SLIGHTLY_OVER),
+            1980.4 to (BudgetVerdict.OVER_BUDGET to DayStatus.OVER_BUDGET),
+        )
+        val days = expected.keys.mapIndexed { i, kcal -> to.minusDays(i.toLong()) to kcal }.toMap()
+        val intake = TimelineIntake(days, reviews = listOf(review(from, budgetKcal = 1800.0)))
+
+        val timeline = WeightTimeline.of(from, to, daily(*DoubleArray(28) { 80.0 })) { intake }!!
+
+        val graded = days.map { (date, kcal) ->
+            val log = DailyLog(date, listOf(EstimatedEntry(1, date, "dinner", kcal, 0.0)))
+            kcal to (timeline.days.single { it.date == date }.budgetVerdict to log.dayStatus(1800.0, 150.0))
+        }.toMap()
+        assertEquals(expected, graded)
     }
 
     @Test

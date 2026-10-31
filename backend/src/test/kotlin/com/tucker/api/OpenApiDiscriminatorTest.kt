@@ -74,6 +74,11 @@ class OpenApiDiscriminatorTest {
             "The day verdict the frontend maps in dayStatusVerdict.",
         )
         assertEquals(
+            setOf("within-budget", "slightly-over", "over-budget"),
+            enumOf("WeightTimelineDayResponse", "budgetVerdict"),
+            "The Weight Timeline's calorie verdict the frontend colours each bar by.",
+        )
+        assertEquals(
             setOf("holding", "drifting-up", "drifting-down", "gathering-data"),
             enumOf("DailySummaryResponse", "driftStatus"),
             "The Drift Status the frontend maps in driftBadge (ADR 0008).",

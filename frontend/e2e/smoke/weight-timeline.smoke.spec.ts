@@ -1,7 +1,7 @@
 import type { APIRequestContext } from '@playwright/test'
 import { test, expect } from './support/smoke-test'
 import { isoShiftDays, todayIso } from '../support/date'
-import { timelineLine } from '../support/weight-timeline'
+import { barFills, timelineLine } from '../support/weight-timeline'
 
 // A Weight Timeline against the real backend. Seeds readings — and, for the
 // second test, a log and two Weekly Reviews — over the API, asserts what the
@@ -19,6 +19,7 @@ type TimelineDay = {
   trendKg: number
   caloriesKcal: number | null
   calorieBudgetKcal: number | null
+  budgetVerdict: 'within-budget' | 'slightly-over' | 'over-budget' | null
   trajectoryKg: number | null
 }
 
@@ -201,6 +202,46 @@ test('a weight-only User is shown the plan they set, and none once they drop it'
     section.getByRole('heading', { name: 'Your weight' }),
   ).toBeVisible()
   await expect(section.getByText('Plan', { exact: true })).toBeHidden()
+})
+
+test('a day slightly over its Budget is drawn in the warning ink', async ({
+  page,
+  goto,
+  request,
+}) => {
+  const today = todayIso()
+  const YESTERDAY = isoShiftDays(today, -1)
+
+  await request.put(`${API}/profile`, {
+    data: { sex: 'MALE', birthDate: '1990-06-15', heightCm: 180 },
+  })
+  await fortyDaysOnTheScale(request, today, isoShiftDays(today, -35))
+  // A review a week back sets the Budget; minted by reading that day's summary,
+  // as above.
+  const opened = await request.get(
+    `${API}/summary?date=${isoShiftDays(today, -7)}`,
+  )
+  expect(opened.status()).toBe(200)
+
+  // Read back rather than computed here: the Budget is the backend's figure.
+  const before = await timeline(request, 28, today)
+  const budget = before.days.find(
+    (day) => day.date === YESTERDAY,
+  )!.calorieBudgetKcal!
+  // Five percent over: past the Budget, inside the Tolerance.
+  await ate(request, YESTERDAY, Math.round(budget * 1.05))
+
+  const drawn = await timeline(request, 28, today)
+  expect(drawn.days.find((day) => day.date === YESTERDAY)?.budgetVerdict).toBe(
+    'slightly-over',
+  )
+
+  await goto('/review', { waitUntil: 'hydration' })
+
+  const section = page.getByRole('region', { name: 'Your weight' })
+  await expect
+    .poll(() => barFills(section))
+    .toEqual({ within: 0, slightlyOver: 1, over: 0 })
 })
 
 test('each day is drawn against the Budget in force on it, and an unlogged one is marked', async ({

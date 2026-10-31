@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { designSection } from '../../test/designDoc'
 import {
   BUDGET_COLOR,
   INTAKE_COLOR,
   OVER_BUDGET_COLOR,
   READING_COLOR,
+  SLIGHTLY_OVER_COLOR,
   TRAJECTORY_COLOR,
   TREND_COLOR,
   UNLOGGED_COLOR,
@@ -394,7 +396,7 @@ describe('weightTimelineSeries — the intake half', () => {
       timelineDay({
         caloriesKcal: 900,
         calorieBudgetKcal: 1800,
-        overBudget: true,
+        budgetVerdict: 'over-budget',
       }),
     ]
     const timeline = weightTimeline({
@@ -404,6 +406,23 @@ describe('weightTimelineSeries — the intake half', () => {
     const series = seriesFor(timeline)
 
     expect(series.intakeColor(stated[0]!)).toBe(OVER_BUDGET_COLOR)
+  })
+
+  it('colours a day slightly over its Budget in the warning ink, apart from both neighbours', () => {
+    const stated = [
+      timelineDay({
+        caloriesKcal: 1900,
+        calorieBudgetKcal: 1800,
+        budgetVerdict: 'slightly-over',
+      }),
+    ]
+    const series = seriesFor(
+      weightTimeline({ days: stated, evidence: intakeEvidence(1) }),
+    )
+
+    expect(series.intakeColor(stated[0]!)).toBe(SLIGHTLY_OVER_COLOR)
+    expect(SLIGHTLY_OVER_COLOR).not.toBe(INTAKE_COLOR)
+    expect(SLIGHTLY_OVER_COLOR).not.toBe(OVER_BUDGET_COLOR)
   })
 
   it('draws a bigger day taller, and keeps every bar clear of the weight band', () => {
@@ -642,6 +661,29 @@ describe('weightTimelineReadouts', () => {
   })
 })
 
+// DESIGN.md's series table names the token each bar state is drawn in; this is the
+// executable link between it and the colours the chart uses.
+describe("DESIGN.md's Weight Timeline series table", () => {
+  const table = designSection(
+    '### The Weight Timeline — a line and the readings under it',
+  )
+
+  /** The Token cell of the row whose Series cell starts with [series]. */
+  function tokenOf(series: string): string | undefined {
+    const row = table.split('\n').find((line) => line.startsWith(`| ${series}`))
+    return row?.split('|')[2]?.replace(/`/g, '').trim()
+  }
+
+  it.each([
+    ['Calories', INTAKE_COLOR],
+    ['— within the Tolerance', SLIGHTLY_OVER_COLOR],
+    ['— over the Budget', OVER_BUDGET_COLOR],
+    ['— no **Entry**', UNLOGGED_COLOR],
+  ])('names the token the %s bar is drawn in', (series, colour) => {
+    expect(`var(${tokenOf(series)})`).toBe(colour)
+  })
+})
+
 // unovis draws its axes and crosshair from its own custom properties, and themes
 // them off `html[data-theme="dark"]` — which Tucker's `html.dark` does not match.
 // So its charts are styled once, from Tucker's own theme-aware tokens, in a block
@@ -704,6 +746,7 @@ describe('the unovis chart theming', () => {
       TREND_COLOR,
       READING_COLOR,
       INTAKE_COLOR,
+      SLIGHTLY_OVER_COLOR,
       OVER_BUDGET_COLOR,
       BUDGET_COLOR,
       UNLOGGED_COLOR,

@@ -18,12 +18,11 @@ data class WeightTimelineDay(
     val caloriesKcal: Double? = null,
     val calorieBudgetKcal: Double? = null,
     /**
-     * Whether the day's calories went past the Budget it was read against, slightly
-     * over included — the verdict, not the comparison, so the boundary is the
-     * backend's (ADR 0002). Null when there is nothing to exceed: no Entry, or no
-     * Budget in force.
+     * How the day's calories grade against the Budget it was read against — the
+     * verdict, not the comparison, so the boundary is the backend's (ADR 0002).
+     * Null when there is nothing to grade: no Entry, or no Budget in force.
      */
-    val overBudget: Boolean? = null,
+    val budgetVerdict: BudgetVerdict? = null,
     /**
      * Where the active Goal's plan says the Trend Weight should stand on this day.
      * Null throughout with Calorie Tracking on and in Maintenance Mode, and on a
@@ -110,19 +109,19 @@ class TimelineIntake(
         ?.calorieBudgetKcal
 
     /**
-     * Whether [date] went past its Budget, or null when there is nothing to exceed.
-     * The Budget boundary [BudgetVerdict] grades from, unrounded, so the bar turns at
-     * the same calorie the day's own status does.
+     * How [date]'s calories grade against its Budget, or null when there is nothing
+     * to grade. Graded by [BudgetVerdict.of], unrounded, so the bar turns at the same
+     * calorie the day's own [DayStatus] does.
      */
-    fun overBudgetOn(date: LocalDate): Boolean? {
-        val budget = budgetOn(date)
-        return if (budget == null) null else caloriesOn(date)?.let { BudgetVerdict.isPastBudget(it, budget) }
+    fun budgetVerdictOn(date: LocalDate): BudgetVerdict? {
+        val budget = budgetOn(date) ?: return null
+        return caloriesOn(date)?.let { BudgetVerdict.of(it, budget) }
     }
 
     override fun drawOn(day: WeightTimelineDay) = day.copy(
         caloriesKcal = caloriesOn(day.date),
         calorieBudgetKcal = budgetOn(day.date),
-        overBudget = overBudgetOn(day.date),
+        budgetVerdict = budgetVerdictOn(day.date),
     )
 
     /**

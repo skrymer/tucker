@@ -160,12 +160,13 @@ class WeightTimelineApiTest {
         reviewed(day.minusDays(14), budgetKcal = 1800.0)
         reviewed(day.minusDays(3), budgetKcal = 1750.0)
         ate(day.minusDays(14), calories = 2000.0)
+        ate(day.minusDays(7), calories = 1900.0)
         ate(day, calories = 1600.0)
 
         timeline().andExpect {
             status { isOk() }
             jsonPath("$.evidence.kind") { value("INTAKE") }
-            jsonPath("$.evidence.loggedDays") { value(2) }
+            jsonPath("$.evidence.loggedDays") { value(3) }
             jsonPath("$.days[0].caloriesKcal") { value(2000.0) }
             jsonPath("$.days[0].calorieBudgetKcal") { value(1800.0) }
             // Absent, never zero: a floor-height bar would read as a day of eating
@@ -176,9 +177,10 @@ class WeightTimelineApiTest {
             jsonPath("$.days[14].caloriesKcal") { value(1600.0) }
             jsonPath("$.days[14].calorieBudgetKcal") { value(1750.0) }
             // The verdict is stated, not left to the client to derive (ADR 0002).
-            jsonPath("$.days[0].overBudget") { value(true) }
-            jsonPath("$.days[14].overBudget") { value(false) }
-            jsonPath("$.days[1].overBudget") { value(null) }
+            jsonPath("$.days[0].budgetVerdict") { value("over-budget") }
+            jsonPath("$.days[7].budgetVerdict") { value("slightly-over") }
+            jsonPath("$.days[14].budgetVerdict") { value("within-budget") }
+            jsonPath("$.days[1].budgetVerdict") { value(null) }
         }
     }
 
@@ -196,7 +198,7 @@ class WeightTimelineApiTest {
             jsonPath("$.evidence") { value(null) }
             jsonPath("$.days[14].caloriesKcal") { value(null) }
             jsonPath("$.days[14].calorieBudgetKcal") { value(null) }
-            jsonPath("$.days[14].overBudget") { value(null) }
+            jsonPath("$.days[14].budgetVerdict") { value(null) }
         }
     }
 

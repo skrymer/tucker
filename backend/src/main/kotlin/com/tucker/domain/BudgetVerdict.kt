@@ -1,10 +1,12 @@
 package com.tucker.domain
 
+import com.fasterxml.jackson.annotation.JsonValue
+
 /** How far a day's intake went past its Calorie Budget — calories alone. */
-enum class BudgetVerdict {
-    WITHIN_BUDGET,
-    SLIGHTLY_OVER,
-    OVER_BUDGET,
+enum class BudgetVerdict(@JsonValue val value: String) {
+    WITHIN_BUDGET("within-budget"),
+    SLIGHTLY_OVER("slightly-over"),
+    OVER_BUDGET("over-budget"),
     ;
 
     companion object {

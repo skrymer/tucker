@@ -1,6 +1,6 @@
 import { expect, test } from './support/test'
 import { isoShiftDays, localTodayIso } from './support/date'
-import { timelineLine } from './support/weight-timeline'
+import { barFills, timelineLine } from './support/weight-timeline'
 import {
   intakeEvidence,
   planStartingOn,
@@ -208,6 +208,30 @@ test('each day states what it cost against the Budget, and an unlogged one says 
   // Neither calorie mark is identified by its colour alone.
   await expect(section.getByText('Calories')).toBeVisible()
   await expect(section.getByText('Budget', { exact: true })).toBeVisible()
+})
+
+test('each bar is coloured by how its day graded against the Budget', async ({
+  page,
+  goto,
+  network,
+}) => {
+  // Over budget on the opening day, never logged on the second, slightly over on
+  // the third, and within the Budget on the other 25.
+  const calories: (number | null)[] = [2100, null, 1900]
+  while (calories.length < FOUR_WEEKS.days.length) calories.push(1700)
+  const graded = weightTimeline({
+    days: withIntake(FOUR_WEEKS.days, calories),
+    evidence: intakeEvidence(FOUR_WEEKS.days.length - 1),
+  })
+  network.use(weightTimelineOf(graded))
+
+  await goto('/review', { waitUntil: 'hydration' })
+
+  const section = page.getByRole('region', { name: 'Your weight' })
+  await expect
+    .poll(() => barFills(section))
+    // 26 logged days between them: the unlogged day is none of the three.
+    .toEqual({ within: 25, slightlyOver: 1, over: 1 })
 })
 
 test('the timeline is drawn with Calorie Tracking off, where the calorie sections are not', async ({

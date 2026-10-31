@@ -1,3 +1,4 @@
+import type { Locator } from '@playwright/test'
 import { formatDmy } from './date'
 
 /**
@@ -38,4 +39,39 @@ function intakeLine(day: {
   const eaten = Math.round(day.caloriesKcal)
   if (day.calorieBudgetKcal == null) return ` · ${eaten} kcal`
   return ` · ${eaten} / ${Math.round(day.calorieBudgetKcal)} kcal`
+}
+
+/**
+ * How many of the chart's marks are filled in each bar colour. Only a browser
+ * computes a fill — the chart is `aria-hidden` and happy-dom resolves no `var()` —
+ * and each token is resolved on a probe inside the chart, so the light or dark
+ * value is whichever the bars actually inherit.
+ */
+export function barFills(section: Locator) {
+  return section
+    .locator('svg')
+    .first()
+    .evaluate((svg) => {
+      const fillOf = (colour: string) => {
+        const probe = document.createElementNS(
+          'http://www.w3.org/2000/svg',
+          'rect',
+        )
+        probe.style.fill = colour
+        svg.appendChild(probe)
+        const fill = getComputedStyle(probe).fill
+        probe.remove()
+        return fill
+      }
+      const fills = [...svg.querySelectorAll('path')].map(
+        (path) => getComputedStyle(path).fill,
+      )
+      const count = (colour: string) =>
+        fills.filter((fill) => fill === fillOf(colour)).length
+      return {
+        within: count('var(--tucker-timeline-intake)'),
+        slightlyOver: count('var(--ui-warning)'),
+        over: count('var(--ui-error)'),
+      }
+    })
 }

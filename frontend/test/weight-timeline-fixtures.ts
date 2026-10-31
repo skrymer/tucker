@@ -17,7 +17,7 @@ export function timelineDay(
     trendKg: 80.2,
     caloriesKcal: null,
     calorieBudgetKcal: null,
-    overBudget: null,
+    budgetVerdict: null,
     trajectoryKg: null,
     ...overrides,
   }
@@ -139,10 +139,19 @@ export function withIntake(
       caloriesKcal,
       calorieBudgetKcal: budgetKcal,
       // The backend states the verdict (ADR 0002); the fixture mirrors its rule.
-      overBudget:
+      budgetVerdict:
         caloriesKcal != null && budgetKcal != null
-          ? caloriesKcal > budgetKcal
+          ? verdictOf(caloriesKcal, budgetKcal)
           : null,
     }
   })
+}
+
+/** BudgetVerdict.of's rule: past the Budget is slightly over, past 110% over. */
+function verdictOf(
+  caloriesKcal: number,
+  budgetKcal: number,
+): NonNullable<WeightTimelineDayResponse['budgetVerdict']> {
+  if (caloriesKcal > budgetKcal * 1.1) return 'over-budget'
+  return caloriesKcal > budgetKcal ? 'slightly-over' : 'within-budget'
 }
