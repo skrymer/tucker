@@ -1,0 +1,57 @@
+- main:
+    - /children: deep-equal
+    - heading "Profile" [level=1]
+    - paragraph:
+        - text: Signed in as user@example.com
+        - link "Sign out":
+            - /url: /cdn-cgi/access/logout
+    - region "Goal":
+        - heading "Goal" [level=2]
+        - button "Set a new goal"
+        - term: Target weight
+        - definition: 80.0 kg
+        - term: Rate
+        - definition: 0.5 kg/week
+        - term: Start weight
+        - definition: 90.0 kg
+        - term: Started
+        - definition: 1 May 2026
+    - region "Your details":
+        - heading "Your details" [level=2]
+        - text: Sex*
+        - radiogroup:
+            - group:
+                - radio "Male" [checked]
+                - text: Male
+                - radio "Female"
+                - text: Female
+        - text: Birth date*
+        - button "Birth date*": 14 Mar 1985
+        - text: 14 Mar 1985 Height (cm)*
+        - spinbutton "Height (cm)*": '180'
+        - text: Calorie tracking
+        - radiogroup:
+            - group:
+                - radio "Calories and weight" [checked]
+                - text: Calories and weight
+                - paragraph: Log what you eat against a calorie budget and a protein floor.
+                - radio "Weight only"
+                - text: Weight only
+                - paragraph: Weigh in and track your goal. Tucker never asks what you ate.
+        - button "Save profile"
+    - region "Weekly-review reminder":
+        - heading "Weekly-review reminder" [level=2]
+        - switch "Weekly-review reminders"
+        - text: ''
+        - paragraph: Get a nudge when a weekly review is due.
+        - text: Reminder hour
+        - paragraph: The local hour (0–23) to send the reminder at.
+        - spinbutton "Reminder hour": '19'
+        - button "Save reminder time"
+    - region "Appearance":
+        - heading "Appearance" [level=2]
+        - tablist:
+            - tab "Light"
+            - tab "Dark"
+            - tab "System" [selected]
+    - paragraph: v0.0.0-dev (fe unknown · be test)
