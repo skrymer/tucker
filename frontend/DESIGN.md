@@ -222,8 +222,9 @@ Day Ring's convention for this very figure, graded by the backend's same verdict
 hue. A step back so the bars stay subordinate to the trend line drawn in
 `--ui-primary` above them: the card is titled _Your weight_, and intake is the
 addition. Neither over-state is carried by colour alone — the bar stands above
-the Budget line, and the readout states both figures — which matters most for
-amber, at 2.59:1 on the light card (see Status).
+the Budget line, and the readout states both figures and names the grade
+(_slightly over_, _over budget_) — which matters most for amber, at 2.59:1 on the
+light card (see Status).
 
 **The plan is the one weight-axis stroke with a hue of its own.** A reference
 rule could have borrowed `--ui-text-muted` from the Budget line, and on screen
@@ -256,10 +257,11 @@ carry room for it, or half the diamond would sit in the date strip.
 three with it off and a **Goal** running — two on the Goal's first day, when the
 plan is one point and is not drawn at all — and two in **Maintenance Mode**, where
 ADR 0029 keeps the card deliberately bare. _Trend_, _Weigh-ins_ and then either
-_Calories_ + _Budget_ or _Plan_, the two halves never sharing a card. Over-budget is a _state_ of a bar
-rather than a series, and an unlogged day's tick marks an absence; both have a
-second signal of their own (position against the Budget line; the readout's
-"not logged" and the logged-days caption), so naming them would put six chips of
+_Calories_ + _Budget_ or _Plan_, the two halves never sharing a card. Slightly over and over budget are _states_ of a
+bar rather than series, and an unlogged day's tick marks an absence; each has a
+second signal of its own (position against the Budget line and the readout's
+_slightly over_ or _over budget_; the readout's "not logged" and the logged-days
+caption), so naming them would put six chips of
 meta under a 200px card for nothing.
 
 **Two scales share one plot, and the bars never reach the weights.** unovis

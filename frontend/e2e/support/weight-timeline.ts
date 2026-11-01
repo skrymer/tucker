@@ -18,6 +18,7 @@ export function timelineLine(
     trendKg: number
     caloriesKcal?: number | null
     calorieBudgetKcal?: number | null
+    budgetVerdict?: string | null
     trajectoryKg?: number | null
   },
   tracksIntake: boolean,
@@ -34,11 +35,15 @@ export function timelineLine(
 function intakeLine(day: {
   caloriesKcal?: number | null
   calorieBudgetKcal?: number | null
+  budgetVerdict?: string | null
 }): string {
   if (day.caloriesKcal == null) return ' · not logged'
   const eaten = Math.round(day.caloriesKcal)
   if (day.calorieBudgetKcal == null) return ` · ${eaten} kcal`
-  return ` · ${eaten} / ${Math.round(day.calorieBudgetKcal)} kcal`
+  const figures = ` · ${eaten} / ${Math.round(day.calorieBudgetKcal)} kcal`
+  if (day.budgetVerdict === 'slightly-over') return `${figures} · slightly over`
+  if (day.budgetVerdict === 'over-budget') return `${figures} · over budget`
+  return figures
 }
 
 /**

@@ -238,8 +238,13 @@ test('each bar is coloured by how its day graded against the Budget', async ({
   const section = page.getByRole('region', { name: 'Your weight' })
   await expect
     .poll(() => barFills(section))
-    // 26 logged days between them: the unlogged day is none of the three.
+    // 27 logged days between them: the unlogged day is none of the three.
     .toEqual({ within: 25, slightlyOver: 1, over: 1 })
+  // The tick shares the readings' dimmed ink, so it is the one mark past them.
+  const readings = FOUR_WEEKS.days.filter((day) => day.weightKg != null).length
+  await expect
+    .poll(() => fillCounts(section, { dimmed: 'var(--ui-text-dimmed)' }))
+    .toEqual({ dimmed: readings + 1 })
 })
 
 test('the timeline is drawn with Calorie Tracking off, where the calorie sections are not', async ({

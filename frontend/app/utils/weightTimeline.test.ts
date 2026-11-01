@@ -72,6 +72,42 @@ describe('weightTimelineReadout', () => {
     ).toBe('3 Jun 2026 · 80.4 kg · trend 80.2 kg · 1749 / 1800 kcal')
   })
 
+  it('says in words that a day was slightly over, which its amber bar cannot say alone', () => {
+    expect(
+      weightTimelineReadout(
+        {
+          date: '2026-06-03',
+          weightKg: 80.42,
+          trendKg: 80.18,
+          caloriesKcal: 1900,
+          calorieBudgetKcal: 1800,
+          budgetVerdict: 'slightly-over',
+        },
+        true,
+      ),
+    ).toBe(
+      '3 Jun 2026 · 80.4 kg · trend 80.2 kg · 1900 / 1800 kcal · slightly over',
+    )
+  })
+
+  it('says in words that a day was over budget, apart from slightly over', () => {
+    expect(
+      weightTimelineReadout(
+        {
+          date: '2026-06-03',
+          weightKg: 80.42,
+          trendKg: 80.18,
+          caloriesKcal: 2100,
+          calorieBudgetKcal: 1800,
+          budgetVerdict: 'over-budget',
+        },
+        true,
+      ),
+    ).toBe(
+      '3 Jun 2026 · 80.4 kg · trend 80.2 kg · 2100 / 1800 kcal · over budget',
+    )
+  })
+
   it('names a day in a tracking window that carries no Entry', () => {
     // A missing bar and a floor-height bar are the same picture, so the readout is
     // where "no Entry" gets said in words. The Budget still stood on the day.

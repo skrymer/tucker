@@ -115,7 +115,10 @@ function intakeReadout(day: TimelineDay): string {
   if (day.caloriesKcal == null) return ' · not logged'
   if (day.calorieBudgetKcal == null)
     return ` · ${Math.round(day.caloriesKcal)} kcal`
-  return ` · ${formatAgainstTarget(day.caloriesKcal, day.calorieBudgetKcal, 'kcal')}`
+  const figures = ` · ${formatAgainstTarget(day.caloriesKcal, day.calorieBudgetKcal, 'kcal')}`
+  if (day.budgetVerdict === 'slightly-over') return `${figures} · slightly over`
+  if (day.budgetVerdict === 'over-budget') return `${figures} · over budget`
+  return figures
 }
 
 /**
