@@ -188,10 +188,10 @@ Identical for both stacks; only step 1 and 2's commands differ.
      test. Suspect it at 0%, or when `coveredBy` lacks a sibling test, and **settle it by
      hand-mutating a throwaway copy and running the suite against it**: if tests
      fail, the verdict is "the tool can't see it" and no test is owed. Mutate a
-     copy, never the line in place — the TDD hook refuses an in-place mutant as an
-     untested production change. For a page or component, copy it (and the test)
-     outside `frontend/app/`, have the copy import its siblings explicitly, and run
-     `vitest --config` pointed at the copy; for the backend, a copy of `backend/`
+     copy, never in place (the TDD hook refuses it). A page or component: copy it and
+     its test outside `frontend/app/`, importing siblings explicitly, and run `vitest
+     --config` at the copy once an unmutated control passes (#586's M25/M26 read KILLED
+     from a copy missing an import); for the backend, a copy of `backend/`
      with `dev/` (and `frontend/`) symlinked beside it — `build.gradle.kts` copies
      `../dev/access-key` into the test resources, so without it every test fails
      on `/access/signing-key.json is missing`, and without `frontend/` on `property

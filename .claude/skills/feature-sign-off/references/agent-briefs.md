@@ -137,7 +137,19 @@ launching gate 5**: `awk -F'|' 'NF>6 && $5 ~ /(^|[ (])or /' pack.md` lists every
 remedy cell still holds two remedies (split them); every row a later row re-answers reads
 SUPERSEDED or re-recorded in its resolution cell; and each agent's row count equals the
 attacks, tail items or table rows its handback holds (count them in the transcript, not
-the pack). A row
+the pack). The remedy check alone held nothing else: #586's round 1 still found 12 rows
+broken by the format rules, so run these too —
+
+- range ids: `grep -nE '^\| *[A-Z]+[0-9]+[a-z]?[–-]' pack.md` is empty (one id per row);
+- every `OWNER RULING` row quotes a question, ending in `?`, not the answer's label;
+- every FIXED or ruled-in test row cites the `.log` its red was saved to;
+- `git diff --diff-filter=D --name-only <base>` and `--diff-filter=M` over `*.test.ts` /
+  `*.spec.ts`: a row per edited test file, and a successor per deleted `it(` — #586's
+  unmapped deletion hid a lost guard (the `&nbsp;` in "You're maintaining since …");
+- each re-run's handback is diffed against the pack, and a finished run never reads
+  "pending".
+
+A row
 citing the user's ruling quotes the question as asked; an item the question did not
 name is asked again, so write the ruling question from every clause of the finding. A
 ruling never answers a later gate's alternative either — that is asked again too — and a

@@ -14,23 +14,25 @@ mkdir -p "$work"
 echo "HEAD $(git -C "$src" rev-parse HEAD)" > "$here/red-proof.log"
 git -C "$src" status --short >> "$here/red-proof.log"
 
-# name|file|old|new|grep of the test that must fail. `old` must match exactly once.
+# name~file~old~new~grep of the test that must fail. `old` must match exactly once.
+# Fields split on `~`, not `|`: a `||` in a template mutant (`v-if="x || xError"`)
+# split the line and read MUTATION NOT APPLIED on #586's first run. The grep field is a
+# regex, so the control names several tests joined by `|`.
 # The control mutates nothing and must pass every grep after it: a copy that cannot
 # build reads as red to every other line. Escape every `"` inside an entry, as the
 # example does: an unescaped one ends the bash string, `old` never matches, and the line
 # reads MUTATION NOT APPLIED (#548's three template mutants cost a second run).
 mutants=(
-  "control|app/components/Chart.vue|const x = 1|const x = 1|first test|second test"
-  "example|app/components/Chart.vue|:x-domain=\"xDomain\"||first test"
+  "control~app/components/Chart.vue~const x = 1~const x = 1~first test|second test"
+  "example~app/components/Chart.vue~:x-domain=\"xDomain\"~~first test"
 )
 
 for m in "${mutants[@]}"; do
-  IFS='|' read -r name file old new grep <<< "$m"
-  [ "$name" = control ] && grep=${m#*|*|*|*|}
+  IFS='~' read -r name file old new grep <<< "$m"
   copy="$work/$name"
   rm -rf "$copy"; mkdir -p "$copy"
   tar -C "$src" --exclude=./node_modules --exclude=./.nuxt --exclude=./.output \
-    --exclude=./reports --exclude=./test-results --exclude=./.stryker-tmp -cf - . | tar -C "$copy" -xf -
+    --exclude=./reports --exclude=./test-results --exclude=./.stryker-tmp --exclude=./.env -cf - . | tar -C "$copy" -xf -
   cp -al "$src/node_modules" "$copy/node_modules"
   if ! node -e '
     const fs = require("fs"); const [f, o, n] = process.argv.slice(1)
@@ -41,7 +43,7 @@ for m in "${mutants[@]}"; do
   fi
   diff -u "$src/$file" "$copy/$file" > "$here/red-proof-$name.diff"
   (cd "$copy" && pnpm exec nuxt prepare > /dev/null 2>&1 &&
-    pnpm exec playwright test e2e/<spec>.spec.ts -g "$grep" --project="Desktop Chrome" --reporter=list) \
+    pnpm exec playwright test e2e/<spec>.spec.ts -g "$grep" --project="Desktop Chrome" --retries=0 --reporter=list) \
     > "$here/red-proof-$name.log" 2>&1
   failed=$(grep -cE '^\s+✘' "$here/red-proof-$name.log")
   passed=$(grep -cE '^\s+✓' "$here/red-proof-$name.log")

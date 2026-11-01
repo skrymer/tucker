@@ -141,13 +141,24 @@ assertion with the dev token), and no browser-level layer can reach it.
 - **Phone overlays are Reka Dialog bottom sheets** (ADR 0017), never Vaul `UDrawer`. While one
   is open the page behind it is `aria-hidden`, so a role locator on that page never resolves —
   measure it by text or CSS. A locator timeout is not a RED.
-- **Per-project aria snapshots** (Desktop / Mobile) — after an intended markup change regenerate with
-  `pnpm test:e2e --update-snapshots`, then `git diff` the `*-snapshots/` to confirm only the intended
-  tree moved.
+- **Per-project aria snapshots** (Desktop / Mobile) — after an intended markup change, edit the
+  baseline by hand, or regenerate it from `locator.ariaSnapshot()` (next bullet) — never with
+  `--update-snapshots` — then `git diff` the `*-snapshots/` to confirm only the intended tree moved.
 - **`toMatchAriaSnapshot` is a partial match.** Unlisted nodes are ignored, so every baseline
   opens with `- /children: deep-equal` under its root — without it a snapshot says nothing about
   what is *absent*. State figures exactly, never as `/\d+/`: `--update-snapshots` generalises
-  numbers into regexes, so regenerate from `locator.ariaSnapshot()`, which writes literals.
+  numbers into regexes and drops the `deep-equal` pin (#586 restored six baselines and patched
+  them by hand), so regenerate from `locator.ariaSnapshot()`, which writes literals. Even
+  deep-equal sees only roles: a wrapper with no role (`UCard`, a `div`) is invisible to it, so
+  nesting is pinned by a lint (`tucker/one-card`) or a count, never a snapshot — #586's "one
+  card" snapshot passed on main's nested cards.
+- **A sentence is asserted on its own element**, never by `\b` or `^` against a region's text:
+  a card's `h2` runs into its body with no space ("minerals0%"), so the boundary never matches —
+  #586's smoke failed on both projects. `region.getByText(/^0% of the last 7 days/)`.
+- **Never put `aria-disabled` or `pointer-events-none` on a container that holds a live
+  control.** Both reach every child: #586's gated Goal card killed its only way out, the
+  "Today" link, and its Vitest test had pinned `aria-disabled` itself. Disable the controls that
+  must not act, one by one; assert that the live one still navigates.
 - **Headless Chromium hides scrollbars**, so a layout jump caused by the page's scrollbar
   appearing or disappearing is invisible to e2e. A spec about horizontal position sets
   `test.use({ launchOptions: { ignoreDefaultArgs: ['--hide-scrollbars'] } })` and measures the
