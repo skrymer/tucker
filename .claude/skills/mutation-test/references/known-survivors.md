@@ -1010,6 +1010,10 @@ happen inside a cached application context. **This is the startup-caching mechan
 reaching past Spring configuration into ordinary domain enums** — worth knowing,
 because the class here looks nothing like a `@Bean`.
 
+`BudgetVerdict.getValue` L6 (F23, #581/#582) joins them, settled by hand in #582's
+sweep: blanking all three values fails `WeightTimelineApiTest` "a day carries what was
+logged on it and the Budget in force that day" at its `budgetVerdict` jsonPaths (L180).
+
 **Entity id accessors (4)** — `WeighedEntry.getId`, `WeeklyReview.getId`,
 `PushSubscription.getId`, `Pace.getGPer100Kcal`. `Pace` is a value class, so the
 getter is never called once unboxed — `PaceTest` and `CheckTest` do assert the value.
@@ -1282,6 +1286,9 @@ real ones that are closed:
   fall-through then asks `null < low`, which coerces `null` to **0** and is therefore
   true for any real kilogram, so the day takes the `exits` branch — and `exits` skips
   nulls, so it never matches and the day returns `[]` either way.
+- **`weightTimelineTrajectory`'s `if (planned.length === 0) return null` → `false`**
+  is equivalent (found in #582's sweep): with nothing planned, `clipPlan` draws no day
+  and clips none, so `drawn.size < 2 && clips.length === 0` returns the same `null`.
 - **`planClipped`'s `plan.value?.clips` → `plan.value.clips`** is equivalent: a Vue
   computed is lazy, and the template reads it only inside `v-if="plan"`, so the
   optional call is unreachable rather than untested.
