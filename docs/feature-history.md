@@ -2279,3 +2279,35 @@ null` now means two things that earn opposite messages — the same trap
     a behaviour-preserving Move Function as a fresh implementation. The way through was
     the member's own red-green: compile red, a `= 0.0` stub for an assertion red, then
     the body.
+
+- **F24** — **Content cards**: every card is one `ContentCard` — a section region named
+  by its h2, a header band with the subject's icon and an optional trailing slot, and
+  the body's loading / busy / empty / error states under the constant band (PRD
+  [#584](https://github.com/skrymer/tucker/issues/584)).
+  - **Slice 1 ([#585](https://github.com/skrymer/tucker/issues/585)) — the pattern, and
+    all of Today.** Recorded in its PR (#590).
+  - **Slice 2 ([#586](https://github.com/skrymer/tucker/issues/586)) — Review, Profile,
+    Admin.** Review's six cards take their subjects; the Weekly reviews ledger is one
+    card (a table on desktop, divided rows with "Run review now" inside the card on
+    phone), and History's picked day is an `h3` in `text-label`. Each read-bearing card
+    is a Section shell (nullable data, its own error and Retry) over a Body component,
+    so a failed read stays under its band and the page never fails whole. Profile's
+    Goal, Your details, Weekly-review reminder and Appearance are four cards at `gap-4`;
+    Goal's action sits in the band ("Set a new goal" / "Start a goal"), past goals are
+    divided rows, and `GoalErrorCard` is shared by Today, Review and Profile. Admin's
+    four report cards take subjects; the report keeps its block dim on re-read
+    (DESIGN.md: the report is the primary read). `ContentCard` gains a `state` prop
+    (`loading` / `busy` / `empty`) setting `aria-busy`. `tucker/one-card`'s allowlist is
+    empty — `ContentCard.vue` is the only exception.
+  - **Ruled (user):** with Calorie Tracking off the copy promises no Budget ("the aim is
+    to hold your weight"; "the engine reads your trend weight"). A gated Goal dims its
+    body only, and its "Today" link stays a working link (no `aria-disabled`). A band
+    may hold the legend its charts share. "Start a goal" keeps its wording. Deleting the
+    prototype is a post-merge step for the owner.
+  - **Ruled (user):** no tests of opacity or dim — pin what a User can do, not how it
+    looks; two such e2e tests were dropped mid-sign-off.
+  - **Trap:** a ContentCard's band h2 sits directly against its body, so a region's
+    `textContent` reads "minerals0%": a `\b` anchor across the title and the body never
+    matches. Anchor to the body's own sentence (`getByText(/^0% …/)`).
+  - **Trap:** `--update-snapshots` rewrote aria baselines' literal figures as regexes,
+    losing the deep-equal pin; the baselines were restored and hand-patched.
