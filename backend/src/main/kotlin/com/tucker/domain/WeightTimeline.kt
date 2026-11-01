@@ -18,12 +18,11 @@ data class WeightTimelineDay(
     val caloriesKcal: Double? = null,
     val calorieBudgetKcal: Double? = null,
     /**
-     * Whether the day's calories went past the Budget it was read against, slightly
-     * over included — the verdict, not the comparison, so the boundary is the
-     * backend's (ADR 0002). Null when there is nothing to exceed: no Entry, or no
-     * Budget in force.
+     * How the day's calories grade against the Budget it was read against — the
+     * verdict, not the comparison, so the boundary is the backend's (ADR 0002).
+     * Null when there is nothing to grade: no Entry, or no Budget in force.
      */
-    val overBudget: Boolean? = null,
+    val budgetVerdict: BudgetVerdict? = null,
     /**
      * Where the active Goal's plan says the Trend Weight should stand on this day.
      * Null throughout with Calorie Tracking on and in Maintenance Mode, and on a
@@ -110,20 +109,18 @@ class TimelineIntake(
         ?.calorieBudgetKcal
 
     /**
-     * Whether [date] went past its Budget, or null when there is nothing to exceed.
-     * The Budget boundary [BudgetVerdict] grades from, unrounded, so the bar turns at
-     * the same calorie the day's own status does.
+     * The verdict is graded by [BudgetVerdict.of], unrounded, so the bar turns at the
+     * same calorie the day's own [DayStatus] does; null when there is nothing to grade.
      */
-    fun overBudgetOn(date: LocalDate): Boolean? {
-        val budget = budgetOn(date)
-        return if (budget == null) null else caloriesOn(date)?.let { BudgetVerdict.isPastBudget(it, budget) }
+    override fun drawOn(day: WeightTimelineDay): WeightTimelineDay {
+        val calories = caloriesOn(day.date)
+        val budget = budgetOn(day.date)
+        return day.copy(
+            caloriesKcal = calories,
+            calorieBudgetKcal = budget,
+            budgetVerdict = if (calories == null || budget == null) null else BudgetVerdict.of(calories, budget),
+        )
     }
-
-    override fun drawOn(day: WeightTimelineDay) = day.copy(
-        caloriesKcal = caloriesOn(day.date),
-        calorieBudgetKcal = budgetOn(day.date),
-        overBudget = overBudgetOn(day.date),
-    )
 
     /**
      * Counted off the days actually drawn rather than off the log: a day logged

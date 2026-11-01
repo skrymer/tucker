@@ -17,7 +17,7 @@ export function timelineDay(
     trendKg: 80.2,
     caloriesKcal: null,
     calorieBudgetKcal: null,
-    overBudget: null,
+    budgetVerdict: null,
     trajectoryKg: null,
     ...overrides,
   }
@@ -123,26 +123,31 @@ export function withPlan(
   }))
 }
 
+type BudgetVerdict = NonNullable<WeightTimelineDayResponse['budgetVerdict']>
+
 /**
  * The same days given an intake half: [calories] positionally, null where nothing
- * was logged, all read against one [budgetKcal].
+ * was logged, all read against one [budgetKcal]. The verdict is stated, never
+ * graded here: a bare figure reads `within-budget`, and a `[kcal, verdict]` pair
+ * states any other.
  */
 export function withIntake(
   days: Required<WeightTimelineDayResponse>[],
-  calories: (number | null)[],
+  calories: (number | readonly [number, BudgetVerdict] | null)[],
   budgetKcal: number | null = 1800,
 ): Required<WeightTimelineDayResponse>[] {
   return days.map((day, index) => {
-    const caloriesKcal = calories[index] ?? null
+    const logged = calories[index] ?? null
+    const [caloriesKcal, verdict] =
+      typeof logged === 'number'
+        ? [logged, 'within-budget' as const]
+        : (logged ?? [null, null])
     return {
       ...day,
       caloriesKcal,
       calorieBudgetKcal: budgetKcal,
-      // The backend states the verdict (ADR 0002); the fixture mirrors its rule.
-      overBudget:
-        caloriesKcal != null && budgetKcal != null
-          ? caloriesKcal > budgetKcal
-          : null,
+      budgetVerdict:
+        caloriesKcal != null && budgetKcal != null ? verdict : null,
     }
   })
 }

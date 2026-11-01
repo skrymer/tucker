@@ -191,16 +191,17 @@ what the user was eating while their weight did that. With it **off** and a
 **Goal** running, the Goal's planned trajectory takes their place: never both,
 which is what lets the plan and the Budget both be reference rules.
 
-| Series              | Token                      | Mark                        |
-| ------------------- | -------------------------- | --------------------------- |
-| Trend Weight        | `--ui-primary`             | 2px line, monotone          |
-| Weight Measurements | `--ui-text-dimmed`         | 5px points, no line         |
-| Calories            | `--tucker-timeline-intake` | bar, from the plot floor    |
-| — over the Budget   | `--ui-error`               | the same bar, in error red  |
-| — no **Entry**      | `--ui-text-dimmed`         | a 4% baseline tick          |
-| Calorie Budget      | `--ui-text-muted`          | 1px dashed step line        |
-| Planned trajectory  | `--tucker-timeline-plan`   | 1.5px dashed line, straight |
-| — where it runs off | `--tucker-timeline-plan`   | a 7px diamond on the edge   |
+| Series                 | Token                      | Mark                           |
+| ---------------------- | -------------------------- | ------------------------------ |
+| Trend Weight           | `--ui-primary`             | 2px line, monotone             |
+| Weight Measurements    | `--ui-text-dimmed`         | 5px points, no line            |
+| Calories               | `--tucker-timeline-intake` | bar, from the plot floor       |
+| — within the Tolerance | `--ui-warning`             | the same bar, in warning amber |
+| — over the Budget      | `--ui-error`               | the same bar, in error red     |
+| — no **Entry**         | `--ui-text-dimmed`         | a 4% baseline tick             |
+| Calorie Budget         | `--ui-text-muted`          | 1px dashed step line           |
+| Planned trajectory     | `--tucker-timeline-plan`   | 1.5px dashed line, straight    |
+| — where it runs off    | `--tucker-timeline-plan`   | a 7px diamond on the edge      |
 
 **The key is load-bearing, for the same reason the ring's legend is.** Measured
 on the light card (`#ffffff`): the trend line is **2.38:1** and the points
@@ -214,13 +215,16 @@ it is the figure Tucker computes, and a point darker than the line it explains
 would invert the hierarchy.
 
 **The bars keep Tucker's calorie green, a step back from the brand.** A calorie
-figure is green wherever it appears and turns error red once over the Budget —
-the Day Ring's convention for this very figure — so the bars follow it in
-`--tucker-timeline-intake` rather than inventing a hue. A step back so the bars
-stay subordinate to the trend line drawn in `--ui-primary` above them: the card
-is titled _Your weight_, and intake is the addition. Over the Budget is not
-carried by colour alone — the bar stands above the Budget line, and the readout
-states both figures.
+figure is green wherever it appears, turns warning amber when **slightly over**
+(past the Budget, within the Tolerance) and error red once **over budget** — the
+Day Ring's convention for this very figure, graded by the backend's same verdict
+— so the bars follow it in `--tucker-timeline-intake` rather than inventing a
+hue. A step back so the bars stay subordinate to the trend line drawn in
+`--ui-primary` above them: the card is titled _Your weight_, and intake is the
+addition. Neither over-state is carried by colour alone — the bar stands above
+the Budget line, and the readout states both figures and names the grade
+(_slightly over_, _over budget_) — which matters most for amber, at 2.59:1 on the
+light card (see Status).
 
 **The plan is the one weight-axis stroke with a hue of its own.** A reference
 rule could have borrowed `--ui-text-muted` from the Budget line, and on screen
@@ -253,10 +257,11 @@ carry room for it, or half the diamond would sit in the date strip.
 three with it off and a **Goal** running — two on the Goal's first day, when the
 plan is one point and is not drawn at all — and two in **Maintenance Mode**, where
 ADR 0029 keeps the card deliberately bare. _Trend_, _Weigh-ins_ and then either
-_Calories_ + _Budget_ or _Plan_, the two halves never sharing a card. Over-budget is a _state_ of a bar
-rather than a series, and an unlogged day's tick marks an absence; both have a
-second signal of their own (position against the Budget line; the readout's
-"not logged" and the logged-days caption), so naming them would put six chips of
+_Calories_ + _Budget_ or _Plan_, the two halves never sharing a card. Slightly over and over budget are _states_ of a
+bar rather than series, and an unlogged day's tick marks an absence; each has a
+second signal of its own (position against the Budget line and the readout's
+_slightly over_ or _over budget_; the readout's "not logged" and the logged-days
+caption), so naming them would put six chips of
 meta under a 200px card for nothing.
 
 **Two scales share one plot, and the bars never reach the weights.** unovis
@@ -327,7 +332,9 @@ full set lives in the `.dark` block in `main.css`.
 The **status** inks lift one step for legibility on dark, and `--ui-error` is a
 _saturated rose_ (`#ff5a76`, not a washed pink) specifically so the over-budget
 calorie arc separates from the orange protein coral on the Day Ring — two warm
-reds that otherwise muddy together. Card **elevation** in dark comes from the
+reds that otherwise muddy together. Warning's dark `#F5B544` is kept a clear
+yellow-amber for the same reason: the slightly-over arc and timeline bar must
+read apart from coral as well as from the rose. Card **elevation** in dark comes from the
 surface step + hairline border + a dark ambient shadow (the light green lift-glow
 vanishes on a dark ground); the FAB keeps its brand-green halo.
 

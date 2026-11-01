@@ -1,6 +1,6 @@
 import { expect, test } from './support/test'
 import { isoShiftDays, localTodayIso } from './support/date'
-import { timelineLine } from './support/weight-timeline'
+import { barFills, fillCounts, timelineLine } from './support/weight-timeline'
 import {
   intakeEvidence,
   planStartingOn,
@@ -43,7 +43,11 @@ const TRACKED = weightTimeline({
   days: withIntake(
     FOUR_WEEKS.days,
     FOUR_WEEKS.days.map((_, index) =>
-      index === 1 ? null : index === 0 ? 2100 : 1700,
+      index === 1
+        ? null
+        : index === 0
+          ? ([2100, 'over-budget'] as const)
+          : 1700,
     ),
   ),
   evidence: intakeEvidence(FOUR_WEEKS.days.length - 1),
@@ -210,6 +214,39 @@ test('each day states what it cost against the Budget, and an unlogged one says 
   await expect(section.getByText('Budget', { exact: true })).toBeVisible()
 })
 
+test('each bar is coloured by how its day graded against the Budget', async ({
+  page,
+  goto,
+  network,
+}) => {
+  // Over budget on the opening day, never logged on the second, slightly over on
+  // the third, and within the Budget on the other 25.
+  const calories: Parameters<typeof withIntake>[1] = [
+    [2100, 'over-budget'],
+    null,
+    [1900, 'slightly-over'],
+  ]
+  while (calories.length < FOUR_WEEKS.days.length) calories.push(1700)
+  const graded = weightTimeline({
+    days: withIntake(FOUR_WEEKS.days, calories),
+    evidence: intakeEvidence(FOUR_WEEKS.days.length - 1),
+  })
+  network.use(weightTimelineOf(graded))
+
+  await goto('/review', { waitUntil: 'hydration' })
+
+  const section = page.getByRole('region', { name: 'Your weight' })
+  await expect
+    .poll(() => barFills(section))
+    // 27 logged days between them: the unlogged day is none of the three.
+    .toEqual({ within: 25, slightlyOver: 1, over: 1 })
+  // The tick shares the readings' dimmed ink, so it is the one mark past them.
+  const readings = FOUR_WEEKS.days.filter((day) => day.weightKg != null).length
+  await expect
+    .poll(() => fillCounts(section, { dimmed: 'var(--ui-text-dimmed)' }))
+    .toEqual({ dimmed: readings + 1 })
+})
+
 test('the timeline is drawn with Calorie Tracking off, where the calorie sections are not', async ({
   page,
   goto,
@@ -309,18 +346,8 @@ test('a plan below the chart is marked rather than silently cut short', async ({
   // gets the row's — so a marker keyed on a day's position draws nothing at all
   // while every unit test, and the chip above, still pass.
   await expect
-    .poll(() =>
-      section.locator('svg path').evaluateAll((paths) => {
-        const hex = getComputedStyle(document.documentElement)
-          .getPropertyValue('--tucker-timeline-plan')
-          .trim()
-        const rgb = parseInt(hex.slice(1), 16)
-        const filled = `rgb(${(rgb >> 16) & 255}, ${(rgb >> 8) & 255}, ${rgb & 255})`
-        return paths.filter((path) => getComputedStyle(path).fill === filled)
-          .length
-      }),
-    )
-    .toBe(1)
+    .poll(() => fillCounts(section, { plan: 'var(--tucker-timeline-plan)' }))
+    .toEqual({ plan: 1 })
 })
 
 test('pointing at the chart reads out the day under the pointer', async ({

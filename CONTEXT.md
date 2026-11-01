@@ -898,8 +898,8 @@ the adaptive **Maintenance** correction already follow, so the scatter is there 
 make the smoothing legible rather than to be a second answer.
 Weight is the premise and intake the addition. With **Calorie Tracking** on it
 also carries each day's calories and the **Calorie Budget** in force on that day;
-and whether the day went over it — the verdict, on the same unrounded comparison
-a **Day Status** makes, so the chart and the day's own status cannot disagree;
+and how the day graded against it — within budget, **slightly over** or **over
+budget**, the verdict, on the same unrounded comparison a **Day Status** makes, so the chart and the day's own status cannot disagree;
 with it off those are simply **absent** — never zero, because a day the user
 didn't log is not a day they ate nothing (the distinction ADR 0018 already turns
 on), and never hidden client-side. An unlogged day is likewise absent rather than

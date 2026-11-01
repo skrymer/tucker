@@ -23,7 +23,7 @@ import {
 
 /** A tracking window: two days logged, the middle one not, all at one Budget. */
 const trackedDays = withIntake(timelineDays([80.4, null, 80.2]), [
-  2000,
+  [2000, 'over-budget'],
   null,
   1000,
 ])

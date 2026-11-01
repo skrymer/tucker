@@ -4995,9 +4995,15 @@
             "format": "double",
             "nullable": true
           },
-          "overBudget": {
-            "type": "boolean",
-            "nullable": true
+          "budgetVerdict": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "within-budget",
+              "slightly-over",
+              "over-budget",
+              null
+            ]
           },
           "trajectoryKg": {
             "type": "number",

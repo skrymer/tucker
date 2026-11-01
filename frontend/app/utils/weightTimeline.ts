@@ -10,16 +10,26 @@ export const TREND_COLOR = 'var(--ui-primary)'
 export const READING_COLOR = 'var(--ui-text-dimmed)'
 
 /**
- * The intake half's marks. Calories keep Tucker's green and turn error red once
- * over the Budget — the DayRing convention for this exact figure — while the
- * Budget itself is a neutral reference rule rather than a series of its own. A day
- * with no Entry is marked in the quietest of them, because the days a User did not
- * log must never be louder than the days they did.
+ * The intake half's marks. Calories keep Tucker's green, turn warning amber when
+ * slightly over the Budget and error red once over it — the DayRing convention for
+ * this exact figure — while the Budget itself is a neutral reference rule rather
+ * than a series of its own. A day with no Entry is marked in the quietest of them,
+ * because the days a User did not log must never be louder than the days they did.
  */
 export const INTAKE_COLOR = 'var(--tucker-timeline-intake)'
+export const SLIGHTLY_OVER_COLOR = 'var(--ui-warning)'
 export const OVER_BUDGET_COLOR = 'var(--ui-error)'
 export const BUDGET_COLOR = 'var(--ui-text-muted)'
 export const UNLOGGED_COLOR = 'var(--ui-text-dimmed)'
+
+const VERDICT_COLOR: Record<
+  NonNullable<TimelineDay['budgetVerdict']>,
+  string
+> = {
+  'within-budget': INTAKE_COLOR,
+  'slightly-over': SLIGHTLY_OVER_COLOR,
+  'over-budget': OVER_BUDGET_COLOR,
+}
 
 /**
  * The Goal's planned trajectory, and the diamond marking where it runs off the
@@ -105,7 +115,10 @@ function intakeReadout(day: TimelineDay): string {
   if (day.caloriesKcal == null) return ' · not logged'
   if (day.calorieBudgetKcal == null)
     return ` · ${Math.round(day.caloriesKcal)} kcal`
-  return ` · ${formatAgainstTarget(day.caloriesKcal, day.calorieBudgetKcal, 'kcal')}`
+  const figures = ` · ${formatAgainstTarget(day.caloriesKcal, day.calorieBudgetKcal, 'kcal')}`
+  if (day.budgetVerdict === 'slightly-over') return `${figures} · slightly over`
+  if (day.budgetVerdict === 'over-budget') return `${figures} · over budget`
+  return figures
 }
 
 /**
@@ -421,9 +434,8 @@ function intakeAccessors(scale: () => TimelineScale | null) {
     // no Entry was logged at all.
     intakeColor: (day: TimelineDay) => {
       if (day.caloriesKcal == null) return UNLOGGED_COLOR
-      // The verdict the backend stated, never a comparison made here (ADR 0002):
-      // true for any day past the Budget, slightly over included.
-      return day.overBudget ? OVER_BUDGET_COLOR : INTAKE_COLOR
+      // The verdict the backend stated, never a comparison made here (ADR 0002).
+      return VERDICT_COLOR[day.budgetVerdict ?? 'within-budget']
     },
     // A day's bar, undefined throughout with Calorie Tracking off so that no bar
     // is drawn at all. Within a tracking window every day has a mark: a day with

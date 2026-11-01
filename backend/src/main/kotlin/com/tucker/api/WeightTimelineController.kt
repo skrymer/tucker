@@ -1,5 +1,6 @@
 package com.tucker.api
 
+import com.tucker.domain.BudgetVerdict
 import com.tucker.domain.GoalTrajectory
 import com.tucker.domain.TimelineEvidence
 import com.tucker.domain.TimelineEvidenceSummary
@@ -31,9 +32,9 @@ import java.time.LocalDate
  * Review and holds all week. It is null only before the first review, and where the
  * review in force carried no Intake Targets (ADR 0024).
  *
- * [overBudget] is the verdict rather than the comparison, so the boundary is the
- * backend's (ADR 0002): true past the Budget itself, slightly over included; null
- * when there is nothing to exceed.
+ * [budgetVerdict] is the verdict rather than the comparison, so the boundary is the
+ * backend's (ADR 0002): calories alone, graded as the day's own status is; null when
+ * there is nothing to grade.
  *
  * [trajectoryKg] is where the active Goal's plan puts the Trend Weight on the day,
  * and takes the intake half's place: it is null throughout with Calorie Tracking
@@ -45,7 +46,7 @@ data class WeightTimelineDayResponse(
     val trendKg: Double,
     val caloriesKcal: Double?,
     val calorieBudgetKcal: Double?,
-    val overBudget: Boolean?,
+    val budgetVerdict: BudgetVerdict?,
     val trajectoryKg: Double?,
 )
 
@@ -95,7 +96,7 @@ private fun WeightTimelineDay.toResponse() = WeightTimelineDayResponse(
     trendKg = trendKg,
     caloriesKcal = caloriesKcal,
     calorieBudgetKcal = calorieBudgetKcal,
-    overBudget = overBudget,
+    budgetVerdict = budgetVerdict,
     trajectoryKg = trajectoryKg,
 )
 
