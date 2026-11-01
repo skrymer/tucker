@@ -119,6 +119,19 @@ describe('GoalSection', () => {
     expect(screen.getByText(/since 3 Jun 2026/i)).toBeVisible()
   })
 
+  it('reads "You\'re maintaining since …" as one sentence, the date apart from the word before it', async () => {
+    await renderSuspended(GoalSection, {
+      props: {
+        goals: [{ ...pastGoal, reachedOn: '2026-06-03' }],
+        currentTrend,
+      },
+    })
+
+    expect(screen.getByText(/^You're maintaining/)).toHaveTextContent(
+      "You're maintaining since 3 Jun 2026.",
+    )
+  })
+
   it('dates maintaining from the latest reached goal, in the newest-first order the API lists them', async () => {
     await renderSuspended(GoalSection, {
       props: {
