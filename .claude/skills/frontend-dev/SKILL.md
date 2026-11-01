@@ -220,12 +220,17 @@ assertion with the dev token), and no browser-level layer can reach it.
 - **A guard that bans a class scans the whole SFC** (`appTemplates()`), not
   `classedElements()`, which sees only static `class="…"` — a bound `:class`, a `:ui`
   string or a script constant walks past it (#468's arbitrary-radius guard).
-- **A colour, an opacity or a reveal delay is measured in the mocked e2e, not in
-  Vitest** — happy-dom computes no stylesheet (`e2e/calendar.spec.ts`,
-  `e2e/type-scale.spec.ts`, `e2e/history.spec.ts`). That includes every visual
-  clause of a ruling — "fades in after 150 ms", "not dimmed": #475 pinned its skeleton
-  ruling in Vitest alone, and both its fade and its no-dim clause broke past every
-  suite. Read a reveal's opacity **at insertion** (a `MutationObserver` in
+- **Test what a User can do, not how a surface looks.** A cosmetic rule — a dimmed
+  body, a muted line, a band's opacity — gets no test: pin the behaviour around it
+  instead (the gated link still navigates, the busy region says `aria-busy`, the action
+  is gone). #586 wrote two opacity e2e tests for a gated card's dim and the owner had
+  them dropped. Measure a visual property only when it *is* the function: a colour
+  that carries a verdict (over budget red, slightly over amber), a reveal delay whose
+  point is that nothing flashes, a size a thumb must hit.
+- **When the visual is the function, measure it in the mocked e2e, not in Vitest** —
+  happy-dom computes no stylesheet (`e2e/calendar.spec.ts`, `e2e/type-scale.spec.ts`,
+  `e2e/history.spec.ts`). #475 pinned its skeleton's fade in Vitest alone, and the fade
+  broke past every suite. Read a reveal's opacity **at insertion** (a `MutationObserver` in
   `addInitScript`), since by the time a locator resolves the delay is over. Poll it
   (`expect.poll`): a Nuxt UI control with `transition-colors` reads an in-between
   colour right after a click. Measure a size inside an opening modal with `offsetWidth`,
