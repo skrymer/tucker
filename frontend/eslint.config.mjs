@@ -25,25 +25,8 @@ const oneCard = {
     'Build a section card from ContentCard (DESIGN.md → Content card), not a bare UCard.',
 }
 
-const BARE_UCARD_ALLOWED = [
-  'app/components/ContentCard.vue',
-  // Not yet content cards: Review, Profile and Admin.
-  'app/components/GoalCard.vue',
-  'app/components/GoalProgressHero.vue',
-  'app/components/HistorySection.vue',
-  'app/components/IntakeBreakdownSection.vue',
-  'app/components/MaintenanceStatus.vue',
-  'app/components/MicronutrientSection.vue',
-  'app/components/ReleaseTrendCard.vue',
-  'app/components/ReminderSettings.vue',
-  'app/components/ReviewLedgerItem.vue',
-  'app/components/RouteTimingCard.vue',
-  'app/components/ServerCard.vue',
-  'app/components/WebVitalsCard.vue',
-  'app/components/WeightTimelineSection.vue',
-  'app/pages/admin.vue',
-  'app/pages/profile/index.vue',
-]
+// The one card: the only file that may use UCard, since it is what wraps it.
+const CONTENT_CARD = 'app/components/ContentCard.vue'
 
 // A focused test is never something to commit: `.only` silently reduces the
 // suite to itself while every runner still reports green, so the gate keeps
@@ -286,12 +269,12 @@ export default withNuxt(
   {
     name: 'tucker/one-calendar+one-card',
     files: ['app/**/*.vue'],
-    ignores: ['app/components/AppCalendar.vue', ...BARE_UCARD_ALLOWED],
+    ignores: ['app/components/AppCalendar.vue', CONTENT_CARD],
     rules: { 'vue/no-restricted-syntax': ['error', oneCalendar, oneCard] },
   },
   {
     name: 'tucker/one-calendar',
-    files: BARE_UCARD_ALLOWED,
+    files: [CONTENT_CARD],
     rules: { 'vue/no-restricted-syntax': ['error', oneCalendar] },
   },
   {

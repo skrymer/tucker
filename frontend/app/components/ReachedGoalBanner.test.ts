@@ -46,7 +46,7 @@ describe('ReachedGoalBanner', () => {
     const onSwitchToMaintenance = vi.fn()
     await renderSuspended(ReachedGoalBanner, {
       // Keyed to the emit name (`switch-to-maintenance`), not its camelCase
-      // form — see MaintenanceStatus.test.ts.
+      // form.
       props: { ...props, 'onSwitch-to-maintenance': onSwitchToMaintenance },
     })
 

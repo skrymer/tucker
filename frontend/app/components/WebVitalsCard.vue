@@ -18,13 +18,10 @@ const tiles = computed(() =>
 </script>
 
 <template>
-  <UCard>
-    <div class="flex flex-col gap-1">
-      <h2 class="text-h2 text-highlighted">Page load and interaction</h2>
-      <p class="text-sm text-muted">
-        Each layout's p75, whichever page it happened on
-      </p>
-    </div>
+  <ContentCard subject="webVitals" title="Page load and interaction">
+    <p class="text-sm text-muted">
+      Each layout's p75, whichever page it happened on
+    </p>
     <div class="mt-4 grid grid-cols-2 gap-4">
       <section
         v-for="t in tiles"
@@ -52,5 +49,5 @@ const tiles = computed(() =>
         </table>
       </section>
     </div>
-  </UCard>
+  </ContentCard>
 </template>

@@ -151,12 +151,15 @@ test('a failed load retries the window still selected, not the one it opened on'
   refusing = true
   await page.getByRole('tab', { name: '90 days' }).click()
 
+  // Under the card's own band, so it is the timeline that failed, not the page.
+  const card = page.getByRole('region', { name: 'Your weight' })
   await expect(
-    page.getByRole('heading', { name: "Couldn't load your weight" }),
+    card.getByRole('heading', { name: "Couldn't load your weight" }),
   ).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Retry' })).toHaveCount(1)
 
   refusing = false
-  await page.getByRole('button', { name: 'Retry' }).click()
+  await card.getByRole('button', { name: 'Retry' }).click()
 
   // The wider window, not the one the page opened on: a retry that reverted
   // would answer a question the User had already left.

@@ -154,26 +154,21 @@ const { pending, execute: runReview } = useApiMutation(
       </UButton>
     </header>
 
-    <LoadErrorState
+    <GoalErrorCard
+      v-if="goalProgressError"
       :error="goalProgressError"
-      title="Couldn't load your goal"
       @retry="refreshGoalProgress"
-    >
-      <GoalProgressHero v-if="goalProgress" :progress="goalProgress" />
-    </LoadErrorState>
+    />
+    <GoalProgressHero v-else-if="goalProgress" :progress="goalProgress" />
 
-    <LoadErrorState
+    <WeightTimelineSection
+      v-if="timeline || timelineError"
+      v-model:window-days="timelineWindow"
+      :timeline="timeline"
+      :pending="timelinePending"
       :error="timelineError"
-      title="Couldn't load your weight"
       @retry="refreshTimeline"
-    >
-      <WeightTimelineSection
-        v-if="timeline"
-        v-model:window-days="timelineWindow"
-        :timeline="timeline"
-        :pending="timelinePending"
-      />
-    </LoadErrorState>
+    />
 
     <!-- Ungated like the timeline above it: weight is the premise, and with
          Calorie Tracking off the card is its weight half alone. A reading
@@ -185,34 +180,26 @@ const { pending, execute: runReview } = useApiMutation(
 
     <!-- One gate, in setup: with Calorie Tracking off nothing was fetched, so
          there is neither a breakdown to render nor an error to report. -->
-    <LoadErrorState
+    <IntakeBreakdownSection
+      v-if="breakdown || breakdownError"
+      v-model:period="period"
+      :breakdown="breakdown"
+      :pending="breakdownPending"
       :error="breakdownError"
-      title="Couldn't load what you're eating"
       @retry="refreshBreakdown"
-    >
-      <IntakeBreakdownSection
-        v-if="breakdown"
-        v-model:period="period"
-        :breakdown="breakdown"
-        :pending="breakdownPending"
-      />
-    </LoadErrorState>
+    />
 
     <!-- Between the breakdown and the ledger, and gated in setup by the same
          rule: with Calorie Tracking off nothing was fetched, so there is neither
          an intake to render nor an error to report. -->
-    <LoadErrorState
+    <MicronutrientSection
+      v-if="micronutrients || micronutrientsError"
+      :intake="micronutrients"
+      :pending="micronutrientsPending"
       :error="micronutrientsError"
-      title="Couldn't load your vitamins and minerals"
       @retry="refreshMicronutrients"
-    >
-      <MicronutrientSection
-        v-if="micronutrients"
-        :intake="micronutrients"
-        :pending="micronutrientsPending"
-        @match="foodToMatch = { id: $event.foodId, name: $event.name }"
-      />
-    </LoadErrorState>
+      @match="foodToMatch = { id: $event.foodId, name: $event.name }"
+    />
 
     <ReferenceFoodPicker
       :food="foodToMatch"
@@ -220,27 +207,14 @@ const { pending, execute: runReview } = useApiMutation(
       @close="foodToMatch = null"
     />
 
-    <LoadErrorState
+    <!-- A failed read, and the first review not yet run, both stand under the
+         ledger's band: it is the ledger that failed or is empty, not the page. -->
+    <ReviewLedger
+      :reviews="reviews ?? []"
       :error="reviewsError"
-      title="Couldn't load your reviews"
+      :running="pending"
       @retry="refresh"
-    >
-      <template v-if="hasReviews">
-        <ReviewLedger :reviews="reviews ?? []" />
-        <UButton
-          v-if="!isDesktop"
-          icon="i-lucide-refresh-cw"
-          color="primary"
-          block
-          size="lg"
-          :loading="pending"
-          :disabled="pending"
-          @click="runReview()"
-        >
-          Run review now
-        </UButton>
-      </template>
-      <ReviewEmptyState v-else @run="runReview()" />
-    </LoadErrorState>
+      @run="runReview()"
+    />
   </section>
 </template>

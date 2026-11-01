@@ -22,6 +22,16 @@ async function renderAnswered() {
 }
 
 describe('ServerCard', () => {
+  it('is the Server card, its band carrying the server icon and the health', async () => {
+    await renderAnswered()
+
+    const card = screen.getByRole('region', { name: 'Server' })
+    const heading = within(card).getByRole('heading', { level: 2 })
+    // An aria-hidden glyph has no role or name: its icon name says which it is.
+    expect(heading.querySelector('.i-lucide\\:server')).not.toBeNull()
+    expect(within(card).getByText('Up')).toBeVisible()
+  })
+
   it('holds a loading skeleton where the figures will go, claiming nothing until they are answered', async () => {
     const read = held('get', '/api/actuator/prometheus')
     server.use(read.handler)

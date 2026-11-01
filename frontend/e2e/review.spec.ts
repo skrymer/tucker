@@ -3,10 +3,11 @@ import {
   reviewHistory,
   reviewHistoryFails,
 } from '../test/mocks/handlers/reviews'
+import { goalInProgress, goalProgressFails } from '../test/mocks/handlers/goal'
 import { weeklyReview } from '../test/review-fixtures'
 import { pinToLocalMorning } from './support/date'
 
-test('shows a retryable error instead of an empty ledger when the review history fails to load', async ({
+test('shows a retryable error under the Weekly reviews band when the review history fails to load', async ({
   goto,
   network,
   page,
@@ -15,10 +16,37 @@ test('shows a retryable error instead of an empty ledger when the review history
 
   await goto('/review', { waitUntil: 'hydration' })
 
+  const card = page.getByRole('region', { name: 'Weekly reviews' })
   await expect(
-    page.getByRole('heading', { name: "Couldn't load your reviews" }),
+    card.getByRole('heading', { name: "Couldn't load your reviews" }),
   ).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Retry' })).toBeVisible()
+  await expect(card.getByRole('button', { name: 'Retry' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Retry' })).toHaveCount(1)
+})
+
+test("a failed Goal read stays under the Goal's band, and its Retry reads again", async ({
+  goto,
+  network,
+  page,
+}) => {
+  let down = true
+  network.use(
+    goalProgressFails(() => down),
+    goalInProgress({ percentComplete: 40 }),
+  )
+
+  await goto('/review', { waitUntil: 'hydration' })
+
+  const card = page.getByRole('region', { name: 'Goal' })
+  await expect(
+    card.getByRole('heading', { name: "Couldn't load your goal" }),
+  ).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Retry' })).toHaveCount(1)
+
+  down = false
+  await card.getByRole('button', { name: 'Retry' }).click()
+
+  await expect(card.getByText('40%', { exact: true })).toBeVisible()
 })
 
 // The ledger picks its columns from the data, not from the current setting: a

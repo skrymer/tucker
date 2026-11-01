@@ -2,7 +2,15 @@ import type { Locator, Page } from '@playwright/test'
 import { weighedEntry } from '../test/entry-fixtures'
 import { dailyLogs } from '../test/mocks/handlers/entries'
 import { goalInProgress } from '../test/mocks/handlers/goal'
+import { signedInAsAdmin } from '../test/mocks/handlers/identity'
+import {
+  measured,
+  metricsReport,
+  vitalIn,
+} from '../test/mocks/handlers/metrics'
 import { summaryOf } from '../test/mocks/handlers/summary'
+import { weightTimelineOf } from '../test/mocks/handlers/weight-timeline'
+import { weightTimeline } from '../test/weight-timeline-fixtures'
 import { isoShiftDays, pinToLocalMorning } from './support/date'
 import { expect, test } from './support/test'
 
@@ -168,6 +176,150 @@ for (const colorScheme of ['light', 'dark'] as const) {
     })
   })
 }
+
+const REVIEWS_CARDS = [
+  { name: 'Goal', icon: 'target' },
+  { name: 'Your weight', icon: 'chart-line' },
+  { name: 'History', icon: 'calendar' },
+  { name: "What you're eating", icon: 'chart-pie' },
+  { name: 'Vitamins and minerals', icon: 'leaf' },
+  { name: 'Weekly reviews', icon: 'history' },
+]
+
+const PROFILES_CARDS = [
+  { name: 'Goal', icon: 'target' },
+  { name: 'Your details', icon: 'user-round' },
+  { name: 'Weekly-review reminder', icon: 'bell' },
+  { name: 'Appearance', icon: 'sun-moon' },
+]
+
+const ADMINS_CARDS = [
+  { name: 'Moving between pages', icon: 'route' },
+  { name: 'p75 per release', icon: 'git-commit-horizontal' },
+  { name: 'Page load and interaction', icon: 'activity' },
+  { name: 'Server', icon: 'server' },
+]
+
+/** The vertical gap between each card on the page and the next. */
+const gapsBetween = (cards: Locator) =>
+  cards.evaluateAll((sections) =>
+    sections.slice(1).map((section, i) => {
+      const above = sections[i]!.getBoundingClientRect()
+      return Math.round(section.getBoundingClientRect().top - above.bottom)
+    }),
+  )
+
+for (const colorScheme of ['light', 'dark'] as const) {
+  test.describe(`on every carded page, in ${colorScheme} mode`, () => {
+    test.use({ colorScheme })
+
+    test("every Review card draws its band: a divider, its subject's icon, the body's sides", async ({
+      page,
+      goto,
+      network,
+    }) => {
+      await drawEveryIcon(page)
+      network.use(goalInProgress(), weightTimelineOf(weightTimeline()))
+      await goto('/review', { waitUntil: 'hydration' })
+
+      for (const { name, icon } of REVIEWS_CARDS) {
+        await expectBand(page.getByRole('region', { name, exact: true }), icon)
+      }
+    })
+
+    test("every Profile card draws its band: a divider, its subject's icon, the body's sides", async ({
+      page,
+      goto,
+    }) => {
+      await drawEveryIcon(page)
+      await goto('/profile', { waitUntil: 'hydration' })
+
+      for (const { name, icon } of PROFILES_CARDS) {
+        await expectBand(page.getByRole('region', { name, exact: true }), icon)
+      }
+    })
+
+    test("every Admin card draws its band: a divider, its subject's icon, the body's sides", async ({
+      page,
+      goto,
+      network,
+      isMobile,
+    }) => {
+      test.skip(isMobile, 'a phone shows the notice instead')
+      await drawEveryIcon(page)
+      network.use(
+        signedInAsAdmin,
+        metricsReport(
+          [{ route: '/foods', layouts: [measured('phone')] }],
+          [],
+          [
+            {
+              route: '/foods',
+              releases: [
+                {
+                  version: '0.1.9',
+                  layouts: [
+                    { layout: 'phone', n: 20, p75: 700 },
+                    { layout: 'desktop', n: 20, p75: 300 },
+                  ],
+                },
+              ],
+            },
+          ],
+          {
+            lcp: [vitalIn('phone', 20, { p50: 1_800, p75: 2_140, p95: 3_900 })],
+            inp: [vitalIn('phone', 9, { p50: 120, p75: 180, p95: 260 })],
+          },
+        ),
+      )
+      await goto('/admin', { waitUntil: 'hydration' })
+
+      for (const { name, icon } of ADMINS_CARDS) {
+        await expectBand(page.getByRole('region', { name, exact: true }), icon)
+      }
+    })
+  })
+}
+
+test("Profile's cards stack at the spacing Today's do", async ({
+  page,
+  goto,
+  network,
+}) => {
+  network.use(goalInProgress(), summaryOf(loggedDay))
+  const cards = page.locator(
+    'main section[aria-labelledby]:has(> [data-slot="header"])',
+  )
+
+  await goto('/', { waitUntil: 'hydration' })
+  await expect(page.getByRole('region', { name: 'Goal' })).toBeVisible()
+  const todays = await gapsBetween(cards)
+
+  await goto('/profile', { waitUntil: 'hydration' })
+  await expect(page.getByRole('region', { name: 'Appearance' })).toBeVisible()
+  const profiles = await gapsBetween(cards)
+
+  expect(todays.length).toBeGreaterThan(1)
+  expect(new Set(todays)).toEqual(new Set([todays[0]]))
+  expect(profiles).toEqual(PROFILES_CARDS.slice(1).map(() => todays[0]))
+})
+
+test("History's picked day is headed smaller than the card it sits in", async ({
+  goto,
+  page,
+}) => {
+  await goto('/review', { waitUntil: 'hydration' })
+  const history = page.getByRole('region', { name: 'History' })
+  const size = (heading: Locator) =>
+    heading.evaluate((h) => parseFloat(getComputedStyle(h).fontSize))
+
+  const title = await size(
+    history.getByRole('heading', { level: 2, name: 'History' }),
+  )
+  const day = await size(history.getByRole('heading', { level: 3 }).first())
+
+  expect(day).toBeLessThan(title)
+})
 
 // ADR 0007: a placeholder waits 150 ms before showing, so a fast answer never
 // flashes it. Read at the moment the skeleton is inserted, before any delay —

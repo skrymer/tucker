@@ -147,7 +147,7 @@ await Promise.all([loadProfile(), refreshCurrentTrend()])
 </script>
 
 <template>
-  <section class="flex flex-col gap-8">
+  <section class="flex flex-col gap-4">
     <div class="flex flex-col gap-1">
       <h1 class="text-h1 text-default">Profile</h1>
       <!-- Whose diet this is, and the way out — /profile only (#160). -->
@@ -158,56 +158,43 @@ await Promise.all([loadProfile(), refreshCurrentTrend()])
       The at-a-glance state leads: the Goal. The body-stats form and reminder
       settings follow as the less-often-touched setup (#105).
     -->
-    <LoadErrorState
+    <GoalErrorCard
+      v-if="goalSectionError"
       :error="goalSectionError"
-      title="Couldn't load your goal"
       @retry="retryGoalSection"
-    >
-      <GoalSection
-        :goals="goals ?? []"
-        :current-trend="currentTrend"
-        :refusal="goalRefusal"
-        :pending="savingGoal"
-        :disabled="!goalEnabled"
-        @submit="submitGoal"
-      />
-    </LoadErrorState>
+    />
+    <GoalSection
+      v-else
+      :goals="goals ?? []"
+      :current-trend="currentTrend"
+      :refusal="goalRefusal"
+      :pending="savingGoal"
+      :disabled="!goalEnabled"
+      @submit="submitGoal"
+    />
 
-    <section
-      class="flex flex-col gap-4"
-      aria-labelledby="profile-details-heading"
+    <ContentCard
+      subject="details"
+      title="Your details"
+      :error="profileError"
+      error-title="Couldn't load your profile"
+      @retry="loadProfile"
     >
-      <h2 id="profile-details-heading" class="text-h2 text-highlighted">
-        Your details
-      </h2>
-      <LoadErrorState
-        :error="profileError"
-        title="Couldn't load your profile"
-        @retry="loadProfile"
-      >
-        <UCard>
-          <ProfileForm
-            :initial="profile ?? undefined"
-            :pending="savingProfile"
-            @submit="saveProfile"
-          />
-        </UCard>
-      </LoadErrorState>
-    </section>
+      <ProfileForm
+        :initial="profile ?? undefined"
+        :pending="savingProfile"
+        @submit="saveProfile"
+      />
+    </ContentCard>
 
     <!-- Reminder opt-in lives once the profile exists (it edits the profile). -->
     <ReminderSettings v-if="profile" :profile="profile" @saved="loadProfile" />
 
     <!-- Appearance is a per-device preference (cookie, not the Profile), so it's
          always available — never gated on body-stats setup. -->
-    <section class="flex flex-col gap-4" aria-labelledby="appearance-heading">
-      <h2 id="appearance-heading" class="text-h2 text-highlighted">
-        Appearance
-      </h2>
-      <UCard>
-        <AppearanceControl />
-      </UCard>
-    </section>
+    <ContentCard subject="appearance" title="Appearance">
+      <AppearanceControl />
+    </ContentCard>
 
     <!-- Renders the install affordance, or nothing once Tucker is installed. -->
     <InstallPrompt />

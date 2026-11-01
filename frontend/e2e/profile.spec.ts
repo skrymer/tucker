@@ -4,8 +4,39 @@ import {
   profileOf,
   savedProfile,
 } from '../test/mocks/handlers/profile'
+import { bodyAndPlan } from '../test/mocks/handlers/body'
 import { pickDate } from './support/date-field'
 import { formatDmy, localTodayIso } from './support/date'
+
+test('the Profile page is four cards: Goal, Your details, Weekly-review reminder, Appearance', async ({
+  page,
+  goto,
+  network,
+}) => {
+  network.use(
+    ...bodyAndPlan({
+      profile: baselineProfile,
+      readings: [{ id: 1, measuredOn: '2026-05-28', weightKg: 84.2 }],
+      goals: [
+        {
+          id: 7,
+          startedOn: '2026-05-01',
+          startWeightKg: 90,
+          targetWeightKg: 80,
+          rateKgPerWeek: 0.5,
+          active: true,
+        },
+      ],
+    }),
+  )
+
+  await goto('/profile', { waitUntil: 'hydration' })
+  await expect(
+    page.getByRole('button', { name: 'Set a new goal' }),
+  ).toBeVisible()
+
+  await expect(page.getByRole('main')).toMatchAriaSnapshot()
+})
 
 test('the Profile page prefills the form from the saved profile', async ({
   page,

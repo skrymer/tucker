@@ -543,8 +543,8 @@ const calendarDay = ref('2026-10-08')
           </template>
           <p class="text-sm text-muted">The day's Entries, as rows.</p>
         </ContentCard>
-        <ContentCard subject="goal" title="Goal" loading />
-        <ContentCard subject="targets" title="Today's targets" empty>
+        <ContentCard subject="goal" title="Goal" state="loading" />
+        <ContentCard subject="targets" title="Today's targets" state="empty">
           <template #empty>
             <p class="text-sm text-muted">
               No budget yet — log your weight and run a weekly review.

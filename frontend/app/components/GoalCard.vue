@@ -19,28 +19,28 @@ const formattedStartedOn = computed(() =>
 </script>
 
 <template>
-  <UCard>
-    <dl class="grid grid-cols-2 gap-x-6 gap-y-3">
-      <div>
-        <dt class="text-sm text-muted">Target weight</dt>
-        <dd class="font-medium text-default">
-          {{ props.goal.targetWeightKg.toFixed(1) }} kg
-        </dd>
-      </div>
-      <div>
-        <dt class="text-sm text-muted">Rate</dt>
-        <dd class="font-medium text-default">{{ formattedRate }} kg/week</dd>
-      </div>
-      <div>
-        <dt class="text-sm text-muted">Start weight</dt>
-        <dd class="font-medium text-default">
-          {{ props.goal.startWeightKg.toFixed(1) }} kg
-        </dd>
-      </div>
-      <div>
-        <dt class="text-sm text-muted">Started</dt>
-        <dd class="font-medium text-default">{{ formattedStartedOn }}</dd>
-      </div>
-    </dl>
-  </UCard>
+  <!-- A Goal's figures, in the Goal card's body or one of its past-goal
+       rows: never a card of its own, since cards never nest. -->
+  <dl class="grid grid-cols-2 gap-x-6 gap-y-3">
+    <div>
+      <dt class="text-sm text-muted">Target weight</dt>
+      <dd class="font-medium text-default">
+        {{ props.goal.targetWeightKg.toFixed(1) }} kg
+      </dd>
+    </div>
+    <div>
+      <dt class="text-sm text-muted">Rate</dt>
+      <dd class="font-medium text-default">{{ formattedRate }} kg/week</dd>
+    </div>
+    <div>
+      <dt class="text-sm text-muted">Start weight</dt>
+      <dd class="font-medium text-default">
+        {{ props.goal.startWeightKg.toFixed(1) }} kg
+      </dd>
+    </div>
+    <div>
+      <dt class="text-sm text-muted">Started</dt>
+      <dd class="font-medium text-default">{{ formattedStartedOn }}</dd>
+    </div>
+  </dl>
 </template>

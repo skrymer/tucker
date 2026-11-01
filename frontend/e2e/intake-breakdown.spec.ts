@@ -179,13 +179,16 @@ test.describe('with Calorie Tracking on', () => {
 
     await goto('/review', { waitUntil: 'hydration' })
 
+    // Under the card's own band, so it is the breakdown that failed.
+    const card = page.getByRole('region', { name: "What you're eating" })
     await expect(
-      page.getByRole('heading', { name: "Couldn't load what you're eating" }),
+      card.getByRole('heading', { name: "Couldn't load what you're eating" }),
     ).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Retry' })).toHaveCount(1)
 
     // And the retry actually re-fetches: the second attempt succeeds.
     down = false
-    await page.getByRole('button', { name: 'Retry' }).click()
+    await card.getByRole('button', { name: 'Retry' }).click()
 
     await expect(page.getByText('Chicken breast')).toBeVisible()
   })
@@ -303,6 +306,9 @@ test.describe('with Calorie Tracking on', () => {
     await goto('/review', { waitUntil: 'hydration' })
 
     const ring = page.locator('.intake-ring')
+    // A tap lands at viewport coordinates, and the ring sits below a phone's
+    // fold, so bring it into view before measuring where to touch it.
+    await ring.scrollIntoViewIfNeeded()
     const box = (await ring.boundingBox())!
     // The same arc the pointer test hovers, so the two differ only in how they
     // were touched.

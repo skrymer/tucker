@@ -130,17 +130,19 @@
             - link "CC BY 4.0":
                 - /url: https://creativecommons.org/licenses/by/4.0/
             - text: '. Source: National Health and Medical Research Council. They are the figures for an adult who is not pregnant and not breastfeeding — both shift several of them substantially, and Tucker has no setting for either.'
-    - table "Weekly reviews, newest first. Deltas compare each review with the previous one.":
-        - caption: Weekly reviews, newest first. Deltas compare each review with the previous one.
-        - rowgroup:
-            - row "Reviewed Trend wt.":
-                - columnheader "Reviewed"
-                - columnheader "Trend wt."
-            - row
-        - rowgroup:
-            - row "8 Jun 2026 85.4 down by 0.6 versus the previous review":
-                - cell "8 Jun 2026"
-                - cell "85.4 down by 0.6 versus the previous review"
-            - row "1 Jun 2026 86.0":
-                - cell "1 Jun 2026"
-                - cell "86.0"
+    - region "Weekly reviews":
+        - heading "Weekly reviews" [level=2]
+        - table "Weekly reviews, newest first. Deltas compare each review with the previous one.":
+            - caption: Weekly reviews, newest first. Deltas compare each review with the previous one.
+            - rowgroup:
+                - row "Reviewed Trend wt.":
+                    - columnheader "Reviewed"
+                    - columnheader "Trend wt."
+                - row
+            - rowgroup:
+                - row "8 Jun 2026 85.4 down by 0.6 versus the previous review":
+                    - cell "8 Jun 2026"
+                    - cell "85.4 down by 0.6 versus the previous review"
+                - row "1 Jun 2026 86.0":
+                    - cell "1 Jun 2026"
+                    - cell "86.0"

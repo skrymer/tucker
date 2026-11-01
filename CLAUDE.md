@@ -296,6 +296,10 @@ here.
   (amber), not over budget (red), on the Day Ring, the day verdict and the Weight
   Timeline (PRD [#579](https://github.com/skrymer/tucker/issues/579),
   [ADR 0041](docs/adr/0041-a-day-a-few-percent-past-its-budget-is-slightly-over.md)).
+- **F24** — ✅ Content cards: every card is one `ContentCard` with a subject-icon header
+  band, on Today ([#585](https://github.com/skrymer/tucker/issues/585)) and on Review,
+  Profile and Admin ([#586](https://github.com/skrymer/tucker/issues/586)); PRD
+  [#584](https://github.com/skrymer/tucker/issues/584).
 
 ## Architecture
 

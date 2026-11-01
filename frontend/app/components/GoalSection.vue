@@ -38,6 +38,9 @@ const reachedSince = computed(() => {
   ).reachedOn
 })
 
+// With Calorie Tracking off there is no Budget to hold at maintenance (ADR 0024).
+const { tracksCalories } = useCalorieTracking()
+
 const formOpen = ref(false)
 
 // Close the replacement form on success, not optimistically on submit: success
@@ -53,16 +56,10 @@ watch(
 </script>
 
 <template>
-  <section
-    class="flex flex-col gap-3"
-    aria-labelledby="goal-heading"
-    :aria-disabled="gated || undefined"
-    :class="{ 'pointer-events-none opacity-50 select-none': gated }"
-  >
-    <header class="flex items-center justify-between">
-      <h2 id="goal-heading" class="text-h2 text-highlighted">Goal</h2>
+  <ContentCard subject="goal" title="Goal">
+    <template #trailing>
       <UButton
-        v-if="!props.disabled && activeGoal && !formOpen"
+        v-if="!props.disabled && !formOpen"
         icon="i-lucide-target"
         color="primary"
         @click="
@@ -71,25 +68,36 @@ watch(
           }
         "
       >
-        Set a new goal
+        {{ activeGoal ? 'Set a new goal' : 'Start a goal' }}
       </UButton>
-    </header>
+    </template>
 
-    <!-- Gated: a weight reading must exist before a goal can be set. -->
-    <p v-if="gated" class="text-sm text-muted">
+    <!-- Gated: a weight reading must exist before a goal can be set. The body
+         dims, never the band (DESIGN.md → Content card). -->
+    <p v-if="gated" class="text-sm text-muted opacity-50">
       Log your weight first, on <ULink to="/" class="underline">Today</ULink>,
       to set a goal.
     </p>
 
-    <template v-else>
-      <!-- Maintenance Mode (ADR 0008): the durable status + re-entry. The Goal
-           form is the same creation flow the reached banner's "Set a lower goal"
-           lands on; it stays behind the CTA until the user chooses to re-enter. -->
-      <MaintenanceStatus
-        v-if="!activeGoal"
-        :since="reachedSince"
-        @start-goal="formOpen = true"
-      />
+    <div v-else class="flex flex-col gap-3">
+      <!-- Maintenance Mode is the absence of an active Goal (ADR 0008): the
+           Goal's band stands over it, and the body says the User is
+           maintaining. The form is the same creation flow the reached
+           banner's "Set a lower goal" lands on, behind the band's action. -->
+      <div v-if="!activeGoal">
+        <p class="text-body text-default">
+          You're maintaining<span v-if="reachedSince" class="text-muted"
+            >&nbsp;since {{ formatDateFromISO(reachedSince) }}</span
+          >.
+        </p>
+        <p class="mt-1 text-sm text-muted">
+          {{
+            tracksCalories
+              ? 'No active goal — your budget holds at maintenance. Ready to cut again?'
+              : 'No active goal — the aim is to hold your weight. Ready to cut again?'
+          }}
+        </p>
+      </div>
       <GoalCard v-else :goal="activeGoal" />
 
       <p v-if="props.disabled" class="text-sm text-muted">
@@ -119,14 +127,15 @@ watch(
           Past goals ({{ pastGoals.length }})
         </UButton>
 
+        <!-- Rows, not a card each: cards never nest (DESIGN.md → Content card). -->
         <template #content>
-          <ul class="flex flex-col gap-2">
-            <li v-for="goal in pastGoals" :key="goal.id">
+          <ul class="divide-y divide-default">
+            <li v-for="goal in pastGoals" :key="goal.id" class="py-3">
               <GoalCard :goal="goal" />
             </li>
           </ul>
         </template>
       </UCollapsible>
-    </template>
-  </section>
+    </div>
+  </ContentCard>
 </template>

@@ -160,11 +160,11 @@ test.describe('as an Admin', () => {
           - paragraph: Page timings appear here once Tucker records them. A wider range looks further back.
           - region "Server":
             - heading "Server" [level=2]
+            - text: Up
             - paragraph:
               - text: Since the last restart,
               - strong: 3 d 7 h
               - text: ago. The range and engine filters above don't apply.
-            - text: Up
             - group "Process CPU": Process CPU · now 3.4% Tucker's own share
             - group "System CPU": System CPU · now 21% the host, as seen
             - group "Heap": Heap · now 182 MB used of 256 MB

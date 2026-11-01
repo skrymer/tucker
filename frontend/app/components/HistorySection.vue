@@ -146,13 +146,13 @@ async function readingsChanged() {
 </script>
 
 <template>
-  <UCard role="region" aria-labelledby="history-heading">
-    <h2 id="history-heading" class="text-h2 text-highlighted">History</h2>
+  <!-- The card's failure stays its own row rather than ContentCard's error,
+       which would unmount the calendar the v-show below keeps alive. -->
+  <ContentCard subject="history" title="History">
     <LoadErrorState
       :error="cardError"
       title="Couldn't load this card"
       nested
-      class="mt-3"
       @retry="retryCard"
     />
     <!-- Hidden rather than unmounted, so the calendar keeps the month it was
@@ -163,7 +163,6 @@ async function readingsChanged() {
         :max="lastDay"
         :weighed="readings.days.value"
         :logged="loggedDays?.days.value"
-        class="mt-3"
         @shown="loggedDays?.show"
       />
       <!-- Its own error, under a calendar still in use: without its dots every
@@ -178,15 +177,9 @@ async function readingsChanged() {
       />
       <USeparator class="my-3" />
       <section aria-labelledby="history-day">
-        <h3
-          id="history-day"
-          class="flex items-center gap-2 text-h2 text-highlighted"
-        >
-          <UIcon
-            name="i-lucide-calendar"
-            class="size-5 text-muted"
-            aria-hidden
-          />
+        <!-- A part of the card, so a label under its band, never a second
+             title (DESIGN.md → Content card). -->
+        <h3 id="history-day" class="text-label text-highlighted">
           {{ heading }}
         </h3>
         <HistoryWeight
@@ -274,5 +267,5 @@ async function readingsChanged() {
         </section>
       </section>
     </div>
-  </UCard>
+  </ContentCard>
 </template>

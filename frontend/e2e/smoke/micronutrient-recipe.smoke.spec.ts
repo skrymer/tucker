@@ -69,9 +69,11 @@ test('a Recipe rolls up from the ingredients matched through the queue', async (
   await goto('/review', { waitUntil: 'hydration' })
   const section = page.getByRole('region', { name: 'Vitamins and minerals' })
 
-  // Anchored: a bare '0%' is a substring of the '70%' asserted below, so it would
-  // pass even if the dish were already counted before a single tap.
-  await expect(section).toContainText(/\b0% of the last 7 days/)
+  // Anchored to the sentence's start: a bare '0%' is a substring of the '70%'
+  // asserted below, so it would pass even if the dish were already counted
+  // before a single tap. Not `\b`: the card's title runs into the body in the
+  // region's text ("minerals0%"), which has no word boundary.
+  await expect(section.getByText(/^0% of the last 7 days/)).toBeVisible()
   await section
     .getByRole('button', { name: '2 foods are not matched yet' })
     .click()

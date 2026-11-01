@@ -1,6 +1,6 @@
 import type { components } from '#open-fetch-schemas/api'
 import { goalProgress } from '../../goal-fixtures'
-import { http } from '../http'
+import { failingRead, http } from '../http'
 
 type GoalProgress = components['schemas']['GoalProgressResponse']
 
@@ -17,6 +17,11 @@ export const goalHandlers = [
   ),
   http.get('/api/goals', ({ response }) => response(200).json([])),
 ]
+
+/** A Goal Progress read the server fails while [isDown] holds. */
+export function goalProgressFails(isDown: () => boolean = () => true) {
+  return failingRead('/api/goal/progress', isDown)
+}
 
 /**
  * Goal Progress for an active Goal — `goalProgress()` with [overrides]. Answers

@@ -28,7 +28,8 @@ const headline = computed(() =>
 </script>
 
 <template>
-  <UCard>
+  <!-- A row of the Weekly reviews card, so no card of its own. -->
+  <div>
     <div class="flex items-start justify-between gap-3">
       <p class="text-label text-muted">
         {{ formatDateFromISO(row.review.reviewedOn) }}
@@ -56,5 +57,5 @@ const headline = computed(() =>
       {{ Math.round(targets.maintenanceKcal) }} kcal maint ·
       {{ Math.round(targets.proteinFloorG) }} g protein
     </p>
-  </UCard>
+  </div>
 </template>

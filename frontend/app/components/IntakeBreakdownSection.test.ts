@@ -87,6 +87,43 @@ describe('IntakeBreakdownSection', () => {
     })
   }
 
+  it("is the What you're eating card, its band carrying the chart-pie icon and the total", async () => {
+    await renderSuspended(IntakeBreakdownSection, {
+      props: { breakdown: intakeBreakdown({ totalCalories: 1840 }) },
+    })
+
+    const heading = screen.getByRole('heading', {
+      level: 2,
+      name: "What you're eating",
+    })
+    // An aria-hidden glyph has no role or name: its icon name says which it is.
+    expect(heading.querySelector('.i-lucide\\:chart-pie')).not.toBeNull()
+    expect(
+      within(
+        screen.getByRole('region', { name: "What you're eating" }),
+      ).getByText('1840 kcal'),
+    ).toBeVisible()
+  })
+
+  it("says under its own band that what you're eating could not be read, and its Retry asks again", async () => {
+    const user = userEvent.setup()
+    const retry = vi.fn()
+    await renderSuspended(IntakeBreakdownSection, {
+      props: { breakdown: null, error: new Error('down'), onRetry: retry },
+    })
+
+    const card = screen.getByRole('region', { name: "What you're eating" })
+    expect(
+      within(card).getByRole('heading', {
+        name: "Couldn't load what you're eating",
+      }),
+    ).toBeVisible()
+    expect(within(card).queryByText(/kcal/)).not.toBeInTheDocument()
+
+    await user.click(within(card).getByRole('button', { name: 'Retry' }))
+    expect(retry).toHaveBeenCalledOnce()
+  })
+
   it('lists a window that was logged but cost nothing, and draws it no ring', async () => {
     await renderSuspended(IntakeBreakdownSection, {
       props: {

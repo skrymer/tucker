@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { renderSuspended } from '@nuxt/test-utils/runtime'
-import { screen } from '@testing-library/vue'
+import { screen, within } from '@testing-library/vue'
 import RouteTimingCard from './RouteTimingCard.vue'
 
 // unovis' tooltip, stubbed: happy-dom's `MutationObserver.disconnect` throws on
@@ -11,6 +11,16 @@ vi.mock('@unovis/vue', async (actual) => ({
 }))
 
 describe('RouteTimingCard', () => {
+  it('is the Moving between pages card, its band carrying the route icon and the parts', async () => {
+    await renderSuspended(RouteTimingCard, { props: { routes: [] } })
+
+    const card = screen.getByRole('region', { name: 'Moving between pages' })
+    expect(within(card).getByRole('list', { name: 'Parts' })).toBeVisible()
+    const heading = within(card).getByRole('heading', { level: 2 })
+    // An aria-hidden glyph has no role or name: its icon name says which it is.
+    expect(heading.querySelector('.i-lucide\\:route')).not.toBeNull()
+  })
+
   // A service worker hands every api call on, and starting one again on a phone
   // that put it to sleep lands in the same wait as the trip itself.
   it('explains the three parts in plain words, the browser sending the requests out counted in network and proxy', async () => {

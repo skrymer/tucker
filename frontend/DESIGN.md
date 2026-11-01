@@ -763,8 +763,7 @@ text-muted` what it cost and returned — `153 kcal · 13 g protein`, with
 A **content card** is a Card that holds one section of a page, under a header
 **band**. `ContentCard` builds it, and it is the only way the app builds a card:
 ESLint's `tucker/one-card` refuses a bare `UCard` anywhere else, and points here.
-Until they are migrated, Review's, Profile's and Admin's files are on its
-allowlist.
+It has no exceptions.
 
 - **When a page is carded.** A page with **several independent sections** puts
   each section in a content card: Today, Review, Profile, Admin, and `/design`,
@@ -778,7 +777,7 @@ allowlist.
   the card's own divider. It holds the **subject icon** (`size-5`, `text-primary`,
   hidden from assistive tech) and the `h2` **title** (`text-h2 text-highlighted`),
   with an optional **trailing slot** at the right: at most a tally, one action, a
-  badge or tabs. On a narrow phone the trailing slot wraps under the title rather
+  badge, tabs, or the legend the body's charts share. On a narrow phone the trailing slot wraps under the title rather
   than either one truncating. It is `UCard`'s own header slot, padded at the
   body's sides (Shape & elevation). The card is a `section` region named by its title, so
   assistive tech can move between cards by landmark.
@@ -788,32 +787,35 @@ allowlist.
   error. The table below is the subject map's twin (`contentCard.test.ts` fails
   when they disagree):
 
-  | Subject key       | Card                                                      | Icon                  |
-  | ----------------- | --------------------------------------------------------- | --------------------- |
-  | `weight`          | Today's weight                                            | `scale`               |
-  | `targets`         | Today's targets (the Day Ring)                            | `gauge`               |
-  | `today`           | Today's Entries                                           | `sun`                 |
-  | `tomorrow`        | Tomorrow's Entries                                        | `sunrise`             |
-  | `goal`            | Goal (Today's ring and maintaining, Profile, Review hero) | `target`              |
-  | `weightTimeline`  | Your weight (the Weight Timeline)                         | `chart-line`          |
-  | `history`         | History / Look up a day                                   | `calendar`            |
-  | `intakeBreakdown` | What you're eating (the Intake Breakdown)                 | `chart-pie`           |
-  | `micronutrients`  | Vitamins and minerals                                     | `leaf`                |
-  | `weeklyReviews`   | Weekly reviews                                            | `history`             |
-  | `details`         | Your details                                              | `user-round`          |
-  | `reminder`        | Weekly-review reminder                                    | `bell`                |
-  | `appearance`      | Appearance                                                | `sun-moon`            |
-  | `typography`      | `/design`: Typography                                     | `type`                |
-  | `shape`           | `/design`: the card-padding specimen                      | `square-round-corner` |
-  | `ring`            | `/design`: Signature · the Ring                           | `circle-dot`          |
-  | `entries`         | `/design`: Cards & entries                                | `list`                |
-  | `formControls`    | `/design`: Form controls                                  | `text-cursor-input`   |
-  | `sheetNavigation` | `/design`: Sheet navigation                               | `panel-bottom`        |
-  | `calendar`        | `/design`: Calendar                                       | `calendar-days`       |
+  | Subject key       | Card                                                      | Icon                    |
+  | ----------------- | --------------------------------------------------------- | ----------------------- |
+  | `weight`          | Today's weight                                            | `scale`                 |
+  | `targets`         | Today's targets (the Day Ring)                            | `gauge`                 |
+  | `today`           | Today's Entries                                           | `sun`                   |
+  | `tomorrow`        | Tomorrow's Entries                                        | `sunrise`               |
+  | `goal`            | Goal (Today's ring and maintaining, Profile, Review hero) | `target`                |
+  | `weightTimeline`  | Your weight (the Weight Timeline)                         | `chart-line`            |
+  | `history`         | History / Look up a day                                   | `calendar`              |
+  | `intakeBreakdown` | What you're eating (the Intake Breakdown)                 | `chart-pie`             |
+  | `micronutrients`  | Vitamins and minerals                                     | `leaf`                  |
+  | `weeklyReviews`   | Weekly reviews                                            | `history`               |
+  | `details`         | Your details                                              | `user-round`            |
+  | `reminder`        | Weekly-review reminder                                    | `bell`                  |
+  | `appearance`      | Appearance                                                | `sun-moon`              |
+  | `routeTiming`     | Admin: Moving between pages                               | `route`                 |
+  | `releaseTrend`    | Admin: p75 per release                                    | `git-commit-horizontal` |
+  | `webVitals`       | Admin: Page load and interaction                          | `activity`              |
+  | `server`          | Admin: Server                                             | `server`                |
+  | `typography`      | `/design`: Typography                                     | `type`                  |
+  | `shape`           | `/design`: the card-padding specimen                      | `square-round-corner`   |
+  | `ring`            | `/design`: Signature · the Ring                           | `circle-dot`            |
+  | `entries`         | `/design`: Cards & entries                                | `list`                  |
+  | `formControls`    | `/design`: Form controls                                  | `text-cursor-input`     |
+  | `sheetNavigation` | `/design`: Sheet navigation                               | `panel-bottom`          |
+  | `calendar`        | `/design`: Calendar                                       | `calendar-days`         |
 
-  Admin's cards add a row each when they are carded. `/design`'s own subjects
-  are the style guide's, so its specimens of real cards never share an icon with
-  the section framing them.
+  `/design`'s own subjects are the style guide's, so its specimens of real cards
+  never share an icon with the section framing them.
 
 - **The title** is a short noun phrase naming the subject in `CONTEXT.md`'s words,
   in sentence case, with no verb and no status. Status goes in the body or the
@@ -823,6 +825,10 @@ allowlist.
   the absence of an active Goal (ADR 0008), and its body says so.
 - **The band is constant; only the body changes.** The body is one of:
   - **ready** — the card's content;
+  - **busy** — the content already shown, kept up while it is re-read (a new
+    window), the region marked busy; the card dims what the re-read will
+    replace, 150 ms late (ADR 0007), and never its band (Admin's report block,
+    below, is the one exception);
   - **loading** — skeleton rows hidden from assistive tech, the region marked
     busy; the rows show 150 ms late (ADR 0007), so a fast answer never flashes
     them, while the band shows at once;
@@ -831,7 +837,11 @@ allowlist.
   - **load error** — the `nested` load-error row (Feedback states), with Retry.
 
   A page whose primary read fails still shows one full-page error instead of its
-  cards.
+  cards. On Admin that read is the metrics report, which every chart card is drawn
+  from: its failure is one page-level error, a report with nothing in it is one
+  page-level empty state (Feedback states), and a re-read for new filters dims the
+  report's cards as one block. Only the Server card, a read of its own, keeps its
+  band through each of those.
 
 - **Headings inside a card body** are `h3` in `text-label` or `text-eyebrow`,
   never `text-h2`. A heading that only repeats the band is cut.

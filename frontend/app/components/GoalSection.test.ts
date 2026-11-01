@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
 import { renderSuspended } from '@nuxt/test-utils/runtime'
-import { screen } from '@testing-library/vue'
+import { screen, within } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
+import { withCalorieTracking } from '~~/test/calorie-tracking-helpers'
 import GoalSection from './GoalSection.vue'
 
 const currentTrend = { trendKg: 86.0, asOf: '2026-05-28' }
@@ -27,6 +28,48 @@ const pastGoal = {
 }
 
 describe('GoalSection', () => {
+  it('is one Goal card while maintaining, headed once, its band carrying the target icon', async () => {
+    await renderSuspended(GoalSection, {
+      props: { goals: [], currentTrend },
+    })
+
+    const card = screen.getByRole('region', { name: 'Goal' })
+    const heading = within(card).getByRole('heading', {
+      level: 2,
+      name: 'Goal',
+    })
+    expect(within(card).getAllByRole('heading')).toEqual([heading])
+    // An aria-hidden glyph has no role or name: its icon name says which it is.
+    expect(heading.querySelector('.i-lucide\\:target')).not.toBeNull()
+    expect(within(card).getByText(/You're maintaining/)).toBeVisible()
+  })
+
+  it('says the Budget holds at maintenance while maintaining with Calorie Tracking on', async () => {
+    await renderSuspended(
+      withCalorieTracking(GoalSection, true, { goals: [], currentTrend }),
+    )
+
+    expect(
+      screen.getByText(
+        'No active goal — your budget holds at maintenance. Ready to cut again?',
+      ),
+    ).toBeVisible()
+  })
+
+  it('promises no Budget while maintaining with Calorie Tracking off, which keeps none', async () => {
+    await renderSuspended(
+      withCalorieTracking(GoalSection, false, { goals: [], currentTrend }),
+    )
+
+    const card = screen.getByRole('region', { name: 'Goal' })
+    expect(
+      within(card).getByText(
+        'No active goal — the aim is to hold your weight. Ready to cut again?',
+      ),
+    ).toBeVisible()
+    expect(card).not.toHaveTextContent(/budget/i)
+  })
+
   it('shows a maintenance status with a "Start a goal" CTA when no goal is active', async () => {
     await renderSuspended(GoalSection, {
       props: { goals: [], currentTrend },
@@ -68,6 +111,36 @@ describe('GoalSection', () => {
         goals: [
           { ...pastGoal, reachedOn: '2026-05-20' },
           { ...activeGoal, active: false, reachedOn: '2026-06-03' },
+        ],
+        currentTrend,
+      },
+    })
+
+    expect(screen.getByText(/since 3 Jun 2026/i)).toBeVisible()
+  })
+
+  it('reads "You\'re maintaining since …" as one sentence, the date apart from the word before it', async () => {
+    await renderSuspended(GoalSection, {
+      props: {
+        goals: [{ ...pastGoal, reachedOn: '2026-06-03' }],
+        currentTrend,
+      },
+    })
+
+    expect(screen.getByText(/^You're maintaining/)).toHaveTextContent(
+      "You're maintaining since 3 Jun 2026.",
+    )
+  })
+
+  it('dates maintaining from the latest reached goal, in the newest-first order the API lists them', async () => {
+    await renderSuspended(GoalSection, {
+      props: {
+        // As GET /api/goals orders them (started_on desc): an unreached goal
+        // ended early, then the two reached ones, newest first.
+        goals: [
+          { ...pastGoal, id: 9, startedOn: '2026-07-01' },
+          { ...activeGoal, active: false, reachedOn: '2026-06-03' },
+          { ...pastGoal, reachedOn: '2026-05-20' },
         ],
         currentTrend,
       },
@@ -183,7 +256,9 @@ describe('GoalSection', () => {
     })
 
     const section = screen.getByRole('region', { name: /^goal$/i })
-    expect(section).toHaveAttribute('aria-disabled', 'true')
+    // Not aria-disabled: that would disable the Today link it points to.
+    expect(section).not.toHaveAttribute('aria-disabled')
+    expect(within(section).getByRole('link', { name: 'Today' })).toBeVisible()
     expect(section).toHaveTextContent(
       'Log your weight first, on Today, to set a goal.',
     )

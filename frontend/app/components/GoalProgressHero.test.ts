@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { renderSuspended } from '@nuxt/test-utils/runtime'
-import { screen } from '@testing-library/vue'
+import { screen, within } from '@testing-library/vue'
 import type { components } from '#open-fetch-schemas/api'
 import GoalProgressHero from './GoalProgressHero.vue'
 
@@ -45,6 +45,15 @@ const untracked: GoalProgress = {
 }
 
 describe('GoalProgressHero', () => {
+  it('is the Goal card, headed once', async () => {
+    await renderSuspended(GoalProgressHero, { props: { progress: onPace } })
+
+    const card = screen.getByRole('region', { name: 'Goal' })
+    expect(within(card).getAllByRole('heading')).toEqual([
+      within(card).getByRole('heading', { level: 2, name: 'Goal' }),
+    ])
+  })
+
   it('asks for a weight in place of any figure a trend would give, with no readings', async () => {
     await renderSuspended(GoalProgressHero, { props: { progress: untracked } })
 

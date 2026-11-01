@@ -24,7 +24,11 @@ const heldNote = computed(() =>
 <template>
   <!-- Titled for both targets it carries, the Calorie Budget and the Protein
        Floor; before the first review it has neither yet. -->
-  <ContentCard subject="targets" title="Today's targets" :empty="!hasBudget">
+  <ContentCard
+    subject="targets"
+    title="Today's targets"
+    :state="hasBudget ? undefined : 'empty'"
+  >
     <DayRing
       :calories-consumed="summary.caloriesConsumed"
       :calorie-budget="summary.calorieBudget ?? 1"

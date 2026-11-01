@@ -48,9 +48,7 @@ test('a freshly set Goal anchors its start on the trend and reads 0%', async ({
   // On /review the Goal-progress hero reads 0% — start == now == the trend, not
   // the raw-anchored ~2.3% the bug produced.
   await goto('/review', { waitUntil: 'hydration' })
-  const hero = page
-    .locator('[data-slot="root"]')
-    .filter({ hasText: 'Goal progress' })
+  const hero = page.getByRole('region', { name: 'Goal', exact: true })
   await expect(hero).toBeVisible()
   await expect(hero.getByText('0%')).toBeVisible()
   await expect(hero.getByText('108.0 kg')).toHaveCount(0)

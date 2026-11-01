@@ -171,8 +171,9 @@ endpoint:
   "You're maintaining" in its body: the band names the subject, and the absence of
   an active Goal is what the body reports.
 - **`/profile`** carries the *durable status* and *re-entry*: a persistent "you're
-  maintaining since {date}" with a "Start a goal" CTA, so a cut can be re-entered
-  any time — not only from a banner the user might never see. The banner's "Set a
+  maintaining since {date}" in the body of the same Goal card, under the same
+  "Goal" band as Today's, with a "Start a goal" action in that band, so a cut can
+  be re-entered any time — not only from a banner the user might never see. The banner's "Set a
   lower goal" action and this CTA land on the same Goal-creation flow.
 
 ## Boundary rulings

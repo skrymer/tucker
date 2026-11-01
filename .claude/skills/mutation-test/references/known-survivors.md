@@ -29,7 +29,8 @@ and [#237](https://github.com/skrymer/tucker/issues/237) (frontend).
   - `app/app.config.ts` — 18 of 28, through a throwaway config
   - `composables/useWeightLogging.ts` — 0 of 12
   - `WeightTile.vue` — hand-check only
-  - `components/IntakeBreakdownSection.vue` — `no cov` alone, 6 of 54 in company
+  - `components/IntakeBreakdownBody.vue` — `no cov` alone, 6 of 54 in company
+  - `components/WeightTimelineBody.vue` — 1 of 49
   - `components/ReferenceFoodSearch.vue` — 5 of 62
   - `composables/useReferenceFoodMatch.ts` — 0 of 28
   - `components/DaySummary.vue` — 0 of 17
@@ -150,13 +151,14 @@ rejects the unused variable.
 Upstream is [stryker-js#3305](https://github.com/stryker-mutator/stryker-js/issues/3305),
 closed stale and still unfixed on Stryker 10.
 
-### Presentation tokens (13) — accepted, deliberately unasserted
+### Presentation tokens (17) — accepted, deliberately unasserted
 
 | Where                                                                          | Mutants |
 | ------------------------------------------------------------------------------ | ------- |
 | `navigation.ts` — every destination's `icon` → `""` (six, and `adminDestination`'s after #518) | 7       |
 | `reviewLedger.ts` — every `REVIEW_BASIS_BADGE` `color` → `""`                  | 3       |
 | `AppNav.vue` — the three anchor class strings (`railLink`, `railPrimaryLink`, `tab`) → `""` | 3       |
+| `ReviewLedger.vue` — the numeric columns' `{ class: { th, td } }` right-alignment → `{}` / `""` (#586) | 4       |
 
 **Verdict: real gap, accepted by decision.** They are killable, and a test that
 kills one pins the token (`i-lucide-house`, `primary`, a class list) rather than a
@@ -386,10 +388,17 @@ tests; replacing the model with a local `ref(false)` — so the parent's
 `today.spec.ts`'s `the weight sheet stays put, reporting busy, until the save lands`
 on both Playwright projects.
 
-`components/GoalForm.vue` (14/16) and `components/GoalSection.vue` (19/33) are
-**pre-existing and untriaged**; their survivors sit on the Zod messages, the
-`reachedSince` reduce and the form-closing `watch`, none of which any change has
-swept.
+`components/GoalForm.vue` (14/16) is **pre-existing and untriaged**; its survivors
+sit on the Zod messages, which no change has swept.
+
+`components/GoalSection.vue` was triaged in #586 (sweep `30/38` at `1873e1e`):
+
+| Where | Mutant | Verdict |
+| --- | --- | --- |
+| `reachedSince`'s reached-goal filter (two mutants: the call, its predicate) | dropped / `→ true` | **real gap, now killed** by *dates maintaining from the latest reached goal, in the newest-first order the API lists them* — an unreached newest goal seeds the reduce and blanks the "since" date |
+| `reachedSince`'s reduce comparison | `→ true` (keeps the last) | **real gap, now killed** by the same test: the API lists goals newest first (`GoalRepository` `orderBy(STARTED_ON.desc())`), and the only earlier test listed them oldest first |
+| the same comparison | `>` → `>=` | **equivalent**: differs only on a tie, and only the `reachedOn` string is returned |
+| the form-closing `watch`'s `id !== undefined && id !== previous` (four mutants) | parts or whole `→ true`, `&&` → `\|\|` | **equivalent**: the getter returns a primitive id, so Vue fires the callback only when `id !== previous`; the left arm differs only when an active Goal disappears while mounted, which nothing on Profile does (its only refresh after a submit leaves a new active Goal, and a failed read unmounts the section behind `GoalErrorCard`) |
 
 `pages/profile/index.vue:135`'s `weights.value?.length` is equivalent too —
 `weights` is null only when the read failed, and then `LoadErrorState` does not
@@ -410,13 +419,18 @@ stays reachable on an API-supplied value.
 
 ---
 
-### `components/IntakeBreakdownSection.vue` — `no cov` alone, 6 of 54 in company
+### `components/IntakeBreakdownBody.vue` — `no cov` alone, 6 of 54 in company
+
+The script this entry was written for moved, unchanged, from `IntakeBreakdownSection.vue`
+into `IntakeBreakdownBody.vue` when the section became the card's shell (#586); its
+specs still render the section, and #586's scoped sweep left exactly the six below
+(53 killed / 6 survived), on the moved lines.
 
 **Scoped to this file alone, StrykerJS attributes none of its tests to it.** Every
 mutant lands in `# no cov`, so the engine reports a 0% score for a file whose 18 tests
 pass and whose legend rows, expander, coverage caption and ring feed are all asserted;
 the dry run refuses outright — _"Vitest failed to find test files related to mutated
-files"_ — while `pnpm exec vitest related app/components/IntakeBreakdownSection.vue`
+files"_ — while `pnpm exec vitest related app/components/IntakeBreakdownSection.vue` (the section the entry was written against)
 finds the spec and runs all 18. Do not read the 0% as a coverage gap, and do not "fix"
 it by adding tests that already exist.
 
@@ -465,6 +479,19 @@ The eight survivors this component started with in slice 1 are gone, not filtere
 whole `useRing` feed (`data`, `categories`, each arc's `name` and `color`) was
 unreachable because the ring is `aria-hidden` by design, and is asserted through the
 chart's own props — the only seam it has. See also the palette guard below.
+
+### `components/WeightTimelineBody.vue` — 1 of 49
+
+| Where                                               | Mutant                              | Verdict        |
+| --------------------------------------------------- | ----------------------------------- | -------------- |
+| `coverage`'s `evidence.loggedDays == null` (line 52) | the `== null` arm → `false`         | **Equivalent** |
+
+INTAKE evidence always carries a count: the domain type is
+`TimelineEvidenceSummary.Intake(val loggedDays: Int)` (WeightTimeline.kt) and the
+controller maps it straight through (`WeightTimelineController.kt`, `loggedDays =
+loggedDays`); only PLAN sends `null`. The `== null` arm narrows the generated type's
+`number | null` and is never true on an INTAKE response. Moved unchanged from
+`WeightTimelineSection.vue` (#586).
 
 ### `components/ReferenceFoodSearch.vue` — 5 of 62
 
@@ -1638,7 +1665,7 @@ is still loading raises no error*). The six left are **equivalent**:
 - `GoalSection.vue`'s `gated` (an active Goal shows with no reading) was a **real gap**
   for the no-Goal case: `() => false` kept every test green while a disabled section
   offered "Start a goal". Pinned by *with no goal and no reading, offers nothing to start
-  and waits on a weight*. Its other 8 survivors are the untriaged ones above.
+  and waits on a weight*. Its other 8 survivors are triaged above (#586).
 - `ReachedGoalBanner.vue`'s `tracked` branch is template-only, so Stryker makes no
   mutant of it; three hand-mutants (the tracked `<p>` forced on, the `v-else` `<p>`
   forced off, Switch to maintenance's `v-if` dropped) each fail its test. The page's

@@ -28,7 +28,7 @@ const loggedToday = computed(
     title="Today's weight"
     :error="error"
     error-title="Couldn't load your weight"
-    :empty="!loggedToday"
+    :state="loggedToday ? undefined : 'empty'"
     @retry="emit('retry')"
   >
     <div class="flex items-center justify-between gap-3">

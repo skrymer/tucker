@@ -76,10 +76,28 @@ describe('what stays legal', () => {
       await refusals('<GoalCard />', 'app/components/LintFixture.vue'),
     ).toEqual([])
   })
+})
 
-  it('a UCard in a file not yet migrated to content cards', async () => {
-    expect(
-      await refusals('<UCard>Body</UCard>', 'app/components/GoalCard.vue'),
-    ).toEqual([])
+// Every page is carded now, so no file but ContentCard is excepted.
+describe('no file once excepted still may hold a bare UCard', () => {
+  it.each([
+    'app/components/GoalCard.vue',
+    'app/components/GoalProgressHero.vue',
+    'app/components/HistorySection.vue',
+    'app/components/IntakeBreakdownSection.vue',
+    'app/components/MicronutrientSection.vue',
+    'app/components/ReleaseTrendCard.vue',
+    'app/components/ReminderSettings.vue',
+    'app/components/ReviewLedgerItem.vue',
+    'app/components/RouteTimingCard.vue',
+    'app/components/ServerCard.vue',
+    'app/components/WebVitalsCard.vue',
+    'app/components/WeightTimelineSection.vue',
+    'app/pages/admin.vue',
+    'app/pages/profile/index.vue',
+  ])('%s', async (filePath) => {
+    expect(await refusals('<UCard>Body</UCard>', filePath)).toEqual([
+      expect.stringContaining('DESIGN.md → Content card'),
+    ])
   })
 })
