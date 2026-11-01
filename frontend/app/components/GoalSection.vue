@@ -38,6 +38,9 @@ const reachedSince = computed(() => {
   ).reachedOn
 })
 
+// With Calorie Tracking off there is no Budget to hold at maintenance (ADR 0024).
+const { tracksCalories } = useCalorieTracking()
+
 const formOpen = ref(false)
 
 // Close the replacement form on success, not optimistically on submit: success
@@ -53,12 +56,7 @@ watch(
 </script>
 
 <template>
-  <ContentCard
-    subject="goal"
-    title="Goal"
-    :aria-disabled="gated || undefined"
-    :class="{ 'pointer-events-none opacity-50 select-none': gated }"
-  >
+  <ContentCard subject="goal" title="Goal" :aria-disabled="gated || undefined">
     <template #trailing>
       <UButton
         v-if="!props.disabled && !formOpen"
@@ -74,8 +72,12 @@ watch(
       </UButton>
     </template>
 
-    <!-- Gated: a weight reading must exist before a goal can be set. -->
-    <p v-if="gated" class="text-sm text-muted">
+    <!-- Gated: a weight reading must exist before a goal can be set. The body
+         dims, never the band (DESIGN.md → Content card). -->
+    <p
+      v-if="gated"
+      class="pointer-events-none text-sm text-muted opacity-50 select-none"
+    >
       Log your weight first, on <ULink to="/" class="underline">Today</ULink>,
       to set a goal.
     </p>
@@ -92,7 +94,11 @@ watch(
           >.
         </p>
         <p class="mt-1 text-sm text-muted">
-          No active goal — your budget holds at maintenance. Ready to cut again?
+          {{
+            tracksCalories
+              ? 'No active goal — your budget holds at maintenance. Ready to cut again?'
+              : 'No active goal — the aim is to hold your weight. Ready to cut again?'
+          }}
         </p>
       </div>
       <GoalCard v-else :goal="activeGoal" />

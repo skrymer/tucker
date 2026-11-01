@@ -5,6 +5,7 @@ import { screen, within } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import type { components } from '#open-fetch-schemas/api'
 import { intakeTargets, weeklyReview } from '~~/test/review-fixtures'
+import { withCalorieTracking } from '~~/test/calorie-tracking-helpers'
 import ReviewLedger from './ReviewLedger.vue'
 
 type WeeklyReview = components['schemas']['WeeklyReviewResponse']
@@ -123,6 +124,33 @@ describe('ReviewLedger', () => {
 
     await user.click(within(card).getByRole('button', { name: 'Retry' }))
     expect(retry).toHaveBeenCalledOnce()
+  })
+
+  it('holds Run your first review busy while that review is running', async () => {
+    await renderSuspended(ReviewLedger, {
+      props: { reviews: [], running: true },
+    })
+
+    expect(
+      within(screen.getByRole('region', { name: 'Weekly reviews' })).getByRole(
+        'button',
+        { name: 'Run your first review' },
+      ),
+    ).toBeDisabled()
+  })
+
+  it('promises no Budget before the first review with Calorie Tracking off, which keeps none', async () => {
+    await renderSuspended(
+      withCalorieTracking(ReviewLedger, false, { reviews: [] }),
+    )
+
+    const card = screen.getByRole('region', { name: 'Weekly reviews' })
+    expect(
+      within(card).getByText(
+        'No weekly reviews yet. Each week the engine reads your weight trend. Your first review will appear here.',
+      ),
+    ).toBeVisible()
+    expect(card).not.toHaveTextContent(/budget|protein floor/i)
   })
 
   it('renders the reviews as a table on desktop', async () => {

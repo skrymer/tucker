@@ -12,6 +12,8 @@ const props = defineProps<{
 const emit = defineEmits<{ retry: []; run: [] }>()
 
 const isDesktop = useIsDesktop()
+// With Calorie Tracking off a review derives no Budget or Floor (ADR 0024).
+const { tracksCalories } = useCalorieTracking()
 
 // The history arrives oldest-first; toLedgerRows reverses it to newest-first and
 // attaches each row's deltas. Both the table and the cards read it.
@@ -65,15 +67,20 @@ const columns = computed(() =>
   >
     <template #empty>
       <p class="text-sm text-muted">
-        No weekly reviews yet. Each week the engine recalculates your calorie
-        budget and protein floor from your weight trend. Your first review will
-        appear here.
+        No weekly reviews yet. Each week the engine
+        {{
+          tracksCalories
+            ? 'recalculates your calorie budget and protein floor from your weight trend.'
+            : 'reads your weight trend.'
+        }}
+        Your first review will appear here.
       </p>
       <UButton
         variant="outline"
         size="sm"
         icon="i-lucide-refresh-cw"
         class="mt-3"
+        :loading="running"
         @click="emit('run')"
       >
         Run your first review

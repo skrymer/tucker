@@ -777,7 +777,7 @@ It has no exceptions.
   the card's own divider. It holds the **subject icon** (`size-5`, `text-primary`,
   hidden from assistive tech) and the `h2` **title** (`text-h2 text-highlighted`),
   with an optional **trailing slot** at the right: at most a tally, one action, a
-  badge or tabs. On a narrow phone the trailing slot wraps under the title rather
+  badge, tabs, or the legend of the body's one chart. On a narrow phone the trailing slot wraps under the title rather
   than either one truncating. It is `UCard`'s own header slot, padded at the
   body's sides (Shape & elevation). The card is a `section` region named by its title, so
   assistive tech can move between cards by landmark.
@@ -836,7 +836,11 @@ It has no exceptions.
   - **load error** — the `nested` load-error row (Feedback states), with Retry.
 
   A page whose primary read fails still shows one full-page error instead of its
-  cards.
+  cards. On Admin that read is the metrics report, which every chart card is drawn
+  from: its failure is one page-level error, a report with nothing in it is one
+  page-level empty state (Feedback states), and a re-read for new filters dims the
+  report's cards as one block. Only the Server card, a read of its own, keeps its
+  band through each of those.
 
 - **Headings inside a card body** are `h3` in `text-label` or `text-eyebrow`,
   never `text-h2`. A heading that only repeats the band is cut.

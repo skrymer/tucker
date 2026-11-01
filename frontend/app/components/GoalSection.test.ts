@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen, within } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
+import { withCalorieTracking } from '~~/test/calorie-tracking-helpers'
 import GoalSection from './GoalSection.vue'
 
 const currentTrend = { trendKg: 86.0, asOf: '2026-05-28' }
@@ -41,6 +42,20 @@ describe('GoalSection', () => {
     // An aria-hidden glyph has no role or name: its icon name says which it is.
     expect(heading.querySelector('.i-lucide\\:target')).not.toBeNull()
     expect(within(card).getByText(/You're maintaining/)).toBeVisible()
+  })
+
+  it('promises no Budget while maintaining with Calorie Tracking off, which keeps none', async () => {
+    await renderSuspended(
+      withCalorieTracking(GoalSection, false, { goals: [], currentTrend }),
+    )
+
+    const card = screen.getByRole('region', { name: 'Goal' })
+    expect(
+      within(card).getByText(
+        'No active goal — the aim is to hold your weight. Ready to cut again?',
+      ),
+    ).toBeVisible()
+    expect(card).not.toHaveTextContent(/budget/i)
   })
 
   it('shows a maintenance status with a "Start a goal" CTA when no goal is active', async () => {
