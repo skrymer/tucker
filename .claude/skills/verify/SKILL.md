@@ -329,7 +329,9 @@ and checks each against a concrete value in the verdict.
   `verdict audit: 4 inputs — 3 COVERED, 1 UNCOVERED (start date = today) → drove it ✅`
   Write it only after marking every value the audit named DRIVEN (quote it) or NOT
   DRIVEN (with the reason), and copy its counts rather than recounting: #454's line
-  claimed all values driven, and gate 5's re-check found four in neither list.
+  claimed all values driven, and gate 5's re-check found four in neither list. One line
+  per value in the auditor's numbering — `#n DRIVEN: <quote>` / `#n NOT DRIVEN: <reason>`:
+  #586 grouped them by theme and mislabelled two driven values as covered by tests.
   **DRIVEN means the branch the audit named answered, every clause of it, live** — a
   value that came back through another branch is NOT DRIVEN, with that reason, and so is
   one that skipped a clause the audit named (its Retry) or was seen only after a
