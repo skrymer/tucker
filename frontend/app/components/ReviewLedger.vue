@@ -70,8 +70,8 @@ const columns = computed(() =>
         No weekly reviews yet. Each week the engine
         {{
           tracksCalories
-            ? 'recalculates your calorie budget and protein floor from your weight trend.'
-            : 'reads your weight trend.'
+            ? 'recalculates your calorie budget and protein floor from your trend weight.'
+            : 'reads your trend weight.'
         }}
         Your first review will appear here.
       </p>

@@ -56,7 +56,7 @@ watch(
 </script>
 
 <template>
-  <ContentCard subject="goal" title="Goal" :aria-disabled="gated || undefined">
+  <ContentCard subject="goal" title="Goal">
     <template #trailing>
       <UButton
         v-if="!props.disabled && !formOpen"
@@ -74,10 +74,7 @@ watch(
 
     <!-- Gated: a weight reading must exist before a goal can be set. The body
          dims, never the band (DESIGN.md → Content card). -->
-    <p
-      v-if="gated"
-      class="pointer-events-none text-sm text-muted opacity-50 select-none"
-    >
+    <p v-if="gated" class="text-sm text-muted opacity-50">
       Log your weight first, on <ULink to="/" class="underline">Today</ULink>,
       to set a goal.
     </p>

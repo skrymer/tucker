@@ -44,6 +44,18 @@ describe('GoalSection', () => {
     expect(within(card).getByText(/You're maintaining/)).toBeVisible()
   })
 
+  it('says the Budget holds at maintenance while maintaining with Calorie Tracking on', async () => {
+    await renderSuspended(
+      withCalorieTracking(GoalSection, true, { goals: [], currentTrend }),
+    )
+
+    expect(
+      screen.getByText(
+        'No active goal — your budget holds at maintenance. Ready to cut again?',
+      ),
+    ).toBeVisible()
+  })
+
   it('promises no Budget while maintaining with Calorie Tracking off, which keeps none', async () => {
     await renderSuspended(
       withCalorieTracking(GoalSection, false, { goals: [], currentTrend }),
@@ -99,6 +111,23 @@ describe('GoalSection', () => {
         goals: [
           { ...pastGoal, reachedOn: '2026-05-20' },
           { ...activeGoal, active: false, reachedOn: '2026-06-03' },
+        ],
+        currentTrend,
+      },
+    })
+
+    expect(screen.getByText(/since 3 Jun 2026/i)).toBeVisible()
+  })
+
+  it('dates maintaining from the latest reached goal, in the newest-first order the API lists them', async () => {
+    await renderSuspended(GoalSection, {
+      props: {
+        // As GET /api/goals orders them (started_on desc): an unreached goal
+        // ended early, then the two reached ones, newest first.
+        goals: [
+          { ...pastGoal, id: 9, startedOn: '2026-07-01' },
+          { ...activeGoal, active: false, reachedOn: '2026-06-03' },
+          { ...pastGoal, reachedOn: '2026-05-20' },
         ],
         currentTrend,
       },
@@ -214,7 +243,9 @@ describe('GoalSection', () => {
     })
 
     const section = screen.getByRole('region', { name: /^goal$/i })
-    expect(section).toHaveAttribute('aria-disabled', 'true')
+    // Not aria-disabled: that would disable the Today link it points to.
+    expect(section).not.toHaveAttribute('aria-disabled')
+    expect(within(section).getByRole('link', { name: 'Today' })).toBeVisible()
     expect(section).toHaveTextContent(
       'Log your weight first, on Today, to set a goal.',
     )

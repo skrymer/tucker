@@ -65,6 +65,20 @@ test("Profile's Goal is one card: the action in its band, the current Goal, and 
   `)
 })
 
+test('a Goal waiting on a weight links to Today, where the weight is logged', async ({
+  page,
+  goto,
+  network,
+}) => {
+  network.use(...bodyAndPlan({ profile: baselineProfile, readings: [] }))
+
+  await goto('/profile', { waitUntil: 'hydration' })
+  const goal = page.getByRole('region', { name: 'Goal', exact: true })
+  await goal.getByRole('link', { name: 'Today' }).click({ timeout: 5000 })
+
+  await expect(page).toHaveURL(/\/$/)
+})
+
 test('setting a goal on /profile replaces the form with the new goal card', async ({
   page,
   goto,

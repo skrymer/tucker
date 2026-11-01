@@ -388,10 +388,17 @@ tests; replacing the model with a local `ref(false)` — so the parent's
 `today.spec.ts`'s `the weight sheet stays put, reporting busy, until the save lands`
 on both Playwright projects.
 
-`components/GoalForm.vue` (14/16) and `components/GoalSection.vue` (19/33) are
-**pre-existing and untriaged**; their survivors sit on the Zod messages, the
-`reachedSince` reduce and the form-closing `watch`, none of which any change has
-swept.
+`components/GoalForm.vue` (14/16) is **pre-existing and untriaged**; its survivors
+sit on the Zod messages, which no change has swept.
+
+`components/GoalSection.vue` was triaged in #586 (sweep `30/38` at `1873e1e`):
+
+| Where | Mutant | Verdict |
+| --- | --- | --- |
+| `reachedSince`'s reached-goal filter (two mutants: the call, its predicate) | dropped / `→ true` | **real gap, now killed** by *dates maintaining from the latest reached goal, in the newest-first order the API lists them* — an unreached newest goal seeds the reduce and blanks the "since" date |
+| `reachedSince`'s reduce comparison | `→ true` (keeps the last) | **real gap, now killed** by the same test: the API lists goals newest first (`GoalRepository` `orderBy(STARTED_ON.desc())`), and the only earlier test listed them oldest first |
+| the same comparison | `>` → `>=` | **equivalent**: differs only on a tie, and only the `reachedOn` string is returned |
+| the form-closing `watch`'s `id !== undefined && id !== previous` (four mutants) | parts or whole `→ true`, `&&` → `\|\|` | **equivalent**: the getter returns a primitive id, so Vue fires the callback only when `id !== previous`; the left arm differs only when an active Goal disappears while mounted, which nothing on Profile does (its only refresh after a submit leaves a new active Goal, and a failed read unmounts the section behind `GoalErrorCard`) |
 
 `pages/profile/index.vue:135`'s `weights.value?.length` is equivalent too —
 `weights` is null only when the read failed, and then `LoadErrorState` does not
@@ -1658,7 +1665,7 @@ is still loading raises no error*). The six left are **equivalent**:
 - `GoalSection.vue`'s `gated` (an active Goal shows with no reading) was a **real gap**
   for the no-Goal case: `() => false` kept every test green while a disabled section
   offered "Start a goal". Pinned by *with no goal and no reading, offers nothing to start
-  and waits on a weight*. Its other 8 survivors are the untriaged ones above.
+  and waits on a weight*. Its other 8 survivors are triaged above (#586).
 - `ReachedGoalBanner.vue`'s `tracked` branch is template-only, so Stryker makes no
   mutant of it; three hand-mutants (the tracked `<p>` forced on, the `v-else` `<p>`
   forced off, Switch to maintenance's `v-if` dropped) each fail its test. The page's

@@ -777,7 +777,7 @@ It has no exceptions.
   the card's own divider. It holds the **subject icon** (`size-5`, `text-primary`,
   hidden from assistive tech) and the `h2` **title** (`text-h2 text-highlighted`),
   with an optional **trailing slot** at the right: at most a tally, one action, a
-  badge, tabs, or the legend of the body's one chart. On a narrow phone the trailing slot wraps under the title rather
+  badge, tabs, or the legend the body's charts share. On a narrow phone the trailing slot wraps under the title rather
   than either one truncating. It is `UCard`'s own header slot, padded at the
   body's sides (Shape & elevation). The card is a `section` region named by its title, so
   assistive tech can move between cards by landmark.
@@ -827,7 +827,8 @@ It has no exceptions.
   - **ready** — the card's content;
   - **busy** — the content already shown, kept up while it is re-read (a new
     window), the region marked busy; the card dims what the re-read will
-    replace, 150 ms late (ADR 0007), and never its band;
+    replace, 150 ms late (ADR 0007), and never its band (Admin's report block,
+    below, is the one exception);
   - **loading** — skeleton rows hidden from assistive tech, the region marked
     busy; the rows show 150 ms late (ADR 0007), so a fast answer never flashes
     them, while the band shows at once;

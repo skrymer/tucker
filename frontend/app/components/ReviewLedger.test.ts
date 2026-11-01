@@ -139,6 +139,18 @@ describe('ReviewLedger', () => {
     ).toBeDisabled()
   })
 
+  it('says the engine recalculates the Budget and Floor before the first review with Calorie Tracking on', async () => {
+    await renderSuspended(
+      withCalorieTracking(ReviewLedger, true, { reviews: [] }),
+    )
+
+    expect(
+      within(screen.getByRole('region', { name: 'Weekly reviews' })).getByText(
+        'No weekly reviews yet. Each week the engine recalculates your calorie budget and protein floor from your trend weight. Your first review will appear here.',
+      ),
+    ).toBeVisible()
+  })
+
   it('promises no Budget before the first review with Calorie Tracking off, which keeps none', async () => {
     await renderSuspended(
       withCalorieTracking(ReviewLedger, false, { reviews: [] }),
@@ -147,7 +159,7 @@ describe('ReviewLedger', () => {
     const card = screen.getByRole('region', { name: 'Weekly reviews' })
     expect(
       within(card).getByText(
-        'No weekly reviews yet. Each week the engine reads your weight trend. Your first review will appear here.',
+        'No weekly reviews yet. Each week the engine reads your trend weight. Your first review will appear here.',
       ),
     ).toBeVisible()
     expect(card).not.toHaveTextContent(/budget|protein floor/i)
