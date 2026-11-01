@@ -77,6 +77,35 @@ describe('ReviewLedger', () => {
     expect(run).toHaveBeenCalledOnce()
   })
 
+  it('offers to run a review now under the rows on phone, where the page header has no room for it', async () => {
+    viewport.desktop = false
+    const user = userEvent.setup()
+    const run = vi.fn()
+    await renderSuspended(ReviewLedger, {
+      props: { reviews: history, onRun: run },
+    })
+
+    const card = screen.getByRole('region', { name: 'Weekly reviews' })
+    await user.click(
+      within(card).getByRole('button', { name: 'Run review now' }),
+    )
+    expect(run).toHaveBeenCalledOnce()
+  })
+
+  it('holds Run review now busy while a review is running', async () => {
+    viewport.desktop = false
+    await renderSuspended(ReviewLedger, {
+      props: { reviews: history, running: true },
+    })
+
+    expect(
+      within(screen.getByRole('region', { name: 'Weekly reviews' })).getByRole(
+        'button',
+        { name: 'Run review now' },
+      ),
+    ).toBeDisabled()
+  })
+
   it('renders the reviews as a table on desktop', async () => {
     viewport.desktop = true
     await renderSuspended(ReviewLedger, { props: { reviews: history } })

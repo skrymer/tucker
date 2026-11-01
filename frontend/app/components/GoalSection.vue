@@ -61,7 +61,7 @@ watch(
   >
     <template #trailing>
       <UButton
-        v-if="!gated && !props.disabled && !formOpen"
+        v-if="!props.disabled && !formOpen"
         icon="i-lucide-target"
         color="primary"
         @click="

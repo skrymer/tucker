@@ -110,7 +110,7 @@ describe('ContentCard', () => {
 
   it('shows its band while loading, over a skeleton assistive tech is not told about', async () => {
     await renderSuspended(ContentCard, {
-      props: { subject: 'goal', title: 'Goal', loading: true },
+      props: { subject: 'goal', title: 'Goal', state: 'loading' },
       slots: { default: () => '3.3 kg to go' },
     })
 
@@ -124,9 +124,20 @@ describe('ContentCard', () => {
     ).not.toBeNull()
   })
 
+  it('reports itself busy while its body is re-read, keeping that body up rather than a skeleton', async () => {
+    await renderSuspended(ContentCard, {
+      props: { subject: 'weightTimeline', title: 'Your weight', state: 'busy' },
+      slots: { default: () => '28 days of weights' },
+    })
+
+    const card = screen.getByRole('region', { name: 'Your weight' })
+    expect(card).toHaveAttribute('aria-busy', 'true')
+    expect(within(card).getByText('28 days of weights')).toBeVisible()
+  })
+
   it('keeps its band over an empty read, saying what to do next in place of the body', async () => {
     await renderSuspended(ContentCard, {
-      props: { subject: 'weight', title: "Today's weight", empty: true },
+      props: { subject: 'weight', title: "Today's weight", state: 'empty' },
       slots: {
         default: () => '72.4 kg',
         empty: () => 'No weight logged today.',

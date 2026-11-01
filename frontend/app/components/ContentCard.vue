@@ -7,23 +7,30 @@ type ReadState =
   | { error?: null; errorTitle?: string }
   | { error: unknown; errorTitle: string }
 
+/**
+ * The body's state short of ready — one at a time (DESIGN.md → Content card):
+ * - `loading`: a skeleton stands in for the body;
+ * - `busy`: the body already shown stays up while it is re-read;
+ * - `empty`: nothing here yet, and the `empty` slot says what to do next.
+ */
+type BodyState = 'loading' | 'busy' | 'empty'
+
 // Stryker disable next-line all: a compiler macro must stay a top-level statement
-defineProps<
+const props = defineProps<
   {
     subject: ContentCardSubject
     title: string
-    loading?: boolean
-    /** Nothing here yet: the `empty` slot, saying what to do next, stands in for the body. */
-    empty?: boolean
+    state?: BodyState
   } & ReadState
 >()
 const emit = defineEmits<{ retry: [] }>()
 
 const headingId = useId()
+const busy = computed(() => props.state === 'loading' || props.state === 'busy')
 </script>
 
 <template>
-  <UCard as="section" :aria-labelledby="headingId" :aria-busy="loading">
+  <UCard as="section" :aria-labelledby="headingId" :aria-busy="busy">
     <!-- On a narrow phone the trailing slot drops under the title rather than
          either one truncating. -->
     <template #header>
@@ -55,7 +62,7 @@ const headingId = useId()
            and each USkeleton would otherwise raise an alert. It shows 150 ms
            late (ADR 0007), so a fast answer never flashes it. -->
       <div
-        v-if="loading"
+        v-if="state === 'loading'"
         aria-hidden="true"
         class="appear-late flex flex-col gap-2"
       >
@@ -63,7 +70,7 @@ const headingId = useId()
         <USkeleton class="h-4 w-2/3" />
         <USkeleton class="h-4 w-1/2" />
       </div>
-      <slot v-else-if="empty" name="empty" />
+      <slot v-else-if="state === 'empty'" name="empty" />
       <slot v-else />
     </LoadErrorState>
   </UCard>

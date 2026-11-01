@@ -123,6 +123,23 @@ describe('WeightTimelineSection', () => {
     ).toBeVisible()
   })
 
+  it('says under its own band that the weights could not be read, and its Retry asks again', async () => {
+    const user = userEvent.setup()
+    const retry = vi.fn()
+    await renderSuspended(WeightTimelineSection, {
+      props: { timeline: null, error: new Error('down'), onRetry: retry },
+    })
+
+    const card = screen.getByRole('region', { name: 'Your weight' })
+    expect(
+      within(card).getByRole('heading', { name: "Couldn't load your weight" }),
+    ).toBeVisible()
+    expect(within(card).queryByRole('tab')).not.toBeInTheDocument()
+
+    await user.click(within(card).getByRole('button', { name: 'Retry' }))
+    expect(retry).toHaveBeenCalledOnce()
+  })
+
   it('states every day it draws in words, since the chart itself is decorative', async () => {
     await renderSuspended(WeightTimelineSection, {
       props: {

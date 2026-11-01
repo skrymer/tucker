@@ -188,7 +188,7 @@ const filters = computed(() => [
             v-else
             subject="routeTiming"
             title="Moving between pages"
-            empty
+            state="empty"
           >
             <template #empty>
               <div

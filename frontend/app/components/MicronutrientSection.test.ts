@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { renderSuspended } from '@nuxt/test-utils/runtime'
-import { screen } from '@testing-library/vue'
+import { screen, within } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import {
   micronutrientIntake,
@@ -25,6 +25,24 @@ describe('MicronutrientSection', () => {
     })
     // An aria-hidden glyph has no role or name: its icon name says which it is.
     expect(heading.querySelector('.i-lucide\\:leaf')).not.toBeNull()
+  })
+
+  it('says under its own band that the vitamins and minerals could not be read, and its Retry asks again', async () => {
+    const user = userEvent.setup()
+    const retry = vi.fn()
+    await renderSuspended(MicronutrientSection, {
+      props: { intake: null, error: new Error('down'), onRetry: retry },
+    })
+
+    const card = screen.getByRole('region', { name: 'Vitamins and minerals' })
+    expect(
+      within(card).getByRole('heading', {
+        name: "Couldn't load your vitamins and minerals",
+      }),
+    ).toBeVisible()
+
+    await user.click(within(card).getByRole('button', { name: 'Retry' }))
+    expect(retry).toHaveBeenCalledOnce()
   })
 
   it('states how much of the window can report a vitamin or mineral at all', async () => {

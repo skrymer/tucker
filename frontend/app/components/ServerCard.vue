@@ -45,7 +45,7 @@ const up = computed(() => figures.value?.health === 'UP')
   <ContentCard
     subject="server"
     title="Server"
-    :aria-busy="pending"
+    :state="pending ? 'busy' : undefined"
     :error="error"
     error-title="Couldn't read the server figures"
     @retry="refresh"

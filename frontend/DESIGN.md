@@ -825,6 +825,9 @@ It has no exceptions.
   the absence of an active Goal (ADR 0008), and its body says so.
 - **The band is constant; only the body changes.** The body is one of:
   - **ready** — the card's content;
+  - **busy** — the content already shown, kept up while it is re-read (a new
+    window), the region marked busy; the card dims what the re-read will
+    replace, 150 ms late (ADR 0007), and never its band;
   - **loading** — skeleton rows hidden from assistive tech, the region marked
     busy; the rows show 150 ms late (ADR 0007), so a fast answer never flashes
     them, while the band shows at once;

@@ -6,6 +6,8 @@ import type { LedgerRow } from '~/utils/reviewLedger'
 const props = defineProps<{
   reviews: components['schemas']['WeeklyReviewResponse'][]
   error?: unknown
+  /** Whether a review asked for here is running. */
+  running?: boolean
 }>()
 const emit = defineEmits<{ retry: []; run: [] }>()
 
@@ -58,7 +60,7 @@ const columns = computed(() =>
     title="Weekly reviews"
     :error="error"
     error-title="Couldn't load your reviews"
-    :empty="reviews.length === 0"
+    :state="reviews.length === 0 ? 'empty' : undefined"
     @retry="emit('retry')"
   >
     <template #empty>
@@ -129,15 +131,30 @@ const columns = computed(() =>
       </template>
     </UTable>
 
-    <!-- Rows, not a card each: cards never nest (DESIGN.md → Content card). -->
-    <ul v-else role="list" class="divide-y divide-default">
-      <li
-        v-for="row in rows"
-        :key="row.review.id"
-        class="py-3 first:pt-0 last:pb-0"
+    <template v-else>
+      <!-- Rows, not a card each: cards never nest (DESIGN.md → Content card). -->
+      <ul role="list" class="divide-y divide-default">
+        <li
+          v-for="row in rows"
+          :key="row.review.id"
+          class="py-3 first:pt-0 last:pb-0"
+        >
+          <ReviewLedgerItem :row="row" />
+        </li>
+      </ul>
+      <!-- On desktop the page header carries it. -->
+      <UButton
+        icon="i-lucide-refresh-cw"
+        color="primary"
+        block
+        size="lg"
+        class="mt-4"
+        :loading="running"
+        :disabled="running"
+        @click="emit('run')"
       >
-        <ReviewLedgerItem :row="row" />
-      </li>
-    </ul>
+        Run review now
+      </UButton>
+    </template>
   </ContentCard>
 </template>

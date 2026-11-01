@@ -161,21 +161,13 @@ const { pending, execute: runReview } = useApiMutation(
     />
     <GoalProgressHero v-else-if="goalProgress" :progress="goalProgress" />
 
-    <!-- A failed read stands under the card's band alone: there is no
-         timeline to draw, only which card failed. -->
-    <ContentCard
-      v-if="timelineError"
-      subject="weightTimeline"
-      title="Your weight"
-      :error="timelineError"
-      error-title="Couldn't load your weight"
-      @retry="refreshTimeline"
-    />
     <WeightTimelineSection
-      v-else-if="timeline"
+      v-if="timeline || timelineError"
       v-model:window-days="timelineWindow"
       :timeline="timeline"
       :pending="timelinePending"
+      :error="timelineError"
+      @retry="refreshTimeline"
     />
 
     <!-- Ungated like the timeline above it: weight is the premise, and with
@@ -188,36 +180,24 @@ const { pending, execute: runReview } = useApiMutation(
 
     <!-- One gate, in setup: with Calorie Tracking off nothing was fetched, so
          there is neither a breakdown to render nor an error to report. -->
-    <ContentCard
-      v-if="breakdownError"
-      subject="intakeBreakdown"
-      title="What you're eating"
-      :error="breakdownError"
-      error-title="Couldn't load what you're eating"
-      @retry="refreshBreakdown"
-    />
     <IntakeBreakdownSection
-      v-else-if="breakdown"
+      v-if="breakdown || breakdownError"
       v-model:period="period"
       :breakdown="breakdown"
       :pending="breakdownPending"
+      :error="breakdownError"
+      @retry="refreshBreakdown"
     />
 
     <!-- Between the breakdown and the ledger, and gated in setup by the same
          rule: with Calorie Tracking off nothing was fetched, so there is neither
          an intake to render nor an error to report. -->
-    <ContentCard
-      v-if="micronutrientsError"
-      subject="micronutrients"
-      title="Vitamins and minerals"
-      :error="micronutrientsError"
-      error-title="Couldn't load your vitamins and minerals"
-      @retry="refreshMicronutrients"
-    />
     <MicronutrientSection
-      v-else-if="micronutrients"
+      v-if="micronutrients || micronutrientsError"
       :intake="micronutrients"
       :pending="micronutrientsPending"
+      :error="micronutrientsError"
+      @retry="refreshMicronutrients"
       @match="foodToMatch = { id: $event.foodId, name: $event.name }"
     />
 
@@ -232,20 +212,9 @@ const { pending, execute: runReview } = useApiMutation(
     <ReviewLedger
       :reviews="reviews ?? []"
       :error="reviewsError"
+      :running="pending"
       @retry="refresh"
       @run="runReview()"
     />
-    <UButton
-      v-if="!isDesktop && hasReviews"
-      icon="i-lucide-refresh-cw"
-      color="primary"
-      block
-      size="lg"
-      :loading="pending"
-      :disabled="pending"
-      @click="runReview()"
-    >
-      Run review now
-    </UButton>
   </section>
 </template>
