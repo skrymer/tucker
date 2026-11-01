@@ -636,6 +636,10 @@ the issue>. You may read anything else in the repo.
 Judge each state by what the User sees in it, not by whether a function's return
 value is right on its own terms.
 
+A test in the diff is a defect too when it would fail while nothing a User can do
+changes (it pins a class, an opacity, a cosmetic style or markup), or pass while
+what a User can do breaks. Row it at the test's file:line.
+
 For each defect, return one row:
 | file:line | defect | failure scenario (the User steps or data state that hit it) |
 "No findings" is a complete and valued answer.
