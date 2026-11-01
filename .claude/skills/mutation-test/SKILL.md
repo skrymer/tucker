@@ -51,9 +51,9 @@ memory pressure, so an unbounded sweep takes the terminal and the Claude Code se
 with it — twice (2026-08-23, 2026-08-25: `Killed .../vte-spawn-….scope due to memory
 pressure`). Inside a scope the kernel kills within that cgroup only: a dead worker.
 
-**Do not run the two sweeps concurrently.** Overlapping them is where the OOM came
-from: they are separately affordable and jointly not. Sequential costs wall-clock
-that a killed session costs anyway, plus the work in flight.
+**Never two sweeps at once, another worktree's session's included** — separately
+affordable, jointly not (#582 died at 31%, exit 137, beside `f24-586`'s). Check first:
+`ps -eo args | grep -c "[s]tryker-mutator/core/bin\|[p]itest"`; wait on that `[s]` form, as `pgrep -f` matches its own loop and never exits.
 
 ### Memory budget (measured on this repo, 30 GB machine)
 
@@ -309,14 +309,14 @@ own large suite joins (#546 `EditFoodSheet.vue`: 81 in 8m54s), plus a ~1-minute 
   behaviour to pin.
 - A **timeout** verdict is not a survivor: it usually means an infinite loop, which
   counts as killed.
-- **A `.vue` file can come back entirely `NoCoverage`** although its test renders
-  it — `log.vue` did in one run and scored 43/57 in another, and in #435 three at once
-  (`AddSheet.vue`, `check.vue`, `FullscreenScanner.vue`: 255 mutants); the cause is not
-  diagnosed. A single-file config pointing the runner at that test ran no tests at
-  all. Go straight to hand-mutating copies (False survivor, above) rather than
-  debugging the runner. Single **Survived** mutants are false the same way when their
-  only killer is the page test that mounts the component (`foods.test.ts`): Stryker's
-  related-test set left the page tests out, and #454's 3 false survivors were these.
+- **A file's own test can be dropped from every mutant** — `.vue` or `.ts`: `log.vue`
+  came back all `NoCoverage` once and 43/57 next run, #435 lost 255 mutants that way, and
+  #582's `weightTimeline.ts` ran its own 54-test file in 1 of 4 runs. The signal: "Ran N
+  tests per mutant" far below the dry run's "Ran N tests" (5.9 vs 84). Cause undiagnosed,
+  and `--coverageAnalysis all`, `vitest.related: false` and a narrowed include each failed
+  (#582: ~22 min). Go straight to hand-mutating copies (False survivor, above). Single
+  **Survived** mutants whose only killer is the page test (`foods.test.ts`) are the same
+  wall — related-test sets left page tests out; #454's 3 false survivors were these.
 - **Every compiler macro a change writes gets its `// Stryker disable next-line all`
   as it is written** — `defineProps`, `defineEmits`, and `defineModel` too, not only
   after Extract Component. A mutated one kills the run, and the symptom varies: "failing

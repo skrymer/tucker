@@ -152,9 +152,9 @@ old one overwritten: #498 lost a pitest red and a "91 failed" e2e log that way.
 
    **Commit before launching them, and point every brief at the commit**
    (`git diff <base> <sha>`, `git show <sha>:<path>`), never at the working tree.
-   `/code-review` runs inline in this same message and its fixes start landing while
-   the four still read; in #435 `/check-adrs` reported the composable changing under
-   it, and the ledger judged a semantics that no longer shipped.
+   Its fixes land while the four still read (#435's ledger judged a semantics no longer
+   shipped). A mid-sign-off rebase: `git diff <old base> <new base> -- .claude/skills/feature-sign-off/`
+   and re-run any gate whose brief changed (#582's Brief G gained a test angle; its re-run found a fixture bug).
 
    When any gate's fixes land, re-check **only the files they touched** against the
    constraints `/check-adrs` cited, the rows the ledger and diagram auditor returned, and

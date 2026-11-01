@@ -67,7 +67,8 @@ explicitly in the verdict.
    `.env` breaks the mocked e2e locally. And restart a dev server
    that has been running across the gates' fixes before the walk-through: one that
    had served the whole sign-off answered a 500 ("Cannot read properties of null")
-   until restarted.
+   until restarted. Re-mint the `1d` token too when the sign-off has run past a day:
+   #582's expired mid-walk-through and every card read "Couldn't load" (a 401).
 2. **Seed what the surface needs** over the API, not the UI — you're verifying
    *your* change, not re-testing setup. Go **through the dev proxy**
    (`http://localhost:<port>/api`), not `:8080`, which demands an Access assertion

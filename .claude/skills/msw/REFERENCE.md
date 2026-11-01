@@ -174,6 +174,11 @@ or is stated as unchecked — an annotation in `e2e/` never answers a typing fin
   `compositions` throws on lines seeded under a row that is not a Recipe, on a
   line weighing in anything but a plain Food it holds, and on an `ingredientCount`
   that disagrees with the lines — so a fixture cannot describe a dish two ways.
+  When a fixture stops deriving a value and takes it as stated data, its default must
+  not let an existing call state the impossible: #582's `withIntake` read a bare figure
+  as `within-budget`, so `2000` against an 1800 Budget passed review twice until a later
+  pass caught it. Refuse the half of the rule that needs no domain constant (a bare
+  figure over the Budget throws) rather than re-deriving the rule the change removed.
 - **The typed handler can only send what the spec declares.** `POST /api/tags`
   declares 200 alone, though the backend answers a new Tag with 201, so `foodCatalog`
   answers both with 200.
