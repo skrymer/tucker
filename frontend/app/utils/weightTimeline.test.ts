@@ -413,7 +413,7 @@ describe('weightTimelineSeries — the intake half', () => {
     // Entry" tick would read as less than nothing — inverting the one distinction
     // the tick exists to make.
     const barelyLogged = withIntake(timelineDays([80.4, null, 80.2]), [
-      2000,
+      [2000, 'over-budget'],
       null,
       20,
     ])
