@@ -1,6 +1,6 @@
 # Feature history
 
-The slice-by-slice record of every frontend increment (F1–F22): what each slice
+The slice-by-slice record of every frontend increment (F1–F24): what each slice
 shipped, and the non-obvious findings, traps and deviations its sign-off turned
 up. Moved out of `CLAUDE.md`, which keeps only the roster, to keep the start-up
 context small. The decisions themselves live in the ADRs (`docs/adr/`) and the
@@ -2279,6 +2279,49 @@ null` now means two things that earn opposite messages — the same trap
     a behaviour-preserving Move Function as a fresh implementation. The way through was
     the member's own red-green: compile red, a `= 0.0` stub for an assertion red, then
     the body.
+
+- **F23** — **Tolerance: a day up to 10% past its Calorie Budget is slightly over**
+  (amber), not over budget (red), on the Day Ring, the day verdict and the Weight
+  Timeline (PRD [#579](https://github.com/skrymer/tucker/issues/579),
+  [ADR 0041](docs/adr/0041-a-day-a-few-percent-past-its-budget-is-slightly-over.md)),
+  in slices #580–#582.
+  - **Slice 1 ([#580](https://github.com/skrymer/tucker/issues/580)) — the warning ink,
+    picked live.** No code: light `#D9922B` and dark `#F5B544` stay. Every amber that
+    clears 3:1 on the white card read brown beside the coral protein arc, so light keeps
+    **2.59:1** (dark 8.88:1). DESIGN.md → Status records the rule that follows: warning
+    always sits beside a word that says the same thing, and a large figure never takes it.
+  - **Ruled (user):** the 3:1 criterion was struck from #580; the Day Ring's centre
+    figure stays in body ink on a slightly-over day.
+  - **Slice 2 ([#581](https://github.com/skrymer/tucker/issues/581)) — slightly over on
+    Today.** `BudgetVerdict.of` grades calories against the Budget with a 10% Tolerance
+    (exactly 110% is still slightly over); `DayStatus` gains `slightly-over`, calories
+    ahead of protein. The Budget Projection still warns at the Budget itself
+    (`BudgetVerdict.isPastBudget`, PRD out of scope). The Day Ring's arc, swatch and
+    meter turn amber and a `DayVerdict` pill reads "Slightly over"; `/design` shows the
+    three rings and pills.
+  - **Ruled (user):** under 0.5 kcal over, the ring stays green with "0 kcal left" beside
+    the "Slightly over" pill — the ring decides on the rounded remainder, the pill on the
+    unrounded verdict. Prod deploys were held until #582, so Today (amber) and the
+    timeline (still red past the Budget) never disagreed in front of a User.
+  - **Slice 3 ([#582](https://github.com/skrymer/tucker/issues/582)) — slightly over on
+    the Weight Timeline.** The per-day `overBudget: Boolean?` is replaced outright by
+    `budgetVerdict` (`within-budget | slightly-over | over-budget`, `null` with no Budget
+    or no Entries), graded in `WeightTimeline.drawOn` by the same `BudgetVerdict.of`;
+    `@JsonValue` carries the kebab values. The bar maps it to calorie green, amber or
+    red (`VERDICT_COLOR`), and the readout ends "· slightly over" / "· over budget". The
+    Vitest fixtures take the verdict as stated data rather than re-deriving the rule.
+  - **Ruled (user):** the readout names the grade, so amber is never the only carrier
+    on the bar (it was hue alone against DESIGN.md's Status rule); added as a criterion.
+  - **Ruled (user):** after a deploy, an installed app still on the old bundle reads the
+    removed `overBudget` and draws its bars green until its next open (`autoUpdate`);
+    accepted, no deprecation period, per the PRD.
+  - **Ruled (user):** the timeline sums a day in SQL, Today in Kotlin, so a total within
+    ~1e-13 kcal of exactly 110% could grade differently on the two; accepted rather
+    than reworking `caloriesByDay`, which the adaptive review also reads.
+  - **Trap:** Stryker's Vitest runner dropped `weightTimeline.test.ts` from every mutant
+    in 3 of 4 runs ("Ran 5.9 tests per mutant" against a dry run of 84), whatever the
+    `coverageAnalysis`, `related` or include; the fix's lines were settled by hand-mutated
+    copies (now in `mutation-test`).
 
 - **F24** — **Content cards**: every card is one `ContentCard` — a section region named
   by its h2, a header band with the subject's icon and an optional trailing slot, and
