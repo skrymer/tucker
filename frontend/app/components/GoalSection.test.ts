@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { renderSuspended } from '@nuxt/test-utils/runtime'
-import { screen } from '@testing-library/vue'
+import { screen, within } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import GoalSection from './GoalSection.vue'
 
@@ -27,6 +27,22 @@ const pastGoal = {
 }
 
 describe('GoalSection', () => {
+  it('is one Goal card while maintaining, headed once, its band carrying the target icon', async () => {
+    await renderSuspended(GoalSection, {
+      props: { goals: [], currentTrend },
+    })
+
+    const card = screen.getByRole('region', { name: 'Goal' })
+    const heading = within(card).getByRole('heading', {
+      level: 2,
+      name: 'Goal',
+    })
+    expect(within(card).getAllByRole('heading')).toEqual([heading])
+    // An aria-hidden glyph has no role or name: its icon name says which it is.
+    expect(heading.querySelector('.i-lucide\\:target')).not.toBeNull()
+    expect(within(card).getByText(/You're maintaining/)).toBeVisible()
+  })
+
   it('shows a maintenance status with a "Start a goal" CTA when no goal is active', async () => {
     await renderSuspended(GoalSection, {
       props: { goals: [], currentTrend },

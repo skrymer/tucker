@@ -140,11 +140,13 @@
             - link "CC BY 4.0":
                 - /url: https://creativecommons.org/licenses/by/4.0/
             - text: '. Source: National Health and Medical Research Council. They are the figures for an adult who is not pregnant and not breastfeeding — both shift several of them substantially, and Tucker has no setting for either.'
-    - list:
-        - listitem:
-            - paragraph: 1 Jun 2026
-            - text: Adaptive
-            - paragraph: '1900'
-            - paragraph: kcal budget
-            - paragraph: 86.0 kg trend · 2400 kcal maint · 170 g protein
+    - region "Weekly reviews":
+        - heading "Weekly reviews" [level=2]
+        - list:
+            - listitem:
+                - paragraph: 1 Jun 2026
+                - text: Adaptive
+                - paragraph: '1900'
+                - paragraph: kcal budget
+                - paragraph: 86.0 kg trend · 2400 kcal maint · 170 g protein
     - button "Run review now"

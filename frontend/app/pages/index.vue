@@ -185,14 +185,9 @@ const {
         @delete="selectedEntry = $event"
         @retry="refreshTomorrow"
       />
-      <!-- A failed read can say neither which Goal card applies nor whether the
-           User is maintaining, so it stands under the Goal's band alone. -->
-      <ContentCard
+      <GoalErrorCard
         v-if="goalProgressError"
-        subject="goal"
-        title="Goal"
         :error="goalProgressError"
-        error-title="Couldn't load your goal"
         @retry="refreshGoalProgress"
       />
       <template v-else>

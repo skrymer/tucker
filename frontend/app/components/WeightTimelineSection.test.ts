@@ -104,6 +104,25 @@ describe('WeightTimelineSection', () => {
     for (const rendered of Object.values(drawn)) rendered.length = 0
   })
 
+  it('is the Your weight card, its band carrying the chart-line icon and the window tabs', async () => {
+    await renderSuspended(WeightTimelineSection, {
+      props: { timeline: weightTimeline() },
+    })
+
+    const heading = screen.getByRole('heading', {
+      level: 2,
+      name: 'Your weight',
+    })
+    // An aria-hidden glyph has no role or name: its icon name says which it is.
+    expect(heading.querySelector('.i-lucide\\:chart-line')).not.toBeNull()
+    expect(
+      within(screen.getByRole('region', { name: 'Your weight' })).getByRole(
+        'group',
+        { name: 'Window' },
+      ),
+    ).toBeVisible()
+  })
+
   it('states every day it draws in words, since the chart itself is decorative', async () => {
     await renderSuspended(WeightTimelineSection, {
       props: {

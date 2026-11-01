@@ -30,11 +30,11 @@ test.describe('as an Admin, on a desktop', () => {
       - region "Server":
         - /children: deep-equal
         - heading "Server" [level=2]
+        - text: Up
         - paragraph:
           - text: Since the last restart,
           - strong: 3 d 7 h
           - text: ago. The range and engine filters above don't apply.
-        - text: Up
         - group "Process CPU": Process CPU · now 3.4% Tucker's own share
         - group "System CPU": System CPU · now 21% the host, as seen
         - group "Heap": Heap · now 182 MB used of 256 MB

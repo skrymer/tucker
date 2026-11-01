@@ -56,12 +56,12 @@ const { planned, pace, observedFinish, observedRate } = usePaceColumns()
 </script>
 
 <template>
-  <UCard>
-    <div class="flex items-center justify-between gap-2">
-      <GoalProgressHeading :pace-status="progress.paceStatus" />
-    </div>
+  <ContentCard subject="goal" title="Goal">
+    <template #trailing>
+      <PaceBadge :pace-status="progress.paceStatus" />
+    </template>
     <template v-if="!tracked">
-      <p class="mt-2 text-body text-muted">
+      <p class="text-body text-muted">
         Log a weight to see where you stand on your Goal.
       </p>
       <dl class="mt-4">
@@ -72,7 +72,7 @@ const { planned, pace, observedFinish, observedRate } = usePaceColumns()
       </dl>
     </template>
     <template v-else>
-      <p class="mt-1 text-ring-figure text-default">{{ percent }}%</p>
+      <p class="text-ring-figure text-default">{{ percent }}%</p>
       <!-- `get-value-label`, never `aria-label`: the attribute never reaches the
          progressbar element (frontend/DESIGN.md). -->
       <UProgress
@@ -124,5 +124,5 @@ const { planned, pace, observedFinish, observedRate } = usePaceColumns()
         </div>
       </div>
     </template>
-  </UCard>
+  </ContentCard>
 </template>

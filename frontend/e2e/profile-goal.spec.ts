@@ -3,6 +3,68 @@ import { bodyAndPlan } from '../test/mocks/handlers/body'
 import { baselineProfile } from '../test/mocks/handlers/profile'
 import { localTodayIso, pinToLocalMorning } from './support/date'
 
+test("Profile's Goal is one card: the action in its band, the current Goal, and past goals as rows", async ({
+  page,
+  goto,
+  network,
+}) => {
+  network.use(
+    ...bodyAndPlan({
+      profile: baselineProfile,
+      readings: [{ id: 1, measuredOn: '2026-05-28', weightKg: 84.2 }],
+      goals: [
+        {
+          id: 3,
+          startedOn: '2026-02-01',
+          startWeightKg: 95,
+          targetWeightKg: 85,
+          rateKgPerWeek: 0.75,
+          active: false,
+          reachedOn: '2026-04-20',
+        },
+        {
+          id: 7,
+          startedOn: '2026-05-01',
+          startWeightKg: 90,
+          targetWeightKg: 80,
+          rateKgPerWeek: 0.5,
+          active: true,
+        },
+      ],
+    }),
+  )
+
+  await goto('/profile', { waitUntil: 'hydration' })
+  const goal = page.getByRole('region', { name: 'Goal', exact: true })
+  await goal.getByRole('button', { name: 'Past goals (1)' }).click()
+
+  await expect(goal).toMatchAriaSnapshot(`
+    - region "Goal":
+      - /children: deep-equal
+      - heading "Goal" [level=2]
+      - button "Set a new goal"
+      - term: Target weight
+      - definition: 80.0 kg
+      - term: Rate
+      - definition: 0.5 kg/week
+      - term: Start weight
+      - definition: 90.0 kg
+      - term: Started
+      - definition: 1 May 2026
+      - button "Past goals (1)" [expanded]
+      - list:
+        - listitem:
+          - term: Target weight
+          - definition: 85.0 kg
+          - term: Rate
+          - definition: 0.75 kg/week
+          - term: Start weight
+          - definition: 95.0 kg
+          - term: Started
+          - definition: 1 Feb 2026
+  `)
+})
+
 test('setting a goal on /profile replaces the form with the new goal card', async ({
   page,
   goto,

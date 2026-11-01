@@ -43,30 +43,27 @@ function useRouteTimingSeries(routes: () => RouteFigures[]) {
 </script>
 
 <template>
-  <UCard>
+  <ContentCard subject="routeTiming" title="Moving between pages">
+    <template #trailing>
+      <ul aria-label="Parts" class="flex gap-4 text-sm text-muted">
+        <li
+          v-for="{ name: partName, color: swatch } in PARTS"
+          :key="partName"
+          class="flex items-center gap-1.5"
+        >
+          <span
+            class="inline-block size-2.5 rounded-full"
+            :style="{ background: swatch }"
+            aria-hidden="true"
+          />
+          {{ partName }}
+        </li>
+      </ul>
+    </template>
     <div class="flex flex-col gap-4">
-      <div class="flex items-baseline justify-between gap-4">
-        <div class="flex flex-col gap-1">
-          <h2 class="text-h2 text-highlighted">Moving between pages</h2>
-          <p class="text-sm text-muted">
-            Where a move near the p75 spends its time, slowest page first
-          </p>
-        </div>
-        <ul aria-label="Parts" class="flex gap-4 text-sm text-muted">
-          <li
-            v-for="{ name: partName, color: swatch } in PARTS"
-            :key="partName"
-            class="flex items-center gap-1.5"
-          >
-            <span
-              class="inline-block size-2.5 rounded-full"
-              :style="{ background: swatch }"
-              aria-hidden="true"
-            />
-            {{ partName }}
-          </li>
-        </ul>
-      </div>
+      <p class="text-sm text-muted">
+        Where a move near the p75 spends its time, slowest page first
+      </p>
       <div class="route-timing">
         <!-- `duration: 0`, as the Weight Timeline's: a d3 transition freezes
              part-way whenever the tab is not the focused window. -->
@@ -110,5 +107,5 @@ function useRouteTimingSeries(routes: () => RouteFigures[]) {
         code and drawing it.
       </p>
     </div>
-  </UCard>
+  </ContentCard>
 </template>

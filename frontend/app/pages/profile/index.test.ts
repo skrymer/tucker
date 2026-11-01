@@ -103,6 +103,30 @@ describe('/profile progressive disclosure', () => {
     expect(within(goal).queryByText(/log your weight first/i)).toBeNull()
   })
 
+  it('puts the details form in the Your details card, its band carrying the user-round icon', async () => {
+    holds(baselineProfile, [reading])
+    await renderSuspended(Profile)
+
+    const details = screen.getByRole('region', { name: 'Your details' })
+    expect(
+      within(details).getByRole('button', { name: /save profile/i }),
+    ).toBeVisible()
+    const heading = within(details).getByRole('heading', { level: 2 })
+    // An aria-hidden glyph has no role or name: its icon name says which it is.
+    expect(heading.querySelector('.i-lucide\\:user-round')).not.toBeNull()
+  })
+
+  it('puts the appearance control in the Appearance card, its band carrying the sun-moon icon', async () => {
+    holds(baselineProfile, [reading])
+    await renderSuspended(Profile)
+
+    const appearance = screen.getByRole('region', { name: 'Appearance' })
+    expect(within(appearance).getByRole('tab', { name: /dark/i })).toBeVisible()
+    const heading = within(appearance).getByRole('heading', { level: 2 })
+    // An aria-hidden glyph has no role or name: its icon name says which it is.
+    expect(heading.querySelector('.i-lucide\\:sun-moon')).not.toBeNull()
+  })
+
   it('carries no Weight section, with or without readings', async () => {
     holds(baselineProfile, [reading])
     await renderSuspended(Profile)
@@ -114,53 +138,55 @@ describe('/profile progressive disclosure', () => {
 })
 
 describe('/profile when a section fails to load', () => {
-  it('shows a retryable error in place of the Goal section when the readings fail to load', async () => {
+  it("shows a retryable error under the Goal's band when the readings fail to load", async () => {
     holds(null)
     server.use(failingRead('/api/weight'))
     await renderSuspended(Profile)
 
+    const goal = screen.getByRole('region', { name: 'Goal' })
     expect(
-      screen.getByRole('heading', { name: "Couldn't load your goal" }),
+      within(goal).getByRole('heading', { name: "Couldn't load your goal" }),
     ).toBeVisible()
-    expect(
-      screen.queryByRole('region', { name: /^goal$/i }),
-    ).not.toBeInTheDocument()
+    expect(within(goal).getByRole('button', { name: 'Retry' })).toBeVisible()
+    expect(within(goal).queryByText(/log your weight first/i)).toBeNull()
   })
 
-  it('shows a retryable error in place of the Goal section', async () => {
+  it("shows a retryable error under the Goal's band when the Goals fail to load", async () => {
     holds(null)
     server.use(failingRead('/api/goals'))
     await renderSuspended(Profile)
 
+    const goal = screen.getByRole('region', { name: 'Goal' })
     expect(
-      screen.getByRole('heading', { name: "Couldn't load your goal" }),
+      within(goal).getByRole('heading', { name: "Couldn't load your goal" }),
     ).toBeVisible()
-    expect(
-      screen.queryByRole('region', { name: /^goal$/i }),
-    ).not.toBeInTheDocument()
+    expect(within(goal).queryByText(/log your weight first/i)).toBeNull()
   })
 
-  it('shows a retryable error in place of the Goal section when the trend fails to load', async () => {
+  it("shows a retryable error under the Goal's band when the trend fails to load", async () => {
     holds(null)
     server.use(failingRead('/api/weight/trend'))
     await renderSuspended(Profile)
 
+    const goal = screen.getByRole('region', { name: 'Goal' })
     expect(
-      screen.getByRole('heading', { name: "Couldn't load your goal" }),
+      within(goal).getByRole('heading', { name: "Couldn't load your goal" }),
     ).toBeVisible()
-    expect(
-      screen.queryByRole('region', { name: /^goal$/i }),
-    ).not.toBeInTheDocument()
+    expect(within(goal).queryByText(/log your weight first/i)).toBeNull()
   })
 
-  it('shows a retryable error in place of the profile details form', async () => {
+  it('shows a retryable error under the Your details band in place of the form', async () => {
     holds(null)
     server.use(failingRead('/api/profile'))
     await renderSuspended(Profile)
 
+    const details = screen.getByRole('region', { name: 'Your details' })
     expect(
-      screen.getByRole('heading', { name: "Couldn't load your profile" }),
+      within(details).getByRole('heading', {
+        name: "Couldn't load your profile",
+      }),
     ).toBeVisible()
+    expect(within(details).getByRole('button', { name: 'Retry' })).toBeVisible()
     expect(
       screen.queryByRole('button', { name: /save profile/i }),
     ).not.toBeInTheDocument()

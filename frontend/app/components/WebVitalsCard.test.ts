@@ -12,6 +12,17 @@ const renderCard = (webVitals: Partial<WebVitals>) =>
   renderInApp(WebVitalsCard, { webVitals: { ...noWebVitals(), ...webVitals } })
 
 describe('WebVitalsCard', () => {
+  it('is the Page load and interaction card, its band carrying the activity icon', async () => {
+    await renderCard({})
+
+    const card = screen.getByRole('region', {
+      name: 'Page load and interaction',
+    })
+    const heading = within(card).getByRole('heading', { level: 2 })
+    // An aria-hidden glyph has no role or name: its icon name says which it is.
+    expect(heading.querySelector('.i-lucide\\:activity')).not.toBeNull()
+  })
+
   it('is headed as page load and interaction, over every page', async () => {
     await renderCard({})
 

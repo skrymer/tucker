@@ -10,6 +10,7 @@ import {
 } from '../test/micronutrient-fixtures'
 import { foodCatalog } from '../test/mocks/handlers/catalog'
 import {
+  micronutrientIntakeFails,
   micronutrientIntakeOf,
   micronutrientIntakeOver,
 } from '../test/mocks/handlers/micronutrients'
@@ -127,6 +128,33 @@ test('reads the week per nutrient, tiling what it can claim and only naming what
   )
   await expect(section.getByRole('group', { name: 'Vitamin B12' })).toBeHidden()
   await expect(section.getByText('0.30 µg')).toBeHidden()
+})
+
+test('a failed read stays under the Vitamins and minerals band, and its Retry reads again', async ({
+  page,
+  goto,
+  network,
+}) => {
+  let down = true
+  network.use(
+    micronutrientIntakeFails(() => down),
+    micronutrientIntakeOf({ coverage: 0.62 }, { today: localTodayIso() }),
+  )
+
+  await goto('/review', { waitUntil: 'hydration' })
+
+  const card = page.getByRole('region', { name: 'Vitamins and minerals' })
+  await expect(
+    card.getByRole('heading', {
+      name: "Couldn't load your vitamins and minerals",
+    }),
+  ).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Retry' })).toHaveCount(1)
+
+  down = false
+  await card.getByRole('button', { name: 'Retry' }).click()
+
+  await expect(card.getByText(/62% of the last 7 days' calories/)).toBeVisible()
 })
 
 test('with Calorie Tracking off the section is absent and never asked for', async ({

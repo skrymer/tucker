@@ -40,36 +40,33 @@ const SERIES: ReleaseSeries[] = [
 </script>
 
 <template>
-  <UCard>
+  <ContentCard subject="releaseTrend" title="p75 per release">
+    <template #trailing>
+      <ul aria-label="Layouts" class="flex gap-4 text-sm text-muted">
+        <li
+          v-for="s in SERIES"
+          :key="s.layout"
+          class="flex items-center gap-1.5"
+        >
+          <svg width="16" height="2" aria-hidden="true">
+            <line
+              x1="0"
+              y1="1"
+              x2="16"
+              y2="1"
+              stroke-width="2"
+              :stroke="s.color"
+              :stroke-dasharray="s.dash?.join(' ')"
+            />
+          </svg>
+          {{ s.label }}
+        </li>
+      </ul>
+    </template>
     <div class="flex flex-col gap-4">
-      <div class="flex items-baseline justify-between gap-4">
-        <div class="flex flex-col gap-1">
-          <h2 class="text-h2 text-highlighted">p75 per release</h2>
-          <p class="text-sm text-muted">
-            Each page's p75 move, release by release, on one scale
-          </p>
-        </div>
-        <ul aria-label="Layouts" class="flex gap-4 text-sm text-muted">
-          <li
-            v-for="s in SERIES"
-            :key="s.layout"
-            class="flex items-center gap-1.5"
-          >
-            <svg width="16" height="2" aria-hidden="true">
-              <line
-                x1="0"
-                y1="1"
-                x2="16"
-                y2="1"
-                stroke-width="2"
-                :stroke="s.color"
-                :stroke-dasharray="s.dash?.join(' ')"
-              />
-            </svg>
-            {{ s.label }}
-          </li>
-        </ul>
-      </div>
+      <p class="text-sm text-muted">
+        Each page's p75 move, release by release, on one scale
+      </p>
       <p v-if="!hasFigure" class="text-body text-muted">
         No release has a p75 yet: a layout needs five moves in a release for
         one.
@@ -117,5 +114,5 @@ const SERIES: ReleaseSeries[] = [
         axis.
       </p>
     </div>
-  </UCard>
+  </ContentCard>
 </template>

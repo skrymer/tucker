@@ -32,6 +32,18 @@ const rowsOf = (table: HTMLElement) =>
     )
 
 describe('ReleaseTrendCard', () => {
+  it('is the p75 per release card, its band carrying the git-commit icon and the legend', async () => {
+    await renderSuspended(ReleaseTrendCard, { props: { routes: [] } })
+
+    const card = screen.getByRole('region', { name: 'p75 per release' })
+    expect(within(card).getByRole('list', { name: 'Layouts' })).toBeVisible()
+    const heading = within(card).getByRole('heading', { level: 2 })
+    // An aria-hidden glyph has no role or name: its icon name says which it is.
+    expect(
+      heading.querySelector('.i-lucide\\:git-commit-horizontal'),
+    ).not.toBeNull()
+  })
+
   // Colour is never the only signal: each line is named in words.
   it('names the phone and desktop lines in a legend', async () => {
     await renderSuspended(ReleaseTrendCard, { props: { routes: [] } })

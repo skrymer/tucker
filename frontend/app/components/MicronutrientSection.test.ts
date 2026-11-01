@@ -11,6 +11,22 @@ import {
 import MicronutrientSection from './MicronutrientSection.vue'
 
 describe('MicronutrientSection', () => {
+  it('is the Vitamins and minerals card, its band carrying the leaf icon', async () => {
+    await renderSuspended(MicronutrientSection, {
+      props: { intake: micronutrientIntake() },
+    })
+
+    expect(
+      screen.getByRole('region', { name: 'Vitamins and minerals' }),
+    ).toBeVisible()
+    const heading = screen.getByRole('heading', {
+      level: 2,
+      name: 'Vitamins and minerals',
+    })
+    // An aria-hidden glyph has no role or name: its icon name says which it is.
+    expect(heading.querySelector('.i-lucide\\:leaf')).not.toBeNull()
+  })
+
   it('states how much of the window can report a vitamin or mineral at all', async () => {
     await renderSuspended(MicronutrientSection, {
       props: { intake: micronutrientIntake({ coverage: 0.62 }) },

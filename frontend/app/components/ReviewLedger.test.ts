@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { ref } from 'vue'
 import { renderSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime'
 import { screen, within } from '@testing-library/vue'
+import userEvent from '@testing-library/user-event'
 import type { components } from '#open-fetch-schemas/api'
 import { intakeTargets, weeklyReview } from '~~/test/review-fixtures'
 import ReviewLedger from './ReviewLedger.vue'
@@ -36,6 +37,46 @@ const history: WeeklyReview[] = [
 ]
 
 describe('ReviewLedger', () => {
+  it.each([
+    ['desktop', true],
+    ['phone', false],
+  ])(
+    'is one Weekly reviews card on %s, its band carrying the history icon',
+    async (_, desktop) => {
+      viewport.desktop = desktop
+      await renderSuspended(ReviewLedger, { props: { reviews: history } })
+
+      const card = screen.getByRole('region', { name: 'Weekly reviews' })
+      expect(within(card).getByText('1850')).toBeVisible()
+      const heading = within(card).getByRole('heading', {
+        level: 2,
+        name: 'Weekly reviews',
+      })
+      // An aria-hidden glyph has no role or name: its icon name says which it is.
+      expect(heading.querySelector('.i-lucide\\:history')).not.toBeNull()
+    },
+  )
+
+  it('says what to do under its band before the first review, and runs one', async () => {
+    const user = userEvent.setup()
+    const run = vi.fn()
+    await renderSuspended(ReviewLedger, {
+      props: { reviews: [], onRun: run },
+    })
+
+    const card = screen.getByRole('region', { name: 'Weekly reviews' })
+    expect(
+      within(card).getByText(/your first review will appear here/i),
+    ).toBeVisible()
+    expect(within(card).queryByRole('list')).not.toBeInTheDocument()
+    expect(within(card).queryByRole('table')).not.toBeInTheDocument()
+
+    await user.click(
+      within(card).getByRole('button', { name: 'Run your first review' }),
+    )
+    expect(run).toHaveBeenCalledOnce()
+  })
+
   it('renders the reviews as a table on desktop', async () => {
     viewport.desktop = true
     await renderSuspended(ReviewLedger, { props: { reviews: history } })
@@ -48,14 +89,15 @@ describe('ReviewLedger', () => {
     ).toBeInTheDocument()
   })
 
-  it('renders the reviews as stacked cards on phone, not a table', async () => {
+  it('renders the reviews as a list of rows on phone, not a table', async () => {
     viewport.desktop = false
     await renderSuspended(ReviewLedger, { props: { reviews: history } })
 
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
-    const cards = screen.getByRole('list')
-    expect(within(cards).getByText('1850')).toBeVisible()
-    expect(within(cards).getByText('Adaptive')).toBeVisible()
+    const rows = screen.getByRole('list')
+    expect(within(rows).getAllByRole('listitem')).toHaveLength(2)
+    expect(within(rows).getByText('1850')).toBeVisible()
+    expect(within(rows).getByText('Adaptive')).toBeVisible()
   })
 
   it('keeps the calorie columns for a history where only some reviews carry targets', async () => {

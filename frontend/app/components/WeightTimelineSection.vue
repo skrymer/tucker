@@ -94,24 +94,20 @@ const { focusedDate, readout } = useFocus()
 </script>
 
 <template>
-  <UCard
-    role="region"
-    aria-labelledby="weight-timeline-heading"
+  <!-- A wider window keeps the chart up, dimmed, rather than the card's
+       skeleton: busy, but not loading. -->
+  <ContentCard
+    subject="weightTimeline"
+    title="Your weight"
     :aria-busy="pending"
   >
-    <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-      <h2 id="weight-timeline-heading" class="text-h2 text-highlighted">
-        Your weight
-      </h2>
+    <template #trailing>
       <SectionTabs v-model="windowDays" :items="windowItems" label="Window" />
-    </div>
+    </template>
 
     <!-- Kept and dimmed while a wider window loads, the move and the reasoning
          IntakeBreakdownSection's own wrapper carries (ADR 0007). -->
-    <div
-      class="mt-3 transition-opacity delay-150"
-      :class="pending && 'opacity-50'"
-    >
+    <div class="transition-opacity delay-150" :class="pending && 'opacity-50'">
       <WeightTimelineChart
         :timeline="timeline"
         :scale="scale"
@@ -150,5 +146,5 @@ const { focusedDate, readout } = useFocus()
         <li v-for="line in readouts" :key="line.date">{{ line.text }}</li>
       </ul>
     </div>
-  </UCard>
+  </ContentCard>
 </template>

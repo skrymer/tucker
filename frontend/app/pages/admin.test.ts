@@ -750,6 +750,13 @@ describe('/admin', () => {
     expect(
       moves.getByText('No moves between pages in the last 30 days'),
     ).toBeVisible()
+    // The same band as the chart's card: only the body says it is empty.
+    // An aria-hidden glyph has no role or name: its icon name says which it is.
+    expect(
+      moves
+        .getByRole('heading', { level: 2 })
+        .querySelector('.i-lucide\\:route'),
+    ).not.toBeNull()
   })
 
   it('says nothing matches the filters only while page load and interaction do not either', async () => {

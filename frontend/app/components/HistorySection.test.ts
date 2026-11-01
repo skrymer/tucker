@@ -96,6 +96,19 @@ describe('HistorySection', () => {
     ).toBeVisible()
   })
 
+  it("draws the calendar icon in the card's band once, not again on the picked day", async () => {
+    await renderHistory()
+
+    const band = screen.getByRole('heading', { level: 2, name: 'History' })
+    const day = await screen.findByRole('heading', {
+      level: 3,
+      name: 'Today · Mon 12 Oct',
+    })
+    // An aria-hidden glyph has no role or name: its icon name says which it is.
+    expect(band.querySelector('.i-lucide\\:calendar')).not.toBeNull()
+    expect(day.querySelector('[class*="i-lucide"]')).toBeNull()
+  })
+
   it('offers to add a weight on a picked day without one', async () => {
     server.use(...bodyAndPlan({ profile: null, readings: [], today: TODAY }))
     await renderHistory()

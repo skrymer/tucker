@@ -54,6 +54,19 @@ afterEach(() => {
 })
 
 describe('ReminderSettings', () => {
+  it('is the Weekly-review reminder card, its band carrying the bell icon', async () => {
+    setupWebPush({ supported: true })
+    await render()
+
+    const card = screen.getByRole('region', { name: 'Weekly-review reminder' })
+    expect(
+      within(card).getByRole('switch', { name: /reminder/i }),
+    ).toBeVisible()
+    const heading = within(card).getByRole('heading', { level: 2 })
+    // An aria-hidden glyph has no role or name: its icon name says which it is.
+    expect(heading.querySelector('.i-lucide\\:bell')).not.toBeNull()
+  })
+
   it('turning the toggle on subscribes the device and saves the reminder preferences', async () => {
     const env = setupWebPush({ supported: true, created: thisDevice })
     server.use(

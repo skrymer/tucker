@@ -1,7 +1,7 @@
 import { getResponse, type RequestHandler } from 'msw'
 import type { FoodResponse } from '../../food-fixtures'
 import { micronutrientIntake } from '../../micronutrient-fixtures'
-import { askedWindow, http } from '../http'
+import { askedWindow, failingRead, http } from '../http'
 
 /** A Micronutrient Intake as a test states it: the fixture fills the rest. */
 type IntakeOverrides = Parameters<typeof micronutrientIntake>[0]
@@ -65,6 +65,11 @@ export function micronutrientIntakeOver(
     )
     return answer((await read!.json()) as FoodResponse[])
   }, options)
+}
+
+/** A Micronutrient Intake read the server fails while [isDown] holds. */
+export function micronutrientIntakeFails(isDown: () => boolean = () => true) {
+  return failingRead('/api/micronutrient-intake', isDown)
 }
 
 export const micronutrientHandlers = [

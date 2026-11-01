@@ -131,135 +131,88 @@ const note = computed<'profile' | 'match' | 'unstated' | null>(() => {
   if (saysNothing.value) return hasQueue.value ? 'match' : null
   return unstated.value ? 'unstated' : null
 })
-
-/**
- * What is left to do, biggest bite first. One disclosure rather than a list in
- * the card or a section of its own: the queue is a chore, and a chore on display
- * is what a card of one honest sentence would become.
- */
-const queueLabel = computed(() => {
-  const count = props.intake.unmatched.length
-  // Named for the state a User can change rather than for what Tucker cannot
-  // read, and pluralised — "2 foods is not matched yet" reads as a bug.
-  return count === 1
-    ? '1 food is not matched yet'
-    : `${count} foods are not matched yet`
-})
 </script>
 
 <template>
-  <UCard
-    role="region"
-    aria-labelledby="micronutrient-heading"
+  <!-- A refresh keeps the figures up, dimmed under a band that is not: busy,
+       but not loading. -->
+  <ContentCard
+    subject="micronutrients"
+    title="Vitamins and minerals"
     :aria-busy="pending"
-    class="transition-opacity delay-150"
-    :class="pending && 'opacity-50'"
   >
-    <h2 id="micronutrient-heading" class="text-h2 text-highlighted">
-      Vitamins and minerals
-    </h2>
-    <p v-if="isEmptyWindow" class="mt-2 text-sm text-muted">
-      Nothing logged in the last {{ days }} days.
-    </p>
-    <template v-else>
-      <p class="mt-2 text-sm text-default">{{ coverage }}</p>
-      <p class="mt-1 text-sm text-muted">{{ loggedDays }}</p>
+    <div class="transition-opacity delay-150" :class="pending && 'opacity-50'">
+      <p v-if="isEmptyWindow" class="text-sm text-muted">
+        Nothing logged in the last {{ days }} days.
+      </p>
+      <template v-else>
+        <p class="text-sm text-default">{{ coverage }}</p>
+        <p class="mt-1 text-sm text-muted">{{ loggedDays }}</p>
 
-      <!-- Once nothing is left, the share still unaccounted for has to be named
+        <!-- Once nothing is left, the share still unaccounted for has to be named
            along with why no tap will move it — otherwise it reads as a chore
            undone (ADR 0027). Only where there *is* one: a week of nothing but
            matched weighed food leaves no rest, and attributing an absent
            remainder to estimated meals is a confident wrong answer. -->
-      <p v-if="!hasQueue" class="mt-2 text-sm text-muted">
-        Nothing left to match.<template v-if="hasUnreadableRest">
-          The rest came from meals you estimated, which have no food to borrow
-          from.</template
-        >
-      </p>
-
-      <div v-for="group in reading.groups" :key="group.claim" class="mt-3">
-        <h3 class="text-eyebrow text-muted">
-          {{ group.heading }}
-        </h3>
-        <ul role="list" class="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
-          <li
-            v-for="row in group.tiles"
-            :key="row.nutrient"
-            role="group"
-            :aria-label="row.label"
-            class="rounded-inset bg-elevated/50 px-3 py-2"
+        <p v-if="!hasQueue" class="mt-2 text-sm text-muted">
+          Nothing left to match.<template v-if="hasUnreadableRest">
+            The rest came from meals you estimated, which have no food to borrow
+            from.</template
           >
-            <span class="block text-xs text-muted">{{ row.label }}</span>
-            <span class="block font-semibold tabular-nums text-default">
-              {{ row.bound }}
-            </span>
-            <span class="block text-xs text-dimmed">
-              {{ row.lineLabel }} {{ row.line }}
-            </span>
-          </li>
-        </ul>
-      </div>
+        </p>
 
-      <!-- What the card says under the tiles. Which one is `note`'s to decide, so
+        <div v-for="group in reading.groups" :key="group.claim" class="mt-3">
+          <h3 class="text-eyebrow text-muted">
+            {{ group.heading }}
+          </h3>
+          <ul role="list" class="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
+            <li
+              v-for="row in group.tiles"
+              :key="row.nutrient"
+              role="group"
+              :aria-label="row.label"
+              class="rounded-inset bg-elevated/50 px-3 py-2"
+            >
+              <span class="block text-xs text-muted">{{ row.label }}</span>
+              <span class="block font-semibold tabular-nums text-default">
+                {{ row.bound }}
+              </span>
+              <span class="block text-xs text-dimmed">
+                {{ row.lineLabel }} {{ row.line }}
+              </span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- What the card says under the tiles. Which one is `note`'s to decide, so
            no two of them can contradict each other on one screen. The two states
            behind 'profile' and 'match' look identical here, which is why the
            response says which one it is (ADR 0027). -->
-      <p v-if="note === 'profile'" class="mt-3 text-sm text-muted">
-        Add your sex and date of birth on Profile, so Tucker knows which
-        published figures to read your week against.
-      </p>
-      <p v-else-if="note === 'match'" class="mt-3 text-sm text-muted">
-        Match a few of the foods you eat most and Tucker can start reading your
-        vitamins and minerals.
-      </p>
-      <!-- Names, never figures. A shortfall is not published, so it is not drawn
+        <p v-if="note === 'profile'" class="mt-3 text-sm text-muted">
+          Add your sex and date of birth on Profile, so Tucker knows which
+          published figures to read your week against.
+        </p>
+        <p v-else-if="note === 'match'" class="mt-3 text-sm text-muted">
+          Match a few of the foods you eat most and Tucker can start reading
+          your vitamins and minerals.
+        </p>
+        <!-- Names, never figures. A shortfall is not published, so it is not drawn
            either — the structure is what carries that, not the wording. -->
-      <p v-else-if="note === 'unstated'" class="mt-3 text-sm text-muted">
-        Not enough matched to say: {{ unstated }}.
-      </p>
+        <p v-else-if="note === 'unstated'" class="mt-3 text-sm text-muted">
+          Not enough matched to say: {{ unstated }}.
+        </p>
 
-      <UCollapsible v-if="hasQueue" class="mt-3">
-        <!-- `min-h-11`: this is the section's primary control and a phone is
-           Tucker's first target, so it gets the same 44px the icon buttons
-           elsewhere are sized to. -->
-        <UButton
-          :label="queueLabel"
-          trailing-icon="i-lucide-chevron-down"
-          color="neutral"
-          variant="subtle"
-          block
-          class="min-h-11"
-          :ui="{
-            trailingIcon:
-              'group-data-[state=open]:rotate-180 transition-transform',
-          }"
+        <MicronutrientQueue
+          v-if="hasQueue"
+          :unmatched="intake.unmatched"
+          class="mt-3"
+          @match="emit('match', $event)"
         />
-        <template #content>
-          <ul role="list" class="mt-2 divide-y divide-default">
-            <li v-for="item in intake.unmatched" :key="item.foodId">
-              <button
-                type="button"
-                :aria-label="`Match ${formatName(item.name)}`"
-                class="flex w-full items-baseline justify-between gap-3 rounded-inset py-2.5 text-left hover:bg-elevated active:bg-elevated"
-                @click="emit('match', item)"
-              >
-                <span class="min-w-0 truncate font-medium text-default">
-                  {{ formatName(item.name) }}
-                </span>
-                <!-- Its share of the window, which is why it sorts where it does:
-                   the first few taps are most of a week (ADR 0027). -->
-                <span class="shrink-0 tabular-nums text-muted">
-                  {{ Math.round(item.share * 100) }}%
-                </span>
-              </button>
-            </li>
-          </ul>
-        </template>
-      </UCollapsible>
-    </template>
+      </template>
 
-    <ReferenceFoodAttribution>
-      <ReferenceIntakeAttribution />
-    </ReferenceFoodAttribution>
-  </UCard>
+      <ReferenceFoodAttribution>
+        <ReferenceIntakeAttribution />
+      </ReferenceFoodAttribution>
+    </div>
+  </ContentCard>
 </template>

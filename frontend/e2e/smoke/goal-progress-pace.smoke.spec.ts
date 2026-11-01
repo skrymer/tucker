@@ -88,10 +88,8 @@ test('the Goal Progress hero shows planned vs observed finish and the pace', asy
 
   await goto('/review', { waitUntil: 'hydration' })
 
-  // The hero is the card headed "Goal progress", above the ledger.
-  const hero = page
-    .locator('[data-slot="root"]')
-    .filter({ hasText: 'Goal progress' })
+  // The hero is the Goal card, above the ledger.
+  const hero = page.getByRole('region', { name: 'Goal', exact: true })
   await expect(hero).toBeVisible()
   await expect(hero.getByText(percent)).toBeVisible()
   // Planned and observed finish, side by side — the comparison is the story.

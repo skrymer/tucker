@@ -123,25 +123,22 @@ const { data: ringData, categories: ringCategories } = useRing()
 </script>
 
 <template>
-  <UCard
-    role="region"
-    aria-labelledby="intake-breakdown-heading"
+  <!-- A new window keeps the last one up, dimmed, rather than the card's
+       skeleton: busy, but not loading. -->
+  <ContentCard
+    subject="intakeBreakdown"
+    title="What you're eating"
     :aria-busy="pending"
   >
-    <div class="flex items-baseline justify-between gap-2">
-      <h2 id="intake-breakdown-heading" class="text-h2 text-highlighted">
-        What you're eating
-      </h2>
+    <template #trailing>
       <!-- The denominator, stated: every share below is of this, never of the
            Calorie Budget (ADR 0026). -->
       <span class="text-label tabular-nums text-default">
         {{ Math.round(breakdown.totalCalories) }} kcal
       </span>
-    </div>
+    </template>
 
-    <div
-      class="mt-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1"
-    >
+    <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
       <SectionTabs v-model="period" :items="periodItems" label="Period" />
       <span v-if="coverage" class="text-sm text-muted">{{ coverage }}</span>
     </div>
@@ -238,5 +235,5 @@ const { data: ringData, categories: ringCategories } = useRing()
         </li>
       </ul>
     </div>
-  </UCard>
+  </ContentCard>
 </template>

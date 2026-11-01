@@ -40,66 +40,61 @@ const up = computed(() => figures.value?.health === 'UP')
 </script>
 
 <template>
-  <UCard as="section" aria-labelledby="server-heading" :aria-busy="pending">
-    <div class="flex flex-col gap-5">
-      <div class="flex items-start justify-between gap-4">
-        <div class="flex flex-col gap-1">
-          <h2 id="server-heading" class="text-h2 text-highlighted">Server</h2>
-          <p class="text-sm text-muted">
-            Since the last restart<template v-if="figures"
-              >,
-              <strong class="text-highlighted tabular-nums">{{
-                uptime(figures.uptimeSeconds)
-              }}</strong>
-              ago</template
-            >. The range and engine filters above don't apply.
-          </p>
-        </div>
-        <!-- Health is the one coloured state, and never the colour alone. -->
-        <span
-          v-if="figures && !error"
-          class="flex shrink-0 items-center gap-1.5 text-sm font-semibold"
-          :class="up ? 'text-success' : 'text-error'"
-        >
-          <UIcon
-            :name="up ? 'i-lucide-circle-check' : 'i-lucide-circle-x'"
-            class="size-4"
-            aria-hidden="true"
-          />
-          {{ up ? 'Up' : 'Down' }}
-        </span>
-      </div>
-      <LoadErrorState
-        nested
-        :error="error"
-        title="Couldn't read the server figures"
-        @retry="refresh"
+  <!-- Its own skeleton rather than the card's, shaped like the meters and
+       the table it stands in for. -->
+  <ContentCard
+    subject="server"
+    title="Server"
+    :aria-busy="pending"
+    :error="error"
+    error-title="Couldn't read the server figures"
+    @retry="refresh"
+  >
+    <template #trailing>
+      <!-- Health is the one coloured state, and never the colour alone. -->
+      <span
+        v-if="figures"
+        class="flex shrink-0 items-center gap-1.5 text-sm font-semibold"
+        :class="up ? 'text-success' : 'text-error'"
       >
-        <div v-if="figures" class="flex flex-col gap-5">
-          <ServerMeters :figures="figures" />
-          <EndpointTimingTable :endpoints="figures.endpoints" />
-        </div>
-        <!-- The first read only (ADR 0007's cold load). Decorative, so hidden:
+        <UIcon
+          :name="up ? 'i-lucide-circle-check' : 'i-lucide-circle-x'"
+          class="size-4"
+          aria-hidden="true"
+        />
+        {{ up ? 'Up' : 'Down' }}
+      </span>
+    </template>
+    <div class="flex flex-col gap-5">
+      <p class="text-sm text-muted">
+        Since the last restart<template v-if="figures"
+          >,
+          <strong class="text-highlighted tabular-nums">{{
+            uptime(figures.uptimeSeconds)
+          }}</strong>
+          ago</template
+        >. The range and engine filters above don't apply.
+      </p>
+      <div v-if="figures" class="flex flex-col gap-5">
+        <ServerMeters :figures="figures" />
+        <EndpointTimingTable :endpoints="figures.endpoints" />
+      </div>
+      <!-- The first read only (ADR 0007's cold load). Decorative, so hidden:
              the card's aria-busy says it is loading, and each USkeleton would
              otherwise raise an alert. -->
-        <div
-          v-else
-          aria-hidden="true"
-          data-testid="server-skeleton"
-          class="appear-late flex flex-col gap-5"
-        >
-          <div class="grid grid-cols-5 gap-4">
-            <USkeleton
-              v-for="n in 5"
-              :key="n"
-              class="h-[4.5rem] rounded-inset"
-            />
-          </div>
-          <div class="flex flex-col gap-2">
-            <USkeleton v-for="n in 4" :key="n" class="h-7 w-full" />
-          </div>
+      <div
+        v-else
+        aria-hidden="true"
+        data-testid="server-skeleton"
+        class="appear-late flex flex-col gap-5"
+      >
+        <div class="grid grid-cols-5 gap-4">
+          <USkeleton v-for="n in 5" :key="n" class="h-[4.5rem] rounded-inset" />
         </div>
-      </LoadErrorState>
+        <div class="flex flex-col gap-2">
+          <USkeleton v-for="n in 4" :key="n" class="h-7 w-full" />
+        </div>
+      </div>
     </div>
-  </UCard>
+  </ContentCard>
 </template>
