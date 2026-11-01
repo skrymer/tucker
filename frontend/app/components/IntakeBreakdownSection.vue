@@ -3,6 +3,7 @@ import type { components } from '#open-fetch-schemas/api'
 
 // jscpd:ignore-start — every windowed card's shell declares the same read state
 // Null until read, and while a failed read stands.
+// Stryker disable next-line all: a compiler macro must stay a top-level statement
 defineProps<{
   breakdown: components['schemas']['IntakeBreakdownResponse'] | null
   pending?: boolean

@@ -106,6 +106,25 @@ describe('ReviewLedger', () => {
     ).toBeDisabled()
   })
 
+  it("says under its own band that the reviews couldn't be read, and its Retry asks again", async () => {
+    const user = userEvent.setup()
+    const retry = vi.fn()
+    await renderSuspended(ReviewLedger, {
+      props: { reviews: [], error: new Error('down'), onRetry: retry },
+    })
+
+    const card = screen.getByRole('region', { name: 'Weekly reviews' })
+    expect(
+      within(card).getByRole('heading', { name: "Couldn't load your reviews" }),
+    ).toBeVisible()
+    expect(
+      within(card).queryByText(/your first review will appear here/i),
+    ).not.toBeInTheDocument()
+
+    await user.click(within(card).getByRole('button', { name: 'Retry' }))
+    expect(retry).toHaveBeenCalledOnce()
+  })
+
   it('renders the reviews as a table on desktop', async () => {
     viewport.desktop = true
     await renderSuspended(ReviewLedger, { props: { reviews: history } })

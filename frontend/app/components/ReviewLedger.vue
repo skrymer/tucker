@@ -150,7 +150,6 @@ const columns = computed(() =>
         size="lg"
         class="mt-4"
         :loading="running"
-        :disabled="running"
         @click="emit('run')"
       >
         Run review now

@@ -3,6 +3,7 @@ import type { TabsItem } from '@nuxt/ui'
 import type { components } from '#open-fetch-schemas/api'
 
 // Null until read, and while a failed read stands.
+// Stryker disable next-line all: a compiler macro must stay a top-level statement
 defineProps<{
   timeline: components['schemas']['WeightTimelineResponse'] | null
   pending?: boolean

@@ -3,6 +3,7 @@ import type { components } from '#open-fetch-schemas/api'
 
 type UnmatchedFood = components['schemas']['UnmatchedFoodResponse']
 
+// Stryker disable next-line all: a compiler macro must stay a top-level statement
 defineProps<{
   /** Null until read, and while a failed read stands. */
   intake: components['schemas']['MicronutrientIntakeResponse'] | null
